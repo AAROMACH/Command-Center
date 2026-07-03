@@ -345,8 +345,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                 <table className="tbl">
                     <thead>
                         <tr className="bg-bg-tertiary">
-                            <th style={{ width: "140px" }} className="text-center pl-0">Intake ID</th>
-                            <th style={{ width: "120px" }} className="text-center">Status</th>
+                            <th style={{ width: "200px" }} className="text-center pl-0">Intake ID / Status</th>
                             {!isHistory ? (
                                 <>
                                     <th className="text-left pl-0">Client Entity</th>
@@ -368,10 +367,8 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                         {paginatedRequests.map((req) => (
                             <tr key={req.id} className="group hover:bg-bg-tertiary transition-colors cursor-pointer" onClick={() => handleOpenReview(req)}>
                                 <td className="!py-4">
-                                    <div className="font-mono text-[10px] font-bold text-brand-red uppercase text-center">{req.id.toUpperCase()}</div>
-                                </td>
-                                <td className="!py-4">
-                                    <div className="flex justify-center">
+                                    <div className="flex flex-col items-center gap-1.5">
+                                        <div className="font-mono text-[10px] font-bold text-brand-red uppercase">{req.id.toUpperCase()}</div>
                                         <Badge variant={req.status === 'rejected' ? 'missed' : req.status === 'closed' ? 'active' : 'pending'} className="text-[7px] h-3.5 px-1.5 uppercase">
                                             {req.status}
                                         </Badge>

@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import type { Project, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
@@ -168,7 +169,6 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
                         <th className="text-center">Project Lead</th>
                         <th className="text-left pl-0">Site Coordinates</th>
                         <th className="text-left pl-0">Schedule Date</th>
-                        <th style={{ width: "220px" }} className="text-center">Operational Progress</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -182,64 +182,70 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
                         const lead = leadMember ? technicians.find(t => t.id === leadMember.techId) : null;
 
                         return (
-                            <tr key={project.id} onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer group">
-                                <td className="pl-0 py-4">
-                                    <div className="flex flex-col items-center justify-center gap-1.5">
-                                        <div className="cell-id !text-[10px] font-mono font-bold !mt-0 !text-center">{(project.id || '').toUpperCase()}</div>
-                                        <Badge variant={project.status} className="capitalize text-[8px] h-4 px-1.5 tracking-widest">{project.status}</Badge>
-                                    </div>
-                                </td>
-                                <td className="!py-4 text-left pl-0">
-                                    <div className="flex flex-col min-w-0">
-                                      <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors whitespace-normal">{project.name}</div>
-                                      <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{project.client}</div>
-                                    </div>
-                                </td>
-                                <td className="py-4">
-                                    <div className="flex flex-col items-center justify-center">
-                                        {lead ? (
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="h-8 w-8 border border-border-sub shadow-sm">
-                                                    <AvatarImage src={lead.avatarUrl} />
-                                                    <AvatarFallback className="text-[10px]">{lead.name ? lead.name.charAt(0) : 'U'}</AvatarFallback>
-                                                </Avatar>
-                                                <span className="text-[10px] font-bold text-text-primary uppercase">{lead.name}</span>
-                                            </div>
-                                        ) : (
-                                            <span className="text-[10px] text-text-muted italic uppercase font-bold tracking-widest">Unallocated</span>
-                                        )}
-                                    </div>
-                                </td>
-                                <td className="py-4 pl-0">
-                                    <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
-                                        <MapPin size={11} className="text-brand-red shrink-0" />
-                                        <span className="whitespace-normal text-left">{formatCityState(project.location)}</span>
-                                    </div>
-                                </td>
-                                <td className="py-4 pl-0">
-                                    <div className="flex flex-col items-start justify-center gap-1.5">
-                                        <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono font-bold">
-                                            <Calendar size={13} className="text-text-muted shrink-0" />
-                                            <span>{formatDateDisplay(project.startDate)}</span>
+                            <React.Fragment key={project.id}>
+                                <tr onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer group border-b-0">
+                                    <td className="pl-0 pt-4 pb-2">
+                                        <div className="flex flex-col items-center justify-center gap-1.5">
+                                            <div className="cell-id !text-[10px] font-mono font-bold !mt-0 !text-center">{(project.id || '').toUpperCase()}</div>
+                                            <Badge variant={project.status} className="capitalize text-[8px] h-4 px-1.5 tracking-widest">{project.status}</Badge>
                                         </div>
-                                        {project.startTime && (
-                                            <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono">
-                                                <Clock size={13} className="text-text-muted shrink-0" />
-                                                <span>{project.startTime}</span>
+                                    </td>
+                                    <td className="text-left pl-0 pt-4 pb-2">
+                                        <div className="flex flex-col min-w-0">
+                                          <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors">{project.name}</div>
+                                          <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{project.client}</div>
+                                        </div>
+                                    </td>
+                                    <td className="pt-4 pb-2">
+                                        <div className="flex flex-col items-center justify-center">
+                                            {lead ? (
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar className="h-8 w-8 border border-border-sub shadow-sm">
+                                                        <AvatarImage src={lead.avatarUrl} />
+                                                        <AvatarFallback className="text-[10px]">{lead.name ? lead.name.charAt(0) : 'U'}</AvatarFallback>
+                                                    </Avatar>
+                                                    <span className="text-[10px] font-bold text-text-primary uppercase">{lead.name}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-[10px] text-text-muted italic uppercase font-bold tracking-widest">Unallocated</span>
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td className="pt-4 pb-2 pl-0">
+                                        <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
+                                            <MapPin size={11} className="text-brand-red shrink-0" />
+                                            <span className="whitespace-normal text-left">{formatCityState(project.location)}</span>
+                                        </div>
+                                    </td>
+                                    <td className="pt-4 pb-2 pl-0">
+                                        <div className="flex flex-col items-start justify-center gap-1.5">
+                                            <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono font-bold">
+                                                <Calendar size={13} className="text-text-muted shrink-0" />
+                                                <span>{formatDateDisplay(project.startDate)}</span>
                                             </div>
-                                        )}
-                                    </div>
-                                </td>
-                                <td className="py-4">
-                                    <div className="flex flex-col items-center justify-center px-4">
-                                      <div className="progress-wrap w-full">
-                                          <div className="progress-track !h-[6px]"><div className={cn("progress-fill flashy", progressColor)} style={{ width: `${progress}%` }}></div></div>
-                                          <div className={cn("progress-pct font-mono font-bold ml-2", `text-${progressColor}`)}>{Math.round(progress)}%</div>
-                                      </div>
-                                      <div className="text-[9px] font-bold text-text-muted uppercase tracking-widest mt-2">{completedTasks} / {totalTasks} TARGETS</div>
-                                    </div>
-                                </td>
-                            </tr>
+                                            {project.startTime && (
+                                                <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono">
+                                                    <Clock size={13} className="text-text-muted shrink-0" />
+                                                    <span>{project.startTime}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer group">
+                                    <td colSpan={5} className="pl-0 pt-0 pb-3">
+                                        <div className="flex items-center gap-3 pl-0 pr-4">
+                                            <div className="progress-wrap flex-1 !mb-0">
+                                                <div className="progress-track !h-[5px]">
+                                                    <div className={cn("progress-fill flashy", progressColor)} style={{ width: `${progress}%` }} />
+                                                </div>
+                                                <div className={cn("progress-pct font-mono font-bold ml-2 shrink-0", `text-${progressColor}`)}>{Math.round(progress)}%</div>
+                                            </div>
+                                            <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest shrink-0">{completedTasks}/{totalTasks} targets</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </React.Fragment>
                         );
                     })}
                 </tbody>

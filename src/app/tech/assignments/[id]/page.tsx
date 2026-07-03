@@ -614,40 +614,14 @@ export default function TechAssignmentDetailPage() {
             ))}
           </div>
 
-          {/* Tech action buttons */}
-          <div className={cn('grid gap-1 p-2 border-t border-border-sub shrink-0',
-            techActions.length >= 2 ? 'grid-cols-2' : 'grid-cols-1'
-          )}>
-            <Button size="sm" variant="outline"
-              className="h-7 text-[8px] font-black uppercase tracking-widest gap-1 px-2"
-              onClick={() => window.open(
-                `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(assignment.location || '')}`,
-                '_blank', 'noopener'
-              )}>
-              <Navigation size={9} /> Directions
-            </Button>
-            <Button size="sm" variant="outline"
-              className="h-7 text-[8px] font-black uppercase tracking-widest gap-1 px-2"
-              onClick={() => router.push('/tech/messaging')}>
-              <MessageSquare size={9} /> Message
-            </Button>
-            {techActions.map(action => (
-              <Button key={action.key} size="sm" variant="outline"
-                className={cn('h-7 text-[8px] font-black uppercase tracking-widest gap-1 px-2', action.cls)}
-                disabled={actionLoading}
-                onClick={action.handler}>
-                <action.icon size={9} /> {action.label}
-              </Button>
-            ))}
-          </div>
         </div>
       </div>
 
       {/* Scope + History ────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
 
         {/* Scope of Work */}
-        <div className="lg:col-span-3 bg-bg-secondary rounded-xl border border-border-sub flex flex-col">
+        <div className="lg:col-span-2 bg-bg-secondary rounded-xl border border-border-sub flex flex-col">
           <div className="p-4 flex-1">
             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 mb-3">
               <Wrench size={11} className="text-brand-red" /> Scope of Work
@@ -676,58 +650,88 @@ export default function TechAssignmentDetailPage() {
           </div>
         </div>
 
-        {/* History */}
-        <div className="lg:col-span-2 bg-bg-secondary rounded-xl border border-border-sub p-4 flex flex-col">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
-              <Activity size={11} className="text-brand-red" /> History
-            </p>
+        {/* Right panel: utility buttons + status actions + history */}
+        <div className="lg:col-span-1 space-y-4">
+
+          {/* Always-visible utility buttons */}
+          <div className="grid grid-cols-2 gap-2">
+            <Button size="sm" variant="outline" className="h-9 text-[9px] font-black uppercase tracking-widest gap-1.5 px-3 justify-start"
+              onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(assignment.location || '')}`, '_blank', 'noopener')}>
+              <Navigation size={10} /> Directions
+            </Button>
+            <Button size="sm" variant="outline" className="h-9 text-[9px] font-black uppercase tracking-widest gap-1.5 px-3 justify-start"
+              onClick={() => router.push('/tech/messaging')}>
+              <MessageSquare size={10} /> Message
+            </Button>
           </div>
 
-          {recentHistory.length > 0 ? (
-            <div className="space-y-0">
-              {recentHistory.map((ev, i) => {
-                const dotColor = HISTORY_COLORS[i % HISTORY_COLORS.length];
-                let evDate: Date | null = null;
-                try { evDate = new Date(ev.date); } catch {}
-                const dateStr = evDate ? format(evDate, 'MM-dd-yyyy') : ev.date?.slice(0, 10) || '';
-                const timeStr = evDate ? format(evDate, 'h:mm a').toUpperCase() : '';
-                const typeLabel = (ev.type || 'event').replace(/_/g, ' ').toUpperCase();
-
-                return (
-                  <div key={i} className="flex gap-3 py-2.5 border-b border-border-sub last:border-0">
-                    <div className="flex flex-col items-center shrink-0 pt-1">
-                      <div className="h-2 w-2 rounded-full shrink-0" style={{ background: dotColor }} />
-                      {i < recentHistory.length - 1 && (
-                        <div className="w-px mt-1.5 flex-1 min-h-[16px]" style={{ background: `${dotColor}30` }} />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-0.5">
-                        <div>
-                          <span className="text-[8px] font-mono text-text-muted">{dateStr}</span>
-                          {timeStr && <span className="text-[8px] font-mono text-text-muted ml-2">{timeStr}</span>}
-                        </div>
-                        {ev.user && (
-                          <span className="text-[8px] font-black uppercase text-text-muted shrink-0 tracking-wide">{ev.user}</span>
-                        )}
-                      </div>
-                      <p className="text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ color: dotColor }}>
-                        {typeLabel}
-                      </p>
-                      {ev.details && (
-                        <p className="text-[10px] text-text-secondary leading-snug">{ev.details}</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center py-8">
-              <p className="text-[9px] font-bold uppercase text-text-muted opacity-40">No history recorded</p>
+          {/* Status action buttons */}
+          {techActions.length > 0 && (
+            <div className={cn('grid gap-2', techActions.length >= 2 ? 'grid-cols-2' : 'grid-cols-1')}>
+              {techActions.map(action => (
+                <Button key={action.key} size="sm" variant="outline"
+                  className={cn('h-9 text-[9px] font-black uppercase tracking-widest gap-1.5 px-3 justify-start', action.cls)}
+                  disabled={actionLoading}
+                  onClick={action.handler}>
+                  <action.icon size={10} /> {action.label}
+                </Button>
+              ))}
             </div>
           )}
+
+          {/* History card */}
+          <div className="bg-bg-secondary rounded-xl border border-border-sub p-4 flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                <Activity size={11} className="text-brand-red" /> History
+              </p>
+            </div>
+
+            {recentHistory.length > 0 ? (
+              <div className="space-y-0">
+                {recentHistory.map((ev, i) => {
+                  const dotColor = HISTORY_COLORS[i % HISTORY_COLORS.length];
+                  let evDate: Date | null = null;
+                  try { evDate = new Date(ev.date); } catch {}
+                  const dateStr = evDate ? format(evDate, 'MM-dd-yyyy') : ev.date?.slice(0, 10) || '';
+                  const timeStr = evDate ? format(evDate, 'h:mm a').toUpperCase() : '';
+                  const typeLabel = (ev.type || 'event').replace(/_/g, ' ').toUpperCase();
+
+                  return (
+                    <div key={i} className="flex gap-3 py-2.5 border-b border-border-sub last:border-0">
+                      <div className="flex flex-col items-center shrink-0 pt-1">
+                        <div className="h-2 w-2 rounded-full shrink-0" style={{ background: dotColor }} />
+                        {i < recentHistory.length - 1 && (
+                          <div className="w-px mt-1.5 flex-1 min-h-[16px]" style={{ background: `${dotColor}30` }} />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-0.5">
+                          <div>
+                            <span className="text-[8px] font-mono text-text-muted">{dateStr}</span>
+                            {timeStr && <span className="text-[8px] font-mono text-text-muted ml-2">{timeStr}</span>}
+                          </div>
+                          {ev.user && (
+                            <span className="text-[8px] font-black uppercase text-text-muted shrink-0 tracking-wide">{ev.user}</span>
+                          )}
+                        </div>
+                        <p className="text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ color: dotColor }}>
+                          {typeLabel}
+                        </p>
+                        {ev.details && (
+                          <p className="text-[10px] text-text-secondary leading-snug">{ev.details}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center py-8">
+                <p className="text-[9px] font-bold uppercase text-text-muted opacity-40">No history recorded</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

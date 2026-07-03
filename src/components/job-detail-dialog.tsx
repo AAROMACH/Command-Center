@@ -10,7 +10,11 @@ import {
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn, formatCityState } from '@/lib/utils';
 import {
   MapPin, Calendar, Clock, DollarSign,
@@ -25,7 +29,7 @@ import { format } from 'date-fns';
 import { db } from '@/lib/firebase';
 import {
   collection, query, where, getDocs, onSnapshot,
-  orderBy, limit, doc, updateDoc,
+  orderBy, limit, doc, updateDoc, arrayUnion,
 } from 'firebase/firestore';
 import type { WorkOrder, WeeklyLog, AssignmentTimeLog, Technician } from '@/lib/types';
 import { assignmentTimeLogs } from '@/lib/data';
@@ -129,6 +133,10 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   const [loadingAdmin, setLoadingAdmin] = useState(false);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [auditEvents, setAuditEvents] = useState<any[]>([]);
+  const [swapOpen, setSwapOpen] = useState(false);
+  const [helperOpen, setHelperOpen] = useState(false);
+  const [swapTechId, setSwapTechId] = useState('');
+  const [helperTechId, setHelperTechId] = useState('');
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'users'), (snap) => {
@@ -161,6 +169,28 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     }
     return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [mission]);
+
+  const handleSwapTech = async () => {
+    if (!swapTechId || !mission) return;
+    const nt = technicians.find(t => t.id === swapTechId);
+    await updateDoc(doc(db, 'assignments', mission.id), {
+      assignedTechnicianId: swapTechId, techId: swapTechId,
+      history: arrayUnion({ date: new Date().toISOString(), type: 'tech_swapped',
+        details: `Technician changed to ${nt?.name || swapTechId}`, user: 'Admin' }),
+    });
+    setSwapOpen(false); setSwapTechId('');
+  };
+
+  const handleAddHelper = async () => {
+    if (!helperTechId || !mission) return;
+    const ht = technicians.find(t => t.id === helperTechId);
+    await updateDoc(doc(db, 'assignments', mission.id), {
+      additionalTechnicianIds: arrayUnion(helperTechId),
+      history: arrayUnion({ date: new Date().toISOString(), type: 'helper_added',
+        details: `${ht?.name || helperTechId} added as helper`, user: 'Admin' }),
+    });
+    setHelperOpen(false); setHelperTechId('');
+  };
 
   if (!mission) return null;
 
@@ -207,8 +237,8 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     { icon: Phone,       label: 'Call Client',       onClick: () => {} },
     { icon: MessageSquare, label: 'Message Client',  onClick: () => {} },
     { icon: ShieldCheck, label: 'Verify Assignment', onClick: handleVerify },
-    { icon: RotateCcw,   label: 'Swap Tech',         onClick: () => {} },
-    { icon: UserPlus,    label: 'Add Helper',        onClick: () => {} },
+    { icon: RotateCcw,   label: 'Swap Tech',         onClick: () => { setSwapTechId(''); setSwapOpen(true); } },
+    { icon: UserPlus,    label: 'Add Helper',        onClick: () => { setHelperTechId(''); setHelperOpen(true); } },
   ];
 
   const footerItems = [
@@ -564,6 +594,60 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
         </div>
 
       </SheetContent>
+
+      {/* Swap Tech Dialog */}
+      <Dialog open={swapOpen} onOpenChange={setSwapOpen}>
+        <DialogContent className="bg-bg-elevated border-border-main sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Swap Technician</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Select Replacement</Label>
+            <Select value={swapTechId} onValueChange={setSwapTechId}>
+              <SelectTrigger className="h-9 text-[10px] font-bold uppercase bg-bg-secondary border-border-main">
+                <SelectValue placeholder="Choose technician..." />
+              </SelectTrigger>
+              <SelectContent className="bg-bg-elevated border-border-main">
+                {technicians.filter(t => !t.roles?.includes('client')).map(t => (
+                  <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold" onClick={() => setSwapOpen(false)}>Cancel</Button>
+            <Button size="sm" className="h-8 text-[10px] uppercase font-bold bg-brand-red hover:bg-brand-red/90 text-white" disabled={!swapTechId} onClick={handleSwapTech}>Confirm Swap</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Helper Dialog */}
+      <Dialog open={helperOpen} onOpenChange={setHelperOpen}>
+        <DialogContent className="bg-bg-elevated border-border-main sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Add Helper</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Select Helper</Label>
+            <Select value={helperTechId} onValueChange={setHelperTechId}>
+              <SelectTrigger className="h-9 text-[10px] font-bold uppercase bg-bg-secondary border-border-main">
+                <SelectValue placeholder="Choose technician..." />
+              </SelectTrigger>
+              <SelectContent className="bg-bg-elevated border-border-main">
+                {technicians
+                  .filter(t => !t.roles?.includes('client') && t.id !== (mission?.assignedTechnicianId || mission?.techId))
+                  .map(t => (
+                    <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name}</SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold" onClick={() => setHelperOpen(false)}>Cancel</Button>
+            <Button size="sm" className="h-8 text-[10px] uppercase font-bold bg-brand-red hover:bg-brand-red/90 text-white" disabled={!helperTechId} onClick={handleAddHelper}>Add to Team</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Sheet>
   );
 }

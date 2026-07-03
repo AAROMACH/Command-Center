@@ -50,8 +50,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { differenceInMinutes, parseISO, format } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 
@@ -235,11 +236,18 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             const finalTotal = calculatedTotalPayout;
             try {
                 const logRef = doc(db, 'weeklyLogs', localLog.id);
-                await updateDoc(logRef, { 
-                    status,
-                    totalPayout: finalTotal
-                });
+                await updateDoc(logRef, { status, totalPayout: finalTotal });
                 onStatusChange(localLog.id, status, finalTotal);
+                const adminId = auth.currentUser?.uid ?? '';
+                const adminName = auth.currentUser?.displayName ?? 'Admin';
+                await auditEvent(
+                    'weeklyLogs',
+                    localLog.id,
+                    adminId,
+                    adminName,
+                    `payroll_${status.toLowerCase()}`,
+                    `Log for week of ${localLog.weekOf} (tech: ${technician?.name ?? localLog.techId}) ${status.toLowerCase()} by ${adminName}. Total payout: $${finalTotal.toFixed(2)}`
+                );
             } catch (e: any) {
                 toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
             }
@@ -250,12 +258,23 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         if (!localLog) return;
         try {
             const logRef = doc(db, 'weeklyLogs', localLog.id);
+            const previousStatus = localLog.status;
             await updateDoc(logRef, {
                 status: 'Draft',
                 unsubmitRequested: false,
                 unsubmitReason: null,
                 unsubmitRequestedAt: null
             });
+            const adminId = auth.currentUser?.uid ?? '';
+            const adminName = auth.currentUser?.displayName ?? 'Admin';
+            await auditEvent(
+                'weeklyLogs',
+                localLog.id,
+                adminId,
+                adminName,
+                'unsubmit_approved',
+                `Unsubmit approved by ${adminName} for week of ${localLog.weekOf} (tech: ${technician?.name ?? localLog.techId}). Log reverted from ${previousStatus} to Draft. Reason: ${localLog.unsubmitReason ?? '—'}`
+            );
             toast({
                 title: "Unsubmit Authorized",
                 description: `Weekly log for ${localLog.weekOf} has been reverted to Draft.`,

@@ -101,15 +101,6 @@ export default function TechWeeklyLogPage() {
 
     const { toast } = useToast();
 
-    /**
-     * Submission Window Validator.
-     * Restricts weekly log finalization to Saturday (6) and Sunday (0).
-     */
-    const isWeekend = useMemo(() => {
-        const day = new Date().getDay();
-        return day === 0 || day === 6;
-    }, []);
-
     // 1. Terminal Initialization
     useEffect(() => {
         setMounted(true);
@@ -134,6 +125,37 @@ export default function TechWeeklyLogPage() {
         if (!selectedLogId) return null;
         return weeklyLogs.find(l => l.id === selectedLogId) || null;
     }, [weeklyLogs, selectedLogId]);
+
+    /**
+     * Submission Window Validator.
+     * Current week: only Saturday (6) and Sunday (0).
+     * Past weeks: always allowed (catch-up submissions).
+     */
+    const canSubmitActiveLog = useMemo(() => {
+        if (!activeLog?.weekOf) return false;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dow = today.getDay();
+        const daysToMonday = dow === 0 ? 6 : dow - 1;
+        const thisWeekMonday = new Date(today);
+        thisWeekMonday.setDate(today.getDate() - daysToMonday);
+
+        // Parse weekOf as MM-DD-YYYY
+        const parts = activeLog.weekOf.split('-').map(Number);
+        let logMonday: Date;
+        if (parts[2] > 1000) {
+            logMonday = new Date(parts[2], parts[0] - 1, parts[1]);
+        } else {
+            logMonday = new Date(activeLog.weekOf);
+        }
+        logMonday.setHours(0, 0, 0, 0);
+
+        const isPastWeek = logMonday.getTime() < thisWeekMonday.getTime();
+        const isCurrentWeek = logMonday.getTime() === thisWeekMonday.getTime();
+        const isWeekend = dow === 0 || dow === 6;
+
+        return isPastWeek || (isCurrentWeek && isWeekend);
+    }, [activeLog?.weekOf]);
 
     // 3. Registry Filtering & Sorting
     const filteredAndSortedLogs = useMemo(() => {
@@ -266,11 +288,11 @@ export default function TechWeeklyLogPage() {
     const handleSubmit = async () => {
         if (!activeLog) return;
 
-        if (!isWeekend) {
+        if (!canSubmitActiveLog) {
             toast({
                 variant: "destructive",
                 title: "Submission Restricted",
-                description: "Weekly log finalization is restricted to the weekend cycle (Saturday/Sunday) to ensure all mid-week activity is captured.",
+                description: "Current-week logs can only be submitted on Saturday or Sunday. Past week logs can be submitted anytime.",
             });
             return;
         }
@@ -544,16 +566,16 @@ export default function TechWeeklyLogPage() {
                             <p className="text-[9px] text-text-muted uppercase font-bold text-right">Finalized: {activeLog.submittedAt ? format(parseISO(activeLog.submittedAt), 'MMM d, h:mm a') : 'N/A'}</p>
                         </div>
                     ) : (
-                        <Button 
-                            disabled={!canSubmit || !isWeekend} 
+                        <Button
+                            disabled={!canSubmit || !canSubmitActiveLog}
                             onClick={handleSubmit}
                             className={cn(
                                 "h-12 px-10 font-bold uppercase text-[10px] tracking-[0.2em]",
-                                canSubmit && isWeekend ? "bg-brand-red hover:bg-brand-red-hover" : "bg-bg-tertiary text-text-muted border border-border-sub"
+                                canSubmit && canSubmitActiveLog ? "bg-brand-red hover:bg-brand-red-hover" : "bg-bg-tertiary text-text-muted border border-border-sub"
                             )}
                         >
-                            <Send size={16} className="mr-2"/> 
-                            {isWeekend ? "Finalize & Submit Manifest" : "Weekend Submission Only"}
+                            <Send size={16} className="mr-2"/>
+                            {canSubmitActiveLog ? "Finalize & Submit Manifest" : "Weekend Submission Only"}
                         </Button>
                     )}
                 </div>
@@ -572,13 +594,13 @@ export default function TechWeeklyLogPage() {
                 </div>
             )}
 
-            {!isLocked && isWeekend === false && (
+            {!isLocked && !canSubmitActiveLog && (
                 <div className="max-w-4xl mx-auto p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-start gap-4 shadow-sm text-left">
                     <Info size={20} className="text-accent-gold shrink-0 mt-0.5" />
                     <div className="space-y-1 text-left">
-                        <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide text-left">Audit manifest Preparation</p>
+                        <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide text-left">Audit Manifest Preparation</p>
                         <p className="text-[10px] text-text-muted leading-relaxed uppercase font-medium text-left">
-                            You can continue verifying missions and logging expenses throughout the week. Final submission is authorized on <span className="text-brand-red font-bold">Saturday and Sunday</span>.
+                            You can continue verifying missions and logging expenses throughout the week. Current-week log submission is authorized on <span className="text-brand-red font-bold">Saturday and Sunday</span>. Past week logs can be submitted anytime.
                         </p>
                     </div>
                 </div>

@@ -552,6 +552,14 @@ function NewServiceTab({ requests }: { requests: NewServiceRequest[] }) {
 
   return (
     <>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[10px] text-text-muted uppercase tracking-wider">Inbound service requests from the public form</p>
+        <a href="/public/service-request" target="_blank" rel="noopener noreferrer">
+          <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-wider">
+            <ExternalLink size={12} className="mr-1.5" /> Go to Form
+          </Button>
+        </a>
+      </div>
       <div className="space-y-6">
         {pending.length > 0 && (
           <div>
@@ -750,37 +758,55 @@ function ClientIntakeTab({ requests, siteReqs }: { requests: ClientIntakeRequest
     return 'bg-bg-tertiary text-text-muted border-border-sub';
   };
 
-  const card = (req: ClientIntakeRequest) => (
-    <button key={req.id} type="button" onClick={() => { setSelected(req); setNotes(req.internalNotes || ''); }}
-      className="w-full rounded-xl border border-border-sub bg-bg-secondary p-4 space-y-2.5 text-left hover:border-border-main transition-colors">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <p className="text-[12px] font-bold text-text-primary truncate">{req.companyName}</p>
-          <p className="text-[10px] text-text-muted truncate">{req.primaryContactName} · {req.jobTitle}</p>
+  const card = (req: ClientIntakeRequest) => {
+    const interests = req.serviceInterests || [];
+    const statusStr = (req.status || '').replace(/_/g, ' ');
+    return (
+      <button key={req.id} type="button" onClick={() => { setSelected(req); setNotes(req.internalNotes || ''); }}
+        className="w-full rounded-xl border border-border-sub bg-bg-secondary p-4 space-y-2.5 text-left hover:border-border-main transition-colors">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-[12px] font-bold text-text-primary truncate">{req.companyName || req.email || 'Unknown'}</p>
+            <p className="text-[10px] text-text-muted truncate">{[req.primaryContactName, req.jobTitle].filter(Boolean).join(' · ')}</p>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {req.subscriptionTier && (
+              <span className={cn('text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-widest', tierCls(req.subscriptionTier))}>
+                {req.subscriptionTier === 'not_sure' ? 'TBD' : req.subscriptionTier}
+              </span>
+            )}
+            <span className={cn('text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-widest', statusCls(req.status))}>
+              {statusStr || 'pending'}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className={cn('text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-widest', tierCls(req.subscriptionTier))}>
-            {req.subscriptionTier === 'not_sure' ? 'TBD' : req.subscriptionTier}
-          </span>
-          <span className={cn('text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-widest', statusCls(req.status))}>
-            {req.status.replace(/_/g, ' ')}
-          </span>
-        </div>
-      </div>
-      <p className="text-[10px] text-text-muted">{req.industryType} · {req.numberOfLocations} location{req.numberOfLocations !== '1' ? 's' : ''}</p>
-      <div className="flex flex-wrap gap-1">
-        {req.serviceInterests.slice(0, 3).map(t => (
-          <span key={t} className="text-[9px] px-1.5 py-0.5 rounded bg-bg-tertiary border border-border-sub text-text-muted">{t}</span>
-        ))}
-        {req.serviceInterests.length > 3 && (
-          <span className="text-[9px] px-1.5 py-0.5 rounded bg-bg-tertiary border border-border-sub text-text-muted">+{req.serviceInterests.length - 3}</span>
+        {(req.industryType || req.numberOfLocations) && (
+          <p className="text-[10px] text-text-muted">{[req.industryType, req.numberOfLocations ? `${req.numberOfLocations} location${req.numberOfLocations !== '1' ? 's' : ''}` : null].filter(Boolean).join(' · ')}</p>
         )}
-      </div>
-    </button>
-  );
+        {interests.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {interests.slice(0, 3).map(t => (
+              <span key={t} className="text-[9px] px-1.5 py-0.5 rounded bg-bg-tertiary border border-border-sub text-text-muted">{t}</span>
+            ))}
+            {interests.length > 3 && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-bg-tertiary border border-border-sub text-text-muted">+{interests.length - 3}</span>
+            )}
+          </div>
+        )}
+      </button>
+    );
+  };
 
   return (
     <>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[10px] text-text-muted uppercase tracking-wider">Client partnership applications and site requests</p>
+        <a href="/public/service-request" target="_blank" rel="noopener noreferrer">
+          <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-wider">
+            <ExternalLink size={12} className="mr-1.5" /> Go to Form
+          </Button>
+        </a>
+      </div>
       <div className="space-y-6">
         {pendingIntake.length > 0 && (
           <div>
@@ -1007,7 +1033,11 @@ export default function RequestsPage() {
     });
 
     const u6 = onSnapshot(collection(db, 'clientRequests'), snap => {
-      setClientIntakeRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as ClientIntakeRequest)));
+      setClientIntakeRequests(
+        snap.docs
+          .map(d => ({ ...d.data(), id: d.id } as ClientIntakeRequest))
+          .filter(r => r.source === 'app_client_intake' || r.source === 'public_client_intake' || !!r.companyName)
+      );
     });
 
     return () => { u1(); u2(); u3(); u4(); u5(); u6(); };

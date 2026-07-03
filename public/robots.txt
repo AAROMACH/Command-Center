@@ -1,0 +1,9 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /tech/
+Disallow: /client/
+Disallow: /login
+Disallow: /pending-approval
+Allow: /public/
+
+Sitemap: https://app.aaromach.com/sitemap.xml

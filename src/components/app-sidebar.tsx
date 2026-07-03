@@ -22,7 +22,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import {
@@ -32,15 +31,11 @@ import {
   Users,
   Banknote,
   Activity,
-  Calendar,
-  ScrollText,
   Coins,
   FolderKanban,
   ClipboardList,
   FileText,
-  Settings,
   BookOpen,
-  MapPin,
   BarChart2,
   Target,
   CalendarDays,
@@ -69,71 +64,110 @@ const adminNavGroups: NavGroup[] = [
   {
     label: "Overview",
     items: [
-      { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "admin.dashboard.view" },
-      { href: "/admin/requests", label: "Requests", icon: Inbox, permission: "admin.requests.view" },
-      { href: "/admin/reports", label: "Activity", icon: Activity, permission: "admin.reports.view" },
-      { href: "/admin/analytics", label: "Field Intelligence", icon: BarChart2, permission: "admin.reports.view" },
+      { href: "/admin/dashboard",        label: "Dashboard",        icon: LayoutDashboard, permission: "admin.dashboard.view" },
+      { href: "/admin/requests",         label: "Requests",         icon: Inbox,           permission: "admin.requests.view" },
+      { href: "/admin/reports",          label: "Activity",         icon: Activity,        permission: "admin.reports.view" },
+      { href: "/admin/analytics",        label: "Field Intelligence", icon: BarChart2,     permission: "admin.reports.view" },
+      { href: "/admin/company-planning", label: "Company Planning", icon: Flag,            permission: "admin.reports.view" },
     ],
   },
   {
-    label: "Dispatch",
+    label: "Operations",
     items: [
-      { href: "/admin/dispatch", label: "Dispatch Hub", icon: Wrench, permission: "admin.dispatch.view" },
-      { href: "/admin/calendar", label: "Schedule", icon: CalendarDays, permission: "admin.schedule.view" },
-      { href: "/admin/assignments", label: "Assignments", icon: ClipboardList, permission: "admin.assignments.view" },
+      { href: "/admin/dispatch",     label: "Dispatch Hub", icon: Wrench,      permission: "admin.dispatch.view" },
+      { href: "/admin/calendar",     label: "Schedule",     icon: CalendarDays, permission: "admin.schedule.view" },
+      { href: "/admin/assignments",  label: "Assignments",  icon: ClipboardList, permission: "admin.assignments.view" },
+      { href: "/admin/projects",     label: "Projects",     icon: Briefcase,   permission: "admin.projects.view" },
     ],
   },
   {
-    label: "CRM & Sales",
+    label: "Sales & Clients",
     items: [
-      { href: "/admin/crm", label: "CRM", icon: Target, permission: "admin.crm.view" },
-      { href: "/admin/plans", label: "Service Plans", icon: BookOpen, permission: "admin.reports.view" },
-      { href: "/admin/company-planning", label: "Company Planning", icon: Flag, permission: "admin.reports.view" },
+      { href: "/admin/crm",    label: "CRM",           icon: Target,     permission: "admin.crm.view" },
+      { href: "/admin/plans",  label: "Service Plans", icon: BookOpen,   permission: "admin.reports.view" },
+      { href: "/admin/sites",  label: "Clients",       icon: Building2,  permission: "admin.clients.view" },
+      { href: "/admin/quotes", label: "Quotes",        icon: FileSearch, permission: "admin.crm.view" },
     ],
   },
   {
-    label: "Clients & Projects",
+    label: "People & Communication",
     items: [
-      { href: "/admin/sites", label: "Clients", icon: Building2, permission: "admin.clients.view" },
-      { href: "/admin/projects", label: "Projects", icon: Briefcase, permission: "admin.projects.view" },
-      { href: "/admin/quotes", label: "Quotes", icon: FileSearch, permission: "admin.crm.view" },
-      { href: "/admin/messaging", label: "Messages", icon: MessageSquare, permission: "admin.messages.view" },
+      { href: "/admin/directory", label: "Directory", icon: Users,         permission: "admin.directory.view" },
+      { href: "/admin/messaging", label: "Messages",  icon: MessageSquare, permission: "admin.messages.view" },
     ],
   },
   {
-    label: "Directory",
-    items: [
-      { href: "/admin/directory", label: "Directory", icon: Users, permission: "admin.directory.view" },
-    ],
-  },
-  {
-    label: "Financials",
+    label: "Financials & Assets",
     items: [
       { href: "/admin/financials", label: "Financials", icon: Banknote, permission: "admin.financials.view" },
-      { href: "/admin/assets", label: "Assets", icon: Package, permission: "admin.assignments.view" },
+      { href: "/admin/assets",     label: "Assets",     icon: Package,  permission: "admin.assignments.view" },
     ],
   },
 ];
 
-const techNavItems: NavItem[] = [
-  { href: "/tech/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "tech.dashboard.view" },
-  { href: "/tech/assignments", label: "Assignments", icon: Calendar, permission: "tech.assignments.view" },
-  { href: "/tech/calendar", label: "Schedule", icon: CalendarDays, permission: "tech.schedule.view" },
-  { href: "/tech/projects", label: "Projects", icon: FolderKanban, permission: "tech.projects.view" },
-  { href: "/tech/logs", label: "Logs", icon: ScrollText, permission: "tech.logs.view" },
-  { href: "/tech/earnings", label: "Earnings", icon: Coins, permission: "tech.earnings.view" },
-  { href: "/tech/messaging", label: "Messages", icon: MessageSquare, permission: "tech.messages.view" },
+const techNavGroups: NavGroup[] = [
+  {
+    label: "Overview",
+    items: [
+      { href: "/tech/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "tech.dashboard.view" },
+      { href: "/tech/logs",      label: "Activity",  icon: Activity,        permission: "tech.logs.view" },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { href: "/tech/calendar",     label: "Schedule",    icon: CalendarDays,  permission: "tech.schedule.view" },
+      { href: "/tech/assignments",  label: "Assignments", icon: ClipboardList, permission: "tech.assignments.view" },
+      { href: "/tech/projects",     label: "Projects",    icon: FolderKanban,  permission: "tech.projects.view" },
+    ],
+  },
+  {
+    label: "People & Communication",
+    items: [
+      { href: "/tech/messaging", label: "Messages", icon: MessageSquare, permission: "tech.messages.view" },
+    ],
+  },
+  {
+    label: "Financials & Assets",
+    items: [
+      { href: "/tech/earnings", label: "Earnings", icon: Coins, permission: "tech.earnings.view" },
+    ],
+  },
 ];
 
-const clientNavItems: NavItem[] = [
-  { href: "/client/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "client.dashboard.view" },
-  { href: "/client/tickets", label: "Support", icon: ClipboardList, permission: "client.tickets.view" },
-  { href: "/client/projects", label: "Projects", icon: Briefcase, permission: "client.projects.view" },
-  { href: "/client/sites", label: "Sites", icon: MapPin, permission: "client.sites.view" },
-  { href: "/client/quotes", label: "Quotes", icon: Receipt, permission: "client.quotes.view" },
-  { href: "/client/financials", label: "Financials", icon: FileText, permission: "client.financials.view" },
-  { href: "/client/messaging", label: "Messages", icon: MessageSquare, permission: "client.messages.view" },
-  { href: "/client/profile", label: "Profile", icon: Users, permission: "client.profile.view" },
+const clientNavGroups: NavGroup[] = [
+  {
+    label: "Overview",
+    items: [
+      { href: "/client/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "client.dashboard.view" },
+      { href: "/client/tickets",   label: "Requests",  icon: Inbox,           permission: "client.tickets.view" },
+    ],
+  },
+  {
+    label: "Sales & Clients",
+    items: [
+      { href: "/client/sites",   label: "Clients", icon: Building2, permission: "client.sites.view" },
+      { href: "/client/quotes",  label: "Quotes",  icon: Receipt,   permission: "client.quotes.view" },
+    ],
+  },
+  {
+    label: "Projects",
+    items: [
+      { href: "/client/projects", label: "Projects", icon: Briefcase, permission: "client.projects.view" },
+    ],
+  },
+  {
+    label: "People & Communication",
+    items: [
+      { href: "/client/messaging", label: "Messages", icon: MessageSquare, permission: "client.messages.view" },
+    ],
+  },
+  {
+    label: "Financials & Assets",
+    items: [
+      { href: "/client/financials", label: "Financials", icon: FileText, permission: "client.financials.view" },
+    ],
+  },
 ];
 
 export function AppSidebar() {
@@ -207,15 +241,10 @@ export function AppSidebar() {
   const portalLabel = isTechPortal ? "Field Terminal" : isClientPortal ? "Client Portal" : "Command Center";
   const dashboardHref = isTechPortal ? "/tech/dashboard" : isClientPortal ? "/client/dashboard" : "/admin/dashboard";
 
-  const rawItems = isTechPortal ? techNavItems : isClientPortal ? clientNavItems : adminNavGroups.flatMap(g => g.items);
-  const navItems = useMemo(
-    () => (mounted ? rawItems.filter(item => hasPermission(currentUser, item.permission)) : rawItems),
-    [mounted, currentUser, rawItems]
-  );
+  const activeNavGroups = isTechPortal ? techNavGroups : isClientPortal ? clientNavGroups : adminNavGroups;
 
   const filteredGroups = useMemo(() => {
-    if (isTechPortal || isClientPortal) return null;
-    return adminNavGroups
+    return activeNavGroups
       .map(group => ({
         ...group,
         items: mounted
@@ -223,7 +252,7 @@ export function AppSidebar() {
           : group.items,
       }))
       .filter(group => group.items.length > 0);
-  }, [mounted, currentUser, isTechPortal, isClientPortal]);
+  }, [mounted, currentUser, activeNavGroups]);
 
   const isActive = (href: string) => {
     if (href.endsWith("/dashboard")) return pathname === href;
@@ -255,93 +284,57 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-2">
-        {filteredGroups ? (
-          <div className="space-y-1">
-            {filteredGroups.map((group, gi) => (
-              <div key={gi}>
-                {group.label && (
-                  <div className={cn("px-2 pb-1", gi > 0 ? "pt-4" : "pt-1")}>
-                    <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#555] group-data-[collapsible=icon]:hidden">
-                      {group.label}
-                    </p>
-                    <div className="h-px bg-[#222] mt-1 group-data-[collapsible=icon]:hidden" />
-                  </div>
-                )}
-                {!group.label && gi > 0 && <div className="h-2" />}
-                <SidebarMenu>
-                  {group.items.map((item) => {
-                    const active = isActive(item.href);
-                    const isMessages = item.href.endsWith("/messaging");
-                    const badge = isMessages && unreadMessages > 0 ? unreadMessages : 0;
-                    return (
-                      <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={active}
-                          tooltip={item.label}
-                          className={cn(
-                            "h-9 text-[10px] font-bold uppercase tracking-widest rounded-md transition-colors",
-                            active
-                              ? "!bg-brand-red/10 !text-brand-red"
-                              : "text-[#888] hover:!bg-bg-tertiary hover:!text-text-primary"
+        <div className="space-y-1">
+          {filteredGroups.map((group, gi) => (
+            <div key={gi}>
+              {group.label && (
+                <div className={cn("px-2 pb-1", gi > 0 ? "pt-4" : "pt-1")}>
+                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#555] group-data-[collapsible=icon]:hidden">
+                    {group.label}
+                  </p>
+                  <div className="h-px bg-[#222] mt-1 group-data-[collapsible=icon]:hidden" />
+                </div>
+              )}
+              <SidebarMenu>
+                {group.items.map((item) => {
+                  const active = isActive(item.href);
+                  const isMessages = item.href.endsWith("/messaging");
+                  const isAssignments = item.href.endsWith("/assignments");
+                  const badge = isMessages && unreadMessages > 0
+                    ? unreadMessages
+                    : isAssignments && newAssignments > 0
+                    ? newAssignments
+                    : 0;
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={active}
+                        tooltip={item.label}
+                        className={cn(
+                          "h-9 text-[10px] font-bold uppercase tracking-widest rounded-md transition-colors",
+                          active
+                            ? "!bg-brand-red/10 !text-brand-red"
+                            : "text-[#888] hover:!bg-bg-tertiary hover:!text-text-primary"
+                        )}
+                      >
+                        <Link href={item.href}>
+                          <item.icon className="h-4 w-4 shrink-0" />
+                          <span className="flex-1">{item.label}</span>
+                          {badge > 0 && (
+                            <span className="ml-auto text-[8px] font-black bg-brand-red text-white rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 group-data-[collapsible=icon]:hidden">
+                              {badge > 99 ? "99+" : badge}
+                            </span>
                           )}
-                        >
-                          <Link href={item.href}>
-                            <item.icon className="h-4 w-4 shrink-0" />
-                            <span className="flex-1">{item.label}</span>
-                            {badge > 0 && (
-                              <span className="ml-auto text-[8px] font-black bg-brand-red text-white rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 group-data-[collapsible=icon]:hidden">
-                                {badge > 99 ? "99+" : badge}
-                              </span>
-                            )}
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <SidebarMenu>
-            {navItems.map((item) => {
-              const active = isActive(item.href);
-              const isMessages = item.href.endsWith("/messaging");
-              const isAssignments = item.href.endsWith("/assignments");
-              const badge = isMessages && unreadMessages > 0
-                ? unreadMessages
-                : isAssignments && newAssignments > 0
-                ? newAssignments
-                : 0;
-              return (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={active}
-                    tooltip={item.label}
-                    className={cn(
-                      "h-9 text-[10px] font-bold uppercase tracking-widest rounded-md transition-colors",
-                      active
-                        ? "!bg-brand-red/10 !text-brand-red"
-                        : "text-[#888] hover:!bg-bg-tertiary hover:!text-text-primary"
-                    )}
-                  >
-                    <Link href={item.href}>
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span className="flex-1">{item.label}</span>
-                      {badge > 0 && (
-                        <span className="ml-auto text-[8px] font-black bg-brand-red text-white rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 group-data-[collapsible=icon]:hidden">
-                          {badge > 99 ? "99+" : badge}
-                        </span>
-                      )}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              );
-            })}
-          </SidebarMenu>
-        )}
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </div>
+          ))}
+        </div>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-border-sub p-3 space-y-2">

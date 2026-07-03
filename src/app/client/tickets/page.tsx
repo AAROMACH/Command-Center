@@ -11,8 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
-    ClipboardList, 
-    Plus, 
+    ClipboardList,
+    Plus,
     Search,
     MapPin,
     ArrowUpDown,
@@ -27,7 +27,8 @@ import {
     ChevronRight,
     Navigation,
     Upload,
-    SearchCode
+    SearchCode,
+    ExternalLink,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { 
@@ -89,20 +90,28 @@ export default function ClientTicketsPage() {
         setCurrentUserId(userId);
 
         if (userId) {
+            let unsubReq: (() => void) | undefined;
             const unsubUser = onSnapshot(doc(db, 'users', userId), (d) => {
                 if (d.exists()) {
                     const techData = { ...d.data(), id: d.id } as Technician;
                     setCurrentUser(techData);
-                    
-                    if (techData.clientCompany) {
-                        const unsubReq = onSnapshot(query(collection(db, 'clientRequests'), where('clientName', '==', techData.clientCompany)), (snap) => {
-                            setAllRequests(snap.docs.map(rd => ({ ...rd.data(), id: rd.id } as ServiceRequest)));
-                        });
-                        return () => unsubReq();
+
+                    if (techData.clientCompany && !unsubReq) {
+                        unsubReq = onSnapshot(
+                            query(collection(db, 'clientRequests'), where('clientName', '==', techData.clientCompany)),
+                            (snap) => {
+                                setAllRequests(snap.docs.map(rd => ({ ...rd.data(), id: rd.id } as ServiceRequest)));
+                            },
+                            (err) => {
+                                console.error('clientRequests query error:', err);
+                            }
+                        );
                     }
                 }
+            }, (err) => {
+                console.error('User doc error:', err);
             });
-            return () => unsubUser();
+            return () => { unsubUser(); unsubReq?.(); };
         }
     }, []);
 
@@ -259,7 +268,13 @@ export default function ClientTicketsPage() {
                     <h1 className="page-title text-left">Support Tickets</h1>
                     <p className="page-subtitle text-left">Submit service requests and track administrative review status.</p>
                 </div>
-                <div className="page-header-right">
+                <div className="page-header-right items-center gap-3">
+                    <a href="/public/service-request" target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" className="h-10 px-4 font-bold uppercase tracking-widest text-[10px]">
+                            <ExternalLink size={13} className="mr-2" />
+                            Go to Form
+                        </Button>
+                    </a>
                     <Button variant="default" onClick={() => setIsNewTicketOpen(true)} className="h-10 px-6 font-bold uppercase tracking-widest">
                         <Plus size={16} className="mr-2"/>
                         Create Ticket

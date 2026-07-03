@@ -1,13 +1,13 @@
 'use client';
 import { useState, useMemo, useEffect, useRef } from 'react';
-import type { Technician, TimeOffRequest, ReliabilityEvent } from '@/lib/types';
+import type { Technician, TimeOffRequest, ReliabilityEvent, PersonnelDocument } from '@/lib/types';
 import { penaltyEvents, timeOffRequests as initialTimeOffRequests } from '@/lib/data';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc, collection, setDoc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, collection, addDoc, setDoc, getDoc } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
-import { uploadAvatar } from '@/lib/upload';
+import { uploadAvatar, uploadFile } from '@/lib/upload';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
-import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, X, User, Activity, Search, CheckCircle2, Key, Loader2, Camera } from 'lucide-react';
+import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, X, User, Activity, Search, CheckCircle2, Key, Loader2, Camera, FileText, Upload } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,6 +28,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSearchParams } from 'next/navigation';
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import { auditFieldChange } from '@/lib/audit';
+
+const DOC_TYPE_LABELS: Record<string, string> = {
+    w9: 'W-9', insurance: 'Insurance', license: 'License', certification: 'Certification',
+    agreement: 'Agreement', id: 'ID', training: 'Training', other: 'Other',
+};
 
 export default function TechProfilePage() {
     const searchParams = useSearchParams();
@@ -56,6 +61,15 @@ export default function TechProfilePage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const savedSnapshotRef = useRef<Record<string, unknown>>({});
+
+    const [documents, setDocuments] = useState<PersonnelDocument[]>([]);
+    const [uploadDocOpen, setUploadDocOpen] = useState(false);
+    const [docName, setDocName] = useState('');
+    const [docType, setDocType] = useState('other');
+    const [docExpiry, setDocExpiry] = useState('');
+    const [docFile, setDocFile] = useState<File | null>(null);
+    const [docUploading, setDocUploading] = useState(false);
+    const docFileInputRef = useRef<HTMLInputElement>(null);
     const [predefinedSkills, setPredefinedSkills] = useState<string[]>([]);
     const [selectedSkill, setSelectedSkill] = useState('');
 
@@ -111,7 +125,10 @@ export default function TechProfilePage() {
                     };
                 }
             });
-            return () => unsubUser();
+            const unsubDocs = onSnapshot(collection(db, 'users', fbUser.uid, 'documents'), snap => {
+                setDocuments(snap.docs.map(d => ({ ...d.data(), id: d.id } as PersonnelDocument)));
+            });
+            return () => { unsubUser(); unsubDocs(); };
         });
         return () => unsubAuth();
     }, []);
@@ -156,6 +173,37 @@ export default function TechProfilePage() {
         if (!currentTechId) return;
         const updated = (tech?.skills || []).filter(s => s !== skill);
         await updateDoc(doc(db, 'users', currentTechId), { skills: updated });
+    };
+
+    const handleUploadDocument = async () => {
+        if (!currentTechId || !docName.trim()) return;
+        setDocUploading(true);
+        try {
+            let url = '';
+            if (docFile) {
+                const path = `personnelDocuments/${currentTechId}/${Date.now()}-${docFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+                const result = await uploadFile(path, docFile, { contentType: docFile.type });
+                url = result.url;
+            }
+            await addDoc(collection(db, 'users', currentTechId, 'documents'), {
+                name: docName.trim(),
+                type: docType,
+                url: url || '#',
+                uploadedAt: new Date().toISOString(),
+                expiryDate: docExpiry || null,
+                approvalStatus: 'pending',
+            });
+            setUploadDocOpen(false);
+            setDocName('');
+            setDocType('other');
+            setDocExpiry('');
+            setDocFile(null);
+            toast({ title: 'Document submitted', description: 'Your document is pending admin review.' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Upload failed', description: err.message });
+        } finally {
+            setDocUploading(false);
+        }
     };
 
     const handleSave = async () => {
@@ -310,6 +358,7 @@ export default function TechProfilePage() {
                         <TabsList className="tabs border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-start mb-6">
                             <TabsTrigger value="identity" className="tab-trigger-plans">Identity</TabsTrigger>
                             <TabsTrigger value="reliability" className="tab-trigger-plans">Reliability</TabsTrigger>
+                            <TabsTrigger value="documents" className="tab-trigger-plans">Documents</TabsTrigger>
                             <TabsTrigger value="timeoff" className="tab-trigger-plans">Time Off</TabsTrigger>
                             <TabsTrigger value="integrations" className="tab-trigger-plans">Integrations</TabsTrigger>
                         </TabsList>
@@ -476,6 +525,52 @@ export default function TechProfilePage() {
                             </Card>
                         </TabsContent>
 
+                        {/* DOCUMENTS TAB */}
+                        <TabsContent value="documents" className="m-0 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-bold text-text-primary">My Documents</p>
+                                    <p className="text-[10px] text-text-muted mt-0.5">Submitted documents are reviewed by administrators. They appear in your directory profile.</p>
+                                </div>
+                                <Button size="sm" onClick={() => setUploadDocOpen(true)} className="h-8 text-[10px] font-black uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white">
+                                    <Upload size={11} className="mr-1.5" /> Upload
+                                </Button>
+                            </div>
+                            {documents.length === 0 ? (
+                                <div className="rounded-xl border border-border-sub bg-bg-secondary p-12 text-center">
+                                    <FileText size={24} className="mx-auto text-text-muted mb-2 opacity-30" />
+                                    <p className="text-[10px] text-text-muted uppercase tracking-wider">No documents uploaded</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {documents.map(d => (
+                                        <div key={d.id} className="flex items-center justify-between p-3 rounded-lg border border-border-sub bg-bg-secondary">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <FileText size={14} className="text-text-muted shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-[11px] font-bold text-text-primary truncate">{d.name}</p>
+                                                    <p className="text-[9px] text-text-muted uppercase">{DOC_TYPE_LABELS[d.type] || d.type}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0 ml-2">
+                                                <span className={cn(
+                                                    'text-[8px] font-black uppercase px-2 py-0.5 rounded border',
+                                                    d.approvalStatus === 'approved' ? 'bg-text-green/10 text-text-green border-text-green/20' :
+                                                    d.approvalStatus === 'rejected' ? 'bg-brand-red/10 text-brand-red border-brand-red/20' :
+                                                    'bg-amber-400/10 text-amber-400 border-amber-400/20'
+                                                )}>
+                                                    {d.approvalStatus || 'pending'}
+                                                </span>
+                                                {d.url && d.url !== '#' && (
+                                                    <a href={d.url} target="_blank" rel="noopener noreferrer" className="text-[9px] text-text-muted hover:text-text-primary uppercase font-bold">View</a>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </TabsContent>
+
                         {/* TIME OFF TAB */}
                         <TabsContent value="timeoff" className="m-0 space-y-6">
                             <div className="flex items-center justify-between">
@@ -563,6 +658,55 @@ export default function TechProfilePage() {
                     </Tabs>
                 </div>
             </div>
+
+            {/* Document Upload Dialog */}
+            <Dialog open={uploadDocOpen} onOpenChange={setUploadDocOpen}>
+                <DialogContent className="sm:max-w-[460px] bg-bg-elevated border-border-default">
+                    <DialogHeader>
+                        <DialogTitle className="uppercase tracking-widest text-sm font-bold flex items-center gap-2">
+                            <FileText size={16} className="text-brand-red" /> Upload Document
+                        </DialogTitle>
+                        <DialogDescription className="text-xs">Documents are submitted for admin review and appear in your directory profile.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold uppercase text-text-muted">Document Name</Label>
+                            <Input value={docName} onChange={e => setDocName(e.target.value)} placeholder="e.g. Liability Insurance 2025" className="h-10 text-xs" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold uppercase text-text-muted">Type</Label>
+                            <Select value={docType} onValueChange={setDocType}>
+                                <SelectTrigger className="h-10 text-xs font-bold uppercase">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {Object.entries(DOC_TYPE_LABELS).map(([value, label]) => (
+                                        <SelectItem key={value} value={value} className="text-xs uppercase font-bold">{label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold uppercase text-text-muted">Expiry Date (optional)</Label>
+                            <Input type="date" value={docExpiry} onChange={e => setDocExpiry(e.target.value)} className="h-10 text-xs" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold uppercase text-text-muted">File</Label>
+                            <input type="file" ref={docFileInputRef} className="hidden" onChange={e => setDocFile(e.target.files?.[0] || null)} />
+                            <Button variant="outline" onClick={() => docFileInputRef.current?.click()} className="w-full h-10 text-[10px] font-bold uppercase border-dashed">
+                                <Upload size={12} className="mr-2" />
+                                {docFile ? docFile.name : 'Choose File'}
+                            </Button>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setUploadDocOpen(false)} className="text-[10px] uppercase font-bold">Cancel</Button>
+                        <Button onClick={handleUploadDocument} disabled={!docName.trim() || docUploading} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] uppercase font-bold">
+                            {docUploading ? <><Loader2 size={12} className="mr-2 animate-spin" />Uploading...</> : 'Submit'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Time Off Dialog */}
             <Dialog open={isTimeOffDialogOpen} onOpenChange={setIsTimeOffDialogOpen}>

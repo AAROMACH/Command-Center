@@ -23,7 +23,7 @@ import {
 import { EditProfileDialog } from '../components/edit-profile-dialog';
 import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierBadgeVariant } from '@/lib/reliability';
-import { hasPermission, ALL_PERMISSIONS, type Permission } from '@/lib/permissions';
+import { hasPermission, ALL_PERMISSIONS, PERMISSION_TREE, getPortalAccess, type Permission } from '@/lib/permissions';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import type { Technician, WorkOrder, PersonnelDocument, Project, ReliabilityEvent } from '@/lib/types';
 
@@ -123,6 +123,7 @@ export default function DirectoryPersonPage() {
 
   const certDocuments = useMemo(() => documents.filter(d => d.type === 'certification'), [documents]);
   const roles: string[] = Array.isArray(person?.roles) ? (person!.roles as string[]) : (person?.role ? [person.role] : ['Staff']);
+  const activePortals = useMemo(() => getPortalAccess(person), [person]);
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '—';
@@ -184,6 +185,26 @@ export default function DirectoryPersonPage() {
     } finally {
       setSavingPerms(false);
     }
+  };
+
+  const handleSelectAllForPortal = (portal: 'admin' | 'tech' | 'client') => {
+    const portalPerms = Object.values(PERMISSION_TREE[portal]).flat() as Permission[];
+    setPermOverrides(prev => {
+      const next = { ...prev };
+      portalPerms.forEach(p => { next[p] = true; });
+      return next;
+    });
+    setPermsDirty(true);
+  };
+
+  const handleClearAllForPortal = (portal: 'admin' | 'tech' | 'client') => {
+    const portalPerms = Object.values(PERMISSION_TREE[portal]).flat() as Permission[];
+    setPermOverrides(prev => {
+      const next = { ...prev };
+      portalPerms.forEach(p => { delete next[p]; });
+      return next;
+    });
+    setPermsDirty(true);
   };
 
   const handleAddNote = async () => {
@@ -733,33 +754,68 @@ export default function DirectoryPersonPage() {
                   {savingPerms ? 'Saving...' : 'Save Permissions'}
                 </Button>
               </div>
-              <p className="text-[9px] text-text-muted uppercase tracking-wider">Overrides take precedence over role defaults.</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {ALL_PERMISSIONS.map(perm => {
-                  const roleDefault = hasPermission(person, perm);
-                  const override = permOverrides[perm];
-                  const effective = override !== undefined ? override : roleDefault;
-                  return (
-                    <div key={perm} className={cn('flex items-center justify-between p-2 rounded-lg border transition-all', effective ? 'bg-text-green/5 border-text-green/20' : 'bg-bg-secondary border-border-sub')}>
-                      <div className="min-w-0">
-                        <p className="text-[9px] font-bold text-text-primary truncate">{permissionLabel(perm)}</p>
-                        {override !== undefined && <p className="text-[8px] text-amber-400 uppercase">Override</p>}
+              <p className="text-[9px] text-text-muted uppercase tracking-wider">Overrides take precedence over role defaults. Sections reflect active portal access.</p>
+              {!activePortals.admin && !activePortals.tech && !activePortals.client ? (
+                <div className="py-12 text-center">
+                  <Shield size={24} className="mx-auto text-text-muted mb-3 opacity-30" />
+                  <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">No Active Portal Access</p>
+                  <p className="text-[9px] text-text-muted mt-1">Assign a role above to manage permissions</p>
+                </div>
+              ) : (
+                <div className="space-y-6 pt-1">
+                  {(['admin', 'tech', 'client'] as const).map(portal => {
+                    if (!activePortals[portal]) return null;
+                    const portalLabel = portal === 'admin' ? 'Admin Portal' : portal === 'tech' ? 'Technician Portal' : 'Client Portal';
+                    const dotColor = portal === 'admin' ? 'bg-brand-red' : portal === 'tech' ? 'bg-blue-400' : 'bg-text-green';
+                    return (
+                      <div key={portal} className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em] flex items-center gap-1.5">
+                            <span className={cn('inline-block w-2 h-2 rounded-full', dotColor)} />
+                            {portalLabel}
+                          </h4>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => handleSelectAllForPortal(portal)} className="text-[8px] font-black uppercase tracking-wider text-text-muted hover:text-text-primary transition-colors">Select All</button>
+                            <span className="text-text-muted text-[8px]">·</span>
+                            <button onClick={() => handleClearAllForPortal(portal)} className="text-[8px] font-black uppercase tracking-wider text-text-muted hover:text-text-primary transition-colors">Clear All</button>
+                          </div>
+                        </div>
+                        {Object.entries(PERMISSION_TREE[portal]).map(([page, perms]) => (
+                          <div key={page} className="pl-3 border-l-2 border-border-sub space-y-1.5">
+                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">{page.replace(/_/g, ' ')}</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                              {(perms as Permission[]).map(perm => {
+                                const roleDefault = hasPermission(person, perm);
+                                const override = permOverrides[perm];
+                                const effective = override !== undefined ? override : roleDefault;
+                                return (
+                                  <div key={perm} className={cn('flex items-center justify-between p-2 rounded-lg border transition-all', effective ? 'bg-text-green/5 border-text-green/20' : 'bg-bg-secondary border-border-sub')}>
+                                    <div className="min-w-0">
+                                      <p className="text-[9px] font-bold text-text-primary truncate">{permissionLabel(perm)}</p>
+                                      {override !== undefined && <p className="text-[8px] text-amber-400 uppercase">Override</p>}
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                                      <button
+                                        onClick={() => handleTogglePerm(perm, effective ? false : true)}
+                                        className={cn('h-5 w-5 rounded flex items-center justify-center transition-colors border', effective ? 'bg-text-green/20 border-text-green/30 text-text-green' : 'bg-bg-primary border-border-sub text-text-muted hover:border-border-main')}
+                                      >
+                                        {effective ? <CheckSquare size={11} /> : <Square size={11} />}
+                                      </button>
+                                      {override !== undefined && (
+                                        <button onClick={() => handleTogglePerm(perm, null)} className="text-[8px] text-text-muted hover:text-text-primary uppercase font-bold px-1" title="Reset to role default">✕</button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <div className="flex items-center gap-1 shrink-0 ml-2">
-                        <button
-                          onClick={() => handleTogglePerm(perm, effective ? false : true)}
-                          className={cn('h-5 w-5 rounded flex items-center justify-center transition-colors border', effective ? 'bg-text-green/20 border-text-green/30 text-text-green' : 'bg-bg-primary border-border-sub text-text-muted hover:border-border-main')}
-                        >
-                          {effective ? <CheckSquare size={11} /> : <Square size={11} />}
-                        </button>
-                        {override !== undefined && (
-                          <button onClick={() => handleTogglePerm(perm, null)} className="text-[8px] text-text-muted hover:text-text-primary uppercase font-bold px-1" title="Reset to role default">✕</button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </TabsContent>

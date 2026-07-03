@@ -1125,7 +1125,13 @@ export default function RequestsPage() {
           <h1 className="page-title">Requests</h1>
           <p className="page-subtitle">Triage, approve, and route all incoming requests across operations.</p>
         </div>
-        <div className="page-header-right items-center">
+        <div className="page-header-right items-center gap-3">
+          <a href="/public/service-request" target="_blank" rel="noopener noreferrer">
+            <Button variant="outline" size="default">
+              <ExternalLink size={15} className="mr-2" />
+              Public Form
+            </Button>
+          </a>
           <Button variant="default" size="default" onClick={() => setIsNewDialogOpen(true)}>
             <Plus size={16} className="mr-2" />
             New Service Request

@@ -18,13 +18,14 @@ import {
   ArrowLeft, Mail, Phone, MapPin, Briefcase, Clock, CheckCircle, AlertTriangle,
   Calendar, FileText, Upload, Shield, CheckSquare, Square,
   Star, Activity, TrendingUp, StickyNote, Plus, Users, Wrench,
-  PhoneCall, UserCheck, BarChart2, Pencil,
+  PhoneCall, UserCheck, BarChart2, Pencil, Search, Ban,
 } from 'lucide-react';
 import { EditProfileDialog } from '../components/edit-profile-dialog';
 import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierBadgeVariant } from '@/lib/reliability';
 import { hasPermission, ALL_PERMISSIONS, PERMISSION_TREE, getPortalAccess, type Permission } from '@/lib/permissions';
 import { format, parseISO, differenceInDays } from 'date-fns';
+import { technicians as allTechnicians } from '@/lib/data';
 import type { Technician, WorkOrder, PersonnelDocument, Project, ReliabilityEvent } from '@/lib/types';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -75,6 +76,7 @@ export default function DirectoryPersonPage() {
   const [savingPerms, setSavingPerms] = useState(false);
   const [permsDirty, setPermsDirty] = useState(false);
 
+  const [restrictSearch, setRestrictSearch] = useState('');
   const [noteText, setNoteText] = useState('');
   const [addingNote, setAddingNote] = useState(false);
 
@@ -205,6 +207,31 @@ export default function DirectoryPersonPage() {
       return next;
     });
     setPermsDirty(true);
+  };
+
+  const handleSelectAllForPage = (perms: Permission[]) => {
+    setPermOverrides(prev => {
+      const next = { ...prev };
+      perms.forEach(p => { next[p] = true; });
+      return next;
+    });
+    setPermsDirty(true);
+  };
+
+  const handleClearAllForPage = (perms: Permission[]) => {
+    setPermOverrides(prev => {
+      const next = { ...prev };
+      perms.forEach(p => { delete next[p]; });
+      return next;
+    });
+    setPermsDirty(true);
+  };
+
+  const handleToggleClientRestriction = async (clientId: string, blocked: boolean) => {
+    if (!id) return;
+    await updateDoc(doc(db, 'users', id), {
+      messagingBlockedClientIds: blocked ? arrayUnion(clientId) : arrayRemove(clientId),
+    });
   };
 
   const handleAddNote = async () => {
@@ -782,7 +809,14 @@ export default function DirectoryPersonPage() {
                         </div>
                         {Object.entries(PERMISSION_TREE[portal]).map(([page, perms]) => (
                           <div key={page} className="pl-3 border-l-2 border-border-sub space-y-1.5">
-                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">{page.replace(/_/g, ' ')}</p>
+                            <div className="flex items-center justify-between">
+                              <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">{page.replace(/_/g, ' ')}</p>
+                              <div className="flex items-center gap-1.5">
+                                <button onClick={() => handleSelectAllForPage(perms as Permission[])} className="text-[7px] font-black uppercase tracking-wider text-text-muted hover:text-text-primary transition-colors">All</button>
+                                <span className="text-text-muted text-[7px]">·</span>
+                                <button onClick={() => handleClearAllForPage(perms as Permission[])} className="text-[7px] font-black uppercase tracking-wider text-text-muted hover:text-text-primary transition-colors">Clear</button>
+                              </div>
+                            </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
                               {(perms as Permission[]).map(perm => {
                                 const roleDefault = hasPermission(person, perm);
@@ -816,6 +850,58 @@ export default function DirectoryPersonPage() {
                   })}
                 </div>
               )}
+            </div>
+            {/* ── MESSAGE RESTRICTIONS ── */}
+            <div className="space-y-3">
+              <div className="border-b border-border-sub pb-2">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Ban size={11} className="text-brand-red" /> Message Restrictions
+                </h3>
+                <p className="text-[9px] text-text-muted mt-1">Block this user from messaging specific clients</p>
+              </div>
+              <div className="relative">
+                <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
+                <Input
+                  className="h-8 pl-7 text-[10px] bg-bg-primary border-border-main"
+                  placeholder="Search clients..."
+                  value={restrictSearch}
+                  onChange={e => setRestrictSearch(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                {allTechnicians
+                  .filter(t => t.roles?.includes('client'))
+                  .filter(t => !restrictSearch || t.name.toLowerCase().includes(restrictSearch.toLowerCase()))
+                  .map(client => {
+                    const blocked = (person.messagingBlockedClientIds || []).includes(client.id);
+                    return (
+                      <div key={client.id} className="flex items-center justify-between p-2 rounded-lg border border-border-sub bg-bg-secondary">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Avatar className="h-6 w-6 shrink-0">
+                            <AvatarImage src={client.avatarUrl} />
+                            <AvatarFallback className="text-[8px]">{(client.name || '?').charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-bold text-text-primary truncate">{client.name}</p>
+                            <p className="text-[8px] text-text-muted truncate">{client.clientCompany || client.email}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleToggleClientRestriction(client.id, !blocked)}
+                          className={cn(
+                            'h-6 px-2.5 rounded text-[8px] font-bold border transition-colors shrink-0 ml-2',
+                            blocked ? 'border-text-red/40 bg-text-red/10 text-text-red hover:bg-text-red/20' : 'border-border-sub text-text-muted hover:border-border-main'
+                          )}
+                        >
+                          {blocked ? 'Blocked' : 'Allow'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                {allTechnicians.filter(t => t.roles?.includes('client')).length === 0 && (
+                  <p className="text-[10px] text-text-muted uppercase py-3 text-center">No clients in directory</p>
+                )}
+              </div>
             </div>
           </div>
         </TabsContent>

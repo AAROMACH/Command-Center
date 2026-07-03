@@ -401,10 +401,10 @@ export default function AssignmentDetailPage() {
       </div>
 
       {/* 3-column: Job Details | Schedule | Map ────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
 
         {/* Job Details */}
-        <div className="bg-bg-secondary rounded-xl border border-border-sub p-4">
+        <div className="md:col-span-1 bg-bg-secondary rounded-xl border border-border-sub p-4">
           <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 mb-3">
             <Briefcase size={11} className="text-brand-red" /> Job Details
           </p>
@@ -420,7 +420,7 @@ export default function AssignmentDetailPage() {
         </div>
 
         {/* Schedule & Time */}
-        <div className="bg-bg-secondary rounded-xl border border-border-sub p-4">
+        <div className="md:col-span-1 bg-bg-secondary rounded-xl border border-border-sub p-4">
           <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 mb-3">
             <Calendar size={11} className="text-brand-red" /> Schedule & Time
           </p>
@@ -473,7 +473,7 @@ export default function AssignmentDetailPage() {
         </div>
 
         {/* Map */}
-        <div className="bg-bg-secondary rounded-xl border border-border-sub overflow-hidden flex flex-col">
+        <div className="md:col-span-3 bg-bg-secondary rounded-xl border border-border-sub overflow-hidden flex flex-col">
           {/* Location header */}
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-border-sub shrink-0 gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
@@ -519,7 +519,7 @@ export default function AssignmentDetailPage() {
       </div>
 
       {/* Scope + History ────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
 
         {/* Scope of Work */}
         <div className="lg:col-span-2 bg-bg-secondary rounded-xl border border-border-sub flex flex-col">
@@ -555,7 +555,7 @@ export default function AssignmentDetailPage() {
         </div>
 
         {/* Right panel: action buttons + history */}
-        <div className="lg:col-span-1 space-y-4">
+        <div className="lg:col-span-3 space-y-4">
 
           {/* 2×2 action buttons */}
           <div className="grid grid-cols-2 gap-2">

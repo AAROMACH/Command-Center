@@ -125,6 +125,9 @@ export default function TechMessagingPage() {
     return Array.from(partnerIds).filter(id => id && id !== myId);
   })();
 
+  const blockedIds = new Set(currentUser?.messagingBlockedClientIds || []);
+  const visiblePartners = conversationPartners.filter(id => !blockedIds.has(id));
+
   const thread = messages
     .filter(m => !m.projectId &&
       ((m.senderId === myId && m.receiverId === selectedContactId) ||
@@ -279,7 +282,7 @@ export default function TechMessagingPage() {
           {/* Contacts sidebar */}
           <div className="w-[200px] shrink-0 flex flex-col gap-1 border border-border-sub rounded-xl p-2 bg-bg-secondary overflow-y-auto">
             <p className="text-[8px] font-black uppercase tracking-widest text-text-muted px-2 py-1">Conversations</p>
-            {conversationPartners.map(id => (
+            {visiblePartners.map(id => (
               <button
                 key={id}
                 onClick={() => { setSelectedContactId(id); markDMsRead(id); }}

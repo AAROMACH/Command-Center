@@ -210,7 +210,7 @@ function RequestDetailSheet({
         <div className="px-6 pt-5 pb-4 border-b border-border-sub shrink-0">
           <div className="flex items-center gap-1.5 flex-wrap mb-3">
             <Pill cls={kindCfg.cls} label={item.kind === 'service' ? 'Service Request' : kindCfg.label} />
-            <Pill cls={statusCls(item.status)} label={item.status.replace(/_/g, ' ')} />
+            <Pill cls={statusCls(item.status)} label={(item.status || '').replace(/_/g, ' ')} />
             {item.priority && item.priority !== 'normal' && (
               <Pill cls={priorityCls(item.priority)} label={priorityLabel(item.priority)} />
             )}
@@ -393,7 +393,7 @@ function UnifiedRequestCard({
 }) {
   const kindCfg = KIND_CFG[item.kind];
   const pLabel = priorityLabel(item.priority);
-  const statusDisplay = item.status.replace(/_/g, ' ');
+  const statusDisplay = (item.status || '').replace(/_/g, ' ');
 
   const primaryActionLabel = item.kind === 'client' ? 'Approve Client'
     : item.kind === 'access' ? 'Approve User'
@@ -819,7 +819,7 @@ function NewServiceTab({ requests, viewMode = 'grid' }: { requests: NewServiceRe
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
         <span className={cn('text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-widest', pCls(req.priorityLevel))}>{req.priorityLevel}</span>
-        <span className={cn('text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-widest', statusCls(req.status))}>{req.status.replace(/_/g, ' ')}</span>
+        <span className={cn('text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-widest', statusCls(req.status))}>{(req.status || '').replace(/_/g, ' ')}</span>
       </div>
     </button>
   );
@@ -835,7 +835,7 @@ function NewServiceTab({ requests, viewMode = 'grid' }: { requests: NewServiceRe
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
           <span className={cn('text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-widest', pCls(req.priorityLevel))}>{req.priorityLevel}</span>
-          <span className={cn('text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-widest', statusCls(req.status))}>{req.status.replace(/_/g, ' ')}</span>
+          <span className={cn('text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-widest', statusCls(req.status))}>{(req.status || '').replace(/_/g, ' ')}</span>
         </div>
       </div>
       {req.phoneNumber && (
@@ -1272,7 +1272,8 @@ export default function RequestsPage() {
   // Filters
   const [activeTab, _setActiveTabRaw] = useState(() => { try { return localStorage.getItem('cc:requests:tab') || 'all'; } catch { return 'all'; } });
   const setActiveTab = (v: string) => { _setActiveTabRaw(v); try { localStorage.setItem('cc:requests:tab', v); } catch {} };
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, _setViewModeRaw] = useState<'grid' | 'list'>(() => { try { return (localStorage.getItem('cc:requests:view') as 'grid' | 'list') || 'grid'; } catch { return 'grid'; } });
+  const setViewMode = (v: 'grid' | 'list') => { _setViewModeRaw(v); try { localStorage.setItem('cc:requests:view', v); } catch {} };
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'urgent' | 'normal' | 'low'>('all');
@@ -1672,7 +1673,7 @@ export default function RequestsPage() {
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       {item.priority && <Pill cls={priorityCls(item.priority)} label={priorityLabel(item.priority)} />}
-                      <Pill cls={statusCls(item.status)} label={item.status.replace(/_/g, ' ')} />
+                      <Pill cls={statusCls(item.status)} label={(item.status || '').replace(/_/g, ' ')} />
                       <Button size="sm" variant="outline" className="h-7 px-2 text-[9px] font-bold" onClick={() => setDetailItem(item)}>
                         <FileText size={9} className="mr-1" />Open
                       </Button>

@@ -375,7 +375,7 @@ export default function TechCalendarPage() {
             'flex-1 min-w-0 flex flex-col overflow-hidden',
             mobileTab === 'list' ? 'w-full' : (mobileTab !== 'calendar' ? 'hidden md:flex' : 'hidden md:flex'),
             drawerJob && 'border-r border-border-sub',
-            isMapExpanded && 'md:max-w-[220px]',
+            isMapExpanded && 'md:max-w-[380px]',
           )}>
             <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-sub shrink-0">
               <span className="text-[11px] font-medium text-text-primary flex-1">

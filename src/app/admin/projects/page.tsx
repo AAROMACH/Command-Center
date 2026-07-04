@@ -43,7 +43,8 @@ export default function ProjectsPage() {
   const [activeStatuses, setActiveStatuses] = useState<string[]>([]);
   const [activeClients, setActiveClients] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('date');
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [viewMode, _setViewModeRaw] = useState<'list' | 'grid'>(() => { try { return (localStorage.getItem('cc:projects:view') as 'list' | 'grid') || 'list'; } catch { return 'list'; } });
+  const setViewMode = (v: 'list' | 'grid') => { _setViewModeRaw(v); try { localStorage.setItem('cc:projects:view', v); } catch {} };
 
   const { toast } = useToast();
 

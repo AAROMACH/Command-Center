@@ -139,7 +139,7 @@ export default function ActivityAuditPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState("");
-    const [activeTab, _setActiveTabRaw] = useState(() => { const sp = searchParams.get('tab'); if (sp) return sp; try { return localStorage.getItem('cc:reports:tab') || 'timeline'; } catch { return 'timeline'; } });
+    const [activeTab, _setActiveTabRaw] = useState(() => { const sp = searchParams.get('tab'); if (sp) return sp; try { const stored = localStorage.getItem('cc:reports:tab'); return stored && stored !== 'timeline' ? stored : 'assignments_history'; } catch { return 'assignments_history'; } });
     const setActiveTab = (v: string) => { _setActiveTabRaw(v); try { localStorage.setItem('cc:reports:tab', v); } catch {} };
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
@@ -939,8 +939,8 @@ export default function ActivityAuditPage() {
     return (
         <div className="max-w-[1200px] mx-auto space-y-8 text-left">
             <header className="space-y-1 text-center text-left">
-                <p className="text-[10px] font-black text-brand-red uppercase tracking-[0.3em] text-center">Business Timeline</p>
-                <h1 className="text-3xl font-bold uppercase tracking-widest text-text-primary text-center">Activity</h1>
+                <p className="text-[10px] font-black text-brand-red uppercase tracking-[0.3em] text-center">Business History</p>
+                <h1 className="text-3xl font-bold uppercase tracking-widest text-text-primary text-center">Archives</h1>
                 <p className="text-xs text-text-muted uppercase font-bold tracking-widest mt-2 text-center">History, logs, and search across all field service records</p>
             </header>
 
@@ -959,7 +959,6 @@ export default function ActivityAuditPage() {
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full text-left">
                         <div className="flex justify-center text-left">
                             <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-center mb-8 flex-wrap">
-                                <TabsTrigger value="timeline" className="tab-trigger-activity">App Activity</TabsTrigger>
                                 <TabsTrigger value="assignments_history" className="tab-trigger-activity">Assignment History</TabsTrigger>
                                 <TabsTrigger value="project_history" className="tab-trigger-activity">Project History</TabsTrigger>
                                 <TabsTrigger value="weekly_logs" className="tab-trigger-activity">Weekly Log History</TabsTrigger>
@@ -968,8 +967,8 @@ export default function ActivityAuditPage() {
                         </div>
 
                         <div className="min-h-[500px] text-left">
-                            {/* TIMELINE TAB */}
-                            <TabsContent value="timeline" className="m-0 text-left">
+                            {/* TIMELINE TAB - moved to Intel page */}
+                            <TabsContent value="timeline" className="m-0 text-left hidden">
                                 <div className="space-y-5">
                                     {/* Filter bar */}
                                     <div className="flex flex-wrap items-center gap-3 p-4 bg-bg-secondary rounded-xl border border-border-sub">

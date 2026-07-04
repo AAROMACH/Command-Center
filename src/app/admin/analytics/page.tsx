@@ -3,15 +3,16 @@
 import { useState, useMemo, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { BarChart2, ShieldAlert, Users, AlertTriangle, Clock, ChevronRight, Mail, Phone, ArrowLeft, RefreshCw, Filter } from 'lucide-react';
+import { BarChart2, ShieldAlert, Users, AlertTriangle, Clock, ChevronRight, Mail, Phone, ArrowLeft, RefreshCw, Filter, X, Activity as ActivityIcon } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
+import type { WorkOrder, Technician, WeeklyLog, Invoice } from '@/lib/types';
 import { IntelligenceTerminal } from '../reports/components/intelligence-terminal';
 import { penaltyEvents } from '@/lib/data';
 import { getReliabilityTier } from '@/lib/reliability';
@@ -20,11 +21,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { format, parseISO } from 'date-fns';
 
 export default function FieldIntelligencePage() {
-    const [activeTab, setActiveTab] = useState('intelligence');
+    const [activeTab, setActiveTabRaw] = useState(() => { try { return localStorage.getItem('cc:intel:tab') || 'intelligence'; } catch { return 'intelligence'; } });
+    const setActiveTab = (v: string) => { setActiveTabRaw(v); try { localStorage.setItem('cc:intel:tab', v); } catch {} };
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
     const [assignments, setAssignments] = useState<WorkOrder[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
+    const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
 
     // Intelligence filter state
@@ -32,6 +35,11 @@ export default function FieldIntelligencePage() {
     const [intelPersonnel, setIntelPersonnel] = useState('all');
     const [intelClient, setIntelClient] = useState('all');
     const [timeWindow, setTimeWindow] = useState<'7d' | '30d' | '90d' | '1y' | 'all'>('30d');
+
+    // App Activity tab state
+    const [timelineTechFilter, setTimelineTechFilter] = useState('all');
+    const [timelineTypeFilter, setTimelineTypeFilter] = useState('all');
+    const [timelineClientFilter, setTimelineClientFilter] = useState('');
 
     useEffect(() => {
         const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
@@ -46,7 +54,10 @@ export default function FieldIntelligencePage() {
         const unsubLogs = onSnapshot(collection(db, 'weeklyLogs'), (snap) => {
             setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
         });
-        return () => { unsubWO(); unsubAsmt(); unsubTech(); unsubLogs(); };
+        const unsubInv = onSnapshot(collection(db, 'invoices'), (snap) => {
+            setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
+        });
+        return () => { unsubWO(); unsubAsmt(); unsubTech(); unsubLogs(); unsubInv(); };
     }, []);
 
     const staffTechs = useMemo(
@@ -162,6 +173,35 @@ export default function FieldIntelligencePage() {
             .sort((a, b) => b.count - a.count);
     }, [workOrders]);
 
+    type TimelineEvent = { id: string; timestamp: string; type: string; eventLabel: string; entity: string; techName?: string; techId?: string; clientName?: string; color: string; };
+
+    const timelineEvents = useMemo((): TimelineEvent[] => {
+        const events: TimelineEvent[] = [];
+        assignments.forEach(wo => {
+            const techId = wo.assignedTechnicianId || wo.techId;
+            const tech = technicians.find(t => t.id === techId);
+            if ((wo as any).assignedAt) events.push({ id: `asmt-${wo.id}`, timestamp: (wo as any).assignedAt, type: 'assignment', eventLabel: 'Assignment Created', entity: wo.title || wo.description || wo.id.toUpperCase(), techName: tech?.name, techId, clientName: wo.clientName, color: 'text-accent-gold' });
+            if (['completed','checked-out'].includes(wo.status) && (wo as any).updatedAt) events.push({ id: `asmt-done-${wo.id}`, timestamp: (wo as any).updatedAt, type: 'assignment', eventLabel: wo.status === 'completed' ? 'Job Completed' : 'Checked Out', entity: wo.title || wo.description || wo.id.toUpperCase(), techName: tech?.name, techId, clientName: wo.clientName, color: 'text-text-green' });
+        });
+        workOrders.forEach(wo => { if ((wo as any).createdAt) events.push({ id: `wo-${wo.id}`, timestamp: (wo as any).createdAt, type: 'work_order', eventLabel: 'Work Order Created', entity: wo.title || wo.description || wo.id.toUpperCase(), clientName: wo.clientName, color: 'text-text-muted' }); });
+        weeklyLogs.forEach(log => {
+            const tech = technicians.find(t => t.id === log.techId);
+            if (log.submittedAt) events.push({ id: `log-sub-${log.id}`, timestamp: log.submittedAt, type: 'log', eventLabel: 'Weekly Log Submitted', entity: `Week of ${log.weekOf}`, techName: tech?.name, techId: log.techId, color: 'text-accent-gold' });
+            if (log.status === 'Approved') events.push({ id: `log-appr-${log.id}`, timestamp: log.submittedAt || log.weekOf, type: 'log', eventLabel: 'Weekly Log Approved', entity: `Week of ${log.weekOf}`, techName: tech?.name, techId: log.techId, color: 'text-text-green' });
+        });
+        invoices.forEach(inv => {
+            if (inv.issueDate) events.push({ id: `inv-${inv.id}`, timestamp: inv.issueDate, type: 'invoice', eventLabel: 'Invoice Issued', entity: `#${(inv as any).invoiceNumber || inv.id} — $${(inv.total || 0).toFixed(2)}`, clientName: inv.clientName, color: 'text-text-muted' });
+        });
+        return events.filter(e => !!e.timestamp).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    }, [assignments, workOrders, weeklyLogs, invoices, technicians]);
+
+    const filteredTimelineEvents = useMemo(() => timelineEvents.filter(e => {
+        if (timelineTechFilter !== 'all' && e.techId !== timelineTechFilter) return false;
+        if (timelineTypeFilter !== 'all' && e.type !== timelineTypeFilter) return false;
+        if (timelineClientFilter && !(e.clientName || '').toLowerCase().includes(timelineClientFilter.toLowerCase())) return false;
+        return true;
+    }), [timelineEvents, timelineTechFilter, timelineTypeFilter, timelineClientFilter]);
+
     const formatDateDisplay = (dateStr: string) => {
         if (!dateStr) return 'TBD';
         try {
@@ -180,7 +220,7 @@ export default function FieldIntelligencePage() {
                         <BarChart2 size={12} />
                         Real-time Field Operations
                     </p>
-                    <h1 className="page-title">Field Intelligence</h1>
+                    <h1 className="page-title">Intel</h1>
                     <p className="page-subtitle">Live field awareness, technician status, and operational analytics.</p>
                 </div>
             </header>
@@ -188,17 +228,18 @@ export default function FieldIntelligencePage() {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <div className="flex justify-center">
                     <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-center mb-8">
-                        <TabsTrigger value="intelligence" className="tab-trigger-activity">Field Intelligence</TabsTrigger>
+                        <TabsTrigger value="intelligence" className="tab-trigger-activity">Intel</TabsTrigger>
                         <TabsTrigger value="techs" className="tab-trigger-activity" onClick={() => setSelectedTechId(null)}>
                             Techs
                         </TabsTrigger>
+                        <TabsTrigger value="app_activity" className="tab-trigger-activity">App Activity</TabsTrigger>
+                        <TabsTrigger value="insights" className="tab-trigger-activity">Insights</TabsTrigger>
                         <TabsTrigger value="flags" className="tab-trigger-activity flex items-center gap-3">
                             Flags
                             {anomalyCounts > 0 && (
                                 <Badge variant="destructive" className="h-5 px-1.5 text-[9px] min-w-[20px] flex items-center justify-center font-black">{anomalyCounts}</Badge>
                             )}
                         </TabsTrigger>
-                        <TabsTrigger value="insights" className="tab-trigger-activity">Insights</TabsTrigger>
                     </TabsList>
                 </div>
 
@@ -609,6 +650,89 @@ export default function FieldIntelligencePage() {
                             )}
                         </div>
 
+                    </div>
+                </TabsContent>
+
+                {/* App Activity Tab */}
+                <TabsContent value="app_activity" className="m-0">
+                    <div className="space-y-5">
+                        <div className="flex flex-wrap items-center gap-3 p-4 bg-bg-secondary rounded-xl border border-border-sub">
+                            <Select value={timelineTechFilter} onValueChange={setTimelineTechFilter}>
+                                <SelectTrigger className="h-8 w-[160px] text-[10px] font-bold uppercase bg-bg-primary border-border-main">
+                                    <SelectValue placeholder="All Techs" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-bg-elevated border-border-main">
+                                    <SelectItem value="all" className="text-[10px] uppercase font-bold">All Techs</SelectItem>
+                                    {staffTechs.map(t => (
+                                        <SelectItem key={t.id} value={t.id} className="text-[10px] uppercase font-bold">{t.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Select value={timelineTypeFilter} onValueChange={setTimelineTypeFilter}>
+                                <SelectTrigger className="h-8 w-[160px] text-[10px] font-bold uppercase bg-bg-primary border-border-main">
+                                    <SelectValue placeholder="All Events" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-bg-elevated border-border-main">
+                                    <SelectItem value="all" className="text-[10px] uppercase font-bold">All Events</SelectItem>
+                                    <SelectItem value="assignment" className="text-[10px] uppercase font-bold">Assignments</SelectItem>
+                                    <SelectItem value="work_order" className="text-[10px] uppercase font-bold">Work Orders</SelectItem>
+                                    <SelectItem value="log" className="text-[10px] uppercase font-bold">Weekly Logs</SelectItem>
+                                    <SelectItem value="invoice" className="text-[10px] uppercase font-bold">Invoices</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Input
+                                placeholder="Filter by client..."
+                                value={timelineClientFilter}
+                                onChange={e => setTimelineClientFilter(e.target.value)}
+                                className="h-8 w-[180px] text-[10px] bg-bg-primary border-border-main"
+                            />
+                            {(timelineTechFilter !== 'all' || timelineTypeFilter !== 'all' || timelineClientFilter) && (
+                                <Button variant="ghost" size="sm" className="h-8 text-[9px] uppercase font-bold text-text-muted"
+                                    onClick={() => { setTimelineTechFilter('all'); setTimelineTypeFilter('all'); setTimelineClientFilter(''); }}>
+                                    <X size={11} className="mr-1" /> Clear
+                                </Button>
+                            )}
+                            <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-text-muted">
+                                {filteredTimelineEvents.length} events
+                            </span>
+                        </div>
+
+                        {filteredTimelineEvents.length === 0 ? (
+                            <div className="py-24 text-center border border-dashed border-border-sub rounded-xl opacity-40">
+                                <ActivityIcon size={32} className="mx-auto text-text-muted mb-2" />
+                                <p className="text-[10px] font-bold uppercase text-text-muted">No events match the current filter</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-1">
+                                {filteredTimelineEvents.slice(0, 100).map(event => {
+                                    let tsDisplay = '';
+                                    try { const d = new Date(event.timestamp); tsDisplay = isNaN(d.getTime()) ? event.timestamp : format(d, 'MMM d, h:mm a'); } catch { tsDisplay = event.timestamp; }
+                                    const typeColors: Record<string, string> = { assignment: 'border-l-accent-gold', work_order: 'border-l-border-main', log: 'border-l-brand-red', invoice: 'border-l-text-green' };
+                                    return (
+                                        <div key={event.id} className={cn('flex items-start gap-4 p-3 rounded-lg border border-border-sub border-l-4 bg-bg-secondary hover:bg-bg-tertiary transition-colors', typeColors[event.type] || 'border-l-border-sub')}>
+                                            <div className="w-[120px] shrink-0 text-right">
+                                                <p className="text-[9px] font-mono text-text-muted leading-tight">{tsDisplay}</p>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className={cn('text-[10px] font-black uppercase tracking-wide', event.color)}>{event.eventLabel}</p>
+                                                <p className="text-[11px] font-bold text-text-primary leading-tight mt-0.5 truncate">{event.entity}</p>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    {event.techName && <span className="text-[9px] text-text-muted uppercase font-bold">{event.techName}</span>}
+                                                    {event.techName && event.clientName && <span className="text-text-muted text-[9px]">·</span>}
+                                                    {event.clientName && <span className="text-[9px] text-text-muted uppercase">{event.clientName}</span>}
+                                                </div>
+                                            </div>
+                                            <Badge variant="outline" className="text-[7px] uppercase shrink-0 h-4">{event.type.replace('_', ' ')}</Badge>
+                                        </div>
+                                    );
+                                })}
+                                {filteredTimelineEvents.length > 100 && (
+                                    <p className="text-center text-[9px] text-text-muted font-bold uppercase py-4">
+                                        Showing 100 of {filteredTimelineEvents.length} events. Use filters to narrow results.
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </TabsContent>
 

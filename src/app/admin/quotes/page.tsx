@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -56,6 +56,30 @@ function statusCls(s: QuoteStatus) {
 function fmtMoney(n: number) {
   return `$${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 }
+
+// ── Preset Catalog ────────────────────────────────────────────────────────────
+
+type PresetItem = { id: string; name: string; unitPrice: number; category: QuoteLineItem['category']; taxable: boolean };
+const PRESET_CATALOG: { group: string; items: PresetItem[] }[] = [
+  { group: 'Labor & Services', items: [
+    { id: 'labor_fiber', name: 'Fiber Optic Labor ($150/hr)', unitPrice: 150, category: 'labor', taxable: false },
+    { id: 'labor_install', name: 'Installation Labor ($120/hr)', unitPrice: 120, category: 'labor', taxable: false },
+    { id: 'labor_diag', name: 'Troubleshooting ($100/hr)', unitPrice: 100, category: 'labor', taxable: false },
+    { id: 'labor_smart', name: 'Smart Hands ($85/hr)', unitPrice: 85, category: 'labor', taxable: false },
+    { id: 'service_call', name: 'Service Dispatch Fee', unitPrice: 75, category: 'service', taxable: false },
+  ]},
+  { group: 'Cabling & Wiring', items: [
+    { id: 'cat6_plenum', name: 'CAT6 Plenum Cable (1000ft)', unitPrice: 450, category: 'materials', taxable: true },
+    { id: 'cat6_riser', name: 'CAT6 Riser Cable (1000ft)', unitPrice: 280, category: 'materials', taxable: true },
+    { id: 'fiber_sm', name: 'Single-Mode Fiber (per ft)', unitPrice: 2, category: 'materials', taxable: true },
+    { id: 'keystones', name: 'Keystone Jacks (24-pack)', unitPrice: 120, category: 'materials', taxable: true },
+  ]},
+  { group: 'Hardware', items: [
+    { id: 'patch_panel_24', name: 'Patch Panel 24-Port', unitPrice: 180, category: 'equipment', taxable: true },
+    { id: 'rack_12u', name: '12U Wall Rack', unitPrice: 320, category: 'equipment', taxable: true },
+    { id: 'poe_switch', name: 'PoE Switch 8-Port', unitPrice: 240, category: 'equipment', taxable: true },
+  ]},
+];
 
 // ── New Quote Dialog ──────────────────────────────────────────────────────────
 
@@ -113,6 +137,19 @@ function NewQuoteDialog({
   }]);
 
   const removeLineItem = (idx: number) => setLineItems(prev => prev.filter((_, i) => i !== idx));
+
+  const handlePremadeItemSelect = (idx: number, itemId: string) => {
+    const preset = PRESET_CATALOG.flatMap(g => g.items).find(i => i.id === itemId);
+    if (!preset) return;
+    setLineItems(prev => prev.map((item, i) => i !== idx ? item : {
+      ...item,
+      name: preset.name,
+      unitPrice: preset.unitPrice,
+      total: item.quantity * preset.unitPrice,
+      category: preset.category,
+      taxable: preset.taxable,
+    }));
+  };
 
   const addOptionalGroup = () => setOptionalGroups(prev => [...prev, {
     id: genId(), title: '', description: '', requiredSelection: false,
@@ -307,6 +344,24 @@ function NewQuoteDialog({
             <div className="space-y-2">
               {lineItems.map((item, idx) => (
                 <div key={item.id} className="rounded-lg border border-border-sub bg-bg-secondary p-3 space-y-2">
+                  <div className="space-y-1">
+                    <Label className="text-[8px] font-black uppercase tracking-widest text-text-muted">Preset</Label>
+                    <Select onValueChange={v => handlePremadeItemSelect(idx, v)}>
+                      <SelectTrigger className="h-7 text-[10px] bg-bg-tertiary border-border-sub">
+                        <SelectValue placeholder="Select preset or enter below..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-bg-elevated border-border-main">
+                        {PRESET_CATALOG.map(group => (
+                          <SelectGroup key={group.group}>
+                            <SelectLabel className="text-[8px] font-black uppercase tracking-widest text-text-muted px-2 py-1">{group.group}</SelectLabel>
+                            {group.items.map(p => (
+                              <SelectItem key={p.id} value={p.id} className="text-[10px]">{p.name}</SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <Label className="text-[8px] font-black uppercase tracking-widest text-text-muted">Item Name</Label>
@@ -608,6 +663,16 @@ function QuoteDetailSheet({
                   </Button>
                 </a>
               </div>
+            </div>
+          )}
+
+          {/* In-app client delivery note */}
+          {quote.customerType === 'in_app_client' && quote.status !== 'draft' && (
+            <div className="rounded-lg border border-border-sub p-3 space-y-1">
+              <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Client Delivery</p>
+              <p className="text-[9px] text-text-muted leading-relaxed">
+                This quote is visible to the client in their portal. No external link is required.
+              </p>
             </div>
           )}
 

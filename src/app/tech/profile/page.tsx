@@ -42,7 +42,8 @@ export default function TechProfilePage() {
     const [myTimeOff, setMyTimeOff] = useState<TimeOffRequest[]>([]);
     const [mounted, setMounted] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
-    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'identity');
+    const [activeTab, _setActiveTabRaw] = useState(() => { const sp = searchParams.get('tab'); if (sp) return sp; try { return localStorage.getItem('cc:profile:tab') || 'identity'; } catch { return 'identity'; } });
+    const setActiveTab = (v: string) => { _setActiveTabRaw(v); try { localStorage.setItem('cc:profile:tab', v); } catch {} };
     const { toast } = useToast();
     const [isTimeOffDialogOpen, setIsTimeOffDialogOpen] = useState(false);
     const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);

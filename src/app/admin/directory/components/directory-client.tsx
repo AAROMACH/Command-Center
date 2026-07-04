@@ -111,7 +111,8 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
     const [searchQuery, setSearchQuery] = useState("");
     const [viewMode, setViewMode] = useState<ViewMode>('rows');
     const [sortBy, setSortBy] = useState<SortOption>('name');
-    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'technicians');
+    const [activeTab, _setActiveTabRaw] = useState(() => { const sp = searchParams.get('tab'); if (sp) return sp; try { return localStorage.getItem('cc:directory:tab') || 'technicians'; } catch { return 'technicians'; } });
+    const setActiveTab = (v: string) => { _setActiveTabRaw(v); try { localStorage.setItem('cc:directory:tab', v); } catch {} };
     const [mapViewMode, setMapViewMode] = useState<'techs' | 'sites'>('techs');
     const [mapSearch, setMapSearch] = useState("");
     const [selectedMapAddress, setSelectedMapAddress] = useState<string | null>(null);

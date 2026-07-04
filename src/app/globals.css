@@ -6,9 +6,9 @@
   :root {
     /* Design System Palette - Light Mode (High Contrast) */
     --bg-primary: #fcfcfc;
-    --bg-secondary: #ffffff;
+    --bg-secondary: #f7f7f7;
     --bg-tertiary: #f2f2f2;
-    --bg-elevated: #ffffff;
+    --bg-elevated: #f4f4f4;
 
     --brand-red: #CC2200;
     --brand-red-hover: #E02500;

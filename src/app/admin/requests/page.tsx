@@ -1270,7 +1270,8 @@ export default function RequestsPage() {
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
 
   // Filters
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, _setActiveTabRaw] = useState(() => { try { return localStorage.getItem('cc:requests:tab') || 'all'; } catch { return 'all'; } });
+  const setActiveTab = (v: string) => { _setActiveTabRaw(v); try { localStorage.setItem('cc:requests:tab', v); } catch {} };
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');

@@ -68,11 +68,12 @@ type SortOption = 'priority' | 'date' | 'client' | 'status' | 'pay' | 'tech' | '
 
 export function DispatchPageClient() {
   const searchParams = useSearchParams();
-  const [activeMasterTab, setActiveMasterTab] = useState(
-    searchParams.get('tab') === 'requests' ? 'requests' :
-    searchParams.get('tab') === 'assignments' ? 'assignments' :
-    'dispatch'
-  );
+  const [activeMasterTab, _setActiveMasterTabRaw] = useState(() => {
+    const sp = searchParams.get('tab');
+    if (sp === 'requests' || sp === 'assignments' || sp === 'dispatch') return sp;
+    try { return localStorage.getItem('cc:dispatch:tab') || 'dispatch'; } catch { return 'dispatch'; }
+  });
+  const setActiveMasterTab = (v: string) => { _setActiveMasterTabRaw(v); try { localStorage.setItem('cc:dispatch:tab', v); } catch {} };
   
   const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>([]);
   const [allAssignments, setAllAssignments] = useState<WorkOrder[]>([]);

@@ -686,7 +686,8 @@ const TimesheetsTab = ({
 };
 
 export function ProjectDetailClient({ project, dailyLogs, technicians, documents }: { project: Project, dailyLogs: ProjectDailyLog[], technicians: Technician[], documents: ProjectDocument[] }) {
-    const [activeTab, setActiveTab] = useState('overview');
+    const [activeTab, _setActiveTabRaw] = useState(() => { try { return localStorage.getItem('cc:project-detail:tab') || 'overview'; } catch { return 'overview'; } });
+    const setActiveTab = (v: string) => { _setActiveTabRaw(v); try { localStorage.setItem('cc:project-detail:tab', v); } catch {} };
     const { toast } = useToast();
 
     const currentUserId = useMemo(() => typeof window !== 'undefined' ? sessionStorage.getItem('currentUserId') : null, []);

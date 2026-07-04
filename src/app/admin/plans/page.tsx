@@ -88,13 +88,37 @@ const DEFAULT_RATES = {
     helperLabor: 85,
     projectLabor: 120,
     emergencyLabor: 225,
-    afterHoursLabor: 200,
+    afterHoursLabor: 225,
     travelFee: 75,
     minimumServiceCall: 150,
     diagnosticFee: 100,
     materialMarkup: 20,
 };
 type ServiceRates = typeof DEFAULT_RATES;
+
+const DEFAULT_RATE_LABELS: Record<keyof ServiceRates, string> = {
+    standardLabor: 'Fiber',
+    helperLabor: 'Smart Hands',
+    projectLabor: 'Installation',
+    emergencyLabor: 'Emergency Labor',
+    afterHoursLabor: 'After Hours',
+    travelFee: 'Travel Fee',
+    minimumServiceCall: 'Min. Service Call',
+    diagnosticFee: 'Diagnostics',
+    materialMarkup: 'Material Markup',
+};
+
+const DEFAULT_RATE_MINS: Record<keyof ServiceRates, string> = {
+    standardLabor: '2 hr min',
+    helperLabor: '2 hr min',
+    projectLabor: '2 hr min',
+    emergencyLabor: '2 hr min',
+    afterHoursLabor: '1.5× base · 2 hr min',
+    travelFee: '',
+    minimumServiceCall: '',
+    diagnosticFee: '1 hr min',
+    materialMarkup: '',
+};
 
 type RateDef = {
     key: keyof ServiceRates;
@@ -106,14 +130,14 @@ type RateDef = {
 };
 
 const RATE_DEFS: RateDef[] = [
-    { key: 'standardLabor', label: 'Standard Labor', unit: '/hr', section: 'labor', icon: Wrench, description: 'Primary field technician rate' },
-    { key: 'helperLabor', label: 'Helper Labor', unit: '/hr', section: 'labor', icon: UserCheck, description: 'Support technician rate' },
-    { key: 'projectLabor', label: 'Project Labor', unit: '/hr', section: 'labor', icon: Activity, description: 'Scheduled project work rate' },
-    { key: 'emergencyLabor', label: 'Emergency Labor', unit: '/hr', section: 'labor', icon: Zap, description: 'Emergency dispatch rate' },
-    { key: 'afterHoursLabor', label: 'After-Hours Labor', unit: '/hr', section: 'labor', icon: Clock, description: 'Outside business hours rate' },
+    { key: 'standardLabor', label: 'Fiber', unit: '/hr', section: 'labor', icon: Wrench, description: '$150/hr · 2 hr min' },
+    { key: 'projectLabor', label: 'Installation', unit: '/hr', section: 'labor', icon: Activity, description: '$120/hr · 2 hr min' },
+    { key: 'diagnosticFee', label: 'Diagnostics', unit: '/hr', section: 'labor', icon: Search, description: '$100/hr · 1 hr min' },
+    { key: 'helperLabor', label: 'Smart Hands', unit: '/hr', section: 'labor', icon: UserCheck, description: '$85/hr · 2 hr min' },
+    { key: 'afterHoursLabor', label: 'After Hours', unit: '/hr', section: 'labor', icon: Clock, description: '1.5× base · 2 hr min' },
+    { key: 'emergencyLabor', label: 'Emergency Labor', unit: '/hr', section: 'other', icon: Zap, description: 'Emergency dispatch rate' },
     { key: 'travelFee', label: 'Travel Fee', unit: 'flat', section: 'other', icon: TrendingUp, description: 'Per-trip travel charge' },
-    { key: 'minimumServiceCall', label: 'Minimum Service Call', unit: 'flat', section: 'other', icon: DollarSign, description: 'Minimum billable per visit' },
-    { key: 'diagnosticFee', label: 'Diagnostic Fee', unit: 'flat', section: 'other', icon: Search, description: 'Troubleshooting / assessment fee' },
+    { key: 'minimumServiceCall', label: 'Min. Service Call', unit: 'flat', section: 'other', icon: DollarSign, description: 'Minimum billable per visit' },
     { key: 'materialMarkup', label: 'Material Markup', unit: '%', section: 'other', icon: TrendingUp, description: 'Applied to all materials sourced' },
 ];
 
@@ -131,8 +155,10 @@ export default function ServicePlansPage() {
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
     const [rates, setRates] = useState<ServiceRates>(DEFAULT_RATES);
+    const [rateLabels, setRateLabels] = useState<Record<keyof ServiceRates, string>>(DEFAULT_RATE_LABELS);
     const [ratesEditMode, setRatesEditMode] = useState(false);
     const [editRates, setEditRates] = useState<ServiceRates>(DEFAULT_RATES);
+    const [editRateLabels, setEditRateLabels] = useState<Record<keyof ServiceRates, string>>(DEFAULT_RATE_LABELS);
     const [savingRates, setSavingRates] = useState(false);
 
     const [isPlansAuthed, setIsPlansAuthed] = useState(false);
@@ -154,22 +180,25 @@ export default function ServicePlansPage() {
         getDoc(doc(db, 'adminConfig', 'serviceRates')).then(snap => {
             if (snap.exists()) {
                 const data = { ...DEFAULT_RATES, ...snap.data() } as ServiceRates;
+                const labels = { ...DEFAULT_RATE_LABELS, ...(snap.data().labels || {}) } as Record<keyof ServiceRates, string>;
                 setRates(data);
                 setEditRates(data);
+                setRateLabels(labels);
+                setEditRateLabels(labels);
             }
         }).catch(() => {});
         getDoc(doc(db, 'adminConfig', 'servicePricing')).then(snap => {
             if (snap.exists() && Array.isArray(snap.data().plans)) {
                 setPlans(snap.data().plans as PlanTier[]);
             } else {
-                // Seed with Aaromach default plans on first load
                 setDoc(doc(db, 'adminConfig', 'servicePricing'), {
                     plans: INITIAL_PLANS,
                     updatedAt: new Date().toISOString(),
                 }, { merge: true }).catch(() => {});
             }
         }).catch(() => {});
-    }, [localTechs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const userIsSuperAdmin = isSuperAdmin(currentUser);
     const clientsList = useMemo(() => localTechs.filter(t => isClient(t)), [localTechs]);
@@ -195,12 +224,13 @@ export default function ServicePlansPage() {
         }
         let updatedPlans: PlanTier[];
         if (terminalMode === 'create') {
-            const plan: PlanTier = { ...selectedPlan as PlanTier, id: await createDocId(ID_PREFIXES.PLAN_TIER) };
+            const plan: PlanTier = { ...selectedPlan as PlanTier, features: selectedPlan.features || [], id: await createDocId(ID_PREFIXES.PLAN_TIER) };
             updatedPlans = [...plans, plan];
             setPlans(updatedPlans);
             toast({ title: 'Custom Agreement Authorized', description: `${plan.name} has been committed to the registry.` });
         } else {
-            updatedPlans = plans.map(p => p.id === selectedPlan.id ? selectedPlan as PlanTier : p);
+            const saved: PlanTier = { ...selectedPlan as PlanTier, features: selectedPlan.features || [] };
+            updatedPlans = plans.map(p => p.id === selectedPlan.id ? saved : p);
             setPlans(updatedPlans);
             toast({ title: 'Agreement Updated', description: `${selectedPlan.name} parameters have been synchronized.` });
         }
@@ -268,8 +298,9 @@ export default function ServicePlansPage() {
     const handleSaveRates = async () => {
         setSavingRates(true);
         try {
-            await setDoc(doc(db, 'adminConfig', 'serviceRates'), editRates, { merge: true });
+            await setDoc(doc(db, 'adminConfig', 'serviceRates'), { ...editRates, labels: editRateLabels }, { merge: true });
             setRates(editRates);
+            setRateLabels(editRateLabels);
             setRatesEditMode(false);
             toast({ title: 'Service rates saved', description: 'All client billing rates have been updated.' });
         } catch (e: any) {
@@ -564,7 +595,7 @@ export default function ServicePlansPage() {
                         <div className="flex items-center justify-between">
                             <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Client billing rates — separate from technician pay rates</p>
                             {userIsSuperAdmin && !ratesEditMode && (
-                                <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase" onClick={() => { setEditRates({ ...rates }); setRatesEditMode(true); }}>
+                                <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase" onClick={() => { setEditRates({ ...rates }); setEditRateLabels({ ...rateLabels }); setRatesEditMode(true); }}>
                                     <PencilLine size={12} className="mr-1.5" /> Edit Rates
                                 </Button>
                             )}
@@ -586,6 +617,8 @@ export default function ServicePlansPage() {
                                         value={ratesEditMode ? editRates[r.key] : rates[r.key]}
                                         editMode={ratesEditMode}
                                         onChange={v => setEditRates(prev => ({ ...prev, [r.key]: v }))}
+                                        label={ratesEditMode ? editRateLabels[r.key] : rateLabels[r.key]}
+                                        onLabelChange={ratesEditMode ? v => setEditRateLabels(prev => ({ ...prev, [r.key]: v })) : undefined}
                                     />
                                 ))}
                             </div>
@@ -599,6 +632,8 @@ export default function ServicePlansPage() {
                                         value={ratesEditMode ? editRates[r.key] : rates[r.key]}
                                         editMode={ratesEditMode}
                                         onChange={v => setEditRates(prev => ({ ...prev, [r.key]: v }))}
+                                        label={ratesEditMode ? editRateLabels[r.key] : rateLabels[r.key]}
+                                        onLabelChange={ratesEditMode ? v => setEditRateLabels(prev => ({ ...prev, [r.key]: v })) : undefined}
                                     />
                                 ))}
                             </div>
@@ -1010,13 +1045,16 @@ export default function ServicePlansPage() {
     );
 }
 
-function RateCard({ def, value, editMode, onChange }: {
+function RateCard({ def, value, editMode, onChange, label, onLabelChange }: {
     def: RateDef;
     value: number;
     editMode: boolean;
     onChange: (v: number) => void;
+    label?: string;
+    onLabelChange?: (v: string) => void;
 }) {
     const Icon = def.icon;
+    const displayLabel = label || def.label;
     return (
         <Card className="bg-bg-secondary border-border-main hover:border-text-muted transition-all group">
             <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub p-3">
@@ -1024,7 +1062,15 @@ function RateCard({ def, value, editMode, onChange }: {
                     <div className="p-2 bg-bg-primary rounded-lg border border-border-sub group-hover:bg-brand-red-dim group-hover:border-brand-red/30 transition-all">
                         <Icon size={15} className="text-text-muted group-hover:text-brand-red transition-colors" />
                     </div>
-                    <p className="text-[9px] font-bold uppercase tracking-wider leading-tight text-text-primary">{def.label}</p>
+                    {editMode && onLabelChange ? (
+                        <Input
+                            value={displayLabel}
+                            onChange={e => onLabelChange(e.target.value)}
+                            className="h-6 text-[9px] font-bold uppercase tracking-wider bg-bg-primary border-border-main p-1"
+                        />
+                    ) : (
+                        <p className="text-[9px] font-bold uppercase tracking-wider leading-tight text-text-primary">{displayLabel}</p>
+                    )}
                 </div>
             </CardHeader>
             <CardContent className="p-3 text-center space-y-1">
@@ -1092,13 +1138,13 @@ function PlanCard({ plan, onEdit, onView, onDelete, canEdit }: {
                 </div>
                 <div className="space-y-4 flex-1">
                     <div className="space-y-2 text-left">
-                        {plan.features.slice(0, 5).map((feature, i) => (
+                        {(plan.features || []).slice(0, 5).map((feature, i) => (
                             <div key={i} className="flex items-center gap-2">
                                 <div className="h-1 w-1 rounded-full bg-text-green" />
                                 <span className="text-[10px] font-bold text-text-secondary uppercase tracking-tight truncate">{feature}</span>
                             </div>
                         ))}
-                        {plan.features.length > 5 && <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest pl-3">+{plan.features.length - 5} More Capabilities</p>}
+                        {(plan.features || []).length > 5 && <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest pl-3">+{(plan.features || []).length - 5} More Capabilities</p>}
                     </div>
                     <div className="pt-4 border-t border-border-sub mt-auto space-y-3">
                         <div className="flex items-center justify-between">

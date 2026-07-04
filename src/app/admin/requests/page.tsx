@@ -255,15 +255,15 @@ function RequestDetailSheet({
               </div>
 
               {/* Request Details */}
-              {(item.description || sr?.serviceTypes?.length) && (
+              {(item.description || (sr?.serviceTypes || []).length > 0) && (
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-widest text-text-muted mb-2">Request Details</p>
                   {item.description && <p className="text-[11px] text-text-secondary leading-relaxed">{item.description}</p>}
-                  {sr?.serviceTypes && sr.serviceTypes.length > 0 && (
+                  {(sr?.serviceTypes || []).length > 0 && (
                     <div className="mt-2">
                       <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mb-1">Requested Services</p>
                       <ul className="space-y-0.5">
-                        {sr.serviceTypes.map(t => (
+                        {(sr?.serviceTypes || []).map(t => (
                           <li key={t} className="text-[11px] text-text-secondary flex items-start gap-1.5">
                             <span className="inline-block h-1 w-1 rounded-full bg-text-muted shrink-0 mt-[5px]" />
                             {t}
@@ -282,11 +282,11 @@ function RequestDetailSheet({
               )}
 
               {/* Attachments */}
-              {sr?.supportingFiles && sr.supportingFiles.length > 0 && (
+              {(sr?.supportingFiles || []).length > 0 && (
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-widest text-text-muted mb-2">Attachments</p>
                   <div className="flex items-center gap-2 flex-wrap">
-                    {sr.supportingFiles.slice(0, 3).map((f, i) => (
+                    {(sr?.supportingFiles || []).slice(0, 3).map((f, i) => (
                       <a key={i} href={(f as any).downloadUrl || '#'} target="_blank" rel="noreferrer"
                         className="h-14 w-14 rounded-lg bg-bg-tertiary border border-border-sub flex items-center justify-center overflow-hidden hover:border-border-main transition-colors">
                         {(f as any).downloadUrl && (f as any).fileName?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
@@ -296,9 +296,9 @@ function RequestDetailSheet({
                         )}
                       </a>
                     ))}
-                    {sr.supportingFiles.length > 3 && (
+                    {(sr?.supportingFiles || []).length > 3 && (
                       <div className="h-14 w-14 rounded-lg bg-bg-tertiary border border-border-sub flex items-center justify-center">
-                        <span className="text-[11px] font-bold text-text-muted">+{sr.supportingFiles.length - 3}</span>
+                        <span className="text-[11px] font-bold text-text-muted">+{(sr?.supportingFiles || []).length - 3}</span>
                       </div>
                     )}
                   </div>
@@ -814,7 +814,7 @@ function NewServiceTab({ requests, viewMode = 'grid' }: { requests: NewServiceRe
     <button key={req.id} type="button" onClick={() => { setSelected(req); setNotes(req.internalNotes || ''); }}
       className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border-sub bg-bg-secondary hover:border-border-main transition-colors text-left">
       <div className="flex-1 min-w-0">
-        <span className="text-[12px] font-bold text-text-primary">{req.serviceTypes?.[0] || req.fullName}</span>
+        <span className="text-[12px] font-bold text-text-primary">{(req.serviceTypes || [])[0] || req.fullName}</span>
         {req.companyName && <span className="text-[10px] text-text-muted ml-2">{req.companyName}</span>}
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
@@ -829,7 +829,7 @@ function NewServiceTab({ requests, viewMode = 'grid' }: { requests: NewServiceRe
       className="w-full rounded-xl border border-border-sub bg-bg-secondary p-4 space-y-2.5 text-left hover:border-border-main transition-colors">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-bold text-text-primary truncate">{req.serviceTypes?.[0] || req.fullName}</p>
+          <p className="text-[13px] font-bold text-text-primary truncate">{(req.serviceTypes || [])[0] || req.fullName}</p>
           {req.companyName && <p className="text-[10px] text-text-muted truncate">{req.companyName}</p>}
           <p className="text-[10px] text-text-muted">{req.fullName}</p>
         </div>
@@ -895,7 +895,7 @@ function NewServiceTab({ requests, viewMode = 'grid' }: { requests: NewServiceRe
                   <Pill cls={statusCls(selected.status)} label={(selected.status || '').replace(/_/g, ' ')} />
                   <Pill cls={pCls(selected.priorityLevel)} label={selected.priorityLevel || ''} />
                 </div>
-                <p className="text-[15px] font-black text-text-primary">{selected.serviceTypes?.[0] || selected.fullName}</p>
+                <p className="text-[15px] font-black text-text-primary">{(selected.serviceTypes || [])[0] || selected.fullName}</p>
                 <p className="text-[9px] text-text-muted font-mono mt-0.5">{selected.id.toUpperCase()}</p>
               </div>
               <div className="space-y-1">
@@ -910,11 +910,11 @@ function NewServiceTab({ requests, viewMode = 'grid' }: { requests: NewServiceRe
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Request Details</p>
                 <p className="text-[12px] text-text-primary leading-relaxed whitespace-pre-wrap">{selected.detailedDescription}</p>
               </div>
-              {selected.serviceTypes?.length > 0 && (
+              {(selected.serviceTypes || []).length > 0 && (
                 <div className="space-y-1">
                   <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Services</p>
                   <div className="flex flex-wrap gap-1">
-                    {selected.serviceTypes.map(t => (
+                    {(selected.serviceTypes || []).map(t => (
                       <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-bg-tertiary border border-border-sub text-text-secondary font-medium">{t}</span>
                     ))}
                   </div>
@@ -1088,13 +1088,13 @@ function ClientIntakeTab({ requests, siteReqs, viewMode = 'grid' }: {
       {(req.industryType || req.numberOfLocations) && (
         <p className="text-[10px] text-text-muted">{[req.industryType, req.numberOfLocations ? `${req.numberOfLocations} location${req.numberOfLocations !== '1' ? 's' : ''}` : null].filter(Boolean).join(' · ')}</p>
       )}
-      {req.serviceInterests?.length > 0 && (
+      {(req.serviceInterests || []).length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {req.serviceInterests.slice(0, 3).map(t => (
+          {(req.serviceInterests || []).slice(0, 3).map(t => (
             <span key={t} className="text-[9px] px-1.5 py-0.5 rounded bg-bg-tertiary border border-border-sub text-text-muted">{t}</span>
           ))}
-          {req.serviceInterests.length > 3 && (
-            <span className="text-[9px] px-1.5 py-0.5 rounded bg-bg-tertiary border border-border-sub text-text-muted">+{req.serviceInterests.length - 3}</span>
+          {(req.serviceInterests || []).length > 3 && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-bg-tertiary border border-border-sub text-text-muted">+{(req.serviceInterests || []).length - 3}</span>
           )}
         </div>
       )}
@@ -1290,22 +1290,56 @@ export default function RequestsPage() {
   const [allTabApproving, setAllTabApproving] = useState(false);
 
   useEffect(() => {
-    const u1 = onSnapshot(collection(db, 'serviceRequests'), snap => {
-      setServiceRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as NewServiceRequest)));
-      setLoading(false);
-    }, () => setLoading(false));
-    const u2 = onSnapshot(collection(db, 'siteRequests'), snap => setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest))));
-    const u3 = onSnapshot(collection(db, 'timeOffRequests'), snap => setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest))));
-    const u4 = onSnapshot(collection(db, 'users'), snap => {
-      const all = snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician));
-      setTechnicians(all);
-      setPendingUsers(all.filter(u => (u as any).approvalStatus === 'pending'));
-    });
-    const u6 = onSnapshot(collection(db, 'clientRequests'), snap =>
-      setClientIntakeRequests(
-        snap.docs.map(d => ({ ...d.data(), id: d.id } as ClientIntakeRequest))
-          .filter(r => r.source === 'app_client_intake' || r.source === 'public_client_intake' || r.source === 'client_intake_form' || !!r.companyName)
-      )
+    const u1 = onSnapshot(
+      collection(db, 'serviceRequests'),
+      snap => {
+        try {
+          setServiceRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as NewServiceRequest)));
+        } catch (e) { console.error('serviceRequests mapping error', e); }
+        setLoading(false);
+      },
+      err => { console.error('serviceRequests snapshot error', err); setLoading(false); },
+    );
+    const u2 = onSnapshot(
+      collection(db, 'siteRequests'),
+      snap => {
+        try {
+          setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)));
+        } catch (e) { console.error('siteRequests mapping error', e); }
+      },
+      err => { console.error('siteRequests snapshot error', err); },
+    );
+    const u3 = onSnapshot(
+      collection(db, 'timeOffRequests'),
+      snap => {
+        try {
+          setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)));
+        } catch (e) { console.error('timeOffRequests mapping error', e); }
+      },
+      err => { console.error('timeOffRequests snapshot error', err); },
+    );
+    const u4 = onSnapshot(
+      collection(db, 'users'),
+      snap => {
+        try {
+          const all = snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician));
+          setTechnicians(all);
+          setPendingUsers(all.filter(u => (u as any).approvalStatus === 'pending'));
+        } catch (e) { console.error('users mapping error', e); }
+      },
+      err => { console.error('users snapshot error', err); },
+    );
+    const u6 = onSnapshot(
+      collection(db, 'clientRequests'),
+      snap => {
+        try {
+          setClientIntakeRequests(
+            snap.docs.map(d => ({ ...d.data(), id: d.id } as ClientIntakeRequest))
+              .filter(r => r.source === 'app_client_intake' || r.source === 'public_client_intake' || r.source === 'client_intake_form' || !!r.companyName)
+          );
+        } catch (e) { console.error('clientRequests mapping error', e); }
+      },
+      err => { console.error('clientRequests snapshot error', err); },
     );
     return () => { u1(); u2(); u3(); u4(); u6(); };
   }, []);
@@ -1346,114 +1380,147 @@ export default function RequestsPage() {
 
   // ── Normalized items for "All" tab ─────────────────────────────────────────
   const allNormalized = useMemo<NormalizedItem[]>(() => {
-    const items: NormalizedItem[] = [];
+    try {
+      const items: NormalizedItem[] = [];
 
-    serviceRequests.filter(r => ['pending_review','contacted','needs_more_info'].includes(r.status)).forEach(r => {
-      items.push({
-        id: r.id, kind: 'service',
-        title: r.serviceTypes?.[0] || r.fullName || 'Service Request',
-        company: r.companyName || '',
-        contactName: r.fullName || '',
-        phone: r.phoneNumber || '',
-        email: r.email || '',
-        source: mapSource(r.source),
-        date: r.createdAt || '',
-        description: r.detailedDescription || '',
-        status: r.status,
-        priority: r.priorityLevel || 'medium',
-        rawServiceReq: r,
+      (serviceRequests || []).filter(r => r?.status && ['pending_review','contacted','needs_more_info'].includes(r.status)).forEach(r => {
+        try {
+          items.push({
+            id: r.id ?? '',
+            kind: 'service',
+            title: (r.serviceTypes || [])[0] || r.fullName || 'Service Request',
+            company: r.companyName || '',
+            contactName: r.fullName || '',
+            phone: r.phoneNumber || '',
+            email: r.email || '',
+            source: mapSource(r.source),
+            date: r.createdAt || '',
+            description: r.detailedDescription || '',
+            status: r.status || 'pending_review',
+            priority: r.priorityLevel || 'medium',
+            rawServiceReq: r,
+          });
+        } catch { /* skip malformed item */ }
       });
-    });
 
-    clientIntakeRequests.filter(r => ['pending_review','contacted'].includes(r.status)).forEach(r => {
-      items.push({
-        id: r.id, kind: 'client',
-        title: r.companyName || 'Client Onboarding',
-        company: r.companyName || '',
-        contactName: r.primaryContactName || '',
-        phone: r.phoneNumber || '',
-        email: r.email || '',
-        source: mapSource(r.source),
-        date: r.createdAt || '',
-        description: r.currentPainPoints || '',
-        status: r.status,
-        priority: 'medium',
-        rawClientReq: r,
+      (clientIntakeRequests || []).filter(r => r?.status && ['pending_review','contacted'].includes(r.status)).forEach(r => {
+        try {
+          items.push({
+            id: r.id ?? '',
+            kind: 'client',
+            title: r.companyName || 'Client Onboarding',
+            company: r.companyName || '',
+            contactName: r.primaryContactName || '',
+            phone: r.phoneNumber || '',
+            email: r.email || '',
+            source: mapSource(r.source),
+            date: r.createdAt || '',
+            description: r.currentPainPoints || '',
+            status: r.status || 'pending_review',
+            priority: 'medium',
+            rawClientReq: r,
+          });
+        } catch { /* skip malformed item */ }
       });
-    });
 
-    timeOffRequests.filter(r => r.status === 'pending').forEach(r => {
-      const tech = technicians.find(t => t.id === r.techId);
-      items.push({
-        id: r.id, kind: 'personnel',
-        title: `${r.type} Request`,
-        company: '',
-        contactName: tech?.name || r.techId,
-        phone: (tech as any)?.phone || '',
-        email: (tech as any)?.email || '',
-        source: 'App',
-        date: r.startDate || '',
-        description: r.reason || '',
-        status: r.status,
-        priority: 'medium',
-        rawTimeOff: r,
+      (timeOffRequests || []).filter(r => r?.status === 'pending').forEach(r => {
+        try {
+          const tech = (technicians || []).find(t => t.id === r.techId);
+          items.push({
+            id: r.id ?? '',
+            kind: 'personnel',
+            title: `${r.type || 'Time Off'} Request`,
+            company: '',
+            contactName: tech?.name || r.techId || '',
+            phone: (tech as any)?.phone || '',
+            email: (tech as any)?.email || '',
+            source: 'App',
+            date: r.startDate || '',
+            description: r.reason || '',
+            status: r.status || 'pending',
+            priority: 'medium',
+            rawTimeOff: r,
+          });
+        } catch { /* skip malformed item */ }
       });
-    });
 
-    pendingUsers.forEach(u => {
-      items.push({
-        id: u.id, kind: 'access',
-        title: 'Account Access Request',
-        company: '',
-        contactName: u.name || 'Unknown',
-        phone: (u as any).phone || '',
-        email: u.email || '',
-        source: mapSource((u as any).createdVia),
-        date: (u as any).requestedAt || (u as any).createdAt || '',
-        description: `Requesting access as ${(u as any).requestedRole || 'a team member'}.`,
-        status: 'pending',
-        priority: 'medium',
-        rawUser: u,
+      (pendingUsers || []).forEach(u => {
+        try {
+          items.push({
+            id: u.id ?? '',
+            kind: 'access',
+            title: 'Account Access Request',
+            company: '',
+            contactName: u.name || 'Unknown',
+            phone: (u as any).phone || '',
+            email: u.email || '',
+            source: mapSource((u as any).createdVia),
+            date: (u as any).requestedAt || (u as any).createdAt || '',
+            description: `Requesting access as ${(u as any).requestedRole || 'a team member'}.`,
+            status: 'pending',
+            priority: 'medium',
+            rawUser: u,
+          });
+        } catch { /* skip malformed item */ }
       });
-    });
 
-    return items.sort((a, b) => {
-      if (sortOrder === 'oldest') return a.date.localeCompare(b.date);
-      return b.date.localeCompare(a.date);
-    });
+      return items.sort((a, b) => {
+        const da = a.date || '';
+        const db2 = b.date || '';
+        if (sortOrder === 'oldest') return da.localeCompare(db2);
+        return db2.localeCompare(da);
+      });
+    } catch (e) {
+      console.error('allNormalized useMemo error', e);
+      return [];
+    }
   }, [serviceRequests, clientIntakeRequests, siteRequests, timeOffRequests, pendingUsers, technicians, sortOrder]);
 
   // Apply All-tab filters
   const filteredAll = useMemo(() => {
-    let items = allNormalized;
-    const q = searchQuery.toLowerCase();
-    if (q) items = items.filter(i =>
-      i.title.toLowerCase().includes(q) || i.company.toLowerCase().includes(q) ||
-      i.contactName.toLowerCase().includes(q) || i.email.toLowerCase().includes(q) ||
-      i.phone.includes(q)
-    );
-    if (statusFilter === 'pending') items = items.filter(i => ['pending_review','pending','contacted','needs_more_info'].includes(i.status));
-    if (statusFilter === 'approved') items = items.filter(i => ['approved','converted_to_client','converted_to_work_order'].includes(i.status));
-    if (statusFilter === 'rejected') items = items.filter(i => ['rejected','denied','closed'].includes(i.status));
-    if (priorityFilter === 'urgent') items = items.filter(i => ['critical','high'].includes(i.priority));
-    if (priorityFilter === 'normal') items = items.filter(i => i.priority === 'medium');
-    if (priorityFilter === 'low') items = items.filter(i => i.priority === 'low');
-    if (sourceFilter !== 'all') items = items.filter(i => i.source === sourceFilter);
-    return items;
+    try {
+      let items = allNormalized || [];
+      const q = (searchQuery || '').toLowerCase();
+      if (q) items = items.filter(i =>
+        (i.title || '').toLowerCase().includes(q) ||
+        (i.company || '').toLowerCase().includes(q) ||
+        (i.contactName || '').toLowerCase().includes(q) ||
+        (i.email || '').toLowerCase().includes(q) ||
+        (i.phone || '').includes(q)
+      );
+      if (statusFilter === 'pending') items = items.filter(i => ['pending_review','pending','contacted','needs_more_info'].includes(i.status || ''));
+      if (statusFilter === 'approved') items = items.filter(i => ['approved','converted_to_client','converted_to_work_order'].includes(i.status || ''));
+      if (statusFilter === 'rejected') items = items.filter(i => ['rejected','denied','closed'].includes(i.status || ''));
+      if (priorityFilter === 'urgent') items = items.filter(i => ['critical','high'].includes(i.priority || ''));
+      if (priorityFilter === 'normal') items = items.filter(i => i.priority === 'medium');
+      if (priorityFilter === 'low') items = items.filter(i => i.priority === 'low');
+      if (sourceFilter !== 'all') items = items.filter(i => i.source === sourceFilter);
+      return items;
+    } catch (e) {
+      console.error('filteredAll useMemo error', e);
+      return [];
+    }
   }, [allNormalized, searchQuery, statusFilter, priorityFilter, sourceFilter]);
 
   // Filtered service requests (for Service tab)
   const filteredServiceRequests = useMemo(() => {
-    const q = searchQuery.toLowerCase();
-    let items = serviceRequests;
-    if (q) items = items.filter(r =>
-      (r.fullName || '').toLowerCase().includes(q) || (r.email || '').toLowerCase().includes(q) ||
-      (r.companyName || '').toLowerCase().includes(q) || (r.id || '').toLowerCase().includes(q)
-    );
-    if (statusFilter === 'pending') items = items.filter(r => ['pending_review','contacted','needs_more_info'].includes(r.status));
-    if (statusFilter === 'approved') items = items.filter(r => ['approved','converted_to_work_order','converted_to_project'].includes(r.status));
-    if (statusFilter === 'rejected') items = items.filter(r => ['rejected','closed'].includes(r.status));
-    return items;
+    try {
+      const q = (searchQuery || '').toLowerCase();
+      let items = serviceRequests || [];
+      if (q) items = items.filter(r =>
+        (r.fullName || '').toLowerCase().includes(q) ||
+        (r.email || '').toLowerCase().includes(q) ||
+        (r.companyName || '').toLowerCase().includes(q) ||
+        (r.id || '').toLowerCase().includes(q)
+      );
+      if (statusFilter === 'pending') items = items.filter(r => ['pending_review','contacted','needs_more_info'].includes(r.status || ''));
+      if (statusFilter === 'approved') items = items.filter(r => ['approved','converted_to_work_order','converted_to_project'].includes(r.status || ''));
+      if (statusFilter === 'rejected') items = items.filter(r => ['rejected','closed'].includes(r.status || ''));
+      return items;
+    } catch (e) {
+      console.error('filteredServiceRequests useMemo error', e);
+      return serviceRequests || [];
+    }
   }, [serviceRequests, searchQuery, statusFilter]);
 
   // All-tab actions
@@ -1713,22 +1780,22 @@ export default function RequestsPage() {
         {/* ── Archived ── */}
         <TabsContent value="archived" className="mt-4">
           <div className="space-y-8">
-            {archivedService.length > 0 && (
+            {(archivedService || []).length > 0 && (
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3">Service Requests ({archivedService.length})</p>
-                <NewServiceTab requests={archivedService} viewMode={viewMode} />
+                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3">Service Requests ({(archivedService || []).length})</p>
+                <NewServiceTab requests={archivedService || []} viewMode={viewMode} />
               </div>
             )}
-            {archivedIntake.length > 0 && (
+            {(archivedIntake || []).length > 0 && (
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3">Client Applications ({archivedIntake.length})</p>
-                <ClientIntakeTab requests={archivedIntake} siteReqs={[]} viewMode={viewMode} />
+                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3">Client Applications ({(archivedIntake || []).length})</p>
+                <ClientIntakeTab requests={archivedIntake || []} siteReqs={[]} viewMode={viewMode} />
               </div>
             )}
-            {archivedPersonnel.length > 0 && (
+            {(archivedPersonnel || []).length > 0 && (
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3">Personnel ({archivedPersonnel.length})</p>
-                <PersonnelTab requests={archivedPersonnel} technicians={technicians} viewMode={viewMode} />
+                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3">Personnel ({(archivedPersonnel || []).length})</p>
+                <PersonnelTab requests={archivedPersonnel || []} technicians={technicians || []} viewMode={viewMode} />
               </div>
             )}
             {archivedTotalCount === 0 && (

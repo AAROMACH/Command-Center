@@ -1281,6 +1281,12 @@ export default function RequestsPage() {
   // Detail sheet (All tab)
   const [detailItem, setDetailItem] = useState<NormalizedItem | null>(null);
 
+  // All-tab access approval dialog
+  const [allTabApproveUser, setAllTabApproveUser] = useState<Technician | null>(null);
+  const [allTabRoles, setAllTabRoles] = useState<AppRole[]>([]);
+  const [allTabPrimary, setAllTabPrimary] = useState<AppRole | ''>('');
+  const [allTabApproving, setAllTabApproving] = useState(false);
+
   useEffect(() => {
     const u1 = onSnapshot(collection(db, 'serviceRequests'), snap => {
       setServiceRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as NewServiceRequest)));
@@ -1450,6 +1456,13 @@ export default function RequestsPage() {
 
   // All-tab actions
   const handleAllApprove = async (item: NormalizedItem) => {
+    if (item.kind === 'access' && item.rawUser) {
+      setAllTabApproveUser(item.rawUser);
+      setAllTabRoles([]);
+      setAllTabPrimary('');
+      setDetailItem(null);
+      return;
+    }
     try {
       if (item.kind === 'service' && item.rawServiceReq) {
         await updateDoc(doc(db, 'serviceRequests', item.id), { status: 'approved', reviewedBy: auth.currentUser?.uid || null, reviewedAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
@@ -1461,6 +1474,23 @@ export default function RequestsPage() {
       toast({ title: 'Approved' });
       setDetailItem(null);
     } catch (e: any) { toast({ title: 'Error', description: e.message, variant: 'destructive' }); }
+  };
+
+  const handleAllTabGrantAccess = async () => {
+    if (!allTabApproveUser || allTabRoles.length === 0 || !allTabPrimary) return;
+    setAllTabApproving(true);
+    try {
+      const adminUid = auth.currentUser?.uid || '';
+      await updateDoc(doc(db, 'users', allTabApproveUser.id), {
+        roles: allTabRoles, role: allTabPrimary, primaryRole: allTabPrimary,
+        approvalStatus: 'approved', status: 'active',
+        approvedAt: new Date().toISOString(), approvedBy: adminUid, updatedAt: new Date().toISOString(),
+      });
+      toast({ title: 'Access Granted', description: `${allTabApproveUser.name} approved as ${allTabPrimary}.` });
+      setAllTabApproveUser(null); setAllTabRoles([]); setAllTabPrimary('');
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    } finally { setAllTabApproving(false); }
   };
 
   const handleAllReject = async (item: NormalizedItem) => {
@@ -1723,6 +1753,44 @@ export default function RequestsPage() {
         setIsOpen={setIsNewDialogOpen}
         onSave={handleAddNewRequest}
       />
+
+      {/* All-tab access approval dialog */}
+      <Dialog open={!!allTabApproveUser} onOpenChange={v => !v && setAllTabApproveUser(null)}>
+        <DialogContent className="bg-bg-secondary border-border-main max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[12px] font-black uppercase tracking-widest">Assign Role — {allTabApproveUser?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mb-2">Roles</p>
+              <div className="grid grid-cols-2 gap-2">
+                {ALL_ROLES.map(role => (
+                  <div key={role} className="flex items-center gap-2">
+                    <Checkbox id={`all-role-${role}`} checked={allTabRoles.includes(role)} onCheckedChange={() => setAllTabRoles(prev => prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role])} />
+                    <Label htmlFor={`all-role-${role}`} className="text-[10px] font-bold uppercase cursor-pointer">{role.replace(/_/g, ' ')}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mb-1.5">Primary Role</p>
+              <Select value={allTabPrimary} onValueChange={v => setAllTabPrimary(v as AppRole)} disabled={allTabRoles.length === 0}>
+                <SelectTrigger className="h-8 text-[11px] bg-bg-tertiary border-border-main"><SelectValue placeholder="Select primary role" /></SelectTrigger>
+                <SelectContent className="bg-bg-elevated border-border-main">
+                  {allTabRoles.map(r => <SelectItem key={r} value={r} className="text-[10px] font-bold uppercase">{r.replace(/_/g, ' ')}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" size="sm" className="text-[10px] uppercase font-bold" onClick={() => setAllTabApproveUser(null)} disabled={allTabApproving}>Cancel</Button>
+            <Button size="sm" className="text-[10px] uppercase font-bold bg-text-green hover:bg-text-green/90 text-white"
+              onClick={handleAllTabGrantAccess} disabled={allTabApproving || allTabRoles.length === 0 || !allTabPrimary}>
+              {allTabApproving && <Loader2 size={11} className="animate-spin mr-1.5" />}{allTabApproving ? 'Granting...' : 'Grant Access'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

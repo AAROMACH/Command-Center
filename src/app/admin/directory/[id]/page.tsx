@@ -138,6 +138,14 @@ export default function DirectoryPersonPage() {
     ) ?? false;
   }, [person]);
 
+  const isClient = useMemo(() => {
+    if (!person) return false;
+    return (
+      person.roles?.includes('client') ||
+      person.role === 'client'
+    ) ?? false;
+  }, [person]);
+
   const certDocuments = useMemo(() => documents.filter(d => d.type === 'certification'), [documents]);
   const roles: string[] = rolesBuffer;
   const activePortals = useMemo(() => {
@@ -319,7 +327,15 @@ export default function DirectoryPersonPage() {
     { value: 'notes', label: 'Notes', badge: techNotes.length || undefined },
   ];
 
-  const activeTabs = isTech ? techTabs : staffTabs;
+  const clientTabs = [
+    { value: 'overview', label: 'Overview' },
+    { value: 'contact', label: 'Contact' },
+    { value: 'business', label: 'Business Profile' },
+    { value: 'documents', label: 'Documents', badge: documents.length || undefined },
+    { value: 'notes', label: 'Notes', badge: techNotes.length || undefined },
+  ];
+
+  const activeTabs = isClient ? clientTabs : (isTech ? techTabs : staffTabs);
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -376,7 +392,15 @@ export default function DirectoryPersonPage() {
           </div>
         </div>
         <div className="md:w-48 shrink-0 grid grid-cols-2 md:grid-cols-1 gap-3">
-          {[
+          {isClient ? [
+            { label: 'Subscription', value: person.subscriptionStatus || 'None', color: person.subscriptionStatus === 'active' ? 'text-text-green' : 'text-text-muted' },
+            { label: 'Account', value: (person.accountStatus || 'Unknown').replace(/_/g, ' '), color: 'text-text-primary' },
+          ].map(stat => (
+            <div key={stat.label} className="p-2.5 rounded-lg bg-bg-primary border border-border-sub">
+              <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">{stat.label}</p>
+              <p className={cn('text-[11px] font-bold font-mono mt-0.5 capitalize', stat.color)}>{stat.value}</p>
+            </div>
+          )) : [
             { label: 'Active Jobs', value: activeJobs.length, color: 'text-text-amber' },
             { label: 'Completed', value: completedJobs.length, color: 'text-text-green' },
           ].map(stat => (
@@ -405,6 +429,77 @@ export default function DirectoryPersonPage() {
 
         {/* ── OVERVIEW ── */}
         <TabsContent value="overview" className="m-0 pt-5">
+          {isClient ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-4">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                  <Briefcase size={11} className="text-brand-red" /> Company Info
+                </h3>
+                <div className="space-y-3">
+                  {person.clientCompany && (
+                    <div>
+                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Company</p>
+                      <p className="text-[13px] font-bold text-text-primary">{person.clientCompany}</p>
+                    </div>
+                  )}
+                  {person.businessType && (
+                    <div>
+                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Business Type</p>
+                      <p className="text-[11px] text-text-secondary">{person.businessType}</p>
+                    </div>
+                  )}
+                  {person.accountStatus && (
+                    <div>
+                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Account Status</p>
+                      <Badge variant={person.accountStatus === 'active' || person.accountStatus === 'vip' ? 'active' : 'outline'} className="text-[9px] uppercase mt-0.5">
+                        {person.accountStatus.replace(/_/g, ' ')}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                  <BarChart2 size={11} /> Subscription
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] text-text-muted uppercase font-bold">Status</span>
+                    <Badge variant={person.subscriptionStatus === 'active' ? 'active' : 'outline'} className="text-[9px] uppercase">
+                      {person.subscriptionStatus || 'None'}
+                    </Badge>
+                  </div>
+                  {person.subscriptionStartDate && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-text-muted uppercase font-bold">Start Date</span>
+                      <span className="text-[10px] text-text-primary font-mono">{formatDate(person.subscriptionStartDate)}</span>
+                    </div>
+                  )}
+                  {person.subscriptionExpiryDate && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-text-muted uppercase font-bold">Expiry</span>
+                      <span className="text-[10px] text-text-primary font-mono">{formatDate(person.subscriptionExpiryDate)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {(person as any).managedSites && (person as any).managedSites.length > 0 && (
+                <div className="lg:col-span-2 p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
+                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                    <MapPin size={11} /> Managed Sites ({(person as any).managedSites.length})
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {(person as any).managedSites.map((site: any) => (
+                      <div key={site.id} className="p-3 rounded-lg border border-border-sub bg-bg-primary">
+                        <p className="text-[11px] font-bold text-text-primary">{site.name}</p>
+                        {site.location && <p className="text-[10px] text-text-muted flex items-center gap-1 mt-0.5"><MapPin size={9} />{site.location}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {isTech && (
               <div className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
@@ -485,7 +580,68 @@ export default function DirectoryPersonPage() {
               </div>
             )}
           </div>
+          )}
         </TabsContent>
+
+        {/* ── CLIENT BUSINESS PROFILE ── */}
+        {isClient && (
+          <TabsContent value="business" className="m-0 pt-5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-4">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                  <Briefcase size={11} className="text-brand-red" /> Business Profile
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Company Name</p>
+                    <p className="text-[12px] font-bold text-text-primary">{person.clientCompany || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Business Type</p>
+                    <p className="text-[11px] text-text-secondary">{person.businessType || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Account Status</p>
+                    <p className="text-[11px] text-text-secondary capitalize">{person.accountStatus?.replace(/_/g, ' ') || '—'}</p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsEditOpen(true)}
+                  className="w-full h-8 text-[10px] font-black uppercase tracking-widest mt-2"
+                >
+                  <Pencil size={11} className="mr-1.5" /> Edit Business Profile
+                </Button>
+              </div>
+              {person.billingDetails && (
+                <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
+                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                    <FileText size={11} /> Billing Details
+                  </h3>
+                  <div className="space-y-2.5">
+                    <div>
+                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Billing Contact</p>
+                      <p className="text-[11px] text-text-primary">{person.billingDetails.contactName || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Billing Email</p>
+                      <p className="text-[11px] text-text-primary">{person.billingDetails.email || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Payment Terms</p>
+                      <p className="text-[11px] text-text-primary">{person.billingDetails.terms || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Invoice Delivery</p>
+                      <p className="text-[11px] text-text-primary">{person.billingDetails.deliveryMethod || '—'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        )}
 
         {/* ── CONTACT ── */}
         <TabsContent value="contact" className="m-0 pt-5">

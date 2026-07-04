@@ -15,6 +15,16 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -121,6 +131,7 @@ export const WorkOrdersTable = React.memo(({
   const [detailJob, setDetailJob] = useState<WorkOrder | null>(null);
 
   const [currentUser, setCurrentUser] = useState<Technician | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -265,12 +276,18 @@ export const WorkOrdersTable = React.memo(({
 
   const handleDeleteOrder = () => {
     if (!selectedOrder) return;
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const executeDeleteOrder = () => {
+    if (!selectedOrder) return;
     const collectionName = mode === 'unassigned' ? 'workOrders' : 'assignments';
     const docRef = doc(db, collectionName, selectedOrder.id);
     deleteDoc(docRef).catch((e: any) => {
       console.error("Purge Error:", e);
       toast({ variant: "destructive", title: "Purge Failed", description: e.message });
     });
+    setIsDeleteConfirmOpen(false);
     setIsEditDialogOpen(false);
     setSelectedOrder(null);
     setEditedOrder(null);
@@ -821,6 +838,26 @@ export const WorkOrdersTable = React.memo(({
             </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={open => { if (!open) setIsDeleteConfirmOpen(false); }}>
+        <AlertDialogContent className="bg-bg-elevated border-border-main">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-text-primary uppercase font-black tracking-wide text-sm">Delete Assignment?</AlertDialogTitle>
+            <AlertDialogDescription className="text-text-muted text-[11px]">
+              This will permanently remove <span className="font-bold text-text-primary">{selectedOrder?.id?.toUpperCase()}</span> from the system. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-[10px] uppercase font-bold">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] uppercase font-bold"
+              onClick={executeDeleteOrder}
+            >
+              <Trash2 size={12} className="mr-1.5" />Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 });

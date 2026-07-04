@@ -2,14 +2,14 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, setDoc, addDoc } from 'firebase/firestore';
 import { makeMessageId } from '@/lib/doc-ids';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { 
-    Search, 
-    MapPin, 
-    X, 
-    Clock, 
+import {
+    Search,
+    MapPin,
+    X,
+    Clock,
     Building2,
     ChevronRight,
     History,
@@ -43,7 +43,9 @@ import {
     Filter,
     FileCheck,
     Trash2,
-    Download
+    Download,
+    Archive as ArchiveIcon,
+    RotateCcw
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -58,14 +60,24 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { 
-    Dialog, 
-    DialogContent, 
-    DialogHeader, 
-    DialogTitle, 
-    DialogDescription, 
-    DialogFooter 
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter
 } from '@/components/ui/dialog';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Popover,
   PopoverContent,
@@ -110,6 +122,19 @@ const formatDateDisplay = (dateStr: string) => {
 
 type AuditRange = 'all' | '7d' | '30d' | 'custom';
 
+type TimelineEvent = {
+    id: string;
+    timestamp: string;
+    type: 'assignment' | 'log' | 'invoice' | 'site_request' | 'work_order';
+    eventLabel: string;
+    entity: string;
+    techName?: string;
+    techId?: string;
+    clientName?: string;
+    color: string;
+    icon: string;
+};
+
 export default function ActivityAuditPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -153,6 +178,10 @@ export default function ActivityAuditPage() {
     const [isJobOpen, setIsJobOpen] = useState(false);
     const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
 
+    // Archive + delete confirm state
+    const [archivedEvents, setArchivedEvents] = useState<(TimelineEvent & { archivedAt: string })[]>([]);
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
     const { toast } = useToast();
 
     // 1. Initialize Data Listeners
@@ -184,9 +213,12 @@ export default function ActivityAuditPage() {
         const unsubTOR = onSnapshot(collection(db, 'timeOffRequests'), (snap) => {
             setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)));
         });
+        const unsubArchive = onSnapshot(collection(db, 'activityArchive'), (snap) => {
+            setArchivedEvents(snap.docs.map(d => ({ ...d.data() } as TimelineEvent & { archivedAt: string })));
+        });
 
         return () => {
-            unsubWO(); unsubAsmt(); unsubTech(); unsubLogs(); unsubProj(); unsubInv(); unsubTOR();
+            unsubWO(); unsubAsmt(); unsubTech(); unsubLogs(); unsubProj(); unsubInv(); unsubTOR(); unsubArchive();
         };
     }, []);
 
@@ -272,17 +304,45 @@ export default function ActivityAuditPage() {
         }
     };
 
-    const handleDeleteAssignment = async (woId: string) => {
+    const handleDeleteAssignment = (woId: string) => {
         if (!isSuperAdmin(currentUser)) {
             toast({ variant: 'destructive', title: 'Unauthorized', description: 'Super Admin credentials required for record purging.' });
             return;
         }
+        setDeleteConfirmId(woId);
+    };
+
+    const executeDeleteAssignment = async (woId: string) => {
         const docRef = doc(db, 'assignments', woId);
         try {
             await deleteDoc(docRef);
             toast({ variant: 'destructive', title: 'Record Deleted', description: `Assignment ${woId.toUpperCase()} removed from system.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Delete Failed', description: e.message });
+        }
+        setDeleteConfirmId(null);
+    };
+
+    const archivedEventIds = useMemo(() => new Set(archivedEvents.map(e => e.id)), [archivedEvents]);
+
+    const handleArchiveEvent = async (event: TimelineEvent) => {
+        try {
+            await setDoc(doc(db, 'activityArchive', event.id), {
+                ...event,
+                archivedAt: new Date().toISOString(),
+            });
+            toast({ title: 'Archived', description: `"${event.eventLabel}" moved to archive.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Archive Failed', description: e.message });
+        }
+    };
+
+    const handleRestoreEvent = async (eventId: string) => {
+        try {
+            await deleteDoc(doc(db, 'activityArchive', eventId));
+            toast({ title: 'Restored', description: 'Event restored to activity feed.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Restore Failed', description: e.message });
         }
     };
 
@@ -435,19 +495,6 @@ export default function ActivityAuditPage() {
         });
     };
 
-    type TimelineEvent = {
-        id: string;
-        timestamp: string;
-        type: 'assignment' | 'log' | 'invoice' | 'site_request' | 'work_order';
-        eventLabel: string;
-        entity: string;
-        techName?: string;
-        techId?: string;
-        clientName?: string;
-        color: string;
-        icon: string;
-    };
-
     const timelineEvents = useMemo((): TimelineEvent[] => {
         const events: TimelineEvent[] = [];
 
@@ -568,12 +615,13 @@ export default function ActivityAuditPage() {
 
     const filteredTimelineEvents = useMemo(() => {
         return timelineEvents.filter(e => {
+            if (archivedEventIds.has(e.id)) return false;
             if (timelineTechFilter !== 'all' && e.techId !== timelineTechFilter) return false;
             if (timelineTypeFilter !== 'all' && e.type !== timelineTypeFilter) return false;
             if (timelineClientFilter && !(e.clientName || '').toLowerCase().includes(timelineClientFilter.toLowerCase())) return false;
             return true;
         });
-    }, [timelineEvents, timelineTechFilter, timelineTypeFilter, timelineClientFilter]);
+    }, [timelineEvents, archivedEventIds, timelineTechFilter, timelineTypeFilter, timelineClientFilter]);
 
     const searchResults = useMemo(() => {
         if (!searchQuery) return [];
@@ -914,6 +962,7 @@ export default function ActivityAuditPage() {
                                 <TabsTrigger value="assignments_history" className="tab-trigger-activity">Assignment History</TabsTrigger>
                                 <TabsTrigger value="project_history" className="tab-trigger-activity">Project History</TabsTrigger>
                                 <TabsTrigger value="weekly_logs" className="tab-trigger-activity">Weekly Log History</TabsTrigger>
+                                <TabsTrigger value="archive" className="tab-trigger-activity">Archive</TabsTrigger>
                             </TabsList>
                         </div>
 
@@ -1008,6 +1057,15 @@ export default function ActivityAuditPage() {
                                                             </div>
                                                         </div>
                                                         <Badge variant="outline" className="text-[7px] uppercase shrink-0 h-4">{event.type.replace('_', ' ')}</Badge>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-text-muted hover:text-text-primary shrink-0"
+                                                            title="Archive event"
+                                                            onClick={() => handleArchiveEvent(event)}
+                                                        >
+                                                            <ArchiveIcon size={11} />
+                                                        </Button>
                                                     </div>
                                                 );
                                             })}
@@ -1402,6 +1460,70 @@ export default function ActivityAuditPage() {
                                 </div>
                             </TabsContent>
 
+                            {/* ARCHIVE TAB */}
+                            <TabsContent value="archive" className="m-0 text-left">
+                                <div className="space-y-5">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                                            Archived Activity ({archivedEvents.length})
+                                        </p>
+                                    </div>
+                                    {archivedEvents.length === 0 ? (
+                                        <div className="py-24 text-center border border-dashed border-border-sub rounded-xl opacity-40">
+                                            <ArchiveIcon size={32} className="mx-auto text-text-muted mb-2" />
+                                            <p className="text-[10px] font-bold uppercase text-text-muted">No archived activity yet.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-1">
+                                            {[...archivedEvents].sort((a, b) => b.archivedAt.localeCompare(a.archivedAt)).map(event => {
+                                                let tsDisplay = '';
+                                                try {
+                                                    const d = new Date(event.timestamp);
+                                                    tsDisplay = isNaN(d.getTime()) ? event.timestamp : format(d, 'MMM d, h:mm a');
+                                                } catch { tsDisplay = event.timestamp; }
+                                                const typeColors: Record<string, string> = {
+                                                    assignment: 'border-l-accent-gold',
+                                                    work_order: 'border-l-border-main',
+                                                    log: 'border-l-brand-red',
+                                                    invoice: 'border-l-text-green',
+                                                    site_request: 'border-l-text-muted',
+                                                };
+                                                return (
+                                                    <div key={event.id} className={cn(
+                                                        'flex items-start gap-4 p-3 rounded-lg border border-border-sub border-l-4 bg-bg-secondary hover:bg-bg-tertiary transition-colors group',
+                                                        typeColors[event.type] || 'border-l-border-sub'
+                                                    )}>
+                                                        <div className="w-[120px] shrink-0 text-right">
+                                                            <p className="text-[9px] font-mono text-text-muted leading-tight">{tsDisplay}</p>
+                                                        </div>
+                                                        <div className="flex-1 min-w-0 text-left">
+                                                            <p className={cn('text-[10px] font-black uppercase tracking-wide', event.color)}>{event.eventLabel}</p>
+                                                            <p className="text-[11px] font-bold text-text-primary leading-tight mt-0.5 truncate">{event.entity}</p>
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                {event.techName && <span className="text-[9px] text-text-muted uppercase font-bold">{event.techName}</span>}
+                                                                {event.techName && event.clientName && <span className="text-text-muted text-[9px]">·</span>}
+                                                                {event.clientName && <span className="text-[9px] text-text-muted uppercase">{event.clientName}</span>}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 shrink-0">
+                                                            <Badge variant="outline" className="text-[7px] uppercase h-4">{event.type.replace('_', ' ')}</Badge>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-6 px-2 text-[9px] uppercase font-bold text-text-muted hover:text-text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                onClick={() => handleRestoreEvent(event.id)}
+                                                            >
+                                                                <RotateCcw size={10} className="mr-1" />Restore
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </TabsContent>
+
                         </div>
                     </Tabs>
                 ) : (
@@ -1427,12 +1549,32 @@ export default function ActivityAuditPage() {
                 )}
             </div>
 
-            <JobDetailDialog 
-                isOpen={isJobOpen} 
-                setIsOpen={setIsJobOpen} 
-                mission={selectedJob} 
+            <JobDetailDialog
+                isOpen={isJobOpen}
+                setIsOpen={setIsJobOpen}
+                mission={selectedJob}
                 onUpdate={handleJobUpdate}
             />
+
+            <AlertDialog open={!!deleteConfirmId} onOpenChange={open => { if (!open) setDeleteConfirmId(null); }}>
+                <AlertDialogContent className="bg-bg-elevated border-border-main">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-text-primary uppercase font-black tracking-wide text-sm">Delete Assignment?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-text-muted text-[11px]">
+                            This will permanently remove assignment <span className="font-bold text-text-primary">{deleteConfirmId?.toUpperCase()}</span> from the system. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="text-[10px] uppercase font-bold">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] uppercase font-bold"
+                            onClick={() => deleteConfirmId && executeDeleteAssignment(deleteConfirmId)}
+                        >
+                            <Trash2 size={12} className="mr-1.5" />Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
             
             <style jsx global>{`
                 .tab-trigger-activity {

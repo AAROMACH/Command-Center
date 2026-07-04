@@ -89,10 +89,10 @@ function fmtDate(iso: string | null | undefined, withTime = false) {
   } catch { return iso; }
 }
 
-function mapSource(raw?: string): 'App' | 'Google Form' | 'Manual' {
+function mapSource(raw?: string): 'App' | 'Form' | 'Manual' {
   if (!raw) return 'App';
   const l = raw.toLowerCase();
-  if (l.includes('google') || l.includes('public') || l.includes('form')) return 'Google Form';
+  if (l.includes('public') || l.includes('form')) return 'Form';
   if (l.includes('manual') || l.includes('admin')) return 'Manual';
   return 'App';
 }
@@ -115,7 +115,7 @@ type NormalizedItem = {
   contactName: string;
   phone: string;
   email: string;
-  source: 'App' | 'Google Form' | 'Manual';
+  source: 'App' | 'Form' | 'Manual';
   date: string;
   description: string;
   status: string;
@@ -355,7 +355,7 @@ function RequestDetailSheet({
               disabled={acting}
               onClick={async () => { setActing(true); await onReject(item); setActing(false); }}
             >
-              <XCircle size={12} className="mr-1.5" />Reject
+              <XCircle size={12} className="mr-1.5" />{item.kind === 'access' || item.kind === 'personnel' ? 'Deny' : 'Reject'}
             </Button>
             <Button
               size="sm"
@@ -365,14 +365,16 @@ function RequestDetailSheet({
             >
               <CheckCircle2 size={12} className="mr-1.5" />Approve
             </Button>
-            <Button
-              size="sm"
-              className="flex-1 h-9 text-[9px] font-bold uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white"
-              disabled={acting}
-              onClick={() => onConvert(item)}
-            >
-              <Briefcase size={12} className="mr-1.5" />Convert to Job
-            </Button>
+            {(item.kind === 'service' || item.kind === 'client') && (
+              <Button
+                size="sm"
+                className="flex-1 h-9 text-[9px] font-bold uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={acting}
+                onClick={() => onConvert(item)}
+              >
+                <Briefcase size={12} className="mr-1.5" />Convert to Job
+              </Button>
+            )}
           </div>
         )}
       </SheetContent>
@@ -1205,14 +1207,16 @@ function ClientIntakeTab({ requests, siteReqs, viewMode = 'grid' }: {
                   <p className="text-[12px] text-text-primary leading-relaxed">{selected.currentPainPoints}</p>
                 </div>
               )}
-              <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Service Interests</p>
-                <div className="flex flex-wrap gap-1">
-                  {selected.serviceInterests.map(t => (
-                    <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-bg-tertiary border border-border-sub text-text-secondary font-medium">{t}</span>
-                  ))}
+              {(selected.serviceInterests?.length ?? 0) > 0 && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Service Interests</p>
+                  <div className="flex flex-wrap gap-1">
+                    {(selected.serviceInterests || []).map(t => (
+                      <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-bg-tertiary border border-border-sub text-text-secondary font-medium">{t}</span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="space-y-1.5">
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Internal Notes</p>
                 <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Internal notes..."
@@ -1271,7 +1275,7 @@ export default function RequestsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'urgent' | 'normal' | 'low'>('all');
-  const [sourceFilter, setSourceFilter] = useState<'all' | 'App' | 'Google Form' | 'Manual'>('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'App' | 'Form' | 'Manual'>('all');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'priority'>('newest');
 
   // Detail sheet (All tab)
@@ -1577,7 +1581,7 @@ export default function RequestsPage() {
               options={[
                 { value: 'all', label: 'All' },
                 { value: 'App', label: 'App' },
-                { value: 'Google Form', label: 'Google Form' },
+                { value: 'Form', label: 'Form' },
                 { value: 'Manual', label: 'Manual' },
               ]}
             />

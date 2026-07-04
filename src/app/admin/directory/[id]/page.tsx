@@ -343,13 +343,25 @@ export default function DirectoryPersonPage() {
         <Button variant="ghost" size="sm" onClick={() => router.push('/admin/directory')} className="h-8 text-[10px] uppercase font-bold text-text-muted">
           <ArrowLeft size={14} className="mr-2" /> Directory
         </Button>
-        <Button
-          size="sm"
-          onClick={() => setIsEditOpen(true)}
-          className="h-8 text-[10px] font-black uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white"
-        >
-          <Pencil size={11} className="mr-1.5" /> Edit Profile
-        </Button>
+        <div className="flex items-center gap-2">
+          {isClient && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => router.push(`/admin/clients/${id}`)}
+              className="h-8 text-[10px] font-black uppercase tracking-wider border-border-main"
+            >
+              <Briefcase size={11} className="mr-1.5" /> Client Page
+            </Button>
+          )}
+          <Button
+            size="sm"
+            onClick={() => setIsEditOpen(true)}
+            className="h-8 text-[10px] font-black uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white"
+          >
+            <Pencil size={11} className="mr-1.5" /> Edit Profile
+          </Button>
+        </div>
       </div>
 
       {/* Profile hero */}
@@ -400,7 +412,7 @@ export default function DirectoryPersonPage() {
               <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">{stat.label}</p>
               <p className={cn('text-[11px] font-bold font-mono mt-0.5 capitalize', stat.color)}>{stat.value}</p>
             </div>
-          )) : [
+          )) : isTech ? [
             { label: 'Active Jobs', value: activeJobs.length, color: 'text-text-amber' },
             { label: 'Completed', value: completedJobs.length, color: 'text-text-green' },
           ].map(stat => (
@@ -408,7 +420,7 @@ export default function DirectoryPersonPage() {
               <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">{stat.label}</p>
               <p className={cn('text-lg font-bold font-mono mt-0.5', stat.color)}>{stat.value}</p>
             </div>
-          ))}
+          )) : null}
         </div>
       </div>
 

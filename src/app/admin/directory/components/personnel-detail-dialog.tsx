@@ -134,7 +134,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
 
   useEffect(() => {
     if (!isOpen || !person?.id) return;
-    const q = collection(db, 'users', person.id, 'notes');
+    const q = collection(db, 'users', person.id, 'techNotes');
     const unsub = onSnapshot(q, (snap) => {
       const sorted = snap.docs
         .map(d => ({ ...d.data(), id: d.id } as PersonnelNote))
@@ -148,7 +148,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
     if (!newNoteText.trim() || !person?.id) return;
     setIsSavingNote(true);
     try {
-      await addDoc(collection(db, 'users', person.id, 'notes'), {
+      await addDoc(collection(db, 'users', person.id, 'techNotes'), {
         text: newNoteText.trim(),
         author: 'Admin',
         createdAt: new Date().toISOString(),

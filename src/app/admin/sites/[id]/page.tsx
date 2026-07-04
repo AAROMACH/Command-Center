@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { db } from '@/lib/firebase';
-import { doc, onSnapshot, collection, query, where, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-import type { Site, SiteNote, WorkOrder } from '@/lib/types';
+import { doc, onSnapshot, collection, query, where, addDoc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
+import type { Site, SiteNote, WorkOrder, Technician } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,9 @@ export default function SiteDetailPage() {
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Site>>({});
   const [isEditing, setIsEditing] = useState(false);
+  const [clientUser, setClientUser] = useState<Technician | null>(null);
+  const [plans, setPlans] = useState<{ id: string; name: string }[]>([]);
+  const [subSaving, setSubSaving] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -57,6 +60,25 @@ export default function SiteDetailPage() {
 
     return () => { unsubSite(); unsubWO(); unsubNotes(); };
   }, [siteId]);
+
+  useEffect(() => {
+    if (!site) return;
+    const lookupId = (site as any).clientId || '';
+    const lookupName = site.clientName || '';
+    const unsubClient = onSnapshot(collection(db, 'users'), snap => {
+      const users = snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician));
+      const found = users.find(u =>
+        (lookupId && u.id === lookupId) ||
+        (lookupName && (u.clientCompany === lookupName || u.name === lookupName)) ||
+        u.roles?.includes('client')
+      );
+      setClientUser(found || null);
+    });
+    const unsubPlans = onSnapshot(collection(db, 'plans'), snap => {
+      setPlans(snap.docs.map(d => ({ id: d.id, name: (d.data() as any).name || d.id })));
+    });
+    return () => { unsubClient(); unsubPlans(); };
+  }, [site?.clientName, (site as any)?.clientId]);
 
   const totalPay = useMemo(() =>
     workOrders.filter(wo => wo.status === 'completed').reduce((sum, wo) => sum + (wo.finalPay || wo.pay || 0), 0),
@@ -96,6 +118,19 @@ export default function SiteDetailPage() {
       await deleteDoc(doc(db, 'sites', siteId, 'notes', noteId));
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Failed to delete note' });
+    }
+  };
+
+  const handleSubUpdate = async (updates: { subscriptionStatus?: string; planId?: string }) => {
+    if (!clientUser) return;
+    setSubSaving(true);
+    try {
+      await updateDoc(doc(db, 'users', clientUser.id), updates);
+      toast({ title: 'Subscription updated' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Failed to update subscription', description: e.message });
+    } finally {
+      setSubSaving(false);
     }
   };
 
@@ -230,6 +265,54 @@ export default function SiteDetailPage() {
               <InfoRow icon={MapPin} label="Location" value={site.location} />
               {site.managerName && <InfoRow icon={User} label="Site Manager" value={site.managerName} />}
               {site.managerPhone && <InfoRow icon={Phone} label="Manager Phone" value={site.managerPhone} />}
+            </div>
+          )}
+
+          {/* Subscription card */}
+          {clientUser && (
+            <div className="bg-bg-secondary border border-border-sub rounded-xl p-4 space-y-3">
+              <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Subscription</p>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant={clientUser.subscriptionStatus === 'active' ? 'active' : clientUser.subscriptionStatus === 'pending' ? 'scheduled' : 'outline'}
+                    className="text-[8px] h-5 px-2 capitalize"
+                  >
+                    {clientUser.subscriptionStatus || 'none'}
+                  </Badge>
+                  <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Status</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={subSaving}
+                  onClick={() => {
+                    const cycle: Record<string, string> = { active: 'pending', pending: 'none', none: 'active' };
+                    const next = cycle[clientUser.subscriptionStatus || 'none'] || 'active';
+                    handleSubUpdate({ subscriptionStatus: next });
+                  }}
+                  className="h-6 text-[9px] font-black uppercase tracking-widest px-2"
+                >
+                  Toggle
+                </Button>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Plan</p>
+                <Select
+                  value={clientUser.planId || ''}
+                  onValueChange={v => handleSubUpdate({ planId: v })}
+                  disabled={subSaving || plans.length === 0}
+                >
+                  <SelectTrigger className="h-9 text-[11px] bg-bg-primary border-border-main">
+                    <SelectValue placeholder={plans.length === 0 ? 'Loading plans...' : 'No plan assigned'} />
+                  </SelectTrigger>
+                  <SelectContent className="bg-bg-elevated border-border-main">
+                    {plans.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           )}
         </div>

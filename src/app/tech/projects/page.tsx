@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import type { Project, Technician } from '@/lib/types';
-import { Briefcase, Search } from 'lucide-react';
+import { Briefcase, Search, LayoutList, LayoutGrid } from 'lucide-react';
 import { ProjectsClient } from './components/projects-client';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
@@ -12,6 +12,7 @@ export default function TechProjectsPage() {
     const [allProjects, setAllProjects] = useState<Project[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
     useEffect(() => {
         const userId = sessionStorage.getItem('currentUserId');
@@ -74,12 +75,20 @@ export default function TechProjectsPage() {
                 <div className="page-header-right">
                     <div className="search-wrap">
                         <Search />
-                        <input 
-                            className="search-input !w-full md:!w-[250px]" 
-                            placeholder="Search projects..." 
+                        <input
+                            className="search-input !w-full md:!w-[250px]"
+                            placeholder="Search projects..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
+                    </div>
+                    <div className="flex items-center border border-border-main rounded-md overflow-hidden h-9">
+                        <button onClick={() => setViewMode('grid')} className={`px-2.5 h-full flex items-center transition-colors ${viewMode === 'grid' ? 'bg-brand-red text-white' : 'bg-bg-secondary text-text-muted hover:text-text-primary'}`}>
+                            <LayoutGrid size={13} />
+                        </button>
+                        <button onClick={() => setViewMode('list')} className={`px-2.5 h-full flex items-center border-l border-border-main transition-colors ${viewMode === 'list' ? 'bg-brand-red text-white' : 'bg-bg-secondary text-text-muted hover:text-text-primary'}`}>
+                            <LayoutList size={13} />
+                        </button>
                     </div>
                 </div>
             </header>
@@ -98,13 +107,13 @@ export default function TechProjectsPage() {
                 </TabsList>
                 
                 <TabsContent value="active" className="mt-0">
-                    <ProjectsClient projects={activeProjects} technicians={technicians} />
+                    <ProjectsClient projects={activeProjects} technicians={technicians} viewMode={viewMode} />
                 </TabsContent>
                 <TabsContent value="on-hold" className="mt-0">
-                    <ProjectsClient projects={onHoldProjects} technicians={technicians} />
+                    <ProjectsClient projects={onHoldProjects} technicians={technicians} viewMode={viewMode} />
                 </TabsContent>
                 <TabsContent value="completed" className="mt-0">
-                    <ProjectsClient projects={completedProjects} technicians={technicians} />
+                    <ProjectsClient projects={completedProjects} technicians={technicians} viewMode={viewMode} />
                 </TabsContent>
             </Tabs>
         </div>

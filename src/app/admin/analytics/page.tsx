@@ -31,6 +31,7 @@ export default function FieldIntelligencePage() {
     const [intelEventType, setIntelEventType] = useState('all');
     const [intelPersonnel, setIntelPersonnel] = useState('all');
     const [intelClient, setIntelClient] = useState('all');
+    const [timeWindow, setTimeWindow] = useState<'7d' | '30d' | '90d' | '1y' | 'all'>('30d');
 
     useEffect(() => {
         const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
@@ -242,9 +243,21 @@ export default function FieldIntelligencePage() {
                                 ))}
                             </SelectContent>
                         </Select>
-                        {(intelEventType !== 'all' || intelPersonnel !== 'all' || intelClient !== 'all') && (
+                        <Select value={timeWindow} onValueChange={(v: any) => setTimeWindow(v)}>
+                            <SelectTrigger className="h-8 w-[160px] bg-bg-primary border-border-main text-[10px] font-bold uppercase">
+                                <SelectValue placeholder="Time Window" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-bg-elevated border-border-main">
+                                <SelectItem value="7d" className="text-[10px] font-bold uppercase">Past Week</SelectItem>
+                                <SelectItem value="30d" className="text-[10px] font-bold uppercase">Past Month</SelectItem>
+                                <SelectItem value="90d" className="text-[10px] font-bold uppercase">Past 3 Months</SelectItem>
+                                <SelectItem value="1y" className="text-[10px] font-bold uppercase">Past Year</SelectItem>
+                                <SelectItem value="all" className="text-[10px] font-bold uppercase">All Time</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        {(intelEventType !== 'all' || intelPersonnel !== 'all' || intelClient !== 'all' || timeWindow !== '30d') && (
                             <button
-                                onClick={() => { setIntelEventType('all'); setIntelPersonnel('all'); setIntelClient('all'); }}
+                                onClick={() => { setIntelEventType('all'); setIntelPersonnel('all'); setIntelClient('all'); setTimeWindow('30d'); }}
                                 className="h-8 px-3 text-[9px] font-black uppercase tracking-widest text-brand-red hover:underline"
                             >
                                 Clear
@@ -256,7 +269,7 @@ export default function FieldIntelligencePage() {
                             {intelClient !== 'all' && <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border border-amber-400/30 bg-amber-400/10 text-amber-400">{clientList.find(c => c.id === intelClient)?.clientCompany || intelClient}</span>}
                         </div>
                     </div>
-                    <IntelligenceTerminal />
+                    <IntelligenceTerminal timeWindow={timeWindow} />
                 </TabsContent>
 
                 <TabsContent value="flags" className="m-0">

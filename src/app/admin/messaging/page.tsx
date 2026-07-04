@@ -269,8 +269,22 @@ export default function AdminMessagingPage() {
     }
   };
 
-  const adminTechs = technicians.filter(t => !t.roles?.includes('client') && t.id !== currentUser?.id);
-  const clientContacts = technicians.filter(t => t.roles?.includes('client'));
+  const allowedRoles = currentUser?.messagingAllowedRoles || 'all';
+  const adminTechs = technicians.filter(t => {
+    if (!t.roles?.includes('client') && t.id !== currentUser?.id) {
+      if (allowedRoles === 'clients') return false;
+      if (allowedRoles === 'none') return false;
+      if (allowedRoles === 'admins') return t.roles?.includes('super_admin') || t.roles?.includes('dispatch_admin');
+      if (allowedRoles === 'techs') return t.roles?.includes('field_technician') || t.roles?.includes('project_lead');
+      return true;
+    }
+    return false;
+  });
+  const clientContacts = technicians.filter(t => {
+    if (!t.roles?.includes('client')) return false;
+    if (allowedRoles === 'none' || allowedRoles === 'admins' || allowedRoles === 'techs') return false;
+    return true;
+  });
 
   return (
     <div className="space-y-5">

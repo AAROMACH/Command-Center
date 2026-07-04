@@ -81,19 +81,19 @@ const adminNavGroups: NavGroup[] = [
     ],
   },
   {
+    label: "People & Communication",
+    items: [
+      { href: "/admin/directory", label: "Directory", icon: Users,         permission: "admin.directory.view" },
+      { href: "/admin/messaging", label: "Messages",  icon: MessageSquare, permission: "admin.messages.view" },
+    ],
+  },
+  {
     label: "Sales & Clients",
     items: [
       { href: "/admin/crm",    label: "CRM",           icon: Target,     permission: "admin.crm.view" },
       { href: "/admin/plans",  label: "Service Plans", icon: BookOpen,   permission: "admin.reports.view" },
       { href: "/admin/sites",  label: "Clients",       icon: Building2,  permission: "admin.clients.view" },
       { href: "/admin/quotes", label: "Quotes",        icon: FileSearch, permission: "admin.crm.view" },
-    ],
-  },
-  {
-    label: "People & Communication",
-    items: [
-      { href: "/admin/directory", label: "Directory", icon: Users,         permission: "admin.directory.view" },
-      { href: "/admin/messaging", label: "Messages",  icon: MessageSquare, permission: "admin.messages.view" },
     ],
   },
   {

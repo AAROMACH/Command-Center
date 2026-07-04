@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   ChevronLeft, ChevronRight, Users, Filter, Clock, MapPin,
   X, Building2, DollarSign, Download, Calendar as CalendarIcon,
-  Phone, Mail, Check, AlertTriangle, Loader2, UserCheck,
+  Phone, Mail, Check, AlertTriangle, Loader2, UserCheck, Maximize2, Minimize2,
 } from 'lucide-react';
 import {
   format, addMonths, subMonths, startOfMonth, endOfMonth,
@@ -129,6 +129,7 @@ export default function AdminCalendarPage() {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [drawerJob, setDrawerJob]         = useState<JobWithSrc | null>(null);
   const [mobileTab, setMobileTab]         = useState<'calendar' | 'map' | 'list'>('calendar');
+  const [isMapExpanded, setIsMapExpanded] = useState(false);
   const [dismissTarget, setDismissTarget] = useState<JobWithSrc | null>(null);
   const [dismissing, setDismissing]       = useState(false);
   const [showAssignPanel, setShowAssignPanel] = useState(false);
@@ -496,14 +497,22 @@ export default function AdminCalendarPage() {
 
           {/* LEFT: Map */}
           <div className={cn(
-            'w-[360px] shrink-0 border-r border-border-sub flex flex-col overflow-hidden',
+            'shrink-0 border-r border-border-sub flex flex-col overflow-hidden transition-all duration-300',
+            isMapExpanded ? 'md:w-[600px]' : 'md:w-[360px]',
             mobileTab === 'map' ? 'flex-1 w-full' : (mobileTab !== 'calendar' ? 'hidden md:flex' : 'hidden md:flex'),
           )}>
             <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-sub shrink-0">
               <MapPin size={10} className="text-brand-red" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex-1">
                 {format(selectedDate, 'EEE, MMM d')} — {selectedDateJobs.length} job{selectedDateJobs.length !== 1 ? 's' : ''}
               </span>
+              <button
+                onClick={() => setIsMapExpanded(v => !v)}
+                className="text-text-muted hover:text-text-primary transition-colors hidden md:flex"
+                title={isMapExpanded ? 'Collapse map' : 'Expand map'}
+              >
+                {isMapExpanded ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
+              </button>
             </div>
             <div className="flex-1 relative overflow-hidden">
               {selectedDateJobs.length > 0 ? (
@@ -527,6 +536,7 @@ export default function AdminCalendarPage() {
             'flex-1 min-w-0 flex flex-col overflow-hidden',
             mobileTab === 'list' ? 'w-full' : (mobileTab !== 'calendar' ? 'hidden md:flex' : 'hidden md:flex'),
             drawerJob && 'border-r border-border-sub',
+            isMapExpanded && 'md:hidden',
           )}>
             <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-sub shrink-0">
               <span className="text-[11px] font-medium text-text-primary flex-1">

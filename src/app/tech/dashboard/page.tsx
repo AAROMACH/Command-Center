@@ -311,21 +311,21 @@ export default function TechDashboardPage() {
                 <Card className="bg-bg-secondary border-border-sub">
                     <CardContent className="p-3 space-y-1">
                         <div className="flex items-center justify-between">
-                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Reliability</p>
-                            <ShieldCheck size={12} className="text-brand-red" />
-                        </div>
-                        <p className="text-2xl font-mono font-bold text-text-primary">{tech.reliabilityScore ?? 100}</p>
-                        <p className="text-[8px] text-text-muted uppercase tracking-widest">/ 100 score</p>
-                    </CardContent>
-                </Card>
-                <Card className="bg-bg-secondary border-border-sub">
-                    <CardContent className="p-3 space-y-1">
-                        <div className="flex items-center justify-between">
                             <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Logs Pending</p>
                             <TrendingUp size={12} className="text-accent-gold" />
                         </div>
                         <p className="text-2xl font-mono font-bold text-text-primary">{unsubmittedLogs.length}</p>
                         <p className="text-[8px] text-text-muted uppercase tracking-widest">Draft weekly logs</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-bg-secondary border-border-sub">
+                    <CardContent className="p-3 space-y-1">
+                        <div className="flex items-center justify-between">
+                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Reliability</p>
+                            <ShieldCheck size={12} className="text-brand-red" />
+                        </div>
+                        <p className="text-2xl font-mono font-bold text-text-primary">{tech.reliabilityScore ?? 100}</p>
+                        <p className="text-[8px] text-text-muted uppercase tracking-widest">/ 100 score</p>
                     </CardContent>
                 </Card>
             </div>
@@ -417,25 +417,23 @@ export default function TechDashboardPage() {
                 <div className="w-full lg:w-[300px] shrink-0 space-y-4">
 
                     {/* Quick actions */}
-                    <div className="grid grid-cols-2 gap-2">
-                        <Button variant="outline" className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-brand-red hover:bg-brand-red-dim/10 transition-all" onClick={() => setIsCheckInDialogOpen(true)}>
+                    <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button variant="outline" className="h-14 flex-col gap-1.5 relative bg-bg-secondary border-border-main hover:border-text-green hover:bg-green-dim/10 transition-all" onClick={() => setIsLogSelectionOpen(true)}>
+                                <ClipboardList size={18} className="text-text-green" />
+                                <span className="text-[9px] font-bold uppercase tracking-wider">Submit Log</span>
+                                {unsubmittedLogs.length > 0 && (
+                                    <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[8px] bg-brand-red">{unsubmittedLogs.length}</Badge>
+                                )}
+                            </Button>
+                            <Button variant="outline" className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-accent-gold hover:bg-accent-gold-dim/10 transition-all" onClick={() => setIsReceiptDialogOpen(true)}>
+                                <Receipt size={18} className="text-accent-gold" />
+                                <span className="text-[9px] font-bold uppercase tracking-wider">Receipt</span>
+                            </Button>
+                        </div>
+                        <Button variant="outline" className="w-full h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-brand-red hover:bg-brand-red-dim/10 transition-all" onClick={() => setIsCheckInDialogOpen(true)}>
                             <Play size={18} className="text-brand-red" />
                             <span className="text-[9px] font-bold uppercase tracking-wider">Check In</span>
-                        </Button>
-                        <Button variant="outline" className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-blue-500 hover:bg-blue-500/5 transition-all" onClick={() => router.push('/tech/assignments')}>
-                            <MapIcon size={18} className="text-blue-400" />
-                            <span className="text-[9px] font-bold uppercase tracking-wider">Job Map</span>
-                        </Button>
-                        <Button variant="outline" className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-accent-gold hover:bg-accent-gold-dim/10 transition-all" onClick={() => setIsReceiptDialogOpen(true)}>
-                            <Receipt size={18} className="text-accent-gold" />
-                            <span className="text-[9px] font-bold uppercase tracking-wider">Receipt</span>
-                        </Button>
-                        <Button variant="outline" className="h-14 flex-col gap-1.5 relative bg-bg-secondary border-border-main hover:border-text-green hover:bg-green-dim/10 transition-all" onClick={() => setIsLogSelectionOpen(true)}>
-                            <ClipboardList size={18} className="text-text-green" />
-                            <span className="text-[9px] font-bold uppercase tracking-wider">Submit Log</span>
-                            {unsubmittedLogs.length > 0 && (
-                                <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[8px] bg-brand-red">{unsubmittedLogs.length}</Badge>
-                            )}
                         </Button>
                     </div>
 

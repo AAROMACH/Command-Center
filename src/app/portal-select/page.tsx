@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { auth, db } from '@/lib/firebase';
@@ -43,6 +43,7 @@ const PORTAL_META = {
 export default function PortalSelectPage() {
   const router = useRouter();
   const logo = PlaceHolderImages.find(img => img.id === 'app-logo');
+  const [userData, setUserData] = useState<Technician | null>(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
@@ -56,6 +57,7 @@ export default function PortalSelectPage() {
         return;
       }
       const user = { ...snap.data(), id: snap.id } as Technician;
+      setUserData(user);
       const portals = getAvailablePortals(user);
       if (portals.length === 0) {
         router.push('/pending-approval');
@@ -100,11 +102,10 @@ export default function PortalSelectPage() {
     router.push('/login');
   };
 
-  const availablePortals = [
-    { id: 'admin' as const, path: '/admin/dashboard' },
-    { id: 'tech' as const, path: '/tech/dashboard' },
-    { id: 'client' as const, path: '/client/dashboard' },
-  ];
+  const availablePortals = useMemo(
+    () => userData ? getAvailablePortals(userData) : [],
+    [userData]
+  );
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-bg-primary p-6">

@@ -144,7 +144,7 @@ export default function ClientDashboardPage() {
 
     const invoicePie = useMemo(() => {
         const paid = myInvoices.filter(i => i.status === 'paid').length;
-        const pending = myInvoices.filter(i => i.status === 'pending' || i.status === 'sent').length;
+        const pending = myInvoices.filter(i => i.status === 'sent' || i.status === 'draft').length;
         const overdue = myInvoices.filter(i => i.status === 'overdue').length;
         return [
             { name: 'Paid', value: paid, color: '#1f8a55' },

@@ -284,6 +284,11 @@ export type Task = {
   requiresOther?: boolean;
   otherRequirementLabel?: string;
   estimatedHours?: number;
+  photoUrl?: string;
+  textValue?: string;
+  numericValue?: number;
+  fileUrl?: string;
+  signatureUrl?: string;
 };
 
 export type ProjectDailyLog = {

@@ -316,6 +316,9 @@ export function DispatchPageClient() {
               <p className="page-subtitle text-left">Unified terminal for client requests and logistical job routing.</p>
             </div>
             <div className="flex items-center gap-3">
+                {activeMasterTab !== 'assignments' && (
+                  <Button variant="outline" onClick={() => setIsNewRequestOpen(true)} className="h-10 px-4 text-[10px] uppercase font-bold tracking-widest border-border-main">+ New Service Request</Button>
+                )}
                 {activeMasterTab !== 'requests' && (
                   <>
                     <Button variant="outline" onClick={() => setIsImportDialogOpen(true)} className="h-10 px-4 text-[10px] uppercase font-bold tracking-widest border-border-main"><ImportIcon size={14} className="mr-2"/>Import Jobs</Button>

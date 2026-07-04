@@ -288,7 +288,7 @@ export default function TechDashboardPage() {
 
             {/* Stat cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Card className="bg-bg-secondary border-border-sub">
+                <Card className="bg-bg-secondary border-border-sub cursor-pointer hover:border-border-main transition-all" onClick={() => router.push('/tech/assignments')}>
                     <CardContent className="p-3 space-y-1">
                         <div className="flex items-center justify-between">
                             <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Jobs This Week</p>
@@ -298,7 +298,7 @@ export default function TechDashboardPage() {
                         <p className="text-[8px] text-text-muted uppercase tracking-widest">{allWorkOrders.length} total assigned</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-bg-secondary border-border-sub">
+                <Card className="bg-bg-secondary border-border-sub cursor-pointer hover:border-border-main transition-all" onClick={() => router.push('/tech/calendar')}>
                     <CardContent className="p-3 space-y-1">
                         <div className="flex items-center justify-between">
                             <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Expected Pay</p>
@@ -308,7 +308,7 @@ export default function TechDashboardPage() {
                         <p className="text-[8px] text-text-muted uppercase tracking-widest">Pending logs</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-bg-secondary border-border-sub">
+                <Card className="bg-bg-secondary border-border-sub cursor-pointer hover:border-border-main transition-all" onClick={() => router.push('/tech/logs')}>
                     <CardContent className="p-3 space-y-1">
                         <div className="flex items-center justify-between">
                             <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Logs Pending</p>
@@ -318,7 +318,7 @@ export default function TechDashboardPage() {
                         <p className="text-[8px] text-text-muted uppercase tracking-widest">Draft weekly logs</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-bg-secondary border-border-sub">
+                <Card className="bg-bg-secondary border-border-sub cursor-pointer hover:border-border-main transition-all" onClick={() => router.push('/tech/assignments')}>
                     <CardContent className="p-3 space-y-1">
                         <div className="flex items-center justify-between">
                             <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Reliability</p>
@@ -436,41 +436,6 @@ export default function TechDashboardPage() {
                             <span className="text-[9px] font-bold uppercase tracking-wider">Check In</span>
                         </Button>
                     </div>
-
-                    {/* Reliability */}
-                    <Card className="bg-bg-secondary border-border-sub overflow-hidden">
-                        <CardContent className="p-4 space-y-3">
-                            <div className="flex items-center justify-between">
-                                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Reliability</p>
-                                <Badge variant={reliabilityTier.variant} className="text-[8px] h-4 px-1.5">{reliabilityTier.label}</Badge>
-                            </div>
-                            <p className="text-4xl font-mono font-bold text-text-primary">{tech.reliabilityScore ?? 100}<span className="text-text-muted text-lg">/100</span></p>
-                            <div className="h-1.5 rounded-full bg-border-main overflow-hidden">
-                                <div className="h-full rounded-full bg-brand-red transition-all" style={{ width: `${tech.reliabilityScore ?? 100}%` }} />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Earnings summary */}
-                    <Card className="bg-bg-secondary border-border-sub">
-                        <CardContent className="p-4 space-y-3">
-                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Earnings — Pending</p>
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Expected</span>
-                                    <span className="text-sm font-mono font-bold text-text-green">${expectedEarnings.toFixed(0)}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Draft Logs</span>
-                                    <span className="text-sm font-mono font-bold text-accent-gold">{unsubmittedLogs.length}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Jobs This Week</span>
-                                    <span className="text-sm font-mono font-bold text-text-primary">{weeklyJobCount}</span>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
 
                     {/* Pending logs */}
                     {unsubmittedLogs.length > 0 && (

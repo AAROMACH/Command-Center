@@ -4,7 +4,7 @@ import type { Technician, TimeOffRequest, ReliabilityEvent, PersonnelDocument } 
 import { penaltyEvents, timeOffRequests as initialTimeOffRequests } from '@/lib/data';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc, collection, addDoc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, collection, addDoc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { uploadAvatar, uploadFile } from '@/lib/upload';
@@ -16,7 +16,8 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
-import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, X, User, Activity, Search, CheckCircle2, Key, Loader2, Camera, FileText, Upload } from 'lucide-react';
+import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, X, User, Activity, Search, CheckCircle2, Key, Loader2, Camera, FileText, Upload, StickyNote, Bell } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -73,6 +74,12 @@ export default function TechProfilePage() {
     const [predefinedSkills, setPredefinedSkills] = useState<string[]>([]);
     const [selectedSkill, setSelectedSkill] = useState('');
 
+    const [techNotes, setTechNotes] = useState<{ id: string; text: string; createdAt: string; createdBy: string; authorName: string }[]>([]);
+    const [newNoteText, setNewNoteText] = useState('');
+    const [addingNote, setAddingNote] = useState(false);
+    const [emailAlerts, setEmailAlerts] = useState(false);
+    const [smsAlerts, setSmsAlerts] = useState(false);
+
     const [timeOffForm, setTimeOffForm] = useState({
         type: 'Vacation' as TimeOffRequest['type'],
         startDate: '',
@@ -116,6 +123,8 @@ export default function TechProfilePage() {
                     setEcName(data.emergencyContact?.name || '');
                     setEcRelation(data.emergencyContact?.relation || '');
                     setEcPhone(data.emergencyContact?.phone || '');
+                    setEmailAlerts(data.notificationPreferences?.email ?? false);
+                    setSmsAlerts(data.notificationPreferences?.sms ?? false);
                     savedSnapshotRef.current = {
                         name: data.name || '', preferredName: data.preferredName || '',
                         email: data.email || '',
@@ -128,7 +137,10 @@ export default function TechProfilePage() {
             const unsubDocs = onSnapshot(collection(db, 'users', fbUser.uid, 'documents'), snap => {
                 setDocuments(snap.docs.map(d => ({ ...d.data(), id: d.id } as PersonnelDocument)));
             });
-            return () => { unsubUser(); unsubDocs(); };
+            const unsubNotes = onSnapshot(collection(db, 'users', fbUser.uid, 'techNotes'), snap => {
+                setTechNotes(snap.docs.map(d => ({ id: d.id, ...d.data() } as { id: string; text: string; createdAt: string; createdBy: string; authorName: string })));
+            });
+            return () => { unsubUser(); unsubDocs(); unsubNotes(); };
         });
         return () => unsubAuth();
     }, []);
@@ -173,6 +185,32 @@ export default function TechProfilePage() {
         if (!currentTechId) return;
         const updated = (tech?.skills || []).filter(s => s !== skill);
         await updateDoc(doc(db, 'users', currentTechId), { skills: updated });
+    };
+
+    const handleToggleAlert = async (field: 'email' | 'sms', value: boolean) => {
+        if (!currentTechId) return;
+        if (field === 'email') setEmailAlerts(value);
+        else setSmsAlerts(value);
+        await updateDoc(doc(db, 'users', currentTechId), { [`notificationPreferences.${field}`]: value });
+    };
+
+    const handleAddNote = async () => {
+        if (!currentTechId || !newNoteText.trim()) return;
+        setAddingNote(true);
+        try {
+            await addDoc(collection(db, 'users', currentTechId, 'techNotes'), {
+                text: newNoteText.trim(),
+                createdAt: new Date().toISOString(),
+                createdBy: currentTechId,
+                authorName: tech?.name || 'Me',
+            });
+            setNewNoteText('');
+        } finally { setAddingNote(false); }
+    };
+
+    const handleDeleteNote = async (noteId: string) => {
+        if (!currentTechId) return;
+        await deleteDoc(doc(db, 'users', currentTechId, 'techNotes', noteId));
     };
 
     const handleUploadDocument = async () => {
@@ -357,10 +395,15 @@ export default function TechProfilePage() {
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <TabsList className="tabs border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-start mb-6">
                             <TabsTrigger value="identity" className="tab-trigger-plans">Identity</TabsTrigger>
-                            <TabsTrigger value="reliability" className="tab-trigger-plans">Reliability</TabsTrigger>
+                            {tech?.roles?.some(r => ['field_technician', 'project_lead'].includes(r)) && (
+                                <TabsTrigger value="reliability" className="tab-trigger-plans">Reliability</TabsTrigger>
+                            )}
                             <TabsTrigger value="documents" className="tab-trigger-plans">Documents</TabsTrigger>
-                            <TabsTrigger value="timeoff" className="tab-trigger-plans">Time Off</TabsTrigger>
+                            {tech?.roles?.some(r => ['field_technician', 'project_lead'].includes(r)) && (
+                                <TabsTrigger value="timeoff" className="tab-trigger-plans">Time Off</TabsTrigger>
+                            )}
                             <TabsTrigger value="integrations" className="tab-trigger-plans">Integrations</TabsTrigger>
+                            <TabsTrigger value="notes" className="tab-trigger-plans">Notes</TabsTrigger>
                         </TabsList>
 
                         {/* IDENTITY TAB */}
@@ -426,6 +469,29 @@ export default function TechProfilePage() {
                                             <Label className="text-[10px] uppercase font-bold text-text-muted">Phone</Label>
                                             <Input value={ecPhone} onChange={(e) => setEcPhone(e.target.value)} className="h-11 text-xs" placeholder="+1 (555) 000-0000" />
                                         </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2"><Bell size={14} className="text-brand-red" /> Assignment Alerts</CardTitle>
+                                    <CardDescription>Receive notifications when you are assigned or updated on a job.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-xs font-bold uppercase tracking-widest text-text-primary">Email Alerts</p>
+                                            <p className="text-[10px] text-text-muted">Get emailed when assigned to a new job</p>
+                                        </div>
+                                        <Switch checked={emailAlerts} onCheckedChange={v => handleToggleAlert('email', v)} />
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-xs font-bold uppercase tracking-widest text-text-primary">SMS Alerts</p>
+                                            <p className="text-[10px] text-text-muted">Get a text message when assigned to a new job</p>
+                                        </div>
+                                        <Switch checked={smsAlerts} onCheckedChange={v => handleToggleAlert('sms', v)} />
                                     </div>
                                 </CardContent>
                             </Card>
@@ -654,6 +720,69 @@ export default function TechProfilePage() {
                                     </ul>
                                 </div>
                             </div>
+                        </TabsContent>
+
+                        {/* NOTES TAB */}
+                        <TabsContent value="notes" className="m-0 space-y-4">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2"><StickyNote size={14} className="text-brand-red" /> Notes</CardTitle>
+                                    <CardDescription>Personal notes and admin-added memos about your profile.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Textarea
+                                            value={newNoteText}
+                                            onChange={e => setNewNoteText(e.target.value)}
+                                            placeholder="Add a note…"
+                                            className="text-xs min-h-[80px] bg-bg-secondary border-border-main resize-none"
+                                        />
+                                        <div className="flex justify-end">
+                                            <Button
+                                                size="sm"
+                                                onClick={handleAddNote}
+                                                disabled={!newNoteText.trim() || addingNote}
+                                                className="text-[10px] font-black uppercase tracking-widest h-8"
+                                            >
+                                                <Plus size={12} className="mr-1" /> {addingNote ? 'Adding…' : 'Add Note'}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    {techNotes.length === 0 ? (
+                                        <p className="text-[10px] text-text-muted text-center py-6 italic">No notes yet.</p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {[...techNotes].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(note => {
+                                                const isOwn = note.createdBy === currentTechId;
+                                                let dateStr = '';
+                                                try { dateStr = format(parseISO(note.createdAt), 'MM/dd/yyyy h:mm a'); } catch {}
+                                                return (
+                                                    <div key={note.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary space-y-1">
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">{note.authorName}</span>
+                                                                {!isOwn && <Badge variant="outline" className="text-[7px] h-3.5 px-1 uppercase">Admin</Badge>}
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[8px] font-mono text-text-muted">{dateStr}</span>
+                                                                {isOwn && (
+                                                                    <button
+                                                                        onClick={() => handleDeleteNote(note.id)}
+                                                                        className="text-text-muted hover:text-brand-red transition-colors"
+                                                                    >
+                                                                        <X size={10} />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <p className="text-[11px] text-text-secondary leading-relaxed whitespace-pre-wrap">{note.text}</p>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
                         </TabsContent>
                     </Tabs>
                 </div>

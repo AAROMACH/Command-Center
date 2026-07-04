@@ -58,6 +58,7 @@ export default function AdminMessagingPage() {
     body: '',
     isLocked: false,
   });
+  const [contactFilter, setContactFilter] = useState<'all' | 'admins' | 'techs' | 'clients'>('all');
   const [dmImageUrl, setDmImageUrl] = useState<string | null>(null);
   const [projectImageUrl, setProjectImageUrl] = useState<string | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
@@ -369,14 +370,34 @@ export default function AdminMessagingPage() {
         <div className="flex gap-4 h-[calc(100vh-280px)] min-h-[400px]">
           {/* User list */}
           <div className="w-56 shrink-0 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex flex-col">
+            <div className="px-2 py-2 border-b border-border-sub shrink-0">
+              <Select value={contactFilter} onValueChange={(v) => setContactFilter(v as typeof contactFilter)}>
+                <SelectTrigger className="h-7 text-[9px] font-bold uppercase tracking-widest bg-bg-tertiary border-border-sub">
+                  <SelectValue placeholder="All Contacts" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="admins">Admins</SelectItem>
+                  <SelectItem value="techs">Techs</SelectItem>
+                  <SelectItem value="clients">Clients</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <ScrollArea className="flex-1">
               <div className="p-1.5">
                 {/* Team group */}
+                {(contactFilter === 'all' || contactFilter === 'admins' || contactFilter === 'techs') && (
                 <div className="px-2 py-1.5">
                   <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Team</p>
                 </div>
+                )}
                 <div className="space-y-0.5 mb-2">
-                  {adminTechs.map(t => {
+                  {adminTechs.filter(t => {
+                    if (contactFilter === 'admins') return t.roles?.includes('super_admin') || t.roles?.includes('dispatch_admin');
+                    if (contactFilter === 'techs') return t.roles?.includes('field_technician') || t.roles?.includes('project_lead');
+                    if (contactFilter === 'clients') return false;
+                    return true;
+                  }).map(t => {
                     const hasUnread = directMessages.some(m => m.senderId === t.id && m.receiverId === currentUser?.id && !m.read);
                     return (
                       <button
@@ -399,7 +420,7 @@ export default function AdminMessagingPage() {
                   })}
                 </div>
                 {/* Clients group */}
-                {clientContacts.length > 0 && (
+                {clientContacts.length > 0 && (contactFilter === 'all' || contactFilter === 'clients') && (
                   <>
                     <div className="h-px bg-border-sub mx-2 mb-2" />
                     <div className="px-2 py-1.5">

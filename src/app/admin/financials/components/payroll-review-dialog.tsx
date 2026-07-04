@@ -476,7 +476,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </Button>
                                                     </div>
                                                     
-                                                    <div className="flex-1 flex items-center justify-between gap-8">
+                                                    <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                                         <div className="min-w-0 text-left">
                                                             <div className="flex items-center gap-2 text-left">
                                                                 <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
@@ -491,9 +491,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             </div>
                                                         </div>
 
-                                                        <div className="shrink-0" onClick={e => e.stopPropagation()}>
+                                                        <div className="shrink-0 sm:min-w-[220px]" onClick={e => e.stopPropagation()}>
                                                             {isImported && wo ? (
-                                                                <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
+                                                                <div className="border-t sm:border-t-0 sm:border-l border-border-sub/40 sm:pl-3 pt-2 sm:pt-0">
+                                                                    <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
+                                                                </div>
                                                             ) : (
                                                                 <div className="flex items-center gap-6 p-2 rounded bg-bg-tertiary/30 border border-border-sub/50">
                                                                     <div className="text-left">

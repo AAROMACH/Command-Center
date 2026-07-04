@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, getDocs, setDoc } from 'firebase/firestore';
 import { makeProjectPayoutId } from '@/lib/doc-ids';
+import { createDocId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import type { ProjectPayout, ProjectDailyLog, Technician } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -110,6 +112,59 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
     logIds: string[];
   }[];
 
+  async function pushPayoutToWeeklyLog(techId: string, payoutId: string, payoutData: { projectId: string; amount: number; notes?: string }) {
+    const today = new Date();
+    const dow = today.getDay();
+    const daysToMonday = dow === 0 ? 6 : dow - 1;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - daysToMonday);
+    const mm = String(monday.getMonth() + 1).padStart(2, '0');
+    const dd = String(monday.getDate()).padStart(2, '0');
+    const yyyy = monday.getFullYear();
+    const weekOf = `${mm}-${dd}-${yyyy}`;
+
+    const logsSnap = await getDocs(query(collection(db, 'weeklyLogs'), where('techId', '==', techId)));
+    const existingDraft = logsSnap.docs
+      .map(d => ({ ...d.data(), id: d.id }))
+      .find((l: any) => l.weekOf === weekOf && l.status === 'Draft');
+
+    const itemId = await createDocId(ID_PREFIXES.WEEKLY_LOG_ITEM);
+    const newItem = {
+      id: itemId,
+      workOrderId: payoutData.projectId,
+      source: 'project_payout' as const,
+      projectId: payoutData.projectId,
+      projectPayoutId: payoutId,
+      workDate: today.toISOString().slice(0, 10),
+      jobPay: payoutData.amount,
+      payoutAmount: payoutData.amount,
+      reimbursementAmount: 0,
+      payNotes: payoutData.notes || '',
+      confirmationStatus: null,
+      isComplete: false,
+      isAdminReviewed: false,
+    };
+
+    if (existingDraft) {
+      const existingItems = (existingDraft as any).items || [];
+      await updateDoc(doc(db, 'weeklyLogs', existingDraft.id), {
+        items: [...existingItems, newItem],
+      });
+      await updateDoc(doc(db, 'projectPayouts', payoutId), { weeklyLogId: existingDraft.id });
+    } else {
+      const logId = await createDocId(ID_PREFIXES.WEEKLY_LOG);
+      await setDoc(doc(db, 'weeklyLogs', logId), {
+        id: logId,
+        techId,
+        weekOf,
+        status: 'Draft',
+        items: [newItem],
+        reimbursements: [],
+      });
+      await updateDoc(doc(db, 'projectPayouts', payoutId), { weeklyLogId: logId });
+    }
+  }
+
   async function handleGenerateTimesheetPayout(summary: typeof timesheetSummaries[0]) {
     if (summary.remainingHours <= 0) {
       toast({ title: 'All hours already have payout records', variant: 'destructive' });
@@ -123,6 +178,8 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
     try {
       const id = await makeProjectPayoutId();
       const now = new Date().toISOString();
+      const amount = parseFloat(summary.suggested.toFixed(2));
+      const notes = `Auto-calculated: ${summary.remainingHours.toFixed(2)}h × $${summary.rate}/hr`;
       await addDoc(collection(db, 'projectPayouts'), {
         id,
         projectId,
@@ -131,14 +188,15 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
         role: 'crew' as const,
         payType: 'hourly' as const,
         payoutSource: 'timesheet' as const,
-        amount: parseFloat(summary.suggested.toFixed(2)),
+        amount,
         hoursWorked: summary.remainingHours,
         hourlyRate: summary.rate,
         timesheetLogIds: summary.logIds,
-        notes: `Auto-calculated: ${summary.remainingHours.toFixed(2)}h × $${summary.rate}/hr`,
+        notes,
         status: 'pending' as const,
         createdAt: now,
       });
+      await pushPayoutToWeeklyLog(summary.tech.id, id, { projectId, amount, notes });
       toast({ title: 'Timesheet payout record created' });
     } catch {
       toast({ title: 'Failed to create payout record', variant: 'destructive' });
@@ -157,6 +215,7 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
       const id = await makeProjectPayoutId();
       const tech = technicians.find(t => t.id === form.technicianId);
       const now = new Date().toISOString();
+      const amount = parseFloat(form.amount);
       await addDoc(collection(db, 'projectPayouts'), {
         id,
         projectId,
@@ -165,11 +224,12 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
         role: form.role,
         payType: form.payType,
         payoutSource: 'manual' as const,
-        amount: parseFloat(form.amount),
+        amount,
         notes: form.notes,
         status: 'pending' as const,
         createdAt: now,
       });
+      await pushPayoutToWeeklyLog(form.technicianId, id, { projectId, amount, notes: form.notes });
       toast({ title: 'Payout record added' });
       setForm(EMPTY_FORM);
       setIsAddOpen(false);

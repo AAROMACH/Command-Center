@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
-import { doc, collection, onSnapshot, addDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, collection, onSnapshot, addDoc, updateDoc, arrayUnion, arrayRemove, query, where } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,6 @@ import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierBadgeVariant } from '@/lib/reliability';
 import { hasPermission, ALL_PERMISSIONS, PERMISSION_TREE, getPortalAccess, type Permission } from '@/lib/permissions';
 import { format, parseISO, differenceInDays } from 'date-fns';
-import { technicians as allTechnicians } from '@/lib/data';
 import type { Technician, WorkOrder, PersonnelDocument, Project, ReliabilityEvent } from '@/lib/types';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -85,6 +84,7 @@ export default function DirectoryPersonPage() {
   const [restrictSearch, setRestrictSearch] = useState('');
   const [noteText, setNoteText] = useState('');
   const [addingNote, setAddingNote] = useState(false);
+  const [allClients, setAllClients] = useState<Technician[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -114,6 +114,14 @@ export default function DirectoryPersonPage() {
     });
     return () => { unsubUser(); unsubDocs(); unsubPenalty(); unsubNotes(); };
   }, [id]);
+
+  useEffect(() => {
+    const unsubClients = onSnapshot(
+      query(collection(db, 'users'), where('roles', 'array-contains', 'client')),
+      snap => setAllClients(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)))
+    );
+    return unsubClients;
+  }, []);
 
   const activeJobs = useMemo(() => assignments.filter(wo => wo.status !== 'completed'), [assignments]);
   const completedJobs = useMemo(() => assignments.filter(wo => wo.status === 'completed'), [assignments]);
@@ -947,24 +955,14 @@ export default function DirectoryPersonPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <p className="text-[9px] text-text-muted">Block specific client access below</p>
-              <div className="relative">
-                <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
-                <Input
-                  className="h-8 pl-7 text-[10px] bg-bg-primary border-border-main"
-                  placeholder="Search clients..."
-                  value={restrictSearch}
-                  onChange={e => setRestrictSearch(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                {allTechnicians
-                  .filter(t => t.roles?.includes('client'))
-                  .filter(t => !restrictSearch || t.name.toLowerCase().includes(restrictSearch.toLowerCase()))
-                  .map(client => {
-                    const blocked = (person.messagingBlockedClientIds || []).includes(client.id);
-                    return (
-                      <div key={client.id} className="flex items-center justify-between p-2 rounded-lg border border-border-sub bg-bg-secondary">
+              <div className="space-y-1.5">
+                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Blocked Clients</p>
+                {/* Show only currently blocked clients */}
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {allClients
+                    .filter(c => (person.messagingBlockedClientIds || []).includes(c.id))
+                    .map(client => (
+                      <div key={client.id} className="flex items-center justify-between p-2 rounded-lg border border-brand-red/20 bg-brand-red/5">
                         <div className="flex items-center gap-2 min-w-0">
                           <Avatar className="h-6 w-6 shrink-0">
                             <AvatarImage src={client.avatarUrl} />
@@ -976,20 +974,33 @@ export default function DirectoryPersonPage() {
                           </div>
                         </div>
                         <button
-                          onClick={() => handleToggleClientRestriction(client.id, !blocked)}
-                          className={cn(
-                            'h-6 px-2.5 rounded text-[8px] font-bold border transition-colors shrink-0 ml-2',
-                            blocked ? 'border-text-red/40 bg-text-red/10 text-text-red hover:bg-text-red/20' : 'border-border-sub text-text-muted hover:border-border-main'
-                          )}
+                          onClick={() => handleToggleClientRestriction(client.id, false)}
+                          className="h-6 px-2.5 rounded text-[8px] font-bold border border-brand-red/40 bg-brand-red/10 text-brand-red hover:bg-brand-red/20 transition-colors shrink-0 ml-2"
                         >
-                          {blocked ? 'Blocked' : 'Allow'}
+                          Unblock
                         </button>
                       </div>
-                    );
-                  })}
-                {allTechnicians.filter(t => t.roles?.includes('client')).length === 0 && (
-                  <p className="text-[10px] text-text-muted uppercase py-3 text-center">No clients in directory</p>
-                )}
+                    ))}
+                  {!allClients.some(c => (person.messagingBlockedClientIds || []).includes(c.id)) && (
+                    <p className="text-[10px] text-text-muted py-3 text-center">No blocked clients</p>
+                  )}
+                </div>
+                {/* Add a new block */}
+                <Select onValueChange={v => v && handleToggleClientRestriction(v, true)}>
+                  <SelectTrigger className="h-8 text-[10px] bg-bg-primary border-border-main">
+                    <SelectValue placeholder="+ Block a client..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-bg-elevated border-border-main">
+                    {allClients
+                      .filter(c => !(person.messagingBlockedClientIds || []).includes(c.id))
+                      .filter(c => !restrictSearch || c.name?.toLowerCase().includes(restrictSearch.toLowerCase()))
+                      .map(c => (
+                        <SelectItem key={c.id} value={c.id} className="text-[10px]">
+                          {c.name}{c.clientCompany ? ` — ${c.clientCompany}` : ''}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

@@ -269,7 +269,12 @@ export default function FieldIntelligencePage() {
                             {intelClient !== 'all' && <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border border-amber-400/30 bg-amber-400/10 text-amber-400">{clientList.find(c => c.id === intelClient)?.clientCompany || intelClient}</span>}
                         </div>
                     </div>
-                    <IntelligenceTerminal timeWindow={timeWindow} />
+                    <IntelligenceTerminal
+                        timeWindow={timeWindow}
+                        eventType={intelEventType}
+                        personnel={intelPersonnel}
+                        client={intelClient}
+                    />
                 </TabsContent>
 
                 <TabsContent value="flags" className="m-0">

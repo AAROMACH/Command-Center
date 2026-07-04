@@ -5,10 +5,11 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
 import type { WeeklyLog, WorkOrder, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { Activity, CheckCircle2, Clock, AlertTriangle, ShieldCheck, BarChart2, ClipboardList, Coins } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Activity, CheckCircle2, Clock, AlertTriangle, ShieldCheck, BarChart2, ClipboardList, Coins, Filter, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierColor } from '@/lib/reliability';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, subWeeks, startOfMonth, endOfMonth } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 
 export default function TechActivityPage() {
@@ -17,6 +18,7 @@ export default function TechActivityPage() {
   const [assignments, setAssignments] = useState<WorkOrder[]>([]);
   const [techDoc, setTechDoc] = useState<Technician | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [dateRange, setDateRange] = useState<'4w' | '8w' | 'month' | 'all'>('8w');
 
   useEffect(() => {
     setMounted(true);
@@ -92,6 +94,54 @@ export default function TechActivityPage() {
     [weeklyLogs]
   );
 
+  const rangeStart = useMemo(() => {
+    const now = new Date();
+    if (dateRange === '4w') return subWeeks(now, 4);
+    if (dateRange === '8w') return subWeeks(now, 8);
+    if (dateRange === 'month') return startOfMonth(now);
+    return null;
+  }, [dateRange]);
+
+  const filteredAssignments = useMemo(() => {
+    if (!rangeStart) return assignments;
+    return assignments.filter(a => {
+      if (!a.scheduleDate) return false;
+      try { return new Date(a.scheduleDate) >= rangeStart; } catch { return false; }
+    });
+  }, [assignments, rangeStart]);
+
+  const filteredLogs = useMemo(() => {
+    if (!rangeStart) return weeklyLogs;
+    return weeklyLogs.filter(l => {
+      if (!l.weekOf) return false;
+      try { return new Date(l.weekOf) >= rangeStart; } catch { return false; }
+    });
+  }, [weeklyLogs, rangeStart]);
+
+  const avgJobsPerWeek = useMemo(() => {
+    const completed = filteredAssignments.filter(a => a.status === 'completed' || a.status === 'checked-out').length;
+    const weeks = dateRange === '4w' ? 4 : dateRange === '8w' ? 8 : dateRange === 'month' ? 4 : Math.max(1, Math.ceil(weeklyLogs.length / 1));
+    return (completed / Math.max(1, weeks)).toFixed(1);
+  }, [filteredAssignments, dateRange, weeklyLogs]);
+
+  const jobsThisMonth = useMemo(() => {
+    const start = startOfMonth(new Date());
+    const end = endOfMonth(new Date());
+    return assignments.filter(a => {
+      if (!a.scheduleDate) return false;
+      try { const d = new Date(a.scheduleDate); return d >= start && d <= end; } catch { return false; }
+    }).length;
+  }, [assignments]);
+
+  const logTimeliness = useMemo(() => {
+    const approved = filteredLogs.filter(l => l.status === 'Approved').length;
+    const submitted = filteredLogs.filter(l => l.status === 'Submitted').length;
+    const rejected = filteredLogs.filter(l => l.status === 'Rejected').length;
+    const total = approved + submitted + rejected;
+    const rate = total > 0 ? Math.round((approved / total) * 100) : 0;
+    return { approved, submitted, rejected, total, rate };
+  }, [filteredLogs]);
+
   const assignmentPie = [
     { name: 'Completed', value: jobCounts.completed, color: '#1f8a55' },
     { name: 'In Progress', value: jobCounts.inProgress, color: '#60a5fa' },
@@ -115,6 +165,20 @@ export default function TechActivityPage() {
           <p className="page-eyebrow flex items-center gap-2"><Activity size={12} /> Overview</p>
           <h1 className="page-title text-left">Activity</h1>
           <p className="page-subtitle text-[11px] uppercase font-bold text-text-muted tracking-widest mt-1 text-left">Your field performance metrics.</p>
+        </div>
+        <div className="flex items-center gap-2 mt-3 md:mt-0">
+          <Filter size={10} className="text-text-muted shrink-0" />
+          <Select value={dateRange} onValueChange={(v: any) => setDateRange(v)}>
+            <SelectTrigger className="h-8 w-[140px] bg-bg-secondary border-border-main text-[10px] font-bold uppercase">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-bg-elevated border-border-main">
+              <SelectItem value="4w" className="text-[10px] uppercase font-bold">Last 4 Weeks</SelectItem>
+              <SelectItem value="8w" className="text-[10px] uppercase font-bold">Last 8 Weeks</SelectItem>
+              <SelectItem value="month" className="text-[10px] uppercase font-bold">This Month</SelectItem>
+              <SelectItem value="all" className="text-[10px] uppercase font-bold">All Time</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </header>
 
@@ -237,6 +301,37 @@ export default function TechActivityPage() {
                 </div>
               ))
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Performance Metrics */}
+      <div className="bg-bg-secondary border border-border-sub rounded-xl overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-border-sub">
+          <TrendingUp size={12} className="text-brand-red" />
+          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Performance Metrics</p>
+          <span className="ml-auto text-[9px] font-bold text-text-muted uppercase tracking-widest">{dateRange === '4w' ? 'Last 4 Wks' : dateRange === '8w' ? 'Last 8 Wks' : dateRange === 'month' ? 'This Month' : 'All Time'}</span>
+        </div>
+        <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="p-3 rounded-lg border border-border-sub bg-bg-primary space-y-0.5">
+            <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">Avg Jobs / Week</p>
+            <p className="text-xl font-mono font-black text-text-green">{avgJobsPerWeek}</p>
+            <p className="text-[8px] text-text-muted">in selected range</p>
+          </div>
+          <div className="p-3 rounded-lg border border-border-sub bg-bg-primary space-y-0.5">
+            <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">Jobs This Month</p>
+            <p className="text-xl font-mono font-black text-blue-400">{jobsThisMonth}</p>
+            <p className="text-[8px] text-text-muted">scheduled or completed</p>
+          </div>
+          <div className="p-3 rounded-lg border border-border-sub bg-bg-primary space-y-0.5">
+            <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">Log Approval Rate</p>
+            <p className="text-xl font-mono font-black text-accent-gold">{logTimeliness.rate}%</p>
+            <p className="text-[8px] text-text-muted">{logTimeliness.approved} approved / {logTimeliness.total} submitted</p>
+          </div>
+          <div className="p-3 rounded-lg border border-border-sub bg-bg-primary space-y-0.5">
+            <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">Returned Logs</p>
+            <p className={cn('text-xl font-mono font-black', logTimeliness.rejected > 0 ? 'text-brand-red' : 'text-text-primary')}>{logTimeliness.rejected}</p>
+            <p className="text-[8px] text-text-muted">of {logTimeliness.total} logs in range</p>
           </div>
         </div>
       </div>

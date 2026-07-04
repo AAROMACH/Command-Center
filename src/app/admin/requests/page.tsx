@@ -892,8 +892,8 @@ function NewServiceTab({ requests, viewMode = 'grid' }: { requests: NewServiceRe
               <div>
                 <div className="flex items-center gap-1.5 flex-wrap mb-2">
                   <Pill cls="bg-blue-500/10 text-blue-400 border-blue-500/30" label="Service Request" />
-                  <Pill cls={statusCls(selected.status)} label={selected.status.replace(/_/g, ' ')} />
-                  <Pill cls={pCls(selected.priorityLevel)} label={selected.priorityLevel} />
+                  <Pill cls={statusCls(selected.status)} label={(selected.status || '').replace(/_/g, ' ')} />
+                  <Pill cls={pCls(selected.priorityLevel)} label={selected.priorityLevel || ''} />
                 </div>
                 <p className="text-[15px] font-black text-text-primary">{selected.serviceTypes?.[0] || selected.fullName}</p>
                 <p className="text-[9px] text-text-muted font-mono mt-0.5">{selected.id.toUpperCase()}</p>
@@ -1175,10 +1175,10 @@ function ClientIntakeTab({ requests, siteReqs, viewMode = 'grid' }: {
                     <span className="text-[9px] px-2 py-0.5 rounded border font-bold font-mono tracking-wider bg-bg-tertiary text-text-muted border-border-sub">{selected.requestCode}</span>
                   )}
                   <span className={cn('text-[9px] px-2 py-0.5 rounded border font-bold uppercase tracking-widest', tierCls(selected.subscriptionTier))}>
-                    {selected.subscriptionTier === 'not_sure' ? 'Tier TBD' : `${selected.subscriptionTier} tier`}
+                    {selected.subscriptionTier === 'not_sure' ? 'Tier TBD' : selected.subscriptionTier ? `${selected.subscriptionTier} tier` : 'Tier N/A'}
                   </span>
                   <span className={cn('text-[9px] px-2 py-0.5 rounded border font-bold uppercase tracking-widest', statusCls(selected.status))}>
-                    {selected.status.replace(/_/g, ' ')}
+                    {(selected.status || '').replace(/_/g, ' ')}
                   </span>
                 </div>
                 <p className="text-[15px] font-black text-text-primary">Partnership Application</p>
@@ -1197,7 +1197,7 @@ function ClientIntakeTab({ requests, siteReqs, viewMode = 'grid' }: {
               </div>
               <div className="space-y-1">
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Business Profile</p>
-                <p className="text-[11px] text-text-secondary">{selected.industryType} · {selected.numberOfLocations} location{selected.numberOfLocations !== '1' ? 's' : ''}</p>
+                <p className="text-[11px] text-text-secondary">{selected.industryType || '—'}{selected.numberOfLocations ? ` · ${selected.numberOfLocations} location${selected.numberOfLocations !== '1' ? 's' : ''}` : ''}</p>
                 {selected.totalEmployeeCount && <p className="text-[11px] text-text-muted">{selected.totalEmployeeCount} employees</p>}
                 <p className="text-[11px] text-text-muted flex items-center gap-1"><MapPin size={10} />{selected.primaryOperatingRegion}</p>
               </div>

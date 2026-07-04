@@ -1,26 +1,26 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import type { WorkOrder, Project } from '@/lib/types';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogDescription, 
-  DialogFooter 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Receipt, 
-  Loader2, 
-  Sparkles, 
-  Check, 
-  X, 
-  Camera, 
+import {
+  Receipt,
+  Loader2,
+  Sparkles,
+  Check,
+  X,
+  Camera,
   Search,
   FileText,
   Briefcase,
@@ -31,26 +31,34 @@ import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { db } from '@/lib/firebase';
+import { collection, addDoc } from 'firebase/firestore';
+import { uploadFile } from '@/lib/upload';
 
 type ReceiptUploadDialogProps = {
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
     workOrders: WorkOrder[];
     projects: Project[];
+    techId: string;
+    techName: string;
 };
 
-export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }: ReceiptUploadDialogProps) {
+export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, techId, techName }: ReceiptUploadDialogProps) {
     const [step, setStep] = useState<'upload' | 'extracting' | 'review'>('upload');
     const [extractionProgress, setExtractionProgress] = useState(0);
-    const [searchQuery, setSearchQuery] = useState("");
+    const [isSaving, setIsSaving] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const uploadedFileRef = useRef<File | null>(null);
     const [receiptImage, setReceiptImage] = useState<string | null>(null);
     const [extractedData, setExtractedData] = useState({
         merchant: '',
         date: '',
         amount: '',
         relatedId: '',
-        relatedName: ''
+        relatedName: '',
+        relatedType: '' as 'Assignment' | 'Project' | ''
     });
     const { toast } = useToast();
 
@@ -59,63 +67,103 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setReceiptImage(reader.result as string);
-                setStep('extracting');
-                startExtraction();
-            };
-            reader.readAsDataURL(file);
-        }
+        const file = e.target.files?.[0];
+        if (!file) return;
+        uploadedFileRef.current = file;
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setReceiptImage(reader.result as string);
+            setStep('extracting');
+            runExtractionAnimation();
+        };
+        reader.readAsDataURL(file);
     };
 
-    const startExtraction = () => {
+    const runExtractionAnimation = () => {
         let progress = 0;
+        const today = new Date().toISOString().split('T')[0];
         const interval = setInterval(() => {
-            progress += 15;
+            progress += 20;
             setExtractionProgress(progress);
             if (progress >= 100) {
                 clearInterval(interval);
-                simulateExtraction();
+                setExtractedData(prev => ({ ...prev, date: today }));
+                setStep('review');
             }
-        }, 300);
+        }, 200);
     };
 
-    const simulateExtraction = () => {
-        setExtractedData({
-            merchant: 'Home Depot #4210',
-            date: new Date().toISOString().split('T')[0],
-            amount: '84.52',
-            relatedId: '',
-            relatedName: ''
-        });
-        setStep('review');
-    };
-
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!extractedData.merchant || !extractedData.amount || !extractedData.relatedId) {
             toast({
-                variant: "destructive",
-                title: "Incomplete Data",
-                description: "Please ensure all fields including the assignment/project are selected.",
+                variant: 'destructive',
+                title: 'Incomplete Data',
+                description: 'Fill in merchant, amount, and select an assignment or project.',
             });
             return;
         }
-        toast({
-            title: "Receipt Processed",
-            description: "Expense record created and attached successfully.",
-        });
-        resetAndClose();
+        const amount = parseFloat(extractedData.amount);
+        if (isNaN(amount) || amount <= 0) {
+            toast({ variant: 'destructive', title: 'Invalid Amount', description: 'Enter a valid dollar amount.' });
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            let receiptPhotoUrl: string | undefined;
+            if (uploadedFileRef.current) {
+                const ext = uploadedFileRef.current.name.split('.').pop() || 'jpg';
+                const path = `receipts/${techId}/${Date.now()}.${ext}`;
+                const result = await uploadFile(path, uploadedFileRef.current, { contentType: uploadedFileRef.current.type });
+                receiptPhotoUrl = result.url;
+            }
+
+            const now = new Date().toISOString();
+            const reimbursementDoc: Record<string, unknown> = {
+                techId,
+                techName,
+                type: 'receipt',
+                status: 'pending',
+                amount,
+                vendorName: extractedData.merchant,
+                purchaseDate: extractedData.date,
+                submittedAt: now,
+                createdAt: now,
+            };
+
+            if (receiptPhotoUrl) {
+                reimbursementDoc.receiptPhotoUrls = [receiptPhotoUrl];
+            }
+
+            if (extractedData.relatedType === 'Assignment') {
+                reimbursementDoc.relatedJobId = extractedData.relatedId;
+                reimbursementDoc.relatedJobTitle = extractedData.relatedName;
+            } else if (extractedData.relatedType === 'Project') {
+                reimbursementDoc.relatedProjectId = extractedData.relatedId;
+            }
+
+            await addDoc(collection(db, 'reimbursements'), reimbursementDoc);
+
+            toast({
+                title: 'Receipt Submitted',
+                description: `$${amount.toFixed(2)} expense record created and pending review.`,
+            });
+            resetAndClose();
+        } catch (err) {
+            console.error('Receipt save error:', err);
+            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not submit receipt. Please try again.' });
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const resetAndClose = () => {
         setStep('upload');
         setExtractionProgress(0);
-        setSearchQuery("");
+        setSearchQuery('');
         setReceiptImage(null);
-        setExtractedData({ merchant: '', date: '', amount: '', relatedId: '', relatedName: '' });
+        uploadedFileRef.current = null;
+        setExtractedData({ merchant: '', date: '', amount: '', relatedId: '', relatedName: '', relatedType: '' });
         setIsOpen(false);
     };
 
@@ -138,8 +186,8 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
     const filteredItems = useMemo(() => {
         if (!searchQuery) return searchableItems;
         const lowerQuery = searchQuery.toLowerCase();
-        return searchableItems.filter(item => 
-            item.name.toLowerCase().includes(lowerQuery) || 
+        return searchableItems.filter(item =>
+            item.name.toLowerCase().includes(lowerQuery) ||
             item.type.toLowerCase().includes(lowerQuery)
         );
     }, [searchQuery, searchableItems]);
@@ -166,7 +214,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                                 capture="environment"
                                 onChange={handleFileChange}
                             />
-                            <div 
+                            <div
                                 className="border-2 border-dashed border-border-main rounded-lg p-16 text-center hover:border-brand-red hover:bg-brand-red-dim/5 transition-all cursor-pointer group"
                                 onClick={handleFileClick}
                             >
@@ -175,13 +223,13 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                                         <Camera size={48} />
                                     </div>
                                 </div>
-                                <p className="text-sm font-bold uppercase tracking-widest mb-1 text-text-primary">Identify Receipt Photo</p>
-                                <p className="text-xs text-text-muted uppercase font-medium">Digital capture required to initiate terminal entry</p>
+                                <p className="text-sm font-bold uppercase tracking-widest mb-1 text-text-primary">Capture Receipt Photo</p>
+                                <p className="text-xs text-text-muted uppercase font-medium">Take a photo or select from your device</p>
                             </div>
-                            
+
                             <div className="p-4 rounded-lg bg-bg-secondary/50 border border-border-sub text-center">
                                 <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest leading-relaxed">
-                                    Terminal Note: Manual entry is locked until receipt imagery is provided to ensure compliance with audit protocols.
+                                    Terminal Note: Receipt photo required to initiate expense record. Manual fields unlock after capture.
                                 </p>
                             </div>
                         </div>
@@ -195,9 +243,9 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                             <div className="space-y-3">
                                 <div className="flex items-center justify-center gap-2 text-accent-gold">
                                     <Sparkles size={18} />
-                                    <p className="text-sm font-bold uppercase tracking-widest">AI Vision Processing</p>
+                                    <p className="text-sm font-bold uppercase tracking-widest">Processing Receipt</p>
                                 </div>
-                                <p className="text-xs text-text-muted font-mono max-w-[300px] mx-auto uppercase">Parsing high-fidelity merchant metadata and financial signatures...</p>
+                                <p className="text-xs text-text-muted font-mono max-w-[300px] mx-auto uppercase">Preparing expense entry form...</p>
                             </div>
                             <div className="px-12">
                                 <Progress value={extractionProgress} className="h-1 bg-bg-secondary" />
@@ -207,7 +255,6 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
 
                     {step === 'review' && (
                         <div className="space-y-6">
-                            {/* Receipt Preview */}
                             {receiptImage && (
                                 <div className="relative aspect-[4/3] w-full rounded-lg overflow-hidden border border-border-sub bg-bg-primary">
                                     <div className="absolute top-2 left-2 z-10">
@@ -215,10 +262,10 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                                             <Eye size={10} /> Original Capture
                                         </div>
                                     </div>
-                                    <Image 
-                                        src={receiptImage} 
-                                        alt="Receipt original" 
-                                        fill 
+                                    <Image
+                                        src={receiptImage}
+                                        alt="Receipt original"
+                                        fill
                                         className="object-contain"
                                     />
                                 </div>
@@ -227,18 +274,18 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5 text-left">
                                     <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Merchant / Vendor</Label>
-                                    <Input 
+                                    <Input
                                         placeholder="e.g. Home Depot"
-                                        value={extractedData.merchant} 
+                                        value={extractedData.merchant}
                                         onChange={(e) => setExtractedData({...extractedData, merchant: e.target.value})}
                                         className="h-10 text-xs bg-bg-primary border-border-sub focus:border-brand-red uppercase font-bold"
                                     />
                                 </div>
                                 <div className="space-y-1.5 text-left">
                                     <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Total Amount ($)</Label>
-                                    <Input 
+                                    <Input
                                         placeholder="0.00"
-                                        value={extractedData.amount} 
+                                        value={extractedData.amount}
                                         onChange={(e) => setExtractedData({...extractedData, amount: e.target.value})}
                                         className="h-10 text-xs bg-bg-primary border-border-sub font-mono focus:border-brand-red text-text-green font-bold"
                                     />
@@ -247,26 +294,26 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
 
                             <div className="space-y-1.5 text-left">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Transaction Date</Label>
-                                <Input 
+                                <Input
                                     type="date"
-                                    value={extractedData.date} 
+                                    value={extractedData.date}
                                     onChange={(e) => setExtractedData({...extractedData, date: e.target.value})}
                                     className="h-10 text-xs bg-bg-primary border-border-sub focus:border-brand-red"
                                 />
                             </div>
 
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Search Assignment or Project</Label>
+                                <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Link to Assignment or Project</Label>
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-                                    <Input 
-                                        placeholder="Search across your assignments..." 
+                                    <Input
+                                        placeholder="Search assignments and projects..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         className="h-10 pl-9 text-xs bg-bg-primary border-border-sub focus:border-brand-red uppercase font-bold"
                                     />
                                 </div>
-                                
+
                                 <div className="border border-border-sub rounded-md overflow-hidden bg-bg-primary mt-2">
                                     <ScrollArea className="h-[120px]">
                                         <div className="p-1 space-y-1">
@@ -275,22 +322,22 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                                                 return (
                                                     <button
                                                         key={item.id}
-                                                        onClick={() => setExtractedData({...extractedData, relatedId: item.id, relatedName: item.name})}
+                                                        onClick={() => setExtractedData({...extractedData, relatedId: item.id, relatedName: item.name, relatedType: item.type})}
                                                         className={cn(
-                                                            "w-full flex items-center justify-between p-2 rounded text-left transition-colors",
-                                                            isSelected ? "bg-brand-red text-white" : "hover:bg-bg-secondary text-text-secondary"
+                                                            'w-full flex items-center justify-between p-2 rounded text-left transition-colors',
+                                                            isSelected ? 'bg-brand-red text-white' : 'hover:bg-bg-secondary text-text-secondary'
                                                         )}
                                                     >
                                                         <div className="flex items-center gap-3">
-                                                            <item.icon size={14} className={isSelected ? "text-white" : "text-text-muted"} />
+                                                            <item.icon size={14} className={isSelected ? 'text-white' : 'text-text-muted'} />
                                                             <div>
-                                                                <p className={cn("text-[10px] font-bold uppercase", isSelected ? "text-white" : "text-text-primary")}>{item.name}</p>
-                                                                <p className={cn("text-[8px] uppercase tracking-widest", isSelected ? "text-white/80" : "text-text-muted")}>{item.type}</p>
+                                                                <p className={cn('text-[10px] font-bold uppercase', isSelected ? 'text-white' : 'text-text-primary')}>{item.name}</p>
+                                                                <p className={cn('text-[8px] uppercase tracking-widest', isSelected ? 'text-white/80' : 'text-text-muted')}>{item.type}</p>
                                                             </div>
                                                         </div>
                                                         {isSelected && <Check size={14} />}
                                                     </button>
-                                                )
+                                                );
                                             }) : (
                                                 <div className="text-center py-8 text-[10px] text-text-muted uppercase font-bold">No matches found</div>
                                             )}
@@ -303,16 +350,17 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects }:
                 </div>
 
                 <DialogFooter className="border-t border-border-default p-6 bg-bg-secondary/30">
-                    <Button variant="outline" onClick={resetAndClose} className="h-10 flex-1 uppercase font-bold text-[10px] tracking-widest">
+                    <Button variant="outline" onClick={resetAndClose} disabled={isSaving} className="h-10 flex-1 uppercase font-bold text-[10px] tracking-widest">
                         <X size={16} className="mr-2" /> Cancel
                     </Button>
                     {step === 'review' && (
-                        <Button 
-                            onClick={handleSave} 
+                        <Button
+                            onClick={handleSave}
                             className="h-10 bg-brand-red hover:bg-brand-red-hover flex-1 uppercase font-bold text-[10px] tracking-widest"
-                            disabled={!extractedData.relatedId}
+                            disabled={!extractedData.relatedId || isSaving}
                         >
-                            <Upload size={16} className="mr-2" /> Sync Record
+                            {isSaving ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Upload size={16} className="mr-2" />}
+                            {isSaving ? 'Uploading...' : 'Submit Receipt'}
                         </Button>
                     )}
                 </DialogFooter>

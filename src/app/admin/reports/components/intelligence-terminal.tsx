@@ -55,8 +55,9 @@ import type { Technician, WorkOrder, WeeklyLog, ProjectDailyLog } from '@/lib/ty
 
 type MetricType = 'reliability' | 'payouts' | 'assignments' | 'hours';
 type GroupBy = 'tech' | 'client' | 'date';
+type TimeWindow = '7d' | '30d' | '90d' | '1y' | 'all';
 
-export function IntelligenceTerminal() {
+export function IntelligenceTerminal({ timeWindow = '30d' }: { timeWindow?: TimeWindow }) {
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
@@ -68,11 +69,15 @@ export function IntelligenceTerminal() {
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
     useEffect(() => {
-        setDateRange({
-            from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-            to: new Date()
-        });
-    }, []);
+        if (timeWindow === 'all') {
+            setDateRange(undefined);
+            return;
+        }
+        const now = new Date();
+        const days: Record<TimeWindow, number> = { '7d': 7, '30d': 30, '90d': 90, '1y': 365, 'all': 0 };
+        const from = new Date(now.getTime() - (days[timeWindow] || 30) * 24 * 60 * 60 * 1000);
+        setDateRange({ from, to: now });
+    }, [timeWindow]);
 
     useEffect(() => {
         const unsubWO = onSnapshot(collection(db, 'assignments'), (snap) => {

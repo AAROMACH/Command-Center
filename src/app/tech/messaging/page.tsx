@@ -134,9 +134,21 @@ export default function TechMessagingPage() {
   })();
 
   const blockedIds = new Set(currentUser?.messagingBlockedClientIds || []);
+  const allowedRoles = currentUser?.messagingAllowedRoles || 'all';
   const visiblePartners = conversationPartners.filter(id => {
     if (blockedIds.has(id)) return false;
+    if (allowedRoles === 'none') return false;
     const user = technicians.find(t => t.id === id);
+    // Hard constraint from messagingAllowedRoles
+    if (allowedRoles !== 'all') {
+      if (allowedRoles === 'admins') {
+        if (id !== 'admin' && !user?.roles?.includes('super_admin') && !user?.roles?.includes('dispatch_admin')) return false;
+      } else if (allowedRoles === 'techs') {
+        if (id === 'admin' || (!user?.roles?.includes('field_technician') && !user?.roles?.includes('project_lead'))) return false;
+      } else if (allowedRoles === 'clients') {
+        if (id === 'admin' || !user?.roles?.includes('client')) return false;
+      }
+    }
     if (!user && id !== 'admin') return true;
     if (contactFilter === 'admins') {
       if (id === 'admin') return true;

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
-import { getDoc, doc, setDoc } from 'firebase/firestore';
+import { getDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
 import {
     Zap, Plus, ChevronRight, Target, Clock, ShieldCheck, Building2,
     Search, DollarSign, PenTool, Trash2, Eye, Lock, ShieldAlert,
@@ -141,6 +141,11 @@ export default function ServicePlansPage() {
     const [pinError, setPinError] = useState('');
     const pendingActionRef = useRef<(() => void) | null>(null);
 
+    const [isEditSubOpen, setIsEditSubOpen] = useState(false);
+    const [editSubClient, setEditSubClient] = useState<Technician | null>(null);
+    const [editSubForm, setEditSubForm] = useState<{ planId: string; subscriptionStatus: string; subscriptionStartDate: string; subscriptionExpiryDate: string }>({ planId: '', subscriptionStatus: 'active', subscriptionStartDate: '', subscriptionExpiryDate: '' });
+    const [editSubSaving, setEditSubSaving] = useState(false);
+
     const { toast } = useToast();
 
     useEffect(() => {
@@ -268,6 +273,32 @@ export default function ServicePlansPage() {
         }
     }
 
+    const handleOpenEditSub = (client: Technician) => {
+        setEditSubClient(client);
+        setEditSubForm({
+            planId: client.planId || '',
+            subscriptionStatus: client.subscriptionStatus || 'active',
+            subscriptionStartDate: (client as any).subscriptionStartDate || '',
+            subscriptionExpiryDate: (client as any).subscriptionExpiryDate || '',
+        });
+        setIsEditSubOpen(true);
+    };
+
+    const handleSaveEditSub = async () => {
+        if (!editSubClient) return;
+        setEditSubSaving(true);
+        try {
+            await updateDoc(doc(db, 'users', editSubClient.id), editSubForm);
+            setLocalTechs(prev => prev.map(t => t.id === editSubClient.id ? { ...t, ...editSubForm, subscriptionStatus: editSubForm.subscriptionStatus as 'active' | 'pending' | 'none' } : t));
+            toast({ title: 'Subscription updated' });
+            setIsEditSubOpen(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Failed to save', description: e.message });
+        } finally {
+            setEditSubSaving(false);
+        }
+    };
+
     const laborRates = RATE_DEFS.filter(r => r.section === 'labor');
     const otherRates = RATE_DEFS.filter(r => r.section === 'other');
 
@@ -357,6 +388,8 @@ export default function ServicePlansPage() {
                     <div className="grid grid-cols-1 gap-3 max-w-5xl">
                         {activeSubscriptions.map(client => {
                             const plan = plans.find(p => p.id === client.planId);
+                            const startDate = (client as any).subscriptionStartDate;
+                            const expiryDate = (client as any).subscriptionExpiryDate;
                             return (
                                 <Card key={client.id} className="bg-bg-secondary border-border-main group hover:border-text-muted transition-all">
                                     <CardContent className="p-4 flex items-center justify-between">
@@ -371,6 +404,12 @@ export default function ServicePlansPage() {
                                                     <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
                                                     <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">{client.businessType || 'Strategic Entity'}</p>
                                                 </div>
+                                                {(startDate || expiryDate) && (
+                                                    <div className="flex items-center gap-3 mt-1.5">
+                                                        {startDate && <p className="text-[9px] font-mono text-text-muted">Start: {startDate}</p>}
+                                                        {expiryDate && <p className="text-[9px] font-mono text-text-muted">Expires: {expiryDate}</p>}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-12">
@@ -385,7 +424,7 @@ export default function ServicePlansPage() {
                                                 <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-0.5">Monthly Settlement</p>
                                                 <p className="text-sm font-mono font-bold text-text-green">${(plan?.price || 0).toLocaleString()}</p>
                                             </div>
-                                            <Button variant="ghost" size="icon" className="text-text-muted hover:text-text-primary">
+                                            <Button variant="ghost" size="icon" className="text-text-muted hover:text-text-primary" onClick={() => requirePin(() => handleOpenEditSub(client))}>
                                                 <ChevronRight size={18} />
                                             </Button>
                                         </div>
@@ -881,6 +920,58 @@ export default function ServicePlansPage() {
                     <DialogFooter className="gap-2">
                         <Button variant="outline" size="sm" onClick={() => setIsPinDialogOpen(false)} className="flex-1 text-[10px] font-black uppercase">Cancel</Button>
                         <Button size="sm" onClick={handlePinSubmit} className="flex-1 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">Unlock</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Subscription Dialog */}
+            <Dialog open={isEditSubOpen} onOpenChange={setIsEditSubOpen}>
+                <DialogContent className="sm:max-w-[420px] bg-bg-elevated border-border-default">
+                    <DialogHeader className="text-left">
+                        <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Edit Subscription</DialogTitle>
+                        <DialogDescription className="text-[10px] uppercase font-bold text-text-muted">{editSubClient?.clientCompany || editSubClient?.name}</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3 py-2">
+                        <div className="space-y-1.5">
+                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Plan</Label>
+                            <Select value={editSubForm.planId} onValueChange={v => setEditSubForm(f => ({ ...f, planId: v }))}>
+                                <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main">
+                                    <SelectValue placeholder="Select plan" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-bg-elevated border-border-main">
+                                    {plans.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</Label>
+                            <Select value={editSubForm.subscriptionStatus} onValueChange={v => setEditSubForm(f => ({ ...f, subscriptionStatus: v }))}>
+                                <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-bg-elevated border-border-main">
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="pending">Pending</SelectItem>
+                                    <SelectItem value="none">None</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Start Date</Label>
+                                <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={editSubForm.subscriptionStartDate} onChange={e => setEditSubForm(f => ({ ...f, subscriptionStartDate: e.target.value }))} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Expiry Date</Label>
+                                <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={editSubForm.subscriptionExpiryDate} onChange={e => setEditSubForm(f => ({ ...f, subscriptionExpiryDate: e.target.value }))} />
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setIsEditSubOpen(false)} className="flex-1 text-[10px] font-black uppercase">Cancel</Button>
+                        <Button size="sm" onClick={handleSaveEditSub} disabled={editSubSaving} className="flex-1 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+                            {editSubSaving ? 'Saving...' : 'Save'}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

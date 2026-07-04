@@ -5,7 +5,7 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, setDoc } from 'firebase/firestore';
 import { ProjectsTabs } from "./components/projects-tabs";
 import { Button } from "@/components/ui/button";
-import { FolderKanban, Plus, Search, SlidersHorizontal, X, ArrowUpDown, Calendar as CalendarIcon, Activity } from "lucide-react";
+import { FolderKanban, Plus, Search, SlidersHorizontal, X, ArrowUpDown, Calendar as CalendarIcon, Activity, LayoutList, LayoutGrid } from "lucide-react";
 import { useState, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { NewProjectDialog } from "./components/new-project-dialog";
@@ -43,6 +43,7 @@ export default function ProjectsPage() {
   const [activeStatuses, setActiveStatuses] = useState<string[]>([]);
   const [activeClients, setActiveClients] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('date');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   const { toast } = useToast();
 
@@ -183,6 +184,14 @@ export default function ProjectsPage() {
                         <SelectItem value="progress" className="text-[10px] uppercase font-bold">Progress %</SelectItem>
                     </SelectContent>
                 </Select>
+                <div className="flex items-center border border-border-main rounded-md overflow-hidden h-10">
+                    <button onClick={() => setViewMode('list')} className={cn('px-2.5 h-full flex items-center transition-colors', viewMode === 'list' ? 'bg-brand-red text-white' : 'bg-bg-secondary text-text-muted hover:text-text-primary')}>
+                        <LayoutList size={14} />
+                    </button>
+                    <button onClick={() => setViewMode('grid')} className={cn('px-2.5 h-full flex items-center transition-colors border-l border-border-main', viewMode === 'grid' ? 'bg-brand-red text-white' : 'bg-bg-secondary text-text-muted hover:text-text-primary')}>
+                        <LayoutGrid size={14} />
+                    </button>
+                </div>
 
                 <Popover>
                   <PopoverTrigger asChild>
@@ -249,12 +258,13 @@ export default function ProjectsPage() {
       </header>
 
       <div className="w-full space-y-6">
-        <ProjectsTabs 
-          projects={filteredProjects} 
-          technicians={technicians} 
+        <ProjectsTabs
+          projects={filteredProjects}
+          technicians={technicians}
           dateRange={dateRange}
           setDateRange={setDateRange}
           sortBy={sortBy}
+          viewMode={viewMode}
         />
       </div>
 

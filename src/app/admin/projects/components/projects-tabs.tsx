@@ -20,9 +20,10 @@ type ProjectsTabsProps = {
     dateRange?: DateRange;
     setDateRange: (range: DateRange | undefined) => void;
     sortBy?: SortOption;
+    viewMode?: 'list' | 'grid';
 };
 
-export function ProjectsTabs({ projects, technicians, dateRange, setDateRange, sortBy }: ProjectsTabsProps) {
+export function ProjectsTabs({ projects, technicians, dateRange, setDateRange, sortBy, viewMode = 'list' }: ProjectsTabsProps) {
     const activeProjects = projects.filter(p => p.status === 'active');
     const onHoldProjects = projects.filter(p => p.status === 'on-hold');
     const completedProjects = projects.filter(p => p.status === 'completed');
@@ -82,13 +83,13 @@ export function ProjectsTabs({ projects, technicians, dateRange, setDateRange, s
             </div>
             
             <TabsContent value="active" className="mt-0">
-              <ProjectsClient projects={activeProjects} technicians={technicians} sortBy={sortBy} statusLabel="Active" />
+              <ProjectsClient projects={activeProjects} technicians={technicians} sortBy={sortBy} statusLabel="Active" viewMode={viewMode} />
             </TabsContent>
             <TabsContent value="on-hold" className="mt-0">
-              <ProjectsClient projects={onHoldProjects} technicians={technicians} sortBy={sortBy} statusLabel="On-Hold" />
+              <ProjectsClient projects={onHoldProjects} technicians={technicians} sortBy={sortBy} statusLabel="On-Hold" viewMode={viewMode} />
             </TabsContent>
             <TabsContent value="completed" className="mt-0">
-              <ProjectsClient projects={completedProjects} technicians={technicians} sortBy={sortBy} statusLabel="Completed" />
+              <ProjectsClient projects={completedProjects} technicians={technicians} sortBy={sortBy} statusLabel="Completed" viewMode={viewMode} />
             </TabsContent>
       </Tabs>
     );

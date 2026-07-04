@@ -3,12 +3,13 @@
 import { useRouter } from 'next/navigation';
 import type { Project, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Calendar, Clock, Timer, User } from 'lucide-react';
+import { MapPin, Calendar, Timer, User } from 'lucide-react';
 import { cn, formatCityState } from '@/lib/utils';
 
 type ProjectsClientProps = {
     projects: Project[];
     technicians: Technician[];
+    viewMode?: 'grid' | 'list';
 };
 
 function getProgress(project: Project): number {
@@ -30,7 +31,7 @@ function getTotalTasksCount(project: Project): number {
     return phases.reduce((acc, phase) => acc + (phase.tasks || []).length, 0);
 }
 
-export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
+export function ProjectsClient({ projects, technicians, viewMode = 'grid' }: ProjectsClientProps) {
     const router = useRouter();
 
     if (projects.length === 0) {
@@ -39,6 +40,50 @@ export function ProjectsClient({ projects, technicians }: ProjectsClientProps) {
                 <div className="empty-state !py-12 text-center text-text-muted italic uppercase text-[10px] font-bold tracking-widest">
                     You are not assigned to any active projects.
                 </div>
+            </div>
+        );
+    }
+
+    if (viewMode === 'list') {
+        return (
+            <div className="table-wrap">
+                <table className="tbl">
+                    <thead>
+                        <tr className="bg-bg-tertiary">
+                            <th className="text-left pl-0">Project</th>
+                            <th className="text-left pl-0">Client</th>
+                            <th className="text-center">Progress</th>
+                            <th className="text-left pl-0">Start Date</th>
+                            <th className="text-left pl-0">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {projects.map(project => {
+                            const progress = getProgress(project);
+                            const progressColor = progress === 100 ? 'text-text-green' : progress > 5 ? 'text-accent-gold' : 'text-brand-red';
+                            return (
+                                <tr key={project.id} onClick={() => router.push(`/tech/projects/${project.id}`)} className="cursor-pointer hover:bg-bg-tertiary/50 transition-colors border-b border-border-sub">
+                                    <td className="pl-0 py-3">
+                                        <p className="text-[11px] font-bold text-text-primary uppercase truncate">{project.name}</p>
+                                        {project.location && <p className="text-[9px] text-text-muted uppercase truncate mt-0.5">{project.location}</p>}
+                                    </td>
+                                    <td className="pl-0">
+                                        <p className="text-[10px] font-bold text-text-secondary uppercase truncate">{project.client}</p>
+                                    </td>
+                                    <td className="text-center">
+                                        <p className={cn('text-[11px] font-mono font-bold', progressColor)}>{Math.round(progress)}%</p>
+                                    </td>
+                                    <td className="pl-0">
+                                        <p className="text-[10px] font-mono text-text-muted">{project.startDate || '—'}</p>
+                                    </td>
+                                    <td className="pl-0">
+                                        <Badge variant={project.status} className="text-[8px] h-4 px-1.5 capitalize">{project.status}</Badge>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
             </div>
         );
     }

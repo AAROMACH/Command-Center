@@ -18,7 +18,7 @@ import {
   ArrowLeft, Mail, Phone, MapPin, Briefcase, Clock, CheckCircle, AlertTriangle,
   Calendar, FileText, Upload, Shield, CheckSquare, Square,
   Star, Activity, TrendingUp, StickyNote, Plus, Users, Wrench,
-  PhoneCall, UserCheck, BarChart2, Pencil, Search, Ban,
+  PhoneCall, UserCheck, BarChart2, Pencil, Search, Ban, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { EditProfileDialog } from '../components/edit-profile-dialog';
 import { cn } from '@/lib/utils';
@@ -76,6 +76,8 @@ export default function DirectoryPersonPage() {
   const [savingPerms, setSavingPerms] = useState(false);
   const [permsDirty, setPermsDirty] = useState(false);
 
+  const [rolesBuffer, setRolesBuffer] = useState<string[]>([]);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [restrictSearch, setRestrictSearch] = useState('');
   const [noteText, setNoteText] = useState('');
   const [addingNote, setAddingNote] = useState(false);
@@ -88,6 +90,7 @@ export default function DirectoryPersonPage() {
         const data = { ...snap.data(), id: snap.id } as Technician;
         setPerson(data);
         setPermOverrides(data.permissionOverrides || {});
+        setRolesBuffer(Array.isArray(data.roles) ? [...(data.roles as string[])] : (data.role ? [data.role] : []));
       }
       setLoading(false);
     });
@@ -124,8 +127,11 @@ export default function DirectoryPersonPage() {
   }, [person]);
 
   const certDocuments = useMemo(() => documents.filter(d => d.type === 'certification'), [documents]);
-  const roles: string[] = Array.isArray(person?.roles) ? (person!.roles as string[]) : (person?.role ? [person.role] : ['Staff']);
-  const activePortals = useMemo(() => getPortalAccess(person), [person]);
+  const roles: string[] = rolesBuffer;
+  const activePortals = useMemo(() => {
+    if (!person) return { admin: false, tech: false, client: false };
+    return getPortalAccess({ ...person, roles: rolesBuffer as any });
+  }, [person, rolesBuffer]);
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '—';
@@ -156,17 +162,9 @@ export default function DirectoryPersonPage() {
     await updateDoc(doc(db, 'users', id, 'documents', docId), { approvalStatus: 'approved' });
   };
 
-  const handleToggleRole = async (role: string, add: boolean) => {
-    if (!id || !person) return;
-    await updateDoc(doc(db, 'users', id), {
-      roles: add ? arrayUnion(role) : arrayRemove(role),
-    });
-    setPerson(prev => prev ? {
-      ...prev,
-      roles: add
-        ? [...(prev.roles || []), role as any]
-        : (prev.roles || []).filter(r => r !== role),
-    } : prev);
+  const handleToggleRole = (role: string, add: boolean) => {
+    setRolesBuffer(prev => add ? [...prev, role] : prev.filter(r => r !== role));
+    setPermsDirty(true);
   };
 
   const handleTogglePerm = (perm: Permission, value: boolean | null) => {
@@ -182,11 +180,19 @@ export default function DirectoryPersonPage() {
     if (!id) return;
     setSavingPerms(true);
     try {
-      await updateDoc(doc(db, 'users', id), { permissionOverrides: permOverrides });
+      await updateDoc(doc(db, 'users', id), {
+        roles: rolesBuffer,
+        permissionOverrides: permOverrides,
+      });
       setPermsDirty(false);
     } finally {
       setSavingPerms(false);
     }
+  };
+
+  const handleMessagingRoleChange = async (value: string) => {
+    if (!id) return;
+    await updateDoc(doc(db, 'users', id), { messagingAllowedRoles: value });
   };
 
   const handleSelectAllForPortal = (portal: 'admin' | 'tech' | 'client') => {
@@ -778,7 +784,7 @@ export default function DirectoryPersonPage() {
                   <CheckSquare size={11} /> Permission Overrides
                 </h3>
                 <Button size="sm" onClick={handleSavePerms} disabled={!permsDirty || savingPerms} className="h-7 text-[9px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white disabled:opacity-40">
-                  {savingPerms ? 'Saving...' : 'Save Permissions'}
+                  {savingPerms ? 'Saving...' : 'Save Access & Permissions'}
                 </Button>
               </div>
               <p className="text-[9px] text-text-muted uppercase tracking-wider">Overrides take precedence over role defaults. Sections reflect active portal access.</p>
@@ -807,44 +813,60 @@ export default function DirectoryPersonPage() {
                             <button onClick={() => handleClearAllForPortal(portal)} className="text-[8px] font-black uppercase tracking-wider text-text-muted hover:text-text-primary transition-colors">Clear All</button>
                           </div>
                         </div>
-                        {Object.entries(PERMISSION_TREE[portal]).map(([page, perms]) => (
-                          <div key={page} className="pl-3 border-l-2 border-border-sub space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">{page.replace(/_/g, ' ')}</p>
-                              <div className="flex items-center gap-1.5">
-                                <button onClick={() => handleSelectAllForPage(perms as Permission[])} className="text-[7px] font-black uppercase tracking-wider text-text-muted hover:text-text-primary transition-colors">All</button>
-                                <span className="text-text-muted text-[7px]">·</span>
-                                <button onClick={() => handleClearAllForPage(perms as Permission[])} className="text-[7px] font-black uppercase tracking-wider text-text-muted hover:text-text-primary transition-colors">Clear</button>
+                        {Object.entries(PERMISSION_TREE[portal]).map(([page, perms]) => {
+                          const sectionKey = `${portal}:${page}`;
+                          const isCollapsed = collapsedSections.has(sectionKey);
+                          return (
+                            <div key={page} className="pl-3 border-l-2 border-border-sub space-y-1.5">
+                              <div
+                                className="flex items-center justify-between cursor-pointer"
+                                onClick={() => setCollapsedSections(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(sectionKey)) next.delete(sectionKey); else next.add(sectionKey);
+                                  return next;
+                                })}
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  {isCollapsed ? <ChevronRight size={10} className="text-text-muted" /> : <ChevronDown size={10} className="text-text-muted" />}
+                                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">{page.replace(/_/g, ' ')}</p>
+                                </div>
+                                <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                                  <button onClick={() => handleSelectAllForPage(perms as Permission[])} className="text-[7px] font-black uppercase tracking-wider text-text-muted hover:text-text-primary transition-colors">All</button>
+                                  <span className="text-text-muted text-[7px]">·</span>
+                                  <button onClick={() => handleClearAllForPage(perms as Permission[])} className="text-[7px] font-black uppercase tracking-wider text-text-muted hover:text-text-primary transition-colors">Clear</button>
+                                </div>
                               </div>
+                              {!isCollapsed && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                                  {(perms as Permission[]).map(perm => {
+                                    const roleDefault = hasPermission(person, perm);
+                                    const override = permOverrides[perm];
+                                    const effective = override !== undefined ? override : roleDefault;
+                                    return (
+                                      <div key={perm} className={cn('flex items-center justify-between p-2 rounded-lg border transition-all', effective ? 'bg-text-green/5 border-text-green/20' : 'bg-bg-secondary border-border-sub')}>
+                                        <div className="min-w-0">
+                                          <p className="text-[9px] font-bold text-text-primary truncate">{permissionLabel(perm)}</p>
+                                          {override !== undefined && <p className="text-[8px] text-amber-400 uppercase">Override</p>}
+                                        </div>
+                                        <div className="flex items-center gap-1 shrink-0 ml-2">
+                                          <button
+                                            onClick={() => handleTogglePerm(perm, effective ? false : true)}
+                                            className={cn('h-5 w-5 rounded flex items-center justify-center transition-colors border', effective ? 'bg-text-green/20 border-text-green/30 text-text-green' : 'bg-bg-primary border-border-sub text-text-muted hover:border-border-main')}
+                                          >
+                                            {effective ? <CheckSquare size={11} /> : <Square size={11} />}
+                                          </button>
+                                          {override !== undefined && (
+                                            <button onClick={() => handleTogglePerm(perm, null)} className="text-[8px] text-text-muted hover:text-text-primary uppercase font-bold px-1" title="Reset to role default">✕</button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
-                              {(perms as Permission[]).map(perm => {
-                                const roleDefault = hasPermission(person, perm);
-                                const override = permOverrides[perm];
-                                const effective = override !== undefined ? override : roleDefault;
-                                return (
-                                  <div key={perm} className={cn('flex items-center justify-between p-2 rounded-lg border transition-all', effective ? 'bg-text-green/5 border-text-green/20' : 'bg-bg-secondary border-border-sub')}>
-                                    <div className="min-w-0">
-                                      <p className="text-[9px] font-bold text-text-primary truncate">{permissionLabel(perm)}</p>
-                                      {override !== undefined && <p className="text-[8px] text-amber-400 uppercase">Override</p>}
-                                    </div>
-                                    <div className="flex items-center gap-1 shrink-0 ml-2">
-                                      <button
-                                        onClick={() => handleTogglePerm(perm, effective ? false : true)}
-                                        className={cn('h-5 w-5 rounded flex items-center justify-center transition-colors border', effective ? 'bg-text-green/20 border-text-green/30 text-text-green' : 'bg-bg-primary border-border-sub text-text-muted hover:border-border-main')}
-                                      >
-                                        {effective ? <CheckSquare size={11} /> : <Square size={11} />}
-                                      </button>
-                                      {override !== undefined && (
-                                        <button onClick={() => handleTogglePerm(perm, null)} className="text-[8px] text-text-muted hover:text-text-primary uppercase font-bold px-1" title="Reset to role default">✕</button>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     );
                   })}
@@ -857,8 +879,27 @@ export default function DirectoryPersonPage() {
                 <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
                   <Ban size={11} className="text-brand-red" /> Message Restrictions
                 </h3>
-                <p className="text-[9px] text-text-muted mt-1">Block this user from messaging specific clients</p>
+                <p className="text-[9px] text-text-muted mt-1">Control who this user can message</p>
               </div>
+              <div className="space-y-1.5">
+                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Who can this user message?</p>
+                <Select
+                  value={(person.messagingAllowedRoles as string) || 'all'}
+                  onValueChange={handleMessagingRoleChange}
+                >
+                  <SelectTrigger className="h-8 text-[10px] bg-bg-primary border-border-main">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-bg-elevated border-border-main">
+                    <SelectItem value="all" className="text-[11px]">All Users</SelectItem>
+                    <SelectItem value="admins" className="text-[11px]">Admins Only</SelectItem>
+                    <SelectItem value="techs" className="text-[11px]">Techs &amp; Admins</SelectItem>
+                    <SelectItem value="clients" className="text-[11px]">Clients &amp; Admins</SelectItem>
+                    <SelectItem value="none" className="text-[11px]">No One</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-[9px] text-text-muted">Block specific client access below</p>
               <div className="relative">
                 <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
                 <Input

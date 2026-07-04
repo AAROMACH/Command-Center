@@ -181,6 +181,8 @@ export type Technician = {
   businessType?: string;
   planId?: string;
   subscriptionStatus?: 'active' | 'pending' | 'none';
+  subscriptionStartDate?: string;
+  subscriptionExpiryDate?: string;
   managedSites?: { id: string; name: string; location: string }[];
   workPreferences: {
     preferredRadius: number;
@@ -203,6 +205,7 @@ export type Technician = {
   portalAccess?: { admin?: boolean; tech?: boolean; client?: boolean };
   primaryPortal?: 'admin' | 'tech' | 'client';
   messagingBlockedClientIds?: string[];
+  messagingAllowedRoles?: 'all' | 'admins' | 'techs' | 'clients' | 'none';
   googleCalendarSyncEnabled?: boolean;
   googleCalendarToken?: string;
   approvalStatus?: 'pending' | 'approved' | 'denied';

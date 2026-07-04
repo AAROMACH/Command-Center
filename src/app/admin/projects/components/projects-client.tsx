@@ -26,6 +26,7 @@ type ProjectsClientProps = {
     technicians: Technician[];
     sortBy?: SortOption;
     statusLabel?: string;
+    viewMode?: 'list' | 'grid';
 };
 
 /**
@@ -53,7 +54,7 @@ function getTotalTasksCount(project: Project): number {
     return phases.reduce((acc, phase) => acc + (phase.tasks || []).length, 0);
 }
 
-export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'Active' }: ProjectsClientProps) {
+export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'Active', viewMode = 'list' }: ProjectsClientProps) {
     const router = useRouter();
     
     const [currentPage, setCurrentPage] = useState(1);
@@ -120,6 +121,16 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
                 </div>
             </div>
         )
+    }
+
+    if (viewMode === 'grid' && sortBy !== 'client') {
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {projects.map(project => (
+                    <ProjectCard key={project.id} project={project} technicians={technicians} />
+                ))}
+            </div>
+        );
     }
 
     if (sortBy === 'client' && groupedByClient) {

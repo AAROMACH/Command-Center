@@ -139,7 +139,8 @@ export default function ActivityAuditPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState("");
-    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || "timeline");
+    const [activeTab, _setActiveTabRaw] = useState(() => { const sp = searchParams.get('tab'); if (sp) return sp; try { return localStorage.getItem('cc:reports:tab') || 'timeline'; } catch { return 'timeline'; } });
+    const setActiveTab = (v: string) => { _setActiveTabRaw(v); try { localStorage.setItem('cc:reports:tab', v); } catch {} };
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     

@@ -167,6 +167,27 @@ export function MilestonesTab({ project }: MilestonesTabProps) {
 
     const handleTaskToggle = (phaseId: string, taskId: string) => {
         if (isReadOnly) return;
+
+        const targetPhase = editablePhases.find(ph => ph.id === phaseId);
+        const task = (targetPhase?.tasks || []).find(t => t.id === taskId);
+        if (task && !task.isCompleted) {
+            if (task.requiresPhoto && !task.photoUrl) {
+                toast({ variant: 'destructive', title: 'Photo required', description: 'Upload a photo to complete this task.' }); return;
+            }
+            if (task.requiresText && !task.textValue?.trim()) {
+                toast({ variant: 'destructive', title: 'Text required', description: 'Fill in the required text to complete this task.' }); return;
+            }
+            if (task.requiresNumeric && (task.numericValue === undefined || task.numericValue === null)) {
+                toast({ variant: 'destructive', title: 'Count required', description: 'Enter a valid count to complete this task.' }); return;
+            }
+            if (task.requiresFileUpload && !task.fileUrl) {
+                toast({ variant: 'destructive', title: 'Document required', description: 'Upload the required document to complete this task.' }); return;
+            }
+            if (task.requiresSignature && !task.signatureUrl) {
+                toast({ variant: 'destructive', title: 'Signature required', description: 'Collect signature before completing.' }); return;
+            }
+        }
+
         const newPhases = editablePhases.map(phase => {
             if (phase.id === phaseId) {
                 return {

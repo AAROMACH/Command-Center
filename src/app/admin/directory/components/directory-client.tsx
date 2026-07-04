@@ -68,6 +68,7 @@ import { db, auth } from "@/lib/firebase";
 import { doc, updateDoc, setDoc, deleteDoc, addDoc, collection } from 'firebase/firestore';
 import { auditFieldChange } from '@/lib/audit';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { makeSiteId } from '@/lib/doc-ids';
@@ -110,7 +111,8 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
     const [searchQuery, setSearchQuery] = useState("");
     const [viewMode, setViewMode] = useState<ViewMode>('rows');
     const [sortBy, setSortBy] = useState<SortOption>('name');
-    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'technicians');
+    const [activeTab, _setActiveTabRaw] = useState(() => { const sp = searchParams.get('tab'); if (sp) return sp; try { return localStorage.getItem('cc:directory:tab') || 'technicians'; } catch { return 'technicians'; } });
+    const setActiveTab = (v: string) => { _setActiveTabRaw(v); try { localStorage.setItem('cc:directory:tab', v); } catch {} };
     const [mapViewMode, setMapViewMode] = useState<'techs' | 'sites'>('techs');
     const [mapSearch, setMapSearch] = useState("");
     const [selectedMapAddress, setSelectedMapAddress] = useState<string | null>(null);
@@ -122,6 +124,8 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
     const [isEditPersonnelOpen, setIsEditPersonnelOpen] = useState(false);
     const [selectedPerson, setSelectedPerson] = useState<Technician | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+    const [selectedClientCompany, setSelectedClientCompany] = useState<{ name: string; businessType?: string; contacts: Technician[] } | null>(null);
 
     const [approveOpen, setApproveOpen] = useState(false);
     const [denyOpen, setDenyOpen] = useState(false);
@@ -161,10 +165,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
 
     const handleCompanyClick = (companyName: string) => {
         const company = companies.find(c => c.name === companyName);
-        const primaryContact = company?.contacts[0];
-        if (primaryContact?.id) {
-            router.push('/admin/clients/' + primaryContact.id);
-        }
+        if (company) setSelectedClientCompany(company);
     };
 
     const handleEditClick = (person: Technician) => {
@@ -1301,6 +1302,69 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Client Company Detail Sheet */}
+            <Sheet open={!!selectedClientCompany} onOpenChange={open => !open && setSelectedClientCompany(null)}>
+                <SheetContent side="right" className="bg-bg-elevated border-border-main w-full max-w-md overflow-y-auto">
+                    {selectedClientCompany && (
+                        <>
+                            <SheetHeader className="mb-4">
+                                <SheetTitle className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+                                    <Building2 size={14} className="text-brand-red" />
+                                    {selectedClientCompany.name}
+                                </SheetTitle>
+                                {selectedClientCompany.businessType && (
+                                    <p className="text-[10px] text-text-muted uppercase tracking-widest">{selectedClientCompany.businessType}</p>
+                                )}
+                            </SheetHeader>
+                            <div className="space-y-3">
+                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">
+                                    Contacts ({selectedClientCompany.contacts.length})
+                                </p>
+                                {selectedClientCompany.contacts.map(contact => (
+                                    <div key={contact.id} className="p-3 rounded-lg bg-bg-secondary border border-border-sub space-y-1.5">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <Avatar className="h-7 w-7 shrink-0">
+                                                    <AvatarImage src={contact.avatarUrl} />
+                                                    <AvatarFallback className="text-[9px] font-black">{(contact.name || '?').slice(0,2).toUpperCase()}</AvatarFallback>
+                                                </Avatar>
+                                                <div className="min-w-0">
+                                                    <p className="text-[11px] font-black text-text-primary truncate">{contact.name}</p>
+                                                    <p className="text-[9px] text-text-muted uppercase tracking-wider">{contact.role || 'Client'}</p>
+                                                </div>
+                                            </div>
+                                            <Badge variant="outline" className={cn('text-[8px] h-4 uppercase shrink-0', contact.approvalStatus === 'approved' ? 'text-text-green border-text-green/30' : 'text-text-muted')}>
+                                                {contact.approvalStatus || 'pending'}
+                                            </Badge>
+                                        </div>
+                                        {contact.email && (
+                                            <p className="text-[9px] text-text-muted flex items-center gap-1.5">
+                                                <Mail size={9} /> {contact.email}
+                                            </p>
+                                        )}
+                                        {contact.phone && (
+                                            <p className="text-[9px] text-text-muted flex items-center gap-1.5">
+                                                <Phone size={9} /> {contact.phone}
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+                                {selectedClientCompany.contacts[0]?.id && (
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="w-full text-[10px] font-black uppercase tracking-widest h-9 mt-2"
+                                        onClick={() => { router.push('/admin/clients/' + selectedClientCompany.contacts[0].id); setSelectedClientCompany(null); }}
+                                    >
+                                        <ExternalLink size={10} className="mr-1.5" /> Open Full Profile
+                                    </Button>
+                                )}
+                            </div>
+                        </>
+                    )}
+                </SheetContent>
+            </Sheet>
 
         </>
     );

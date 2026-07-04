@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
 import { doc, collection, onSnapshot, addDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
@@ -16,11 +16,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   ArrowLeft, Mail, Phone, MapPin, Briefcase, Clock, CheckCircle, AlertTriangle,
-  Calendar, FileText, Upload, Shield, CheckSquare, Square,
+  Calendar, FileText, Upload, Shield, CheckSquare, Square, Minus,
   Star, Activity, TrendingUp, StickyNote, Plus, Users, Wrench,
   PhoneCall, UserCheck, BarChart2, Pencil, Search, Ban, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { EditProfileDialog } from '../components/edit-profile-dialog';
+import { uploadFile } from '@/lib/upload';
 import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierBadgeVariant } from '@/lib/reliability';
 import { hasPermission, ALL_PERMISSIONS, PERMISSION_TREE, getPortalAccess, type Permission } from '@/lib/permissions';
@@ -71,6 +72,9 @@ export default function DirectoryPersonPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadForm, setUploadForm] = useState({ name: '', type: 'other', expiryDate: '', url: '' });
   const [uploadSaving, setUploadSaving] = useState(false);
+  const [uploadMode, setUploadMode] = useState<'file' | 'url'>('url');
+  const [uploadFileObj, setUploadFileObj] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [permOverrides, setPermOverrides] = useState<Record<string, boolean>>({});
   const [savingPerms, setSavingPerms] = useState(false);
@@ -142,16 +146,24 @@ export default function DirectoryPersonPage() {
     if (!uploadForm.name || !id) return;
     setUploadSaving(true);
     try {
+      let resolvedUrl = uploadForm.url || '#';
+      if (uploadMode === 'file' && uploadFileObj) {
+        const safeName = uploadFileObj.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const result = await uploadFile(`documents/${id}/${Date.now()}_${safeName}`, uploadFileObj);
+        resolvedUrl = result.url;
+      }
       await addDoc(collection(db, 'users', id, 'documents'), {
         name: uploadForm.name,
         type: uploadForm.type,
-        url: uploadForm.url || '#',
+        url: resolvedUrl,
         uploadedAt: new Date().toISOString(),
         expiryDate: uploadForm.expiryDate || null,
         approvalStatus: 'pending',
       });
       setUploadOpen(false);
       setUploadForm({ name: '', type: 'other', expiryDate: '', url: '' });
+      setUploadFileObj(null);
+      setUploadMode('url');
     } finally {
       setUploadSaving(false);
     }
@@ -807,11 +819,28 @@ export default function DirectoryPersonPage() {
                             <span className={cn('inline-block w-2 h-2 rounded-full', dotColor)} />
                             {portalLabel}
                           </h4>
-                          <div className="flex items-center gap-2">
-                            <button onClick={() => handleSelectAllForPortal(portal)} className="text-[8px] font-black uppercase tracking-wider text-text-muted hover:text-text-primary transition-colors">Select All</button>
-                            <span className="text-text-muted text-[8px]">·</span>
-                            <button onClick={() => handleClearAllForPortal(portal)} className="text-[8px] font-black uppercase tracking-wider text-text-muted hover:text-text-primary transition-colors">Clear All</button>
-                          </div>
+                          {(() => {
+                            const allPortalPerms = Object.values(PERMISSION_TREE[portal]).flat() as Permission[];
+                            const allPortalSelected = allPortalPerms.every(p => {
+                              const ov = permOverrides[p]; return ov !== undefined ? ov : hasPermission(person, p);
+                            });
+                            const somePortalSelected = allPortalPerms.some(p => {
+                              const ov = permOverrides[p]; return ov !== undefined ? ov : hasPermission(person, p);
+                            });
+                            return (
+                              <button
+                                onClick={() => allPortalSelected ? handleClearAllForPortal(portal) : handleSelectAllForPortal(portal)}
+                                className="h-4 w-4 rounded border border-border-main flex items-center justify-center transition-colors hover:border-text-primary"
+                                title={allPortalSelected ? 'Clear all' : 'Select all'}
+                              >
+                                {allPortalSelected
+                                  ? <CheckSquare size={10} className="text-text-green" />
+                                  : somePortalSelected
+                                    ? <Minus size={10} className="text-text-muted" />
+                                    : null}
+                              </button>
+                            );
+                          })()}
                         </div>
                         {Object.entries(PERMISSION_TREE[portal]).map(([page, perms]) => {
                           const sectionKey = `${portal}:${page}`;
@@ -830,10 +859,29 @@ export default function DirectoryPersonPage() {
                                   {isCollapsed ? <ChevronRight size={10} className="text-text-muted" /> : <ChevronDown size={10} className="text-text-muted" />}
                                   <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">{page.replace(/_/g, ' ')}</p>
                                 </div>
-                                <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                                  <button onClick={() => handleSelectAllForPage(perms as Permission[])} className="text-[7px] font-black uppercase tracking-wider text-text-muted hover:text-text-primary transition-colors">All</button>
-                                  <span className="text-text-muted text-[7px]">·</span>
-                                  <button onClick={() => handleClearAllForPage(perms as Permission[])} className="text-[7px] font-black uppercase tracking-wider text-text-muted hover:text-text-primary transition-colors">Clear</button>
+                                <div onClick={e => e.stopPropagation()}>
+                                  {(() => {
+                                    const sectionPerms = perms as Permission[];
+                                    const allSel = sectionPerms.every(p => {
+                                      const ov = permOverrides[p]; return ov !== undefined ? ov : hasPermission(person, p);
+                                    });
+                                    const someSel = sectionPerms.some(p => {
+                                      const ov = permOverrides[p]; return ov !== undefined ? ov : hasPermission(person, p);
+                                    });
+                                    return (
+                                      <button
+                                        onClick={() => allSel ? handleClearAllForPage(sectionPerms) : handleSelectAllForPage(sectionPerms)}
+                                        className="h-4 w-4 rounded border border-border-main flex items-center justify-center transition-colors hover:border-text-primary"
+                                        title={allSel ? 'Clear section' : 'Select all in section'}
+                                      >
+                                        {allSel
+                                          ? <CheckSquare size={10} className="text-text-green" />
+                                          : someSel
+                                            ? <Minus size={10} className="text-text-muted" />
+                                            : null}
+                                      </button>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                               {!isCollapsed && (
@@ -1091,14 +1139,44 @@ export default function DirectoryPersonPage() {
               <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={uploadForm.expiryDate} onChange={e => setUploadForm(p => ({ ...p, expiryDate: e.target.value }))} />
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Document URL (optional)</Label>
-              <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="https://..." value={uploadForm.url} onChange={e => setUploadForm(p => ({ ...p, url: e.target.value }))} />
+              <div className="flex items-center justify-between mb-1">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Source</Label>
+                <div className="flex rounded-md border border-border-main overflow-hidden">
+                  <button
+                    onClick={() => setUploadMode('file')}
+                    className={cn('px-2.5 py-1 text-[9px] font-black uppercase tracking-widest transition-colors', uploadMode === 'file' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
+                  >Device</button>
+                  <button
+                    onClick={() => setUploadMode('url')}
+                    className={cn('px-2.5 py-1 text-[9px] font-black uppercase tracking-widest transition-colors border-l border-border-main', uploadMode === 'url' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
+                  >URL</button>
+                </div>
+              </div>
+              {uploadMode === 'file' ? (
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={e => setUploadFileObj(e.target.files?.[0] || null)}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full h-9 rounded-md border border-dashed border-border-main bg-bg-secondary text-[10px] font-bold text-text-muted hover:text-text-primary hover:border-border-main transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <Upload size={11} />
+                    {uploadFileObj ? uploadFileObj.name : 'Choose file…'}
+                  </button>
+                </div>
+              ) : (
+                <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="https://..." value={uploadForm.url} onChange={e => setUploadForm(p => ({ ...p, url: e.target.value }))} />
+              )}
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => setUploadOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
-            <Button size="sm" onClick={handleUploadDoc} disabled={!uploadForm.name || uploadSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
-              {uploadSaving ? 'Saving...' : 'Upload'}
+            <Button variant="outline" size="sm" onClick={() => { setUploadOpen(false); setUploadFileObj(null); setUploadMode('url'); }} className="text-[10px] font-black uppercase">Cancel</Button>
+            <Button size="sm" onClick={handleUploadDoc} disabled={!uploadForm.name || uploadSaving || (uploadMode === 'file' && !uploadFileObj)} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+              {uploadSaving ? 'Uploading...' : 'Upload'}
             </Button>
           </DialogFooter>
         </DialogContent>

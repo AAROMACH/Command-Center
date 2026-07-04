@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { db, storage } from '@/lib/firebase';
 import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -112,6 +112,24 @@ function Textarea({ value, onChange, placeholder, rows = 4, required }: any) {
 
 export default function PublicServiceRequestPage() {
   const [form, setForm] = useState<FormState>(EMPTY);
+
+  // Pre-fill from URL query params (passed by client portal "Go to Form" button)
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const name = sp.get('name') || '';
+    const email = sp.get('email') || '';
+    const phone = sp.get('phone') || '';
+    const company = sp.get('company') || '';
+    if (name || email || phone || company) {
+      setForm(prev => ({
+        ...prev,
+        fullName: name || prev.fullName,
+        email: email || prev.email,
+        phoneNumber: phone || prev.phoneNumber,
+        companyName: company || prev.companyName,
+      }));
+    }
+  }, []);
   const [files, setFiles] = useState<File[]>([]);
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);

@@ -9,6 +9,7 @@ import { Activity, CheckCircle2, Clock, AlertTriangle, ShieldCheck, BarChart2, C
 import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierColor } from '@/lib/reliability';
 import { format, parseISO } from 'date-fns';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 
 export default function TechActivityPage() {
   const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -71,6 +72,32 @@ export default function TechActivityPage() {
     [assignments]
   );
 
+  const jobsPerWeek = useMemo(() => {
+    const grouped: Record<string, number> = {};
+    weeklyLogs.forEach(l => {
+      if (!l.weekOf) return;
+      const week = l.weekOf.slice(0, 10);
+      if (l.status === 'Submitted' || l.status === 'Approved') grouped[week] = (grouped[week] || 0) + 1;
+    });
+    return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).slice(-8)
+      .map(([week, count]) => ({ week: week.slice(5), count }));
+  }, [weeklyLogs]);
+
+  const earningsTrend = useMemo(() =>
+    weeklyLogs
+      .filter(l => l.status === 'Approved')
+      .sort((a, b) => (a.weekOf || '').localeCompare(b.weekOf || ''))
+      .slice(-8)
+      .map(l => ({ week: (l.weekOf || '').slice(5, 10), pay: l.totalPayout || 0 })),
+    [weeklyLogs]
+  );
+
+  const assignmentPie = [
+    { name: 'Completed', value: jobCounts.completed, color: '#1f8a55' },
+    { name: 'In Progress', value: jobCounts.inProgress, color: '#60a5fa' },
+    { name: 'Scheduled', value: jobCounts.assigned, color: '#C89B3C' },
+  ].filter(d => d.value > 0);
+
   if (!mounted) return null;
 
   const StatTile = ({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) => (
@@ -99,6 +126,55 @@ export default function TechActivityPage() {
         <StatTile label="Reliability Score" value={reliabilityScore} sub={tier} color={tierColor} />
         <StatTile label="Pending Verify" value={pendingVerification} color={pendingVerification > 0 ? 'text-accent-gold' : 'text-text-primary'} />
         <StatTile label="Disputed Items" value={disputed} color={disputed > 0 ? 'text-brand-red' : 'text-text-primary'} />
+      </div>
+
+      {/* Performance Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="bg-bg-secondary border border-border-sub rounded-xl p-4">
+          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-3 flex items-center gap-1.5"><BarChart2 size={10} className="text-brand-red" /> Logs Per Week</p>
+          {jobsPerWeek.length > 0 ? (
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={jobsPerWeek} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
+                <XAxis dataKey="week" tick={{ fontSize: 8, fill: '#525252' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 8, fill: '#525252' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 10 }} cursor={{ fill: 'rgba(204,34,0,0.08)' }} />
+                <Bar dataKey="count" fill="#CC2200" radius={[3, 3, 0, 0]} name="Logs" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[160px] flex items-center justify-center"><p className="text-[9px] text-text-muted uppercase opacity-40">No log data yet</p></div>
+          )}
+        </div>
+        <div className="bg-bg-secondary border border-border-sub rounded-xl p-4">
+          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-3 flex items-center gap-1.5"><Activity size={10} className="text-brand-red" /> Job Status</p>
+          {assignmentPie.length > 0 ? (
+            <ResponsiveContainer width="100%" height={160}>
+              <PieChart>
+                <Pie data={assignmentPie} dataKey="value" cx="50%" cy="50%" outerRadius={60} strokeWidth={0}>
+                  {assignmentPie.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                </Pie>
+                <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 10 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[160px] flex items-center justify-center"><p className="text-[9px] text-text-muted uppercase opacity-40">No assignments yet</p></div>
+          )}
+        </div>
+        <div className="bg-bg-secondary border border-border-sub rounded-xl p-4">
+          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-3 flex items-center gap-1.5"><Coins size={10} className="text-brand-red" /> Earnings Trend</p>
+          {earningsTrend.length > 0 ? (
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={earningsTrend} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                <XAxis dataKey="week" tick={{ fontSize: 8, fill: '#525252' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 8, fill: '#525252' }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 10 }} formatter={(v: number) => [`$${v.toFixed(2)}`, 'Payout']} />
+                <Line dataKey="pay" stroke="#1f8a55" strokeWidth={2} dot={{ r: 3, fill: '#1f8a55', strokeWidth: 0 }} activeDot={{ r: 4 }} name="Payout" />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[160px] flex items-center justify-center"><p className="text-[9px] text-text-muted uppercase opacity-40">No approved logs yet</p></div>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

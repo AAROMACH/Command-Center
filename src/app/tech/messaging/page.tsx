@@ -101,7 +101,7 @@ export default function TechMessagingPage() {
       m.receiverId === myId &&
       !(m.readBy || []).includes(myId)
     );
-    await Promise.all(unread.map(m => updateDoc(doc(db, 'messages', m.id), { readBy: arrayUnion(myId) })));
+    await Promise.all(unread.map(m => updateDoc(doc(db, 'messages', m.id), { readBy: arrayUnion(myId), read: true })));
   };
 
   const markProjectRead = async (projectId: string) => {
@@ -111,7 +111,7 @@ export default function TechMessagingPage() {
       m.senderId !== myId &&
       !(m.readBy || []).includes(myId)
     );
-    await Promise.all(unread.map(m => updateDoc(doc(db, 'messages', m.id), { readBy: arrayUnion(myId) })));
+    await Promise.all(unread.map(m => updateDoc(doc(db, 'messages', m.id), { readBy: arrayUnion(myId), read: true })));
   };
 
   // Projects this tech is assigned to, grouped by status

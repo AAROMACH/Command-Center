@@ -68,11 +68,12 @@ type SortOption = 'priority' | 'date' | 'client' | 'status' | 'pay' | 'tech' | '
 
 export function DispatchPageClient() {
   const searchParams = useSearchParams();
-  const [activeMasterTab, setActiveMasterTab] = useState(
-    searchParams.get('tab') === 'dispatch' ? 'dispatch' : 
-    searchParams.get('tab') === 'assignments' ? 'assignments' : 
-    'requests'
-  );
+  const [activeMasterTab, _setActiveMasterTabRaw] = useState(() => {
+    const sp = searchParams.get('tab');
+    if (sp === 'requests' || sp === 'assignments' || sp === 'dispatch') return sp;
+    try { return localStorage.getItem('cc:dispatch:tab') || 'dispatch'; } catch { return 'dispatch'; }
+  });
+  const setActiveMasterTab = (v: string) => { _setActiveMasterTabRaw(v); try { localStorage.setItem('cc:dispatch:tab', v); } catch {} };
   
   const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>([]);
   const [allAssignments, setAllAssignments] = useState<WorkOrder[]>([]);
@@ -327,8 +328,8 @@ export function DispatchPageClient() {
       <Tabs value={activeMasterTab} onValueChange={(val: any) => setActiveMasterTab(val)} className="w-full">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub shadow-sm">
             <TabsList className="tabs !mb-0 !p-0 !bg-bg-tertiary">
-              <TabsTrigger value="requests" className="tab">SERVICE REQUESTS</TabsTrigger>
               <TabsTrigger value="dispatch" className="tab">DISPATCH HUB</TabsTrigger>
+              <TabsTrigger value="requests" className="tab">SERVICE REQUESTS</TabsTrigger>
               <TabsTrigger value="assignments" className="tab">ASSIGNMENTS</TabsTrigger>
             </TabsList>
 

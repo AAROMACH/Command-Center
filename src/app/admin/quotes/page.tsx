@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { db, auth } from '@/lib/firebase';
+import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
@@ -71,6 +72,11 @@ function NewQuoteDialog({
 }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, u => setFirebaseUser(u));
+    return unsub;
+  }, []);
   const [customerType, setCustomerType] = useState<'in_app_client' | 'external_customer'>('in_app_client');
   const [clientId, setClientId] = useState('');
   const [customerName, setCustomerName] = useState('');
@@ -136,6 +142,7 @@ function NewQuoteDialog({
   };
 
   const handleSave = async () => {
+    if (!firebaseUser) { toast({ variant: 'destructive', title: 'Authentication required', description: 'Please refresh and try again.' }); return; }
     if (!title) { toast({ variant: 'destructive', title: 'Title required' }); return; }
     if (customerType === 'in_app_client' && !clientId) { toast({ variant: 'destructive', title: 'Select a client' }); return; }
     if (customerType === 'external_customer' && !customerEmail) { toast({ variant: 'destructive', title: 'Customer email required' }); return; }
@@ -178,7 +185,7 @@ function NewQuoteDialog({
         approvedByEmail: null,
         approvalNote: null,
         rejectionReason: null,
-        createdBy: auth.currentUser?.uid || '',
+        createdBy: firebaseUser.uid,
         createdAt: now,
         updatedAt: now,
         originalQuoteId: null,
@@ -193,7 +200,10 @@ function NewQuoteDialog({
       onSaved();
       onClose();
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Failed', description: e.message });
+      const desc = e?.code === 'permission-denied'
+        ? 'Your account does not have permission to create quotes. Contact a super admin.'
+        : e.message;
+      toast({ variant: 'destructive', title: 'Failed', description: desc });
     } finally {
       setSaving(false);
     }

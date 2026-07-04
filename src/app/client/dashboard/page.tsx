@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { db } from "@/lib/firebase";
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import type { Project, ServiceRequest, Technician, Invoice, WorkOrder } from '@/lib/types';
@@ -129,6 +130,39 @@ export default function ClientDashboardPage() {
             .slice(0, 5);
     }, [myWorkOrders]);
 
+    const requestsByMonth = useMemo(() => {
+        const grouped: Record<string, number> = {};
+        myRequests.forEach(r => {
+            try {
+                const month = (r.submittedDate || '').slice(0, 7);
+                if (month) grouped[month] = (grouped[month] || 0) + 1;
+            } catch {}
+        });
+        return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).slice(-8)
+            .map(([month, count]) => ({ month: month.slice(5), count }));
+    }, [myRequests]);
+
+    const invoicePie = useMemo(() => {
+        const paid = myInvoices.filter(i => i.status === 'paid').length;
+        const pending = myInvoices.filter(i => i.status === 'sent' || i.status === 'draft').length;
+        const overdue = myInvoices.filter(i => i.status === 'overdue').length;
+        return [
+            { name: 'Paid', value: paid, color: '#1f8a55' },
+            { name: 'Pending', value: pending, color: '#C89B3C' },
+            { name: 'Overdue', value: overdue, color: '#CC2200' },
+        ].filter(d => d.value > 0);
+    }, [myInvoices]);
+
+    const projectProgress = useMemo(() =>
+        myProjects.slice(0, 5).map(p => {
+            const allTasks = (p.phases || []).flatMap((ph: any) => ph.tasks || []);
+            const completed = allTasks.filter((t: any) => t.isCompleted).length;
+            const total = allTasks.length;
+            return { name: (p.name || 'Project').slice(0, 18), pct: total > 0 ? Math.round((completed / total) * 100) : 0 };
+        }),
+        [myProjects]
+    );
+
     const formatDateStr = (dateStr: string) => {
         if (!dateStr) return 'TBD';
         return dateStr.replace(/-/g, '/');
@@ -232,6 +266,55 @@ export default function ClientDashboardPage() {
                         </p>
                     </CardContent>
                 </Card>
+            </div>
+
+            {/* Analytics Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="bg-bg-secondary border border-border-main rounded-xl p-4">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-3 flex items-center gap-1.5"><ClipboardList size={10} className="text-brand-red" /> Requests / Month</p>
+                    {requestsByMonth.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={160}>
+                            <BarChart data={requestsByMonth} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
+                                <XAxis dataKey="month" tick={{ fontSize: 8, fill: '#525252' }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 8, fill: '#525252' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                                <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 10 }} cursor={{ fill: 'rgba(204,34,0,0.08)' }} />
+                                <Bar dataKey="count" fill="#CC2200" radius={[3, 3, 0, 0]} name="Requests" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="h-[160px] flex items-center justify-center"><p className="text-[9px] text-text-muted uppercase opacity-40">No requests yet</p></div>
+                    )}
+                </div>
+                <div className="bg-bg-secondary border border-border-main rounded-xl p-4">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-3 flex items-center gap-1.5"><Coins size={10} className="text-brand-red" /> Invoice Status</p>
+                    {invoicePie.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={160}>
+                            <PieChart>
+                                <Pie data={invoicePie} dataKey="value" cx="50%" cy="50%" outerRadius={60} strokeWidth={0}>
+                                    {invoicePie.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                                </Pie>
+                                <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 10 }} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="h-[160px] flex items-center justify-center"><p className="text-[9px] text-text-muted uppercase opacity-40">No invoices yet</p></div>
+                    )}
+                </div>
+                <div className="bg-bg-secondary border border-border-main rounded-xl p-4">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-3 flex items-center gap-1.5"><Activity size={10} className="text-brand-red" /> Project Progress</p>
+                    {projectProgress.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={160}>
+                            <BarChart data={projectProgress} layout="vertical" margin={{ top: 0, right: 4, bottom: 0, left: 0 }}>
+                                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 8, fill: '#525252' }} axisLine={false} tickLine={false} unit="%" />
+                                <YAxis type="category" dataKey="name" tick={{ fontSize: 8, fill: '#525252' }} axisLine={false} tickLine={false} width={70} />
+                                <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 10 }} formatter={(v: number) => [`${v}%`, 'Complete']} />
+                                <Bar dataKey="pct" fill="#1f8a55" radius={[0, 3, 3, 0]} name="% Complete" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="h-[160px] flex items-center justify-center"><p className="text-[9px] text-text-muted uppercase opacity-40">No projects yet</p></div>
+                    )}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

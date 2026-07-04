@@ -112,7 +112,7 @@ export default function AdminMessagingPage() {
       m.senderId === contactId && m.receiverId === myId &&
       !(m.readBy as string[] | undefined || []).includes(myId)
     );
-    await Promise.all(unread.map(m => updateDoc(doc(db, 'messages', m.id), { readBy: arrayUnion(myId) })));
+    await Promise.all(unread.map(m => updateDoc(doc(db, 'messages', m.id), { readBy: arrayUnion(myId), read: true })));
   }, [directMessages, currentUser]);
 
   const markProjectRead = useCallback(async (projectId: string) => {
@@ -122,7 +122,7 @@ export default function AdminMessagingPage() {
       m.projectId === projectId && m.senderId !== myId &&
       !(m.readBy as string[] | undefined || []).includes(myId)
     );
-    await Promise.all(unread.map(m => updateDoc(doc(db, 'messages', m.id), { readBy: arrayUnion(myId) })));
+    await Promise.all(unread.map(m => updateDoc(doc(db, 'messages', m.id), { readBy: arrayUnion(myId), read: true })));
   }, [directMessages, currentUser]);
 
   const handleImageUpload = async (

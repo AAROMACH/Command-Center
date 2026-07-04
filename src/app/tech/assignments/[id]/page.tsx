@@ -11,6 +11,7 @@ import {
 import type { WorkOrder, Technician, WeeklyLog, WeeklyLogItem } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import {
   ArrowLeft, ShieldCheck, Phone, Mail, Calendar, Clock, DollarSign,
@@ -123,6 +124,8 @@ export default function TechAssignmentDetailPage() {
   const [relatedLogs, setRelatedLogs] = useState<WeeklyLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [detailView, setDetailView] = useState<'overview' | 'history'>('overview');
+  const [historyTypeFilter, setHistoryTypeFilter] = useState('all');
 
   useEffect(() => {
     const uid = sessionStorage.getItem('currentUserId');
@@ -522,11 +525,32 @@ export default function TechAssignmentDetailPage() {
         </div>
       </div>
 
+      {/* Page view tabs */}
+      <div className="flex gap-0 border-b border-border-sub">
+        {(['overview', 'history'] as const).map(v => (
+          <button
+            key={v}
+            onClick={() => setDetailView(v)}
+            className={cn(
+              'px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-colors',
+              detailView === v
+                ? 'text-text-primary border-b-2 border-brand-red -mb-px'
+                : 'text-text-muted hover:text-text-primary'
+            )}
+          >
+            {v}
+          </button>
+        ))}
+      </div>
+
+      {detailView === 'overview' && (
+      <>
+
       {/* 3-column: Job Details | Schedule | Map ────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-5">
 
         {/* Job Details */}
-        <div className="md:col-span-1 bg-bg-secondary rounded-xl border border-border-sub p-4">
+        <div className="md:col-span-2 bg-bg-secondary rounded-xl border border-border-sub p-4">
           <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 mb-3">
             <Briefcase size={11} className="text-brand-red" /> Job Details
           </p>
@@ -541,19 +565,22 @@ export default function TechAssignmentDetailPage() {
           </div>
         </div>
 
-        {/* Schedule & Time */}
+        {/* Schedule */}
         <div className="md:col-span-1 bg-bg-secondary rounded-xl border border-border-sub p-4">
           <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 mb-3">
-            <Calendar size={11} className="text-brand-red" /> Schedule & Time
+            <Calendar size={11} className="text-brand-red" /> Schedule
           </p>
-          <div className="flex items-start gap-4 min-h-[140px]">
-            <div className="shrink-0 text-center w-20">
-              <p className="text-[8px] font-black uppercase tracking-[0.12em] text-text-muted leading-none mb-0.5">{dayName}</p>
-              <p className="text-[10px] font-black uppercase tracking-widest text-text-muted leading-none mb-0.5">{monthStr}</p>
-              <p className="font-black text-text-primary leading-none my-1" style={{ fontSize: '3.25rem', fontVariantNumeric: 'tabular-nums' }}>{dayNum}</p>
-              <p className="text-[11px] font-black text-text-muted leading-none">{yearStr}</p>
+          <div className="space-y-4">
+            {/* Date row */}
+            <div className="flex items-baseline gap-3">
+              <p className="font-black text-text-primary leading-none" style={{ fontSize: '3.25rem', fontVariantNumeric: 'tabular-nums' }}>{dayNum}</p>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted leading-none">{monthStr}</p>
+                <p className="text-[8px] font-black uppercase tracking-[0.12em] text-text-muted leading-none mt-0.5">{dayName} · {yearStr}</p>
+              </div>
             </div>
-            <div className="flex-1 border-l border-border-sub pl-4 pt-0.5 space-y-5">
+            {/* Time row */}
+            <div className="space-y-2 border-t border-border-sub pt-3">
               <div>
                 <p className="text-[8px] font-black uppercase tracking-[0.15em] text-text-muted flex items-center gap-1 mb-1">
                   <Clock size={8} /> Start Window
@@ -650,7 +677,7 @@ export default function TechAssignmentDetailPage() {
           </div>
         </div>
 
-        {/* Right panel: utility buttons + status actions + history */}
+        {/* Right panel: utility buttons + status actions */}
         <div className="lg:col-span-3 space-y-4">
 
           {/* Always-visible utility buttons */}
@@ -678,30 +705,72 @@ export default function TechAssignmentDetailPage() {
               ))}
             </div>
           )}
+        </div>
+      </div>
 
-          {/* History card */}
-          <div className="bg-bg-secondary rounded-xl border border-border-sub p-4 flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
-                <Activity size={11} className="text-brand-red" /> History
-              </p>
-            </div>
+      {/* Pay Ledger ─────────────────────────────────────────────────────── */}
+      <div className="bg-bg-secondary rounded-xl border border-border-sub p-4">
+        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-3 flex items-center gap-2">
+          <DollarSign size={11} className="text-brand-red" /> Pay Ledger
+        </p>
+        {relatedLogs.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {relatedLogs.map(log => (
+              <div key={log.id} className="p-3 rounded-lg bg-bg-primary border border-border-sub">
+                <p className="text-[9px] font-bold uppercase text-text-primary">Week of {log.weekOf}</p>
+                <p className="text-sm font-mono font-bold mt-0.5" style={{ color: '#00d36f' }}>
+                  ${(log.totalPayout || 0).toFixed(2)}
+                </p>
+                <Badge variant="outline" className="h-4 text-[7px] mt-1 uppercase">{log.status}</Badge>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-[9px] text-text-muted opacity-40 font-bold uppercase">No pay logs linked</p>
+        )}
+      </div>
 
-            {recentHistory.length > 0 ? (
-              <div className="space-y-0">
-                {recentHistory.map((ev, i) => {
+      </> // end overview
+      )}
+
+      {detailView === 'history' && (
+        <div className="bg-bg-secondary rounded-xl border border-border-sub p-4 flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+              <Activity size={11} className="text-brand-red" /> Event History
+            </p>
+            <Select value={historyTypeFilter} onValueChange={setHistoryTypeFilter}>
+              <SelectTrigger className="h-7 w-[150px] text-[9px] bg-bg-primary border-border-main uppercase font-bold">
+                <SelectValue placeholder="All Events" />
+              </SelectTrigger>
+              <SelectContent className="bg-bg-elevated border-border-main">
+                <SelectItem value="all" className="text-[9px] uppercase font-bold">All Events</SelectItem>
+                <SelectItem value="status" className="text-[9px] uppercase font-bold">Status Changes</SelectItem>
+                <SelectItem value="assignment" className="text-[9px] uppercase font-bold">Assignments</SelectItem>
+                <SelectItem value="note" className="text-[9px] uppercase font-bold">Notes</SelectItem>
+                <SelectItem value="dispatch" className="text-[9px] uppercase font-bold">Dispatch</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {(() => {
+            const filtered = recentHistory.filter(ev =>
+              historyTypeFilter === 'all' || (ev.type || '').includes(historyTypeFilter)
+            );
+            return filtered.length > 0 ? (
+              <div className="space-y-0 max-h-[480px] overflow-y-auto">
+                {filtered.map((ev, i) => {
                   const dotColor = HISTORY_COLORS[i % HISTORY_COLORS.length];
                   let evDate: Date | null = null;
                   try { evDate = new Date(ev.date); } catch {}
                   const dateStr = evDate ? format(evDate, 'MM-dd-yyyy') : ev.date?.slice(0, 10) || '';
                   const timeStr = evDate ? format(evDate, 'h:mm a').toUpperCase() : '';
                   const typeLabel = (ev.type || 'event').replace(/_/g, ' ').toUpperCase();
-
                   return (
                     <div key={i} className="flex gap-3 py-2.5 border-b border-border-sub last:border-0">
                       <div className="flex flex-col items-center shrink-0 pt-1">
                         <div className="h-2 w-2 rounded-full shrink-0" style={{ background: dotColor }} />
-                        {i < recentHistory.length - 1 && (
+                        {i < filtered.length - 1 && (
                           <div className="w-px mt-1.5 flex-1 min-h-[16px]" style={{ background: `${dotColor}30` }} />
                         )}
                       </div>
@@ -715,12 +784,8 @@ export default function TechAssignmentDetailPage() {
                             <span className="text-[8px] font-black uppercase text-text-muted shrink-0 tracking-wide">{ev.user}</span>
                           )}
                         </div>
-                        <p className="text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ color: dotColor }}>
-                          {typeLabel}
-                        </p>
-                        {ev.details && (
-                          <p className="text-[10px] text-text-secondary leading-snug">{ev.details}</p>
-                        )}
+                        <p className="text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ color: dotColor }}>{typeLabel}</p>
+                        {ev.details && <p className="text-[10px] text-text-secondary leading-snug">{ev.details}</p>}
                       </div>
                     </div>
                   );
@@ -730,26 +795,8 @@ export default function TechAssignmentDetailPage() {
               <div className="flex-1 flex items-center justify-center py-8">
                 <p className="text-[9px] font-bold uppercase text-text-muted opacity-40">No history recorded</p>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Weekly Logs */}
-      {relatedLogs.length > 0 && (
-        <div className="bg-bg-secondary rounded-xl border border-border-sub p-4">
-          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-3">Weekly Logs</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {relatedLogs.map(log => (
-              <div key={log.id} className="p-3 rounded-lg bg-bg-primary border border-border-sub">
-                <p className="text-[9px] font-bold uppercase text-text-primary">Week of {log.weekOf}</p>
-                <p className="text-sm font-mono font-bold mt-0.5" style={{ color: '#00d36f' }}>
-                  ${(log.totalPayout || 0).toFixed(2)}
-                </p>
-                <Badge variant="outline" className="h-4 text-[7px] mt-1 uppercase">{log.status}</Badge>
-              </div>
-            ))}
-          </div>
+            );
+          })()}
         </div>
       )}
     </div>

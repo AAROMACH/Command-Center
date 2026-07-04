@@ -53,7 +53,8 @@ export default function AdminClientsPage() {
     const [search, setSearch] = useState('');
     const [sortBy, setSortBy] = useState<'name' | 'status' | 'jobs'>('name');
     const [statusFilter, setStatusFilter] = useState<string>('all');
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [viewMode, _setViewModeRaw] = useState<'grid' | 'list'>(() => { try { return (localStorage.getItem('cc:sites:view') as 'grid' | 'list') || 'grid'; } catch { return 'grid'; } });
+    const setViewMode = (v: 'grid' | 'list') => { _setViewModeRaw(v); try { localStorage.setItem('cc:sites:view', v); } catch {} };
     const [isNewOpen, setIsNewOpen] = useState(false);
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({

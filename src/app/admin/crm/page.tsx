@@ -141,7 +141,8 @@ export default function CRMPage() {
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [currentUserId, setCurrentUserId] = useState('');
-  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [viewMode, _setViewModeRaw] = useState<'kanban' | 'list'>(() => { try { return (localStorage.getItem('cc:crm:view') as 'kanban' | 'list') || 'kanban'; } catch { return 'kanban'; } });
+  const setViewMode = (v: 'kanban' | 'list') => { _setViewModeRaw(v); try { localStorage.setItem('cc:crm:view', v); } catch {} };
   const [listSort, setListSort] = useState<{ col: 'company' | 'stage' | 'value' | 'updated'; dir: 'asc' | 'desc' }>({ col: 'updated', dir: 'desc' });
   const [convertLead, setConvertLead] = useState<Lead | null>(null);
   const [isConvertOpen, setIsConvertOpen] = useState(false);

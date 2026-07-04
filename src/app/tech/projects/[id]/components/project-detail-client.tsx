@@ -581,7 +581,7 @@ const TimesheetsTab = ({
                 )}
             </div>
 
-            <section className="space-y-4">
+            <section className="space-y-2">
                 <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
                     <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Historical Session Ledger</h3>
                     <Button variant="ghost" size="sm" className="h-5 text-[8px] uppercase font-bold text-text-muted hover:text-brand-red" onClick={handleExportTimesheets}>
@@ -589,10 +589,10 @@ const TimesheetsTab = ({
                     </Button>
                 </div>
                 {groupedByDate.length > 0 ? (
-                    <Accordion type="multiple" defaultValue={groupedByDate.map(g => g.date)} className="space-y-3">
+                    <Accordion type="multiple" defaultValue={groupedByDate.map(g => g.date)} className="space-y-1.5">
                         {groupedByDate.map(group => (
                             <AccordionItem key={group.date} value={group.date} className="border border-border-sub rounded-xl overflow-hidden bg-bg-secondary shadow-sm">
-                                <AccordionTrigger className="px-5 py-3 hover:bg-bg-tertiary transition-colors hover:no-underline border-none text-left">
+                                <AccordionTrigger className="px-3 py-2 hover:bg-bg-tertiary transition-colors hover:no-underline border-none text-left">
                                     <div className="flex items-center gap-3 text-left">
                                         <div className="p-1.5 bg-bg-primary rounded text-brand-red border border-border-sub">
                                             <CalendarIcon size={16} />
@@ -602,7 +602,7 @@ const TimesheetsTab = ({
                                     </div>
                                     <span className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mr-6">Daily Tally: <span className="text-text-primary font-mono text-sm">{group.total.toFixed(1)}h</span></span>
                                 </AccordionTrigger>
-                                <AccordionContent className="p-3 bg-bg-primary/10">
+                                <AccordionContent className="p-2 bg-bg-primary/10">
                                     <div className="space-y-2">
                                         {group.logs.map(log => {
                                             const tech = technicians.find(t => t.id === log.techId);
@@ -611,7 +611,7 @@ const TimesheetsTab = ({
 
                                             return (
                                                 <div key={log.id} className={cn(
-                                                    "p-4 rounded-xl border space-y-4 text-left transition-all",
+                                                    "p-2.5 rounded-xl border space-y-2 text-left transition-all",
                                                     isLive ? "bg-brand-red-dim/5 border-brand-red ring-1 ring-brand-red/10" : "bg-bg-secondary border-border-sub"
                                                 )}>
                                                     <div className="flex justify-between items-start">
@@ -701,7 +701,27 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
     
     const handleTaskToggle = async (phaseId: string, taskId: string) => {
         if (isReadOnly) return;
-        
+
+        const targetPhase = (project.phases || []).find(ph => ph.id === phaseId);
+        const task = (targetPhase?.tasks || []).find(t => t.id === taskId);
+        if (task && !task.isCompleted) {
+            if (task.requiresPhoto && !task.photoUrl) {
+                toast({ variant: 'destructive', title: 'Photo required', description: 'Upload a photo to complete this task.' }); return;
+            }
+            if (task.requiresText && !task.textValue?.trim()) {
+                toast({ variant: 'destructive', title: 'Text required', description: 'Fill in the required text to complete this task.' }); return;
+            }
+            if (task.requiresNumeric && (task.numericValue === undefined || task.numericValue === null)) {
+                toast({ variant: 'destructive', title: 'Count required', description: 'Enter a valid count to complete this task.' }); return;
+            }
+            if (task.requiresFileUpload && !task.fileUrl) {
+                toast({ variant: 'destructive', title: 'Document required', description: 'Upload the required document to complete this task.' }); return;
+            }
+            if (task.requiresSignature && !task.signatureUrl) {
+                toast({ variant: 'destructive', title: 'Signature required', description: 'Collect signature before completing.' }); return;
+            }
+        }
+
         const updatedPhases = (project.phases || []).map(phase => {
             if (phase.id === phaseId) {
                 return {
@@ -848,7 +868,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             <div className="detail-tabs justify-center">
                 <button className={`detail-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Briefing</button>
                 <button className={`detail-tab ${activeTab === 'milestones' ? 'active' : ''}`} onClick={() => setActiveTab('milestones')}>Tasks</button>
-                <button className={`detail-tab ${activeTab === 'documents' ? 'active' : ''}`} onClick={() => setActiveTab('documents')}>Assets</button>
+                <button className={`detail-tab ${activeTab === 'documents' ? 'active' : ''}`} onClick={() => setActiveTab('documents')}>Documents</button>
                 <button className={`detail-tab ${activeTab === 'timesheets' ? 'active' : ''}`} onClick={() => setActiveTab('timesheets')}>Timesheets</button>
             </div>
 

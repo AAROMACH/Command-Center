@@ -114,7 +114,7 @@ export function ProjectsClient({ projects, technicians, viewMode = 'grid' }: Pro
                                 </Badge>
                                 <div className="flex items-center gap-1 text-[9px] text-text-muted font-bold uppercase tracking-widest">
                                     <User className="h-3 w-3 shrink-0" />
-                                    <span className="truncate max-w-[100px]">{lead ? lead.name : 'Unassigned'}</span>
+                                    <span className="truncate max-w-[120px]">Project Lead: {lead ? lead.name : 'Unassigned'}</span>
                                 </div>
                             </div>
 

@@ -110,25 +110,26 @@ const techNavGroups: NavGroup[] = [
     label: "Overview",
     items: [
       { href: "/tech/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "tech.dashboard.view" },
-      { href: "/tech/logs",      label: "Activity",  icon: Activity,        permission: "tech.logs.view" },
+      { href: "/tech/activity",  label: "Activity",  icon: Activity,        permission: "tech.dashboard.view" },
     ],
   },
   {
     label: "Operations",
     items: [
-      { href: "/tech/calendar",     label: "Schedule",    icon: CalendarDays,  permission: "tech.schedule.view" },
-      { href: "/tech/assignments",  label: "Assignments", icon: ClipboardList, permission: "tech.assignments.view" },
-      { href: "/tech/projects",     label: "Projects",    icon: FolderKanban,  permission: "tech.projects.view" },
+      { href: "/tech/calendar",    label: "Schedule",    icon: CalendarDays,  permission: "tech.schedule.view" },
+      { href: "/tech/assignments", label: "Assignments", icon: ClipboardList, permission: "tech.assignments.view" },
+      { href: "/tech/projects",    label: "Projects",    icon: FolderKanban,  permission: "tech.projects.view" },
+      { href: "/tech/logs",        label: "Logs",        icon: FileText,      permission: "tech.logs.view" },
     ],
   },
   {
-    label: "People & Communication",
+    label: "Communication",
     items: [
       { href: "/tech/messaging", label: "Messages", icon: MessageSquare, permission: "tech.messages.view" },
     ],
   },
   {
-    label: "Financials & Assets",
+    label: "Financials",
     items: [
       { href: "/tech/earnings", label: "Earnings", icon: Coins, permission: "tech.earnings.view" },
     ],

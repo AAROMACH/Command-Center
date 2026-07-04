@@ -2,18 +2,19 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { db, auth } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, updateDoc, arrayUnion, query } from 'firebase/firestore';
 import { uploadFile } from '@/lib/upload';
-import type { Technician, Project } from '@/lib/types';
+import type { Technician, Project, AdminMessage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, Send, User, Briefcase, Paperclip, X } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MessageSquare, Send, User, Briefcase, Paperclip, X, Radio } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-const TABS = ['Messages', 'Project Comms'] as const;
+const TABS = ['Messages', 'Project Comms', 'Broadcasts'] as const;
 type Tab = typeof TABS[number];
 
 type DirectMessage = {
@@ -43,6 +44,8 @@ export default function TechMessagingPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [projectBody, setProjectBody] = useState('');
 
+  const [contactFilter, setContactFilter] = useState<'all' | 'admins' | 'techs' | 'clients'>('all');
+  const [broadcasts, setBroadcasts] = useState<AdminMessage[]>([]);
   const [dmImageUrl, setDmImageUrl] = useState<string | null>(null);
   const [projectImageUrl, setProjectImageUrl] = useState<string | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
@@ -72,7 +75,12 @@ export default function TechMessagingPage() {
       setAllProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
     });
 
-    return () => { unsubUsers(); unsubMsgs(); unsubProjects(); };
+    const unsubBroadcasts = onSnapshot(collection(db, 'broadcasts'), (snap) => {
+      const all = snap.docs.map(d => ({ ...d.data(), id: d.id } as AdminMessage));
+      setBroadcasts(all.filter(b => b.targetPortal === 'all' || b.targetPortal === 'tech'));
+    });
+
+    return () => { unsubUsers(); unsubMsgs(); unsubProjects(); unsubBroadcasts(); };
   }, []);
 
   useEffect(() => {
@@ -126,7 +134,22 @@ export default function TechMessagingPage() {
   })();
 
   const blockedIds = new Set(currentUser?.messagingBlockedClientIds || []);
-  const visiblePartners = conversationPartners.filter(id => !blockedIds.has(id));
+  const visiblePartners = conversationPartners.filter(id => {
+    if (blockedIds.has(id)) return false;
+    const user = technicians.find(t => t.id === id);
+    if (!user && id !== 'admin') return true;
+    if (contactFilter === 'admins') {
+      if (id === 'admin') return true;
+      return user?.roles?.includes('super_admin') || user?.roles?.includes('dispatch_admin');
+    }
+    if (contactFilter === 'techs') {
+      return user?.roles?.includes('field_technician') || user?.roles?.includes('project_lead');
+    }
+    if (contactFilter === 'clients') {
+      return user?.roles?.includes('client');
+    }
+    return true;
+  });
 
   const thread = messages
     .filter(m => !m.projectId &&
@@ -280,8 +303,22 @@ export default function TechMessagingPage() {
       {activeTab === 'Messages' && (
         <div className="flex gap-4 h-[calc(100vh-220px)] min-h-[500px]">
           {/* Contacts sidebar */}
-          <div className="w-[200px] shrink-0 flex flex-col gap-1 border border-border-sub rounded-xl p-2 bg-bg-secondary overflow-y-auto">
-            <p className="text-[8px] font-black uppercase tracking-widest text-text-muted px-2 py-1">Conversations</p>
+          <div className="w-[200px] shrink-0 flex flex-col border border-border-sub rounded-xl bg-bg-secondary overflow-hidden">
+            <div className="p-2 border-b border-border-sub shrink-0 space-y-1.5">
+              <p className="text-[8px] font-black uppercase tracking-widest text-text-muted px-1">Conversations</p>
+              <Select value={contactFilter} onValueChange={(v) => setContactFilter(v as typeof contactFilter)}>
+                <SelectTrigger className="h-7 text-[9px] font-bold uppercase tracking-widest bg-bg-tertiary border-border-sub">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="admins">Admins</SelectItem>
+                  <SelectItem value="techs">Techs</SelectItem>
+                  <SelectItem value="clients">Clients</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
             {visiblePartners.map(id => (
               <button
                 key={id}
@@ -297,6 +334,7 @@ export default function TechMessagingPage() {
                 <span className="text-[10px] font-bold uppercase tracking-wider truncate">{getContactLabel(id)}</span>
               </button>
             ))}
+            </div>
           </div>
 
           {/* Thread panel */}
@@ -487,6 +525,67 @@ export default function TechMessagingPage() {
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── Broadcasts Tab ── */}
+      {activeTab === 'Broadcasts' && (
+        <div className="space-y-3">
+          {broadcasts.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
+              <Radio size={32} className="text-text-muted mx-auto mb-3" />
+              <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">No broadcasts</p>
+              <p className="text-[10px] text-text-muted mt-1">Admin messages targeted to you will appear here.</p>
+            </div>
+          ) : (
+            broadcasts
+              .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''))
+              .map(b => {
+                const isAcknowledged = (b as any).acknowledgedBy?.includes(myId);
+                return (
+                  <div
+                    key={b.id}
+                    className={cn(
+                      'p-4 rounded-xl border transition-all',
+                      isAcknowledged
+                        ? 'border-border-sub bg-bg-secondary opacity-70'
+                        : 'border-brand-red/20 bg-brand-red-dim/5'
+                    )}
+                    onClick={async () => {
+                      if (!isAcknowledged && myId) {
+                        await updateDoc(doc(db, 'broadcasts', b.id), { acknowledgedBy: arrayUnion(myId) });
+                      }
+                    }}
+                  >
+                    <div className="flex items-start gap-3 mb-2">
+                      <div className={cn(
+                        'p-1.5 rounded-lg border shrink-0',
+                        b.type === 'critical' ? 'bg-brand-red-dim border-brand-red/30 text-brand-red' :
+                        b.type === 'warning' ? 'bg-accent-gold-dim border-accent-gold/30 text-accent-gold' :
+                        'bg-bg-tertiary border-border-sub text-text-muted'
+                      )}>
+                        <Radio size={12} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-[12px] font-bold text-text-primary uppercase tracking-wide truncate">{b.subject}</p>
+                          {!isAcknowledged && (
+                            <span className="h-2 w-2 rounded-full bg-brand-red shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
+                          {b.timestamp ? format(parseISO(b.timestamp), 'MMM d, yyyy h:mm a') : ''} · {b.senderName || 'Admin'}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-text-secondary leading-relaxed ml-9">{b.body}</p>
+                    {!isAcknowledged && (
+                      <p className="text-[8px] text-text-muted mt-2 ml-9 uppercase font-bold tracking-widest">Click to mark as read</p>
+                    )}
+                  </div>
+                );
+              })
+          )}
         </div>
       )}
     </div>

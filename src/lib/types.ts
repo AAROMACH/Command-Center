@@ -470,6 +470,13 @@ export type WeeklyLogItem = {
   isComplete: boolean;
   isAdminReviewed: boolean;
   jobPay: number;
+  source?: 'job_log' | 'project_payout' | 'manual';
+  projectId?: string;
+  projectPayoutId?: string;
+  workDate?: string;
+  payoutAmount?: number;
+  reimbursementAmount?: number;
+  payNotes?: string;
 };
 
 export type MissingAssignmentReport = {
@@ -501,6 +508,7 @@ export type WeeklyLog = {
   missingAssignmentReports?: MissingAssignmentReport[];
   totalPayout?: number;
   submittedAt?: string;
+  submittedBy?: string;
   unsubmitRequested?: boolean;
   unsubmitReason?: string;
   unsubmitRequestedAt?: string;

@@ -301,9 +301,10 @@ export default function TechWeeklyLogPage() {
                       (activeLog.reimbursements || []).reduce((acc, r) => acc + r.amount, 0);
 
         try {
-            await updateDoc(doc(db, 'weeklyLogs', activeLog.id), { 
-                status: 'Submitted', 
+            await updateDoc(doc(db, 'weeklyLogs', activeLog.id), {
+                status: 'Submitted',
                 submittedAt: new Date().toISOString(),
+                submittedBy: technicians.find(t => t.id === currentTechId)?.name || currentTechId || 'Tech',
                 totalPayout: total
             });
             toast({
@@ -557,13 +558,21 @@ export default function TechWeeklyLogPage() {
                             )}
                             <div className="text-right">
                                 <p className="text-[10px] font-black text-text-green uppercase tracking-widest text-right">Registry Transmitted</p>
-                                <p className="text-[9px] text-text-muted uppercase font-bold text-right">Logged: {activeLog.submittedAt ? format(parseISO(activeLog.submittedAt), 'MMM d, h:mm a') : 'N/A'}</p>
+                                <p className="text-[9px] text-text-muted uppercase font-bold text-right">
+                                  {activeLog.submittedAt
+                                    ? `${format(parseISO(activeLog.submittedAt), 'MMM d, h:mm a')}${activeLog.submittedBy ? ` · ${activeLog.submittedBy}` : ''}`
+                                    : 'N/A'}
+                                </p>
                             </div>
                         </div>
                     ) : isLocked ? (
                         <div className="flex flex-col items-end text-right">
                             <p className="text-[10px] font-black text-text-green uppercase tracking-widest text-right">Terminal Locked</p>
-                            <p className="text-[9px] text-text-muted uppercase font-bold text-right">Finalized: {activeLog.submittedAt ? format(parseISO(activeLog.submittedAt), 'MMM d, h:mm a') : 'N/A'}</p>
+                            <p className="text-[9px] text-text-muted uppercase font-bold text-right">
+                              {activeLog.submittedAt
+                                ? `${format(parseISO(activeLog.submittedAt), 'MMM d, h:mm a')}${activeLog.submittedBy ? ` · ${activeLog.submittedBy}` : ''}`
+                                : 'N/A'}
+                            </p>
                         </div>
                     ) : (
                         <Button

@@ -247,6 +247,31 @@ export default function DashboardPage() {
                 </div>
             </header>
 
+            {/* Financial KPIs — compact top strip */}
+            <div className="flex flex-wrap items-center gap-2 mb-4 px-1">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary">
+                    <Banknote size={11} className="text-text-green shrink-0" />
+                    <div>
+                        <p className="text-[7px] font-black uppercase tracking-widest text-text-muted">MTD Revenue</p>
+                        <p className="text-[12px] font-bold font-mono text-text-green">${financialKpis.mtdRevenue.toLocaleString()}</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary">
+                    <TrendingUp size={11} className="text-accent-gold shrink-0" />
+                    <div>
+                        <p className="text-[7px] font-black uppercase tracking-widest text-text-muted">Outstanding</p>
+                        <p className="text-[12px] font-bold font-mono text-accent-gold">${financialKpis.outstanding.toLocaleString()}</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary">
+                    <Zap size={11} className="text-brand-red shrink-0" />
+                    <div>
+                        <p className="text-[7px] font-black uppercase tracking-widest text-text-muted">Upcoming Payroll</p>
+                        <p className="text-[12px] font-bold font-mono text-text-primary">${financialKpis.upcomingPayroll.toLocaleString()}</p>
+                    </div>
+                </div>
+            </div>
+
             {/* Quick Actions */}
             <div className="flex flex-wrap items-center gap-2 mb-4">
                 <Link href="/admin/dispatch">
@@ -324,31 +349,6 @@ export default function DashboardPage() {
                         <p className="text-3xl font-bold text-text-primary tracking-tighter">{pendingRequests.total}</p>
                         <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mt-0.5 mb-2">Global Requests</p>
                         <span className="inline-block px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest bg-brand-red/10 text-brand-red border border-brand-red/20">AWAITING ACTION</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Financial KPIs */}
-            <div className="flex flex-wrap items-center gap-3 mb-6">
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border-sub bg-bg-secondary">
-                    <Banknote size={12} className="text-text-green shrink-0" />
-                    <div>
-                        <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">MTD Revenue</p>
-                        <p className="text-[13px] font-bold font-mono text-text-green">${financialKpis.mtdRevenue.toLocaleString()}</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border-sub bg-bg-secondary">
-                    <TrendingUp size={12} className="text-accent-gold shrink-0" />
-                    <div>
-                        <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">Outstanding</p>
-                        <p className="text-[13px] font-bold font-mono text-accent-gold">${financialKpis.outstanding.toLocaleString()}</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border-sub bg-bg-secondary">
-                    <Zap size={12} className="text-brand-red shrink-0" />
-                    <div>
-                        <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">Upcoming Payroll</p>
-                        <p className="text-[13px] font-bold font-mono text-text-primary">${financialKpis.upcomingPayroll.toLocaleString()}</p>
                     </div>
                 </div>
             </div>

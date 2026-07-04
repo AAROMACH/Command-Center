@@ -598,7 +598,7 @@ export default function AssignmentDetailPage() {
         </div>
 
         {recentHistory.length > 0 ? (
-          <div className="space-y-0">
+          <div className="space-y-0 max-h-[320px] overflow-y-auto">
             {recentHistory.map((ev, i) => {
               const dotColor = HISTORY_COLORS[i % HISTORY_COLORS.length];
               let evDate: Date | null = null;

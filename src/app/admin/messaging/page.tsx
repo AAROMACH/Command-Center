@@ -270,6 +270,7 @@ export default function AdminMessagingPage() {
   };
 
   const allowedRoles = currentUser?.messagingAllowedRoles || 'all';
+  const blockedClientIds: string[] = (currentUser as any)?.messagingBlockedClientIds || [];
   const adminTechs = technicians.filter(t => {
     if (!t.roles?.includes('client') && t.id !== currentUser?.id) {
       if (allowedRoles === 'clients') return false;
@@ -283,6 +284,7 @@ export default function AdminMessagingPage() {
   const clientContacts = technicians.filter(t => {
     if (!t.roles?.includes('client')) return false;
     if (allowedRoles === 'none' || allowedRoles === 'admins' || allowedRoles === 'techs') return false;
+    if (blockedClientIds.includes(t.id)) return false;
     return true;
   });
 

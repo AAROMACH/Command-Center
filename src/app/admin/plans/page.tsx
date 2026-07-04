@@ -158,6 +158,17 @@ export default function ServicePlansPage() {
                 setEditRates(data);
             }
         }).catch(() => {});
+        getDoc(doc(db, 'adminConfig', 'servicePricing')).then(snap => {
+            if (snap.exists() && Array.isArray(snap.data().plans)) {
+                setPlans(snap.data().plans as PlanTier[]);
+            } else {
+                // Seed with Aaromach default plans on first load
+                setDoc(doc(db, 'adminConfig', 'servicePricing'), {
+                    plans: INITIAL_PLANS,
+                    updatedAt: new Date().toISOString(),
+                }, { merge: true }).catch(() => {});
+            }
+        }).catch(() => {});
     }, [localTechs]);
 
     const userIsSuperAdmin = isSuperAdmin(currentUser);
@@ -182,13 +193,25 @@ export default function ServicePlansPage() {
             toast({ variant: 'destructive', title: 'Update Failed', description: 'Please populate all critical plan parameters.' });
             return;
         }
+        let updatedPlans: PlanTier[];
         if (terminalMode === 'create') {
             const plan: PlanTier = { ...selectedPlan as PlanTier, id: await createDocId(ID_PREFIXES.PLAN_TIER) };
-            setPlans(prev => [...prev, plan]);
+            updatedPlans = [...plans, plan];
+            setPlans(updatedPlans);
             toast({ title: 'Custom Agreement Authorized', description: `${plan.name} has been committed to the registry.` });
         } else {
-            setPlans(prev => prev.map(p => p.id === selectedPlan.id ? selectedPlan as PlanTier : p));
+            updatedPlans = plans.map(p => p.id === selectedPlan.id ? selectedPlan as PlanTier : p);
+            setPlans(updatedPlans);
             toast({ title: 'Agreement Updated', description: `${selectedPlan.name} parameters have been synchronized.` });
+        }
+        try {
+            await setDoc(doc(db, 'adminConfig', 'servicePricing'), {
+                plans: updatedPlans,
+                updatedAt: new Date().toISOString(),
+                updatedBy: currentUser?.id || '',
+            }, { merge: true });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Firestore save failed', description: e.message });
         }
         setIsTerminalOpen(false);
     };
@@ -220,7 +243,13 @@ export default function ServicePlansPage() {
             toast({ variant: 'destructive', title: 'Deletion Blocked', description: `This plan is linked to ${activeUsage.length} active client registry folder(s). Unlink all accounts before removal.` });
             return;
         }
-        setPlans(prev => prev.filter(p => p.id !== planToDelete.id));
+        const updatedPlans = plans.filter(p => p.id !== planToDelete.id);
+        setPlans(updatedPlans);
+        setDoc(doc(db, 'adminConfig', 'servicePricing'), {
+            plans: updatedPlans,
+            updatedAt: new Date().toISOString(),
+            updatedBy: currentUser?.id || '',
+        }, { merge: true }).catch(() => {});
         toast({ title: 'Deleted', description: 'Agreement has been removed from the system.' });
         setIsDeleteOpen(false);
         setPlanToDelete(null);
@@ -333,11 +362,7 @@ export default function ServicePlansPage() {
             </header>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="bg-bg-secondary border-border-main">
-                    <CardHeader className="pb-2"><p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Total Subscription ARR</p></CardHeader>
-                    <CardContent><p className="text-2xl font-mono font-bold text-text-green">$216.4K</p></CardContent>
-                </Card>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card className="bg-bg-secondary border-border-main">
                     <CardHeader className="pb-2"><p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Active Agreements</p></CardHeader>
                     <CardContent><p className="text-2xl font-bold text-text-primary">{activeSubscriptions.length}</p></CardContent>

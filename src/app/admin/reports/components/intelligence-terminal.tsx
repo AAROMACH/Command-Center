@@ -57,7 +57,17 @@ type MetricType = 'reliability' | 'payouts' | 'assignments' | 'hours';
 type GroupBy = 'tech' | 'client' | 'date';
 type TimeWindow = '7d' | '30d' | '90d' | '1y' | 'all';
 
-export function IntelligenceTerminal({ timeWindow = '30d' }: { timeWindow?: TimeWindow }) {
+export function IntelligenceTerminal({
+    timeWindow = '30d',
+    eventType = 'all',
+    personnel = 'all',
+    client = 'all',
+}: {
+    timeWindow?: TimeWindow;
+    eventType?: string;
+    personnel?: string;
+    client?: string;
+}) {
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
@@ -103,6 +113,8 @@ export function IntelligenceTerminal({ timeWindow = '30d' }: { timeWindow?: Time
         if (loading || !dateRange) return [];
 
         const filteredWO = workOrders.filter(wo => {
+            if (personnel !== 'all' && wo.assignedTechnicianId !== personnel) return false;
+            if (client !== 'all' && (wo as any).clientId !== client && wo.clientName !== client) return false;
             if (!dateRange?.from || !wo.scheduleDate) return true;
             try {
                 const parts = wo.scheduleDate.split(/[-/]/);
@@ -114,6 +126,7 @@ export function IntelligenceTerminal({ timeWindow = '30d' }: { timeWindow?: Time
         });
 
         const filteredWeekly = weeklyLogs.filter(log => {
+            if (personnel !== 'all' && log.techId !== personnel) return false;
             if (!dateRange?.from || !log.weekOf) return true;
             try {
                 const parts = log.weekOf.split('-');

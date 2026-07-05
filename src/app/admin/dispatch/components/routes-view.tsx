@@ -316,12 +316,13 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
 
     const handleAddJobToRoute = (woId: string) => {
         if (!activeRouteId) return;
-        onRoutesChange(routes.map(r => 
-            r.id === activeRouteId 
-            ? { ...r, workOrderIds: [...r.workOrderIds, woId] } 
+        onRoutesChange(routes.map(r =>
+            r.id === activeRouteId
+            // Dedup: an orphaned job re-added must not double-list
+            ? { ...r, workOrderIds: Array.from(new Set([...(r.workOrderIds || []), woId])) }
             : r
         ));
-        onWorkOrdersChange(allWorkOrders.map(wo => 
+        onWorkOrdersChange(allWorkOrders.map(wo =>
             wo.id === woId ? { ...wo, routeId: activeRouteId } : wo
         ));
     };
@@ -338,7 +339,9 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     };
 
     const handleTacticalOptimization = async () => {
-        const unassigned = allWorkOrders.filter(wo => !wo.routeId && (!wo.assignedTechnicianId || wo.status === 'unassigned'));
+        const placed = new Set(routes.flatMap(r => r.workOrderIds || []));
+        const unassigned = allWorkOrders.filter(wo =>
+            (!wo.assignedTechnicianId || wo.status === 'unassigned') && !placed.has(wo.id));
         if (unassigned.length === 0) {
             toast({ variant: 'destructive', title: 'Optimization Aborted', description: 'No unassigned jobs found in mission pool.' });
             return;
@@ -451,9 +454,21 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
         toast({ title: "Registry Relocated", description: `Job ${jobId.toUpperCase()} moved to ${routes.find(r => r.id === targetRouteId)?.name}.` });
     };
 
+    // A job "belongs to a route" only if some existing route actually lists it
+    // (route cards render from workOrderIds — this is the source of truth).
+    // Basing the unassigned pool on this, rather than on wo.routeId, means a
+    // job whose route failed to save, was deleted, or has a stale/dangling
+    // routeId still shows up here instead of vanishing. Requirement: any job
+    // with no assigned technician must always be visible in Routes.
+    const placedJobIds = useMemo(
+        () => new Set(routes.flatMap(r => r.workOrderIds || [])),
+        [routes]);
+
+    const hasNoTech = (wo: WorkOrder) => !wo.assignedTechnicianId || wo.status === 'unassigned';
+
     const unassignedJobs = useMemo(() =>
-        allWorkOrders.filter(wo => !wo.routeId && (!wo.assignedTechnicianId || wo.status === 'unassigned')),
-    [allWorkOrders]);
+        allWorkOrders.filter(wo => hasNoTech(wo) && !placedJobIds.has(wo.id)),
+    [allWorkOrders, placedJobIds]);
 
     const filteredUnassigned = useMemo(() => 
         unassignedJobs.filter(wo => 

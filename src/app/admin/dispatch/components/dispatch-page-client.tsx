@@ -549,27 +549,41 @@ export function DispatchPageClient() {
               routes={routes}
               onRoutesChange={async (updated) => {
                 // Optimistic update: show immediately without waiting for Firestore round-trip
+                const prev = routes;
                 setRoutes(updated);
 
-                const currentIds = routes.map(r => r.id);
-                const newIds = updated.map(r => r.id);
+                const prevById = new Map(prev.map(r => [r.id, r]));
+                const nextIds = new Set(updated.map(r => r.id));
 
-                // Remove dissolved routes from Firestore
-                const toDelete = currentIds.filter(id => !newIds.includes(id));
-                for (const id of toDelete) {
-                  await deleteDoc(doc(db, 'routes', id)).catch(e => {
+                // Remove only the routes that were actually dissolved
+                for (const r of prev) {
+                  if (nextIds.has(r.id)) continue;
+                  try {
+                    await deleteDoc(doc(db, 'routes', r.id));
+                  } catch (e: any) {
                     console.error("Route delete error", e);
-                    toast({ variant: "destructive", title: "Route Sync Error", description: "Failed to remove route. Check your connection." });
-                  });
+                    toast({ variant: "destructive", title: "Route Sync Error", description: `Failed to remove "${r.name || 'route'}": ${e?.message || 'check your connection.'}` });
+                  }
                 }
 
-                // Upsert active routes to Firestore
+                // Upsert only the routes that actually changed — re-writing every
+                // route on each edit turns one bad/legacy doc into a total failure.
                 for (const r of updated) {
-                  const docRef = doc(db, 'routes', r.id);
-                  await setDoc(docRef, sanitize(r), { merge: true }).catch(e => {
-                    console.error("Route save error", e);
-                    toast({ variant: "destructive", title: "Route Not Saved", description: `Route "${r.name}" could not be saved to the server.` });
+                  const before = prevById.get(r.id);
+                  if (before && JSON.stringify(sanitize(before)) === JSON.stringify(sanitize(r))) continue;
+                  // Never persist an empty name or drift updatedAt out of sync
+                  const payload = sanitize({
+                    ...r,
+                    name: (r.name || '').trim() || 'Untitled Route',
+                    workOrderIds: r.workOrderIds || [],
+                    updatedAt: new Date().toISOString(),
                   });
+                  try {
+                    await setDoc(doc(db, 'routes', r.id), payload, { merge: true });
+                  } catch (e: any) {
+                    console.error("Route save error", e);
+                    toast({ variant: "destructive", title: "Route Not Saved", description: `"${payload.name}" could not be saved: ${e?.message || 'unknown error'}` });
+                  }
                 }
               }}
            />

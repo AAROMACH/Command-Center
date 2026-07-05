@@ -188,6 +188,7 @@ export default function PublicClientIntakePage() {
       await setDoc(doc(db, 'clientRequests', docId), {
         requestCode,
         clientRequestId: docId,
+        requestCategory: 'client_intake',
         requestType: 'client_partnership_request',
         source: 'client_intake_form',
         status: 'pending_review',

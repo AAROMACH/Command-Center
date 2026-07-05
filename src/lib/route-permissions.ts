@@ -10,6 +10,7 @@ import type { Permission } from './permissions';
 const ROUTE_PERMISSIONS: Array<{ prefix: string; permission: Permission }> = [
   // Admin portal
   { prefix: '/admin/dashboard',        permission: 'admin.dashboard.view' },
+  { prefix: '/admin/requests',         permission: 'admin.requests.view' },
   { prefix: '/admin/reports',          permission: 'admin.reports.view' },
   { prefix: '/admin/analytics',        permission: 'admin.reports.view' },
   { prefix: '/admin/company-planning', permission: 'admin.reports.view' },

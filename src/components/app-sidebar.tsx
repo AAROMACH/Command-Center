@@ -65,6 +65,7 @@ const adminNavGroups: NavGroup[] = [
     label: "Overview",
     items: [
       { href: "/admin/dashboard",        label: "Dashboard",        icon: LayoutDashboard, permission: "admin.dashboard.view" },
+      { href: "/admin/requests",         label: "Requests",         icon: Inbox,           permission: "admin.requests.view" },
       { href: "/admin/reports",          label: "Archives",         icon: Activity,        permission: "admin.reports.view" },
       { href: "/admin/analytics",        label: "Intel",              icon: BarChart2,     permission: "admin.reports.view" },
       { href: "/admin/company-planning", label: "Company Planning", icon: Flag,            permission: "admin.reports.view" },

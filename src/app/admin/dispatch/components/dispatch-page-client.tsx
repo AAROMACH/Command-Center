@@ -27,6 +27,7 @@ import { NewAssignmentDialog } from "./new-assignment-dialog";
 import { ImportJobsDialog } from "./import-jobs-dialog";
 import { NewRequestDialog } from "../../requests/components/new-request-dialog";
 import type { WorkOrder, Route, ServiceRequest, Technician } from "@/lib/types";
+import { isServiceTicketDoc, toDateSafe } from '@/lib/request-intake';
 import { makeAssignmentId } from '@/lib/doc-ids';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
@@ -126,7 +127,20 @@ export function DispatchPageClient() {
       (snap) => { setTechnicians(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Technician))); }
     );
     const unsubReq = onSnapshot(collection(db, 'clientRequests'), (snap) => {
-      setAllRequests(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as ServiceRequest)));
+      // Only dispatchable service tickets belong in the dispatch funnel —
+      // client-intake / partnership applications are reviewed on /admin/requests.
+      setAllRequests(
+        snap.docs
+          .filter(doc => isServiceTicketDoc(doc.data()))
+          .map(doc => {
+            const data = doc.data();
+            // Public-form tickets carry createdAt (Firestore Timestamp) but no
+            // submittedDate — derive it so table dates and sorting stay correct.
+            const created = toDateSafe(data.createdAt);
+            const submittedDate = data.submittedDate || (created ? created.toISOString().split('T')[0] : '');
+            return { ...data, submittedDate, id: doc.id } as ServiceRequest;
+          })
+      );
     });
     const unsubRoutes = onSnapshot(collection(db, 'routes'), (snap) => {
       setRoutes(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Route)));
@@ -166,7 +180,14 @@ export function DispatchPageClient() {
 
   const handleAddNewRequest = async (request: ServiceRequest) => {
     try {
-        await setDoc(doc(db, 'clientRequests', request.id), sanitize(request));
+        const now = new Date().toISOString();
+        await setDoc(doc(db, 'clientRequests', request.id), {
+            ...sanitize(request),
+            requestCategory: 'service_ticket',
+            source: 'manual',
+            createdAt: now,
+            updatedAt: now,
+        });
         toast({ title: "Request Logged", description: "Service ticket added to intake funnel." });
         
         const adminIds = technicians.filter(t => t.roles?.includes('super_admin') || t.roles?.includes('dispatch_admin')).map(t => t.id);

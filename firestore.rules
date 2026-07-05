@@ -177,8 +177,10 @@ service cloud.firestore {
               && !request.resource.data.keys().hasAny(['assignedAdminId', 'adminNotes', 'reviewedAt', 'reviewedBy', 'convertedClientId']))
           || (request.auth != null && (
               isAdmin()
+              // Signed-in clients create service tickets with status 'new'
+              // (client portal) or 'pending_review' (intake forms)
               || (isClient()
-                  && request.resource.data.status == 'pending_review'
+                  && request.resource.data.status in ['new', 'pending_review']
                   && !request.resource.data.keys().hasAny(['assignedAdminId', 'adminNotes', 'reviewedAt', 'reviewedBy', 'convertedClientId']))
           ));
       allow update: if isAdmin()

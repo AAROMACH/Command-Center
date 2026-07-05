@@ -189,6 +189,7 @@ export default function ClientTicketsPage() {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
         
+        const now = new Date().toISOString();
         const newTicket = {
             clientId: currentUserId,
             clientName: currentUser?.clientCompany || 'Independent Client',
@@ -196,8 +197,12 @@ export default function ClientTicketsPage() {
             requestType: formData.get('type'),
             priority: formData.get('priority'),
             location: formData.get('location'),
+            requestCategory: 'service_ticket',
+            source: 'app',
             status: 'new',
-            submittedDate: new Date().toISOString().split('T')[0],
+            submittedDate: now.split('T')[0],
+            createdAt: now,
+            updatedAt: now,
             imageUrls: attachments.filter(a => a.type === 'image').map(a => a.url || ''),
             documentUrls: attachments.filter(a => a.type === 'doc').map(a => a.url || '')
         };

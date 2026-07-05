@@ -1,13 +1,32 @@
 "use client";
 
+import { useEffect } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AlertBand } from "@/components/alert-band";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
+import { hasPermission, getAvailablePortals } from "@/lib/permissions";
+import { requiredPermissionForPath } from "@/lib/route-permissions";
 
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, loading } = useAuth();
   const isTechPortal = pathname.startsWith("/tech");
+
+  // Enforce the same permissions the sidebar nav uses for visibility: a page
+  // hidden from the nav must not be reachable by direct URL either. Only
+  // gate once a real user profile has loaded — while loading (or when no
+  // Firestore profile exists) the middleware/session flow remains in charge.
+  const required = requiredPermissionForPath(pathname);
+  const denied = !loading && !!user && !!required && !hasPermission(user, required);
+
+  useEffect(() => {
+    if (!denied) return;
+    const portals = getAvailablePortals(user);
+    router.replace(portals[0]?.path ?? "/portal-select");
+  }, [denied, user, router]);
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -26,7 +45,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
           {/* Page content */}
           <main className="flex-1 overflow-y-auto bg-bg-primary">
             <div className="page-content">
-              {children}
+              {denied ? null : children}
             </div>
           </main>
           {/* Tech mobile bottom nav */}

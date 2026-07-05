@@ -57,6 +57,21 @@ service cloud.firestore {
                             'portalAccess', 'primaryPortal', 'permissionOverrides',
                             'jobTitle', 'department', 'certifications', 'serviceArea']));
       allow delete: if isSuperAdmin();
+
+      // Client-workspace subcollections (notes, documents, contacts, access
+      // info) — only admin pages read or write these today.
+      match /clientNotes/{noteId} {
+        allow read, write: if isAdmin();
+      }
+      match /clientDocuments/{docId} {
+        allow read, write: if isAdmin();
+      }
+      match /contacts/{contactId} {
+        allow read, write: if isAdmin();
+      }
+      match /accessInfo/{infoId} {
+        allow read, write: if isAdmin();
+      }
     }
 
     match /assignments/{id} {
@@ -286,7 +301,9 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    match /planTiers/{id} {
+    // Service plans — the app reads/writes the `plans` collection (the rule
+    // previously guarded `planTiers`, which no code references).
+    match /plans/{id} {
       allow read: if isSignedIn();
       allow write: if isSuperAdmin();
     }
@@ -320,6 +337,86 @@ service cloud.firestore {
         allow read: if isAdmin();
         allow create: if isSignedIn();
       }
+    }
+
+    // ── Collections used by the app that previously had no rules ─────────
+    // (no match block means default-deny, which silently broke these pages)
+
+    // CRM pipeline (admin portal only)
+    match /leads/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /leadActivities/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // Assets & materials (admin portal only)
+    match /materials/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /assets/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /assetAssignments/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // Dispatch routes (admin portal only)
+    match /routes/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // Company planning (admin portal only)
+    match /companyGoals/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /companyMilestones/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /recurringTasks/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // Reports activity archive (admin portal only)
+    match /activityArchive/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // Payroll adjustments (payroll audit page)
+    match /payrollAdjustments/{id} {
+      allow read, write: if isPayrollAdmin();
+    }
+
+    // Project payouts — created/managed by admins, technicians read their own
+    match /projectPayouts/{id} {
+      allow read: if isSignedIn() && (
+          isAdmin()
+          || (isTech() && resource.data.technicianId == request.auth.uid)
+      );
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Personnel documents (admin directory)
+    match /personnelDocuments/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // Trip logs — technicians log their own trips, admins review
+    match /tripLogs/{id} {
+      allow read: if isSignedIn() && (
+          isAdmin()
+          || (isTech() && resource.data.technicianId == request.auth.uid)
+      );
+      allow create: if isAdmin()
+          || (isTech() && request.resource.data.technicianId == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    // Admin-managed config read across portals (skills list, finance rates)
+    match /adminConfig/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
   }
 }

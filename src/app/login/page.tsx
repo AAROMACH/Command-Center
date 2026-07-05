@@ -11,7 +11,7 @@ import { auth, db } from "@/lib/firebase";
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { isAdmin, isTech, isClient, getPortalAccess, getAvailablePortals } from "@/lib/permissions";
+import { getPortalAccess, getAvailablePortals } from "@/lib/permissions";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -146,6 +146,14 @@ export default function LoginPage() {
       const typedUser = userData as any;
       const access = getPortalAccess(typedUser);
       const portals = getAvailablePortals(typedUser);
+
+      // Approved but no portal access — the middleware would bounce every
+      // portal route, so hold the user at pending-approval instead of looping.
+      if (portals.length === 0) {
+        router.push("/pending-approval");
+        return;
+      }
+
       sessionStorage.setItem('currentUserId', firebaseUser.uid);
       document.cookie = `aaromach_session=${firebaseUser.uid}; path=/; max-age=86400; SameSite=Strict`;
       document.cookie = `aaromach_portals=${JSON.stringify(access)}; path=/; max-age=86400; SameSite=Strict`;
@@ -155,17 +163,13 @@ export default function LoginPage() {
         router.push(primary ? primary.path : portals[0].path);
       } else if (portals.length > 1) {
         router.push("/portal-select");
-      } else if (isAdmin(typedUser)) {
-        router.push("/admin/dashboard");
-      } else if (isTech(typedUser)) {
-        router.push("/tech/dashboard");
-      } else if (isClient(typedUser)) {
-        router.push("/client/dashboard");
       } else {
-        router.push("/admin/dashboard");
+        router.push(portals[0].path);
       }
     } catch {
-      router.push("/admin/dashboard");
+      // Could not load the user profile — pending-approval re-checks via a
+      // live listener and routes correctly once the profile is readable.
+      router.push("/pending-approval");
     }
   };
 

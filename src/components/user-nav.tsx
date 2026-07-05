@@ -138,6 +138,7 @@ export function UserNav() {
             if (typeof window !== 'undefined') {
                 sessionStorage.removeItem('currentUserId');
                 document.cookie = 'aaromach_session=; path=/; max-age=0; SameSite=Strict';
+                document.cookie = 'aaromach_portals=; path=/; max-age=0; SameSite=Strict';
             }
             auth.signOut();
             router.push('/login');

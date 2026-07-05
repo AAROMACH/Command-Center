@@ -31,6 +31,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { ViewToggle, useViewMode } from '@/components/view-toggle';
 
 export default function ClientSitesPage() {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -39,6 +40,7 @@ export default function ClientSitesPage() {
     const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
     const [firestoreSites, setFirestoreSites] = useState<Site[]>([]);
     const [mounted, setMounted] = useState(false);
+    const [viewMode, setViewMode] = useViewMode('client-sites');
     const [searchQuery, setSearchQuery] = useState("");
     const [isAddSiteOpen, setIsAddSiteOpen] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -177,11 +179,34 @@ export default function ClientSitesPage() {
                     <h1 className="page-title">Service Sites</h1>
                     <p className="page-subtitle">Real-time status tracking and operational intelligence for all managed properties.</p>
                 </div>
-                <div className="page-header-right">
+                <div className="page-header-right gap-2 items-center">
+                    <ViewToggle value={viewMode} onChange={setViewMode} />
                     <Button onClick={() => setIsAddSiteOpen(true)}><Plus size={14} className="mr-2"/> Register new site</Button>
                 </div>
             </header>
 
+            {viewMode === 'list' ? (
+            <div className="space-y-1">
+                {sitesData.map(site => (
+                    <div key={site.id}
+                        onClick={() => site.status === 'authorized' && router.push(`/client/sites/${site.id}`)}
+                        className={cn("flex items-center gap-3 px-4 py-2.5 rounded-lg border bg-bg-secondary transition-all group",
+                            site.status === 'authorized' ? "border-border-sub hover:border-text-muted cursor-pointer" : "border-dashed border-border-sub opacity-80 cursor-default")}>
+                        <MapPin size={13} className="text-brand-red shrink-0" />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-bold text-text-primary uppercase tracking-wide truncate group-hover:text-brand-red transition-colors">{site.name}</p>
+                            <p className="text-[9px] text-text-muted uppercase truncate">{site.location}</p>
+                        </div>
+                        <span className="hidden md:block text-[10px] text-text-muted shrink-0">
+                            {site.activeAssignments.length > 0 ? `${site.activeAssignments.length} active` : 'No active missions'}
+                        </span>
+                        {site.status === 'authorized'
+                            ? <Eye size={16} className="text-text-muted shrink-0" />
+                            : <Badge variant="onhold" className="shrink-0">PENDING</Badge>}
+                    </div>
+                ))}
+            </div>
+            ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {sitesData.map(site => (
                     <Card key={site.id} 
@@ -216,6 +241,7 @@ export default function ClientSitesPage() {
                     </Card>
                 ))}
             </div>
+            )}
 
             <Dialog open={isAddSiteOpen} onOpenChange={setIsAddSiteOpen}>
                 <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default">

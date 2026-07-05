@@ -25,6 +25,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { ViewToggle, useViewMode, type ViewMode } from '@/components/view-toggle';
 
 export default function ClientProjectsPage() {
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
@@ -32,6 +33,7 @@ export default function ClientProjectsPage() {
     const [allLogs, setAllLogs] = useState<ProjectDailyLog[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [mounted, setMounted] = useState(false);
+    const [viewMode, setViewMode] = useViewMode('client-projects');
     const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
@@ -110,16 +112,17 @@ export default function ClientProjectsPage() {
                 </div>
             </header>
 
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-6 flex items-center justify-between gap-3">
                 <div className="search-wrap">
                     <Search />
-                    <input 
-                        className="search-input" 
-                        placeholder="Search project folders..." 
+                    <input
+                        className="search-input"
+                        placeholder="Search project folders..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                 </div>
+                <ViewToggle value={viewMode} onChange={setViewMode} />
             </div>
 
             <Tabs defaultValue="active" className="w-full">
@@ -136,25 +139,52 @@ export default function ClientProjectsPage() {
                 </TabsList>
 
                 <TabsContent value="active" className="space-y-6 mt-0">
-                    <ProjectsList projects={activeProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} technicians={technicians} />
+                    <ProjectsList projects={activeProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} technicians={technicians} viewMode={viewMode} />
                 </TabsContent>
                 <TabsContent value="on-hold" className="space-y-6 mt-0">
-                    <ProjectsList projects={onHoldProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} technicians={technicians} />
+                    <ProjectsList projects={onHoldProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} technicians={technicians} viewMode={viewMode} />
                 </TabsContent>
                 <TabsContent value="completed" className="space-y-6 mt-0">
-                    <ProjectsList projects={completedProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} technicians={technicians} />
+                    <ProjectsList projects={completedProjects} getProjectProgress={getProjectProgress} formatDateStr={formatDateStr} technicians={technicians} viewMode={viewMode} />
                 </TabsContent>
             </Tabs>
         </div>
     );
 }
 
-function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians }: { projects: Project[], getProjectProgress: (p: Project) => number, formatDateStr: (s: string) => string, technicians: Technician[] }) {
+function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians, viewMode }: { projects: Project[], getProjectProgress: (p: Project) => number, formatDateStr: (s: string) => string, technicians: Technician[], viewMode: ViewMode }) {
     if (projects.length === 0) {
         return (
             <div className="p-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
                 <Briefcase size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No job folders found in this category.</p>
+            </div>
+        );
+    }
+
+    if (viewMode === 'list') {
+        return (
+            <div className="space-y-1">
+                {projects.map(project => {
+                    const progress = getProjectProgress(project);
+                    const phaseCount = project.phases?.length || 0;
+                    return (
+                        <div key={project.id} className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border-sub bg-bg-secondary">
+                            <div className="flex-1 min-w-0">
+                                <p className="text-[12px] font-bold text-text-primary uppercase tracking-wide truncate">{project.name}</p>
+                                <p className="text-[9px] text-text-muted uppercase truncate">
+                                    <span className="font-mono">{(project.id || '').toUpperCase()}</span>
+                                    {project.location ? ` · ${project.location}` : ''} · {phaseCount} phase{phaseCount !== 1 ? 's' : ''}
+                                </p>
+                            </div>
+                            <div className="hidden md:flex items-center gap-2 w-32 shrink-0">
+                                <Progress value={progress} className="h-1.5 flex-1" />
+                                <span className="text-[9px] font-mono text-text-muted w-8 text-right">{progress}%</span>
+                            </div>
+                            <Badge variant={project.status} className="h-5 uppercase shrink-0">{project.status}</Badge>
+                        </div>
+                    );
+                })}
             </div>
         );
     }

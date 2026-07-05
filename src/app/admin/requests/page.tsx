@@ -13,6 +13,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
+import { ViewToggle, useViewMode } from '@/components/view-toggle';
 import { cn } from '@/lib/utils';
 import {
   Inbox, Plus, Search, CheckCircle2, XCircle, Archive, RotateCcw,
@@ -122,6 +123,7 @@ export default function RequestsPage() {
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState<TabId>('inbox');
+  const [viewMode, setViewMode] = useViewMode('requests');
   const [searchQuery, setSearchQuery] = useState('');
   const [sourceFilter, setSourceFilter] = useState<'all' | RequestSource>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | RequestCategory>('all');
@@ -340,6 +342,7 @@ export default function RequestsPage() {
               ))}
             </SelectContent>
           </Select>
+          <ViewToggle value={viewMode} onChange={setViewMode} />
         </div>
       </div>
 
@@ -349,7 +352,7 @@ export default function RequestsPage() {
           <Inbox size={28} className="mx-auto mb-3 opacity-20" />
           <p className="text-[11px]">No requests match the current filters</p>
         </div>
-      ) : (
+      ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map(req => (
             <button key={req.id} type="button" onClick={() => setSelected(req)}
@@ -383,6 +386,27 @@ export default function RequestsPage() {
                 {SOURCE_LABELS[req.source]} · {formatRequestDate(req.createdAt, true)}
                 {req.updatedAt && <> · Updated {formatRequestDate(req.updatedAt)}</>}
               </p>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {filtered.map(req => (
+            <button key={req.id} type="button" onClick={() => setSelected(req)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border-sub bg-bg-secondary hover:border-border-main transition-colors text-left">
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-bold text-text-primary truncate">{req.displayName}</p>
+                <p className="text-[10px] text-text-muted truncate">
+                  {[req.contactName, req.companyName].filter(Boolean).filter(v => v !== req.displayName).join(' · ')}
+                  {(req.contactName || req.companyName) && ' · '}
+                  {SOURCE_LABELS[req.source]} · {formatRequestDate(req.createdAt)}
+                </p>
+              </div>
+              <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+                <Pill cls={CATEGORY_CLS[req.category]} label={CATEGORY_LABELS[req.category]} />
+                {req.priority && req.priority !== 'medium' && <Pill cls={PRIORITY_CLS[req.priority]} label={req.priority} />}
+              </div>
+              <Pill cls={STATUS_CLS[req.status]} label={STATUS_LABELS[req.status]} />
             </button>
           ))}
         </div>

@@ -22,6 +22,10 @@ service firebase.storage {
       return userRoles().hasAny(['client']);
     }
 
+    function isSales() {
+      return userRoles().hasAny(['sales']);
+    }
+
     // Profile avatars: user writes their own only; all signed-in users read
     match /avatars/{userId} {
       allow read: if isSignedIn();
@@ -65,6 +69,20 @@ service firebase.storage {
                         || request.resource.contentType.matches('application/vnd.openxmlformats.*')
                         || request.resource.contentType == 'text/plain'
                         || request.resource.contentType == 'text/csv');
+      allow delete: if isSignedIn() && isAdmin();
+    }
+
+    // Lead import originals (PDF/CSV/XLSX): admin + sales upload and read
+    match /leadImports/{fileName} {
+      allow read: if isSignedIn() && (isAdmin() || isSales());
+      allow create: if isSignedIn()
+                    && (isAdmin() || isSales())
+                    && request.resource.size < 15 * 1024 * 1024
+                    && (request.resource.contentType == 'application/pdf'
+                        || request.resource.contentType == 'text/csv'
+                        || request.resource.contentType == 'application/vnd.ms-excel'
+                        || request.resource.contentType.matches('application/vnd.openxmlformats.*')
+                        || request.resource.contentType == 'application/octet-stream');
       allow delete: if isSignedIn() && isAdmin();
     }
 

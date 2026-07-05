@@ -685,6 +685,15 @@ export type TripLog = {
   createdAt: string;
 };
 
+export type LeadAttachment = {
+  fileName: string;
+  downloadUrl: string;
+  storagePath: string;
+  contentType?: string;
+  sizeBytes?: number;
+  uploadedAt?: string;
+};
+
 export type Lead = {
   id: string;
   companyName: string;
@@ -702,6 +711,10 @@ export type Lead = {
   closedAt?: string;
   lostReason?: string;
   followUpDate?: string;
+  /** Original files this lead was imported/extracted from (PDF/CSV/XLSX). */
+  attachments?: LeadAttachment[];
+  /** File name of the import source, when created by the lead importer. */
+  importedFrom?: string;
 };
 
 export type LeadActivity = {

@@ -21,6 +21,7 @@ import {
     ShoppingCart, Boxes, ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ViewToggle, useViewMode } from '@/components/view-toggle';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, differenceInDays } from 'date-fns';
 
@@ -111,6 +112,7 @@ export default function AssetsAndMaterialsPage() {
 
     // UI
     const [mainTab, setMainTab] = useState<'assets' | 'materials'>('assets');
+    const [viewMode, setViewMode] = useViewMode('assets');
     const [assetCatFilter, setAssetCatFilter] = useState<AssetCategory | 'all'>('all');
     const [matCatFilter, setMatCatFilter] = useState('all');
     const [search, setSearch] = useState('');
@@ -482,7 +484,8 @@ export default function AssetsAndMaterialsPage() {
                     <h1 className="page-title">Assets & Materials</h1>
                     <p className="page-subtitle">Track reusable company assets and standard billable materials.</p>
                 </div>
-                <div className="page-header-right">
+                <div className="page-header-right gap-2">
+                    <ViewToggle value={viewMode} onChange={setViewMode} />
                     {mainTab === 'assets' ? (
                         <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase tracking-widest" onClick={openAddAsset}>
                             <Plus size={12} className="mr-1.5" /> Add Asset
@@ -596,6 +599,37 @@ export default function AssetsAndMaterialsPage() {
                                     <Plus size={11} className="mr-1.5" /> Add First Asset
                                 </Button>
                             )}
+                        </div>
+                    ) : viewMode === 'list' ? (
+                        <div className="space-y-1">
+                            {filteredAssets.map(asset => {
+                                const CatIcon = ASSET_CATS.find(c => c.value === asset.category)?.icon || Package;
+                                const needsMaint = maintenanceDue(asset);
+                                const assignedTech = technicians.find(t => t.id === asset.assignedUserId);
+                                return (
+                                    <div key={asset.id} onClick={() => setSelectedAsset(asset)}
+                                        className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border-sub bg-bg-secondary hover:border-brand-red hover:bg-bg-tertiary transition-all cursor-pointer">
+                                        <CatIcon size={13} className="text-brand-red shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[12px] font-black uppercase tracking-tight text-text-primary truncate">{asset.name}</p>
+                                            <p className="text-[9px] text-text-muted truncate">
+                                                {[asset.brand, asset.model, asset.serialNumber ? `S/N ${asset.serialNumber}` : null].filter(Boolean).join(' · ')}
+                                            </p>
+                                        </div>
+                                        {asset.currentLocation && (
+                                            <span className="hidden lg:flex items-center gap-1 text-[9px] text-text-muted shrink-0"><MapPin size={9} />{asset.currentLocation}</span>
+                                        )}
+                                        <span className="hidden md:block text-[9px] font-bold text-text-secondary uppercase truncate max-w-[120px] shrink-0">
+                                            {assignedTech ? assignedTech.name : 'Unassigned'}
+                                        </span>
+                                        <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[8px] font-bold uppercase shrink-0', CONDITION_COLORS[asset.condition])}>{asset.condition}</span>
+                                        {needsMaint && <AlertTriangle size={11} className="text-text-amber shrink-0" />}
+                                        <span className={cn('inline-flex items-center px-2 h-4 rounded text-[7px] font-black uppercase border shrink-0', STATUS_COLORS[asset.status] || STATUS_COLORS.available)}>
+                                            {asset.status.replace(/_/g, ' ')}
+                                        </span>
+                                    </div>
+                                );
+                            })}
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -711,6 +745,31 @@ export default function AssetsAndMaterialsPage() {
                                     <Plus size={11} className="mr-1.5" /> Add First Material
                                 </Button>
                             )}
+                        </div>
+                    ) : viewMode === 'grid' ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {filteredMaterials.map(m => (
+                                <div key={m.id} onClick={() => setSelectedMaterial(m)}
+                                    className="rounded-xl border border-border-sub bg-bg-secondary hover:border-brand-red hover:bg-bg-tertiary transition-all cursor-pointer p-4 space-y-2.5">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <p className="text-[12px] font-bold text-text-primary uppercase truncate">{m.name}</p>
+                                            {m.vendor && <p className="text-[9px] text-text-muted truncate">{m.vendor}</p>}
+                                        </div>
+                                        <Badge variant={m.status === 'active' ? 'active' : 'completed'} className="text-[7px] uppercase h-4 shrink-0">{m.status}</Badge>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <Badge variant="scheduled" className="text-[7px] uppercase h-4">{m.category}</Badge>
+                                        <Badge variant="scheduled" className="text-[7px] uppercase h-4">{m.unitType}</Badge>
+                                        {m.sku && <span className="text-[8px] font-mono text-text-muted">SKU {m.sku}</span>}
+                                    </div>
+                                    <div className="flex items-center gap-3 pt-1 border-t border-border-sub">
+                                        <div><p className="text-[7px] font-black text-text-muted uppercase">Cost</p><p className="text-[11px] font-mono text-text-muted">${m.standardCost.toFixed(2)}</p></div>
+                                        <div><p className="text-[7px] font-black text-text-muted uppercase">Billable</p><p className="text-[11px] font-mono font-bold text-text-primary">${m.billablePrice.toFixed(2)}</p></div>
+                                        {m.markupPercentage ? <div><p className="text-[7px] font-black text-text-muted uppercase">Markup</p><p className="text-[11px] font-mono text-text-amber">{m.markupPercentage}%</p></div> : null}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     ) : (
                         <div className="rounded-xl border border-border-sub overflow-hidden">

@@ -17,8 +17,9 @@ import { cn } from '@/lib/utils';
 import {
   Target, Plus, Search, DollarSign, Phone, Mail, User, TrendingUp,
   CheckCircle2, XCircle, ChevronRight, LayoutGrid, List, ArrowUpDown,
-  UserCheck, Building2, MapPin,
+  UserCheck, Building2, MapPin, Upload,
 } from 'lucide-react';
+import { ImportLeadsDialog } from './components/import-leads-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
@@ -139,6 +140,7 @@ export default function CRMPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [crmTab, setCrmTab] = useState('pipeline');
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [currentUserId, setCurrentUserId] = useState('');
   const [viewMode, _setViewModeRaw] = useState<'kanban' | 'list'>(() => { try { return (localStorage.getItem('cc:crm:view') as 'kanban' | 'list') || 'kanban'; } catch { return 'kanban'; } });
@@ -287,7 +289,16 @@ export default function CRMPage() {
           <h1 className="page-title">CRM Pipeline</h1>
           <p className="page-subtitle">Leads & opportunities from first contact to closed deal.</p>
         </div>
-        <div className="page-header-right">
+        <div className="page-header-right gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 text-[10px] font-bold uppercase tracking-wider border-border-main"
+            onClick={() => setIsImportOpen(true)}
+          >
+            <Upload size={12} className="mr-1.5" />
+            Import Leads
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -786,6 +797,12 @@ export default function CRMPage() {
       <NewLeadDialog
         open={isNewLeadOpen}
         onClose={() => setIsNewLeadOpen(false)}
+        currentUserId={currentUserId}
+      />
+
+      <ImportLeadsDialog
+        open={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
         currentUserId={currentUserId}
       />
 

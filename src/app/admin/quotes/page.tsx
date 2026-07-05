@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { ViewToggle, useViewMode } from '@/components/view-toggle';
 import { format, parseISO } from 'date-fns';
 import {
   FileSearch, Plus, Send, Copy, Clock, CheckCircle2, XCircle,
@@ -491,6 +492,27 @@ function QuoteCard({ quote, onClick }: { quote: Quote; onClick: () => void }) {
   );
 }
 
+function QuoteRow({ quote, onClick }: { quote: Quote; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick}
+      className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border-sub bg-bg-secondary hover:border-border-main transition-colors text-left">
+      <div className="flex-1 min-w-0">
+        <p className="text-[12px] font-bold text-text-primary truncate">{quote.title}</p>
+        <p className="text-[10px] text-text-muted truncate">
+          <span className="font-mono">{quote.quoteNumber}</span> · {quote.customerName || quote.customerCompany}
+        </p>
+      </div>
+      {quote.expirationDate && (
+        <span className="hidden md:flex items-center gap-1 text-[10px] text-text-muted shrink-0"><Clock size={9} />Exp {quote.expirationDate}</span>
+      )}
+      <span className="text-[11px] font-black text-text-primary shrink-0">{fmtMoney(quote.total)}</span>
+      <span className={cn('text-[8px] px-2 py-0.5 rounded border font-black uppercase tracking-widest shrink-0', statusCls(quote.status))}>
+        {quote.status.replace(/_/g, ' ')}
+      </span>
+    </button>
+  );
+}
+
 // ── Quote Detail Sheet ────────────────────────────────────────────────────────
 
 function QuoteDetailSheet({
@@ -753,6 +775,7 @@ export default function AdminQuotesPage() {
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useViewMode('quotes');
 
   useEffect(() => {
     const u1 = onSnapshot(collection(db, 'quotes'), snap => {
@@ -791,9 +814,13 @@ export default function AdminQuotesPage() {
         <FileSearch size={28} className="mx-auto mb-3 opacity-20" />
         <p className="text-[11px]">No quotes in this section</p>
       </div>
-    ) : (
+    ) : viewMode === 'grid' ? (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {items.map(q => <QuoteCard key={q.id} quote={q} onClick={() => setSelectedQuote(q)} />)}
+      </div>
+    ) : (
+      <div className="space-y-1">
+        {items.map(q => <QuoteRow key={q.id} quote={q} onClick={() => setSelectedQuote(q)} />)}
       </div>
     )
   );
@@ -809,7 +836,8 @@ export default function AdminQuotesPage() {
           <h1 className="page-title">Quotes</h1>
           <p className="page-subtitle">Create, send, and track client quotes through to conversion.</p>
         </div>
-        <div className="page-header-right items-center">
+        <div className="page-header-right items-center gap-2">
+          <ViewToggle value={viewMode} onChange={setViewMode} />
           <Button onClick={() => setIsNewOpen(true)} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase tracking-widest h-9">
             <Plus size={13} className="mr-1.5" />New Quote
           </Button>

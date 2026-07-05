@@ -5,7 +5,7 @@ import { db } from '@/lib/firebase';
 import { getDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
 import {
     Zap, Plus, ChevronRight, Target, Clock, ShieldCheck, Building2,
-    Search, DollarSign, PenTool, Trash2, Eye, Lock, ShieldAlert,
+    Search, DollarSign, PenTool, Trash2, Eye, Lock, Unlock, ShieldAlert,
     History, ExternalLink, TrendingUp, Activity, Wrench, UserCheck,
     BookOpen, PencilLine, Save,
 } from 'lucide-react';
@@ -26,6 +26,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { technicians } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { ViewToggle, useViewMode } from '@/components/view-toggle';
 import { isSuperAdmin, isClient } from '@/lib/permissions';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
@@ -146,6 +147,7 @@ export default function ServicePlansPage() {
     const [isTerminalOpen, setIsTerminalOpen] = useState(false);
     const [terminalMode, setTerminalMode] = useState<'create' | 'edit' | 'view'>('view');
     const [searchQuery, setSearchQuery] = useState('');
+    const [viewMode, setViewMode] = useViewMode('plans');
     const [selectedPlan, setSelectedPlan] = useState<Partial<PlanTier>>({});
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     const [localTechs, setLocalTechs] = useState<Technician[]>(technicians);
@@ -188,7 +190,9 @@ export default function ServicePlansPage() {
             }
         }).catch(() => {});
         getDoc(doc(db, 'adminConfig', 'servicePricing')).then(snap => {
-            if (snap.exists() && Array.isArray(snap.data().plans)) {
+            // Guard: never let a missing/empty Firestore array blank out the
+            // page — standard tiers always exist, so an empty array is bad data.
+            if (snap.exists() && Array.isArray(snap.data().plans) && snap.data().plans.length > 0) {
                 setPlans(snap.data().plans as PlanTier[]);
             } else {
                 setDoc(doc(db, 'adminConfig', 'servicePricing'), {
@@ -210,6 +214,35 @@ export default function ServicePlansPage() {
         const q = searchQuery.toLowerCase();
         return plans.filter(p => p.name.toLowerCase().includes(q) || (p.clientName || '').toLowerCase().includes(q));
     }, [plans, searchQuery]);
+
+    // Grid of cards or compact list rows, sharing the same edit/view/delete
+    // callbacks. Edit/delete controls appear once the page-level PIN unlock
+    // (header Edit button) has been entered.
+    const renderPlans = (items: PlanTier[]) => (
+        viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {items.map(plan => (
+                    <PlanCard key={plan.id} plan={plan}
+                        onEdit={p => requirePin(() => handleOpenTerminal('edit', p))}
+                        onView={p => handleOpenTerminal('view', p)}
+                        onDelete={p => requirePin(() => confirmDeleteRequest(p))}
+                        canEdit={userIsSuperAdmin && isPlansAuthed}
+                    />
+                ))}
+            </div>
+        ) : (
+            <div className="space-y-1">
+                {items.map(plan => (
+                    <PlanRow key={plan.id} plan={plan}
+                        onEdit={p => requirePin(() => handleOpenTerminal('edit', p))}
+                        onView={p => handleOpenTerminal('view', p)}
+                        onDelete={p => requirePin(() => confirmDeleteRequest(p))}
+                        canEdit={userIsSuperAdmin && isPlansAuthed}
+                    />
+                ))}
+            </div>
+        )
+    );
 
     const handleOpenTerminal = (mode: 'create' | 'edit' | 'view', plan?: PlanTier) => {
         setTerminalMode(mode);
@@ -317,6 +350,21 @@ export default function ServicePlansPage() {
         setIsPinDialogOpen(true);
     }
 
+    // Global edit toggle: one PIN entry unlocks editing across the page
+    // (plan cards + service rates). Unlocking only flips the flag — the
+    // plans stay right where they are, no editor modal opens.
+    const handleGlobalUnlock = () => {
+        requirePin(() => {
+            toast({ title: 'Editing Unlocked', description: 'Plans and service rates can now be adjusted. Lock when finished.' });
+        });
+    };
+
+    const handleGlobalLock = () => {
+        setIsPlansAuthed(false);
+        setRatesEditMode(false);
+        toast({ title: 'Editing Locked', description: 'Plans and service rates are read-only again.' });
+    };
+
     async function handlePinSubmit() {
         try {
             const snap = await getDoc(doc(db, 'adminConfig', 'plans'));
@@ -384,6 +432,20 @@ export default function ServicePlansPage() {
                             onChange={e => setSearchQuery(e.target.value)}
                         />
                     </div>
+                    <ViewToggle value={viewMode} onChange={setViewMode} />
+                    {userIsSuperAdmin && (
+                        isPlansAuthed ? (
+                            <Button variant="outline" onClick={handleGlobalLock}
+                                className="h-10 px-4 font-bold uppercase tracking-widest border-text-green/40 text-text-green hover:bg-text-green/5">
+                                <Unlock size={14} className="mr-2" /> Editing Unlocked — Lock
+                            </Button>
+                        ) : (
+                            <Button variant="outline" onClick={handleGlobalUnlock}
+                                className="h-10 px-4 font-bold uppercase tracking-widest">
+                                <Lock size={14} className="mr-2" /> Edit
+                            </Button>
+                        )
+                    )}
                     {userIsSuperAdmin && (
                         <Button onClick={() => requirePin(() => handleOpenTerminal('create'))} className="h-10 px-6 font-bold uppercase tracking-widest">
                             <Plus size={16} className="mr-2" /> Architect Custom Plan
@@ -427,16 +489,7 @@ export default function ServicePlansPage() {
 
                 {/* All */}
                 <TabsContent value="all" className="m-0">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredPlans.map(plan => (
-                            <PlanCard key={plan.id} plan={plan}
-                                onEdit={p => requirePin(() => handleOpenTerminal('edit', p))}
-                                onView={p => handleOpenTerminal('view', p)}
-                                onDelete={p => requirePin(() => confirmDeleteRequest(p))}
-                                canEdit={userIsSuperAdmin}
-                            />
-                        ))}
-                    </div>
+                    {renderPlans(filteredPlans)}
                 </TabsContent>
 
                 {/* Active Subscriptions */}
@@ -557,36 +610,17 @@ export default function ServicePlansPage() {
 
                 {/* Standard */}
                 <TabsContent value="standard" className="m-0">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredPlans.filter(p => p.type === 'standard').map(plan => (
-                            <PlanCard key={plan.id} plan={plan}
-                                onEdit={p => requirePin(() => handleOpenTerminal('edit', p))}
-                                onView={p => handleOpenTerminal('view', p)}
-                                onDelete={p => requirePin(() => confirmDeleteRequest(p))}
-                                canEdit={userIsSuperAdmin}
-                            />
-                        ))}
-                    </div>
+                    {renderPlans(filteredPlans.filter(p => p.type === 'standard'))}
                 </TabsContent>
 
                 {/* Custom */}
                 <TabsContent value="custom" className="m-0">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredPlans.filter(p => p.type === 'custom').map(plan => (
-                            <PlanCard key={plan.id} plan={plan}
-                                onEdit={p => requirePin(() => handleOpenTerminal('edit', p))}
-                                onView={p => handleOpenTerminal('view', p)}
-                                onDelete={p => requirePin(() => confirmDeleteRequest(p))}
-                                canEdit={userIsSuperAdmin}
-                            />
-                        ))}
-                        {filteredPlans.filter(p => p.type === 'custom').length === 0 && (
-                            <div className="col-span-full py-24 text-center border-2 border-dashed border-border-main rounded-2xl opacity-40 bg-bg-secondary/30">
-                                <Building2 size={48} className="mx-auto text-text-muted mb-2" />
-                                <p className="text-[10px] font-bold uppercase tracking-widest">No custom client agreements in registry</p>
-                            </div>
-                        )}
-                    </div>
+                    {filteredPlans.filter(p => p.type === 'custom').length === 0 ? (
+                        <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl opacity-40 bg-bg-secondary/30">
+                            <Building2 size={48} className="mx-auto text-text-muted mb-2" />
+                            <p className="text-[10px] font-bold uppercase tracking-widest">No custom client agreements in registry</p>
+                        </div>
+                    ) : renderPlans(filteredPlans.filter(p => p.type === 'custom'))}
                 </TabsContent>
 
                 {/* Service Rates */}
@@ -595,7 +629,7 @@ export default function ServicePlansPage() {
                         <div className="flex items-center justify-between">
                             <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Client billing rates — separate from technician pay rates</p>
                             {userIsSuperAdmin && !ratesEditMode && (
-                                <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase" onClick={() => { setEditRates({ ...rates }); setEditRateLabels({ ...rateLabels }); setRatesEditMode(true); }}>
+                                <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase" onClick={() => requirePin(() => { setEditRates({ ...rates }); setEditRateLabels({ ...rateLabels }); setRatesEditMode(true); })}>
                                     <PencilLine size={12} className="mr-1.5" /> Edit Rates
                                 </Button>
                             )}
@@ -964,7 +998,7 @@ export default function ServicePlansPage() {
                             <Lock className="text-brand-red h-5 w-5" />
                             <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Plans PIN Required</DialogTitle>
                         </div>
-                        <DialogDescription className="text-[10px] uppercase font-bold text-text-muted">Enter your edit PIN to make changes to plans.</DialogDescription>
+                        <DialogDescription className="text-[10px] uppercase font-bold text-text-muted">Enter your edit PIN to unlock editing for service plans and service rates.</DialogDescription>
                     </DialogHeader>
                     <div className="py-4 space-y-3">
                         <Input
@@ -1088,6 +1122,43 @@ function RateCard({ def, value, editMode, onChange, label, onLabelChange }: {
                 <p className="text-[8px] text-text-muted font-medium">{def.description}</p>
             </CardContent>
         </Card>
+    );
+}
+
+function PlanRow({ plan, onEdit, onView, onDelete, canEdit }: {
+    plan: PlanTier;
+    onEdit: (p: PlanTier) => void;
+    onView: (p: PlanTier) => void;
+    onDelete: (p: PlanTier) => void;
+    canEdit: boolean;
+}) {
+    const isCustom = plan.type === 'custom';
+    const isStandard = plan.type === 'standard';
+    const isInactive = plan.status === 'inactive';
+    return (
+        <div className={cn(
+            'flex items-center gap-3 px-4 py-2.5 rounded-lg border bg-bg-secondary hover:border-text-muted transition-colors',
+            isCustom ? 'border-brand-red/30' : 'border-border-sub',
+            isInactive && 'opacity-60'
+        )}>
+            <button type="button" onClick={() => onView(plan)} className="flex-1 min-w-0 text-left">
+                <p className="text-[12px] font-bold uppercase tracking-wide text-text-primary truncate">{plan.name}</p>
+                <p className="text-[10px] text-text-muted truncate">
+                    <span className="uppercase">{plan.type} agreement</span>
+                    {isCustom && plan.clientName ? ` · ${plan.clientName}` : ''}
+                    {isInactive ? ' · Inactive' : ''}
+                </p>
+            </button>
+            <span className="hidden md:block text-[10px] font-mono font-bold text-text-primary shrink-0">
+                ${plan.price.toLocaleString()}<span className="text-text-muted font-sans"> / {plan.billingPeriod}</span>
+            </span>
+            <span className="hidden lg:block text-[10px] font-mono text-text-muted shrink-0">SLA {plan.responseTime}</span>
+            <div className="flex gap-1 shrink-0">
+                {canEdit && <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-primary hover:bg-bg-primary" title="Edit Plan" onClick={() => onEdit(plan)}><PenTool size={14} /></Button>}
+                {canEdit && !isStandard && <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-brand-red hover:bg-brand-red/10" title="Delete Plan" onClick={() => onDelete(plan)}><Trash2 size={14} /></Button>}
+                {canEdit && isStandard && <div className="h-7 w-7 flex items-center justify-center text-text-muted/30"><Lock size={12} /></div>}
+            </div>
+        </div>
     );
 }
 

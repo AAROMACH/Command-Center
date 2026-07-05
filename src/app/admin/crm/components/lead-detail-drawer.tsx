@@ -11,11 +11,14 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
   Phone, Mail, MessageSquare, Calendar, FileText, CheckCircle2,
   TrendingUp, XCircle, Loader2, Users, DollarSign, Clock, ArrowRight,
+  Maximize2, Paperclip, ExternalLink,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
@@ -61,6 +64,7 @@ export function LeadDetailDrawer({ lead, activities, currentUserId, onClose }: P
   const [activityNote, setActivityNote] = useState('');
   const [savingActivity, setSavingActivity] = useState(false);
   const [movingStage, setMovingStage] = useState(false);
+  const [isFullDetailOpen, setIsFullDetailOpen] = useState(false);
 
   if (!lead) return null;
 
@@ -139,7 +143,7 @@ export function LeadDetailDrawer({ lead, activities, currentUserId, onClose }: P
             </div>
           </div>
 
-          {/* Stage badge + estimated value */}
+          {/* Stage badge + estimated value + full detail */}
           <div className="flex items-center gap-3 mt-2">
             <span className={cn('text-[10px] font-black uppercase tracking-widest', STAGE_COLORS[lead.stage])}>
               ● {STAGE_LABELS[lead.stage]}
@@ -150,6 +154,20 @@ export function LeadDetailDrawer({ lead, activities, currentUserId, onClose }: P
                 {lead.estimatedValue.toLocaleString()}
               </span>
             )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 ml-auto text-[9px] font-bold uppercase tracking-wider"
+              onClick={() => setIsFullDetailOpen(true)}
+            >
+              <Maximize2 size={10} className="mr-1.5" />
+              Full Detail
+              {(lead.attachments?.length ?? 0) > 0 && (
+                <span className="ml-1.5 inline-flex items-center gap-0.5 text-text-muted">
+                  <Paperclip size={9} />{lead.attachments!.length}
+                </span>
+              )}
+            </Button>
           </div>
         </SheetHeader>
 
@@ -291,6 +309,86 @@ export function LeadDetailDrawer({ lead, activities, currentUserId, onClose }: P
             )}
           </div>
         </div>
+
+        {/* Full Detail dialog — every field plus the original uploaded files
+            so sales can recover anything the import extraction missed. */}
+        <Dialog open={isFullDetailOpen} onOpenChange={setIsFullDetailOpen}>
+          <DialogContent className="bg-bg-elevated border-border-main sm:max-w-2xl max-h-[85vh] flex flex-col p-0">
+            <DialogHeader className="p-6 pb-4 border-b border-border-sub">
+              <DialogTitle className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+                <TrendingUp size={14} className="text-brand-red" /> {lead.companyName}
+              </DialogTitle>
+              <DialogDescription className="text-[10px] uppercase font-bold text-text-muted">
+                Full lead record{lead.importedFrom ? ` · imported from ${lead.importedFrom}` : ''}
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="flex-1">
+              <div className="p-6 space-y-6">
+                {/* Core fields */}
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                  {([
+                    ['Company', lead.companyName],
+                    ['Contact', lead.contactName],
+                    ['Email', lead.contactEmail],
+                    ['Phone', lead.contactPhone],
+                    ['Stage', STAGE_LABELS[lead.stage]],
+                    ['Source', lead.source?.replace(/_/g, ' ')],
+                    ['Estimated Value', lead.estimatedValue ? `$${lead.estimatedValue.toLocaleString()}` : ''],
+                    ['Assigned To', lead.assignedTo],
+                    ['Created', lead.createdAt ? format(parseISO(lead.createdAt), 'MMM d, yyyy · h:mm a') : ''],
+                    ['Updated', lead.updatedAt ? format(parseISO(lead.updatedAt), 'MMM d, yyyy · h:mm a') : ''],
+                    ['Follow-Up', lead.followUpDate || ''],
+                    ['Tags', (lead.tags || []).join(', ')],
+                  ] as [string, string][]).filter(([, v]) => v).map(([label, value]) => (
+                    <div key={label}>
+                      <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">{label}</p>
+                      <p className="text-[11px] text-text-primary mt-0.5 break-words">{value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Notes / raw extract */}
+                {lead.notes && (
+                  <div>
+                    <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted mb-1.5">Notes / Extracted Text</p>
+                    <p className="text-[11px] text-text-secondary leading-relaxed whitespace-pre-wrap rounded-lg border border-border-sub bg-bg-secondary p-3">{lead.notes}</p>
+                  </div>
+                )}
+
+                {/* Original files */}
+                <div>
+                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted mb-1.5 flex items-center gap-1.5">
+                    <Paperclip size={9} /> Original Files ({lead.attachments?.length ?? 0})
+                  </p>
+                  {(lead.attachments?.length ?? 0) === 0 ? (
+                    <p className="text-[10px] text-text-muted uppercase tracking-wider">No files attached to this lead.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {lead.attachments!.map((att, i) => (
+                        <a
+                          key={i}
+                          href={att.downloadUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border-sub bg-bg-secondary hover:border-brand-red/40 transition-colors group"
+                        >
+                          <FileText size={13} className="text-brand-red shrink-0" />
+                          <span className="flex-1 min-w-0">
+                            <span className="block text-[11px] font-bold text-text-primary truncate group-hover:text-brand-red transition-colors">{att.fileName}</span>
+                            <span className="block text-[9px] text-text-muted">
+                              {[att.contentType, att.sizeBytes ? `${(att.sizeBytes / 1024).toFixed(0)} KB` : null].filter(Boolean).join(' · ')}
+                            </span>
+                          </span>
+                          <ExternalLink size={11} className="text-text-muted group-hover:text-text-primary shrink-0" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
       </SheetContent>
     </Sheet>
   );

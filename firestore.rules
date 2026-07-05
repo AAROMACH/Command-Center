@@ -39,6 +39,11 @@ service cloud.firestore {
       return d.get('roles', []).hasAny(['client']) || d.get('role', '') == 'client';
     }
 
+    function isSales() {
+      let d = userData();
+      return d.get('roles', []).hasAny(['sales']) || d.get('role', '') == 'sales';
+    }
+
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if isAdmin()
@@ -344,12 +349,12 @@ service cloud.firestore {
     // ── Collections used by the app that previously had no rules ─────────
     // (no match block means default-deny, which silently broke these pages)
 
-    // CRM pipeline (admin portal only)
+    // CRM pipeline — admins and the sales role (CRM is a sales feature)
     match /leads/{id} {
-      allow read, write: if isAdmin();
+      allow read, write: if isAdmin() || isSales();
     }
     match /leadActivities/{id} {
-      allow read, write: if isAdmin();
+      allow read, write: if isAdmin() || isSales();
     }
 
     // Assets & materials (admin portal only)

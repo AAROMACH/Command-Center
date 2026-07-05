@@ -5,7 +5,7 @@ import { db } from '@/lib/firebase';
 import { getDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
 import {
     Zap, Plus, ChevronRight, Target, Clock, ShieldCheck, Building2,
-    Search, DollarSign, PenTool, Trash2, Eye, Lock, ShieldAlert,
+    Search, DollarSign, PenTool, Trash2, Eye, Lock, Unlock, ShieldAlert,
     History, ExternalLink, TrendingUp, Activity, Wrench, UserCheck,
     BookOpen, PencilLine, Save,
 } from 'lucide-react';
@@ -190,7 +190,9 @@ export default function ServicePlansPage() {
             }
         }).catch(() => {});
         getDoc(doc(db, 'adminConfig', 'servicePricing')).then(snap => {
-            if (snap.exists() && Array.isArray(snap.data().plans)) {
+            // Guard: never let a missing/empty Firestore array blank out the
+            // page — standard tiers always exist, so an empty array is bad data.
+            if (snap.exists() && Array.isArray(snap.data().plans) && snap.data().plans.length > 0) {
                 setPlans(snap.data().plans as PlanTier[]);
             } else {
                 setDoc(doc(db, 'adminConfig', 'servicePricing'), {
@@ -213,7 +215,9 @@ export default function ServicePlansPage() {
         return plans.filter(p => p.name.toLowerCase().includes(q) || (p.clientName || '').toLowerCase().includes(q));
     }, [plans, searchQuery]);
 
-    // Grid of cards or compact list rows, sharing the same edit/view/delete callbacks.
+    // Grid of cards or compact list rows, sharing the same edit/view/delete
+    // callbacks. Edit/delete controls appear once the page-level PIN unlock
+    // (header Edit button) has been entered.
     const renderPlans = (items: PlanTier[]) => (
         viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -222,7 +226,7 @@ export default function ServicePlansPage() {
                         onEdit={p => requirePin(() => handleOpenTerminal('edit', p))}
                         onView={p => handleOpenTerminal('view', p)}
                         onDelete={p => requirePin(() => confirmDeleteRequest(p))}
-                        canEdit={userIsSuperAdmin}
+                        canEdit={userIsSuperAdmin && isPlansAuthed}
                     />
                 ))}
             </div>
@@ -233,7 +237,7 @@ export default function ServicePlansPage() {
                         onEdit={p => requirePin(() => handleOpenTerminal('edit', p))}
                         onView={p => handleOpenTerminal('view', p)}
                         onDelete={p => requirePin(() => confirmDeleteRequest(p))}
-                        canEdit={userIsSuperAdmin}
+                        canEdit={userIsSuperAdmin && isPlansAuthed}
                     />
                 ))}
             </div>
@@ -346,6 +350,21 @@ export default function ServicePlansPage() {
         setIsPinDialogOpen(true);
     }
 
+    // Global edit toggle: one PIN entry unlocks editing across the page
+    // (plan cards + service rates). Unlocking only flips the flag — the
+    // plans stay right where they are, no editor modal opens.
+    const handleGlobalUnlock = () => {
+        requirePin(() => {
+            toast({ title: 'Editing Unlocked', description: 'Plans and service rates can now be adjusted. Lock when finished.' });
+        });
+    };
+
+    const handleGlobalLock = () => {
+        setIsPlansAuthed(false);
+        setRatesEditMode(false);
+        toast({ title: 'Editing Locked', description: 'Plans and service rates are read-only again.' });
+    };
+
     async function handlePinSubmit() {
         try {
             const snap = await getDoc(doc(db, 'adminConfig', 'plans'));
@@ -414,6 +433,19 @@ export default function ServicePlansPage() {
                         />
                     </div>
                     <ViewToggle value={viewMode} onChange={setViewMode} />
+                    {userIsSuperAdmin && (
+                        isPlansAuthed ? (
+                            <Button variant="outline" onClick={handleGlobalLock}
+                                className="h-10 px-4 font-bold uppercase tracking-widest border-text-green/40 text-text-green hover:bg-text-green/5">
+                                <Unlock size={14} className="mr-2" /> Editing Unlocked — Lock
+                            </Button>
+                        ) : (
+                            <Button variant="outline" onClick={handleGlobalUnlock}
+                                className="h-10 px-4 font-bold uppercase tracking-widest">
+                                <Lock size={14} className="mr-2" /> Edit
+                            </Button>
+                        )
+                    )}
                     {userIsSuperAdmin && (
                         <Button onClick={() => requirePin(() => handleOpenTerminal('create'))} className="h-10 px-6 font-bold uppercase tracking-widest">
                             <Plus size={16} className="mr-2" /> Architect Custom Plan
@@ -597,7 +629,7 @@ export default function ServicePlansPage() {
                         <div className="flex items-center justify-between">
                             <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Client billing rates — separate from technician pay rates</p>
                             {userIsSuperAdmin && !ratesEditMode && (
-                                <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase" onClick={() => { setEditRates({ ...rates }); setEditRateLabels({ ...rateLabels }); setRatesEditMode(true); }}>
+                                <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase" onClick={() => requirePin(() => { setEditRates({ ...rates }); setEditRateLabels({ ...rateLabels }); setRatesEditMode(true); })}>
                                     <PencilLine size={12} className="mr-1.5" /> Edit Rates
                                 </Button>
                             )}
@@ -966,7 +998,7 @@ export default function ServicePlansPage() {
                             <Lock className="text-brand-red h-5 w-5" />
                             <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Plans PIN Required</DialogTitle>
                         </div>
-                        <DialogDescription className="text-[10px] uppercase font-bold text-text-muted">Enter your edit PIN to make changes to plans.</DialogDescription>
+                        <DialogDescription className="text-[10px] uppercase font-bold text-text-muted">Enter your edit PIN to unlock editing for service plans and service rates.</DialogDescription>
                     </DialogHeader>
                     <div className="py-4 space-y-3">
                         <Input

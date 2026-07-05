@@ -102,6 +102,11 @@ export default function ClientWorkspacePage() {
     // Jobs filter
     const [jobsStatusFilter, setJobsStatusFilter] = useState<string>('all');
 
+    // Edit client
+    const [editClientOpen, setEditClientOpen] = useState(false);
+    const [editClientForm, setEditClientForm] = useState({ name: '', company: '', email: '', phone: '', accountStatus: 'active' });
+    const [editClientSaving, setEditClientSaving] = useState(false);
+
     useEffect(() => {
         if (!id) return;
 
@@ -246,6 +251,44 @@ export default function ClientWorkspacePage() {
         }
     };
 
+    const openEditClient = () => {
+        if (!client) return;
+        setEditClientForm({
+            name: client.name || '',
+            company: client.clientCompany || '',
+            email: client.email || '',
+            phone: client.phone || '',
+            accountStatus: client.accountStatus || 'active',
+        });
+        setEditClientOpen(true);
+    };
+
+    const handleSaveClient = async () => {
+        if (!id) return;
+        setEditClientSaving(true);
+        try {
+            await updateDoc(doc(db, 'users', id), {
+                name: editClientForm.name,
+                clientCompany: editClientForm.company,
+                email: editClientForm.email,
+                phone: editClientForm.phone,
+                accountStatus: editClientForm.accountStatus,
+                updatedAt: new Date().toISOString(),
+            });
+            setClient(prev => prev ? {
+                ...prev,
+                name: editClientForm.name,
+                clientCompany: editClientForm.company,
+                email: editClientForm.email,
+                phone: editClientForm.phone,
+                accountStatus: editClientForm.accountStatus as Technician['accountStatus'],
+            } : prev);
+            setEditClientOpen(false);
+        } finally {
+            setEditClientSaving(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
@@ -292,6 +335,9 @@ export default function ClientWorkspacePage() {
                             <Badge className={cn('text-[8px] uppercase border h-5', ACCOUNT_STATUS_COLORS[currentAccountStatus] || ACCOUNT_STATUS_COLORS.active)}>
                                 {currentAccountStatus.replace(/_/g, ' ')}
                             </Badge>
+                            <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase" onClick={openEditClient}>
+                                <PenLine size={10} className="mr-1.5" /> Edit
+                            </Button>
                         </div>
                         {client.name && client.clientCompany && <p className="text-[11px] text-text-muted mt-0.5">{client.name}</p>}
                     </div>
@@ -938,6 +984,54 @@ export default function ClientWorkspacePage() {
                         <Button variant="outline" size="sm" onClick={() => setCdocOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
                         <Button size="sm" onClick={handleUploadCDoc} disabled={!cdocForm.name || cdocSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
                             {cdocSaving ? 'Saving...' : 'Upload'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Client Dialog */}
+            <Dialog open={editClientOpen} onOpenChange={setEditClientOpen}>
+                <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+                            <PenLine size={14} className="text-brand-red" /> Edit Client
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 py-2">
+                        <div className="space-y-1">
+                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Company Name</Label>
+                            <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Acme Corp" value={editClientForm.company} onChange={e => setEditClientForm(f => ({ ...f, company: e.target.value }))} />
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Contact Name</Label>
+                            <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Jane Smith" value={editClientForm.name} onChange={e => setEditClientForm(f => ({ ...f, name: e.target.value }))} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Email</Label>
+                                <Input type="email" className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="jane@acme.com" value={editClientForm.email} onChange={e => setEditClientForm(f => ({ ...f, email: e.target.value }))} />
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Phone</Label>
+                                <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="555-000-0000" value={editClientForm.phone} onChange={e => setEditClientForm(f => ({ ...f, phone: e.target.value }))} />
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Account Status</Label>
+                            <Select value={editClientForm.accountStatus} onValueChange={v => setEditClientForm(f => ({ ...f, accountStatus: v }))}>
+                                <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue /></SelectTrigger>
+                                <SelectContent className="bg-bg-elevated border-border-main">
+                                    {ACCOUNT_STATUS_OPTIONS.map(o => (
+                                        <SelectItem key={o.value} value={o.value} className="text-[11px]">{o.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setEditClientOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
+                        <Button size="sm" onClick={handleSaveClient} disabled={editClientSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+                            {editClientSaving ? 'Saving...' : 'Save Changes'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

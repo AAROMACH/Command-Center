@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { getAvailablePortals, getPortalAccess, isAdmin, isTech, isClient } from '@/lib/permissions';
+import { getAvailablePortals, getPortalAccess } from '@/lib/permissions';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Button } from '@/components/ui/button';
 import { LogOut, ShieldCheck, Wrench, Building2 } from 'lucide-react';
@@ -64,21 +64,19 @@ export default function PortalSelectPage() {
         return;
       }
       if (portals.length === 1) {
-        applySessionAndRoute(fbUser.uid, user);
+        applySessionAndRoute(fbUser.uid, user, portals[0].path);
       }
     });
     return () => unsub();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const applySessionAndRoute = (uid: string, user: Technician) => {
+  const applySessionAndRoute = (uid: string, user: Technician, path: string) => {
     const access = getPortalAccess(user);
     sessionStorage.setItem('currentUserId', uid);
     document.cookie = `aaromach_session=${uid}; path=/; max-age=86400; SameSite=Strict`;
     document.cookie = `aaromach_portals=${JSON.stringify(access)}; path=/; max-age=86400; SameSite=Strict`;
-    if (isAdmin(user)) router.push('/admin/dashboard');
-    else if (isTech(user)) router.push('/tech/dashboard');
-    else if (isClient(user)) router.push('/client/dashboard');
+    router.push(path);
   };
 
   const handleSelectPortal = async (portalPath: string) => {

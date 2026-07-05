@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { auditFieldChange } from '@/lib/audit';
+import { normalizeLegacyRole, APP_ROLES } from '@/lib/permissions';
 import type { Technician, AppRole } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
@@ -99,7 +100,12 @@ function personToForm(p: Technician): FormState {
     address: p.address || p.currentLocation || '',
     approvalStatus: p.approvalStatus || 'approved',
     accountStatus: p.accountStatus || 'active',
-    roles: [...(p.roles || (p.role ? [p.role as AppRole] : []))],
+    // Only valid AppRole values may enter the form (and later be saved).
+    // Legacy free-text `role` strings are mapped through the same heuristics
+    // hasPermission uses, instead of being cast into the roles array raw.
+    roles: (p.roles?.length
+      ? p.roles.filter(r => (APP_ROLES as string[]).includes(r))
+      : (normalizeLegacyRole(p.role) ? [normalizeLegacyRole(p.role)!] : [])),
     primaryPortal: p.primaryPortal || '',
     portalAccess: { admin: false, tech: false, client: false, ...p.portalAccess },
     hourlyRate: p.hourlyRate != null ? String(p.hourlyRate) : '',

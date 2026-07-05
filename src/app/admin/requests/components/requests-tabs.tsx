@@ -2,6 +2,7 @@
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RequestsClient } from "./requests-client";
+import { normalizeRequestStatus } from '@/lib/request-intake';
 import type { ServiceRequest, WorkOrder } from '@/lib/types';
 
 const priorityOrder: Record<ServiceRequest['priority'], number> = {
@@ -17,13 +18,15 @@ type RequestsTabsProps = {
 };
 
 export function RequestsTabs({ serviceRequests, workOrders = [] }: RequestsTabsProps) {
-  // ORGANIZATIONAL LOGIC: Group 'new' and 'reviewed' into 'Requested'
+  // Bucket on normalized status so legacy ('new', 'reviewed', 'rejected') and
+  // newer ('pending_review', 'denied') vocabularies land in the right tab.
   const requestedRequests = serviceRequests
-    .filter(p => p.status === 'new' || p.status === 'reviewed')
-    .sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]);
-    
-  const approvedRequests = serviceRequests.filter(p => p.status === 'approved');
-  const closedRequests = serviceRequests.filter(p => p.status === 'closed' || p.status === 'rejected');
+    .filter(p => ['new', 'pending_review'].includes(normalizeRequestStatus(p.status, p)))
+    .sort((a, b) => (priorityOrder[b.priority] ?? 0) - (priorityOrder[a.priority] ?? 0));
+
+  const approvedRequests = serviceRequests.filter(p => normalizeRequestStatus(p.status, p) === 'approved');
+  const closedRequests = serviceRequests.filter(p =>
+    ['closed', 'denied', 'converted', 'archived'].includes(normalizeRequestStatus(p.status, p)));
 
   return (
     <Tabs defaultValue="requested" className="w-full">

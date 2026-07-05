@@ -45,6 +45,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import type { WorkOrder, Technician, Project, WeeklyLog, SiteRequest, ServiceRequest, TimeOffRequest, Invoice } from '@/lib/types';
 import { computeSla, slaStatusColor, SLA_DEFAULTS } from '@/lib/sla';
+import { isServiceTicketDoc } from '@/lib/request-intake';
 import { Timer, AlertTriangle as SlaAlertIcon } from 'lucide-react';
 import { format, parseISO, isSameDay, startOfMonth } from 'date-fns';
 
@@ -104,8 +105,15 @@ export default function DashboardPage() {
         );
 
         const unsubClientReq = onSnapshot(
-            query(collection(db, 'clientRequests'), where('status', '==', 'new')),
-            (snap) => setClientRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as ServiceRequest)))
+            // Open service tickets: app-created tickets use 'new', public-form
+            // tickets 'pending_review'. Intake/partnership docs (also
+            // pending_review) are excluded — they are reviewed on /admin/requests.
+            query(collection(db, 'clientRequests'), where('status', 'in', ['new', 'pending_review'])),
+            (snap) => setClientRequests(
+                snap.docs
+                    .filter(d => isServiceTicketDoc(d.data()))
+                    .map(d => ({ ...d.data(), id: d.id } as ServiceRequest))
+            )
         );
 
         const unsubTOR = onSnapshot(

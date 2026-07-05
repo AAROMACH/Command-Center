@@ -26,6 +26,8 @@ export default function RootLayout({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('aaromach_theme');if(t==='light'){document.documentElement.classList.remove('dark');document.documentElement.classList.add('light');}}catch(e){}` }} />
+        {/* sessionStorage is per-tab; restore the signed-in user id from the session cookie so pages opened in a new tab still resolve identity */}
+        <script dangerouslySetInnerHTML={{ __html: `try{if(!sessionStorage.getItem('currentUserId')){var m=document.cookie.match(/(?:^|; )aaromach_session=([^;]+)/);if(m&&m[1]){sessionStorage.setItem('currentUserId',decodeURIComponent(m[1]));}}}catch(e){}` }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />

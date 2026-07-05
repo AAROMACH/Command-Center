@@ -188,8 +188,10 @@ export default function PublicServiceRequestPage() {
     setError('');
 
     try {
-      // Pre-generate a doc ref so we can use its ID for Storage paths and include it in the single write
-      const newDocRef = doc(collection(db, 'serviceRequests'));
+      // Pre-generate a doc ref so we can use its ID for Storage paths and include it in the single write.
+      // Writes go to `clientRequests` — the collection the admin app reads for
+      // request intake (the legacy `serviceRequests` collection had no readers).
+      const newDocRef = doc(collection(db, 'clientRequests'));
       const docId = newDocRef.id;
 
       // Upload files before the Firestore write so URLs are available in the initial create
@@ -207,6 +209,7 @@ export default function PublicServiceRequestPage() {
       // Single Firestore write — no updateDoc needed (avoids admin-only update rule)
       await setDoc(newDocRef, {
         serviceRequestId: docId,
+        requestCategory: 'service_ticket',
         source: 'public_service_request',
         status: 'pending_review',
         customerType: form.customerType,

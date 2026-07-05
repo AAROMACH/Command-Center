@@ -374,6 +374,33 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
   ],
 };
 
+export const APP_ROLES: AppRole[] = [
+  'super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager',
+  'project_lead', 'field_technician', 'client', 'sales',
+  'safety_officer', 'training_coordinator',
+];
+
+// Map a legacy free-text `role` value (e.g. "Technician", "Dispatcher") to a
+// valid AppRole, using the same heuristics hasPermission applies. Returns
+// null when the value maps to nothing — never write unmapped strings into
+// the typed `roles` array.
+export function normalizeLegacyRole(role: string | null | undefined): AppRole | null {
+  const r = (role || '').toLowerCase().trim();
+  if (!r) return null;
+  if ((APP_ROLES as string[]).includes(r)) return r as AppRole;
+  if (r === 'admin') return 'super_admin';
+  if (r.includes('dispatcher')) return 'dispatch_admin';
+  if (r.includes('payroll')) return 'payroll_admin';
+  if (r.includes('client')) return 'client';
+  if (r.includes('lead')) return 'project_lead';
+  if (r.includes('tech')) return 'field_technician';
+  if (r.includes('sales')) return 'sales';
+  if (r.includes('safety')) return 'safety_officer';
+  if (r.includes('training')) return 'training_coordinator';
+  if (r.includes('manager')) return 'project_manager';
+  return null;
+}
+
 export function hasPermission(user: Technician | null | undefined, permission: Permission): boolean {
   if (!user) return false;
 

@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
-import { isAdmin, isTech, isClient, getPortalAccess, getAvailablePortals } from '@/lib/permissions';
+import { getPortalAccess, getAvailablePortals } from '@/lib/permissions';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,9 @@ export default function PendingApprovalPage() {
   const redirectApprovedUser = (uid: string, userData: Technician) => {
     const access = getPortalAccess(userData);
     const portals = getAvailablePortals(userData);
+    // Approved but no portal access — stay on this screen instead of
+    // bouncing between the middleware and portal-select forever.
+    if (portals.length === 0) return;
     sessionStorage.setItem('currentUserId', uid);
     document.cookie = `aaromach_session=${uid}; path=/; max-age=86400; SameSite=Strict`;
     document.cookie = `aaromach_portals=${JSON.stringify(access)}; path=/; max-age=86400; SameSite=Strict`;
@@ -34,14 +37,8 @@ export default function PendingApprovalPage() {
       router.push(primary ? primary.path : portals[0].path);
     } else if (portals.length > 1) {
       router.push('/portal-select');
-    } else if (isAdmin(userData)) {
-      router.push('/admin/dashboard');
-    } else if (isTech(userData)) {
-      router.push('/tech/dashboard');
-    } else if (isClient(userData)) {
-      router.push('/client/dashboard');
     } else {
-      router.push('/admin/dashboard');
+      router.push(portals[0].path);
     }
   };
 

@@ -279,19 +279,47 @@ export const WorkOrdersTable = React.memo(({
     setIsDeleteConfirmOpen(true);
   };
 
-  const executeDeleteOrder = () => {
+  const executeDeleteOrder = async () => {
     if (!selectedOrder) return;
+    const order = selectedOrder;
     const collectionName = mode === 'unassigned' ? 'workOrders' : 'assignments';
-    const docRef = doc(db, collectionName, selectedOrder.id);
-    deleteDoc(docRef).catch((e: any) => {
-      console.error("Purge Error:", e);
-      toast({ variant: "destructive", title: "Purge Failed", description: e.message });
-    });
-    setIsDeleteConfirmOpen(false);
-    setIsEditDialogOpen(false);
-    setSelectedOrder(null);
-    setEditedOrder(null);
-    toast({ title: "Assignment Deleted", description: "Assignment removed from the system." });
+    const docRef = doc(db, collectionName, order.id);
+
+    try {
+      // Archive first, then delete — a deleted assignment/work order must be
+      // recoverable from the Archives page instead of vanishing permanently.
+      const techId = order.assignedTechnicianId || order.techId;
+      const techName = technicians.find(t => t.id === techId)?.name;
+      const now = new Date().toISOString();
+      const archiveRecord = {
+        id: `${collectionName === 'assignments' ? 'asmt' : 'wo'}-deleted-${order.id}`,
+        timestamp: (order as any).updatedAt || (order as any).assignedAt || (order as any).createdAt || now,
+        type: collectionName === 'assignments' ? 'assignment' : 'work_order',
+        eventLabel: collectionName === 'assignments' ? 'Assignment Deleted' : 'Work Order Deleted',
+        entity: order.title || order.description || order.id.toUpperCase(),
+        techName: techName ?? null,
+        techId: techId ?? null,
+        clientName: order.clientName ?? null,
+        color: 'text-text-red',
+        icon: 'Trash2',
+        archivedAt: now,
+        archivedFrom: collectionName,
+        // Preserve the full original record for inspection / future restore
+        archivedRecord: JSON.parse(JSON.stringify(order)),
+      };
+      await setDoc(doc(db, 'activityArchive', archiveRecord.id), archiveRecord);
+      await deleteDoc(docRef);
+      toast({ title: "Assignment Archived", description: "Moved to Archives — recoverable from the Archives page." });
+    } catch (e: any) {
+      console.error("Archive/Delete Error:", e);
+      toast({ variant: "destructive", title: "Delete Failed", description: e.message });
+      return;
+    } finally {
+      setIsDeleteConfirmOpen(false);
+      setIsEditDialogOpen(false);
+      setSelectedOrder(null);
+      setEditedOrder(null);
+    }
   };
 
   const handleJobUpdate = useCallback((woId: string, updates: Partial<WorkOrder>) => {

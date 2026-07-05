@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { ViewToggle, useViewMode } from '@/components/view-toggle';
 
 export default function ClientsPage() {
   const { toast } = useToast();
@@ -22,6 +23,7 @@ export default function ClientsPage() {
   const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useViewMode('crm-clients');
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [newClientForm, setNewClientForm] = useState({ name: '', company: '', email: '', phone: '' });
   const [saving, setSaving] = useState(false);
@@ -174,6 +176,7 @@ export default function ClientsPage() {
           <UserCheck size={12} />
           {clients.length} client{clients.length !== 1 ? 's' : ''}
         </div>
+        <ViewToggle value={viewMode} onChange={setViewMode} />
       </div>
 
       {/* Pending Site Requests Banner */}
@@ -197,7 +200,7 @@ export default function ClientsPage() {
             <p className="text-[10px] text-text-muted mt-1">Convert a Won lead or add a client directly.</p>
           )}
         </div>
-      ) : (
+      ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {filteredClients.map(client => {
             const clientSiteReqs = siteRequests.filter(r => r.clientId === client.id || r.clientName === client.clientCompany);
@@ -234,6 +237,39 @@ export default function ClientsPage() {
                     </div>
                   )}
                 </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {filteredClients.map(client => {
+            const clientSiteReqs = siteRequests.filter(r => r.clientId === client.id || r.clientName === client.clientCompany);
+            return (
+              <div key={client.id} onClick={() => setSelectedClient(client)}
+                className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border-sub bg-bg-secondary hover:bg-bg-tertiary hover:border-brand-red transition-all cursor-pointer">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-black uppercase tracking-tight text-text-primary truncate">{client.clientCompany || client.name}</p>
+                  {client.clientCompany && client.name !== client.clientCompany && (
+                    <p className="text-[10px] font-bold text-text-muted truncate">{client.name}</p>
+                  )}
+                </div>
+                {client.email && (
+                  <span className="hidden md:flex items-center gap-1.5 text-[10px] text-text-muted min-w-0 max-w-[220px]">
+                    <Mail size={10} className="text-brand-red shrink-0" /><span className="truncate">{client.email}</span>
+                  </span>
+                )}
+                {client.phone && (
+                  <span className="hidden lg:flex items-center gap-1.5 text-[10px] text-text-muted shrink-0">
+                    <Phone size={10} className="shrink-0" />{client.phone}
+                  </span>
+                )}
+                {clientSiteReqs.length > 0 && (
+                  <span className="flex items-center gap-1.5 text-[10px] text-accent-gold shrink-0">
+                    <MapPin size={10} className="shrink-0" />{clientSiteReqs.length}
+                  </span>
+                )}
+                <span className="text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded border text-text-green bg-text-green/10 border-text-green/20 shrink-0">Active</span>
               </div>
             );
           })}

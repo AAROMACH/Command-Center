@@ -541,3 +541,12 @@
     transform: translateX(100%);
   }
 }
+/* Leaflet maps: the library's internal panes use z-index 400-700 and its
+   controls 1000, which would otherwise paint ABOVE app overlays (dialogs
+   and sheets render at z-50) — e.g. the route map covering the Allocation
+   Terminal. Give the map container its own stacking context so Leaflet's
+   z-indexes stay contained inside the map. */
+.leaflet-container {
+  z-index: 0;
+  isolation: isolate;
+}

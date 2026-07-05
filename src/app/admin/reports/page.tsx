@@ -340,8 +340,17 @@ export default function ActivityAuditPage() {
 
     const handleRestoreEvent = async (eventId: string) => {
         try {
+            // Deleted assignments/work orders carry their original record — restoring
+            // recreates the source doc so it returns to the active views. Other
+            // archived events are just derived timeline entries, so removing the
+            // archive doc is enough to un-hide them.
+            const archived = archivedEvents.find(e => e.id === eventId) as any;
+            if (archived?.archivedRecord && archived?.archivedFrom) {
+                const rec = archived.archivedRecord;
+                await setDoc(doc(db, archived.archivedFrom, rec.id), rec);
+            }
             await deleteDoc(doc(db, 'activityArchive', eventId));
-            toast({ title: 'Restored', description: 'Event restored to activity feed.' });
+            toast({ title: 'Restored', description: archived?.archivedRecord ? 'Record restored to active registry.' : 'Event restored to activity feed.' });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Restore Failed', description: e.message });
         }

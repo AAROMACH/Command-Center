@@ -279,15 +279,23 @@ export const WorkOrdersTable = React.memo(({
     setIsDeleteConfirmOpen(true);
   };
 
-  const executeDeleteOrder = async () => {
+  const executeDeleteOrder = () => {
     if (!selectedOrder) return;
     const order = selectedOrder;
     const collectionName = mode === 'unassigned' ? 'workOrders' : 'assignments';
-    const docRef = doc(db, collectionName, order.id);
+    const label = collectionName === 'assignments' ? 'Assignment' : 'Work order';
 
-    try {
-      // Archive first, then delete — a deleted assignment/work order must be
-      // recoverable from the Archives page instead of vanishing permanently.
+    // Close the modal and clear selection FIRST — the UI must never block on a
+    // Firestore round-trip (a slow/denied write previously kept the confirm
+    // dialog open and froze the app).
+    setIsDeleteConfirmOpen(false);
+    setIsEditDialogOpen(false);
+    setSelectedOrder(null);
+    setEditedOrder(null);
+
+    // Archive is best-effort; the delete always proceeds even if archiving
+    // fails, so a failed/denied archive can never block the deletion.
+    (async () => {
       const techId = order.assignedTechnicianId || order.techId;
       const techName = technicians.find(t => t.id === techId)?.name;
       const now = new Date().toISOString();
@@ -295,7 +303,7 @@ export const WorkOrdersTable = React.memo(({
         id: `${collectionName === 'assignments' ? 'asmt' : 'wo'}-deleted-${order.id}`,
         timestamp: (order as any).updatedAt || (order as any).assignedAt || (order as any).createdAt || now,
         type: collectionName === 'assignments' ? 'assignment' : 'work_order',
-        eventLabel: collectionName === 'assignments' ? 'Assignment Deleted' : 'Work Order Deleted',
+        eventLabel: `${label} Deleted`,
         entity: order.title || order.description || order.id.toUpperCase(),
         techName: techName ?? null,
         techId: techId ?? null,
@@ -304,22 +312,29 @@ export const WorkOrdersTable = React.memo(({
         icon: 'Trash2',
         archivedAt: now,
         archivedFrom: collectionName,
-        // Preserve the full original record for inspection / future restore
-        archivedRecord: JSON.parse(JSON.stringify(order)),
+        // Store the original as a JSON string so no nested-array / undefined
+        // field in the source doc can make the archive write fail.
+        archivedRecordJson: JSON.stringify(order),
       };
-      await setDoc(doc(db, 'activityArchive', archiveRecord.id), archiveRecord);
-      await deleteDoc(docRef);
-      toast({ title: "Assignment Archived", description: "Moved to Archives — recoverable from the Archives page." });
-    } catch (e: any) {
-      console.error("Archive/Delete Error:", e);
-      toast({ variant: "destructive", title: "Delete Failed", description: e.message });
-      return;
-    } finally {
-      setIsDeleteConfirmOpen(false);
-      setIsEditDialogOpen(false);
-      setSelectedOrder(null);
-      setEditedOrder(null);
-    }
+
+      let archived = false;
+      try {
+        await setDoc(doc(db, 'activityArchive', archiveRecord.id), archiveRecord);
+        archived = true;
+      } catch (e: any) {
+        console.error("Archive Error:", e);
+      }
+
+      try {
+        await deleteDoc(doc(db, collectionName, order.id));
+        toast(archived
+          ? { title: `${label} Archived`, description: "Moved to Archives — recoverable from the Archives page." }
+          : { title: `${label} Deleted`, description: "Removed. (Could not write to Archives — check archive permissions.)" });
+      } catch (e: any) {
+        console.error("Delete Error:", e);
+        toast({ variant: "destructive", title: "Delete Failed", description: e.message });
+      }
+    })();
   };
 
   const handleJobUpdate = useCallback((woId: string, updates: Partial<WorkOrder>) => {

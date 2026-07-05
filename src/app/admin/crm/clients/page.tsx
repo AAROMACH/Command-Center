@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, updateDoc } from 'firebase/firestore';
 import type { Technician, SiteRequest, Project } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Target, Search, Phone, Mail, MapPin, UserCheck, UserPlus, Building2, Briefcase, ExternalLink,
+  Target, Search, Phone, Mail, MapPin, UserCheck, UserPlus, Building2, Briefcase, ExternalLink, PenLine,
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -26,6 +26,9 @@ export default function ClientsPage() {
   const [newClientForm, setNewClientForm] = useState({ name: '', company: '', email: '', phone: '' });
   const [saving, setSaving] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Technician | null>(null);
+  const [isEditClientOpen, setIsEditClientOpen] = useState(false);
+  const [editClientForm, setEditClientForm] = useState({ name: '', company: '', email: '', phone: '' });
+  const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
     const unsubClients = onSnapshot(collection(db, 'users'), (snap) => {
@@ -84,6 +87,47 @@ export default function ClientsPage() {
       toast({ variant: 'destructive', title: 'Failed', description: e.message });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openEditClient = (client: Technician) => {
+    setEditClientForm({
+      name: client.name || '',
+      company: client.clientCompany || '',
+      email: client.email || '',
+      phone: client.phone || '',
+    });
+    setIsEditClientOpen(true);
+  };
+
+  const handleEditClient = async () => {
+    if (!selectedClient) return;
+    if (!editClientForm.company && !editClientForm.name) {
+      toast({ variant: 'destructive', title: 'Required', description: 'Name or company is required.' });
+      return;
+    }
+    setEditSaving(true);
+    try {
+      await updateDoc(doc(db, 'users', selectedClient.id), {
+        name: editClientForm.name,
+        clientCompany: editClientForm.company,
+        email: editClientForm.email,
+        phone: editClientForm.phone,
+        updatedAt: new Date().toISOString(),
+      });
+      toast({ title: 'Client updated', description: `${editClientForm.company || editClientForm.name} saved.` });
+      setSelectedClient(prev => prev ? {
+        ...prev,
+        name: editClientForm.name,
+        clientCompany: editClientForm.company,
+        email: editClientForm.email,
+        phone: editClientForm.phone,
+      } : prev);
+      setIsEditClientOpen(false);
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Failed', description: e.message });
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -269,6 +313,9 @@ export default function ClientsPage() {
                 </div>
                 <DialogFooter className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={() => setSelectedClient(null)} className="text-[10px] font-black uppercase">Close</Button>
+                  <Button variant="outline" size="sm" onClick={() => openEditClient(selectedClient)} className="text-[10px] font-black uppercase">
+                    <PenLine size={11} className="mr-1.5" /> Edit
+                  </Button>
                   <Link href={`/admin/clients/${selectedClient.id}`}>
                     <Button size="sm" className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
                       <ExternalLink size={11} className="mr-1.5" /> View Full Profile
@@ -309,6 +356,39 @@ export default function ClientsPage() {
             <Button variant="outline" size="sm" onClick={() => setIsAddClientOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
             <Button size="sm" onClick={handleAddClient} disabled={saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
               {saving ? 'Adding...' : 'Add Client'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Client Dialog */}
+      <Dialog open={isEditClientOpen} onOpenChange={setIsEditClientOpen}>
+        <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Edit Client</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Company Name</Label>
+              <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Acme Corp" value={editClientForm.company} onChange={e => setEditClientForm(f => ({ ...f, company: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Contact Name</Label>
+              <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Jane Smith" value={editClientForm.name} onChange={e => setEditClientForm(f => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Email</Label>
+              <Input type="email" className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="jane@acme.com" value={editClientForm.email} onChange={e => setEditClientForm(f => ({ ...f, email: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Phone</Label>
+              <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="555-000-0000" value={editClientForm.phone} onChange={e => setEditClientForm(f => ({ ...f, phone: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => setIsEditClientOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
+            <Button size="sm" onClick={handleEditClient} disabled={editSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+              {editSaving ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>

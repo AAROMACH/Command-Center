@@ -62,6 +62,7 @@ import {
   FileText,
   RefreshCw,
   Trash2,
+  Archive as ArchiveIcon,
   Lock,
   CheckCircle2,
   Wrench,
@@ -132,6 +133,9 @@ export const WorkOrdersTable = React.memo(({
 
   const [currentUser, setCurrentUser] = useState<Technician | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  // Captured separately from selectedOrder: opening the confirm closes the
+  // edit dialog (which nulls selectedOrder), so the confirm keeps its own ref.
+  const [orderToDelete, setOrderToDelete] = useState<WorkOrder | null>(null);
 
   const { toast } = useToast();
 
@@ -276,22 +280,25 @@ export const WorkOrdersTable = React.memo(({
 
   const handleDeleteOrder = () => {
     if (!selectedOrder) return;
+    // Capture the order, then CLOSE the edit dialog before opening the confirm.
+    // Two Radix modal overlays open at once leaves pointer-events:none stuck on
+    // the body — that was the "freeze" the moment Delete was pressed.
+    setOrderToDelete(selectedOrder);
+    setIsEditDialogOpen(false);
     setIsDeleteConfirmOpen(true);
   };
 
   const executeDeleteOrder = () => {
-    if (!selectedOrder) return;
-    const order = selectedOrder;
+    const order = orderToDelete;
+    if (!order) return;
     const collectionName = mode === 'unassigned' ? 'workOrders' : 'assignments';
     const label = collectionName === 'assignments' ? 'Assignment' : 'Work order';
 
-    // Close the modal and clear selection FIRST — the UI must never block on a
-    // Firestore round-trip (a slow/denied write previously kept the confirm
-    // dialog open and froze the app).
+    // Close the confirm and clear refs FIRST — the UI must never block on a
+    // Firestore round-trip (a slow/denied write previously kept the dialog
+    // open and froze the app).
     setIsDeleteConfirmOpen(false);
-    setIsEditDialogOpen(false);
-    setSelectedOrder(null);
-    setEditedOrder(null);
+    setOrderToDelete(null);
 
     // Archive is best-effort; the delete always proceeds even if archiving
     // fails, so a failed/denied archive can never block the deletion.
@@ -882,12 +889,12 @@ export const WorkOrdersTable = React.memo(({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={open => { if (!open) setIsDeleteConfirmOpen(false); }}>
+      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={open => { if (!open) { setIsDeleteConfirmOpen(false); setOrderToDelete(null); } }}>
         <AlertDialogContent className="bg-bg-elevated border-border-main">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-text-primary uppercase font-black tracking-wide text-sm">Delete Assignment?</AlertDialogTitle>
+            <AlertDialogTitle className="text-text-primary uppercase font-black tracking-wide text-sm">Move to Archives?</AlertDialogTitle>
             <AlertDialogDescription className="text-text-muted text-[11px]">
-              This will permanently remove <span className="font-bold text-text-primary">{selectedOrder?.id?.toUpperCase()}</span> from the system. This action cannot be undone.
+              <span className="font-bold text-text-primary">{((orderToDelete as any)?.externalWorkOrderId || orderToDelete?.id || '').toString().toUpperCase()}</span> will be removed from the Dispatch Hub and moved to Archives. You can restore it later from the Archives page.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -896,7 +903,7 @@ export const WorkOrdersTable = React.memo(({
               className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] uppercase font-bold"
               onClick={executeDeleteOrder}
             >
-              <Trash2 size={12} className="mr-1.5" />Delete
+              <ArchiveIcon size={12} className="mr-1.5" />Move to Archives
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

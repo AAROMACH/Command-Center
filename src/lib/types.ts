@@ -113,6 +113,8 @@ export type WorkOrder = {
   externalWorkOrderId?: string;
   lat?: number;
   lng?: number;
+  geocodedAddress?: string;      // the address string lat/lng were resolved from (refresh when it changes)
+  locationNeedsReview?: boolean; // address could not be confidently geocoded
   // SLA tracking
   slaResponseTarget?: number;   // minutes until first response required
   slaResolutionTarget?: number; // hours until resolution required
@@ -504,6 +506,17 @@ export type FinancialRecord = {
   type: 'reimbursement' | 'payout' | 'penalty';
   amount: number;
   description: string;
+  // Reimbursements added from job verification attach to their work order and
+  // carry a review status. Legacy records omit these (status undefined counts
+  // as already-approved so payroll totals are unchanged).
+  workOrderId?: string;
+  assignmentId?: string;
+  externalWorkOrderId?: string;
+  status?: 'pending' | 'approved' | 'rejected';
+  receiptUrl?: string;
+  createdAt?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
 };
 
 export type WeeklyLog = {
@@ -674,7 +687,10 @@ export type TripLog = {
   technicianId: string;
   technicianName?: string;
   workOrderId?: string;
+  assignmentId?: string;
+  externalWorkOrderId?: string;
   projectId?: string;
+  jobTitle?: string;
   date: string;
   startLocation: string;
   endLocation: string;
@@ -683,6 +699,16 @@ export type TripLog = {
   reimbursable: boolean;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
+  // Extended trip tracking (optional; older records omit these)
+  source?: 'manual' | 'start_trip' | 'check_in_flow';
+  startTime?: string;
+  endTime?: string;
+  startOdometer?: number;
+  endOdometer?: number;
+  calculatedMiles?: number;
+  manualMiles?: number;
+  notes?: string;
+  updatedAt?: string;
 };
 
 export type LeadAttachment = {

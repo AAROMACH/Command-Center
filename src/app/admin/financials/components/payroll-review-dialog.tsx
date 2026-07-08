@@ -227,10 +227,29 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     const calculatedTotalPayout = useMemo(() => {
         if (!localLog) return 0;
         const assignmentPay = (localLog.items || []).reduce((acc, i) => acc + (i.jobPay || 0), 0);
-        const reimbursementPay = (localLog.reimbursements || []).reduce((acc, r) => acc + r.amount, 0);
+        // Count reimbursements that are approved (or legacy ones with no status).
+        // Pending awaits review; rejected never counts. Formula is otherwise unchanged.
+        const reimbursementPay = (localLog.reimbursements || [])
+            .filter(r => r.status !== 'pending' && r.status !== 'rejected')
+            .reduce((acc, r) => acc + r.amount, 0);
         return assignmentPay + reimbursementPay;
     }, [localLog]);
     
+    const reviewReimbursement = async (reimbId: string, decision: 'approved' | 'rejected') => {
+        if (!localLog) return;
+        const updated = (localLog.reimbursements || []).map(r =>
+            r.id === reimbId
+                ? { ...r, status: decision, reviewedBy: auth.currentUser?.uid || null, reviewedAt: new Date().toISOString() } as any
+                : r
+        );
+        setLocalLog({ ...localLog, reimbursements: updated } as WeeklyLog);
+        try {
+            await updateDoc(doc(db, 'weeklyLogs', localLog.id), { reimbursements: updated });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Update failed', description: e.message });
+        }
+    };
+
     const handleStatusChange = async (status: WeeklyLog['status']) => {
         if (localLog) {
             const finalTotal = calculatedTotalPayout;
@@ -671,12 +690,28 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         <Coins size={10} className="text-accent-gold" /> Expenses
                                     </h3>
                                     <div className="space-y-0.5">
-                                        {(localLog?.reimbursements || []).map(item => (
-                                            <div key={item.id} className="px-2 py-0.5 rounded border border-border-sub bg-bg-secondary flex justify-between items-center text-left text-[9px] font-bold">
-                                                <p className="text-text-primary uppercase truncate flex-1">{item.description}</p>
-                                                <p className="text-text-green ml-2 font-mono">+${item.amount.toFixed(2)}</p>
+                                        {(localLog?.reimbursements || []).map(item => {
+                                            const st = item.status;
+                                            const counts = st !== 'pending' && st !== 'rejected';
+                                            return (
+                                            <div key={item.id} className={cn('px-2 py-1 rounded border bg-bg-secondary flex justify-between items-center gap-2 text-left text-[9px] font-bold', st === 'pending' ? 'border-accent-gold/40' : st === 'rejected' ? 'border-border-sub opacity-50' : 'border-border-sub')}>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-text-primary uppercase truncate">{item.description}</p>
+                                                    {st && <span className={cn('text-[7px] uppercase tracking-widest', st === 'approved' ? 'text-text-green' : st === 'rejected' ? 'text-text-red' : 'text-accent-gold')}>{st}</span>}
+                                                </div>
+                                                <p className={cn('font-mono shrink-0', counts ? 'text-text-green' : 'text-text-muted line-through')}>+${item.amount.toFixed(2)}</p>
+                                                {st === 'pending' && (
+                                                    <div className="flex items-center gap-1 shrink-0">
+                                                        <button type="button" title="Approve" className="h-5 w-5 flex items-center justify-center rounded bg-text-green/15 text-text-green hover:bg-text-green/25" onClick={() => reviewReimbursement(item.id, 'approved')}><Check size={11} /></button>
+                                                        <button type="button" title="Reject" className="h-5 w-5 flex items-center justify-center rounded bg-brand-red/15 text-brand-red hover:bg-brand-red/25" onClick={() => reviewReimbursement(item.id, 'rejected')}><X size={11} /></button>
+                                                    </div>
+                                                )}
                                             </div>
-                                        ))}
+                                            );
+                                        })}
+                                        {(localLog?.reimbursements || []).length === 0 && (
+                                            <p className="text-[8px] text-text-muted uppercase tracking-widest px-2 py-1">No reimbursements</p>
+                                        )}
                                     </div>
                                 </section>
 

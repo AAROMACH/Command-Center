@@ -75,10 +75,7 @@ const DISPUTE_REASONS = [
     "This appears to be a duplicate"
 ];
 
-const getFieldNationLink = (id: string) => {
-  const cleanId = id.replace(/^wo-/, '');
-  return `https://app.fieldnation.com/workorders/${cleanId}`;
-};
+
 
 export default function TechWeeklyLogPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);

@@ -79,6 +79,7 @@ import { getReliabilityTier, getTierBadgeVariant, getTierColor } from "@/lib/rel
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, setDoc, getDocs } from 'firebase/firestore';
 import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
+import { fieldNationUrl, displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { createDocId } from '@/lib/generateId';
 import { computeSla, slaStatusColor, formatSlaCountdown } from '@/lib/sla';
 import { auditFieldChange } from '@/lib/audit';
@@ -353,11 +354,7 @@ export const WorkOrdersTable = React.memo(({
     });
   }, [mode, toast]);
 
-  const getFieldNationLink = (order: WorkOrder) => {
-    const sourceId = order.workOrderId || order.id;
-    const cleanId = sourceId.replace(/^wo-/, '');
-    return `https://app.fieldnation.com/workorders/${cleanId}`;
-  };
+  const getFieldNationLink = (order: WorkOrder) => fieldNationUrl(order);
 
   return (
     <div className="w-full space-y-4">
@@ -377,7 +374,7 @@ export const WorkOrdersTable = React.memo(({
             {paginatedOrders.map((order) => {
               const techId = order.assignedTechnicianId || order.assignedTechIds?.[0] || order.techId;
               const technician = technicians.find(t => t.id === techId);
-              const displayId = order.shortId || order.id;
+              const displayId = displayWorkOrderNumber(order);
               const isLocked = order.status === 'completed';
               
               return (

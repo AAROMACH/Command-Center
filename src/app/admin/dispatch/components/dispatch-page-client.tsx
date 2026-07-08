@@ -24,7 +24,8 @@ import {
   Activity
 } from "lucide-react";
 import { NewAssignmentDialog } from "./new-assignment-dialog";
-import { ImportJobsDialog } from "./import-jobs-dialog";
+import { ImportJobsDialog, type ExistingRef as ImportExistingRef } from "./import-jobs-dialog";
+import { normalizeExternalId, isImported } from "@/lib/work-order-identity";
 import { NewRequestDialog } from "../../requests/components/new-request-dialog";
 import type { WorkOrder, Route, ServiceRequest, Technician } from "@/lib/types";
 import { isServiceTicketDoc, toDateSafe } from '@/lib/request-intake';
@@ -81,6 +82,7 @@ export function DispatchPageClient() {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [allRequests, setAllRequests] = useState<ServiceRequest[]>([]);
+  const [archivedJobs, setArchivedJobs] = useState<any[]>([]);
   
   const [isNewDispatchOpen, setIsNewDispatchOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -145,11 +147,43 @@ export function DispatchPageClient() {
     const unsubRoutes = onSnapshot(collection(db, 'routes'), (snap) => {
       setRoutes(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Route)));
     });
+    // Archived deletions — so re-importing a work order number that was deleted
+    // and archived is still flagged as a duplicate.
+    const unsubArchive = onSnapshot(collection(db, 'activityArchive'), (snap) => {
+      setArchivedJobs(snap.docs.map(doc => doc.data()));
+    }, () => { /* archive rule may be undeployed; dup check still covers active jobs */ });
 
     return () => {
-      unsubWO(); unsubAsmt(); unsubTech(); unsubReq(); unsubRoutes();
+      unsubWO(); unsubAsmt(); unsubTech(); unsubReq(); unsubRoutes(); unsubArchive();
     };
   }, []);
+
+  // Every external work order number already known to the app, for import
+  // duplicate detection across active, assigned, completed, and archived jobs.
+  const existingImportRefs = useMemo<ImportExistingRef[]>(() => {
+    const refs: ImportExistingRef[] = [];
+    const push = (o: any, where: string) => {
+      const ext = normalizeExternalId((o?.externalWorkOrderId) || o?.workOrderId || o?.id);
+      if (!ext) return;
+      const techName = technicians.find(t => t.id === (o.assignedTechnicianId || o.techId))?.name;
+      refs.push({
+        externalId: ext,
+        label: ((o.externalWorkOrderId) || o.workOrderId || o.id || '').toString().toUpperCase(),
+        status: o.status,
+        techName,
+        scheduleDate: o.scheduleDate,
+        where,
+      });
+    };
+    allWorkOrders.forEach(o => { if (isImported(o)) push(o, 'work order pool'); });
+    allAssignments.forEach(o => { if (isImported(o)) push(o, `assignment (${o.status || 'active'})`); });
+    archivedJobs.forEach(a => {
+      let rec: any = a;
+      if (a?.archivedRecordJson) { try { rec = JSON.parse(a.archivedRecordJson); } catch { rec = a; } }
+      if (isImported(rec)) push(rec, 'archived');
+    });
+    return refs;
+  }, [allWorkOrders, allAssignments, archivedJobs, technicians]);
 
   const handleAddNewOrder = async (order: WorkOrder) => {
     try {
@@ -638,7 +672,7 @@ export function DispatchPageClient() {
       </Tabs>
 
       <NewAssignmentDialog isOpen={isNewDispatchOpen} setIsOpen={setIsNewDispatchOpen} onSave={handleAddNewOrder} />
-      <ImportJobsDialog isOpen={isImportDialogOpen} setIsOpen={setIsImportDialogOpen} onImport={handleImportOrders} existingOrders={allWorkOrders} />
+      <ImportJobsDialog isOpen={isImportDialogOpen} setIsOpen={setIsImportDialogOpen} onImport={handleImportOrders} existingOrders={allWorkOrders} existingRefs={existingImportRefs} currentUserName={technicians.find(t => t.id === (typeof window !== 'undefined' ? sessionStorage.getItem('currentUserId') : null))?.name || 'Admin'} />
       <NewRequestDialog isOpen={isNewRequestOpen} setIsOpen={setIsNewRequestOpen} onSave={handleAddNewRequest} />
     </div>
   );

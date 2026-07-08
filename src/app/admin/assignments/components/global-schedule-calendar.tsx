@@ -3,7 +3,8 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import type { WorkOrder, Technician } from '@/lib/types';
-import { 
+import { fieldNationUrl, displayWorkOrderNumber } from '@/lib/work-order-identity';
+import {
   addMonths, 
   subMonths, 
   startOfMonth, 
@@ -144,10 +145,7 @@ export function GlobalScheduleCalendar({
         setIsDetailOpen(true);
     };
 
-    const getFieldNationLink = (id: string) => {
-      const cleanId = id.replace(/^wo-/, '');
-      return `https://app.fieldnation.com/workorders/${cleanId}`;
-    };
+
 
     if (!currentDate) return null;
 
@@ -278,9 +276,9 @@ export function GlobalScheduleCalendar({
                                                   <div className="job-left">
                                                       <div className="flex justify-between items-start mb-3">
                                                           <div className="flex items-center gap-2">
-                                                            <span className="job-wo !text-[10px]">{wo.id.toUpperCase()}</span>
+                                                            <span className="job-wo !text-[10px]">{displayWorkOrderNumber(wo)}</span>
                                                             {wo.source === 'Imported' && (
-                                                              <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" title="View on FieldNation" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                              <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" title="View on FieldNation" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
                                                                 <ExternalLink size={10} />
                                                               </a>
                                                             )}

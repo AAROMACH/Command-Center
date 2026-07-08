@@ -417,7 +417,10 @@ service cloud.firestore {
       );
       allow create: if isAdmin()
           || (isTech() && request.resource.data.technicianId == request.auth.uid);
-      allow update, delete: if isAdmin();
+      // Techs update their own trips (check-in arrival, check-out mileage).
+      allow update: if isAdmin()
+          || (isTech() && resource.data.technicianId == request.auth.uid);
+      allow delete: if isAdmin();
     }
 
     // Admin-managed config read across portals (skills list, finance rates)

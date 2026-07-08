@@ -703,6 +703,12 @@ export type TripLog = {
   source?: 'manual' | 'start_trip' | 'check_in_flow';
   startTime?: string;
   endTime?: string;
+  startLat?: number | null;
+  startLng?: number | null;
+  endLat?: number | null;
+  endLng?: number | null;
+  arrivedAt?: string;
+  arrivalLocation?: string;
   startOdometer?: number;
   endOdometer?: number;
   calculatedMiles?: number;

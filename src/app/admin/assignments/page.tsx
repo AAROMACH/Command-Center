@@ -75,11 +75,7 @@ import { DateRange } from "react-day-picker";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { isAdmin, isPayAdmin } from "@/lib/permissions";
 import { PAY_TYPE_LABELS } from '@/lib/constants';
-
-const getFieldNationLink = (id: string) => {
-  const cleanId = id.replace(/^wo-/, '');
-  return `https://app.fieldnation.com/workorders/${cleanId}`;
-};
+import { fieldNationUrl, displayWorkOrderNumber } from '@/lib/work-order-identity';
 
 type SortOption = 'date' | 'client' | 'status' | 'pay' | 'tech';
 
@@ -577,9 +573,9 @@ export default function AssignmentsHubPage() {
                                         <td className="text-left pl-6 py-4">
                                             <div className="flex flex-col items-start gap-1.5 text-left">
                                                 <div className="flex items-center gap-1.5 text-left">
-                                                    <div className="cell-id font-mono text-brand-red font-bold text-left">{(wo.id || '').toUpperCase()}</div>
+                                                    <div className="cell-id font-mono text-brand-red font-bold text-left">{displayWorkOrderNumber(wo)}</div>
                                                     {wo.source === 'Imported' && (
-                                                    <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                    <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
                                                         <ExternalLink size={10} />
                                                     </a>
                                                     )}
@@ -687,9 +683,9 @@ export default function AssignmentsHubPage() {
                                             <div className="flex items-center gap-3 text-left">
                                                 <div className="flex flex-col items-center text-center">
                                                     <div className="flex items-center gap-1.5 text-center">
-                                                      <div className="cell-id font-mono text-brand-red text-center">{(wo.id || '').toUpperCase()}</div>
+                                                      <div className="cell-id font-mono text-brand-red text-center">{displayWorkOrderNumber(wo)}</div>
                                                       {wo.source === 'Imported' && (
-                                                        <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                        <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
                                                           <ExternalLink size={10} />
                                                         </a>
                                                       )}

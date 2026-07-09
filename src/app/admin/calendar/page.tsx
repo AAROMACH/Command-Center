@@ -520,6 +520,12 @@ export default function AdminCalendarPage() {
                   jobs={selectedDateJobs}
                   selectedJob={drawerJob}
                   onSelectJob={(wo) => handleJobCardClick(wo as JobWithSrc)}
+                  onResolveCoords={(jobId, lat, lng, address) => {
+                    // Save the geocode back to the job so it isn't re-fetched.
+                    const job = selectedDateJobs.find(j => j.id === jobId);
+                    const coll = job?._src === 'assignment' ? 'assignments' : 'workOrders';
+                    updateDoc(doc(db, coll, jobId), { lat, lng, geocodedAddress: address }).catch(() => {});
+                  }}
                 />
               ) : (
                 <div className="flex items-center justify-center h-full bg-[#1a1f2e]">

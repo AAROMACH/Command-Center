@@ -54,6 +54,7 @@ export function LogTripDialog({ open, onClose, technicianId, technicianName }: P
     setSaving(true);
     try {
       const id = await makeTripLogId();
+      const now = new Date().toISOString();
       const tripLog: TripLog = {
         id,
         technicianId,
@@ -62,16 +63,20 @@ export function LogTripDialog({ open, onClose, technicianId, technicianName }: P
         startLocation: form.startLocation.trim(),
         endLocation: form.endLocation.trim(),
         miles,
+        manualMiles: miles,
         purpose: form.purpose.trim(),
         reimbursable: form.reimbursable,
         status: 'pending',
-        createdAt: new Date().toISOString(),
+        source: 'manual',
+        createdAt: now,
+        updatedAt: now,
       };
       await addDoc(collection(db, 'tripLogs'), { ...tripLog });
       toast({ title: 'Trip logged', description: `${miles} miles recorded — pending reimbursement review.` });
       handleClose();
-    } catch {
-      toast({ title: 'Save failed', description: 'Could not save trip log. Try again.', variant: 'destructive' });
+    } catch (e: any) {
+      // Trips must never silently fail — surface the reason.
+      toast({ title: 'Trip log failed', description: e?.message || 'Could not save trip log. Try again.', variant: 'destructive' });
     } finally {
       setSaving(false);
     }

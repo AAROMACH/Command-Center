@@ -56,6 +56,7 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, setDoc, arrayUnion } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
+import { fieldNationUrl, displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { Car } from 'lucide-react';
 import { LogTripDialog } from './components/log-trip-dialog';
 
@@ -207,10 +208,7 @@ export default function TechAssignmentsPage() {
         allWorkOrders.filter(wo => wo.status !== 'completed'),
     [allWorkOrders]);
 
-    const getFieldNationLink = (id: string) => {
-      const cleanId = id.replace(/^wo-/, '');
-      return `https://app.fieldnation.com/workorders/${cleanId}`;
-    };
+
 
     const removeFromWeeklyLogs = async (woId: string) => {
         if (!currentTechId) return;
@@ -541,9 +539,9 @@ export default function TechAssignmentsPage() {
                                         <td>
                                             <div className="flex flex-col items-center justify-center">
                                               <div className="flex items-center gap-1.5">
-                                                <div className="cell-id">{wo.id.toUpperCase()}</div>
+                                                <div className="cell-id">{displayWorkOrderNumber(wo)}</div>
                                                 {wo.source === 'Imported' && (
-                                                  <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                  <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
                                                     <ExternalLink size={10} />
                                                   </a>
                                                 )}
@@ -674,9 +672,9 @@ export default function TechAssignmentsPage() {
                                             <td>
                                                 <div className="flex flex-col items-center justify-center">
                                                   <div className="flex items-center gap-1.5">
-                                                    <div className="cell-id">{wo.id.toUpperCase()}</div>
+                                                    <div className="cell-id">{displayWorkOrderNumber(wo)}</div>
                                                     {wo.source === 'Imported' && (
-                                                      <a href={getFieldNationLink(wo.id)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                      <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
                                                         <ExternalLink size={10} />
                                                       </a>
                                                     )}

@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician } from '@/lib/types';
+import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog } from '@/lib/types';
+import { externalWorkOrderId, displayWorkOrderNumber } from '@/lib/work-order-identity';
+import { uploadFile } from '@/lib/upload';
 import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -35,6 +37,9 @@ import {
     Undo2,
     MessageSquare,
     AlertCircle,
+    DollarSign,
+    Loader2,
+    Car,
     Activity as ActivityIcon
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -75,16 +80,15 @@ const DISPUTE_REASONS = [
     "This appears to be a duplicate"
 ];
 
-const getFieldNationLink = (id: string) => {
-  const cleanId = id.replace(/^wo-/, '');
-  return `https://app.fieldnation.com/workorders/${cleanId}`;
-};
+
 
 export default function TechWeeklyLogPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+    const [tripLogs, setTripLogs] = useState<TripLog[]>([]);
+    const [logView, setLogView] = useState<'work' | 'trips'>('work');
     const [mounted, setMounted] = useState(false);
     
     const [searchQuery, setSearchQuery] = useState("");
@@ -114,8 +118,12 @@ export default function TechWeeklyLogPage() {
             const unsubWO = onSnapshot(query(collection(db, 'assignments'), where('techId', '==', userId)), (snap) => {
                 setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
             });
+            // Own trip logs only — techs must never see another tech's trips.
+            const unsubTrips = onSnapshot(query(collection(db, 'tripLogs'), where('technicianId', '==', userId)), (snap) => {
+                setTripLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as TripLog)));
+            });
             return () => {
-                unsubLogs(); unsubWO();
+                unsubLogs(); unsubWO(); unsubTrips();
             };
         }
     }, []);
@@ -274,6 +282,35 @@ export default function TechWeeklyLogPage() {
         }
     };
 
+    const handleAddReimbursement = async (
+        item: WeeklyLogItem,
+        data: { amount: number; description: string; note?: string; receiptUrl?: string },
+    ) => {
+        if (!activeLog || isLocked) return;
+        const job = workOrders.find(wo => wo.id === item.workOrderId);
+        const record: FinancialRecord = {
+            id: `reimb-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            techId: activeLog.techId,
+            date: new Date().toISOString().split('T')[0],
+            type: 'reimbursement',
+            amount: data.amount,
+            description: data.note ? `${data.description} — ${data.note}` : data.description,
+            workOrderId: item.workOrderId,
+            assignmentId: (job as any)?.assignmentId || item.workOrderId,
+            externalWorkOrderId: job ? externalWorkOrderId(job) : undefined,
+            status: 'pending',
+            receiptUrl: data.receiptUrl,
+            createdAt: new Date().toISOString(),
+        };
+        const updated = [...(activeLog.reimbursements || []), record];
+        try {
+            await updateDoc(doc(db, 'weeklyLogs', activeLog.id), { reimbursements: updated });
+            toast({ title: 'Reimbursement Added', description: 'Pending payroll review — it will appear in the pay calculator.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Failed', description: e.message });
+        }
+    };
+
     const handleReportMissing = async (report: MissingAssignmentReport) => {
         if (!activeLog) return;
         try {
@@ -349,6 +386,35 @@ export default function TechWeeklyLogPage() {
 
     const canSubmit = counts.total > 0 && counts.pending === 0;
 
+    const ViewTabs = () => (
+        <div className="flex items-center gap-1 rounded-lg border border-border-sub bg-bg-secondary p-1 w-max">
+            <button type="button" onClick={() => setLogView('work')}
+                className={cn('px-3 py-1.5 rounded text-[9px] font-black uppercase tracking-widest transition-colors', logView === 'work' ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary')}>
+                <LayoutList size={11} className="inline mr-1.5" />Work Logs
+            </button>
+            <button type="button" onClick={() => setLogView('trips')}
+                className={cn('px-3 py-1.5 rounded text-[9px] font-black uppercase tracking-widest transition-colors', logView === 'trips' ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary')}>
+                <Car size={11} className="inline mr-1.5" />Mileage / Trips
+            </button>
+        </div>
+    );
+
+    if (logView === 'trips') {
+        return (
+            <div className="space-y-6 text-left">
+                <header className="page-header text-left">
+                    <div className="text-left">
+                        <p className="page-eyebrow flex items-center gap-2"><Car size={12}/> Mileage Registry</p>
+                        <h1 className="page-title text-left">Trip Logs</h1>
+                        <p className="page-subtitle text-[11px] uppercase font-bold text-text-muted tracking-widest mt-1 text-left">Every trip you&apos;ve recorded — for reimbursement and year-end mileage review.</p>
+                    </div>
+                    <ViewTabs />
+                </header>
+                <TripLogsView tripLogs={tripLogs} workOrders={workOrders} />
+            </div>
+        );
+    }
+
     if (!activeLog) {
         return (
             <div className="space-y-6 text-left">
@@ -358,9 +424,12 @@ export default function TechWeeklyLogPage() {
                         <h1 className="page-title text-left">Weekly Log Registry</h1>
                         <p className="page-subtitle text-[11px] uppercase font-bold text-text-muted tracking-widest mt-1 text-left">Audit terminal for assignment verification and billing.</p>
                     </div>
-                    <Button onClick={() => setIsCreateLogOpen(true)} className="bg-brand-red hover:bg-brand-red-hover h-10 px-6 font-bold uppercase tracking-widest text-[10px]">
-                        <Plus size={16} className="mr-2" /> Initialize New Log
-                    </Button>
+                    <div className="flex items-center gap-3">
+                        <ViewTabs />
+                        <Button onClick={() => setIsCreateLogOpen(true)} className="bg-brand-red hover:bg-brand-red-hover h-10 px-6 font-bold uppercase tracking-widest text-[10px]">
+                            <Plus size={16} className="mr-2" /> Initialize New Log
+                        </Button>
+                    </div>
                 </header>
 
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-bg-secondary border border-border-sub shadow-sm max-w-4xl mx-auto mb-6 text-left">
@@ -626,13 +695,15 @@ export default function TechWeeklyLogPage() {
                 </div>
                 <div className="space-y-3 text-left">
                     {(activeLog.items || []).map((item, itemIdx) => (
-                        <JobAuditCard 
-                            key={item.id || item.workOrderId || `item-${itemIdx}`} 
-                            item={item} 
+                        <JobAuditCard
+                            key={item.id || item.workOrderId || `item-${itemIdx}`}
+                            item={item}
                             isLocked={isLocked}
                             workOrders={workOrders}
                             onConfirm={handleConfirm}
                             onDispute={handleDispute}
+                            onAddReimbursement={handleAddReimbursement}
+                            techId={currentTechId}
                         />
                     ))}
                     {(activeLog.items || []).length === 0 && (
@@ -697,11 +768,39 @@ export default function TechWeeklyLogPage() {
     );
 }
 
-function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void }) {
+function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute, onAddReimbursement, techId }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, techId: string | null }) {
     const job = workOrders.find(wo => wo.id === item.workOrderId);
     const [isDisputing, setIsDisputing] = useState(item.confirmationStatus === 'disputed');
     const [reason, setReason] = useState(item.disputeReason || "");
     const [notes, setNotes] = useState(item.disputeNotes || "");
+    const [isReimbursing, setIsReimbursing] = useState(false);
+    const [reimbAmount, setReimbAmount] = useState('');
+    const [reimbDesc, setReimbDesc] = useState('');
+    const [reimbNote, setReimbNote] = useState('');
+    const [reimbFile, setReimbFile] = useState<File | null>(null);
+    const [reimbSaving, setReimbSaving] = useState(false);
+    const { toast: reimbToast } = useToast();
+
+    const submitReimbursement = async () => {
+        const amount = parseFloat(reimbAmount);
+        if (!amount || amount <= 0 || !reimbDesc.trim()) {
+            reimbToast({ variant: 'destructive', title: 'Missing info', description: 'Enter an amount and a description.' });
+            return;
+        }
+        setReimbSaving(true);
+        let receiptUrl: string | undefined;
+        if (reimbFile && techId) {
+            // Best-effort receipt upload; reimbursement still saves if it fails.
+            try {
+                const up = await uploadFile(`personnelDocuments/${techId}/reimbursement-${Date.now()}-${reimbFile.name}`, reimbFile, { contentType: reimbFile.type });
+                receiptUrl = up.url;
+            } catch { /* proceed without receipt */ }
+        }
+        await onAddReimbursement(item, { amount, description: reimbDesc.trim(), note: reimbNote.trim() || undefined, receiptUrl });
+        setReimbSaving(false);
+        setIsReimbursing(false);
+        setReimbAmount(''); setReimbDesc(''); setReimbNote(''); setReimbFile(null);
+    };
 
     const isConfirmed = item.confirmationStatus === 'confirmed';
     const isDisputed = item.confirmationStatus === 'disputed';
@@ -748,14 +847,14 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                         <div className="flex items-center gap-2">
                             {isPending ? (
                                 <>
-                                    <Button 
+                                    <Button
                                         size="sm"
                                         className="h-8 px-4 bg-text-green hover:bg-text-green/90 uppercase text-[9px] font-bold tracking-widest text-white"
                                         onClick={() => onConfirm(item.id)}
                                     >
                                         <Check size={14} className="mr-1.5"/> Confirm
                                     </Button>
-                                    <Button 
+                                    <Button
                                         variant="outline"
                                         size="sm"
                                         className="h-8 px-4 uppercase text-[9px] font-bold tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim"
@@ -765,18 +864,60 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute }: { it
                                     </Button>
                                 </>
                             ) : (
-                                <Button 
-                                    variant="ghost" 
-                                    size="sm" 
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
                                     className="h-8 px-3 text-[9px] font-bold uppercase text-text-muted hover:text-text-primary"
                                     onClick={() => setIsDisputing(!isDisputing)}
                                 >
                                     <RotateCcw size={12} className="mr-1.5"/> Adjust Decision
                                 </Button>
                             )}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-3 uppercase text-[9px] font-bold tracking-widest border-accent-gold/40 text-accent-gold hover:bg-accent-gold/10"
+                                onClick={() => setIsReimbursing(v => !v)}
+                            >
+                                <DollarSign size={13} className="mr-1"/> Add Reimbursement
+                            </Button>
                         </div>
                     )}
                 </div>
+
+                {isReimbursing && !isLocked && (
+                    <div className="px-5 pb-5 pt-1 animate-in slide-in-from-top-2 duration-300 text-left">
+                        <div className="p-4 rounded-xl bg-bg-primary/50 border border-accent-gold/30 space-y-3 text-left">
+                            <div className="flex items-center justify-between">
+                                <p className="text-[9px] font-black text-accent-gold uppercase tracking-[0.2em]">Add Reimbursement · WO# {displayWorkOrderNumber(job)}</p>
+                                <button onClick={() => setIsReimbursing(false)} className="text-text-muted hover:text-text-primary"><X size={14}/></button>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="space-y-1">
+                                    <label className="text-[8px] font-black uppercase tracking-widest text-text-muted">Amount ($)</label>
+                                    <Input type="number" min="0" step="0.01" value={reimbAmount} onChange={e => setReimbAmount(e.target.value)} placeholder="0.00" className="h-9 text-xs bg-bg-secondary border-border-main font-mono" />
+                                </div>
+                                <div className="space-y-1 sm:col-span-2">
+                                    <label className="text-[8px] font-black uppercase tracking-widest text-text-muted">Description / Reason</label>
+                                    <Input value={reimbDesc} onChange={e => setReimbDesc(e.target.value)} placeholder="e.g. Parking, materials, tolls" className="h-9 text-xs bg-bg-secondary border-border-main" />
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[8px] font-black uppercase tracking-widest text-text-muted">Note (optional)</label>
+                                <Input value={reimbNote} onChange={e => setReimbNote(e.target.value)} placeholder="Additional detail" className="h-9 text-xs bg-bg-secondary border-border-main" />
+                            </div>
+                            <div className="flex items-center justify-between gap-3 flex-wrap">
+                                <label className="text-[9px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2 cursor-pointer">
+                                    <input type="file" accept="image/*,application/pdf" className="hidden" onChange={e => setReimbFile(e.target.files?.[0] || null)} />
+                                    <span className="px-3 py-1.5 rounded border border-border-main bg-bg-secondary hover:bg-bg-tertiary">{reimbFile ? reimbFile.name.slice(0, 24) : 'Attach receipt (optional)'}</span>
+                                </label>
+                                <Button size="sm" disabled={reimbSaving} onClick={submitReimbursement} className="h-9 px-6 bg-accent-gold hover:bg-accent-gold/90 text-black uppercase text-[9px] font-bold tracking-widest">
+                                    {reimbSaving ? <Loader2 size={13} className="animate-spin mr-1.5" /> : <Check size={13} className="mr-1.5" />}Submit for Review
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {isDisputing && !isLocked && (
                     <div className="px-5 pb-5 pt-1 animate-in slide-in-from-top-2 duration-300 text-left">
@@ -905,5 +1046,86 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                 </form>
             </DialogContent>
         </Dialog>
+    );
+}
+
+// ── Tech Mileage / Trip Logs ────────────────────────────────────────────────
+function tripStatusLabel(t: TripLog): { label: string; cls: string } {
+    const miles = t.miles || t.calculatedMiles || t.manualMiles || 0;
+    if (t.source && t.source !== 'manual' && !t.endTime) return { label: 'Missing checkout', cls: 'text-accent-gold border-accent-gold/30 bg-accent-gold/10' };
+    if (!miles) return { label: 'Missing mileage', cls: 'text-accent-gold border-accent-gold/30 bg-accent-gold/10' };
+    if (!t.startLocation || !t.endLocation) return { label: 'Needs review', cls: 'text-accent-gold border-accent-gold/30 bg-accent-gold/10' };
+    return { label: 'Recorded', cls: 'text-text-green border-green-border/30 bg-green-dim/10' };
+}
+
+const TRIP_SOURCE_LABEL: Record<string, string> = {
+    manual: 'Manual',
+    start_trip: 'Start Trip',
+    check_in_flow: 'Check-In Flow',
+};
+
+function TripLogsView({ tripLogs, workOrders }: { tripLogs: TripLog[]; workOrders: WorkOrder[] }) {
+    const sorted = [...tripLogs].sort((a, b) => (b.date || b.createdAt || '').localeCompare(a.date || a.createdAt || ''));
+    const totalMiles = sorted.reduce((acc, t) => acc + (t.miles || t.calculatedMiles || t.manualMiles || 0), 0);
+
+    if (sorted.length === 0) {
+        return (
+            <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30">
+                <Car size={48} className="mx-auto text-text-muted mb-2 opacity-20" />
+                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No trips recorded yet</p>
+                <p className="text-[9px] text-text-muted uppercase tracking-widest mt-1">Trips added from an assignment appear here for year-end mileage review.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4 max-w-5xl">
+            <div className="flex items-center gap-4 p-3 rounded-xl bg-bg-secondary border border-border-sub w-max">
+                <div>
+                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Total Trips</p>
+                    <p className="text-lg font-mono font-bold text-text-primary leading-none">{sorted.length}</p>
+                </div>
+                <div className="border-l border-border-sub pl-4">
+                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Total Miles</p>
+                    <p className="text-lg font-mono font-bold text-text-green leading-none">{totalMiles.toFixed(1)}</p>
+                </div>
+            </div>
+
+            <div className="rounded-xl border border-border-sub overflow-x-auto">
+                <table className="w-full text-left">
+                    <thead>
+                        <tr className="bg-bg-tertiary/50 border-b border-border-sub">
+                            {['Date', 'Work Order', 'Job / Site', 'Route', 'Time', 'Miles', 'Source', 'Status'].map(h => (
+                                <th key={h} className="text-[8px] font-black uppercase tracking-widest text-text-muted px-3 py-2 whitespace-nowrap">{h}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {sorted.map(t => {
+                            const job = workOrders.find(w => w.id === t.workOrderId || w.id === t.assignmentId);
+                            const woNum = t.externalWorkOrderId
+                                ? t.externalWorkOrderId.toUpperCase()
+                                : job ? displayWorkOrderNumber(job) : (t.workOrderId ? t.workOrderId.toUpperCase() : '—');
+                            const miles = t.miles || t.calculatedMiles || t.manualMiles || 0;
+                            const st = tripStatusLabel(t);
+                            return (
+                                <tr key={t.id} className="border-b border-border-sub last:border-0 hover:bg-bg-tertiary/30 transition-colors">
+                                    <td className="px-3 py-2.5 text-[10px] text-text-secondary whitespace-nowrap">{t.date || '—'}</td>
+                                    <td className="px-3 py-2.5 text-[10px] font-mono font-bold text-brand-red whitespace-nowrap">{woNum}</td>
+                                    <td className="px-3 py-2.5 text-[10px] text-text-primary max-w-[200px] truncate">{t.jobTitle || job?.title || job?.description || t.purpose || '—'}</td>
+                                    <td className="px-3 py-2.5 text-[9px] text-text-muted max-w-[220px] truncate">{[t.startLocation, t.endLocation].filter(Boolean).join(' → ') || '—'}</td>
+                                    <td className="px-3 py-2.5 text-[9px] text-text-muted whitespace-nowrap">{[t.startTime, t.endTime].filter(Boolean).join(' – ') || '—'}</td>
+                                    <td className="px-3 py-2.5 text-[10px] font-mono font-bold text-text-primary whitespace-nowrap">{miles ? miles.toFixed(1) : '—'}</td>
+                                    <td className="px-3 py-2.5 text-[9px] text-text-muted uppercase whitespace-nowrap">{TRIP_SOURCE_LABEL[t.source || 'manual'] || 'Manual'}</td>
+                                    <td className="px-3 py-2.5 whitespace-nowrap">
+                                        <span className={cn('inline-block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border', st.cls)}>{st.label}</span>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     );
 }

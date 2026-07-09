@@ -144,6 +144,7 @@ export default function AdminCalendarPage() {
 
   // Filtered jobs
   const filteredJobs = useMemo(() => allJobs.filter(wo => {
+    if (wo.archived || wo.status === 'archived') return false;
     if (filterTech !== 'all') {
       const tid = wo.assignedTechnicianId || (wo as any).techId;
       if (tid !== filterTech) return false;

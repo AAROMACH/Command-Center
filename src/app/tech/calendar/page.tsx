@@ -107,6 +107,7 @@ export default function TechCalendarPage() {
     const seen = new Set<string>();
     const out: JobWithSrc[] = [];
     [...rawAssignments, ...rawWorkOrders].forEach(j => {
+      if (j.archived || j.status === 'archived') return;
       if (!seen.has(j.id)) { seen.add(j.id); out.push(j); }
     });
     return out;

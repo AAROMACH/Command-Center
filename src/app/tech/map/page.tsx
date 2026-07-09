@@ -97,6 +97,7 @@ export default function TechMapPage() {
     return assignments
       .filter(job => {
         if (job.status === 'completed') return false;
+        if (job.archived || job.status === 'archived') return false;
         if (!job.scheduleDate) return true; // unscheduled — still show
         const d = new Date(job.scheduleDate + 'T12:00:00');
         d.setHours(0, 0, 0, 0);

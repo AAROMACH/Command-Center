@@ -248,6 +248,9 @@ export function DispatchPageClient() {
 
   const filterAndSort = (items: WorkOrder[]) => {
     let results = items.filter(order => {
+      // Soft-archived records live on in Firestore for restore/dedup but must
+      // never appear in the active Dispatch Hub.
+      if (order.archived || order.status === 'archived') return false;
       const q = searchQuery.toLowerCase();
       const matchesSearch = 
         (order.id || '').toLowerCase().includes(q) ||

@@ -74,7 +74,7 @@ export type WorkOrder = {
   locationText?: string;
   requiredSkills: string[];
   priority: 'low' | 'medium' | 'high' | 'critical';
-  status: 'unassigned' | 'assigned' | 'confirmed' | 'on-my-way' | 'in-progress' | 'checked-out' | 'completed';
+  status: 'unassigned' | 'assigned' | 'confirmed' | 'on-my-way' | 'in-progress' | 'checked-out' | 'completed' | 'archived';
   assignedTechnicianId?: string | null;
   assignedTechIds?: string[];
   additionalTechnicianIds?: string[];
@@ -121,6 +121,12 @@ export type WorkOrder = {
   firstResponseAt?: string;     // ISO timestamp of first tech acknowledgment
   slaStatus?: SlaStatus;
   slaBreachNotifiedAt?: string; // ISO timestamp when breach notification was sent
+  // Soft-archive (delete moves to Archives instead of destroying the record)
+  archived?: boolean;
+  archivedAt?: string;
+  archivedBy?: string;
+  archiveReason?: string;
+  previousStatus?: string;
 };
 
 export type Assignment = {

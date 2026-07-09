@@ -176,6 +176,9 @@ export default function TechAssignmentsPage() {
                     } catch (e) { return false; }
                 })());
 
+                // Soft-archived jobs never appear in a tech's active board.
+                if (wo.archived || wo.status === 'archived') return false;
+
                 return matchesSearch && matchesDate;
             });
     }, [allWorkOrders, currentTechId, searchQuery, dateRange]);

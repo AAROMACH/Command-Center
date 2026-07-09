@@ -366,6 +366,25 @@ export default function ActivityAuditPage() {
         }
     };
 
+    // Restore a soft-archived assignment/work order: clear the archive flags and
+    // return it to its previous status so it reappears in active views.
+    const handleRestoreArchived = async (wo: WorkOrder) => {
+        const collectionName = assignments.some(a => a.id === wo.id) ? 'assignments' : 'workOrders';
+        try {
+            await updateDoc(doc(db, collectionName, wo.id), {
+                archived: false,
+                status: wo.previousStatus || 'unassigned',
+                archivedAt: null,
+                archivedBy: null,
+                archiveReason: null,
+                previousStatus: null,
+            });
+            toast({ title: 'Restored', description: 'Assignment returned to active views.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Restore Failed', description: e?.message || 'Could not restore assignment.' });
+        }
+    };
+
     const activeTech = useMemo(() => technicians.find(t => t.id === selectedTechId), [selectedTechId, technicians]);
 
     const techStats = useMemo(() => {
@@ -1312,11 +1331,13 @@ export default function ActivityAuditPage() {
                             <TabsContent value="assignments_history" className="m-0 text-left">
                                 <div className="space-y-4">
                                     {(() => {
-                                        const completedJobs = [...workOrders, ...assignments].filter(wo => wo.status === 'completed').sort((a, b) => (b.scheduleDate || '').localeCompare(a.scheduleDate || ''));
+                                        const completedJobs = [...workOrders, ...assignments]
+                                            .filter(wo => wo.status === 'completed' || wo.archived || wo.status === 'archived')
+                                            .sort((a, b) => ((b.archivedAt || b.scheduleDate) || '').localeCompare((a.archivedAt || a.scheduleDate) || ''));
                                         return (
                                             <>
                                                 <div className="flex items-center justify-between">
-                                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{completedJobs.length} Completed Records</p>
+                                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{completedJobs.length} Archived / Completed Records</p>
                                                     <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest" onClick={() => {
                                                         const rows = [['DATE','ID','TITLE','CLIENT','TECH','STATUS']];
                                                         completedJobs.forEach(wo => {
@@ -1340,26 +1361,35 @@ export default function ActivityAuditPage() {
                                                                 <TableHead className="text-[9px] uppercase font-black tracking-widest">Client</TableHead>
                                                                 <TableHead className="text-[9px] uppercase font-black tracking-widest">Technician</TableHead>
                                                                 <TableHead className="text-[9px] uppercase font-black tracking-widest">Status</TableHead>
+                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest text-right pr-6">Actions</TableHead>
                                                             </TableRow>
                                                         </TableHeader>
                                                         <TableBody>
                                                             {completedJobs.map(wo => {
                                                                 const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || wo.techId));
+                                                                const isArchived = !!wo.archived || wo.status === 'archived';
                                                                 return (
                                                                     <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary cursor-pointer" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
                                                                         <TableCell className="py-3 pl-6 text-[10px] font-mono text-text-secondary uppercase">{formatDateDisplay(wo.scheduleDate)}</TableCell>
                                                                         <TableCell className="py-3">
-                                                                            <p className="text-[9px] font-bold text-brand-red font-mono uppercase">{wo.id.toUpperCase()}</p>
+                                                                            <p className="text-[9px] font-bold text-brand-red font-mono uppercase">{((wo as any).externalWorkOrderId || wo.id).toString().toUpperCase()}</p>
                                                                             <p className="text-xs font-bold text-text-primary uppercase mt-0.5">{wo.title || wo.description}</p>
                                                                         </TableCell>
                                                                         <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{wo.clientName}</TableCell>
                                                                         <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{tech?.name || '—'}</TableCell>
-                                                                        <TableCell className="py-3"><Badge variant="active" className="text-[8px] uppercase">completed</Badge></TableCell>
+                                                                        <TableCell className="py-3"><Badge variant={isArchived ? 'pending' : 'active'} className="text-[8px] uppercase">{isArchived ? 'archived' : 'completed'}</Badge></TableCell>
+                                                                        <TableCell className="py-3 text-right pr-6" onClick={e => e.stopPropagation()}>
+                                                                            {isArchived && (
+                                                                                <Button variant="outline" size="sm" className="h-7 text-[9px] uppercase font-bold tracking-widest" onClick={() => handleRestoreArchived(wo)}>
+                                                                                    Restore
+                                                                                </Button>
+                                                                            )}
+                                                                        </TableCell>
                                                                     </TableRow>
                                                                 );
                                                             })}
                                                             {completedJobs.length === 0 && (
-                                                                <TableRow><TableCell colSpan={5} className="py-16 text-center text-[10px] font-bold text-text-muted uppercase">No completed assignments</TableCell></TableRow>
+                                                                <TableRow><TableCell colSpan={6} className="py-16 text-center text-[10px] font-bold text-text-muted uppercase">No archived or completed assignments</TableCell></TableRow>
                                                             )}
                                                         </TableBody>
                                                     </Table>

@@ -80,7 +80,7 @@ export default function AdminMapPage() {
 
   const dateJobs = useMemo(() => {
     return allWorkOrders
-      .filter(wo => wo.scheduleDate === selectedDate)
+      .filter(wo => wo.scheduleDate === selectedDate && !wo.archived && wo.status !== 'archived')
       .sort((a, b) => {
         const sa = STATUS_ORDER[a.status] ?? 99;
         const sb = STATUS_ORDER[b.status] ?? 99;

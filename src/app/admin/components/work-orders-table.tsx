@@ -301,46 +301,23 @@ export const WorkOrdersTable = React.memo(({
     setIsDeleteConfirmOpen(false);
     setOrderToDelete(null);
 
-    // Archive is best-effort; the delete always proceeds even if archiving
-    // fails, so a failed/denied archive can never block the deletion.
+    // Soft-archive in place: keep the document and flip it to archived, so every
+    // field (WO number, external WO id, tech, logs, notes, history) is preserved
+    // and the record can be restored. Never deleteDoc.
     (async () => {
-      const techId = order.assignedTechnicianId || order.techId;
-      const techName = technicians.find(t => t.id === techId)?.name;
-      const now = new Date().toISOString();
-      const archiveRecord = {
-        id: `${collectionName === 'assignments' ? 'asmt' : 'wo'}-deleted-${order.id}`,
-        timestamp: (order as any).updatedAt || (order as any).assignedAt || (order as any).createdAt || now,
-        type: collectionName === 'assignments' ? 'assignment' : 'work_order',
-        eventLabel: `${label} Deleted`,
-        entity: order.title || order.description || order.id.toUpperCase(),
-        techName: techName ?? null,
-        techId: techId ?? null,
-        clientName: order.clientName ?? null,
-        color: 'text-text-red',
-        icon: 'Trash2',
-        archivedAt: now,
-        archivedFrom: collectionName,
-        // Store the original as a JSON string so no nested-array / undefined
-        // field in the source doc can make the archive write fail.
-        archivedRecordJson: JSON.stringify(order),
-      };
-
-      let archived = false;
       try {
-        await setDoc(doc(db, 'activityArchive', archiveRecord.id), archiveRecord);
-        archived = true;
+        await updateDoc(doc(db, collectionName, order.id), {
+          archived: true,
+          status: 'archived',
+          previousStatus: order.status || (mode === 'unassigned' ? 'unassigned' : 'assigned'),
+          archivedAt: new Date().toISOString(),
+          archivedBy: 'Admin',
+          archiveReason: `Archived from Dispatch Hub`,
+        });
+        toast({ title: `${label} Archived`, description: "Moved to Archives — recoverable from the Archives page." });
       } catch (e: any) {
         console.error("Archive Error:", e);
-      }
-
-      try {
-        await deleteDoc(doc(db, collectionName, order.id));
-        toast(archived
-          ? { title: `${label} Archived`, description: "Moved to Archives — recoverable from the Archives page." }
-          : { title: `${label} Deleted`, description: "Removed. (Could not write to Archives — check archive permissions.)" });
-      } catch (e: any) {
-        console.error("Delete Error:", e);
-        toast({ variant: "destructive", title: "Delete Failed", description: e.message });
+        toast({ variant: "destructive", title: "Archive Failed", description: e?.message || "Could not archive. Please try again." });
       }
     })();
   };

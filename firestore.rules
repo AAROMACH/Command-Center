@@ -44,6 +44,32 @@ service cloud.firestore {
       return d.get('roles', []).hasAny(['sales']) || d.get('role', '') == 'sales';
     }
 
+    // ── Messaging permission enforcement ────────────────────────────────
+    // Mirrors the recipient-picker logic: the sender's messagingAllowedRoles
+    // and per-user blocklist gate who they may message. Admins are exempt.
+    function receiverRoles(receiverId) {
+      return get(/databases/$(database)/documents/users/$(receiverId)).data.get('roles', []);
+    }
+    function messagingRoleAllowed(allowed, receiverId) {
+      return allowed == 'all'
+        || (allowed == 'admins' && receiverRoles(receiverId).hasAny(['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager']))
+        || (allowed == 'techs'  && receiverRoles(receiverId).hasAny(['field_technician', 'project_lead']))
+        || (allowed == 'clients' && receiverRoles(receiverId).hasAny(['client']));
+    }
+    function canMessage(receiverId) {
+      let d = userData();
+      let allowed = d.get('messagingAllowedRoles', 'all');
+      let blocked = d.get('messagingBlockedClientIds', []);
+      return allowed != 'none'
+        && !blocked.hasAny([receiverId])
+        && (
+            // The generic "admin" channel is allowed when admins are permitted
+            (receiverId == 'admin' && (allowed == 'all' || allowed == 'admins'))
+            // Real user recipients are checked against their roles
+            || (receiverId != 'admin' && messagingRoleAllowed(allowed, receiverId))
+           );
+    }
+
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if isAdmin()
@@ -303,8 +329,17 @@ service cloud.firestore {
 
     match /messages/{id} {
       allow read: if isSignedIn();
+      // Sender must own the message, and (unless admin) must be permitted to
+      // message that recipient per their messagingAllowedRoles + blocklist.
+      // Project/group messages (no direct receiverId) skip the recipient check.
       allow create: if isSignedIn()
-          && request.resource.data.senderId == request.auth.uid;
+          && request.resource.data.senderId == request.auth.uid
+          && (
+              isAdmin()
+              || !request.resource.data.keys().hasAny(['receiverId'])
+              || request.resource.data.receiverId == null
+              || canMessage(request.resource.data.receiverId)
+          );
       allow update, delete: if isAdmin();
     }
 

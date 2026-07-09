@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from "@/lib/firebase";
-import { collection, doc, updateDoc, onSnapshot, query, where, deleteDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -49,6 +49,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -98,6 +108,8 @@ export default function AssignmentsHubPage() {
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [mapDate, setMapDate] = useState<Date | undefined>(new Date());
   const [isMapDateOpen, setIsMapDateOpen] = useState(false);
+  const [orderToArchive, setOrderToArchive] = useState<WorkOrder | null>(null);
+  const [isArchiving, setIsArchiving] = useState(false);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -232,12 +244,12 @@ export default function AssignmentsHubPage() {
       });
   }, [workOrders, technicians, searchQuery, dateRange, sortBy, activePriorities, activeSources]);
 
-  const activeWorkOrders = useMemo(() => 
-    filteredWorkOrders.filter(wo => wo.status !== 'completed'),
+  const activeWorkOrders = useMemo(() =>
+    filteredWorkOrders.filter(wo => !wo.archived && wo.status !== 'completed' && wo.status !== 'archived'),
   [filteredWorkOrders]);
 
-  const archivedWorkOrders = useMemo(() => 
-    filteredWorkOrders.filter(wo => wo.status === 'completed'),
+  const archivedWorkOrders = useMemo(() =>
+    filteredWorkOrders.filter(wo => wo.archived || wo.status === 'completed' || wo.status === 'archived'),
   [filteredWorkOrders]);
 
   const formatDateDisplay = (dateStr: string) => {
@@ -286,21 +298,46 @@ export default function AssignmentsHubPage() {
     toast({ title: "Updated", description: "Assignment parameters committed to Firestore." });
   };
 
-  const handleDeleteOrder = () => {
-    if (!selectedJob) return;
-    if (selectedJob.status === 'completed') {
-      toast({ variant: "destructive", title: "Cannot Delete", description: "Completed assignments are archived and cannot be removed." });
-      return;
-    }
-    const docRef = doc(db, 'assignments', selectedJob.id);
-    deleteDoc(docRef).catch((e: any) => {
-      console.error("Purge Error:", e);
-      toast({ variant: "destructive", title: "Delete Failed", description: e.message });
-    });
+  // Step 1: user clicks Delete. Close the edit dialog FIRST (Radix modals cannot
+  // stack — opening a confirm on top of an open Dialog freezes the page by
+  // leaving pointer-events:none stuck on <body>), then open the confirm.
+  const requestArchive = (order: WorkOrder | null) => {
+    if (!order) return;
     setIsEditDialogOpen(false);
     setSelectedJob(null);
     setEditedOrder(null);
-    toast({ title: "Deleted", description: "Assignment removed from record." });
+    setOrderToArchive(order);
+  };
+
+  // Step 2: user confirms. Soft-archive instead of destroying: flip status to
+  // 'archived', stamp metadata, preserve every existing field (WO numbers,
+  // external WO id, tech, logs, notes, history). Never deleteDoc.
+  const confirmArchive = async () => {
+    const order = orderToArchive;
+    if (!order) return;
+    if (order.archived) {
+      setOrderToArchive(null);
+      return;
+    }
+    setIsArchiving(true);
+    try {
+      const docRef = doc(db, 'assignments', order.id);
+      await updateDoc(docRef, {
+        archived: true,
+        status: 'archived',
+        previousStatus: order.status || 'unassigned',
+        archivedAt: new Date().toISOString(),
+        archivedBy: currentUser?.name || currentUser?.id || 'Admin',
+        archiveReason: 'Manually archived from assignments page',
+      });
+      toast({ title: "Archived", description: "Assignment moved to Archives." });
+      setOrderToArchive(null);
+    } catch (e: any) {
+      console.error("Archive Error:", e);
+      toast({ variant: "destructive", title: "Archive Failed", description: e?.message || "Could not archive assignment. Please try again." });
+    } finally {
+      setIsArchiving(false);
+    }
   };
 
   const handleVerifyAssignment = async (woId: string) => {
@@ -732,7 +769,7 @@ export default function AssignmentsHubPage() {
                                                             variant="ghost" 
                                                             size="icon" 
                                                             className="h-7 w-7 text-text-muted hover:text-text-red"
-                                                            onClick={() => { setSelectedJob(wo); handleDeleteOrder(); }}
+                                                            onClick={() => requestArchive(wo)}
                                                         >
                                                             <Trash2 size={14}/>
                                                         </Button>
@@ -935,9 +972,9 @@ export default function AssignmentsHubPage() {
                   </ScrollArea>
               )}
               <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 shrink-0 flex flex-row items-center justify-between text-left">
-                <Button variant="destructive-outline" onClick={handleDeleteOrder} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim">
+                <Button variant="destructive-outline" onClick={() => requestArchive(selectedJob)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim">
                     <Trash2 size={16} className="mr-2" />
-                    Delete
+                    Archive
                 </Button>
                 <div className="flex gap-3 text-left">
                     <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
@@ -947,6 +984,29 @@ export default function AssignmentsHubPage() {
           </DialogContent>
         </Dialog>
       </Tabs>}
+
+      <AlertDialog open={!!orderToArchive} onOpenChange={(open) => { if (!open && !isArchiving) setOrderToArchive(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Move to Archives?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This assignment{orderToArchive?.title ? ` (${orderToArchive.title})` : ''} will be moved to the Archives page.
+              Its work order number, tech assignment, logs, notes, and history are preserved and can be restored later.
+              It will no longer appear in active assignments.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isArchiving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); confirmArchive(); }}
+              disabled={isArchiving}
+              className="bg-brand-red hover:bg-brand-red-hover text-white"
+            >
+              {isArchiving ? 'Archiving…' : 'Move to Archives'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

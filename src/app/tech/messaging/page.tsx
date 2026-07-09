@@ -121,45 +121,61 @@ export default function TechMessagingPage() {
 
   const selectedProject = allProjects.find(p => p.id === selectedProjectId);
 
-  const conversationPartners = (() => {
-    const partnerIds = new Set<string>();
-    partnerIds.add('admin');
-    messages.forEach(m => {
-      if (!m.projectId) {
-        if (m.senderId === myId) partnerIds.add(m.receiverId || '');
-        if (m.receiverId === myId) partnerIds.add(m.senderId);
-      }
-    });
-    return Array.from(partnerIds).filter(id => id && id !== myId);
-  })();
-
   const blockedIds = new Set(currentUser?.messagingBlockedClientIds || []);
   const allowedRoles = currentUser?.messagingAllowedRoles || 'all';
-  const visiblePartners = conversationPartners.filter(id => {
-    if (blockedIds.has(id)) return false;
+
+  // Role helpers
+  const isAdminRole = (u?: Technician) => !!u?.roles?.some(r => ['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'].includes(r));
+  const isTechRole = (u?: Technician) => !!u?.roles?.some(r => ['field_technician', 'project_lead'].includes(r));
+  const isClientRole = (u?: Technician) => !!u?.roles?.includes('client');
+  const isActiveUser = (u: Technician) => (u as any).status !== 'inactive' && (u as any).approvalStatus !== 'pending' && (u as any).approvalStatus !== 'denied';
+
+  // Whether the tech's messaging permission allows contacting this user/role.
+  const permissionAllows = (u?: Technician, isAdminChannel = false): boolean => {
     if (allowedRoles === 'none') return false;
-    const user = technicians.find(t => t.id === id);
-    // Hard constraint from messagingAllowedRoles
-    if (allowedRoles !== 'all') {
-      if (allowedRoles === 'admins') {
-        if (id !== 'admin' && !user?.roles?.includes('super_admin') && !user?.roles?.includes('dispatch_admin')) return false;
-      } else if (allowedRoles === 'techs') {
-        if (id === 'admin' || (!user?.roles?.includes('field_technician') && !user?.roles?.includes('project_lead'))) return false;
-      } else if (allowedRoles === 'clients') {
-        if (id === 'admin' || !user?.roles?.includes('client')) return false;
+    if (allowedRoles === 'all') return true;
+    if (allowedRoles === 'admins') return isAdminChannel || isAdminRole(u);
+    if (allowedRoles === 'techs') return !isAdminChannel && isTechRole(u);
+    if (allowedRoles === 'clients') return !isAdminChannel && isClientRole(u);
+    return false;
+  };
+
+  // Recipient list is derived from ALL users the tech is permitted to message —
+  // not only past conversation partners — so a tech with 'message all' sees
+  // everyone allowed. Blocklist hides only the specific blocked users.
+  const recipientIds = (() => {
+    const ids = new Set<string>();
+    if (allowedRoles === 'none') return [] as string[];
+    // Special admin channel entry
+    if (permissionAllows(undefined, true)) ids.add('admin');
+    technicians.forEach(u => {
+      if (!u.id || u.id === myId) return;
+      if (blockedIds.has(u.id)) return;
+      if (!isActiveUser(u)) return;
+      if (!permissionAllows(u)) return;
+      ids.add(u.id);
+    });
+    // Keep any existing conversation partners visible (e.g. legacy threads),
+    // still subject to blocklist.
+    messages.forEach(m => {
+      if (m.projectId) return;
+      const partner = m.senderId === myId ? m.receiverId : m.receiverId === myId ? m.senderId : '';
+      if (partner && partner !== myId && !blockedIds.has(partner)) {
+        const u = technicians.find(t => t.id === partner);
+        if (partner === 'admin' ? permissionAllows(undefined, true) : (u && permissionAllows(u))) ids.add(partner);
       }
-    }
-    if (!user && id !== 'admin') return true;
-    if (contactFilter === 'admins') {
-      if (id === 'admin') return true;
-      return user?.roles?.includes('super_admin') || user?.roles?.includes('dispatch_admin');
-    }
-    if (contactFilter === 'techs') {
-      return user?.roles?.includes('field_technician') || user?.roles?.includes('project_lead');
-    }
-    if (contactFilter === 'clients') {
-      return user?.roles?.includes('client');
-    }
+    });
+    return Array.from(ids);
+  })();
+
+  // Apply the active tab (all/admins/techs/clients) on top of the allowed set.
+  const visiblePartners = recipientIds.filter(id => {
+    if (id === 'admin') return contactFilter === 'all' || contactFilter === 'admins';
+    const user = technicians.find(t => t.id === id);
+    if (!user) return contactFilter === 'all';
+    if (contactFilter === 'admins') return isAdminRole(user);
+    if (contactFilter === 'techs') return isTechRole(user);
+    if (contactFilter === 'clients') return isClientRole(user);
     return true;
   });
 

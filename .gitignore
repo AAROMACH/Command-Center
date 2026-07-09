@@ -22,3 +22,6 @@ serviceAccountKey.json
 *.service-account.json
 .env
 .env.local
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo

@@ -802,7 +802,7 @@ export default function FinancialsPage() {
             </Dialog>
 
             <InvoiceEditor isOpen={isInvoiceEditorOpen} setIsOpen={setIsInvoiceEditorOpen} invoice={selectedInvoice} clients={clientsList} projects={projects} workOrders={allMissions} onSave={handleSaveInvoice} />
-            {selectedLog && <PayrollReviewDialog isOpen={isReviewDialogOpen} setIsOpen={setIsReviewDialogOpen} log={selectedLog} technician={getTechnician(selectedLog.techId)} missions={allMissions} onStatusChange={handleUpdateLogStatus} />}
+            {selectedLog && <PayrollReviewDialog isOpen={isReviewDialogOpen} setIsOpen={setIsReviewDialogOpen} log={selectedLog} technician={getTechnician(selectedLog.techId)} missions={allMissions} allTechnicians={technicians} onStatusChange={handleUpdateLogStatus} />}
         </div>
     );
 }

@@ -42,14 +42,14 @@ export function externalWorkOrderId(o: Partial<WorkOrder> | null | undefined): s
 
 /**
  * The number to DISPLAY for a job. Imported jobs show their external Field
- * Nation number; manual jobs show the Aaromach short id / internal id. Never
- * shows an internal assignment id in place of an imported work order number.
+ * Nation number; manual jobs show their internal document id — never a
+ * separate generated short code that would read as a second id.
  */
 export function displayWorkOrderNumber(o: Partial<WorkOrder> | null | undefined): string {
   if (!o) return '';
   const ext = externalWorkOrderId(o);
   if (ext) return ext.toUpperCase();
-  return String(o.shortId || o.id || '').toUpperCase();
+  return String(o.id || '').toUpperCase();
 }
 
 /** Field Nation URL — always built from the external number, never the internal id. */

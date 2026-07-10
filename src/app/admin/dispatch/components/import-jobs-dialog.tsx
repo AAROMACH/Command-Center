@@ -295,10 +295,10 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden px-6 py-4">
+        <div className="flex-1 min-h-0 overflow-hidden px-6 py-4">
           {step === 'input' ? (
-            <div className="space-y-4 h-full flex flex-col">
-              <div className="space-y-2 flex-1">
+            <div className="space-y-4 h-full min-h-0 flex flex-col">
+              <div className="space-y-2 flex-1 min-h-0">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Data Input Buffer</label>
                 <Textarea
                   placeholder="Paste job details here...&#10;19204205&#10;HP Printer Repair...&#10;4/8/2026 at 3:10 PM..."
@@ -314,7 +314,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
               </div>
             </div>
           ) : (
-            <div className="space-y-3 h-full flex flex-col">
+            <div className="space-y-3 h-full min-h-0 flex flex-col">
               {/* Summary + bulk actions */}
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2 flex-wrap text-[9px] font-bold uppercase tracking-widest">
@@ -337,7 +337,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
                 </div>
               </div>
 
-              <ScrollArea className="flex-1 border border-border-sub rounded-md bg-bg-primary">
+              <ScrollArea className="flex-1 min-h-0 border border-border-sub rounded-md bg-bg-primary">
                 <div className="divide-y divide-border-sub">
                   {visibleRows.map((job) => {
                     const dimmed = job.rowStatus === 'skipped' || job.rowStatus === 'removed';

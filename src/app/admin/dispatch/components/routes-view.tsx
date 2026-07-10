@@ -45,7 +45,7 @@ import {
     SelectTrigger, 
     SelectValue 
 } from '@/components/ui/select';
-import { cn, formatCityState } from '@/lib/utils';
+import { cn, formatCityState, isAssignableTechnician } from '@/lib/utils';
 import {
   DndContext,
   closestCenter,
@@ -202,7 +202,7 @@ function DroppableRoute({
                         </div>
                     </SelectTrigger>
                     <SelectContent>
-                        {technicians.filter(t => !t.roles?.includes('client') && !t.role?.toLowerCase()?.includes('client')).map(tech => (
+                        {technicians.filter(isAssignableTechnician).map(tech => (
                             <SelectItem key={tech.id} value={tech.name} className="text-[10px] font-bold uppercase">
                                 {tech.name}
                             </SelectItem>
@@ -349,9 +349,9 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
 
         setIsOptimizing(true);
         try {
-            const availableTechs = technicians.filter(t => 
-                !t.roles?.includes('client') && 
-                t.name && 
+            const availableTechs = technicians.filter(t =>
+                isAssignableTechnician(t) &&
+                t.name &&
                 (t.address || t.currentLocation)
             );
 

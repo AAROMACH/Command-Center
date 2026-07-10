@@ -15,7 +15,7 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn, formatCityState } from '@/lib/utils';
+import { cn, formatCityState, isAssignableTechnician } from '@/lib/utils';
 import {
   MapPin, Calendar, Clock, DollarSign,
   Check, AlertTriangle, ShieldCheck,
@@ -608,7 +608,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                 <SelectValue placeholder="Choose technician..." />
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
-                {technicians.filter(t => !t.roles?.includes('client')).map(t => (
+                {technicians.filter(isAssignableTechnician).map(t => (
                   <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -635,7 +635,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
                 {technicians
-                  .filter(t => !t.roles?.includes('client') && t.id !== (mission?.assignedTechnicianId || mission?.techId))
+                  .filter(t => isAssignableTechnician(t) && t.id !== (mission?.assignedTechnicianId || mission?.techId))
                   .map(t => (
                     <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name}</SelectItem>
                   ))}

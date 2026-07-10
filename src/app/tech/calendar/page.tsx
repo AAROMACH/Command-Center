@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import type { WorkOrder } from '@/lib/types';
+import type { WorkOrder, Technician } from '@/lib/types';
 import { db, auth } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -11,13 +11,13 @@ import {
   ChevronLeft, ChevronRight, Clock, MapPin, DollarSign,
   Building2, Calendar as CalendarIcon, X, Download,
   Check, Play, LogIn, LogOut, CheckCircle2, RotateCcw, ExternalLink,
-  Loader2, Maximize2, Minimize2,
+  Loader2, Maximize2, Minimize2, Route as RouteIcon,
 } from 'lucide-react';
 import {
   format, addMonths, subMonths, startOfMonth, endOfMonth,
   eachDayOfInterval, getDay, isSameDay, isToday, parseISO,
 } from 'date-fns';
-import { cn, getTacticalLocation } from '@/lib/utils';
+import { cn, getTacticalLocation, geocodeAddress, sumRouteMileage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 const MapView = dynamic(() => import('../map/components/map-view'), {
@@ -81,6 +81,11 @@ export default function TechCalendarPage() {
   const [mobileTab, setMobileTab] = useState<'calendar' | 'map' | 'list'>('calendar');
   const [isMapExpanded, setIsMapExpanded] = useState(false);
 
+  const [currentTech, setCurrentTech] = useState<Technician | null>(null);
+  const [homeCoords, setHomeCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [routeMileage, setRouteMileage] = useState<number | null>(null);
+  const [mileageLoading, setMileageLoading] = useState(false);
+
   useEffect(() => {
     const uid = sessionStorage.getItem('currentUserId') || auth.currentUser?.uid || null;
     setCurrentTechId(uid);
@@ -99,8 +104,22 @@ export default function TechCalendarPage() {
       setRawWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id, _src: 'workOrder' } as JobWithSrc)));
     });
 
-    return () => { u1(); u2(); };
+    const u3 = onSnapshot(doc(db, 'users', currentTechId), snap => {
+      setCurrentTech(snap.exists() ? ({ ...snap.data(), id: snap.id } as Technician) : null);
+    });
+
+    return () => { u1(); u2(); u3(); };
   }, [currentTechId]);
+
+  // Resolve the tech's home address to coordinates once per address value —
+  // every day's route starts and ends there.
+  useEffect(() => {
+    const address = currentTech?.address;
+    if (!address) { setHomeCoords(null); return; }
+    let cancelled = false;
+    geocodeAddress(address).then(coords => { if (!cancelled) setHomeCoords(coords); });
+    return () => { cancelled = true; };
+  }, [currentTech?.address]);
 
   // Deduplicate — assignments take precedence
   const allJobs = useMemo<JobWithSrc[]>(() => {
@@ -146,6 +165,33 @@ export default function TechCalendarPage() {
     [allJobs]);
 
   const selectedDateJobs = useMemo(() => jobsForDate(selectedDate), [selectedDate, jobsForDate]);
+
+  // Route mileage for the selected day: home -> stop 1 -> ... -> stop N -> home.
+  // Jobs already carry resolved lat/lng from the schedule map fix; anything
+  // missing coords gets geocoded from its address on the fly.
+  useEffect(() => {
+    if (!homeCoords || selectedDateJobs.length === 0) { setRouteMileage(null); return; }
+    let cancelled = false;
+    setMileageLoading(true);
+    (async () => {
+      const stops: { lat: number; lng: number }[] = [];
+      for (const job of selectedDateJobs) {
+        if (typeof job.lat === 'number' && typeof job.lng === 'number') {
+          stops.push({ lat: job.lat, lng: job.lng });
+          continue;
+        }
+        const address = job.location || (job as any).locationText;
+        if (address) {
+          const coords = await geocodeAddress(address);
+          if (coords) stops.push(coords);
+        }
+      }
+      if (cancelled) return;
+      setRouteMileage(stops.length > 0 ? sumRouteMileage(homeCoords, stops) : null);
+      setMileageLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [selectedDateJobs, homeCoords]);
 
   const openDrawer = useCallback((wo: JobWithSrc) => {
     setSelectedJobId(wo.id);
@@ -327,6 +373,22 @@ export default function TechCalendarPage() {
             <span className="w-2 h-2 rounded-full bg-amber-400" />
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Scheduled</span>
           </div>
+          {selectedDateJobs.length > 0 && (
+            <div className="flex items-center gap-1.5 pl-3 border-l border-border-sub" title="Round-trip mileage from your home address on file, through each job in schedule order, and back">
+              <RouteIcon size={11} className="text-brand-red" />
+              {!currentTech?.address ? (
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest italic">Add home address in profile to see route mileage</span>
+              ) : mileageLoading ? (
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Calculating route…</span>
+              ) : routeMileage !== null ? (
+                <span className="text-[10px] font-bold text-text-primary uppercase tracking-widest">
+                  {routeMileage.toFixed(1)} mi round trip · home to home
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest italic">Route mileage unavailable</span>
+              )}
+            </div>
+          )}
           <span className="ml-auto text-[10px] text-text-muted font-medium">
             {format(selectedDate, 'EEE, MMM d')} · {selectedDateJobs.length} job{selectedDateJobs.length !== 1 ? 's' : ''}
           </span>

@@ -5,6 +5,35 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+const NON_ASSIGNABLE_ROLES = ['client', 'super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'];
+
+/**
+ * Whether a user can be deployed to a job as a field technician. Excludes
+ * clients and admin/office roles — only field techs and project leads show
+ * up in assignment/helper/swap pickers.
+ */
+export function isAssignableTechnician(t: { roles?: string[]; role?: string }): boolean {
+  const roles = (t.roles || []).map(r => r.toLowerCase());
+  const role = (t.role || '').toLowerCase();
+  return !roles.some(r => NON_ASSIGNABLE_ROLES.includes(r)) && !NON_ASSIGNABLE_ROLES.includes(role);
+}
+
+/**
+ * Recursively strips `undefined` values from an object/array. Firestore's
+ * updateDoc() rejects any undefined field value, even nested inside an
+ * array of objects, so build write payloads through this first.
+ */
+export function sanitize<T = any>(obj: T): T {
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(sanitize) as any;
+  const result: any = {};
+  Object.keys(obj as any).forEach(key => {
+    const val = (obj as any)[key];
+    if (val !== undefined) result[key] = sanitize(val);
+  });
+  return result;
+}
+
 /**
  * Tactical geographic anchor extractor.
  * Converts "36246 St Dr, Wayne, MI 48184, USA" -> "Wayne, MI"
@@ -117,4 +146,40 @@ export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
+}
+
+const geocodeCache = new Map<string, { lat: number; lng: number } | null>();
+
+/**
+ * Forward-geocode a free-text address into coordinates via Nominatim.
+ * Results are cached in-memory per address string for the session.
+ */
+export async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+  const key = address.trim().toLowerCase();
+  if (!key) return null;
+  if (geocodeCache.has(key)) return geocodeCache.get(key)!;
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    const data = await res.json();
+    const coords = data && data[0] ? { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) } : null;
+    geocodeCache.set(key, coords);
+    return coords;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Total mileage for a day's route: home -> stop 1 -> stop 2 -> ... -> home.
+ * Stops without resolvable coordinates are skipped (they can't contribute a
+ * real leg), so the total is a best-effort figure, not silently wrong.
+ */
+export function sumRouteMileage(home: { lat: number; lng: number }, stops: { lat: number; lng: number }[]): number {
+  const points = [home, ...stops, home];
+  let total = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    total += calculateDistance(points[i].lat, points[i].lng, points[i + 1].lat, points[i + 1].lng);
+  }
+  return total;
 }

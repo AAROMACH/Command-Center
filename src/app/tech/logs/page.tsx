@@ -80,6 +80,23 @@ const DISPUTE_REASONS = [
     "This appears to be a duplicate"
 ];
 
+/** Current wall-clock weekday/hour/date in America/New_York, independent of the browser's local timezone. */
+function getEasternParts(date: Date) {
+    const fmt = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        weekday: 'short', hour: 'numeric', hour12: false,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+    });
+    const parts = fmt.formatToParts(date).reduce((acc, p) => { acc[p.type] = p.value; return acc; }, {} as Record<string, string>);
+    const weekdayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    return {
+        dow: weekdayMap[parts.weekday],
+        hour: parts.hour === '24' ? 0 : parseInt(parts.hour, 10),
+        year: parseInt(parts.year, 10),
+        month: parseInt(parts.month, 10),
+        day: parseInt(parts.day, 10),
+    };
+}
 
 
 export default function TechWeeklyLogPage() {
@@ -163,6 +180,35 @@ export default function TechWeeklyLogPage() {
         const isWeekend = dow === 0 || dow === 6;
 
         return isPastWeek || (isCurrentWeek && isWeekend);
+    }, [activeLog?.weekOf]);
+
+    /**
+     * Reimbursement Window Validator.
+     * Current week: opens Friday 6:00 PM Eastern and stays open through the weekend.
+     * Past weeks: always allowed (catch-up submissions).
+     */
+    const canAddReimbursement = useMemo(() => {
+        if (!activeLog?.weekOf) return false;
+        const et = getEasternParts(new Date());
+        const todayET = new Date(et.year, et.month - 1, et.day);
+        const daysToMonday = et.dow === 0 ? 6 : et.dow - 1;
+        const thisWeekMondayET = new Date(todayET);
+        thisWeekMondayET.setDate(todayET.getDate() - daysToMonday);
+
+        const parts = activeLog.weekOf.split('-').map(Number);
+        let logMonday: Date;
+        if (parts[2] > 1000) {
+            logMonday = new Date(parts[2], parts[0] - 1, parts[1]);
+        } else {
+            logMonday = new Date(activeLog.weekOf);
+        }
+        logMonday.setHours(0, 0, 0, 0);
+
+        const isPastWeek = logMonday.getTime() < thisWeekMondayET.getTime();
+        const isCurrentWeek = logMonday.getTime() === thisWeekMondayET.getTime();
+        const windowOpen = et.dow === 6 || et.dow === 0 || (et.dow === 5 && et.hour >= 18);
+
+        return isPastWeek || (isCurrentWeek && windowOpen);
     }, [activeLog?.weekOf]);
 
     // 3. Registry Filtering & Sorting
@@ -701,6 +747,7 @@ export default function TechWeeklyLogPage() {
                             isLocked={isLocked}
                             workOrders={workOrders}
                             reimbursements={activeLog.reimbursements || []}
+                            canAddReimbursement={canAddReimbursement}
                             onConfirm={handleConfirm}
                             onDispute={handleDispute}
                             onAddReimbursement={handleAddReimbursement}
@@ -769,7 +816,7 @@ export default function TechWeeklyLogPage() {
     );
 }
 
-function JobAuditCard({ item, isLocked, workOrders, reimbursements, onConfirm, onDispute, onAddReimbursement, techId }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, techId: string | null }) {
+function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, techId }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, techId: string | null }) {
     const job = workOrders.find(wo => wo.id === item.workOrderId);
     const itemReimbursements = reimbursements.filter(r => r.workOrderId === item.workOrderId);
     const totalReimbursed = itemReimbursements.reduce((acc, r) => acc + (r.amount || 0), 0);
@@ -785,6 +832,10 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, onConfirm, o
     const { toast: reimbToast } = useToast();
 
     const submitReimbursement = async () => {
+        if (!canAddReimbursement) {
+            reimbToast({ variant: 'destructive', title: 'Not Open Yet', description: 'Reimbursements open Friday 6:00 PM ET.' });
+            return;
+        }
         const amount = parseFloat(reimbAmount);
         if (!amount || amount <= 0 || !reimbDesc.trim()) {
             reimbToast({ variant: 'destructive', title: 'Missing info', description: 'Enter an amount and a description.' });
@@ -832,6 +883,11 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, onConfirm, o
                                 <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[350px] text-left">{job.title || job.description}</h4>
                                 {isConfirmed && <Badge variant="active" className="text-[7px] h-3.5 uppercase tracking-tighter">VERIFIED</Badge>}
                                 {isDisputed && <Badge variant="missed" className="text-[7px] h-3.5 uppercase tracking-tighter">DISPUTED</Badge>}
+                                {itemReimbursements.length > 0 && (
+                                    <Badge variant="pending" className="text-[7px] h-3.5 uppercase tracking-tighter flex items-center gap-1">
+                                        <DollarSign size={9} /> Reimbursement · ${totalReimbursed.toFixed(2)}
+                                    </Badge>
+                                )}
                             </div>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
                                 <span className="flex items-center gap-1.5 text-left"><MapPin size={10} className="text-brand-red shrink-0"/> {formatCityState(job.location)}</span>
@@ -859,6 +915,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, onConfirm, o
                     </div>
 
                     {!isLocked && (
+                        <div className="flex flex-col items-end gap-1">
                         <div className="flex items-center gap-2">
                             {isPending ? (
                                 <>
@@ -891,11 +948,19 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, onConfirm, o
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 px-3 uppercase text-[9px] font-bold tracking-widest border-accent-gold/40 text-accent-gold hover:bg-accent-gold/10"
+                                disabled={!canAddReimbursement}
+                                title={canAddReimbursement ? undefined : "Reimbursements open Friday 6:00 PM ET"}
+                                className="h-8 px-3 uppercase text-[9px] font-bold tracking-widest border-accent-gold/40 text-accent-gold hover:bg-accent-gold/10 disabled:opacity-40 disabled:cursor-not-allowed"
                                 onClick={() => setIsReimbursing(v => !v)}
                             >
                                 <DollarSign size={13} className="mr-1"/> Add Reimbursement
                             </Button>
+                        </div>
+                        {!canAddReimbursement && (
+                            <p className="text-[8px] font-bold uppercase tracking-widest text-text-muted text-right pr-1">
+                                Reimbursements open Friday 6:00 PM ET
+                            </p>
+                        )}
                         </div>
                     )}
                 </div>
@@ -922,7 +987,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, onConfirm, o
                     </div>
                 )}
 
-                {isReimbursing && !isLocked && (
+                {isReimbursing && !isLocked && canAddReimbursement && (
                     <div className="px-5 pb-5 pt-1 animate-in slide-in-from-top-2 duration-300 text-left">
                         <div className="p-4 rounded-xl bg-bg-primary/50 border border-accent-gold/30 space-y-3 text-left">
                             <div className="flex items-center justify-between">

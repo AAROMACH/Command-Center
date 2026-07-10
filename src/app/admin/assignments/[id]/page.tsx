@@ -21,7 +21,7 @@ import {
   ArrowLeftRight, Check, Flag, Activity, MessageSquare, ExternalLink, Wrench,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn, isAssignableTechnician } from '@/lib/utils';
 
 const AssignmentMap = dynamic(() => import('./assignment-map'), { ssr: false });
 
@@ -696,7 +696,7 @@ export default function AssignmentDetailPage() {
                 <SelectValue placeholder="Choose technician..." />
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
-                {allTechs.filter(t => !t.roles?.includes('client')).map(t => (
+                {allTechs.filter(isAssignableTechnician).map(t => (
                   <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -722,7 +722,7 @@ export default function AssignmentDetailPage() {
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
                 {allTechs
-                  .filter(t => !t.roles?.includes('client') && t.id !== primTechId)
+                  .filter(t => isAssignableTechnician(t) && t.id !== primTechId)
                   .map(t => (
                     <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name}</SelectItem>
                   ))}

@@ -72,12 +72,12 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { cn, formatCityState } from "@/lib/utils";
+import { cn, formatCityState, isAssignableTechnician } from "@/lib/utils";
 import { JobDetailDialog } from "@/components/job-detail-dialog";
 import { isPayAdmin } from "@/lib/permissions";
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from "@/lib/reliability";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, setDoc, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
 import { fieldNationUrl, displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { createDocId } from '@/lib/generateId';
@@ -181,11 +181,7 @@ export const WorkOrdersTable = React.memo(({
 
   const filteredTechniciansRegistry = useMemo(() => {
     return technicians
-      .filter(t => {
-          const roles = t.roles || [];
-          const role = (t.role || '').toLowerCase();
-          return !roles.includes('client') && !role.includes('client');
-      })
+      .filter(isAssignableTechnician)
       .filter(t => (t.name || '').toLowerCase().includes(techSearchQuery.toLowerCase()))
       .sort((a, b) => (b.reliabilityScore || 0) - (a.reliabilityScore || 0));
   }, [technicians, techSearchQuery]);
@@ -194,10 +190,6 @@ export const WorkOrdersTable = React.memo(({
     if (!selectedOrder) return;
 
     try {
-      const snapshot = await getDocs(collection(db, 'assignments'));
-      const count = snapshot.size + 1;
-      const shortId = `ASM-${String(count).padStart(3, '0')}`;
-
       const assignmentId = await createDocId(ID_PREFIXES.ASSIGNMENT);
       const assignmentRef = doc(db, 'assignments', assignmentId);
       const woRef = doc(db, 'workOrders', selectedOrder.id);
@@ -206,7 +198,6 @@ export const WorkOrdersTable = React.memo(({
       const assignmentData = {
           ...selectedOrder,
           id: assignmentId,
-          shortId: shortId,
           workOrderId: selectedOrder.id,
           techId: techId,
           assignedTechnicianId: techId,
@@ -224,7 +215,7 @@ export const WorkOrdersTable = React.memo(({
 
       setIsDialogOpen(false);
       setSelectedOrder(null);
-      toast({ title: "Dispatch Confirmed", description: `Assignment ${shortId} initialized in deployment registry.` });
+      toast({ title: "Dispatch Confirmed", description: `Assignment ${assignmentId.toUpperCase()} initialized in deployment registry.` });
     } catch (e: any) {
       console.error("Assign Update Error:", e);
       toast({ variant: "destructive", title: "Dispatch Failed", description: e.message });
@@ -824,7 +815,7 @@ export const WorkOrdersTable = React.memo(({
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest">UNASSIGNED</SelectItem>
-                                        {technicians.filter(t => !t.roles?.includes('client')).map(tech => <SelectItem key={tech.id} value={tech.id} className="text-xs uppercase font-bold">{tech.name}</SelectItem>)}
+                                        {technicians.filter(isAssignableTechnician).map(tech => <SelectItem key={tech.id} value={tech.id} className="text-xs uppercase font-bold">{tech.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>

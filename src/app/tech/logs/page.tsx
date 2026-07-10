@@ -44,7 +44,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import { cn, formatCityState } from '@/lib/utils';
+import { cn, formatCityState, sanitize } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { format, parseISO, isSameDay, startOfDay, startOfWeek, isWithinInterval } from 'date-fns';
@@ -302,7 +302,7 @@ export default function TechWeeklyLogPage() {
             receiptUrl: data.receiptUrl,
             createdAt: new Date().toISOString(),
         };
-        const updated = [...(activeLog.reimbursements || []), record];
+        const updated = [...(activeLog.reimbursements || []), sanitize(record)];
         try {
             await updateDoc(doc(db, 'weeklyLogs', activeLog.id), { reimbursements: updated });
             toast({ title: 'Reimbursement Added', description: 'Pending payroll review — it will appear in the pay calculator.' });

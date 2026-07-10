@@ -42,6 +42,7 @@ import {
     RotateCcw
 } from 'lucide-react';
 import { cn, formatCityState } from '@/lib/utils';
+import { displayWorkOrderNumber, fieldNationUrl } from '@/lib/work-order-identity';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
@@ -62,6 +63,7 @@ type PayrollReviewDialogProps = {
     log: WeeklyLog | null;
     technician: Technician | undefined;
     missions: WorkOrder[];
+    allTechnicians?: Technician[];
     onStatusChange: (logId: string, status: WeeklyLog['status'], total?: number) => void;
 };
 
@@ -192,7 +194,7 @@ function ImportedJobAudit({
     );
 }
 
-export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, technician, missions, onStatusChange }: PayrollReviewDialogProps) {
+export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, technician, missions, allTechnicians = [], onStatusChange }: PayrollReviewDialogProps) {
     const [localLog, setLocalLog] = useState<WeeklyLog | null>(null);
     const [selectedJobForDetail, setSelectedJobForDetail] = useState<WorkOrder | null>(null);
     const [isJobDetailOpen, setIsJobDetailOpen] = useState(false);
@@ -207,6 +209,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     const findWorkOrder = useCallback((id: string): WorkOrder | undefined => {
         return missions.find(wo => wo.id === id);
     }, [missions]);
+
+    const getHelperNames = useCallback((wo: WorkOrder | undefined): string[] => {
+        if (!wo?.additionalTechnicianIds?.length) return [];
+        return wo.additionalTechnicianIds.map(id => allTechnicians.find(t => t.id === id)?.name || id);
+    }, [allTechnicians]);
 
     const getHoursOnsite = useCallback((woId: string) => {
         if (!technician) return 'TBD';
@@ -474,6 +481,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                             const isImported = wo?.source === 'Imported';
                                             const isAudited = item.isAdminReviewed;
                                             const displayTitle = wo?.title || 'Mission identifier lookup pending...';
+                                            const helperNames = getHelperNames(wo);
 
                                             return (
                                                 <div key={item.id} className={cn(
@@ -497,17 +505,40 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     
                                                     <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                                         <div className="min-w-0 text-left">
-                                                            <div className="flex items-center gap-2 text-left">
+                                                            <div className="flex items-center gap-2 text-left flex-wrap">
                                                                 <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
                                                                 {isImported && <Badge variant="outline" className="text-[6px] bg-brand-red-dim border-brand-red/20 text-brand-red h-3 px-1">IMPORTED</Badge>}
+                                                                {helperNames.length > 0 && (
+                                                                    <Badge variant="outline" className="text-[6px] bg-blue-400/10 border-blue-400/30 text-blue-400 h-3 px-1">
+                                                                        HELPER ADDED
+                                                                    </Badge>
+                                                                )}
                                                             </div>
                                                             <div className="flex items-center gap-2 mt-0.5 text-[8px] text-text-muted font-medium uppercase tracking-widest text-left">
-                                                                <span className="text-brand-red font-mono font-bold">{(wo?.id || item.workOrderId || '').toUpperCase()}</span>
+                                                                {isImported && wo ? (
+                                                                    <a
+                                                                        href={fieldNationUrl(wo)}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        onClick={e => e.stopPropagation()}
+                                                                        className="text-brand-red font-mono font-bold hover:underline inline-flex items-center gap-1"
+                                                                    >
+                                                                        {displayWorkOrderNumber(wo)}
+                                                                        <ExternalLink size={9} />
+                                                                    </a>
+                                                                ) : (
+                                                                    <span className="text-brand-red font-mono font-bold">{displayWorkOrderNumber(wo) || (wo?.id || item.workOrderId || '').toUpperCase()}</span>
+                                                                )}
                                                                 <span>•</span>
                                                                 <span>{wo?.location ? formatCityState(wo.location) : 'Location Pending'}</span>
                                                                 <span>•</span>
                                                                 <span>{wo?.scheduleDate || 'Schedule Pending'} · {wo?.scheduleTime || 'TBD'}</span>
                                                             </div>
+                                                            {helperNames.length > 0 && (
+                                                                <p className="text-[8px] text-blue-400 font-bold uppercase tracking-widest mt-0.5 text-left italic">
+                                                                    Note: helper tech added during job — {helperNames.join(', ')}
+                                                                </p>
+                                                            )}
                                                         </div>
 
                                                         <div className="shrink-0 sm:min-w-[220px]" onClick={e => e.stopPropagation()}>
@@ -553,6 +584,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                             const isAudited = item.isAdminReviewed;
                                             const isImported = wo?.source === 'Imported';
                                             const displayTitle = wo?.title || 'Mission identifier lookup pending...';
+                                            const helperNames = getHelperNames(wo);
 
                                             return (
                                                 <div key={item.id} className={cn(
@@ -576,17 +608,40 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                                                     <div className="flex-1 flex flex-col gap-2">
                                                         <div className="min-w-0 text-left">
-                                                            <div className="flex items-center gap-2 text-left">
+                                                            <div className="flex items-center gap-2 text-left flex-wrap">
                                                                 <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
                                                                 {isImported && <Badge variant="outline" className="text-[6px] bg-brand-red-dim border-brand-red/20 text-brand-red h-3 px-1">IMPORTED</Badge>}
+                                                                {helperNames.length > 0 && (
+                                                                    <Badge variant="outline" className="text-[6px] bg-blue-400/10 border-blue-400/30 text-blue-400 h-3 px-1">
+                                                                        HELPER ADDED
+                                                                    </Badge>
+                                                                )}
                                                             </div>
                                                             <div className="flex items-center gap-2 mt-0.5 text-[8px] text-text-muted font-medium uppercase tracking-widest text-left">
-                                                                <span className="text-brand-red font-mono font-bold">{(wo?.id || item.workOrderId || '').toUpperCase()}</span>
+                                                                {isImported && wo ? (
+                                                                    <a
+                                                                        href={fieldNationUrl(wo)}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        onClick={e => e.stopPropagation()}
+                                                                        className="text-brand-red font-mono font-bold hover:underline inline-flex items-center gap-1"
+                                                                    >
+                                                                        {displayWorkOrderNumber(wo)}
+                                                                        <ExternalLink size={9} />
+                                                                    </a>
+                                                                ) : (
+                                                                    <span className="text-brand-red font-mono font-bold">{displayWorkOrderNumber(wo) || (wo?.id || item.workOrderId || '').toUpperCase()}</span>
+                                                                )}
                                                                 <span>•</span>
                                                                 <span>{wo?.location ? formatCityState(wo.location) : 'Location Pending'}</span>
                                                                 <span>•</span>
                                                                 <span>{wo?.scheduleDate || 'Schedule Pending'} · {wo?.scheduleTime || 'TBD'}</span>
                                                             </div>
+                                                            {helperNames.length > 0 && (
+                                                                <p className="text-[8px] text-blue-400 font-bold uppercase tracking-widest mt-0.5 text-left italic">
+                                                                    Note: helper tech added during job — {helperNames.join(', ')}
+                                                                </p>
+                                                            )}
                                                         </div>
 
                                                         <div className="flex items-center gap-4 shrink-0" onClick={e => e.stopPropagation()}>

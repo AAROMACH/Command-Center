@@ -700,6 +700,7 @@ export default function TechWeeklyLogPage() {
                             item={item}
                             isLocked={isLocked}
                             workOrders={workOrders}
+                            reimbursements={activeLog.reimbursements || []}
                             onConfirm={handleConfirm}
                             onDispute={handleDispute}
                             onAddReimbursement={handleAddReimbursement}
@@ -768,8 +769,10 @@ export default function TechWeeklyLogPage() {
     );
 }
 
-function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute, onAddReimbursement, techId }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, techId: string | null }) {
+function JobAuditCard({ item, isLocked, workOrders, reimbursements, onConfirm, onDispute, onAddReimbursement, techId }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, techId: string | null }) {
     const job = workOrders.find(wo => wo.id === item.workOrderId);
+    const itemReimbursements = reimbursements.filter(r => r.workOrderId === item.workOrderId);
+    const totalReimbursed = itemReimbursements.reduce((acc, r) => acc + (r.amount || 0), 0);
     const [isDisputing, setIsDisputing] = useState(item.confirmationStatus === 'disputed');
     const [reason, setReason] = useState(item.disputeReason || "");
     const [notes, setNotes] = useState(item.disputeNotes || "");
@@ -841,6 +844,18 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute, onAddR
                             <p className="text-[8px] font-black text-text-muted uppercase tracking-widest text-right">Settlement</p>
                             <p className="text-sm font-mono font-bold text-text-green text-right">${(item.jobPay || 0).toFixed(2)}</p>
                         </div>
+
+                        {itemReimbursements.length > 0 && (
+                            <div className="text-right px-4 border-l border-border-sub/30 min-w-[100px]">
+                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest text-right">Reimbursement</p>
+                                <p className="text-sm font-mono font-bold text-accent-gold text-right">${totalReimbursed.toFixed(2)}</p>
+                                <p className="text-[7px] font-bold uppercase tracking-widest text-text-muted text-right">
+                                    {itemReimbursements.every(r => r.status === 'approved') ? 'Approved'
+                                        : itemReimbursements.some(r => r.status === 'rejected') ? 'Includes Rejected'
+                                        : 'Pending Review'}
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {!isLocked && (
@@ -884,6 +899,28 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute, onAddR
                         </div>
                     )}
                 </div>
+
+                {itemReimbursements.length > 0 && (
+                    <div className="px-5 pb-4 -mt-1 text-left space-y-1.5">
+                        {itemReimbursements.map(r => (
+                            <div key={r.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-bg-primary/40 border border-accent-gold/20 text-left">
+                                <div className="min-w-0 text-left">
+                                    <p className="text-[10px] font-bold text-text-primary uppercase truncate text-left">{r.description}</p>
+                                    <p className="text-[8px] text-text-muted uppercase tracking-widest text-left">{r.date}</p>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <span className="text-xs font-mono font-bold text-accent-gold">${(r.amount || 0).toFixed(2)}</span>
+                                    <Badge
+                                        variant={r.status === 'approved' ? 'active' : r.status === 'rejected' ? 'missed' : 'pending'}
+                                        className="text-[7px] h-3.5 uppercase tracking-tighter"
+                                    >
+                                        {r.status || 'pending'}
+                                    </Badge>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 {isReimbursing && !isLocked && (
                     <div className="px-5 pb-5 pt-1 animate-in slide-in-from-top-2 duration-300 text-left">

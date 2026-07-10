@@ -8,13 +8,16 @@ export function cn(...inputs: ClassValue[]) {
 const NON_ASSIGNABLE_ROLES = ['client', 'super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'];
 
 /**
- * Whether a user can be deployed to a job as a field technician. Excludes
- * clients and admin/office roles — only field techs and project leads show
- * up in assignment/helper/swap pickers.
+ * Whether a user can be deployed to a job as a field technician. Anyone
+ * holding the field_technician role is always deployable, even if they also
+ * carry an admin/office role (e.g. a dispatcher who also does field work).
+ * Otherwise, excludes clients and admin/office roles — only field techs and
+ * project leads show up in assignment/helper/swap pickers.
  */
 export function isAssignableTechnician(t: { roles?: string[]; role?: string }): boolean {
   const roles = (t.roles || []).map(r => r.toLowerCase());
   const role = (t.role || '').toLowerCase();
+  if (roles.includes('field_technician') || role === 'field_technician') return true;
   return !roles.some(r => NON_ASSIGNABLE_ROLES.includes(r)) && !NON_ASSIGNABLE_ROLES.includes(role);
 }
 

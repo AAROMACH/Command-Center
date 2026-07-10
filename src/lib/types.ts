@@ -216,6 +216,8 @@ export type Technician = {
   messagingAllowedRoles?: 'all' | 'admins' | 'techs' | 'clients' | 'none';
   googleCalendarSyncEnabled?: boolean;
   googleCalendarToken?: string;
+  routePreference?: 'optimized' | 'by-time' | 'by-mileage';
+  mileageUnit?: 'mi' | 'km';
   approvalStatus?: 'pending' | 'approved' | 'denied';
   requestedAt?: string;
   approvedAt?: string;

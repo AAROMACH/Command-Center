@@ -51,7 +51,7 @@ type EditPersonnelDialogProps = {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   person: Technician;
-  onSave: (updatedPerson: Technician) => void;
+  onSave: (personId: string, updates: Partial<Technician>) => void;
 };
 
 export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditPersonnelDialogProps) {
@@ -161,12 +161,23 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
         return;
     }
 
-    const updatedData = {
-        ...formData,
-        role: (formData.roles || [])[0].replace(/_/g, ' ').toUpperCase()
+    // Send only the fields this form actually edits — never the full
+    // technician object. This dialog is opened with a snapshot of `person`
+    // that can go stale (e.g. another admin added a note in the meantime);
+    // echoing the whole object back would silently overwrite those
+    // untouched fields with the stale snapshot's values.
+    const updates: Partial<Technician> = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        roles: formData.roles,
+        role: (formData.roles || [])[0].replace(/_/g, ' ').toUpperCase(),
+        hourlyRate: formData.hourlyRate,
+        clientCompany: formData.clientCompany,
     };
 
-    onSave(updatedData);
+    onSave(person.id, updates);
     setIsOpen(false);
   };
 

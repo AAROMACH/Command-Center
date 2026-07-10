@@ -44,7 +44,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import { cn, formatCityState, sanitize } from '@/lib/utils';
+import { cn, formatCityState, sanitize, formatDistance } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { format, parseISO, isSameDay, startOfDay, startOfWeek, isWithinInterval } from 'date-fns';
@@ -67,6 +67,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { Input } from "@/components/ui/input";
+import { AddressAutocompleteInput } from "@/components/ui/address-autocomplete-input";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc, setDoc, getDocs } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
@@ -107,6 +108,7 @@ export default function TechWeeklyLogPage() {
     const [tripLogs, setTripLogs] = useState<TripLog[]>([]);
     const [logView, setLogView] = useState<'work' | 'trips'>('work');
     const [mounted, setMounted] = useState(false);
+    const [mileageUnit, setMileageUnit] = useState<'mi' | 'km'>('mi');
     
     const [searchQuery, setSearchQuery] = useState("");
     const [sortBy, setSortBy] = useState<string>('newest');
@@ -139,8 +141,11 @@ export default function TechWeeklyLogPage() {
             const unsubTrips = onSnapshot(query(collection(db, 'tripLogs'), where('technicianId', '==', userId)), (snap) => {
                 setTripLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as TripLog)));
             });
+            const unsubProfile = onSnapshot(doc(db, 'users', userId), (snap) => {
+                if (snap.exists()) setMileageUnit((snap.data().mileageUnit as 'mi' | 'km') || 'mi');
+            });
             return () => {
-                unsubLogs(); unsubWO(); unsubTrips();
+                unsubLogs(); unsubWO(); unsubTrips(); unsubProfile();
             };
         }
     }, []);
@@ -456,7 +461,7 @@ export default function TechWeeklyLogPage() {
                     </div>
                     <ViewTabs />
                 </header>
-                <TripLogsView tripLogs={tripLogs} workOrders={workOrders} />
+                <TripLogsView tripLogs={tripLogs} workOrders={workOrders} mileageUnit={mileageUnit} />
             </div>
         );
     }
@@ -1132,7 +1137,7 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                         </div>
                         <div className="space-y-2 text-left">
                             <Label className="text-[10px] uppercase font-bold text-text-muted">Location</Label>
-                            <Input name="location" required className="bg-bg-primary h-10 text-xs" />
+                            <AddressAutocompleteInput name="location" required className="bg-bg-primary h-10 text-xs" />
                         </div>
                     </div>
                     <div className="space-y-2 text-left">
@@ -1166,7 +1171,7 @@ const TRIP_SOURCE_LABEL: Record<string, string> = {
     check_in_flow: 'Check-In Flow',
 };
 
-function TripLogsView({ tripLogs, workOrders }: { tripLogs: TripLog[]; workOrders: WorkOrder[] }) {
+function TripLogsView({ tripLogs, workOrders, mileageUnit }: { tripLogs: TripLog[]; workOrders: WorkOrder[]; mileageUnit: 'mi' | 'km' }) {
     const sorted = [...tripLogs].sort((a, b) => (b.date || b.createdAt || '').localeCompare(a.date || a.createdAt || ''));
     const totalMiles = sorted.reduce((acc, t) => acc + (t.miles || t.calculatedMiles || t.manualMiles || 0), 0);
 
@@ -1188,8 +1193,8 @@ function TripLogsView({ tripLogs, workOrders }: { tripLogs: TripLog[]; workOrder
                     <p className="text-lg font-mono font-bold text-text-primary leading-none">{sorted.length}</p>
                 </div>
                 <div className="border-l border-border-sub pl-4">
-                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Total Miles</p>
-                    <p className="text-lg font-mono font-bold text-text-green leading-none">{totalMiles.toFixed(1)}</p>
+                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Total {mileageUnit === 'km' ? 'Kilometers' : 'Miles'}</p>
+                    <p className="text-lg font-mono font-bold text-text-green leading-none">{formatDistance(totalMiles, mileageUnit)}</p>
                 </div>
             </div>
 
@@ -1197,7 +1202,7 @@ function TripLogsView({ tripLogs, workOrders }: { tripLogs: TripLog[]; workOrder
                 <table className="w-full text-left">
                     <thead>
                         <tr className="bg-bg-tertiary/50 border-b border-border-sub">
-                            {['Date', 'Work Order', 'Job / Site', 'Route', 'Time', 'Miles', 'Source', 'Status'].map(h => (
+                            {['Date', 'Work Order', 'Job / Site', 'Route', 'Time', mileageUnit === 'km' ? 'KM' : 'Miles', 'Source', 'Status'].map(h => (
                                 <th key={h} className="text-[8px] font-black uppercase tracking-widest text-text-muted px-3 py-2 whitespace-nowrap">{h}</th>
                             ))}
                         </tr>
@@ -1217,7 +1222,7 @@ function TripLogsView({ tripLogs, workOrders }: { tripLogs: TripLog[]; workOrder
                                     <td className="px-3 py-2.5 text-[10px] text-text-primary max-w-[200px] truncate">{t.jobTitle || job?.title || job?.description || t.purpose || '—'}</td>
                                     <td className="px-3 py-2.5 text-[9px] text-text-muted max-w-[220px] truncate">{[t.startLocation, t.endLocation].filter(Boolean).join(' → ') || '—'}</td>
                                     <td className="px-3 py-2.5 text-[9px] text-text-muted whitespace-nowrap">{[t.startTime, t.endTime].filter(Boolean).join(' – ') || '—'}</td>
-                                    <td className="px-3 py-2.5 text-[10px] font-mono font-bold text-text-primary whitespace-nowrap">{miles ? miles.toFixed(1) : '—'}</td>
+                                    <td className="px-3 py-2.5 text-[10px] font-mono font-bold text-text-primary whitespace-nowrap">{miles ? formatDistance(miles, mileageUnit) : '—'}</td>
                                     <td className="px-3 py-2.5 text-[9px] text-text-muted uppercase whitespace-nowrap">{TRIP_SOURCE_LABEL[t.source || 'manual'] || 'Manual'}</td>
                                     <td className="px-3 py-2.5 whitespace-nowrap">
                                         <span className={cn('inline-block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border', st.cls)}>{st.label}</span>

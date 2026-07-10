@@ -174,19 +174,22 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
         setIsEditPersonnelOpen(true);
     };
 
-    const handleSavePersonnel = async (updatedPerson: Technician) => {
+    const handleSavePersonnel = async (personId: string, updates: Partial<Technician>) => {
         try {
-            const { id, ...data } = updatedPerson;
-            const oldPerson = personnel.find(p => p.id === id);
+            const oldPerson = personnel.find(p => p.id === personId);
             const adminId = auth.currentUser?.uid || '';
             const adminName = auth.currentUser?.displayName || 'Admin';
             if (oldPerson) {
-                await auditFieldChange('users', id, adminId, adminName, oldPerson as Record<string, unknown>, data as Record<string, unknown>);
+                await auditFieldChange('users', personId, adminId, adminName, oldPerson as Record<string, unknown>, updates as Record<string, unknown>);
             }
-            await updateDoc(doc(db, 'users', id), data);
+            // Partial update only — never spread the full stale snapshot back,
+            // or fields edited elsewhere since this dialog opened (like admin
+            // notes) get silently reverted.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await updateDoc(doc(db, 'users', personId), updates as any);
             toast({
                 title: "Operative Updated",
-                description: `Personnel records for ${updatedPerson.name} committed.`
+                description: `Personnel records for ${updates.name || oldPerson?.name} committed.`
             });
         } catch (e: any) {
             toast({ variant: "destructive", title: "Update Failed", description: e.message });

@@ -19,7 +19,7 @@ import {
   format, addMonths, subMonths, startOfMonth, endOfMonth,
   eachDayOfInterval, getDay, isSameDay, isToday, parseISO,
 } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn, compareScheduleTime } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import {
   DndContext, type DragEndEvent,
@@ -175,7 +175,7 @@ export default function AdminCalendarPage() {
         if (!wo.scheduleDate) return false;
         try { return isSameDay(parseISO(wo.scheduleDate), day); } catch { return false; }
       })
-      .sort((a, b) => (a.scheduleTime || '').localeCompare(b.scheduleTime || '')),
+      .sort((a, b) => compareScheduleTime(a.scheduleTime, b.scheduleTime)),
     [filteredJobs]);
 
   const selectedDateJobs = useMemo(() => jobsForDate(selectedDate), [selectedDate, jobsForDate]);

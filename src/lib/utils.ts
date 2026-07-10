@@ -151,6 +151,38 @@ export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2
   return R * c;
 }
 
+const MILES_TO_KM = 1.60934;
+
+/** Formats a mileage figure (always computed in miles internally) per the tech's unit preference. */
+export function formatDistance(miles: number, unit: 'mi' | 'km' = 'mi'): string {
+  const value = unit === 'km' ? miles * MILES_TO_KM : miles;
+  return `${value.toFixed(1)} ${unit}`;
+}
+
+/**
+ * Parses a free-text schedule time ("9:00 AM", "10:00 AM EST", "15:30",
+ * "3:10 PM") into minutes-since-midnight for correct chronological sorting.
+ * A plain string sort puts "10:00 AM" before "9:00 AM" because '1' < '9' —
+ * this fixes that. Unparseable/empty values sort last.
+ */
+export function scheduleTimeToMinutes(raw: string | undefined | null): number {
+  const str = (raw || '').trim();
+  const match = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if (!match) return Number.MAX_SAFE_INTEGER;
+  let hour = parseInt(match[1], 10);
+  const minute = parseInt(match[2], 10);
+  const meridiem = match[3]?.toUpperCase();
+  if (meridiem === 'PM' && hour !== 12) hour += 12;
+  if (meridiem === 'AM' && hour === 12) hour = 0;
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return Number.MAX_SAFE_INTEGER;
+  return hour * 60 + minute;
+}
+
+/** Comparator for Array.sort — orders jobs chronologically by scheduleTime. */
+export function compareScheduleTime(a: string | undefined | null, b: string | undefined | null): number {
+  return scheduleTimeToMinutes(a) - scheduleTimeToMinutes(b);
+}
+
 const geocodeCache = new Map<string, { lat: number; lng: number } | null>();
 
 /**

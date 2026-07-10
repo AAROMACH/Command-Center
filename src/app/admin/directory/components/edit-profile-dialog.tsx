@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { AddressAutocompleteInput } from '@/components/ui/address-autocomplete-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -333,7 +334,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                     <Label className={labelCls}>Address</Label>
                     <div className="relative">
                       <MapPin size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
-                      <Input className={cn(inputCls, 'pl-7')} value={form.address} onChange={e => set('address', e.target.value)} placeholder="Street address, City, State ZIP" />
+                      <AddressAutocompleteInput className={cn(inputCls, 'pl-7')} value={form.address} onChange={v => set('address', v)} placeholder="Street address, City, State ZIP" />
                     </div>
                   </div>
                 </div>

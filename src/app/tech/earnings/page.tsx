@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { AddressAutocompleteInput } from '@/components/ui/address-autocomplete-input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -603,11 +604,11 @@ export default function TechEarningsPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted">From Location *</Label>
-                                <Input value={mileageForm.fromLocation} onChange={e => setMileageForm(p => ({ ...p, fromLocation: e.target.value }))} className="h-10 text-xs" placeholder="Starting address or location" />
+                                <AddressAutocompleteInput value={mileageForm.fromLocation} onChange={v => setMileageForm(p => ({ ...p, fromLocation: v }))} className="h-10 text-xs" placeholder="Starting address or location" />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted">To Location *</Label>
-                                <Input value={mileageForm.toLocation} onChange={e => setMileageForm(p => ({ ...p, toLocation: e.target.value }))} className="h-10 text-xs" placeholder="Destination address or location" />
+                                <AddressAutocompleteInput value={mileageForm.toLocation} onChange={v => setMileageForm(p => ({ ...p, toLocation: v }))} className="h-10 text-xs" placeholder="Destination address or location" />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted">Related Job (optional)</Label>

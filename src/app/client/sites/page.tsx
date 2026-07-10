@@ -29,6 +29,7 @@ import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { AddressAutocompleteInput } from '@/components/ui/address-autocomplete-input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { ViewToggle, useViewMode } from '@/components/view-toggle';
@@ -256,7 +257,7 @@ export default function ClientSitesPage() {
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] font-bold uppercase text-text-muted">Address / Coordinates</Label>
-                            <Input name="location" placeholder="Full address..." className="bg-bg-primary" required />
+                            <AddressAutocompleteInput name="location" placeholder="Full address..." className="bg-bg-primary" required />
                             {duplicateError && (
                                 <p className="text-[10px] text-brand-red font-bold flex items-center gap-1.5">
                                     <AlertCircle size={12} /> {duplicateError}

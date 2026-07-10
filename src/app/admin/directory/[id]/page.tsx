@@ -1177,6 +1177,14 @@ export default function DirectoryPersonPage() {
         {/* ── NOTES ── */}
         <TabsContent value="notes" className="m-0 pt-5">
           <div className="space-y-4">
+            {person?.adminNotes && (
+              <div className="p-4 rounded-xl border border-accent-gold/30 bg-accent-gold/5 space-y-2">
+                <h3 className="text-[10px] font-black text-accent-gold uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Shield size={11} /> Admin Notes <span className="text-text-muted normal-case font-medium">(admin-only, edited via Edit Profile)</span>
+                </h3>
+                <p className="text-[11px] text-text-primary whitespace-pre-wrap">{person.adminNotes}</p>
+              </div>
+            )}
             <div className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
               <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
                 <Plus size={11} /> Add Note

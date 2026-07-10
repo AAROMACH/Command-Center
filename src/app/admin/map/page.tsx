@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { format, addDays, subDays, isToday, parseISO } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn, compareScheduleTime } from '@/lib/utils';
 
 const AdminMapView = dynamic(() => import('./components/admin-map-view'), {
   ssr: false,
@@ -85,7 +85,7 @@ export default function AdminMapPage() {
         const sa = STATUS_ORDER[a.status] ?? 99;
         const sb = STATUS_ORDER[b.status] ?? 99;
         if (sa !== sb) return sa - sb;
-        return (a.scheduleTime || '').localeCompare(b.scheduleTime || '');
+        return compareScheduleTime(a.scheduleTime, b.scheduleTime);
       });
   }, [allWorkOrders, selectedDate]);
 

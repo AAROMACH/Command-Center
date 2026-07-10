@@ -164,7 +164,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
 
   const handleDeleteNote = async (noteId: string) => {
     if (!person?.id) return;
-    await deleteDoc(doc(db, 'users', person.id, 'notes', noteId));
+    await deleteDoc(doc(db, 'users', person.id, 'techNotes', noteId));
     toast({ variant: 'destructive', title: 'Note Deleted' });
   };
 

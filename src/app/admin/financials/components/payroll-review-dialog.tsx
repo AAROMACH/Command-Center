@@ -129,82 +129,82 @@ function ImportedJobAudit({
 
     return (
         <div className={cn(
-            "flex flex-col gap-2 p-3 bg-bg-primary border rounded-lg text-left w-full sm:w-[420px] max-w-full transition-all",
+            "flex flex-wrap items-center gap-x-4 gap-y-2 p-2 bg-bg-primary border rounded-lg text-left w-full transition-all",
             isDirty ? "border-brand-red ring-1 ring-brand-red/20 shadow-lg" : "border-border-sub"
         )} onClick={e => e.stopPropagation()}>
-             <div className="grid grid-cols-3 gap-3 text-left items-end">
-                <div className="space-y-1 text-left">
-                    <Label className="text-[9px] font-black uppercase text-text-muted text-left">Labor Pay</Label>
-                    <div className="relative text-left">
-                        <DollarSign size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+             <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1">
+                    <Label className="text-[8px] font-black uppercase text-text-muted whitespace-nowrap">Pay</Label>
+                    <div className="relative">
+                        <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input
                             type="number"
                             value={localPay}
                             onChange={(e) => setLocalPay(parseFloat(e.target.value) || 0)}
-                            className="h-8 w-full text-xs pl-6 bg-bg-secondary font-mono font-bold border border-border-sub shadow-none focus-visible:ring-1"
+                            className="h-7 w-20 text-xs pl-5 bg-bg-secondary font-mono font-bold border border-border-sub shadow-none focus-visible:ring-1"
                         />
                     </div>
                 </div>
-                <div className="space-y-1 text-left">
-                    <Label className="text-[9px] font-black uppercase text-text-muted text-left">Reimb.</Label>
-                    <div className="relative text-left">
-                        <DollarSign size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                <div className="flex items-center gap-1">
+                    <Label className="text-[8px] font-black uppercase text-text-muted whitespace-nowrap">Reimb.</Label>
+                    <div className="relative">
+                        <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input
                             type="number"
                             value={localReimb}
                             onChange={(e) => setLocalReimb(parseFloat(e.target.value) || 0)}
-                            className="h-8 w-full text-xs pl-6 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
+                            className="h-7 w-20 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
                         />
                     </div>
                 </div>
-                <div className="space-y-1 text-left">
-                    <Label className="text-[9px] font-black uppercase text-text-muted text-left">Overhead</Label>
-                    <div className="relative text-left">
-                        <DollarSign size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                <div className="flex items-center gap-1">
+                    <Label className="text-[8px] font-black uppercase text-text-muted whitespace-nowrap">Ovhd.</Label>
+                    <div className="relative">
+                        <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input
                             type="number"
                             value={localOverhead}
                             onChange={(e) => setLocalOverhead(parseFloat(e.target.value) || 0)}
-                            className="h-8 w-full text-xs pl-6 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
+                            className="h-7 w-20 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
                         />
                     </div>
                 </div>
              </div>
 
-             <div className="grid grid-cols-4 gap-3 pt-2 border-t border-border-sub/50 text-left">
-                <div className="space-y-0.5 text-left">
-                    <p className="text-[8px] font-black text-text-muted uppercase text-left">FN Fee (15.85%)</p>
-                    <p className="text-[11px] font-mono font-bold text-text-primary leading-none text-left">${totalFnFee.toFixed(2)}</p>
+             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-3 border-l border-border-sub/50">
+                <div className="flex items-center gap-1 whitespace-nowrap">
+                    <span className="text-[7px] font-black text-text-muted uppercase">FN (15.85%)</span>
+                    <span className="text-[11px] font-mono font-bold text-text-primary">${totalFnFee.toFixed(2)}</span>
                 </div>
-                <div className="space-y-0.5 text-left">
-                    <p className="text-[8px] font-black text-text-muted uppercase text-left">Net Labor</p>
-                    <p className="text-[11px] font-mono font-bold text-text-primary leading-none text-left">${netLabor.toFixed(2)}</p>
+                <div className="flex items-center gap-1 whitespace-nowrap">
+                    <span className="text-[7px] font-black text-text-muted uppercase">Net</span>
+                    <span className="text-[11px] font-mono font-bold text-text-primary">${netLabor.toFixed(2)}</span>
                 </div>
-                <div className="space-y-0.5 text-left">
-                    <p className="text-[8px] font-black text-text-green uppercase text-left">Tech Payout</p>
-                    <p className="text-[11px] font-mono font-bold text-text-green leading-none text-left">${techPayout.toFixed(2)}</p>
+                <div className="flex items-center gap-1 whitespace-nowrap">
+                    <span className="text-[7px] font-black text-text-green uppercase">Payout</span>
+                    <span className="text-[11px] font-mono font-bold text-text-green">${techPayout.toFixed(2)}</span>
                 </div>
-                <div className="space-y-0.5 text-right">
-                    <p className="text-[8px] font-black text-brand-red uppercase text-right">Aaromach</p>
-                    <p className="text-[11px] font-mono font-bold text-brand-red leading-none text-right">${aaromachPay.toFixed(2)}</p>
+                <div className="flex items-center gap-1 whitespace-nowrap">
+                    <span className="text-[7px] font-black text-brand-red uppercase">Aaromach</span>
+                    <span className="text-[11px] font-mono font-bold text-brand-red">${aaromachPay.toFixed(2)}</span>
                 </div>
              </div>
 
              {isDirty && (
-                <div className="flex justify-end gap-2 pt-1">
+                <div className="flex items-center gap-1.5 ml-auto">
                     <button
                         onClick={handleReset}
-                        className="h-7 px-3 rounded bg-bg-tertiary flex items-center gap-1.5 text-text-muted hover:text-text-primary transition-colors text-[9px] font-bold uppercase tracking-widest"
+                        className="h-6 px-2 rounded bg-bg-tertiary flex items-center gap-1 text-text-muted hover:text-text-primary transition-colors text-[8px] font-bold uppercase tracking-widest"
                         title="Reset changes"
                     >
-                        <RotateCcw size={11}/> Reset
+                        <RotateCcw size={10}/> Reset
                     </button>
                     <button
                         onClick={handleCommit}
-                        className="h-7 px-3 rounded bg-brand-red flex items-center gap-1.5 text-white hover:bg-brand-red-hover transition-colors shadow-sm text-[9px] font-bold uppercase tracking-widest"
+                        className="h-6 px-2 rounded bg-brand-red flex items-center gap-1 text-white hover:bg-brand-red-hover transition-colors shadow-sm text-[8px] font-bold uppercase tracking-widest"
                         title="Commit Audit"
                     >
-                        <Save size={11}/> Save
+                        <Save size={10}/> Save
                     </button>
                 </div>
              )}
@@ -536,7 +536,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </Button>
                                                     </div>
 
-                                                    <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                                    <div className={cn("flex-1 flex flex-col gap-2", !isImported && "sm:flex-row sm:items-center sm:justify-between")}>
                                                         <div className="min-w-0 text-left">
                                                             <div className="flex items-center gap-2 text-left flex-wrap">
                                                                 <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
@@ -579,9 +579,9 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             )}
                                                         </div>
 
-                                                        <div className="w-full sm:w-auto min-w-0" onClick={e => e.stopPropagation()}>
+                                                        <div className={cn("w-full min-w-0", !isImported && "sm:w-auto")} onClick={e => e.stopPropagation()}>
                                                             {isImported && wo ? (
-                                                                <div className="border-t sm:border-t-0 sm:border-l border-border-sub/40 sm:pl-3 pt-2 sm:pt-0">
+                                                                <div className="border-t border-border-sub/40 pt-2">
                                                                     <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} approvedReimbTotal={approvedReimbTotal} />
                                                                 </div>
                                                             ) : (
@@ -720,7 +720,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             )}
                                                         </div>
 
-                                                        <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4" onClick={e => e.stopPropagation()}>
+                                                        <div className={cn("flex flex-col gap-2", !isImported && "sm:flex-row sm:items-center")} onClick={e => e.stopPropagation()}>
                                                             {isImported && wo ? (
                                                                 <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} approvedReimbTotal={approvedReimbTotal} />
                                                             ) : (

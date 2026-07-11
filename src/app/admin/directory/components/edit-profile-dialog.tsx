@@ -19,6 +19,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { auditFieldChange } from '@/lib/audit';
 import { normalizeLegacyRole, APP_ROLES } from '@/lib/permissions';
+import { ROLE_DATA } from '@/lib/constants/roles';
 import type { Technician, AppRole } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
@@ -32,23 +33,14 @@ type EditProfileDialogProps = {
   person: Technician;
 };
 
-const ALL_ROLES: AppRole[] = [
-  'super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager',
-  'project_lead', 'field_technician', 'client', 'sales', 'safety_officer', 'training_coordinator',
-];
-
-const ROLE_LABELS: Record<AppRole, string> = {
-  super_admin: 'Super Admin',
-  dispatch_admin: 'Dispatch Admin',
-  payroll_admin: 'Payroll Admin',
-  project_manager: 'Project Manager',
-  project_lead: 'Project Lead',
-  field_technician: 'Field Technician',
-  client: 'Client',
-  sales: 'Sales',
-  safety_officer: 'Safety Officer',
-  training_coordinator: 'Training Coordinator',
-};
+// Single source of truth for the full role list is ROLE_DATA
+// (src/lib/constants/roles.ts) — derive rather than hand-maintain a
+// second copy that can drift out of sync with it.
+const ALL_ROLE_OPTIONS = [...ROLE_DATA.admin, ...ROLE_DATA.tech, ...ROLE_DATA.client, ...ROLE_DATA.office];
+const ALL_ROLES: AppRole[] = ALL_ROLE_OPTIONS.map(r => r.id);
+const ROLE_LABELS: Record<AppRole, string> = Object.fromEntries(
+  ALL_ROLE_OPTIONS.map(r => [r.id, r.label])
+) as Record<AppRole, string>;
 
 const SECTIONS = [
   { id: 'basic', label: 'Basic Info', icon: User },

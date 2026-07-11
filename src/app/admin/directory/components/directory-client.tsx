@@ -205,9 +205,8 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
             await updateDoc(doc(db, 'users', selectedPendingUser.id), {
                 roles: selectedRoles,
                 role: primaryRole,
-                primaryRole,
                 approvalStatus: 'approved',
-                status: 'active',
+                accountStatus: 'active',
                 approvedAt: new Date().toISOString(),
                 approvedBy: adminUid,
                 updatedAt: new Date().toISOString(),
@@ -231,7 +230,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
             const adminUid = auth.currentUser?.uid || '';
             await updateDoc(doc(db, 'users', selectedPendingUser.id), {
                 approvalStatus: 'denied',
-                status: 'inactive',
+                accountStatus: 'inactive',
                 deniedAt: new Date().toISOString(),
                 deniedBy: adminUid,
                 denialReason: denyReason.trim(),

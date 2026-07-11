@@ -67,14 +67,20 @@ import { Switch } from '@/components/ui/switch';
 import type { Permission } from '@/lib/permissions';
 import { PermissionEditorDialog } from './permission-editor-dialog';
 
+// Documents are canonically stored in users/{id}/documents (also used by
+// directory/[id]/page.tsx and the tech's own profile page). This view also
+// reads the older top-level `personnelDocuments` collection so documents
+// uploaded here before the unification aren't hidden — new uploads always
+// go to the canonical subcollection. `_source` routes the delete handler.
 type PersonnelDocument = {
     id: string;
     name: string;
-    type: 'pdf' | 'doc' | 'img';
-    size: string;
+    type: string;
+    size?: string;
     uploadedAt: string;
-    uploader: string;
+    uploader?: string;
     url?: string;
+    _source: 'legacy' | 'canonical';
 }
 
 type PersonnelDetailDialogProps = {
@@ -86,10 +92,14 @@ type PersonnelDetailDialogProps = {
   onEdit?: () => void;
 };
 
+// Shares the users/{id}/techNotes subcollection with the tech's own profile
+// page and directory/[id]/page.tsx — authorName/createdBy is the schema
+// tech/profile/page.tsx already reads, kept consistent here.
 type PersonnelNote = {
   id: string;
   text: string;
-  author: string;
+  authorName: string;
+  createdBy?: string;
   createdAt: string;
 };
 
@@ -115,7 +125,9 @@ const QUICK_PERMISSIONS: { key: Permission; label: string }[] = [
 export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, timeOffRequests, onEdit }: PersonnelDetailDialogProps) {
   const [isLogEventOpen, setIsLogEventOpen] = useState(false);
   const [isPermEditorOpen, setIsPermEditorOpen] = useState(false);
-  const [documents, setDocuments] = useState<PersonnelDocument[]>([]);
+  const [legacyDocuments, setLegacyDocuments] = useState<PersonnelDocument[]>([]);
+  const [canonicalDocuments, setCanonicalDocuments] = useState<PersonnelDocument[]>([]);
+  const documents = useMemo(() => [...canonicalDocuments, ...legacyDocuments], [canonicalDocuments, legacyDocuments]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -126,11 +138,14 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
 
   useEffect(() => {
     if (!isOpen || !person?.id) return;
-    const q = query(collection(db, 'personnelDocuments'), where('personnelId', '==', person.id));
-    const unsub = onSnapshot(q, (snap) => {
-      setDocuments(snap.docs.map(d => ({ ...d.data(), id: d.id } as PersonnelDocument)));
+    const legacyQ = query(collection(db, 'personnelDocuments'), where('personnelId', '==', person.id));
+    const unsubLegacy = onSnapshot(legacyQ, (snap) => {
+      setLegacyDocuments(snap.docs.map(d => ({ ...d.data(), id: d.id, _source: 'legacy' } as PersonnelDocument)));
     });
-    return () => unsub();
+    const unsubCanonical = onSnapshot(collection(db, 'users', person.id, 'documents'), (snap) => {
+      setCanonicalDocuments(snap.docs.map(d => ({ ...d.data(), id: d.id, _source: 'canonical' } as PersonnelDocument)));
+    });
+    return () => { unsubLegacy(); unsubCanonical(); };
   }, [isOpen, person?.id]);
 
   useEffect(() => {
@@ -151,7 +166,8 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
     try {
       await addDoc(collection(db, 'users', person.id, 'techNotes'), {
         text: newNoteText.trim(),
-        author: 'Admin',
+        authorName: auth.currentUser?.displayName || 'Admin',
+        createdBy: auth.currentUser?.uid || '',
         createdAt: new Date().toISOString(),
       });
       setNewNoteText('');
@@ -256,17 +272,16 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
     setIsUploading(true);
     try {
         const storagePath = `personnelDocuments/${person.id}/${Date.now()}-${file.name}`;
-        const { url, size } = await uploadFile(storagePath, file);
-        const docData = {
-            personnelId: person.id,
+        const { url } = await uploadFile(storagePath, file);
+        // Canonical location — same subcollection directory/[id]/page.tsx and
+        // the tech's own profile page read, so this upload is visible there too.
+        await addDoc(collection(db, 'users', person.id, 'documents'), {
             name: file.name,
-            type: (file.type.includes('image') ? 'img' : file.name.endsWith('.pdf') ? 'pdf' : 'doc') as 'pdf' | 'doc' | 'img',
-            size,
+            type: 'other',
             uploadedAt: new Date().toISOString(),
-            uploader: 'System Admin',
+            approvalStatus: 'pending',
             url,
-        };
-        await addDoc(collection(db, 'personnelDocuments'), docData);
+        });
         toast({
             title: "Document Registered",
             description: `${file.name} has been added to the personnel folder.`,
@@ -279,9 +294,14 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
     }
   };
 
-  const handleDeleteDoc = async (id: string) => {
+  const handleDeleteDoc = async (docToDelete: PersonnelDocument) => {
+    if (!person?.id) return;
     try {
-        await deleteDoc(doc(db, 'personnelDocuments', id));
+        await deleteDoc(
+          docToDelete._source === 'canonical'
+            ? doc(db, 'users', person.id, 'documents', docToDelete.id)
+            : doc(db, 'personnelDocuments', docToDelete.id)
+        );
         toast({
             variant: "destructive",
             title: "Asset Removed",
@@ -524,8 +544,8 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                       <div className="flex items-center gap-4 overflow-hidden text-left">
                                           <div className={cn(
                                               "p-2.5 rounded-lg border",
-                                              doc.type === 'pdf' ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
-                                              doc.type === 'img' ? "bg-green-dim text-text-green border-green-border/30" : 
+                                              doc.type === 'pdf' ? "bg-brand-red-dim text-text-red border-brand-red/30" :
+                                              doc.type === 'img' ? "bg-green-dim text-text-green border-green-border/30" :
                                               "bg-bg-primary text-text-secondary border border-border-sub"
                                           )}>
                                               {doc.type === 'img' ? <ImageIcon size={18}/> : <FileText size={18}/>}
@@ -533,7 +553,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                           <div className="min-w-0">
                                               <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[180px]">{doc.name}</p>
                                               <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest mt-0.5">
-                                                  {doc.size} · {format(parseISO(doc.uploadedAt), 'MMM d, yyyy')}
+                                                  {doc.size ? `${doc.size} · ` : ''}{format(parseISO(doc.uploadedAt), 'MMM d, yyyy')}
                                               </p>
                                           </div>
                                       </div>
@@ -541,7 +561,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                           <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-primary" onClick={() => doc.url && window.open(doc.url, '_blank')}>
                                               <Download size={14}/>
                                           </Button>
-                                          <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-red" onClick={() => handleDeleteDoc(doc.id)}>
+                                          <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-red" onClick={() => handleDeleteDoc(doc)}>
                                               <Trash2 size={14}/>
                                           </Button>
                                       </div>
@@ -656,7 +676,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                   <div key={note.id} className="p-3 rounded-lg bg-bg-secondary border border-border-sub group relative">
                                       <div className="flex items-center justify-between mb-1.5">
                                           <div className="flex items-center gap-2">
-                                              <span className="text-[9px] font-black text-text-muted uppercase tracking-widest">{note.author}</span>
+                                              <span className="text-[9px] font-black text-text-muted uppercase tracking-widest">{note.authorName}</span>
                                               <span className="text-[8px] text-text-muted">·</span>
                                               <span className="text-[9px] text-text-muted font-mono">
                                                   {format(new Date(note.createdAt), 'MM-dd-yyyy HH:mm')}

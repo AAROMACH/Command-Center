@@ -64,7 +64,7 @@ export default function DirectoryPersonPage() {
   const [documents, setDocuments] = useState<PersonnelDocument[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [penaltyEvents, setPenaltyEvents] = useState<ReliabilityEvent[]>([]);
-  const [techNotes, setTechNotes] = useState<{ id: string; text: string; createdAt: string }[]>([]);
+  const [techNotes, setTechNotes] = useState<{ id: string; text: string; createdAt: string; authorName?: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -260,6 +260,8 @@ export default function DirectoryPersonPage() {
     try {
       await addDoc(collection(db, 'users', id, 'techNotes'), {
         text: noteText.trim(),
+        authorName: auth.currentUser?.displayName || 'Admin',
+        createdBy: auth.currentUser?.uid || '',
         createdAt: new Date().toISOString(),
       });
       setNoteText('');
@@ -1202,7 +1204,7 @@ export default function DirectoryPersonPage() {
                 <div key={note.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary">
                   <p className="text-[11px] text-text-primary whitespace-pre-wrap">{note.text}</p>
                   <p className="text-[9px] text-text-muted uppercase mt-2">
-                    {note.createdAt ? format(new Date(note.createdAt), 'MMM d, yyyy h:mm a') : '—'}
+                    {note.authorName ? `${note.authorName} · ` : ''}{note.createdAt ? format(new Date(note.createdAt), 'MMM d, yyyy h:mm a') : '—'}
                   </p>
                 </div>
               ))}

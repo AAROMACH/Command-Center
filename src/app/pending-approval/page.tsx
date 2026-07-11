@@ -55,9 +55,14 @@ export default function PendingApprovalPage() {
         return;
       }
 
+      // Matches login.tsx's gate exactly: an explicit 'pending' status must
+      // never be waved through just because roles were pre-provisioned
+      // (e.g. via the directory permissions editor before formal approval)
+      // — that was the bypass. Missing/undefined approvalStatus with roles
+      // already set (legacy accounts) is still treated as approved, same
+      // as login.tsx.
       const isApproved = data.approvalStatus === 'approved'
-        || (data.roles?.length ?? 0) > 0
-        || !!data.role;
+        || (data.approvalStatus !== 'pending' && ((data.roles?.length ?? 0) > 0 || !!data.role));
 
       if (isApproved) {
         redirectApprovedUser(uid, data);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { isTech, isClient } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -51,7 +52,7 @@ type EditPersonnelDialogProps = {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   person: Technician;
-  onSave: (updatedPerson: Technician) => void;
+  onSave: (personId: string, updates: Partial<Technician>) => void;
 };
 
 export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditPersonnelDialogProps) {
@@ -161,12 +162,27 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
         return;
     }
 
-    const updatedData = {
-        ...formData,
-        role: (formData.roles || [])[0].replace(/_/g, ' ').toUpperCase()
+    // Send only the fields this form actually edits — never the full
+    // technician object. This dialog is opened with a snapshot of `person`
+    // that can go stale (e.g. another admin added a note in the meantime);
+    // echoing the whole object back would silently overwrite those
+    // untouched fields with the stale snapshot's values.
+    const updates: Partial<Technician> = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        roles: formData.roles,
+        // Raw lowercase AppRole id, matching the approve flow's format
+        // (directory-client.tsx) — exact-match legacy checks like
+        // isSuperAdmin() compare against 'super_admin', not 'SUPER ADMIN'.
+        // Display formatting is handled separately, e.g. getPrimaryRoleLabel().
+        role: (formData.roles || [])[0] || '',
+        hourlyRate: formData.hourlyRate,
+        clientCompany: formData.clientCompany,
     };
 
-    onSave(updatedData);
+    onSave(person.id, updates);
     setIsOpen(false);
   };
 
@@ -184,7 +200,7 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
 
   const currentPermissions = useMemo(() => {
     const roles = formData.roles || [];
-    const allOptions = [...ROLE_DATA.admin, ...ROLE_DATA.tech, ...ROLE_DATA.client];
+    const allOptions = [...ROLE_DATA.admin, ...ROLE_DATA.tech, ...ROLE_DATA.client, ...ROLE_DATA.office];
     const perms = new Set<string>();
     roles.forEach(roleId => {
         const option = allOptions.find(o => o.id === roleId);
@@ -193,8 +209,8 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
     return Array.from(perms);
   }, [formData.roles]);
 
-  const isClientRole = formData.roles?.includes('client');
-  const isFieldTech = formData.roles?.some(r => r.includes('tech') || r.includes('lead'));
+  const isClientRole = isClient(formData);
+  const isFieldTech = isTech(formData);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -284,7 +300,7 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
                 )}
              </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {(Object.keys(ROLE_DATA) as Array<keyof typeof ROLE_DATA>).map((category) => (
                     <div key={category} className="space-y-4">
                         <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1 capitalize text-left">{category}</h4>

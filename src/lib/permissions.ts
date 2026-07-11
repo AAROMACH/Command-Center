@@ -401,7 +401,16 @@ export function normalizeLegacyRole(role: string | null | undefined): AppRole | 
   return null;
 }
 
-export function hasPermission(user: Technician | null | undefined, permission: Permission): boolean {
+// Minimal shape the role/permission checks below actually need. Accepting
+// this instead of the full Technician type lets callers pass Partial<Technician>
+// form-state objects (e.g. an in-progress "add personnel" form) without a cast.
+export type RoleLike = {
+  roles?: AppRole[];
+  role?: string;
+  permissionOverrides?: Record<string, boolean>;
+};
+
+export function hasPermission(user: RoleLike | null | undefined, permission: Permission): boolean {
   if (!user) return false;
 
   if (user.permissionOverrides) {
@@ -425,40 +434,46 @@ export function hasPermission(user: Technician | null | undefined, permission: P
   return uniqueRoles.some(role => ROLE_PERMISSIONS[role as AppRole]?.includes(permission));
 }
 
-export function isAdmin(user: Technician | null | undefined): boolean {
+// The 4 core admin/office roles. Note: sales/safety_officer/training_coordinator
+// are NOT blanket-admin — they're granted whatever specific permissions
+// ROLE_PERMISSIONS lists for them via hasPermission(), but do not get general
+// admin UI/access. This matches firestore.rules/storage.rules isAdmin(),
+// which only recognizes these 4 — keeping this list wider than the rules
+// would show admin UI the server then silently rejects.
+export function isAdmin(user: RoleLike | null | undefined): boolean {
   if (!user) return false;
-  const adminRoles: AppRole[] = ['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager', 'sales', 'safety_officer', 'training_coordinator'];
+  const adminRoles: AppRole[] = ['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'];
   const userRoles: AppRole[] = user.roles || [];
   const currentRole = user.role?.toLowerCase() || '';
   const isLegacyAdmin = currentRole.includes('admin') || currentRole.includes('dispatcher') || currentRole.includes('manager');
   return isLegacyAdmin || userRoles.some(role => adminRoles.includes(role));
 }
 
-export function isSales(user: Technician | null | undefined): boolean {
+export function isSales(user: RoleLike | null | undefined): boolean {
   if (!user) return false;
   const currentRole = user.role?.toLowerCase() || '';
   return user.roles?.includes('sales') || currentRole === 'sales' || currentRole.includes('sales');
 }
 
-export function isSuperAdmin(user: Technician | null | undefined): boolean {
+export function isSuperAdmin(user: RoleLike | null | undefined): boolean {
   if (!user) return false;
   const userRoles: AppRole[] = user.roles || [];
   const legacyRole = user.role?.toLowerCase() || '';
   return userRoles.includes('super_admin') || legacyRole === 'admin' || legacyRole === 'super_admin';
 }
 
-export function isDispatchAdmin(user: Technician | null | undefined): boolean {
+export function isDispatchAdmin(user: RoleLike | null | undefined): boolean {
   if (!user) return false;
   const userRoles: AppRole[] = user.roles || [];
   return userRoles.includes('dispatch_admin') || (user.role?.toLowerCase() || '').includes('dispatcher');
 }
 
-export function isPayAdmin(user: Technician | null | undefined): boolean {
+export function isPayAdmin(user: RoleLike | null | undefined): boolean {
   if (!user) return false;
   return hasPermission(user, 'admin.financials.approve_pay_changes');
 }
 
-export function isTech(user: Technician | null | undefined): boolean {
+export function isTech(user: RoleLike | null | undefined): boolean {
   if (!user) return false;
   const techRoles: AppRole[] = ['project_lead', 'field_technician'];
   const userRoles: AppRole[] = user.roles || [];
@@ -467,7 +482,7 @@ export function isTech(user: Technician | null | undefined): boolean {
   return isLegacyTech || userRoles.some(role => techRoles.includes(role));
 }
 
-export function isClient(user: Technician | null | undefined): boolean {
+export function isClient(user: RoleLike | null | undefined): boolean {
   if (!user) return false;
   const currentRole = user.role?.toLowerCase() || '';
   return user.roles?.includes('client') || currentRole.includes('client');

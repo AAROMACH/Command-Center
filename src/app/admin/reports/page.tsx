@@ -99,7 +99,7 @@ import { format, parseISO, subDays, isAfter, addHours, isSameDay, startOfDay, is
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
-import { isAdmin, isSuperAdmin } from '@/lib/permissions';
+import { isAdmin, isSuperAdmin, isClient } from '@/lib/permissions';
 
 const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'TBD';
@@ -668,7 +668,7 @@ export default function ActivityAuditPage() {
         const results: any[] = [];
 
         // Search Techs
-        technicians.filter(t => !t.roles?.includes('client')).forEach(t => {
+        technicians.filter(t => !isClient(t)).forEach(t => {
             if ((t.name || '').toLowerCase().includes(q) || (t.id || '').toLowerCase().includes(q)) {
                 results.push({
                     type: 'OPERATIVE',
@@ -727,12 +727,12 @@ export default function ActivityAuditPage() {
     const renderTechnicianRoster = () => (
         <div className="space-y-2">
             <div className="flex justify-between items-center px-1 mb-4 text-left">
-                <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest text-left">{technicians.filter(t => !t.roles?.includes('client')).length} Technicians</p>
+                <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest text-left">{technicians.filter(t => !isClient(t)).length} Technicians</p>
                 <Button variant="ghost" size="sm" className="h-7 text-[10px] uppercase font-bold text-text-muted" onClick={() => { setSelectedTechId(null); }}>
                     <RefreshCw size={12} className="mr-1.5"/> Refresh
                 </Button>
             </div>
-            {technicians.filter(t => !t.roles?.includes('client')).map(t => {
+            {technicians.filter(t => !isClient(t)).map(t => {
                 const pts = penaltyEvents.filter(p => p.techId === t.id).reduce((s, p) => s + Math.abs(p.scoreChange), 0);
                 const isReliable = pts <= 2;
                 return (
@@ -1016,7 +1016,7 @@ export default function ActivityAuditPage() {
                                             </SelectTrigger>
                                             <SelectContent className="bg-bg-elevated border-border-main">
                                                 <SelectItem value="all" className="text-[10px] uppercase font-bold">All Techs</SelectItem>
-                                                {technicians.filter(t => !t.roles?.includes('client')).map(t => (
+                                                {technicians.filter(t => !isClient(t)).map(t => (
                                                     <SelectItem key={t.id} value={t.id} className="text-[10px] uppercase font-bold">{t.name}</SelectItem>
                                                 ))}
                                             </SelectContent>

@@ -8,6 +8,7 @@ import type { TripLog } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { AddressAutocompleteInput } from '@/components/ui/address-autocomplete-input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
@@ -125,10 +126,10 @@ export function LogTripDialog({ open, onClose, technicianId, technicianName }: P
               <MapPin size={10} className="text-brand-red" />
               Start Location
             </Label>
-            <Input
+            <AddressAutocompleteInput
               placeholder="e.g. Home / Office / 123 Main St"
               value={form.startLocation}
-              onChange={e => setForm(f => ({ ...f, startLocation: e.target.value }))}
+              onChange={v => setForm(f => ({ ...f, startLocation: v }))}
               className="h-9 text-xs bg-bg-tertiary border-border-main"
             />
           </div>
@@ -138,10 +139,10 @@ export function LogTripDialog({ open, onClose, technicianId, technicianName }: P
               <MapPin size={10} className="text-text-green" />
               End Location / Job Site
             </Label>
-            <Input
+            <AddressAutocompleteInput
               placeholder="e.g. Job site address"
               value={form.endLocation}
-              onChange={e => setForm(f => ({ ...f, endLocation: e.target.value }))}
+              onChange={v => setForm(f => ({ ...f, endLocation: v }))}
               className="h-9 text-xs bg-bg-tertiary border-border-main"
             />
           </div>

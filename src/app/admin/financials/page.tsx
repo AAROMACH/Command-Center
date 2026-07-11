@@ -17,7 +17,7 @@ import { RevenueChart } from './components/revenue-chart';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { isSuperAdmin } from '@/lib/permissions';
+import { isSuperAdmin, isClient } from '@/lib/permissions';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
@@ -218,7 +218,7 @@ export default function FinancialsPage() {
     
     const getTechnicianName = (id: string) => technicians.find(t => t.id === id)?.name || 'Unknown';
     const getTechnician = (id: string) => technicians.find(t => t.id === id);
-    const clientsList = technicians.filter(t => t.roles?.includes('client') || (t.role || '').toLowerCase().includes('client'));
+    const clientsList = technicians.filter(isClient);
     
     const handleSaveInvoice = async (savedInvoice: Invoice) => {
         try {

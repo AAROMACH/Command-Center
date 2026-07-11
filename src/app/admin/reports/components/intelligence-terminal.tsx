@@ -47,6 +47,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import type { Technician, WorkOrder, WeeklyLog, ProjectDailyLog } from '@/lib/types';
+import { isClient } from '@/lib/permissions';
 
 type MetricType = 'reliability' | 'payouts' | 'assignments' | 'hours';
 type GroupBy = 'tech' | 'client' | 'date';
@@ -149,7 +150,7 @@ export function IntelligenceTerminal({
 
         if (groupBy === 'tech') {
             return technicians
-                .filter(t => !t.roles?.includes('client'))
+                .filter(t => !isClient(t))
                 .map(tech => {
                     let value = 0;
                     if (metric === 'reliability') value = tech.reliabilityScore || 0;

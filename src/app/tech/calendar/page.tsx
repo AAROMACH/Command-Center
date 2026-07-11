@@ -17,7 +17,7 @@ import {
   format, addMonths, subMonths, startOfMonth, endOfMonth,
   eachDayOfInterval, getDay, isSameDay, isToday, parseISO,
 } from 'date-fns';
-import { cn, getTacticalLocation, geocodeAddress, sumRouteMileage } from '@/lib/utils';
+import { cn, getTacticalLocation, geocodeAddress, sumRouteMileage, compareScheduleTime, calculateDistance, formatDistance } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 const MapView = dynamic(() => import('../map/components/map-view'), {
@@ -44,6 +44,47 @@ function getStatusLabel(status: string) {
     'in-progress': 'In Progress', 'checked-out': 'Checked Out', completed: 'Completed',
   };
   return map[status] || status;
+}
+
+type RoutePreference = 'optimized' | 'by-time' | 'by-mileage';
+
+/**
+ * Orders a day's jobs per the tech's Route Preference setting (Settings ->
+ * Work Preferences). Jobs without resolved coordinates can't be placed
+ * geographically, so they're always time-sorted and appended at the end.
+ */
+function orderJobsByPreference<T extends WorkOrder>(
+  jobs: T[],
+  preference: RoutePreference,
+  home: { lat: number; lng: number } | null,
+): T[] {
+  const byTime = (a: T, b: T) => compareScheduleTime(a.scheduleTime, b.scheduleTime);
+  if (preference === 'by-time' || !home) return [...jobs].sort(byTime);
+
+  const withCoords = jobs.filter((j): j is T & { lat: number; lng: number } => typeof j.lat === 'number' && typeof j.lng === 'number');
+  const withoutCoords = jobs.filter(j => !(typeof j.lat === 'number' && typeof j.lng === 'number')).sort(byTime);
+
+  if (preference === 'by-mileage') {
+    const sorted = [...withCoords].sort((a, b) =>
+      calculateDistance(home.lat, home.lng, a.lat, a.lng) - calculateDistance(home.lat, home.lng, b.lat, b.lng));
+    return [...sorted, ...withoutCoords];
+  }
+
+  // 'optimized' — greedy nearest-neighbor chain starting from home.
+  const remaining = [...withCoords];
+  const route: T[] = [];
+  let cur = home;
+  while (remaining.length) {
+    let bestIdx = 0, bestDist = Infinity;
+    remaining.forEach((j, i) => {
+      const d = calculateDistance(cur.lat, cur.lng, j.lat, j.lng);
+      if (d < bestDist) { bestDist = d; bestIdx = i; }
+    });
+    const [next] = remaining.splice(bestIdx, 1);
+    route.push(next);
+    cur = { lat: next.lat, lng: next.lng };
+  }
+  return [...route, ...withoutCoords];
 }
 
 // Non-draggable clickable chip
@@ -155,14 +196,18 @@ export default function TechCalendarPage() {
     return [...padBefore, ...days, ...padAfter];
   }, [monthDate]);
 
+  const routePreference: RoutePreference = currentTech?.routePreference || 'by-time';
+
   const jobsForDate = useCallback((day: Date) =>
-    allJobs
-      .filter(wo => {
+    orderJobsByPreference(
+      allJobs.filter(wo => {
         if (!wo.scheduleDate) return false;
         try { return isSameDay(parseISO(wo.scheduleDate), day); } catch { return false; }
-      })
-      .sort((a, b) => (a.scheduleTime || '').localeCompare(b.scheduleTime || '')),
-    [allJobs]);
+      }),
+      routePreference,
+      homeCoords,
+    ),
+    [allJobs, routePreference, homeCoords]);
 
   const selectedDateJobs = useMemo(() => jobsForDate(selectedDate), [selectedDate, jobsForDate]);
 
@@ -374,7 +419,7 @@ export default function TechCalendarPage() {
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Scheduled</span>
           </div>
           {selectedDateJobs.length > 0 && (
-            <div className="flex items-center gap-1.5 pl-3 border-l border-border-sub" title="Round-trip mileage from your home address on file, through each job in schedule order, and back">
+            <div className="flex items-center gap-1.5 pl-3 border-l border-border-sub" title={`Round-trip mileage from your home address, through each job (ordered by your "${routePreference.replace('-', ' ')}" route preference), and back`}>
               <RouteIcon size={11} className="text-brand-red" />
               {!currentTech?.address ? (
                 <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest italic">Add home address in profile to see route mileage</span>
@@ -382,7 +427,7 @@ export default function TechCalendarPage() {
                 <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Calculating route…</span>
               ) : routeMileage !== null ? (
                 <span className="text-[10px] font-bold text-text-primary uppercase tracking-widest">
-                  {routeMileage.toFixed(1)} mi round trip · home to home
+                  {formatDistance(routeMileage, currentTech?.mileageUnit || 'mi')} round trip · home to home
                 </span>
               ) : (
                 <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest italic">Route mileage unavailable</span>

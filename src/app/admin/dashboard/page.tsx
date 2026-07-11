@@ -42,7 +42,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
+import { cn, compareScheduleTime } from '@/lib/utils';
 import type { WorkOrder, Technician, Project, WeeklyLog, SiteRequest, ServiceRequest, TimeOffRequest, Invoice } from '@/lib/types';
 import { computeSla, slaStatusColor, SLA_DEFAULTS } from '@/lib/sla';
 import { isServiceTicketDoc } from '@/lib/request-intake';
@@ -197,7 +197,7 @@ export default function DashboardPage() {
         return [...workOrders, ...assignments].filter(wo => {
             if (!wo.scheduleDate) return false;
             try { return isSameDay(parseISO(wo.scheduleDate), today); } catch { return false; }
-        }).sort((a, b) => (a.scheduleTime || '').localeCompare(b.scheduleTime || ''));
+        }).sort((a, b) => compareScheduleTime(a.scheduleTime, b.scheduleTime));
     }, [workOrders, assignments]);
 
     const financialKpis = useMemo(() => {

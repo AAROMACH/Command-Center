@@ -1,21 +1,25 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { normalizeLegacyRole } from "./permissions"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-const NON_ASSIGNABLE_ROLES = ['client', 'super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'];
+const TECH_ROLES = ['field_technician', 'project_lead'];
 
 /**
- * Whether a user can be deployed to a job as a field technician. Excludes
- * clients and admin/office roles — only field techs and project leads show
- * up in assignment/helper/swap pickers.
+ * Whether a user can be deployed to a job as a field technician. Anyone
+ * holding field_technician or project_lead is always deployable, no matter
+ * what other roles they also carry (e.g. a dispatcher who also does field
+ * work). Everyone else — Client-only, Admin-only, or Client+Admin
+ * combinations with no tech role at all — is excluded from assignment
+ * pickers.
  */
 export function isAssignableTechnician(t: { roles?: string[]; role?: string }): boolean {
-  const roles = (t.roles || []).map(r => r.toLowerCase());
-  const role = (t.role || '').toLowerCase();
-  return !roles.some(r => NON_ASSIGNABLE_ROLES.includes(r)) && !NON_ASSIGNABLE_ROLES.includes(role);
+  if ((t.roles || []).some(r => TECH_ROLES.includes(r.toLowerCase()))) return true;
+  const normalized = normalizeLegacyRole(t.role);
+  return normalized ? TECH_ROLES.includes(normalized) : false;
 }
 
 /**
@@ -146,6 +150,38 @@ export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
+}
+
+const MILES_TO_KM = 1.60934;
+
+/** Formats a mileage figure (always computed in miles internally) per the tech's unit preference. */
+export function formatDistance(miles: number, unit: 'mi' | 'km' = 'mi'): string {
+  const value = unit === 'km' ? miles * MILES_TO_KM : miles;
+  return `${value.toFixed(1)} ${unit}`;
+}
+
+/**
+ * Parses a free-text schedule time ("9:00 AM", "10:00 AM EST", "15:30",
+ * "3:10 PM") into minutes-since-midnight for correct chronological sorting.
+ * A plain string sort puts "10:00 AM" before "9:00 AM" because '1' < '9' —
+ * this fixes that. Unparseable/empty values sort last.
+ */
+export function scheduleTimeToMinutes(raw: string | undefined | null): number {
+  const str = (raw || '').trim();
+  const match = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if (!match) return Number.MAX_SAFE_INTEGER;
+  let hour = parseInt(match[1], 10);
+  const minute = parseInt(match[2], 10);
+  const meridiem = match[3]?.toUpperCase();
+  if (meridiem === 'PM' && hour !== 12) hour += 12;
+  if (meridiem === 'AM' && hour === 12) hour = 0;
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return Number.MAX_SAFE_INTEGER;
+  return hour * 60 + minute;
+}
+
+/** Comparator for Array.sort — orders jobs chronologically by scheduleTime. */
+export function compareScheduleTime(a: string | undefined | null, b: string | undefined | null): number {
+  return scheduleTimeToMinutes(a) - scheduleTimeToMinutes(b);
 }
 
 const geocodeCache = new Map<string, { lat: number; lng: number } | null>();

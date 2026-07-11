@@ -43,7 +43,7 @@ import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
 import { format, startOfWeek, parseISO } from 'date-fns';
-import { cn, getTacticalLocation } from '@/lib/utils';
+import { cn, getTacticalLocation, compareScheduleTime } from '@/lib/utils';
 import { NotificationService } from '@/lib/notification-service';
 
 export default function TechDashboardPage() {
@@ -112,7 +112,7 @@ export default function TechDashboardPage() {
                 const dateA = a.scheduleDate || '9999-12-31';
                 const dateB = b.scheduleDate || '9999-12-31';
                 if (dateA !== dateB) return dateA.localeCompare(dateB);
-                return (a.scheduleTime || '').localeCompare(b.scheduleTime || '');
+                return compareScheduleTime(a.scheduleTime, b.scheduleTime);
             });
             
         return upcoming[0] || null;

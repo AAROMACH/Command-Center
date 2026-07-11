@@ -24,7 +24,7 @@ import { EditProfileDialog } from '../components/edit-profile-dialog';
 import { uploadFile } from '@/lib/upload';
 import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierBadgeVariant } from '@/lib/reliability';
-import { hasPermission, ALL_PERMISSIONS, PERMISSION_TREE, getPortalAccess, type Permission } from '@/lib/permissions';
+import { hasPermission, ALL_PERMISSIONS, PERMISSION_TREE, getPortalAccess, isTech as isTechRole, isClient as isClientRole, type Permission } from '@/lib/permissions';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import type { Technician, WorkOrder, PersonnelDocument, Project, ReliabilityEvent } from '@/lib/types';
 
@@ -64,7 +64,7 @@ export default function DirectoryPersonPage() {
   const [documents, setDocuments] = useState<PersonnelDocument[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [penaltyEvents, setPenaltyEvents] = useState<ReliabilityEvent[]>([]);
-  const [techNotes, setTechNotes] = useState<{ id: string; text: string; createdAt: string }[]>([]);
+  const [techNotes, setTechNotes] = useState<{ id: string; text: string; createdAt: string; authorName?: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -128,23 +128,9 @@ export default function DirectoryPersonPage() {
   const reliabilityScore = person?.reliabilityScore ?? 0;
   const tier = getReliabilityTier(reliabilityScore);
 
-  const isTech = useMemo(() => {
-    if (!person) return false;
-    return (
-      person.roles?.some(r => r === 'field_technician' || r === 'project_lead') ||
-      (person.role || '').toLowerCase().includes('tech') ||
-      (person.role || '').toLowerCase().includes('lead') ||
-      (person.role || '').toLowerCase().includes('operative')
-    ) ?? false;
-  }, [person]);
+  const isTech = useMemo(() => (person ? isTechRole(person) : false), [person]);
 
-  const isClient = useMemo(() => {
-    if (!person) return false;
-    return (
-      person.roles?.includes('client') ||
-      person.role === 'client'
-    ) ?? false;
-  }, [person]);
+  const isClient = useMemo(() => (person ? isClientRole(person) : false), [person]);
 
   const certDocuments = useMemo(() => documents.filter(d => d.type === 'certification'), [documents]);
   const roles: string[] = rolesBuffer;
@@ -274,6 +260,8 @@ export default function DirectoryPersonPage() {
     try {
       await addDoc(collection(db, 'users', id, 'techNotes'), {
         text: noteText.trim(),
+        authorName: auth.currentUser?.displayName || 'Admin',
+        createdBy: auth.currentUser?.uid || '',
         createdAt: new Date().toISOString(),
       });
       setNoteText('');
@@ -1177,6 +1165,14 @@ export default function DirectoryPersonPage() {
         {/* ── NOTES ── */}
         <TabsContent value="notes" className="m-0 pt-5">
           <div className="space-y-4">
+            {person?.adminNotes && (
+              <div className="p-4 rounded-xl border border-accent-gold/30 bg-accent-gold/5 space-y-2">
+                <h3 className="text-[10px] font-black text-accent-gold uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Shield size={11} /> Admin Notes <span className="text-text-muted normal-case font-medium">(admin-only, edited via Edit Profile)</span>
+                </h3>
+                <p className="text-[11px] text-text-primary whitespace-pre-wrap">{person.adminNotes}</p>
+              </div>
+            )}
             <div className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
               <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
                 <Plus size={11} /> Add Note
@@ -1208,7 +1204,7 @@ export default function DirectoryPersonPage() {
                 <div key={note.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary">
                   <p className="text-[11px] text-text-primary whitespace-pre-wrap">{note.text}</p>
                   <p className="text-[9px] text-text-muted uppercase mt-2">
-                    {note.createdAt ? format(new Date(note.createdAt), 'MMM d, yyyy h:mm a') : '—'}
+                    {note.authorName ? `${note.authorName} · ` : ''}{note.createdAt ? format(new Date(note.createdAt), 'MMM d, yyyy h:mm a') : '—'}
                   </p>
                 </div>
               ))}

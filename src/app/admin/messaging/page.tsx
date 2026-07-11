@@ -6,6 +6,7 @@ import { collection, onSnapshot, doc, setDoc, updateDoc, addDoc, arrayUnion } fr
 import { makeMessageId } from '@/lib/doc-ids';
 import { uploadFile } from '@/lib/upload';
 import type { Technician, AdminMessage, Project } from '@/lib/types';
+import { isAdmin, isTech, isClient } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -272,17 +273,17 @@ export default function AdminMessagingPage() {
   const allowedRoles = currentUser?.messagingAllowedRoles || 'all';
   const blockedClientIds: string[] = (currentUser as any)?.messagingBlockedClientIds || [];
   const adminTechs = technicians.filter(t => {
-    if (!t.roles?.includes('client') && t.id !== currentUser?.id) {
+    if (!isClient(t) && t.id !== currentUser?.id) {
       if (allowedRoles === 'clients') return false;
       if (allowedRoles === 'none') return false;
-      if (allowedRoles === 'admins') return t.roles?.includes('super_admin') || t.roles?.includes('dispatch_admin');
-      if (allowedRoles === 'techs') return t.roles?.includes('field_technician') || t.roles?.includes('project_lead');
+      if (allowedRoles === 'admins') return isAdmin(t);
+      if (allowedRoles === 'techs') return isTech(t);
       return true;
     }
     return false;
   });
   const clientContacts = technicians.filter(t => {
-    if (!t.roles?.includes('client')) return false;
+    if (!isClient(t)) return false;
     if (allowedRoles === 'none' || allowedRoles === 'admins' || allowedRoles === 'techs') return false;
     if (blockedClientIds.includes(t.id)) return false;
     return true;

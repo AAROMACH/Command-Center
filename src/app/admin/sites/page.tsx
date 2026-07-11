@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc } from 'firebase/firestore';
 import type { Technician, Site, WorkOrder, Quote, Invoice } from '@/lib/types';
+import { isClient } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -75,7 +76,7 @@ export default function AdminClientsPage() {
             setClients(
                 snap.docs
                     .map(d => ({ ...d.data(), id: d.id } as Technician))
-                    .filter(u => u.roles?.includes('client') || u.role?.toLowerCase().includes('client'))
+                    .filter(isClient)
             );
             check();
         }, check);

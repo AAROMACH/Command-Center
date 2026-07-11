@@ -1,5 +1,6 @@
 'use client';
 import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from '@/lib/types';
+import { isAdmin, isTech, isClient } from '@/lib/permissions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -174,19 +175,22 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
         setIsEditPersonnelOpen(true);
     };
 
-    const handleSavePersonnel = async (updatedPerson: Technician) => {
+    const handleSavePersonnel = async (personId: string, updates: Partial<Technician>) => {
         try {
-            const { id, ...data } = updatedPerson;
-            const oldPerson = personnel.find(p => p.id === id);
+            const oldPerson = personnel.find(p => p.id === personId);
             const adminId = auth.currentUser?.uid || '';
             const adminName = auth.currentUser?.displayName || 'Admin';
             if (oldPerson) {
-                await auditFieldChange('users', id, adminId, adminName, oldPerson as Record<string, unknown>, data as Record<string, unknown>);
+                await auditFieldChange('users', personId, adminId, adminName, oldPerson as Record<string, unknown>, updates as Record<string, unknown>);
             }
-            await updateDoc(doc(db, 'users', id), data);
+            // Partial update only — never spread the full stale snapshot back,
+            // or fields edited elsewhere since this dialog opened (like admin
+            // notes) get silently reverted.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await updateDoc(doc(db, 'users', personId), updates as any);
             toast({
                 title: "Operative Updated",
-                description: `Personnel records for ${updatedPerson.name} committed.`
+                description: `Personnel records for ${updates.name || oldPerson?.name} committed.`
             });
         } catch (e: any) {
             toast({ variant: "destructive", title: "Update Failed", description: e.message });
@@ -201,9 +205,8 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
             await updateDoc(doc(db, 'users', selectedPendingUser.id), {
                 roles: selectedRoles,
                 role: primaryRole,
-                primaryRole,
                 approvalStatus: 'approved',
-                status: 'active',
+                accountStatus: 'active',
                 approvedAt: new Date().toISOString(),
                 approvedBy: adminUid,
                 updatedAt: new Date().toISOString(),
@@ -227,7 +230,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
             const adminUid = auth.currentUser?.uid || '';
             await updateDoc(doc(db, 'users', selectedPendingUser.id), {
                 approvalStatus: 'denied',
-                status: 'inactive',
+                accountStatus: 'inactive',
                 deniedAt: new Date().toISOString(),
                 deniedBy: adminUid,
                 denialReason: denyReason.trim(),
@@ -256,26 +259,11 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
         }
     };
 
-    const techniciansList = personnel.filter(p => {
-        if (p.roles && p.roles.length > 0) {
-            return p.roles.some(r => r.includes('tech') || r.includes('lead'));
-        }
-        return (p.role || '').toLowerCase().includes('tech');
-    });
+    const techniciansList = personnel.filter(isTech);
 
-    const staffList = personnel.filter(p => {
-        if (p.roles && p.roles.length > 0) {
-            return p.roles.some(r => r.includes('admin') || r.includes('manager'));
-        }
-        return (p.role || '').toLowerCase() === 'dispatcher' || (p.role || '').toLowerCase() === 'admin';
-    });
+    const staffList = personnel.filter(isAdmin);
 
-    const clientsList = personnel.filter(p => {
-        if (p.roles && p.roles.length > 0) {
-            return p.roles.includes('client');
-        }
-        return (p.role || '').toLowerCase().includes('client');
-    });
+    const clientsList = personnel.filter(isClient);
 
     const companies = useMemo(() => {
         const grouped: Record<string, { name: string; businessType?: string; contacts: Technician[] }> = {};
@@ -388,7 +376,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                 }
             });
         } else {
-            personnel.filter(p => p.roles?.includes('client')).forEach(c => {
+            personnel.filter(isClient).forEach(c => {
                 c.managedSites?.forEach(s => {
                     locations.push({ 
                         id: s.id, 
@@ -422,7 +410,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
             const data = techniciansList.find(t => t.id === meta.id);
             return data ? { ...data, metaType: 'tech' as const } : null;
         } else {
-            for (const client of personnel.filter(p => p.roles?.includes('client'))) {
+            for (const client of personnel.filter(isClient)) {
                 const site = client.managedSites?.find(s => s.id === meta.id);
                 if (site) return { 
                     ...site, 

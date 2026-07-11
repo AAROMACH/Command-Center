@@ -12,6 +12,7 @@ import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { AddressAutocompleteInput } from "@/components/ui/address-autocomplete-input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -434,12 +435,12 @@ export default function TechProfilePage() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><MapPin size={10} /> Working Location</Label>
-                                            <Input value={location} onChange={(e) => setLocation(e.target.value)} className="h-11 text-xs" placeholder="e.g. Detroit, MI" />
+                                            <AddressAutocompleteInput value={location} onChange={setLocation} types={['(cities)']} className="h-11 text-xs" placeholder="e.g. Detroit, MI" />
                                             <p className="text-[9px] text-text-muted">Your city/region for job dispatching</p>
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted">Mailing Address</Label>
-                                            <Input value={address} onChange={(e) => setAddress(e.target.value)} className="h-11 text-xs" placeholder="Full street address" />
+                                            <AddressAutocompleteInput value={address} onChange={setAddress} className="h-11 text-xs" placeholder="Full street address" />
                                         </div>
                                     </div>
                                     <div className="flex justify-end pt-2">

@@ -1,6 +1,6 @@
 "use server";
 
-import { formatCityState } from "@/lib/utils";
+import { formatCityState, compareScheduleTime } from "@/lib/utils";
 import type { WorkOrder, Technician, Route } from "@/lib/types";
 
 /**
@@ -49,7 +49,7 @@ export async function getOptimizedRoutes(input: {
       const pMap = { critical: 0, high: 1, medium: 2, low: 3 };
       const pDiff = (pMap[a.priority as keyof typeof pMap] ?? 2) - (pMap[b.priority as keyof typeof pMap] ?? 2);
       if (pDiff !== 0) return pDiff;
-      return (a.scheduleTime || '').localeCompare(b.scheduleTime || '');
+      return compareScheduleTime(a.scheduleTime, b.scheduleTime);
     });
 
     // 3. GEOGRAPHIC CLUSTERING

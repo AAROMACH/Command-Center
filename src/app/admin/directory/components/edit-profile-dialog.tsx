@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { AddressAutocompleteInput } from '@/components/ui/address-autocomplete-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -18,6 +19,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { auditFieldChange } from '@/lib/audit';
 import { normalizeLegacyRole, APP_ROLES } from '@/lib/permissions';
+import { ROLE_DATA } from '@/lib/constants/roles';
 import type { Technician, AppRole } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
@@ -31,23 +33,14 @@ type EditProfileDialogProps = {
   person: Technician;
 };
 
-const ALL_ROLES: AppRole[] = [
-  'super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager',
-  'project_lead', 'field_technician', 'client', 'sales', 'safety_officer', 'training_coordinator',
-];
-
-const ROLE_LABELS: Record<AppRole, string> = {
-  super_admin: 'Super Admin',
-  dispatch_admin: 'Dispatch Admin',
-  payroll_admin: 'Payroll Admin',
-  project_manager: 'Project Manager',
-  project_lead: 'Project Lead',
-  field_technician: 'Field Technician',
-  client: 'Client',
-  sales: 'Sales',
-  safety_officer: 'Safety Officer',
-  training_coordinator: 'Training Coordinator',
-};
+// Single source of truth for the full role list is ROLE_DATA
+// (src/lib/constants/roles.ts) — derive rather than hand-maintain a
+// second copy that can drift out of sync with it.
+const ALL_ROLE_OPTIONS = [...ROLE_DATA.admin, ...ROLE_DATA.tech, ...ROLE_DATA.client, ...ROLE_DATA.office];
+const ALL_ROLES: AppRole[] = ALL_ROLE_OPTIONS.map(r => r.id);
+const ROLE_LABELS: Record<AppRole, string> = Object.fromEntries(
+  ALL_ROLE_OPTIONS.map(r => [r.id, r.label])
+) as Record<AppRole, string>;
 
 const SECTIONS = [
   { id: 'basic', label: 'Basic Info', icon: User },
@@ -333,7 +326,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                     <Label className={labelCls}>Address</Label>
                     <div className="relative">
                       <MapPin size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
-                      <Input className={cn(inputCls, 'pl-7')} value={form.address} onChange={e => set('address', e.target.value)} placeholder="Street address, City, State ZIP" />
+                      <AddressAutocompleteInput className={cn(inputCls, 'pl-7')} value={form.address} onChange={v => set('address', v)} placeholder="Street address, City, State ZIP" />
                     </div>
                   </div>
                 </div>

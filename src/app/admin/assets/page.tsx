@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, doc } from 'firebase/firestore';
 import type { Asset, AssetCategory, Material, AssetAssignment, Technician } from '@/lib/types';
+import { isClient } from '@/lib/permissions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -156,7 +157,7 @@ export default function AssetsAndMaterialsPage() {
         const unsubT = onSnapshot(collection(db, 'users'), snap => {
             setTechnicians(
                 snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician))
-                    .filter(t => !t.roles?.includes('client'))
+                    .filter(t => !isClient(t))
             );
         });
         return () => { unsubA(); unsubM(); unsubAsgn(); unsubT(); };

@@ -44,7 +44,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import { cn, formatCityState, sanitize } from '@/lib/utils';
+import { cn, formatCityState, sanitize, formatDistance } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { format, parseISO, isSameDay, startOfDay, startOfWeek, isWithinInterval } from 'date-fns';
@@ -67,6 +67,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { Input } from "@/components/ui/input";
+import { AddressAutocompleteInput } from "@/components/ui/address-autocomplete-input";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc, setDoc, getDocs } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
@@ -80,6 +81,23 @@ const DISPUTE_REASONS = [
     "This appears to be a duplicate"
 ];
 
+/** Current wall-clock weekday/hour/date in America/New_York, independent of the browser's local timezone. */
+function getEasternParts(date: Date) {
+    const fmt = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        weekday: 'short', hour: 'numeric', hour12: false,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+    });
+    const parts = fmt.formatToParts(date).reduce((acc, p) => { acc[p.type] = p.value; return acc; }, {} as Record<string, string>);
+    const weekdayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    return {
+        dow: weekdayMap[parts.weekday],
+        hour: parts.hour === '24' ? 0 : parseInt(parts.hour, 10),
+        year: parseInt(parts.year, 10),
+        month: parseInt(parts.month, 10),
+        day: parseInt(parts.day, 10),
+    };
+}
 
 
 export default function TechWeeklyLogPage() {
@@ -90,6 +108,7 @@ export default function TechWeeklyLogPage() {
     const [tripLogs, setTripLogs] = useState<TripLog[]>([]);
     const [logView, setLogView] = useState<'work' | 'trips'>('work');
     const [mounted, setMounted] = useState(false);
+    const [mileageUnit, setMileageUnit] = useState<'mi' | 'km'>('mi');
     
     const [searchQuery, setSearchQuery] = useState("");
     const [sortBy, setSortBy] = useState<string>('newest');
@@ -122,8 +141,11 @@ export default function TechWeeklyLogPage() {
             const unsubTrips = onSnapshot(query(collection(db, 'tripLogs'), where('technicianId', '==', userId)), (snap) => {
                 setTripLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as TripLog)));
             });
+            const unsubProfile = onSnapshot(doc(db, 'users', userId), (snap) => {
+                if (snap.exists()) setMileageUnit((snap.data().mileageUnit as 'mi' | 'km') || 'mi');
+            });
             return () => {
-                unsubLogs(); unsubWO(); unsubTrips();
+                unsubLogs(); unsubWO(); unsubTrips(); unsubProfile();
             };
         }
     }, []);
@@ -163,6 +185,35 @@ export default function TechWeeklyLogPage() {
         const isWeekend = dow === 0 || dow === 6;
 
         return isPastWeek || (isCurrentWeek && isWeekend);
+    }, [activeLog?.weekOf]);
+
+    /**
+     * Reimbursement Window Validator.
+     * Current week: opens Friday 6:00 PM Eastern and stays open through the weekend.
+     * Past weeks: always allowed (catch-up submissions).
+     */
+    const canAddReimbursement = useMemo(() => {
+        if (!activeLog?.weekOf) return false;
+        const et = getEasternParts(new Date());
+        const todayET = new Date(et.year, et.month - 1, et.day);
+        const daysToMonday = et.dow === 0 ? 6 : et.dow - 1;
+        const thisWeekMondayET = new Date(todayET);
+        thisWeekMondayET.setDate(todayET.getDate() - daysToMonday);
+
+        const parts = activeLog.weekOf.split('-').map(Number);
+        let logMonday: Date;
+        if (parts[2] > 1000) {
+            logMonday = new Date(parts[2], parts[0] - 1, parts[1]);
+        } else {
+            logMonday = new Date(activeLog.weekOf);
+        }
+        logMonday.setHours(0, 0, 0, 0);
+
+        const isPastWeek = logMonday.getTime() < thisWeekMondayET.getTime();
+        const isCurrentWeek = logMonday.getTime() === thisWeekMondayET.getTime();
+        const windowOpen = et.dow === 6 || et.dow === 0 || (et.dow === 5 && et.hour >= 18);
+
+        return isPastWeek || (isCurrentWeek && windowOpen);
     }, [activeLog?.weekOf]);
 
     // 3. Registry Filtering & Sorting
@@ -410,7 +461,7 @@ export default function TechWeeklyLogPage() {
                     </div>
                     <ViewTabs />
                 </header>
-                <TripLogsView tripLogs={tripLogs} workOrders={workOrders} />
+                <TripLogsView tripLogs={tripLogs} workOrders={workOrders} mileageUnit={mileageUnit} />
             </div>
         );
     }
@@ -700,6 +751,8 @@ export default function TechWeeklyLogPage() {
                             item={item}
                             isLocked={isLocked}
                             workOrders={workOrders}
+                            reimbursements={activeLog.reimbursements || []}
+                            canAddReimbursement={canAddReimbursement}
                             onConfirm={handleConfirm}
                             onDispute={handleDispute}
                             onAddReimbursement={handleAddReimbursement}
@@ -768,8 +821,10 @@ export default function TechWeeklyLogPage() {
     );
 }
 
-function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute, onAddReimbursement, techId }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, techId: string | null }) {
+function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, techId }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, techId: string | null }) {
     const job = workOrders.find(wo => wo.id === item.workOrderId);
+    const itemReimbursements = reimbursements.filter(r => r.workOrderId === item.workOrderId);
+    const totalReimbursed = itemReimbursements.reduce((acc, r) => acc + (r.amount || 0), 0);
     const [isDisputing, setIsDisputing] = useState(item.confirmationStatus === 'disputed');
     const [reason, setReason] = useState(item.disputeReason || "");
     const [notes, setNotes] = useState(item.disputeNotes || "");
@@ -782,6 +837,10 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute, onAddR
     const { toast: reimbToast } = useToast();
 
     const submitReimbursement = async () => {
+        if (!canAddReimbursement) {
+            reimbToast({ variant: 'destructive', title: 'Not Open Yet', description: 'Reimbursements open Friday 6:00 PM ET.' });
+            return;
+        }
         const amount = parseFloat(reimbAmount);
         if (!amount || amount <= 0 || !reimbDesc.trim()) {
             reimbToast({ variant: 'destructive', title: 'Missing info', description: 'Enter an amount and a description.' });
@@ -829,6 +888,11 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute, onAddR
                                 <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[350px] text-left">{job.title || job.description}</h4>
                                 {isConfirmed && <Badge variant="active" className="text-[7px] h-3.5 uppercase tracking-tighter">VERIFIED</Badge>}
                                 {isDisputed && <Badge variant="missed" className="text-[7px] h-3.5 uppercase tracking-tighter">DISPUTED</Badge>}
+                                {itemReimbursements.length > 0 && (
+                                    <Badge variant="pending" className="text-[7px] h-3.5 uppercase tracking-tighter flex items-center gap-1">
+                                        <DollarSign size={9} /> Reimbursement · ${totalReimbursed.toFixed(2)}
+                                    </Badge>
+                                )}
                             </div>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
                                 <span className="flex items-center gap-1.5 text-left"><MapPin size={10} className="text-brand-red shrink-0"/> {formatCityState(job.location)}</span>
@@ -841,9 +905,22 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute, onAddR
                             <p className="text-[8px] font-black text-text-muted uppercase tracking-widest text-right">Settlement</p>
                             <p className="text-sm font-mono font-bold text-text-green text-right">${(item.jobPay || 0).toFixed(2)}</p>
                         </div>
+
+                        {itemReimbursements.length > 0 && (
+                            <div className="text-right px-4 border-l border-border-sub/30 min-w-[100px]">
+                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest text-right">Reimbursement</p>
+                                <p className="text-sm font-mono font-bold text-accent-gold text-right">${totalReimbursed.toFixed(2)}</p>
+                                <p className="text-[7px] font-bold uppercase tracking-widest text-text-muted text-right">
+                                    {itemReimbursements.every(r => r.status === 'approved') ? 'Approved'
+                                        : itemReimbursements.some(r => r.status === 'rejected') ? 'Includes Rejected'
+                                        : 'Pending Review'}
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {!isLocked && (
+                        <div className="flex flex-col items-end gap-1">
                         <div className="flex items-center gap-2">
                             {isPending ? (
                                 <>
@@ -876,16 +953,46 @@ function JobAuditCard({ item, isLocked, workOrders, onConfirm, onDispute, onAddR
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 px-3 uppercase text-[9px] font-bold tracking-widest border-accent-gold/40 text-accent-gold hover:bg-accent-gold/10"
+                                disabled={!canAddReimbursement}
+                                title={canAddReimbursement ? undefined : "Reimbursements open Friday 6:00 PM ET"}
+                                className="h-8 px-3 uppercase text-[9px] font-bold tracking-widest border-accent-gold/40 text-accent-gold hover:bg-accent-gold/10 disabled:opacity-40 disabled:cursor-not-allowed"
                                 onClick={() => setIsReimbursing(v => !v)}
                             >
                                 <DollarSign size={13} className="mr-1"/> Add Reimbursement
                             </Button>
                         </div>
+                        {!canAddReimbursement && (
+                            <p className="text-[8px] font-bold uppercase tracking-widest text-text-muted text-right pr-1">
+                                Reimbursements open Friday 6:00 PM ET
+                            </p>
+                        )}
+                        </div>
                     )}
                 </div>
 
-                {isReimbursing && !isLocked && (
+                {itemReimbursements.length > 0 && (
+                    <div className="px-5 pb-4 -mt-1 text-left space-y-1.5">
+                        {itemReimbursements.map(r => (
+                            <div key={r.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-bg-primary/40 border border-accent-gold/20 text-left">
+                                <div className="min-w-0 text-left">
+                                    <p className="text-[10px] font-bold text-text-primary uppercase truncate text-left">{r.description}</p>
+                                    <p className="text-[8px] text-text-muted uppercase tracking-widest text-left">{r.date}</p>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <span className="text-xs font-mono font-bold text-accent-gold">${(r.amount || 0).toFixed(2)}</span>
+                                    <Badge
+                                        variant={r.status === 'approved' ? 'active' : r.status === 'rejected' ? 'missed' : 'pending'}
+                                        className="text-[7px] h-3.5 uppercase tracking-tighter"
+                                    >
+                                        {r.status || 'pending'}
+                                    </Badge>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {isReimbursing && !isLocked && canAddReimbursement && (
                     <div className="px-5 pb-5 pt-1 animate-in slide-in-from-top-2 duration-300 text-left">
                         <div className="p-4 rounded-xl bg-bg-primary/50 border border-accent-gold/30 space-y-3 text-left">
                             <div className="flex items-center justify-between">
@@ -1030,7 +1137,7 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                         </div>
                         <div className="space-y-2 text-left">
                             <Label className="text-[10px] uppercase font-bold text-text-muted">Location</Label>
-                            <Input name="location" required className="bg-bg-primary h-10 text-xs" />
+                            <AddressAutocompleteInput name="location" required className="bg-bg-primary h-10 text-xs" />
                         </div>
                     </div>
                     <div className="space-y-2 text-left">
@@ -1064,7 +1171,7 @@ const TRIP_SOURCE_LABEL: Record<string, string> = {
     check_in_flow: 'Check-In Flow',
 };
 
-function TripLogsView({ tripLogs, workOrders }: { tripLogs: TripLog[]; workOrders: WorkOrder[] }) {
+function TripLogsView({ tripLogs, workOrders, mileageUnit }: { tripLogs: TripLog[]; workOrders: WorkOrder[]; mileageUnit: 'mi' | 'km' }) {
     const sorted = [...tripLogs].sort((a, b) => (b.date || b.createdAt || '').localeCompare(a.date || a.createdAt || ''));
     const totalMiles = sorted.reduce((acc, t) => acc + (t.miles || t.calculatedMiles || t.manualMiles || 0), 0);
 
@@ -1086,8 +1193,8 @@ function TripLogsView({ tripLogs, workOrders }: { tripLogs: TripLog[]; workOrder
                     <p className="text-lg font-mono font-bold text-text-primary leading-none">{sorted.length}</p>
                 </div>
                 <div className="border-l border-border-sub pl-4">
-                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Total Miles</p>
-                    <p className="text-lg font-mono font-bold text-text-green leading-none">{totalMiles.toFixed(1)}</p>
+                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Total {mileageUnit === 'km' ? 'Kilometers' : 'Miles'}</p>
+                    <p className="text-lg font-mono font-bold text-text-green leading-none">{formatDistance(totalMiles, mileageUnit)}</p>
                 </div>
             </div>
 
@@ -1095,7 +1202,7 @@ function TripLogsView({ tripLogs, workOrders }: { tripLogs: TripLog[]; workOrder
                 <table className="w-full text-left">
                     <thead>
                         <tr className="bg-bg-tertiary/50 border-b border-border-sub">
-                            {['Date', 'Work Order', 'Job / Site', 'Route', 'Time', 'Miles', 'Source', 'Status'].map(h => (
+                            {['Date', 'Work Order', 'Job / Site', 'Route', 'Time', mileageUnit === 'km' ? 'KM' : 'Miles', 'Source', 'Status'].map(h => (
                                 <th key={h} className="text-[8px] font-black uppercase tracking-widest text-text-muted px-3 py-2 whitespace-nowrap">{h}</th>
                             ))}
                         </tr>
@@ -1115,7 +1222,7 @@ function TripLogsView({ tripLogs, workOrders }: { tripLogs: TripLog[]; workOrder
                                     <td className="px-3 py-2.5 text-[10px] text-text-primary max-w-[200px] truncate">{t.jobTitle || job?.title || job?.description || t.purpose || '—'}</td>
                                     <td className="px-3 py-2.5 text-[9px] text-text-muted max-w-[220px] truncate">{[t.startLocation, t.endLocation].filter(Boolean).join(' → ') || '—'}</td>
                                     <td className="px-3 py-2.5 text-[9px] text-text-muted whitespace-nowrap">{[t.startTime, t.endTime].filter(Boolean).join(' – ') || '—'}</td>
-                                    <td className="px-3 py-2.5 text-[10px] font-mono font-bold text-text-primary whitespace-nowrap">{miles ? miles.toFixed(1) : '—'}</td>
+                                    <td className="px-3 py-2.5 text-[10px] font-mono font-bold text-text-primary whitespace-nowrap">{miles ? formatDistance(miles, mileageUnit) : '—'}</td>
                                     <td className="px-3 py-2.5 text-[9px] text-text-muted uppercase whitespace-nowrap">{TRIP_SOURCE_LABEL[t.source || 'manual'] || 'Manual'}</td>
                                     <td className="px-3 py-2.5 whitespace-nowrap">
                                         <span className={cn('inline-block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border', st.cls)}>{st.label}</span>

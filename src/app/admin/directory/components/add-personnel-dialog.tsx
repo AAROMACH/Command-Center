@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { createAuthUser } from '../actions';
+import { isTech, isClient } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -187,7 +188,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                 ...formData as Technician,
                 id: existingUid.trim(),
                 userId,
-                role: (formData.roles || [])[0].replace(/_/g, ' ').toUpperCase()
+                role: (formData.roles || [])[0] || ''
             };
             onSave(newPerson);
             toast({
@@ -225,7 +226,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
             ...formData as Technician,
             id: uid,
             userId,
-            role: (formData.roles || [])[0].replace(/_/g, ' ').toUpperCase()
+            role: (formData.roles || [])[0] || ''
         };
         onSave(newPerson);
 
@@ -280,7 +281,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
 
   const currentPermissions = useMemo(() => {
     const roles = formData.roles || [];
-    const allOptions = [...ROLE_DATA.admin, ...ROLE_DATA.tech, ...ROLE_DATA.client];
+    const allOptions = [...ROLE_DATA.admin, ...ROLE_DATA.tech, ...ROLE_DATA.client, ...ROLE_DATA.office];
     const perms = new Set<string>();
     roles.forEach(roleId => {
         const option = allOptions.find(o => o.id === roleId);
@@ -289,8 +290,8 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
     return Array.from(perms);
   }, [formData.roles]);
 
-  const isClientRole = formData.roles?.includes('client');
-  const isFieldTech = formData.roles?.some(r => r.includes('tech') || r.includes('lead'));
+  const isClientRole = isClient(formData);
+  const isFieldTech = isTech(formData);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsOpen(open); }}>
@@ -393,7 +394,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                 )}
              </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {(Object.keys(ROLE_DATA) as Array<keyof typeof ROLE_DATA>).map((category) => (
                     <div key={category} className="space-y-4">
                         <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1 capitalize text-left">{category}</h4>

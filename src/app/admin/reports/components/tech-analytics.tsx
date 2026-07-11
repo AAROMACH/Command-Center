@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/chart';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import type { Technician, WorkOrder, WeeklyLog } from '@/lib/types';
+import { isClient } from '@/lib/permissions';
 import { ShieldCheck, BarChart3, Coins, TrendingUp } from 'lucide-react';
 
 type TechAnalyticsProps = {
@@ -32,7 +33,7 @@ type TechAnalyticsProps = {
  */
 export function TechAnalytics({ technicians, workOrders, weeklyLogs }: TechAnalyticsProps) {
     const activeTechs = useMemo(() => 
-        technicians.filter(t => !t.roles?.includes('client'))
+        technicians.filter(t => !isClient(t))
     , [technicians]);
 
     const chartData = useMemo(() => {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { isClient } from '@/lib/permissions';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -19,7 +20,7 @@ import {
   format, addMonths, subMonths, startOfMonth, endOfMonth,
   eachDayOfInterval, getDay, isSameDay, isToday, parseISO,
 } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn, compareScheduleTime } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import {
   DndContext, type DragEndEvent,
@@ -119,7 +120,7 @@ export default function AdminCalendarPage() {
   }, [rawWorkOrders, rawAssignments]);
 
   const adminTechs = useMemo(() =>
-    technicians.filter(t => !t.roles?.includes('client')), [technicians]);
+    technicians.filter(t => !isClient(t)), [technicians]);
 
   // UI state
   const [monthDate, setMonthDate]         = useState(() => new Date());
@@ -175,7 +176,7 @@ export default function AdminCalendarPage() {
         if (!wo.scheduleDate) return false;
         try { return isSameDay(parseISO(wo.scheduleDate), day); } catch { return false; }
       })
-      .sort((a, b) => (a.scheduleTime || '').localeCompare(b.scheduleTime || '')),
+      .sort((a, b) => compareScheduleTime(a.scheduleTime, b.scheduleTime)),
     [filteredJobs]);
 
   const selectedDateJobs = useMemo(() => jobsForDate(selectedDate), [selectedDate, jobsForDate]);

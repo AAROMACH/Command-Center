@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
+import { isClient } from '@/lib/permissions';
 import { BarChart2, ShieldAlert, Users, AlertTriangle, Clock, ChevronRight, Mail, Phone, ArrowLeft, RefreshCw, Filter, X, Activity as ActivityIcon } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -61,12 +62,12 @@ export default function FieldIntelligencePage() {
     }, []);
 
     const staffTechs = useMemo(
-        () => technicians.filter(t => !t.roles?.includes('client')),
+        () => technicians.filter(t => !isClient(t)),
         [technicians]
     );
 
     const clientList = useMemo(
-        () => technicians.filter(t => t.roles?.includes('client') || t.role?.toLowerCase().includes('client')),
+        () => technicians.filter(isClient),
         [technicians]
     );
 

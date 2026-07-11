@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot, collection, query, where, addDoc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import type { Site, SiteNote, WorkOrder, Technician } from '@/lib/types';
+import { isClient } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -70,7 +71,7 @@ export default function SiteDetailPage() {
       const found = users.find(u =>
         (lookupId && u.id === lookupId) ||
         (lookupName && (u.clientCompany === lookupName || u.name === lookupName)) ||
-        u.roles?.includes('client')
+        isClient(u)
       );
       setClientUser(found || null);
     });

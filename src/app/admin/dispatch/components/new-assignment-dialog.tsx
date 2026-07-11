@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { isClient } from '@/lib/permissions';
 import { 
   Dialog, 
   DialogContent, 
@@ -153,9 +154,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
 
   const clients = useMemo(() => {
     return technicians.filter(t => 
-        t.roles?.includes('client') || 
-        t.role.toLowerCase().includes('client') || 
-        t.clientCompany
+        isClient(t) || t.clientCompany
     );
   }, []);
 

@@ -24,7 +24,7 @@ import { EditProfileDialog } from '../components/edit-profile-dialog';
 import { uploadFile } from '@/lib/upload';
 import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierBadgeVariant } from '@/lib/reliability';
-import { hasPermission, ALL_PERMISSIONS, PERMISSION_TREE, getPortalAccess, type Permission } from '@/lib/permissions';
+import { hasPermission, ALL_PERMISSIONS, PERMISSION_TREE, getPortalAccess, isTech as isTechRole, isClient as isClientRole, type Permission } from '@/lib/permissions';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import type { Technician, WorkOrder, PersonnelDocument, Project, ReliabilityEvent } from '@/lib/types';
 
@@ -128,23 +128,9 @@ export default function DirectoryPersonPage() {
   const reliabilityScore = person?.reliabilityScore ?? 0;
   const tier = getReliabilityTier(reliabilityScore);
 
-  const isTech = useMemo(() => {
-    if (!person) return false;
-    return (
-      person.roles?.some(r => r === 'field_technician' || r === 'project_lead') ||
-      (person.role || '').toLowerCase().includes('tech') ||
-      (person.role || '').toLowerCase().includes('lead') ||
-      (person.role || '').toLowerCase().includes('operative')
-    ) ?? false;
-  }, [person]);
+  const isTech = useMemo(() => (person ? isTechRole(person) : false), [person]);
 
-  const isClient = useMemo(() => {
-    if (!person) return false;
-    return (
-      person.roles?.includes('client') ||
-      person.role === 'client'
-    ) ?? false;
-  }, [person]);
+  const isClient = useMemo(() => (person ? isClientRole(person) : false), [person]);
 
   const certDocuments = useMemo(() => documents.filter(d => d.type === 'certification'), [documents]);
   const roles: string[] = rolesBuffer;

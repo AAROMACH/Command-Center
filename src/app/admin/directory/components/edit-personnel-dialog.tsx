@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { isTech, isClient } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -204,8 +205,8 @@ export function EditPersonnelDialog({ isOpen, setIsOpen, person, onSave }: EditP
     return Array.from(perms);
   }, [formData.roles]);
 
-  const isClientRole = formData.roles?.includes('client');
-  const isFieldTech = formData.roles?.some(r => r.includes('tech') || r.includes('lead'));
+  const isClientRole = isClient(formData);
+  const isFieldTech = isTech(formData);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

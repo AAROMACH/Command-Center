@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { isAssignableTechnician } from '@/lib/utils';
 
 type ManageTeamDialogProps = {
     isOpen: boolean;
@@ -41,7 +42,7 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
     const getTechnician = (id: string) => allTechnicians.find(t => t.id === id);
 
     const availableTechnicians = allTechnicians.filter(
-        (tech) => !team.some((member) => member.techId === tech.id)
+        (tech) => isAssignableTechnician(tech) && !team.some((member) => member.techId === tech.id)
     );
 
     const filteredTechnicians = availableTechnicians.filter((tech) =>

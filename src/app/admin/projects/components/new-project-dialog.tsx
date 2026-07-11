@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { isClient } from '@/lib/permissions';
 import { 
   Dialog, 
   DialogContent, 
@@ -147,9 +148,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
 
   const clients = useMemo(() => {
     return technicians.filter(t => 
-        t.roles?.includes('client') || 
-        t.role.toLowerCase().includes('client') || 
-        t.clientCompany
+        isClient(t) || t.clientCompany
     );
   }, []);
 

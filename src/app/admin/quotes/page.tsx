@@ -7,6 +7,7 @@ import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc } from 'firebase
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import type { Quote, QuoteLineItem, QuoteOptionalGroup, QuoteOptionItem, QuoteStatus, Technician } from '@/lib/types';
+import { isClient } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -787,7 +788,7 @@ export default function AdminQuotesPage() {
       setClients(
         snap.docs
           .map(d => ({ ...d.data(), id: d.id } as Technician))
-          .filter(u => u.roles?.includes('client') || u.role?.toLowerCase().includes('client'))
+          .filter(isClient)
       );
     });
 

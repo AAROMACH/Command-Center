@@ -5,6 +5,7 @@ import { db, auth } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, doc, updateDoc, arrayUnion, query } from 'firebase/firestore';
 import { uploadFile } from '@/lib/upload';
 import type { Technician, Project, AdminMessage } from '@/lib/types';
+import { isAdmin as isAdminRole, isTech as isTechRole, isClient as isClientRole } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -124,10 +125,6 @@ export default function TechMessagingPage() {
   const blockedIds = new Set(currentUser?.messagingBlockedClientIds || []);
   const allowedRoles = currentUser?.messagingAllowedRoles || 'all';
 
-  // Role helpers
-  const isAdminRole = (u?: Technician) => !!u?.roles?.some(r => ['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'].includes(r));
-  const isTechRole = (u?: Technician) => !!u?.roles?.some(r => ['field_technician', 'project_lead'].includes(r));
-  const isClientRole = (u?: Technician) => !!u?.roles?.includes('client');
   const isActiveUser = (u: Technician) => (u as any).status !== 'inactive' && (u as any).approvalStatus !== 'pending' && (u as any).approvalStatus !== 'denied';
 
   // Whether the tech's messaging permission allows contacting this user/role.

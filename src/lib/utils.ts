@@ -1,24 +1,25 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { normalizeLegacyRole } from "./permissions"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-const NON_ASSIGNABLE_ROLES = ['client', 'super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'];
+const TECH_ROLES = ['field_technician', 'project_lead'];
 
 /**
  * Whether a user can be deployed to a job as a field technician. Anyone
- * holding the field_technician role is always deployable, even if they also
- * carry an admin/office role (e.g. a dispatcher who also does field work).
- * Otherwise, excludes clients and admin/office roles — only field techs and
- * project leads show up in assignment/helper/swap pickers.
+ * holding field_technician or project_lead is always deployable, no matter
+ * what other roles they also carry (e.g. a dispatcher who also does field
+ * work). Everyone else — Client-only, Admin-only, or Client+Admin
+ * combinations with no tech role at all — is excluded from assignment
+ * pickers.
  */
 export function isAssignableTechnician(t: { roles?: string[]; role?: string }): boolean {
-  const roles = (t.roles || []).map(r => r.toLowerCase());
-  const role = (t.role || '').toLowerCase();
-  if (roles.includes('field_technician') || role === 'field_technician') return true;
-  return !roles.some(r => NON_ASSIGNABLE_ROLES.includes(r)) && !NON_ASSIGNABLE_ROLES.includes(role);
+  if ((t.roles || []).some(r => TECH_ROLES.includes(r.toLowerCase()))) return true;
+  const normalized = normalizeLegacyRole(t.role);
+  return normalized ? TECH_ROLES.includes(normalized) : false;
 }
 
 /**

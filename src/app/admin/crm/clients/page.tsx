@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, doc, updateDoc } from 'firebase/firestore';
 import type { Technician, SiteRequest, Project } from '@/lib/types';
+import { isClient } from '@/lib/permissions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -36,7 +37,7 @@ export default function ClientsPage() {
     const unsubClients = onSnapshot(collection(db, 'users'), (snap) => {
       setClients(snap.docs
         .map(d => ({ ...d.data(), id: d.id } as Technician))
-        .filter(u => u.roles?.includes('client') || u.role?.toLowerCase().includes('client'))
+        .filter(isClient)
       );
     });
 

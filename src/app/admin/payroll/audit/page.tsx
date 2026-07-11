@@ -15,6 +15,7 @@ import { Receipt, Search, ChevronDown, ChevronRight, DollarSign, CheckCircle, Cl
 import { cn } from '@/lib/utils';
 import { format, parseISO, isWithinInterval } from 'date-fns';
 import type { Technician, WeeklyLog, WeeklyLogItem } from '@/lib/types';
+import { isClient, isTech } from '@/lib/permissions';
 
 export default function PayrollAuditPage() {
     const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -43,12 +44,12 @@ export default function PayrollAuditPage() {
     }, []);
 
     const staffTechs = useMemo(
-        () => technicians.filter(t => !t.roles?.includes('client')),
+        () => technicians.filter(t => !isClient(t)),
         [technicians]
     );
 
     const staffUserIds = useMemo(
-        () => new Set(staffTechs.filter(t => !t.roles?.includes('field_technician') && !t.roles?.includes('project_lead')).map(t => t.id)),
+        () => new Set(staffTechs.filter(t => !isTech(t)).map(t => t.id)),
         [staffTechs]
     );
 

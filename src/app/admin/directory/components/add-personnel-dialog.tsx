@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { createAuthUser } from '../actions';
+import { isTech, isClient } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -289,8 +290,8 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
     return Array.from(perms);
   }, [formData.roles]);
 
-  const isClientRole = formData.roles?.includes('client');
-  const isFieldTech = formData.roles?.some(r => r.includes('tech') || r.includes('lead'));
+  const isClientRole = isClient(formData);
+  const isFieldTech = isTech(formData);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if(!open) handleReset(); setIsOpen(open); }}>

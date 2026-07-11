@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import type { Technician, WorkOrder, TimeOffRequest, ReliabilityEvent, ProjectDocument, ProjectDailyLog } from '@/lib/types';
+import { isAdmin as isAdminRole, isTech as isTechRole, isClient as isClientRole } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -193,20 +194,11 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
     }
   };
 
-  const isTechnician = useMemo(() => {
-    if (!person) return false;
-    return person.roles?.some(r => r.includes('tech') || r.includes('lead')) || (person.role || '').toLowerCase().includes('tech');
-  }, [person]);
+  const isTechnician = useMemo(() => (person ? isTechRole(person) : false), [person]);
 
-  const isStaff = useMemo(() => {
-    if (!person) return false;
-    return person.roles?.some(r => r.includes('admin') || r.includes('manager')) || (person.role || '').toLowerCase() === 'dispatcher' || (person.role || '').toLowerCase() === 'admin';
-  }, [person]);
+  const isStaff = useMemo(() => (person ? isAdminRole(person) : false), [person]);
 
-  const isClient = useMemo(() => {
-    if (!person) return false;
-    return person.roles?.includes('client') || (person.role || '').toLowerCase().includes('client');
-  }, [person]);
+  const isClient = useMemo(() => (person ? isClientRole(person) : false), [person]);
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 

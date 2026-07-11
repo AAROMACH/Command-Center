@@ -129,7 +129,7 @@ function ImportedJobAudit({
 
     return (
         <div className={cn(
-            "flex flex-col gap-2 p-3 bg-bg-primary border rounded-lg text-left w-full sm:min-w-[420px] transition-all",
+            "flex flex-col gap-2 p-3 bg-bg-primary border rounded-lg text-left w-full sm:w-[420px] max-w-full transition-all",
             isDirty ? "border-brand-red ring-1 ring-brand-red/20 shadow-lg" : "border-border-sub"
         )} onClick={e => e.stopPropagation()}>
              <div className="grid grid-cols-3 gap-3 text-left items-end">
@@ -420,7 +420,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     return (
         <>
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogContent className="lg:max-w-6xl bg-bg-elevated border-border-default flex flex-col p-0 overflow-hidden h-[90vh] shadow-2xl text-left">
+                <DialogContent className="max-w-[95vw] sm:max-w-3xl lg:max-w-6xl bg-bg-elevated border-border-default flex flex-col p-0 overflow-hidden h-[90vh] shadow-2xl text-left">
                     <DialogHeader className="p-4 border-b border-border-sub bg-bg-tertiary/30 text-left shrink-0 space-y-0">
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-4">
@@ -579,7 +579,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             )}
                                                         </div>
 
-                                                        <div className="shrink-0 w-full sm:w-auto" onClick={e => e.stopPropagation()}>
+                                                        <div className="w-full sm:w-auto min-w-0" onClick={e => e.stopPropagation()}>
                                                             {isImported && wo ? (
                                                                 <div className="border-t sm:border-t-0 sm:border-l border-border-sub/40 sm:pl-3 pt-2 sm:pt-0">
                                                                     <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} approvedReimbTotal={approvedReimbTotal} />
@@ -720,7 +720,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             )}
                                                         </div>
 
-                                                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 shrink-0" onClick={e => e.stopPropagation()}>
+                                                        <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4" onClick={e => e.stopPropagation()}>
                                                             {isImported && wo ? (
                                                                 <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} approvedReimbTotal={approvedReimbTotal} />
                                                             ) : (

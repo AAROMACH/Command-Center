@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { WeeklyLog, Technician, WorkOrder, WeeklyLogItem } from '@/lib/types';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import type { WeeklyLog, Technician, WorkOrder, WeeklyLogItem, FinancialRecord } from '@/lib/types';
 import { assignmentTimeLogs } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,7 +39,9 @@ import {
     ChevronRight,
     MapPin,
     Save,
-    RotateCcw
+    RotateCcw,
+    Lock,
+    Receipt
 } from 'lucide-react';
 import { cn, formatCityState } from '@/lib/utils';
 import { displayWorkOrderNumber, fieldNationUrl } from '@/lib/work-order-identity';
@@ -70,22 +72,39 @@ type PayrollReviewDialogProps = {
 /**
  * @fileOverview Internal Audit Sub-Component for individual mission settlement.
  * Implements a local buffer protocol to ensure notifications only trigger on finalized save.
+ *
+ * Financial formulas below are untouched — only layout/sizing changed for
+ * legibility, plus a non-destructive auto-fill of the Reimb. field from
+ * approved job reimbursements (see approvedReimbTotal effect).
  */
-function ImportedJobAudit({ 
-    wo, 
-    onUpdateWorkOrder 
-}: { 
-    wo: WorkOrder; 
-    onUpdateWorkOrder: (id: string, updates: Partial<WorkOrder>) => void 
+function ImportedJobAudit({
+    wo,
+    onUpdateWorkOrder,
+    approvedReimbTotal = 0,
+}: {
+    wo: WorkOrder;
+    onUpdateWorkOrder: (id: string, updates: Partial<WorkOrder>) => void;
+    approvedReimbTotal?: number;
 }) {
     // Local Buffer State
     const [localPay, setLocalPay] = useState(wo.pay);
-    const [localReimb, setLocalReimb] = useState(wo.auditReimbursement || 0);
+    const [localReimb, setLocalReimb] = useState(wo.auditReimbursement || approvedReimbTotal || 0);
     const [localOverhead, setLocalOverhead] = useState(wo.auditOverhead || 0);
+    const prevApprovedTotal = useRef(approvedReimbTotal);
+
+    // Auto-fill the Reimb. field from newly-approved reimbursements — only
+    // when the admin hasn't already edited it away from the last auto-filled
+    // value, so an in-progress manual edit is never silently overwritten.
+    useEffect(() => {
+        if (approvedReimbTotal !== prevApprovedTotal.current) {
+            setLocalReimb(current => current === prevApprovedTotal.current ? approvedReimbTotal : current);
+            prevApprovedTotal.current = approvedReimbTotal;
+        }
+    }, [approvedReimbTotal]);
 
     const isDirty = localPay !== wo.pay || localReimb !== (wo.auditReimbursement || 0) || localOverhead !== (wo.auditOverhead || 0);
 
-    // Dynamic Financial Projections (Local)
+    // Dynamic Financial Projections (Local) — formula unchanged
     const fnFeeLabor = localPay * 0.1585;
     const fnFeeReimb = localReimb * 0.1585;
     const totalFnFee = fnFeeLabor + fnFeeReimb;
@@ -94,11 +113,11 @@ function ImportedJobAudit({
     const aaromachPay = (netLabor * 0.50) - fnFeeReimb - localOverhead;
 
     const handleCommit = () => {
-        onUpdateWorkOrder(wo.id, { 
+        onUpdateWorkOrder(wo.id, {
             pay: localPay,
             auditReimbursement: localReimb,
             auditOverhead: localOverhead,
-            finalPay: Math.max(0, techPayout) 
+            finalPay: Math.max(0, techPayout)
         });
     };
 
@@ -110,86 +129,85 @@ function ImportedJobAudit({
 
     return (
         <div className={cn(
-            "flex flex-col gap-0.5 p-1 bg-transparent border rounded-md text-left w-fit min-w-[320px] transition-all",
+            "flex flex-col gap-2 p-3 bg-bg-primary border rounded-lg text-left w-full sm:min-w-[420px] transition-all",
             isDirty ? "border-brand-red ring-1 ring-brand-red/20 shadow-lg" : "border-border-sub"
-        )}>
-             <div className="grid grid-cols-4 gap-1 text-left items-end">
-                <div className="space-y-0 text-left">
-                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Labor Pay</Label>
+        )} onClick={e => e.stopPropagation()}>
+             <div className="grid grid-cols-3 gap-3 text-left items-end">
+                <div className="space-y-1 text-left">
+                    <Label className="text-[9px] font-black uppercase text-text-muted text-left">Labor Pay</Label>
                     <div className="relative text-left">
-                        <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
-                        <Input 
+                        <DollarSign size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <Input
                             type="number"
                             value={localPay}
                             onChange={(e) => setLocalPay(parseFloat(e.target.value) || 0)}
-                            className="h-4 w-full text-[8px] pl-5 bg-bg-secondary font-mono font-bold border-none shadow-none focus-visible:ring-0" 
+                            className="h-8 w-full text-xs pl-6 bg-bg-secondary font-mono font-bold border border-border-sub shadow-none focus-visible:ring-1"
                         />
                     </div>
                 </div>
-                <div className="space-y-0 text-left">
-                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Reimb.</Label>
+                <div className="space-y-1 text-left">
+                    <Label className="text-[9px] font-black uppercase text-text-muted text-left">Reimb.</Label>
                     <div className="relative text-left">
-                        <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
-                        <Input 
+                        <DollarSign size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <Input
                             type="number"
                             value={localReimb}
                             onChange={(e) => setLocalReimb(parseFloat(e.target.value) || 0)}
-                            className="h-4 w-full text-[8px] pl-5 bg-bg-secondary font-mono border-none shadow-none focus-visible:ring-0" 
+                            className="h-8 w-full text-xs pl-6 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
                         />
                     </div>
                 </div>
-                <div className="space-y-0 text-left">
-                    <Label className="text-[6px] font-black uppercase text-text-muted ml-0.5 text-left">Overhead</Label>
+                <div className="space-y-1 text-left">
+                    <Label className="text-[9px] font-black uppercase text-text-muted text-left">Overhead</Label>
                     <div className="relative text-left">
-                        <DollarSign size={8} className="absolute left-1 top-1/2 -translate-y-1/2 text-text-muted" />
-                        <Input 
+                        <DollarSign size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <Input
                             type="number"
                             value={localOverhead}
                             onChange={(e) => setLocalOverhead(parseFloat(e.target.value) || 0)}
-                            className="h-4 w-full text-[8px] pl-5 bg-bg-secondary font-mono border-none shadow-none focus-visible:ring-0" 
+                            className="h-8 w-full text-xs pl-6 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
                         />
                     </div>
                 </div>
-                <div className="flex gap-0.5 pb-0.5 pr-0.5">
-                    {isDirty && (
-                        <>
-                            <button 
-                                onClick={handleReset}
-                                className="h-4 w-4 rounded bg-bg-tertiary flex items-center justify-center text-text-muted hover:text-text-primary transition-colors"
-                                title="Reset changes"
-                            >
-                                <RotateCcw size={8}/>
-                            </button>
-                            <button 
-                                onClick={handleCommit}
-                                className="h-4 w-4 rounded bg-brand-red flex items-center justify-center text-white hover:bg-brand-red-hover transition-colors shadow-sm"
-                                title="Commit Audit"
-                            >
-                                <Save size={8}/>
-                            </button>
-                        </>
-                    )}
+             </div>
+
+             <div className="grid grid-cols-4 gap-3 pt-2 border-t border-border-sub/50 text-left">
+                <div className="space-y-0.5 text-left">
+                    <p className="text-[8px] font-black text-text-muted uppercase text-left">FN Fee (15.85%)</p>
+                    <p className="text-[11px] font-mono font-bold text-text-primary leading-none text-left">${totalFnFee.toFixed(2)}</p>
+                </div>
+                <div className="space-y-0.5 text-left">
+                    <p className="text-[8px] font-black text-text-muted uppercase text-left">Net Labor</p>
+                    <p className="text-[11px] font-mono font-bold text-text-primary leading-none text-left">${netLabor.toFixed(2)}</p>
+                </div>
+                <div className="space-y-0.5 text-left">
+                    <p className="text-[8px] font-black text-text-green uppercase text-left">Tech Payout</p>
+                    <p className="text-[11px] font-mono font-bold text-text-green leading-none text-left">${techPayout.toFixed(2)}</p>
+                </div>
+                <div className="space-y-0.5 text-right">
+                    <p className="text-[8px] font-black text-brand-red uppercase text-right">Aaromach</p>
+                    <p className="text-[11px] font-mono font-bold text-brand-red leading-none text-right">${aaromachPay.toFixed(2)}</p>
                 </div>
              </div>
 
-             <div className="grid grid-cols-4 gap-1 pt-0.5 border-t border-border-sub/30 text-left">
-                <div className="space-y-0 text-left">
-                    <p className="text-[5px] font-black text-text-muted uppercase text-left">FN Fee (15.85%)</p>
-                    <p className="text-[8px] font-mono font-bold text-text-primary leading-none text-left">${totalFnFee.toFixed(2)}</p>
+             {isDirty && (
+                <div className="flex justify-end gap-2 pt-1">
+                    <button
+                        onClick={handleReset}
+                        className="h-7 px-3 rounded bg-bg-tertiary flex items-center gap-1.5 text-text-muted hover:text-text-primary transition-colors text-[9px] font-bold uppercase tracking-widest"
+                        title="Reset changes"
+                    >
+                        <RotateCcw size={11}/> Reset
+                    </button>
+                    <button
+                        onClick={handleCommit}
+                        className="h-7 px-3 rounded bg-brand-red flex items-center gap-1.5 text-white hover:bg-brand-red-hover transition-colors shadow-sm text-[9px] font-bold uppercase tracking-widest"
+                        title="Commit Audit"
+                    >
+                        <Save size={11}/> Save
+                    </button>
                 </div>
-                <div className="space-y-0 text-left">
-                    <p className="text-[5px] font-black text-text-muted uppercase text-left">Net Labor</p>
-                    <p className="text-[8px] font-mono font-bold text-text-primary leading-none text-left">${netLabor.toFixed(2)}</p>
-                </div>
-                <div className="space-y-0 text-left">
-                    <p className="text-[5px] font-black text-text-green uppercase text-left">Tech Payout</p>
-                    <p className="text-[8px] font-mono font-bold text-text-green leading-none text-left">${techPayout.toFixed(2)}</p>
-                </div>
-                <div className="space-y-0 text-right pr-1">
-                    <p className="text-[5px] font-black text-brand-red uppercase text-right">Aaromach</p>
-                    <p className="text-[8px] font-mono font-bold text-brand-red leading-none text-right">${aaromachPay.toFixed(2)}</p>
-                </div>
-             </div>
+             )}
         </div>
     );
 }
@@ -214,6 +232,14 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         if (!wo?.additionalTechnicianIds?.length) return [];
         return wo.additionalTechnicianIds.map(id => allTechnicians.find(t => t.id === id)?.name || id);
     }, [allTechnicians]);
+
+    // Reimbursements attach to a specific job via workOrderId (set when the
+    // tech files them from job verification) — this is the join key used to
+    // lock a job's approval and to inline its reimbursement review here.
+    const getJobReimbursements = useCallback((woId: string | undefined): FinancialRecord[] => {
+        if (!woId) return [];
+        return (localLog?.reimbursements || []).filter(r => r.workOrderId === woId);
+    }, [localLog]);
 
     const getHoursOnsite = useCallback((woId: string) => {
         if (!technician) return 'TBD';
@@ -482,27 +508,34 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                             const isAudited = item.isAdminReviewed;
                                             const displayTitle = wo?.title || 'Mission identifier lookup pending...';
                                             const helperNames = getHelperNames(wo);
+                                            const jobReimbursements = getJobReimbursements(wo?.id);
+                                            const hasPendingReimb = jobReimbursements.some(r => r.status === 'pending');
+                                            const approvedReimbTotal = jobReimbursements.filter(r => r.status === 'approved').reduce((acc, r) => acc + r.amount, 0);
 
                                             return (
                                                 <div key={item.id} className={cn(
-                                                    "p-2 rounded-lg border transition-all flex group gap-4 min-h-[3rem] items-center cursor-pointer",
+                                                    "p-2 rounded-lg border transition-all flex flex-col gap-3 group",
                                                     isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-border-sub hover:border-text-muted"
-                                                )} onClick={() => wo && handleOpenJobDetail(wo)}>
+                                                )}>
+                                                <div className="flex gap-4 min-h-[3rem] items-center cursor-pointer" onClick={() => wo && handleOpenJobDetail(wo)}>
                                                     <div className="shrink-0 flex items-center gap-2 pr-2 border-r border-border-sub/30" onClick={e => e.stopPropagation()}>
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="sm" 
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            disabled={hasPendingReimb}
+                                                            title={hasPendingReimb ? 'Locked: pending reimbursement must be approved first' : undefined}
                                                             className={cn(
                                                                 "h-7 px-3 uppercase text-[8px] font-bold tracking-widest transition-all",
-                                                                isAudited ? "bg-text-green text-white border-text-green" : "border-border-sub text-text-muted hover:border-text-green"
+                                                                isAudited ? "bg-text-green text-white border-text-green" : "border-border-sub text-text-muted hover:border-text-green",
+                                                                hasPendingReimb && "opacity-40 cursor-not-allowed hover:border-border-sub"
                                                             )}
-                                                            onClick={() => toggleAuditItem(item.id, item.workOrderId)}
+                                                            onClick={() => !hasPendingReimb && toggleAuditItem(item.id, item.workOrderId)}
                                                         >
-                                                            {isAudited ? <Check size={12} className="mr-1"/> : <ClipboardCheck size={12} className="mr-1"/>}
-                                                            {isAudited ? 'Verified' : 'Approve'}
+                                                            {hasPendingReimb ? <Lock size={12} className="mr-1"/> : isAudited ? <Check size={12} className="mr-1"/> : <ClipboardCheck size={12} className="mr-1"/>}
+                                                            {hasPendingReimb ? 'Locked' : isAudited ? 'Verified' : 'Approve'}
                                                         </Button>
                                                     </div>
-                                                    
+
                                                     <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                                         <div className="min-w-0 text-left">
                                                             <div className="flex items-center gap-2 text-left flex-wrap">
@@ -511,6 +544,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 {helperNames.length > 0 && (
                                                                     <Badge variant="outline" className="text-[6px] bg-blue-400/10 border-blue-400/30 text-blue-400 h-3 px-1">
                                                                         HELPER ADDED
+                                                                    </Badge>
+                                                                )}
+                                                                {hasPendingReimb && (
+                                                                    <Badge variant="outline" className="text-[6px] bg-accent-gold/15 border-accent-gold/30 text-accent-gold h-3 px-1">
+                                                                        REIMB. PENDING
                                                                     </Badge>
                                                                 )}
                                                             </div>
@@ -541,10 +579,10 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             )}
                                                         </div>
 
-                                                        <div className="shrink-0 sm:min-w-[220px]" onClick={e => e.stopPropagation()}>
+                                                        <div className="shrink-0 w-full sm:w-auto" onClick={e => e.stopPropagation()}>
                                                             {isImported && wo ? (
                                                                 <div className="border-t sm:border-t-0 sm:border-l border-border-sub/40 sm:pl-3 pt-2 sm:pt-0">
-                                                                    <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
+                                                                    <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} approvedReimbTotal={approvedReimbTotal} />
                                                                 </div>
                                                             ) : (
                                                                 <div className="flex items-center gap-6 p-2 rounded bg-bg-tertiary/30 border border-border-sub/50">
@@ -564,6 +602,32 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             )}
                                                         </div>
                                                     </div>
+                                                </div>
+
+                                                {jobReimbursements.length > 0 && (
+                                                    <div className="flex flex-col gap-1.5 pl-2 sm:pl-[52px]" onClick={e => e.stopPropagation()}>
+                                                        {jobReimbursements.map(r => (
+                                                            <div key={r.id} className={cn(
+                                                                "flex items-center justify-between gap-3 p-2 rounded border text-left",
+                                                                r.status === 'pending' ? "bg-accent-gold/5 border-accent-gold/30" : r.status === 'approved' ? "bg-text-green/5 border-text-green/20" : "bg-brand-red/5 border-brand-red/20"
+                                                            )}>
+                                                                <div className="min-w-0 flex items-center gap-2">
+                                                                    <Receipt size={11} className="shrink-0 text-text-muted" />
+                                                                    <p className="text-[9px] font-bold text-text-primary uppercase tracking-wide truncate">{r.description}</p>
+                                                                    <span className="text-[10px] font-mono font-bold text-accent-gold shrink-0">${r.amount.toFixed(2)}</span>
+                                                                </div>
+                                                                {r.status === 'pending' ? (
+                                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                                        <Button size="sm" variant="outline" className="h-6 px-2 text-[8px] font-bold uppercase text-text-green border-text-green/30 hover:bg-text-green/10" onClick={() => reviewReimbursement(r.id, 'approved')}>Approve</Button>
+                                                                        <Button size="sm" variant="outline" className="h-6 px-2 text-[8px] font-bold uppercase text-brand-red border-brand-red/30 hover:bg-brand-red/10" onClick={() => reviewReimbursement(r.id, 'rejected')}>Reject</Button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <Badge variant="outline" className={cn("text-[7px] h-4 px-1.5 shrink-0 uppercase", r.status === 'rejected' ? "text-brand-red border-brand-red/30" : "text-text-green border-text-green/30")}>{r.status || 'approved'}</Badge>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                                 </div>
                                             );
                                         }) : (
@@ -585,24 +649,31 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                             const isImported = wo?.source === 'Imported';
                                             const displayTitle = wo?.title || 'Mission identifier lookup pending...';
                                             const helperNames = getHelperNames(wo);
+                                            const jobReimbursements = getJobReimbursements(wo?.id);
+                                            const hasPendingReimb = jobReimbursements.some(r => r.status === 'pending');
+                                            const approvedReimbTotal = jobReimbursements.filter(r => r.status === 'approved').reduce((acc, r) => acc + r.amount, 0);
 
                                             return (
                                                 <div key={item.id} className={cn(
-                                                    "p-2 rounded-lg border transition-all flex group gap-4 min-h-[3rem] items-center cursor-pointer",
+                                                    "p-2 rounded-lg border transition-all flex flex-col gap-3 group",
                                                     isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-brand-red/30 shadow-sm"
-                                                )} onClick={() => wo && handleOpenJobDetail(wo)}>
+                                                )}>
+                                                <div className="flex gap-4 min-h-[3rem] items-center cursor-pointer" onClick={() => wo && handleOpenJobDetail(wo)}>
                                                     <div className="shrink-0 flex items-center gap-2 pr-2 border-r border-border-sub/30" onClick={e => e.stopPropagation()}>
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="sm" 
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            disabled={hasPendingReimb}
+                                                            title={hasPendingReimb ? 'Locked: pending reimbursement must be approved first' : undefined}
                                                             className={cn(
                                                                 "h-7 px-3 uppercase text-[8px] font-bold tracking-widest",
-                                                                isAudited ? "bg-text-green text-white border-text-green" : "border-brand-red text-text-red hover:bg-brand-red-dim"
+                                                                isAudited ? "bg-text-green text-white border-text-green" : "border-brand-red text-text-red hover:bg-brand-red-dim",
+                                                                hasPendingReimb && "opacity-40 cursor-not-allowed hover:bg-transparent"
                                                             )}
-                                                            onClick={() => toggleAuditItem(item.id, item.workOrderId)}
+                                                            onClick={() => !hasPendingReimb && toggleAuditItem(item.id, item.workOrderId)}
                                                         >
-                                                            {isAudited ? <Check size={12} className="mr-1"/> : <AlertTriangle size={12} className="mr-1"/>}
-                                                            {isAudited ? 'Resolved' : 'Resolve'}
+                                                            {hasPendingReimb ? <Lock size={12} className="mr-1"/> : isAudited ? <Check size={12} className="mr-1"/> : <AlertTriangle size={12} className="mr-1"/>}
+                                                            {hasPendingReimb ? 'Locked' : isAudited ? 'Resolved' : 'Resolve'}
                                                         </Button>
                                                     </div>
 
@@ -614,6 +685,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 {helperNames.length > 0 && (
                                                                     <Badge variant="outline" className="text-[6px] bg-blue-400/10 border-blue-400/30 text-blue-400 h-3 px-1">
                                                                         HELPER ADDED
+                                                                    </Badge>
+                                                                )}
+                                                                {hasPendingReimb && (
+                                                                    <Badge variant="outline" className="text-[6px] bg-accent-gold/15 border-accent-gold/30 text-accent-gold h-3 px-1">
+                                                                        REIMB. PENDING
                                                                     </Badge>
                                                                 )}
                                                             </div>
@@ -644,9 +720,9 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             )}
                                                         </div>
 
-                                                        <div className="flex items-center gap-4 shrink-0" onClick={e => e.stopPropagation()}>
+                                                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 shrink-0" onClick={e => e.stopPropagation()}>
                                                             {isImported && wo ? (
-                                                                <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} />
+                                                                <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} approvedReimbTotal={approvedReimbTotal} />
                                                             ) : (
                                                                 <div className="flex items-center gap-6 p-2 rounded bg-bg-tertiary/30 border border-border-sub/50 text-left">
                                                                     <div className="text-left">
@@ -663,7 +739,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                     </div>
                                                                 </div>
                                                             )}
-                                                            
+
                                                             <div className="min-w-[180px] max-w-[250px] p-2 rounded bg-brand-red-dim/10 border border-brand-red/10 text-left flex flex-col justify-center h-full">
                                                                 <p className="text-[7px] font-black text-brand-red uppercase flex items-center gap-1 text-left">
                                                                     <ShieldAlert size={8}/> DISCREPANCY: {item.disputeReason}
@@ -676,6 +752,32 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             </div>
                                                         </div>
                                                     </div>
+                                                </div>
+
+                                                {jobReimbursements.length > 0 && (
+                                                    <div className="flex flex-col gap-1.5 pl-2 sm:pl-[52px]" onClick={e => e.stopPropagation()}>
+                                                        {jobReimbursements.map(r => (
+                                                            <div key={r.id} className={cn(
+                                                                "flex items-center justify-between gap-3 p-2 rounded border text-left",
+                                                                r.status === 'pending' ? "bg-accent-gold/5 border-accent-gold/30" : r.status === 'approved' ? "bg-text-green/5 border-text-green/20" : "bg-brand-red/5 border-brand-red/20"
+                                                            )}>
+                                                                <div className="min-w-0 flex items-center gap-2">
+                                                                    <Receipt size={11} className="shrink-0 text-text-muted" />
+                                                                    <p className="text-[9px] font-bold text-text-primary uppercase tracking-wide truncate">{r.description}</p>
+                                                                    <span className="text-[10px] font-mono font-bold text-accent-gold shrink-0">${r.amount.toFixed(2)}</span>
+                                                                </div>
+                                                                {r.status === 'pending' ? (
+                                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                                        <Button size="sm" variant="outline" className="h-6 px-2 text-[8px] font-bold uppercase text-text-green border-text-green/30 hover:bg-text-green/10" onClick={() => reviewReimbursement(r.id, 'approved')}>Approve</Button>
+                                                                        <Button size="sm" variant="outline" className="h-6 px-2 text-[8px] font-bold uppercase text-brand-red border-brand-red/30 hover:bg-brand-red/10" onClick={() => reviewReimbursement(r.id, 'rejected')}>Reject</Button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <Badge variant="outline" className={cn("text-[7px] h-4 px-1.5 shrink-0 uppercase", r.status === 'rejected' ? "text-brand-red border-brand-red/30" : "text-text-green border-text-green/30")}>{r.status || 'approved'}</Badge>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                                 </div>
                                             )
                                         })}
@@ -748,25 +850,38 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         {(localLog?.reimbursements || []).map(item => {
                                             const st = item.status;
                                             const counts = st !== 'pending' && st !== 'rejected';
+                                            const itemWo = findWorkOrder(item.workOrderId || '');
+                                            const woNumber = displayWorkOrderNumber(itemWo) || (itemWo?.id || item.workOrderId || '').toUpperCase();
                                             return (
                                             <div key={item.id} className={cn('px-2 py-1 rounded border bg-bg-secondary flex justify-between items-center gap-2 text-left text-[9px] font-bold', st === 'pending' ? 'border-accent-gold/40' : st === 'rejected' ? 'border-border-sub opacity-50' : 'border-border-sub')}>
                                                 <div className="min-w-0 flex-1">
                                                     <p className="text-text-primary uppercase truncate">{item.description}</p>
-                                                    {st && <span className={cn('text-[7px] uppercase tracking-widest', st === 'approved' ? 'text-text-green' : st === 'rejected' ? 'text-text-red' : 'text-accent-gold')}>{st}</span>}
+                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                        {woNumber && (
+                                                            itemWo && itemWo.source === 'Imported' ? (
+                                                                <a
+                                                                    href={fieldNationUrl(itemWo)}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-[7px] font-mono font-bold text-brand-red hover:underline uppercase tracking-widest inline-flex items-center gap-0.5"
+                                                                >
+                                                                    {woNumber}<ExternalLink size={7} />
+                                                                </a>
+                                                            ) : (
+                                                                <span className="text-[7px] font-mono font-bold text-brand-red uppercase tracking-widest">{woNumber}</span>
+                                                            )
+                                                        )}
+                                                        {st && <span className={cn('text-[7px] uppercase tracking-widest', st === 'approved' ? 'text-text-green' : st === 'rejected' ? 'text-text-red' : 'text-accent-gold')}>{st}</span>}
+                                                    </div>
                                                 </div>
                                                 <p className={cn('font-mono shrink-0', counts ? 'text-text-green' : 'text-text-muted line-through')}>+${item.amount.toFixed(2)}</p>
-                                                {st === 'pending' && (
-                                                    <div className="flex items-center gap-1 shrink-0">
-                                                        <button type="button" title="Approve" className="h-5 w-5 flex items-center justify-center rounded bg-text-green/15 text-text-green hover:bg-text-green/25" onClick={() => reviewReimbursement(item.id, 'approved')}><Check size={11} /></button>
-                                                        <button type="button" title="Reject" className="h-5 w-5 flex items-center justify-center rounded bg-brand-red/15 text-brand-red hover:bg-brand-red/25" onClick={() => reviewReimbursement(item.id, 'rejected')}><X size={11} /></button>
-                                                    </div>
-                                                )}
                                             </div>
                                             );
                                         })}
                                         {(localLog?.reimbursements || []).length === 0 && (
                                             <p className="text-[8px] text-text-muted uppercase tracking-widest px-2 py-1">No reimbursements</p>
                                         )}
+                                        <p className="text-[7px] text-text-muted uppercase tracking-widest px-2 pt-1 italic">Approve / reject pending reimbursements from the job row above.</p>
                                     </div>
                                 </section>
 

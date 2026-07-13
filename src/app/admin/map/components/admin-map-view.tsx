@@ -163,6 +163,11 @@ export default function AdminMapView({ jobs, selectedJob, onSelectJob, onResolve
         groups.get(key)!.push(j);
       });
 
+      // Pin numbers must match the job's position in the caller's ordered
+      // list (e.g. the numbered job list next to this map), not a
+      // group-size/placeholder count.
+      const orderIndex = new Map(jobs.map((j, i) => [j.id, i + 1]));
+
       groups.forEach((groupJobs, key) => {
         const [lat, lng] = key.split(',').map(Number);
         const isGroup = groupJobs.length > 1;
@@ -170,7 +175,8 @@ export default function AdminMapView({ jobs, selectedJob, onSelectJob, onResolve
         const color = getColor(groupJobs[0].status);
         const size = selectedHere ? 40 : 32;
 
-        const label = isGroup ? String(groupJobs.length) : '1';
+        const indexes = groupJobs.map(j => orderIndex.get(j.id) ?? '?').sort((a, b) => Number(a) - Number(b));
+        const label = indexes.join(',');
         const ring = selectedHere ? 'box-shadow:0 0 0 4px rgba(229,62,62,0.5),0 2px 6px rgba(0,0,0,0.4);' : 'box-shadow:0 2px 6px rgba(0,0,0,0.4);';
         const markerHtml = `
           <div style="

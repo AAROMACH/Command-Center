@@ -909,8 +909,8 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
             isConfirmed ? "border-green-border bg-green-dim/5" : "hover:border-text-muted"
         )}>
             <CardContent className="p-0 text-left">
-                <div className="p-4 flex items-center justify-between gap-6 text-left">
-                    <div className="flex items-center gap-6 flex-1 min-w-0 text-left">
+                <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-6 text-left">
+                    <div className="flex flex-wrap items-center gap-4 sm:gap-6 flex-1 min-w-0 text-left">
                         <div className={cn(
                             "h-10 w-10 rounded-xl border flex items-center justify-center shrink-0 shadow-inner",
                             isDisputed ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
@@ -955,8 +955,8 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                     </div>
 
                     {!isLocked && (
-                        <div className="flex flex-col items-end gap-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col items-start sm:items-end gap-1 shrink-0">
+                        <div className="flex flex-wrap items-center gap-2">
                             {isPending ? (
                                 <>
                                     <Button

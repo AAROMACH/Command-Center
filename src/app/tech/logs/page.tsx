@@ -40,7 +40,8 @@ import {
     DollarSign,
     Loader2,
     Car,
-    Activity as ActivityIcon
+    Activity as ActivityIcon,
+    Trash2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -357,6 +358,17 @@ export default function TechWeeklyLogPage() {
         try {
             await updateDoc(doc(db, 'weeklyLogs', activeLog.id), { reimbursements: updated });
             toast({ title: 'Reimbursement Added', description: 'Pending payroll review — it will appear in the pay calculator.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Failed', description: e.message });
+        }
+    };
+
+    const handleDeleteReimbursement = async (reimbId: string) => {
+        if (!activeLog || isLocked) return;
+        const updated = (activeLog.reimbursements || []).filter(r => r.id !== reimbId);
+        try {
+            await updateDoc(doc(db, 'weeklyLogs', activeLog.id), { reimbursements: updated });
+            toast({ title: 'Reimbursement Removed' });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Failed', description: e.message });
         }
@@ -756,6 +768,7 @@ export default function TechWeeklyLogPage() {
                             onConfirm={handleConfirm}
                             onDispute={handleDispute}
                             onAddReimbursement={handleAddReimbursement}
+                            onDeleteReimbursement={handleDeleteReimbursement}
                             techId={currentTechId}
                         />
                     ))}
@@ -765,6 +778,28 @@ export default function TechWeeklyLogPage() {
                             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No assignments synced to this weeklog</p>
                         </div>
                     )}
+                    {/* Reported-missing jobs always trail the synced registry — they aren't
+                        confirmed assignments yet, just a flag for payroll to investigate. */}
+                    {(activeLog.missingAssignmentReports || []).map(report => (
+                        <Card key={report.id} className="bg-bg-secondary border-accent-gold/30 border-dashed overflow-hidden text-left">
+                            <CardContent className="p-4 flex items-center gap-6 text-left">
+                                <div className="h-10 w-10 rounded-xl border border-accent-gold/30 bg-accent-gold/10 text-accent-gold flex items-center justify-center shrink-0 shadow-inner">
+                                    <Search size={18}/>
+                                </div>
+                                <div className="min-w-0 text-left flex-1">
+                                    <div className="flex items-center gap-3 text-left">
+                                        <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[350px] text-left">{report.summary || 'Missing Assignment'}</h4>
+                                        <Badge variant="pending" className="text-[7px] h-3.5 uppercase tracking-tighter">Reported Missing</Badge>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
+                                        {report.clientName && <span>{report.clientName}</span>}
+                                        <span className="flex items-center gap-1.5 text-left"><MapPin size={10} className="text-brand-red shrink-0"/> {formatCityState(report.location)}</span>
+                                        <span className="flex items-center gap-1.5 text-left"><CalendarIcon size={10} className="shrink-0"/> {report.date}{report.time ? ` · ${report.time}` : ''}</span>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
                 </div>
             </div>
 
@@ -821,7 +856,7 @@ export default function TechWeeklyLogPage() {
     );
 }
 
-function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, techId }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, techId: string | null }) {
+function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, techId }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, techId: string | null }) {
     const job = workOrders.find(wo => wo.id === item.workOrderId);
     const itemReimbursements = reimbursements.filter(r => r.workOrderId === item.workOrderId);
     const totalReimbursed = itemReimbursements.reduce((acc, r) => acc + (r.amount || 0), 0);
@@ -986,6 +1021,16 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                     >
                                         {r.status || 'pending'}
                                     </Badge>
+                                    {!isLocked && (
+                                        <button
+                                            type="button"
+                                            title="Remove reimbursement"
+                                            onClick={() => onDeleteReimbursement(r.id)}
+                                            className="text-text-muted hover:text-brand-red transition-colors p-1 -m-1"
+                                        >
+                                            <Trash2 size={12} />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))}

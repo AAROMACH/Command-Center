@@ -1,4 +1,5 @@
-import type { Permission } from './permissions';
+import { getPortalAccess, hasPermission, type Permission } from './permissions';
+import type { Technician } from './types';
 
 // Route-prefix → permission map for portal pages.
 //
@@ -54,4 +55,38 @@ export function requiredPermissionForPath(pathname: string): Permission | null {
     }
   }
   return best ? best.permission : null;
+}
+
+/** The portal a path belongs to, or null for non-portal paths (login, etc.). */
+export function portalForPath(pathname: string): 'admin' | 'tech' | 'client' | null {
+  if (pathname.startsWith('/admin')) return 'admin';
+  if (pathname.startsWith('/tech')) return 'tech';
+  if (pathname.startsWith('/client')) return 'client';
+  return null;
+}
+
+/**
+ * The single client-side effective-access decision for a route. Composes the
+ * two access axes so they can no longer be enforced independently:
+ *
+ *   1. Portal lock — getPortalAccess() (explicit portalAccess.{portal} overrides
+ *      the permission-derived default). If the portal owning this path is
+ *      locked, access is denied regardless of any page permission the role
+ *      grants. This is the top-level gate.
+ *   2. Page permission — hasPermission() against requiredPermissionForPath()
+ *      (permissionOverrides override role defaults). Paths not in the route map
+ *      (profile, settings, detail pages) are gated by portal access only.
+ *
+ * Reads the LIVE user document, so portal/permission changes take effect
+ * without waiting for the login cookie to refresh. Mirrors middleware.ts (edge
+ * portal gate) and getAvailablePortals(); Firestore rules remain the backend
+ * backstop for data reads/writes. This is the documented precedence for the app.
+ */
+export function canAccessPath(user: Technician | null | undefined, pathname: string): boolean {
+  if (!user) return false;
+  const portal = portalForPath(pathname);
+  if (portal && !getPortalAccess(user)[portal]) return false;
+  const required = requiredPermissionForPath(pathname);
+  if (required && !hasPermission(user, required)) return false;
+  return true;
 }

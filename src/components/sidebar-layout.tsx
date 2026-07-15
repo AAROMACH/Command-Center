@@ -6,8 +6,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { AlertBand } from "@/components/alert-band";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
-import { hasPermission, getAvailablePortals } from "@/lib/permissions";
-import { requiredPermissionForPath } from "@/lib/route-permissions";
+import { getAvailablePortals } from "@/lib/permissions";
+import { canAccessPath } from "@/lib/route-permissions";
 
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -15,12 +15,13 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const isTechPortal = pathname.startsWith("/tech");
 
-  // Enforce the same permissions the sidebar nav uses for visibility: a page
-  // hidden from the nav must not be reachable by direct URL either. Only
+  // Enforce one composite effective-access decision (portal lock + page
+  // permission) for direct-URL/refresh access — the same result the nav and
+  // middleware use, read from the live user doc. A page hidden from the nav, or
+  // inside a locked portal, must not be reachable by direct URL either. Only
   // gate once a real user profile has loaded — while loading (or when no
   // Firestore profile exists) the middleware/session flow remains in charge.
-  const required = requiredPermissionForPath(pathname);
-  const denied = !loading && !!user && !!required && !hasPermission(user, required);
+  const denied = !loading && !!user && !canAccessPath(user, pathname);
 
   useEffect(() => {
     if (!denied) return;

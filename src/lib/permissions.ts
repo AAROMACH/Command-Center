@@ -488,15 +488,36 @@ export function isClient(user: RoleLike | null | undefined): boolean {
   return user.roles?.includes('client') || currentRole.includes('client');
 }
 
+// A user can enter a portal iff they effectively hold at least one permission
+// inside it. This makes the permission set the single source of truth for
+// portal access, so it can never contradict the pages a role is granted —
+// e.g. the office roles (sales/safety_officer/training_coordinator) hold
+// admin-portal permissions and therefore get admin-portal access, which the
+// old role-bucket derivation (isAdmin, which excludes them) silently denied.
+export function hasAnyPortalPermission(user: RoleLike | null | undefined, portal: 'admin' | 'tech' | 'client'): boolean {
+  if (!user) return false;
+  const pages = PERMISSION_TREE[portal];
+  for (const page of Object.keys(pages)) {
+    for (const perm of pages[page]) {
+      if (hasPermission(user, perm)) return true;
+    }
+  }
+  return false;
+}
+
+// Effective portal access. Precedence (single documented rule):
+//   1. Explicit portalAccess.{portal} (an admin-set lock/grant) wins when present.
+//   2. Otherwise derive from the permission set via hasAnyPortalPermission,
+//      which itself honours permissionOverrides → ROLE_PERMISSIONS.
+// This is the same value written to the login `aaromach_portals` cookie
+// (middleware) and consumed by the client route guard (canAccessPath), so the
+// edge and client agree on one effective result.
 export function getPortalAccess(user: Technician | null | undefined): { admin: boolean; tech: boolean; client: boolean } {
   if (!user) return { admin: false, tech: false, client: false };
-  const adminByRole = isAdmin(user);
-  const techByRole = isTech(user);
-  const clientByRole = isClient(user);
   return {
-    admin: user.portalAccess?.admin !== undefined ? user.portalAccess.admin : adminByRole,
-    tech: user.portalAccess?.tech !== undefined ? user.portalAccess.tech : techByRole,
-    client: user.portalAccess?.client !== undefined ? user.portalAccess.client : clientByRole,
+    admin: user.portalAccess?.admin !== undefined ? user.portalAccess.admin : hasAnyPortalPermission(user, 'admin'),
+    tech: user.portalAccess?.tech !== undefined ? user.portalAccess.tech : hasAnyPortalPermission(user, 'tech'),
+    client: user.portalAccess?.client !== undefined ? user.portalAccess.client : hasAnyPortalPermission(user, 'client'),
   };
 }
 

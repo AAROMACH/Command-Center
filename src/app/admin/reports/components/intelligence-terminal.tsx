@@ -47,7 +47,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import type { Technician, WorkOrder, WeeklyLog, ProjectDailyLog } from '@/lib/types';
-import { isClient } from '@/lib/permissions';
+import { isTech } from '@/lib/permissions';
 
 type MetricType = 'reliability' | 'payouts' | 'assignments' | 'hours';
 type GroupBy = 'tech' | 'client' | 'date';
@@ -55,12 +55,10 @@ type TimeWindow = '7d' | '30d' | '90d' | '1y' | 'all';
 
 export function IntelligenceTerminal({
     timeWindow = '30d',
-    eventType = 'all',
     personnel = 'all',
     client = 'all',
 }: {
     timeWindow?: TimeWindow;
-    eventType?: string;
     personnel?: string;
     client?: string;
 }) {
@@ -110,7 +108,7 @@ export function IntelligenceTerminal({
 
         const filteredWO = workOrders.filter(wo => {
             if (personnel !== 'all' && wo.assignedTechnicianId !== personnel) return false;
-            if (client !== 'all' && (wo as any).clientId !== client && wo.clientName !== client) return false;
+            if (client !== 'all' && wo.clientName !== client) return false;
             if (!dateRange?.from || !wo.scheduleDate) return true;
             try {
                 const parts = wo.scheduleDate.split(/[-/]/);
@@ -150,7 +148,7 @@ export function IntelligenceTerminal({
 
         if (groupBy === 'tech') {
             return technicians
-                .filter(t => !isClient(t))
+                .filter(isTech)
                 .map(tech => {
                     let value = 0;
                     if (metric === 'reliability') value = tech.reliabilityScore || 0;

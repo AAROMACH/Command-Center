@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { isClient } from '@/lib/permissions';
+import { isTech } from '@/lib/permissions';
 import { BarChart2, ShieldAlert, Users, AlertTriangle, Clock, ChevronRight, Mail, Phone, ArrowLeft, RefreshCw, Filter, X, Activity as ActivityIcon } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +32,6 @@ export default function FieldIntelligencePage() {
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
 
     // Intelligence filter state
-    const [intelEventType, setIntelEventType] = useState('all');
     const [intelPersonnel, setIntelPersonnel] = useState('all');
     const [intelClient, setIntelClient] = useState('all');
     const [timeWindow, setTimeWindow] = useState<'7d' | '30d' | '90d' | '1y' | 'all'>('30d');
@@ -62,13 +61,16 @@ export default function FieldIntelligencePage() {
     }, []);
 
     const staffTechs = useMemo(
-        () => technicians.filter(t => !isClient(t)),
+        () => technicians.filter(isTech),
         [technicians]
     );
 
-    const clientList = useMemo(
-        () => technicians.filter(isClient),
-        [technicians]
+    // The client filter must match what work orders actually store
+    // (clientName, a free-text field) — not a client account's Firestore
+    // user id, which never appears anywhere on a WorkOrder.
+    const clientNames = useMemo(
+        () => Array.from(new Set(workOrders.map(wo => wo.clientName).filter(Boolean))).sort(),
+        [workOrders]
     );
 
     const anomalyCounts = useMemo(() =>
@@ -251,18 +253,6 @@ export default function FieldIntelligencePage() {
                             <Filter size={12} className="text-text-muted" />
                             <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">Filters</span>
                         </div>
-                        <Select value={intelEventType} onValueChange={setIntelEventType}>
-                            <SelectTrigger className="h-8 w-[160px] bg-bg-primary border-border-main text-[10px] font-bold uppercase">
-                                <SelectValue placeholder="Event Type" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-bg-elevated border-border-main">
-                                <SelectItem value="all" className="text-[10px] font-bold uppercase">All Events</SelectItem>
-                                <SelectItem value="assignments" className="text-[10px] font-bold uppercase">Assignments</SelectItem>
-                                <SelectItem value="projects" className="text-[10px] font-bold uppercase">Projects</SelectItem>
-                                <SelectItem value="logs" className="text-[10px] font-bold uppercase">Weekly Logs</SelectItem>
-                                <SelectItem value="requests" className="text-[10px] font-bold uppercase">Site Requests</SelectItem>
-                            </SelectContent>
-                        </Select>
                         <Select value={intelPersonnel} onValueChange={setIntelPersonnel}>
                             <SelectTrigger className="h-8 w-[160px] bg-bg-primary border-border-main text-[10px] font-bold uppercase">
                                 <SelectValue placeholder="Personnel" />
@@ -280,8 +270,8 @@ export default function FieldIntelligencePage() {
                             </SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
                                 <SelectItem value="all" className="text-[10px] font-bold uppercase">All Clients</SelectItem>
-                                {clientList.map(c => (
-                                    <SelectItem key={c.id} value={c.id} className="text-[10px] font-bold uppercase">{c.clientCompany || c.name || c.id}</SelectItem>
+                                {clientNames.map(name => (
+                                    <SelectItem key={name} value={name} className="text-[10px] font-bold uppercase">{name}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -297,23 +287,21 @@ export default function FieldIntelligencePage() {
                                 <SelectItem value="all" className="text-[10px] font-bold uppercase">All Time</SelectItem>
                             </SelectContent>
                         </Select>
-                        {(intelEventType !== 'all' || intelPersonnel !== 'all' || intelClient !== 'all' || timeWindow !== '30d') && (
+                        {(intelPersonnel !== 'all' || intelClient !== 'all' || timeWindow !== '30d') && (
                             <button
-                                onClick={() => { setIntelEventType('all'); setIntelPersonnel('all'); setIntelClient('all'); setTimeWindow('30d'); }}
+                                onClick={() => { setIntelPersonnel('all'); setIntelClient('all'); setTimeWindow('30d'); }}
                                 className="h-8 px-3 text-[9px] font-black uppercase tracking-widest text-brand-red hover:underline"
                             >
                                 Clear
                             </button>
                         )}
                         <div className="ml-auto flex gap-2 flex-wrap">
-                            {intelEventType !== 'all' && <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border border-brand-red/30 bg-brand-red/10 text-brand-red">{intelEventType}</span>}
                             {intelPersonnel !== 'all' && <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border border-blue-400/30 bg-blue-400/10 text-blue-400">{staffTechs.find(t => t.id === intelPersonnel)?.name || intelPersonnel}</span>}
-                            {intelClient !== 'all' && <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border border-amber-400/30 bg-amber-400/10 text-amber-400">{clientList.find(c => c.id === intelClient)?.clientCompany || intelClient}</span>}
+                            {intelClient !== 'all' && <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border border-amber-400/30 bg-amber-400/10 text-amber-400">{intelClient}</span>}
                         </div>
                     </div>
                     <IntelligenceTerminal
                         timeWindow={timeWindow}
-                        eventType={intelEventType}
                         personnel={intelPersonnel}
                         client={intelClient}
                     />

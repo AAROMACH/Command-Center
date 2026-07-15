@@ -176,12 +176,12 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden px-6 py-4">
+        <div className="flex-1 min-h-0 overflow-hidden px-6 py-4">
           {step === 'input' ? (
-            <div className="space-y-4 h-full flex flex-col">
-              <div className="space-y-2 flex-1">
+            <div className="space-y-4 h-full min-h-0 flex flex-col">
+              <div className="space-y-2 flex-1 min-h-0">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Data Input Buffer</label>
-                <Textarea 
+                <Textarea
                   placeholder="Paste job details here...&#10;19204205&#10;HP Printer Repair...&#10;4/8/2026 at 3:10 PM..."
                   className="h-full min-h-[350px] bg-bg-primary border-border-sub font-mono text-xs leading-relaxed"
                   value={pastedText}
@@ -195,7 +195,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
               </div>
             </div>
           ) : (
-            <div className="space-y-4 h-full flex flex-col">
+            <div className="space-y-4 h-full min-h-0 flex flex-col">
                 {duplicateCount > 0 && (
                     <div className="p-3 rounded bg-brand-red-dim/10 border border-brand-red/30 flex items-center gap-3">
                         <AlertTriangle className="text-brand-red h-5 w-5 shrink-0" />
@@ -205,7 +205,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders }
                     </div>
                 )}
                 
-                <ScrollArea className="flex-1 border border-border-sub rounded-md bg-bg-primary">
+                <ScrollArea className="flex-1 min-h-0 border border-border-sub rounded-md bg-bg-primary">
                     <div className="divide-y divide-border-sub">
                         {parsedResults.map((job) => (
                             <div key={job.id} className={cn("p-4 group", job.isDuplicate ? "bg-bg-tertiary/30 opacity-60" : "bg-transparent")}>

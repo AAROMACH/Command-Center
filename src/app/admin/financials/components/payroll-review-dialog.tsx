@@ -18,8 +18,7 @@ import {
     CheckCircle2, 
     ShieldAlert, 
     Check, 
-    X, 
-    Coins,
+    X,
     FileText,
     ExternalLink,
     DollarSign,
@@ -454,7 +453,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                         </div>
                     </DialogHeader>
 
-                    <Tabs defaultValue="verified" className="flex-1 overflow-hidden flex flex-col">
+                    <Tabs defaultValue="verified" className="flex-1 min-h-0 overflow-hidden flex flex-col">
                         <div className="px-6 border-b border-border-sub bg-bg-tertiary/20 flex justify-between items-center shrink-0">
                             <TabsList className="h-12 bg-transparent p-0 gap-8 justify-start">
                                 <TabsTrigger value="verified" className="tab-trigger-payroll flex items-center gap-2">
@@ -476,9 +475,9 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-hidden relative">
+                        <div className="flex-1 min-h-0 overflow-hidden relative">
                             <TabsContent value="verified" className="m-0 h-full text-left">
-                                <ScrollArea className="h-full p-2">
+                                <ScrollArea className="h-full min-h-0 p-2">
                                     <div className="space-y-1">
                                         {localLog.unsubmitRequested && (
                                             <div className="p-3 rounded-lg border border-border-alert bg-brand-red-dim/5 flex items-start gap-4 mb-2">
@@ -641,7 +640,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             </TabsContent>
 
                             <TabsContent value="discrepancy" className="m-0 h-full text-left">
-                                <ScrollArea className="h-full p-2 text-left">
+                                <ScrollArea className="h-full min-h-0 p-2 text-left">
                                     <div className="space-y-1 text-left">
                                         {(localLog?.items || []).filter(i => i.confirmationStatus === 'disputed').map(item => {
                                             const wo = findWorkOrder(item.workOrderId);
@@ -840,64 +839,14 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                         <Separator className="bg-border-sub shrink-0" />
 
-                        <div className="p-2 bg-bg-tertiary/10 space-y-1 shrink-0">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <section className="space-y-1 text-left px-4">
-                                    <h3 className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-1.5 text-left">
-                                        <Coins size={10} className="text-accent-gold" /> Expenses
-                                    </h3>
-                                    <div className="space-y-0.5">
-                                        {(localLog?.reimbursements || []).map(item => {
-                                            const st = item.status;
-                                            const counts = st !== 'pending' && st !== 'rejected';
-                                            const itemWo = findWorkOrder(item.workOrderId || '');
-                                            const woNumber = displayWorkOrderNumber(itemWo) || (itemWo?.id || item.workOrderId || '').toUpperCase();
-                                            return (
-                                            <div key={item.id} className={cn('px-2 py-1 rounded border bg-bg-secondary flex justify-between items-center gap-2 text-left text-[9px] font-bold', st === 'pending' ? 'border-accent-gold/40' : st === 'rejected' ? 'border-border-sub opacity-50' : 'border-border-sub')}>
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="text-text-primary uppercase truncate">{item.description}</p>
-                                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                                        {woNumber && (
-                                                            itemWo && itemWo.source === 'Imported' ? (
-                                                                <a
-                                                                    href={fieldNationUrl(itemWo)}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="text-[7px] font-mono font-bold text-brand-red hover:underline uppercase tracking-widest inline-flex items-center gap-0.5"
-                                                                >
-                                                                    {woNumber}<ExternalLink size={7} />
-                                                                </a>
-                                                            ) : (
-                                                                <span className="text-[7px] font-mono font-bold text-brand-red uppercase tracking-widest">{woNumber}</span>
-                                                            )
-                                                        )}
-                                                        {st && <span className={cn('text-[7px] uppercase tracking-widest', st === 'approved' ? 'text-text-green' : st === 'rejected' ? 'text-text-red' : 'text-accent-gold')}>{st}</span>}
-                                                    </div>
-                                                </div>
-                                                <p className={cn('font-mono shrink-0', counts ? 'text-text-green' : 'text-text-muted line-through')}>+${item.amount.toFixed(2)}</p>
-                                            </div>
-                                            );
-                                        })}
-                                        {(localLog?.reimbursements || []).length === 0 && (
-                                            <p className="text-[8px] text-text-muted uppercase tracking-widest px-2 py-1">No reimbursements</p>
-                                        )}
-                                        <p className="text-[7px] text-text-muted uppercase tracking-widest px-2 pt-1 italic">Approve / reject pending reimbursements from the job row above.</p>
-                                    </div>
-                                </section>
-
-                                <section className="space-y-1 text-left px-4">
-                                    <h3 className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-1.5 text-left">
-                                        <FileText size={10} className="text-brand-red" /> Settlement
-                                    </h3>
-                                    <div className="p-2 rounded-lg bg-bg-secondary border border-green-border/20 space-y-1 shadow-inner">
-                                        <div className="flex justify-between items-center">
-                                            <p className="text-[7px] font-black text-text-green uppercase tracking-widest">Disbursement</p>
-                                            <p className="text-lg font-mono font-bold text-text-green leading-none">
-                                                ${calculatedTotalPayout.toFixed(2)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </section>
+                        <div className="p-2 bg-bg-tertiary/10 shrink-0">
+                            <div className="flex items-center justify-between gap-4 px-4 py-2 rounded-lg bg-bg-secondary border border-green-border/20 shadow-inner max-w-md ml-auto">
+                                <p className="text-[8px] font-black text-text-green uppercase tracking-[0.2em] flex items-center gap-1.5">
+                                    <FileText size={10} className="text-brand-red" /> Settlement Disbursement
+                                </p>
+                                <p className="text-lg font-mono font-bold text-text-green leading-none">
+                                    ${calculatedTotalPayout.toFixed(2)}
+                                </p>
                             </div>
                         </div>
                     </Tabs>

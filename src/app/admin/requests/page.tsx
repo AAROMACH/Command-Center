@@ -285,7 +285,7 @@ export default function RequestsPage() {
         <div className="overflow-x-auto">
           <TabsList className="tabs h-auto gap-0 p-0 bg-transparent border-b border-border-sub rounded-none w-max">
             {([
-              { value: 'inbox', label: 'Inbox' },
+              { value: 'inbox', label: 'User Requests' },
               { value: 'service', label: 'Service' },
               { value: 'intake', label: 'Client Intake' },
               { value: 'approved', label: 'Approved' },

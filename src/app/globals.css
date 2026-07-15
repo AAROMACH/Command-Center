@@ -156,7 +156,7 @@
 @layer components {
   /* Typography Classes */
   .page-eyebrow    { @apply text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-red; }
-  .page-title      { @apply text-[24px] font-bold uppercase tracking-[0.02em] text-text-primary; }
+  .page-title      { @apply text-[20px] sm:text-[24px] font-bold uppercase tracking-[0.02em] text-text-primary; }
   .page-subtitle   { @apply text-[12px] text-text-secondary; }
   .section-label   { @apply text-[10px] font-semibold uppercase tracking-[0.1em] text-text-muted; }
   .stat-value      { @apply text-[28px] font-bold text-text-primary; }
@@ -174,9 +174,9 @@
     @apply mx-auto max-w-[1400px] px-4 md:px-6 py-6;
   }
   .page-header {
-    @apply mb-5 flex items-start justify-between;
+    @apply mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between;
   }
-  .page-header-right { @apply flex gap-2.5; }
+  .page-header-right { @apply flex flex-wrap items-center gap-2.5; }
 
   /* ShadCN Component Overrides */
   .card {
@@ -191,7 +191,7 @@
     @apply absolute left-2.5 h-3.5 w-3.5 text-text-muted;
   }
   .search-input {
-    @apply w-[300px] rounded-md border border-border-main bg-bg-secondary py-1 pl-8 pr-3 text-xs text-text-primary placeholder:text-text-muted focus:border-brand-red focus:outline-none focus:ring-0;
+    @apply w-full sm:w-[300px] rounded-md border border-border-main bg-bg-secondary py-1 pl-8 pr-3 text-xs text-text-primary placeholder:text-text-muted focus:border-brand-red focus:outline-none focus:ring-0;
   }
   .tabs {
     @apply mb-3 flex gap-1 p-0;
@@ -209,10 +209,10 @@
     @apply ml-1 opacity-80;
   }
   .table-wrap {
-    @apply overflow-hidden rounded-lg border border-border-main bg-bg-secondary;
+    @apply overflow-x-auto rounded-lg border border-border-main bg-bg-secondary;
   }
   .tbl {
-    @apply w-full text-xs;
+    @apply w-full min-w-[680px] text-xs;
   }
   .tbl thead tr {
     @apply border-b border-border-main bg-bg-tertiary;

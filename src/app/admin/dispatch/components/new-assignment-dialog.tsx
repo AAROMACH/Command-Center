@@ -282,7 +282,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
                     <div className="space-y-1.5">
@@ -345,7 +345,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pay Model</Label>
                   <Select value={formData.payType} onValueChange={(val: any) => setFormData({...formData, payType: val})}>
@@ -416,7 +416,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Schedule Date</Label>
                   <Input 
@@ -437,7 +437,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority</Label>
                   <Select value={formData.priority} onValueChange={(val: any) => {
@@ -469,7 +469,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">SLA Response Target (min)</Label>
                   <Input

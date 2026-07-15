@@ -692,7 +692,7 @@ export const WorkOrdersTable = React.memo(({
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2 text-left">
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
                                 <Input value={editedOrder.clientName || ''} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold uppercase" />
@@ -703,7 +703,7 @@ export const WorkOrdersTable = React.memo(({
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2 text-left">
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
                                 <Select value={editedOrder.projectType} onValueChange={(val) => setEditedOrder({...editedOrder, projectType: val})}>
@@ -731,7 +731,7 @@ export const WorkOrdersTable = React.memo(({
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2 text-left">
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Schedule Date</Label>
                                 <Input type="date" value={editedOrder.scheduleDate || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleDate: e.target.value})} className="h-10 bg-bg-primary text-xs" />
@@ -742,7 +742,7 @@ export const WorkOrdersTable = React.memo(({
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2 text-left">
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pay Model</Label>
                                 <Select value={editedOrder.payType} onValueChange={(val: any) => setEditedOrder({...editedOrder, payType: val})}>
@@ -806,7 +806,7 @@ export const WorkOrdersTable = React.memo(({
 
                         <Separator className="bg-border-sub" />
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2 text-left">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label>
                                 <Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>

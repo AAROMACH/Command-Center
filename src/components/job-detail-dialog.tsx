@@ -421,7 +421,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
               </div>
 
               {/* Action buttons */}
-              <div className="grid grid-cols-6 gap-1.5">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                 {actionButtons.map(({ icon: Icon, label, onClick }) => (
                   <button
                     key={label}

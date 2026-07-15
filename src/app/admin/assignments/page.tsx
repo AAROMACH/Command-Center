@@ -824,7 +824,7 @@ export default function AssignmentsHubPage() {
                                 <Textarea placeholder="Detailed requirements..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-24 text-xs text-left" />
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4 text-left">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                             <div className="space-y-2 text-left text-left">
                               <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Client / Entity</Label>
                               <Input value={editedOrder.clientName || ''} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold uppercase text-left" />
@@ -835,7 +835,7 @@ export default function AssignmentsHubPage() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 text-left">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                           <div className="space-y-2 text-left text-left">
                               <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Service Category</Label>
                               <Select value={editedOrder.projectType} onValueChange={(val) => setEditedOrder({...editedOrder, projectType: val})}>
@@ -863,7 +863,7 @@ export default function AssignmentsHubPage() {
                           </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 text-left">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                           <div className="space-y-2 text-left text-left">
                               <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Schedule Date</Label>
                               <Input type="date" value={editedOrder.scheduleDate || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleDate: e.target.value})} className="bg-bg-primary h-10 text-xs text-left" />
@@ -874,7 +874,7 @@ export default function AssignmentsHubPage() {
                           </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 text-left">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                           <div className="space-y-2 text-left text-left">
                               <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Pay Model</Label>
                               <Select value={editedOrder.payType} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, payType: val })}>
@@ -937,7 +937,7 @@ export default function AssignmentsHubPage() {
                       )}
 
                         <Separator className="bg-border-sub text-left" />
-                        <div className="grid grid-cols-2 gap-4 text-left">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                             <div className="space-y-2 text-left text-left">
                               <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block text-left">Technician Allocation</Label>
                               <Select value={editedOrder.assignedTechnicianId || editedOrder.techId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? null : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>

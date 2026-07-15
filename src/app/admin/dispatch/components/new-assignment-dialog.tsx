@@ -24,7 +24,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Wrench, MapPin, Building2, Check, UserCheck, Search, Users, Navigation, DollarSign, SearchCode, X } from 'lucide-react';
 import type { WorkOrder, Technician } from '@/lib/types';
-import { technicians } from '@/lib/data';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
@@ -152,11 +153,21 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     }
   };
 
+  // Live client entities from the app (the users collection, same source the
+  // CRM/Clients and Sites pages use) — not a static seed list — so the picker
+  // reflects the client entities that actually exist in this workspace.
+  const [allUsers, setAllUsers] = useState<Technician[]>([]);
+  useEffect(() => {
+    if (!isOpen) return;
+    const unsub = onSnapshot(collection(db, 'users'), snap => {
+      setAllUsers(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
+    });
+    return () => unsub();
+  }, [isOpen]);
+
   const clients = useMemo(() => {
-    return technicians.filter(t => 
-        isClient(t) || t.clientCompany
-    );
-  }, []);
+    return allUsers.filter(t => isClient(t) || t.clientCompany);
+  }, [allUsers]);
 
   const selectedClient = useMemo(() => {
     return clients.find(c => (c.clientCompany || c.name) === formData.clientName);

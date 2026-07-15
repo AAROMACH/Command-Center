@@ -5,6 +5,7 @@ import { db } from '@/lib/firebase';
 import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { isClient } from '@/lib/permissions';
 import type { WorkOrder, Technician } from '@/lib/types';
+import { displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -644,7 +645,7 @@ export default function AdminCalendarPage() {
                       isAssigned(drawerJob) ? 'bg-text-green/10 text-text-green border-text-green/20' : 'bg-brand-red/10 text-brand-red border-brand-red/20',
                     )}>{isAssigned(drawerJob) ? 'Assigned' : 'Unassigned'}</span>
                     <span className="text-[9px] text-text-muted font-mono uppercase">
-                      {drawerJob.workOrderId || `#${drawerJob.id.slice(0, 10).toUpperCase()}`}
+                      {displayWorkOrderNumber(drawerJob)}
                     </span>
                   </div>
                   <p className="text-[13px] font-medium text-text-primary leading-tight">

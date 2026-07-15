@@ -473,8 +473,8 @@ export default function AssignmentsHubPage() {
                       <div className="space-y-2 text-left">
                         {['Imported', 'Manual', 'Client'].map(source => (
                           <div key={source} className="flex items-center space-x-2 text-left">
-                            <Checkbox 
-                              id={`source-${source}`} 
+                            <Checkbox
+                              id={`source-${source}`}
                               checked={activeSources.includes(source)}
                               onCheckedChange={(checked) => {
                                 setActiveSources(prev => checked ? [...prev, source] : prev.filter(s => s !== source));
@@ -483,6 +483,25 @@ export default function AssignmentsHubPage() {
                             <Label htmlFor={`source-${source}`} className="text-[10px] uppercase font-semibold cursor-pointer text-left">{source}</Label>
                           </div>
                         ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 text-left">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest text-left">Schedule Date</p>
+                        {dateRange?.from && (
+                          <button onClick={() => setDateRange(undefined)} className="text-[9px] font-bold text-brand-red hover:underline">Clear</button>
+                        )}
+                      </div>
+                      <p className="text-[10px] font-semibold text-text-primary text-left">
+                        {dateRange?.from
+                          ? (dateRange.to
+                              ? <>{format(dateRange.from, 'MM-dd-yyyy')} – {format(dateRange.to, 'MM-dd-yyyy')}</>
+                              : format(dateRange.from, 'MM-dd-yyyy'))
+                          : <span className="text-text-muted">All dates</span>}
+                      </p>
+                      <div className="rounded-md border border-border-sub overflow-hidden">
+                        <Calendar mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} />
                       </div>
                     </div>
                   </div>
@@ -553,38 +572,8 @@ export default function AssignmentsHubPage() {
               Job Archive <span className="tab-count">({archivedWorkOrders.length})</span>
             </TabsTrigger>
           </TabsList>
-
-          <div className="flex items-center gap-1.5 text-left">
-            <Popover>
-              <PopoverTrigger asChild>
-                <div className={cn(
-                    "flex items-center h-8 rounded-md border border-border-main bg-bg-secondary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-8 text-left",
-                    dateRange?.from && "border-brand-red ring-1 ring-brand-red"
-                )}>
-                    <CalendarIcon size={12} className={cn("mr-2", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
-                    <span className={cn(
-                        "text-[10px] font-bold uppercase tracking-widest whitespace-nowrap",
-                        dateRange?.from ? "text-text-primary" : "text-text-muted"
-                    )}>
-                        {dateRange?.from ? (
-                            dateRange.to ? <>{format(dateRange.from, "MM-dd-yyyy")} – {format(dateRange.to, "MM-dd-yyyy")}</> : format(dateRange.from, "MM-dd-yyyy")
-                        ) : "Select Date"}
-                    </span>
-                    {dateRange?.from && (
-                        <button 
-                            className="absolute right-2 p-0.5 rounded-full hover:bg-brand-red/20 text-text-muted hover:text-brand-red transition-colors"
-                            onClick={(e) => { e.stopPropagation(); setDateRange(undefined); }}
-                        >
-                            <X size={10} />
-                        </button>
-                    )}
-                </div>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-                <Calendar initialFocus mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} />
-              </PopoverContent>
-            </Popover>
-          </div>
+          {/* Date filtering now lives in the always-visible header "Filters"
+              popover (works in both list and map views, and on mobile). */}
         </div>
 
         <div className="space-y-6 text-left">

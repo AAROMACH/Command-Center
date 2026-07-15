@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import type { WorkOrder, Technician } from '@/lib/types';
+import { displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { db, auth } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -574,7 +575,7 @@ export default function TechCalendarPage() {
                       getStatusChipCls(drawerJob.status),
                     )}>{getStatusLabel(drawerJob.status)}</span>
                     <span className="text-[9px] text-text-muted font-mono uppercase">
-                      {(drawerJob as any).workOrderId || `#${drawerJob.id.slice(0, 10).toUpperCase()}`}
+                      {displayWorkOrderNumber(drawerJob)}
                     </span>
                   </div>
                   <p className="text-[13px] font-medium text-text-primary leading-tight">

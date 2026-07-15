@@ -32,6 +32,7 @@ import {
   orderBy, limit, doc, updateDoc, arrayUnion,
 } from 'firebase/firestore';
 import type { WorkOrder, WeeklyLog, AssignmentTimeLog, Technician } from '@/lib/types';
+import { displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { assignmentTimeLogs } from '@/lib/data';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -265,7 +266,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
           {/* WO ID + badges */}
           <div className="flex items-center gap-2.5 flex-wrap pr-8">
             <span className="font-mono text-[11px] font-bold text-brand-red uppercase tracking-[0.15em]">
-              WO: {mission.id.toUpperCase()}
+              WO: {displayWorkOrderNumber(mission)}
             </span>
             <span className={cn(
               'flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-wider',

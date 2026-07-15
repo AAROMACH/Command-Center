@@ -165,8 +165,17 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     return () => unsub();
   }, [isOpen]);
 
+  // Only current client entities are assignable: exclude self-registered
+  // clients still awaiting approval or that were denied (approvalStatus), and
+  // clients that were deactivated/removed (accountStatus 'inactive'). Legacy
+  // admin-created clients with no approvalStatus set are treated as approved.
   const clients = useMemo(() => {
-    return allUsers.filter(t => isClient(t) || t.clientCompany);
+    return allUsers.filter(t =>
+      (isClient(t) || t.clientCompany)
+      && t.approvalStatus !== 'pending'
+      && t.approvalStatus !== 'denied'
+      && t.accountStatus !== 'inactive'
+    );
   }, [allUsers]);
 
   const selectedClient = useMemo(() => {

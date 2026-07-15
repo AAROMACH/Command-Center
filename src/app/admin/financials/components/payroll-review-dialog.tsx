@@ -420,33 +420,33 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         <>
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
                 <DialogContent className="max-w-[95vw] sm:max-w-3xl lg:max-w-6xl bg-bg-elevated border-border-default flex flex-col p-0 overflow-hidden h-[90vh] shadow-2xl text-left">
-                    <DialogHeader className="p-4 border-b border-border-sub bg-bg-tertiary/30 text-left shrink-0 space-y-0">
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-4">
-                                <Avatar className="h-10 w-10 border border-border-sub">
+                    <DialogHeader className="p-3 sm:p-4 border-b border-border-sub bg-bg-tertiary/30 text-left shrink-0 space-y-0">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                                <Avatar className="h-9 w-9 sm:h-10 sm:w-10 border border-border-sub shrink-0">
                                     <AvatarImage src={technician.avatarUrl} />
                                     <AvatarFallback>{technician.name.charAt(0)}</AvatarFallback>
                                 </Avatar>
-                                <div className="text-left">
-                                    <div className="flex items-center gap-2">
-                                        <DialogTitle className="text-sm font-bold uppercase tracking-widest text-text-primary text-left">Registry Audit: {technician.name}</DialogTitle>
+                                <div className="text-left min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <DialogTitle className="text-[13px] sm:text-sm font-bold uppercase tracking-widest text-text-primary text-left">Registry Audit: {technician.name}</DialogTitle>
                                         {localLog.unsubmitRequested && (
                                             <Badge variant="destructive" className="h-4 px-1.5 text-[7px] uppercase animate-pulse">Unsubmit Requested</Badge>
                                         )}
                                     </div>
-                                    <DialogDescription className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">
+                                    <DialogDescription className="text-[9px] sm:text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">
                                         Period: <span className="text-brand-red font-mono">{localLog.weekOf}</span> · Status: <span className="text-text-primary">{localLog.status}</span>
                                     </DialogDescription>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="flex flex-col items-end mr-4">
+                            <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                                <div className="flex flex-col items-start sm:items-end">
                                     <p className="text-[8px] font-black text-text-muted uppercase">Audit Progress</p>
                                     <p className={cn("text-xs font-mono font-bold", isManifestFullyAudited ? "text-text-green" : "text-accent-gold")}>
                                         {auditCompleteCount} / {totalJobsCount} VERIFIED
                                     </p>
                                 </div>
-                                <Badge variant={localLog.status === 'Approved' ? 'active' : localLog.status === 'Submitted' ? 'onhold' : 'pending'} className="h-6 px-4 uppercase text-[10px] tracking-widest">
+                                <Badge variant={localLog.status === 'Approved' ? 'active' : localLog.status === 'Submitted' ? 'onhold' : 'pending'} className="h-6 px-3 sm:px-4 uppercase text-[9px] sm:text-[10px] tracking-widest shrink-0">
                                     {localLog.status}
                                 </Badge>
                             </div>
@@ -454,23 +454,24 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                     </DialogHeader>
 
                     <Tabs defaultValue="verified" className="flex-1 min-h-0 overflow-hidden flex flex-col">
-                        <div className="px-6 border-b border-border-sub bg-bg-tertiary/20 flex justify-between items-center shrink-0">
-                            <TabsList className="h-12 bg-transparent p-0 gap-8 justify-start">
-                                <TabsTrigger value="verified" className="tab-trigger-payroll flex items-center gap-2">
+                        <div className="px-3 sm:px-6 border-b border-border-sub bg-bg-tertiary/20 flex flex-col sm:flex-row sm:justify-between sm:items-center shrink-0">
+                            <TabsList className="h-11 sm:h-12 bg-transparent p-0 gap-5 sm:gap-8 justify-start w-full sm:w-auto overflow-x-auto no-scrollbar">
+                                <TabsTrigger value="verified" className="tab-trigger-payroll flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0">
                                     <CheckCircle2 size={14} />
-                                    Verified Assignments
+                                    <span className="hidden xs:inline">Verified Assignments</span><span className="xs:hidden">Verified</span>
                                     <span className="ml-1 opacity-50">({confirmedItems.length})</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="discrepancy" className="tab-trigger-payroll flex items-center gap-2">
+                                <TabsTrigger value="discrepancy" className="tab-trigger-payroll flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0">
                                     <ShieldAlert size={14} />
-                                    Discrepancy Registry
+                                    <span className="hidden xs:inline">Discrepancy Registry</span><span className="xs:hidden">Discrepancy</span>
                                     <span className="ml-1 opacity-50">({discrepancyItems.length})</span>
                                 </TabsTrigger>
                             </TabsList>
-                            <div className="flex items-center gap-4 text-right">
+                            <div className="flex items-center justify-between sm:justify-end gap-2 pb-2 sm:pb-0 border-t sm:border-t-0 border-border-sub/50 pt-2 sm:pt-0">
+                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest sm:hidden">Net Tech Settlement</p>
                                 <div className="text-right">
-                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest text-right">Net Tech Settlement</p>
-                                    <p className="text-lg font-mono font-bold text-text-green leading-none">${calculatedTotalPayout.toFixed(2)}</p>
+                                    <p className="hidden sm:block text-[8px] font-black text-text-muted uppercase tracking-widest text-right">Net Tech Settlement</p>
+                                    <p className="text-base sm:text-lg font-mono font-bold text-text-green leading-none">${calculatedTotalPayout.toFixed(2)}</p>
                                 </div>
                             </div>
                         </div>
@@ -516,15 +517,15 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     "p-2 rounded-lg border transition-all flex flex-col gap-3 group",
                                                     isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-border-sub hover:border-text-muted"
                                                 )}>
-                                                <div className="flex gap-4 min-h-[3rem] items-center cursor-pointer" onClick={() => wo && handleOpenJobDetail(wo)}>
-                                                    <div className="shrink-0 flex items-center gap-2 pr-2 border-r border-border-sub/30" onClick={e => e.stopPropagation()}>
+                                                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:min-h-[3rem] sm:items-center cursor-pointer" onClick={() => wo && handleOpenJobDetail(wo)}>
+                                                    <div className="order-2 sm:order-1 shrink-0 flex items-center gap-2 sm:pr-2 sm:border-r border-border-sub/30" onClick={e => e.stopPropagation()}>
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
                                                             disabled={hasPendingReimb}
                                                             title={hasPendingReimb ? 'Locked: pending reimbursement must be approved first' : undefined}
                                                             className={cn(
-                                                                "h-7 px-3 uppercase text-[8px] font-bold tracking-widest transition-all",
+                                                                "w-full sm:w-auto h-9 sm:h-7 px-3 uppercase text-[9px] sm:text-[8px] font-bold tracking-widest transition-all",
                                                                 isAudited ? "bg-text-green text-white border-text-green" : "border-border-sub text-text-muted hover:border-text-green",
                                                                 hasPendingReimb && "opacity-40 cursor-not-allowed hover:border-border-sub"
                                                             )}
@@ -535,7 +536,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </Button>
                                                     </div>
 
-                                                    <div className={cn("flex-1 flex flex-col gap-2", !isImported && "sm:flex-row sm:items-center sm:justify-between")}>
+                                                    <div className={cn("order-1 sm:order-2 flex-1 flex flex-col gap-2", !isImported && "sm:flex-row sm:items-center sm:justify-between")}>
                                                         <div className="min-w-0 text-left">
                                                             <div className="flex items-center gap-2 text-left flex-wrap">
                                                                 <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
@@ -657,15 +658,15 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     "p-2 rounded-lg border transition-all flex flex-col gap-3 group",
                                                     isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-brand-red/30 shadow-sm"
                                                 )}>
-                                                <div className="flex gap-4 min-h-[3rem] items-center cursor-pointer" onClick={() => wo && handleOpenJobDetail(wo)}>
-                                                    <div className="shrink-0 flex items-center gap-2 pr-2 border-r border-border-sub/30" onClick={e => e.stopPropagation()}>
+                                                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:min-h-[3rem] sm:items-center cursor-pointer" onClick={() => wo && handleOpenJobDetail(wo)}>
+                                                    <div className="order-2 sm:order-1 shrink-0 flex items-center gap-2 sm:pr-2 sm:border-r border-border-sub/30" onClick={e => e.stopPropagation()}>
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
                                                             disabled={hasPendingReimb}
                                                             title={hasPendingReimb ? 'Locked: pending reimbursement must be approved first' : undefined}
                                                             className={cn(
-                                                                "h-7 px-3 uppercase text-[8px] font-bold tracking-widest",
+                                                                "w-full sm:w-auto h-9 sm:h-7 px-3 uppercase text-[9px] sm:text-[8px] font-bold tracking-widest",
                                                                 isAudited ? "bg-text-green text-white border-text-green" : "border-brand-red text-text-red hover:bg-brand-red-dim",
                                                                 hasPendingReimb && "opacity-40 cursor-not-allowed hover:bg-transparent"
                                                             )}
@@ -676,7 +677,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </Button>
                                                     </div>
 
-                                                    <div className="flex-1 flex flex-col gap-2">
+                                                    <div className="order-1 sm:order-2 flex-1 flex flex-col gap-2">
                                                         <div className="min-w-0 text-left">
                                                             <div className="flex items-center gap-2 text-left flex-wrap">
                                                                 <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
@@ -785,19 +786,19 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                             const isAudited = (report as any).isAudited;
                                             return (
                                                 <div key={report.id} className={cn(
-                                                    "p-2 rounded-lg border transition-all flex group gap-4 min-h-[3rem] items-center",
+                                                    "p-2 rounded-lg border transition-all flex flex-col sm:flex-row group gap-3 sm:gap-4 sm:min-h-[3rem] sm:items-center",
                                                     isAudited ? "border-green-border/30 bg-bg-primary" : "border-accent-gold/30 bg-bg-secondary shadow-sm"
                                                 )}>
-                                                    <div className="shrink-0 text-left">
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="sm" 
+                                                    <div className="order-2 sm:order-1 shrink-0 text-left">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
                                                             className={cn(
-                                                                "h-7 px-3 uppercase text-[8px] font-bold tracking-widest",
+                                                                "w-full sm:w-auto h-9 sm:h-7 px-3 uppercase text-[9px] sm:text-[8px] font-bold tracking-widest",
                                                                 isAudited ? "bg-text-green text-white border-text-green" : "border-accent-gold text-accent-gold hover:bg-accent-gold/10"
                                                             )}
                                                             onClick={async () => {
-                                                                const updatedReports = (localLog.missingAssignmentReports || []).map(r => 
+                                                                const updatedReports = (localLog.missingAssignmentReports || []).map(r =>
                                                                     r.id === report.id ? { ...r, isAudited: !isAudited } : r
                                                                 );
                                                                 await updateDoc(doc(db, 'weeklyLogs', localLog.id), { missingAssignmentReports: updatedReports });
@@ -808,17 +809,17 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             {isAudited ? 'Cleared' : 'Authorize'}
                                                         </Button>
                                                     </div>
-                                                    
-                                                    <div className="flex-1 flex items-center justify-between gap-8">
+
+                                                    <div className="order-1 sm:order-2 flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-8">
                                                         <div className="text-left">
-                                                            <div className="flex items-center gap-2 text-left">
+                                                            <div className="flex items-center gap-2 text-left flex-wrap">
                                                                 <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide text-left">Missing Assignment Report</p>
                                                                 <Badge variant="onhold" className="text-[6px] h-3.5 px-1 uppercase">MANUAL PAY</Badge>
                                                             </div>
                                                             <p className="text-[8px] text-text-muted font-medium uppercase tracking-widest text-left">{report.date} · {report.location.split(',')[0]}</p>
                                                         </div>
 
-                                                        <div className="max-w-[400px] p-2 rounded bg-accent-gold-dim/10 border border-accent-gold/10 text-left">
+                                                        <div className="w-full sm:w-auto sm:max-w-[400px] p-2 rounded bg-accent-gold-dim/10 border border-accent-gold/10 text-left">
                                                             <p className="text-[9px] text-text-secondary leading-tight uppercase font-medium italic truncate text-left">&quot;{report.summary}&quot;</p>
                                                         </div>
                                                     </div>
@@ -851,7 +852,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                         </div>
                     </Tabs>
 
-                    <div className="p-5 rounded-xl bg-bg-tertiary/20 border border-dashed border-border-sub flex items-start gap-4 mx-6 mb-4">
+                    <div className="hidden sm:flex p-5 rounded-xl bg-bg-tertiary/20 border border-dashed border-border-sub items-start gap-4 mx-6 mb-4">
                         <Info size={18} className="text-accent-gold shrink-0 mt-0.5" />
                         <div className="space-y-1 text-left">
                             <p className="text-[10px] font-black text-text-primary uppercase tracking-widest">Audit Terminal Protocol</p>
@@ -861,23 +862,23 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                         </div>
                     </div>
 
-                    <DialogFooter className="p-4 border-t border-border-sub bg-bg-tertiary/50 flex flex-row items-center gap-3 shrink-0">
+                    <DialogFooter className="p-3 sm:p-4 border-t border-border-sub bg-bg-tertiary/50 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 shrink-0">
                         {localLog?.status === 'Submitted' ? (
                             <>
-                                <Button variant="destructive-outline" className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest" onClick={() => handleStatusChange('Rejected')}>
+                                <Button variant="destructive-outline" className="w-full sm:w-auto order-3 sm:order-1 h-10 px-6 sm:px-8 uppercase font-bold text-[10px] tracking-widest" onClick={() => handleStatusChange('Rejected')}>
                                     <X size={16} className="mr-2"/> Deny Manifest
                                 </Button>
-                                <div className="flex-1" />
-                                <Button variant="outline" className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsOpen(false)}>Close Feed</Button>
-                                <Button 
+                                <div className="hidden sm:block flex-1 order-2" />
+                                <Button variant="outline" className="w-full sm:w-auto order-2 sm:order-3 h-11 px-6 sm:px-8 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsOpen(false)}>Close Feed</Button>
+                                <Button
                                     disabled={!isManifestFullyAudited}
                                     className={cn(
-                                        "h-11 px-12 uppercase font-bold text-[10px] tracking-[0.15em] shadow-lg transition-all",
+                                        "w-full sm:w-auto order-1 sm:order-4 h-11 px-6 sm:px-12 uppercase font-bold text-[10px] tracking-[0.15em] shadow-lg transition-all",
                                         isManifestFullyAudited ? "bg-brand-red hover:bg-brand-red-hover" : "bg-bg-tertiary text-text-muted cursor-not-allowed border border-border-sub"
-                                    )} 
+                                    )}
                                     onClick={() => handleStatusChange('Approved')}
                                 >
-                                    <Check size={16} className="mr-2"/> 
+                                    <Check size={16} className="mr-2"/>
                                     {isManifestFullyAudited ? 'Authorize Disbursement' : 'Audit Pending'}
                                 </Button>
                             </>

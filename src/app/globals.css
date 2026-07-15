@@ -550,3 +550,13 @@
   z-index: 0;
   isolation: isolate;
 }
+
+/* Hide scrollbars on horizontally-scrollable mobile strips (tab bars,
+   chip rows) while keeping scroll functional. */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

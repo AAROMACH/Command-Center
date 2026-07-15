@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, Send, Lock, Activity, Radio, Users, Briefcase, Paperclip, X } from 'lucide-react';
+import { MessageSquare, Send, Lock, Activity, Radio, Users, Briefcase, Paperclip, X, ArrowLeft } from 'lucide-react';
 import { format, parseISO, addHours } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -386,7 +386,7 @@ export default function AdminMessagingPage() {
       {activeTab === 'Direct Messages' && (
         <div className="flex gap-4 h-[calc(100vh-280px)] min-h-[400px]">
           {/* User list */}
-          <div className="w-56 shrink-0 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex flex-col">
+          <div className={cn("w-full md:w-56 md:shrink-0 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex-col", selectedUserId ? "hidden md:flex" : "flex")}>
             <div className="px-2 py-2 border-b border-border-sub shrink-0">
               <Select value={contactFilter} onValueChange={(v) => setContactFilter(v as typeof contactFilter)}>
                 <SelectTrigger className="h-7 text-[9px] font-bold uppercase tracking-widest bg-bg-tertiary border-border-sub">
@@ -473,7 +473,7 @@ export default function AdminMessagingPage() {
           </div>
 
           {/* Thread */}
-          <div className="flex-1 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex flex-col">
+          <div className={cn("flex-1 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex-col", selectedUserId ? "flex" : "hidden md:flex")}>
             {!selectedUserId ? (
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
@@ -483,8 +483,11 @@ export default function AdminMessagingPage() {
               </div>
             ) : (
               <>
-                <div className="px-4 py-3 border-b border-border-sub shrink-0">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-text-primary">
+                <div className="px-4 py-3 border-b border-border-sub shrink-0 flex items-center gap-2">
+                  <button onClick={() => setSelectedUserId(null)} className="md:hidden text-text-muted hover:text-text-primary shrink-0">
+                    <ArrowLeft size={16} />
+                  </button>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-text-primary truncate">
                     {[...adminTechs, ...clientContacts].find(t => t.id === selectedUserId)?.name || 'Unknown'}
                   </p>
                 </div>
@@ -553,7 +556,7 @@ export default function AdminMessagingPage() {
       {activeTab === 'Project Comms' && (
         <div className="flex gap-4 h-[calc(100vh-280px)] min-h-[400px]">
           {/* Project List */}
-          <div className="w-64 shrink-0 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex flex-col">
+          <div className={cn("w-full md:w-64 md:shrink-0 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex-col", selectedProjectId ? "hidden md:flex" : "flex")}>
             <div className="px-3 py-2.5 border-b border-border-sub">
               <p className="text-[9px] font-black text-text-muted uppercase tracking-widest flex items-center gap-2">
                 <Briefcase size={10} /> Projects
@@ -629,7 +632,7 @@ export default function AdminMessagingPage() {
           </div>
 
           {/* Message Thread */}
-          <div className="flex-1 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex flex-col">
+          <div className={cn("flex-1 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex-col", selectedProjectId ? "flex" : "hidden md:flex")}>
             {!selectedProjectId ? (
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
@@ -639,13 +642,18 @@ export default function AdminMessagingPage() {
               </div>
             ) : (
               <>
-                <div className="px-4 py-3 border-b border-border-sub shrink-0">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-text-primary">
+                <div className="px-4 py-3 border-b border-border-sub shrink-0 flex items-start gap-2">
+                  <button onClick={() => setSelectedProjectId(null)} className="md:hidden text-text-muted hover:text-text-primary shrink-0 mt-0.5">
+                    <ArrowLeft size={16} />
+                  </button>
+                  <div className="min-w-0">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-text-primary truncate">
                     {selectedProject?.name || 'Unknown Project'}
                   </p>
                   <p className="text-[9px] text-text-muted uppercase mt-0.5">
                     {selectedProject?.client}{selectedProject?.location ? ` · ${selectedProject.location}` : ''}
                   </p>
+                  </div>
                 </div>
                 <ScrollArea className="flex-1 p-4">
                   <div className="space-y-3">

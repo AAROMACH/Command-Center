@@ -562,9 +562,9 @@ export default function TechCalendarPage() {
             </div>
           </div>
 
-          {/* RIGHT: Job detail drawer */}
+          {/* RIGHT: Job detail drawer — full-screen overlay on phones, inline panel from md up */}
           {drawerJob && (
-            <div className="w-[340px] shrink-0 flex flex-col overflow-hidden bg-bg-elevated">
+            <div className="fixed inset-0 z-50 w-full md:static md:inset-auto md:z-auto md:w-[340px] md:shrink-0 flex flex-col overflow-hidden bg-bg-elevated border-l border-border-sub md:border-l-0">
               {/* Header */}
               <div className="flex items-start justify-between p-3.5 border-b border-border-sub shrink-0">
                 <div className="flex-1 min-w-0 pr-2">

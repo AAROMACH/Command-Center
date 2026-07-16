@@ -5,6 +5,7 @@ import { db } from '@/lib/firebase';
 import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { isClient } from '@/lib/permissions';
 import type { WorkOrder, Technician } from '@/lib/types';
+import { displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -632,9 +633,9 @@ export default function AdminCalendarPage() {
             </div>
           </div>
 
-          {/* RIGHT: Job detail drawer */}
+          {/* RIGHT: Job detail drawer — full-screen overlay on phones, inline panel from md up */}
           {drawerJob && (
-            <div className="w-[340px] shrink-0 flex flex-col overflow-hidden bg-bg-elevated">
+            <div className="fixed inset-0 z-50 w-full md:static md:inset-auto md:z-auto md:w-[340px] md:shrink-0 flex flex-col overflow-hidden bg-bg-elevated border-l border-border-sub md:border-l-0">
               {/* Header */}
               <div className="flex items-start justify-between p-3.5 border-b border-border-sub shrink-0">
                 <div className="flex-1 min-w-0 pr-2">
@@ -644,7 +645,7 @@ export default function AdminCalendarPage() {
                       isAssigned(drawerJob) ? 'bg-text-green/10 text-text-green border-text-green/20' : 'bg-brand-red/10 text-brand-red border-brand-red/20',
                     )}>{isAssigned(drawerJob) ? 'Assigned' : 'Unassigned'}</span>
                     <span className="text-[9px] text-text-muted font-mono uppercase">
-                      {drawerJob.workOrderId || `#${drawerJob.id.slice(0, 10).toUpperCase()}`}
+                      {displayWorkOrderNumber(drawerJob)}
                     </span>
                   </div>
                   <p className="text-[13px] font-medium text-text-primary leading-tight">

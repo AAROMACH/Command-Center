@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import type { WorkOrder } from '@/lib/types';
+import { displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { 
   addMonths, 
   subMonths, 
@@ -291,7 +292,7 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                                                     {wo.projectType === 'Project' ? <Briefcase size={8} className="mr-1"/> : <Wrench size={8} className="mr-1"/>}
                                                     {wo.projectType}
                                                 </Badge>
-                                                <span className="job-wo !text-[9px] !px-1.5">{wo.id.toUpperCase()}</span>
+                                                <span className="job-wo !text-[9px] !px-1.5">{displayWorkOrderNumber(wo)}</span>
                                             </div>
                                             <div className="job-title-row !mb-1 !justify-start text-left">
                                                 <span className="job-title !text-[11px] text-left truncate w-full">{wo.title || wo.description}</span>

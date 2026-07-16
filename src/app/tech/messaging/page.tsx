@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MessageSquare, Send, User, Briefcase, Paperclip, X, Radio } from 'lucide-react';
+import { MessageSquare, Send, User, Briefcase, Paperclip, X, Radio, ArrowLeft } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -39,6 +39,9 @@ export default function TechMessagingPage() {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [selectedContactId, setSelectedContactId] = useState<string>('admin');
+  // On phones the DM list and thread are shown one at a time; this tracks
+  // which pane is visible (both panes always show side-by-side on desktop).
+  const [dmMobilePane, setDmMobilePane] = useState<'list' | 'thread'>('list');
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
@@ -328,7 +331,7 @@ export default function TechMessagingPage() {
       {activeTab === 'Messages' && (
         <div className="flex gap-4 h-[calc(100vh-220px)] min-h-[500px]">
           {/* Contacts sidebar */}
-          <div className="w-[200px] shrink-0 flex flex-col border border-border-sub rounded-xl bg-bg-secondary overflow-hidden">
+          <div className={cn("w-full md:w-[200px] md:shrink-0 flex-col border border-border-sub rounded-xl bg-bg-secondary overflow-hidden", dmMobilePane === 'thread' ? "hidden md:flex" : "flex")}>
             <div className="p-2 border-b border-border-sub shrink-0 space-y-1.5">
               <p className="text-[8px] font-black uppercase tracking-widest text-text-muted px-1">Conversations</p>
               <Select value={contactFilter} onValueChange={(v) => setContactFilter(v as typeof contactFilter)}>
@@ -347,7 +350,7 @@ export default function TechMessagingPage() {
             {visiblePartners.map(id => (
               <button
                 key={id}
-                onClick={() => { setSelectedContactId(id); markDMsRead(id); }}
+                onClick={() => { setSelectedContactId(id); setDmMobilePane('thread'); markDMsRead(id); }}
                 className={cn(
                   'flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-colors w-full',
                   selectedContactId === id
@@ -363,10 +366,13 @@ export default function TechMessagingPage() {
           </div>
 
           {/* Thread panel */}
-          <div className="flex-1 flex flex-col border border-border-sub rounded-xl overflow-hidden bg-bg-secondary">
+          <div className={cn("flex-1 flex-col border border-border-sub rounded-xl overflow-hidden bg-bg-secondary", dmMobilePane === 'thread' ? "flex" : "hidden md:flex")}>
             <div className="border-b border-border-sub px-4 py-2.5 flex items-center gap-2 bg-bg-tertiary/40 shrink-0">
+              <button onClick={() => setDmMobilePane('list')} className="md:hidden text-text-muted hover:text-text-primary shrink-0">
+                <ArrowLeft size={16} />
+              </button>
               <MessageSquare size={12} className="text-brand-red" />
-              <span className="text-[11px] font-black uppercase tracking-widest text-text-primary">{getContactLabel(selectedContactId)}</span>
+              <span className="text-[11px] font-black uppercase tracking-widest text-text-primary truncate">{getContactLabel(selectedContactId)}</span>
             </div>
 
             <ScrollArea className="flex-1 p-4">
@@ -440,7 +446,7 @@ export default function TechMessagingPage() {
       {activeTab === 'Project Comms' && (
         <div className="flex gap-4 h-[calc(100vh-220px)] min-h-[500px]">
           {/* Project list */}
-          <div className="w-[220px] shrink-0 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex flex-col">
+          <div className={cn("w-full md:w-[220px] md:shrink-0 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex-col", selectedProjectId ? "hidden md:flex" : "flex")}>
             <div className="px-3 py-2.5 border-b border-border-sub">
               <p className="text-[9px] font-black text-text-muted uppercase tracking-widest flex items-center gap-2">
                 <Briefcase size={10} /> My Projects
@@ -468,7 +474,7 @@ export default function TechMessagingPage() {
           </div>
 
           {/* Project thread */}
-          <div className="flex-1 flex flex-col border border-border-sub rounded-xl overflow-hidden bg-bg-secondary">
+          <div className={cn("flex-1 flex-col border border-border-sub rounded-xl overflow-hidden bg-bg-secondary", selectedProjectId ? "flex" : "hidden md:flex")}>
             {!selectedProjectId ? (
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
@@ -478,9 +484,14 @@ export default function TechMessagingPage() {
               </div>
             ) : (
               <>
-                <div className="border-b border-border-sub px-4 py-2.5 bg-bg-tertiary/40 shrink-0">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-text-primary">{selectedProject?.name}</p>
-                  <p className="text-[9px] text-text-muted mt-0.5">{selectedProject?.client}{selectedProject?.location ? ` · ${selectedProject.location}` : ''}</p>
+                <div className="border-b border-border-sub px-4 py-2.5 bg-bg-tertiary/40 shrink-0 flex items-start gap-2">
+                  <button onClick={() => setSelectedProjectId(null)} className="md:hidden text-text-muted hover:text-text-primary shrink-0 mt-0.5">
+                    <ArrowLeft size={16} />
+                  </button>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black uppercase tracking-widest text-text-primary truncate">{selectedProject?.name}</p>
+                    <p className="text-[9px] text-text-muted mt-0.5 truncate">{selectedProject?.client}{selectedProject?.location ? ` · ${selectedProject.location}` : ''}</p>
+                  </div>
                 </div>
 
                 <ScrollArea className="flex-1 p-4">

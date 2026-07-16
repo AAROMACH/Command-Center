@@ -24,7 +24,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Wrench, MapPin, Building2, Check, UserCheck, Search, Users, Navigation, DollarSign, SearchCode, X } from 'lucide-react';
 import type { WorkOrder, Technician } from '@/lib/types';
-import { technicians } from '@/lib/data';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
@@ -152,11 +153,30 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     }
   };
 
+  // Live client entities from the app (the users collection, same source the
+  // CRM/Clients and Sites pages use) — not a static seed list — so the picker
+  // reflects the client entities that actually exist in this workspace.
+  const [allUsers, setAllUsers] = useState<Technician[]>([]);
+  useEffect(() => {
+    if (!isOpen) return;
+    const unsub = onSnapshot(collection(db, 'users'), snap => {
+      setAllUsers(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
+    });
+    return () => unsub();
+  }, [isOpen]);
+
+  // Only current client entities are assignable: exclude self-registered
+  // clients still awaiting approval or that were denied (approvalStatus), and
+  // clients that were deactivated/removed (accountStatus 'inactive'). Legacy
+  // admin-created clients with no approvalStatus set are treated as approved.
   const clients = useMemo(() => {
-    return technicians.filter(t => 
-        isClient(t) || t.clientCompany
+    return allUsers.filter(t =>
+      (isClient(t) || t.clientCompany)
+      && t.approvalStatus !== 'pending'
+      && t.approvalStatus !== 'denied'
+      && t.accountStatus !== 'inactive'
     );
-  }, []);
+  }, [allUsers]);
 
   const selectedClient = useMemo(() => {
     return clients.find(c => (c.clientCompany || c.name) === formData.clientName);
@@ -282,7 +302,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
                     <div className="space-y-1.5">
@@ -345,7 +365,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pay Model</Label>
                   <Select value={formData.payType} onValueChange={(val: any) => setFormData({...formData, payType: val})}>
@@ -416,7 +436,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Schedule Date</Label>
                   <Input 
@@ -437,7 +457,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority</Label>
                   <Select value={formData.priority} onValueChange={(val: any) => {
@@ -469,7 +489,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">SLA Response Target (min)</Label>
                   <Input

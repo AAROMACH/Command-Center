@@ -40,6 +40,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import type { WorkOrder, Assignment } from '@/lib/types';
+import { displayWorkOrderNumber } from '@/lib/work-order-identity';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -359,7 +360,7 @@ export default function AssignmentDetailModal({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-mono text-[10px] font-bold text-brand-red uppercase tracking-wider">
-                WO: {assignment.id.toUpperCase()}
+                WO: {displayWorkOrderNumber(assignment as any)}
               </span>
               <span className={cn(
                 'text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border',

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import type { WorkOrder, Technician } from '@/lib/types';
+import { displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { db, auth } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -562,9 +563,9 @@ export default function TechCalendarPage() {
             </div>
           </div>
 
-          {/* RIGHT: Job detail drawer */}
+          {/* RIGHT: Job detail drawer — full-screen overlay on phones, inline panel from md up */}
           {drawerJob && (
-            <div className="w-[340px] shrink-0 flex flex-col overflow-hidden bg-bg-elevated">
+            <div className="fixed inset-0 z-50 w-full md:static md:inset-auto md:z-auto md:w-[340px] md:shrink-0 flex flex-col overflow-hidden bg-bg-elevated border-l border-border-sub md:border-l-0">
               {/* Header */}
               <div className="flex items-start justify-between p-3.5 border-b border-border-sub shrink-0">
                 <div className="flex-1 min-w-0 pr-2">
@@ -574,7 +575,7 @@ export default function TechCalendarPage() {
                       getStatusChipCls(drawerJob.status),
                     )}>{getStatusLabel(drawerJob.status)}</span>
                     <span className="text-[9px] text-text-muted font-mono uppercase">
-                      {(drawerJob as any).workOrderId || `#${drawerJob.id.slice(0, 10).toUpperCase()}`}
+                      {displayWorkOrderNumber(drawerJob)}
                     </span>
                   </div>
                   <p className="text-[13px] font-medium text-text-primary leading-tight">

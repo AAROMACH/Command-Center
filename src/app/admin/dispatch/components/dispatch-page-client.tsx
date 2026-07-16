@@ -394,19 +394,19 @@ export function DispatchPageClient() {
               <TabsTrigger value="assignments" className="tab">ASSIGNMENTS</TabsTrigger>
             </TabsList>
 
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <div className="search-wrap flex-1 !mb-0 text-left">
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+              <div className="search-wrap flex-1 min-w-[150px] !mb-0 text-left">
                 <Search className="h-4 w-4 text-text-muted" />
-                <input 
-                  className="search-input !h-9 !text-xs font-bold uppercase !w-full md:!w-[240px] bg-bg-primary text-left" 
-                  placeholder={`Search registry...`} 
+                <input
+                  className="search-input !h-9 !text-xs font-bold uppercase !w-full md:!w-[240px] bg-bg-primary text-left"
+                  placeholder={`Search registry...`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
 
               <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                  <SelectTrigger className="w-[140px] h-9 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
+                  <SelectTrigger className="w-[130px] md:w-[140px] shrink-0 h-9 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
                       <div className="flex items-center gap-2 text-left">
                           <ArrowUpDown size={14} className="text-text-muted" />
                           <SelectValue placeholder="Sort Registry" />
@@ -426,7 +426,7 @@ export function DispatchPageClient() {
               <Popover>
                   <PopoverTrigger asChild>
                     <div className={cn(
-                        "flex items-center h-8 rounded-md border border-border-main bg-bg-primary px-2 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-7",
+                        "flex items-center h-9 shrink-0 rounded-md border border-border-main bg-bg-primary px-2 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-7",
                         dateRange?.from && "border-brand-red ring-1 ring-brand-red"
                     )}>
                         <CalendarIcon size={12} className={cn("mr-1.5", dateRange?.from ? "text-brand-red" : "text-text-muted")} />

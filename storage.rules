@@ -6,24 +6,33 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    function userRoles() {
-      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.roles;
+    // Mirror firestore.rules: read the user doc once and resolve roles from the
+    // typed roles[] array OR the legacy `role` string, with a safe default so a
+    // missing roles field never errors the check (which read as "unauthorized").
+    function userData() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
     }
 
     function isAdmin() {
-      return userRoles().hasAny(['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager']);
+      let d = userData();
+      return d.get('roles', []).hasAny(['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'])
+          || d.get('role', '') in ['admin', 'super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'];
     }
 
     function isTech() {
-      return userRoles().hasAny(['project_lead', 'field_technician']);
+      let d = userData();
+      return d.get('roles', []).hasAny(['project_lead', 'field_technician'])
+          || d.get('role', '') in ['tech', 'project_lead', 'field_technician'];
     }
 
     function isClient() {
-      return userRoles().hasAny(['client']);
+      let d = userData();
+      return d.get('roles', []).hasAny(['client']) || d.get('role', '') == 'client';
     }
 
     function isSales() {
-      return userRoles().hasAny(['sales']);
+      let d = userData();
+      return d.get('roles', []).hasAny(['sales']) || d.get('role', '') == 'sales';
     }
 
     // Profile avatars: user writes their own only; all signed-in users read

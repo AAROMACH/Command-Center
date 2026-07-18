@@ -151,7 +151,10 @@ export default function DirectoryPersonPage() {
       let resolvedUrl = uploadForm.url || '#';
       if (uploadMode === 'file' && uploadFileObj) {
         const safeName = uploadFileObj.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const result = await uploadFile(`documents/${id}/${Date.now()}_${safeName}`, uploadFileObj);
+        // Store under personnelDocuments/{userId} so it uses the deployed storage
+        // rule (admin + owning tech); the Firestore record still lives in the
+        // canonical users/{id}/documents subcollection below.
+        const result = await uploadFile(`personnelDocuments/${id}/${Date.now()}_${safeName}`, uploadFileObj, { contentType: uploadFileObj.type });
         resolvedUrl = result.url;
       }
       await addDoc(collection(db, 'users', id, 'documents'), {

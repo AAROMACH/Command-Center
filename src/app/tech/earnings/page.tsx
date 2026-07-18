@@ -157,7 +157,10 @@ export default function TechEarningsPage() {
         if (!file) return;
         setUploading(true);
         try {
-            const { url } = await uploadFile(`reimbursementReceipts/${currentTechId}/${Date.now()}-${file.name}`, file);
+            // Store under personnelDocuments/{techId} so it uses the deployed
+            // storage rule (admin + owning tech). Matches the tech/logs receipt path.
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const { url } = await uploadFile(`personnelDocuments/${currentTechId}/reimbursement-${Date.now()}-${safeName}`, file, { contentType: file.type });
             setReceiptPhotoUrl(url);
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Upload failed', description: err.message });

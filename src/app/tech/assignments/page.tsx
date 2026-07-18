@@ -57,6 +57,7 @@ import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, setDoc, 
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { fieldNationUrl, displayWorkOrderNumber } from '@/lib/work-order-identity';
+import { weekOfForScheduleDate } from '@/lib/weekly-log';
 import { Car } from 'lucide-react';
 import { LogTripDialog } from './components/log-trip-dialog';
 
@@ -236,8 +237,8 @@ export default function TechAssignmentsPage() {
         const wo = allWorkOrders.find(w => w.id === woId);
         if (!wo) return;
 
-        const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
-        const weekOf = format(monday, 'MM-dd-yyyy');
+        // File in the log for the job's SCHEDULED week, not the current week.
+        const weekOf = weekOfForScheduleDate(wo.scheduleDate);
         
         const logQuery = query(
             collection(db, 'weeklyLogs'),

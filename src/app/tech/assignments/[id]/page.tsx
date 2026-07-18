@@ -24,6 +24,7 @@ import { cn, getTacticalLocation, getTacticalCoords, calculateDistance } from '@
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { externalWorkOrderId } from '@/lib/work-order-identity';
+import { weekOfForScheduleDate } from '@/lib/weekly-log';
 import { getDocs, setDoc } from 'firebase/firestore';
 import { startOfWeek } from 'date-fns';
 
@@ -223,8 +224,9 @@ export default function TechAssignmentDetailPage() {
 
   const syncToWeeklyLog = async (woId: string) => {
     if (!currentTechId || !assignment) return;
-    const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
-    const weekOf = format(monday, 'MM-dd-yyyy');
+    // File the completed job in the log for its SCHEDULED week, not the week it
+    // happened to be completed in.
+    const weekOf = weekOfForScheduleDate(assignment.scheduleDate);
     const q = query(
       collection(db, 'weeklyLogs'),
       where('techId', '==', currentTechId),

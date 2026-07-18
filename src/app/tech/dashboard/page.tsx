@@ -43,6 +43,7 @@ import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
 import { format, startOfWeek, parseISO } from 'date-fns';
+import { weekOfForScheduleDate } from '@/lib/weekly-log';
 import { cn, getTacticalLocation, compareScheduleTime } from '@/lib/utils';
 import { NotificationService } from '@/lib/notification-service';
 
@@ -176,9 +177,9 @@ export default function TechDashboardPage() {
         const wo = allWorkOrders.find(w => w.id === woId);
         if (!wo) return;
 
-        const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
-        const weekOf = format(monday, 'MM-dd-yyyy');
-        
+        // File in the log for the job's SCHEDULED week, not the current week.
+        const weekOf = weekOfForScheduleDate(wo.scheduleDate);
+
         const logQuery = query(
             collection(db, 'weeklyLogs'),
             where('techId', '==', currentTechId),

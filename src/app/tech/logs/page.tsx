@@ -427,10 +427,11 @@ export default function TechWeeklyLogPage() {
         }
     };
 
-    // Direct self-unsubmit — only for techs granted tech.logs.unsubmit, and only
-    // while the log is still Submitted (payroll approval flips it to Approved,
-    // which is ineligible). Returns the log to Draft and records the action.
-    const canUnsubmitOwnLog = hasPermission(currentUser, 'tech.logs.unsubmit');
+    // Direct self-unsubmit — only for techs granted tech.logs.unsubmit_own, and
+    // only while the log is still Submitted (payroll approval flips it to
+    // Approved, which is ineligible). Returns the log to Draft and records it.
+    const canUnsubmitOwnLog = hasPermission(currentUser, 'tech.logs.unsubmit_own');
+    const canMoveAssignment = hasPermission(currentUser, 'tech.logs.move_assignment');
     const isUnsubmitEligible = !!activeLog
         && activeLog.status === 'Submitted'
         && !(activeLog as any).archived
@@ -870,7 +871,7 @@ export default function TechWeeklyLogPage() {
                             onDispute={handleDispute}
                             onAddReimbursement={handleAddReimbursement}
                             onDeleteReimbursement={handleDeleteReimbursement}
-                            canMove={!isLocked}
+                            canMove={!isLocked && canMoveAssignment}
                             onRequestMove={() => setMoveItem(item)}
                             techId={currentTechId}
                         />

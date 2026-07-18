@@ -15,16 +15,19 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { auditFieldChange } from '@/lib/audit';
-import { normalizeLegacyRole, APP_ROLES } from '@/lib/permissions';
+import {
+  normalizeLegacyRole, APP_ROLES, SUBROLE_DEFINITIONS, SUBROLES_BY_PORTAL,
+  type SubrolePortal,
+} from '@/lib/permissions';
 import { ROLE_DATA } from '@/lib/constants/roles';
 import type { Technician, AppRole } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
   User, Phone, Mail, MapPin, Briefcase, Shield, Heart,
   FileText, Plus, X, Building2, DollarSign, Loader2, Globe,
+  ShieldCheck, Wrench,
 } from 'lucide-react';
 
 type EditProfileDialogProps = {
@@ -33,14 +36,18 @@ type EditProfileDialogProps = {
   person: Technician;
 };
 
-// Single source of truth for the full role list is ROLE_DATA
-// (src/lib/constants/roles.ts) — derive rather than hand-maintain a
-// second copy that can drift out of sync with it.
-const ALL_ROLE_OPTIONS = [...ROLE_DATA.admin, ...ROLE_DATA.tech, ...ROLE_DATA.client, ...ROLE_DATA.office];
-const ALL_ROLES: AppRole[] = ALL_ROLE_OPTIONS.map(r => r.id);
-const ROLE_LABELS: Record<AppRole, string> = Object.fromEntries(
-  ALL_ROLE_OPTIONS.map(r => [r.id, r.label])
-) as Record<AppRole, string>;
+// Per-subrole icon, pulled from ROLE_DATA so the visual stays in sync with the
+// rest of the app. Labels / descriptions / portal come from the central
+// SUBROLE_DEFINITIONS map (permissions.ts).
+const ROLE_ICONS: Partial<Record<AppRole, typeof User>> = Object.fromEntries(
+  [...ROLE_DATA.admin, ...ROLE_DATA.tech, ...ROLE_DATA.client, ...ROLE_DATA.office].map(r => [r.id, r.icon])
+) as Partial<Record<AppRole, typeof User>>;
+
+const PORTAL_GROUPS: { portal: SubrolePortal; label: string; icon: typeof User; accent: string }[] = [
+  { portal: 'admin', label: 'Admin Subroles', icon: ShieldCheck, accent: 'text-brand-red' },
+  { portal: 'tech', label: 'Tech Subroles', icon: Wrench, accent: 'text-[#3b82f6]' },
+  { portal: 'client', label: 'Client Subroles', icon: Building2, accent: 'text-[#10b981]' },
+];
 
 const SECTIONS = [
   { id: 'basic', label: 'Basic Info', icon: User },
@@ -65,7 +72,6 @@ type FormState = {
   accountStatus: string;
   roles: AppRole[];
   primaryPortal: string;
-  portalAccess: { admin: boolean; tech: boolean; client: boolean };
   hourlyRate: string;
   serviceArea: string;
   skills: string[];
@@ -100,7 +106,6 @@ function personToForm(p: Technician): FormState {
       ? p.roles.filter(r => (APP_ROLES as string[]).includes(r))
       : (normalizeLegacyRole(p.role) ? [normalizeLegacyRole(p.role)!] : [])),
     primaryPortal: p.primaryPortal || '',
-    portalAccess: { admin: false, tech: false, client: false, ...p.portalAccess },
     hourlyRate: p.hourlyRate != null ? String(p.hourlyRate) : '',
     serviceArea: p.serviceArea || '',
     skills: [...(p.skills || [])],
@@ -142,10 +147,23 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
   const set = <K extends keyof FormState>(key: K, val: FormState[K]) =>
     setForm(prev => ({ ...prev, [key]: val }));
 
-  const toggleRole = (role: AppRole) =>
-    set('roles', form.roles.includes(role)
+  // Portals unlocked by the currently-selected subroles.
+  const unlockedPortals = (roles: AppRole[]): SubrolePortal[] =>
+    (['admin', 'tech', 'client'] as SubrolePortal[])
+      .filter(portal => roles.some(r => SUBROLE_DEFINITIONS[r]?.portal === portal));
+
+  const toggleRole = (role: AppRole) => {
+    const nextRoles = form.roles.includes(role)
       ? form.roles.filter(r => r !== role)
-      : [...form.roles, role]);
+      : [...form.roles, role];
+    // Keep Primary Portal valid: if it lost its last subrole, fall back to the
+    // first still-unlocked portal (or clear when none remain).
+    const portals = unlockedPortals(nextRoles);
+    const nextPrimary = form.primaryPortal && portals.includes(form.primaryPortal as SubrolePortal)
+      ? form.primaryPortal
+      : (portals[0] ?? '');
+    setForm(prev => ({ ...prev, roles: nextRoles, primaryPortal: nextPrimary }));
+  };
 
   const addSkill = () => {
     const s = skillInput.trim();
@@ -186,7 +204,6 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
         accountStatus: form.accountStatus,
         roles: form.roles,
         primaryPortal: form.primaryPortal || null,
-        portalAccess: form.portalAccess,
         hourlyRate: form.hourlyRate ? parseFloat(form.hourlyRate) : null,
         serviceArea: form.serviceArea.trim(),
         skills: form.skills,
@@ -219,7 +236,6 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
         accountStatus: person.accountStatus,
         roles: person.roles,
         primaryPortal: person.primaryPortal,
-        portalAccess: person.portalAccess,
         hourlyRate: person.hourlyRate,
         serviceArea: person.serviceArea,
         skills: person.skills,
@@ -363,60 +379,96 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className={labelCls}>Roles</Label>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {ALL_ROLES.map(role => (
-                        <button
-                          key={role}
-                          type="button"
-                          onClick={() => toggleRole(role)}
-                          className={cn(
-                            'flex items-center gap-2 px-3 py-2 rounded-lg border text-left transition-all',
-                            form.roles.includes(role)
-                              ? 'bg-brand-red/10 border-brand-red/30 text-text-primary'
-                              : 'border-border-sub bg-bg-secondary text-text-muted hover:border-border-main',
-                          )}
-                        >
-                          <div className={cn('w-3 h-3 rounded border flex items-center justify-center shrink-0',
-                            form.roles.includes(role) ? 'bg-brand-red border-brand-red' : 'border-border-main bg-bg-primary')}>
-                            {form.roles.includes(role) && <div className="w-1.5 h-1.5 rounded-sm bg-white" />}
-                          </div>
-                          <span className="text-[10px] font-bold uppercase">{ROLE_LABELS[role]}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className={labelCls}>Primary Portal</Label>
-                    <Select value={form.primaryPortal || '__none__'} onValueChange={v => set('primaryPortal', v === '__none__' ? '' : v)}>
-                      <SelectTrigger className={inputCls}><SelectValue placeholder="None set" /></SelectTrigger>
-                      <SelectContent className="bg-bg-elevated border-border-main">
-                        <SelectItem value="__none__" className="text-[11px]">None (auto-detect)</SelectItem>
-                        <SelectItem value="admin" className="text-[11px]">Admin Portal</SelectItem>
-                        <SelectItem value="tech" className="text-[11px]">Tech Portal</SelectItem>
-                        <SelectItem value="client" className="text-[11px]">Client Portal</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className={labelCls}>Portal Access Overrides</Label>
-                    <div className="space-y-2">
-                      {(['admin', 'tech', 'client'] as const).map(portal => (
-                        <div key={portal} className="flex items-center justify-between p-2.5 rounded-lg border border-border-sub bg-bg-secondary">
-                          <span className="text-[11px] font-bold text-text-primary capitalize">{portal} Portal</span>
-                          <Switch
-                            checked={form.portalAccess[portal]}
-                            onCheckedChange={v => set('portalAccess', { ...form.portalAccess, [portal]: v })}
-                          />
-                        </div>
-                      ))}
-                      <p className="text-[9px] text-text-muted uppercase tracking-wider pt-1">
-                        Overrides role-based portal access. Only set if you need to grant or restrict beyond role defaults.
+                  <div className="space-y-3">
+                    <div>
+                      <Label className={labelCls}>Subroles</Label>
+                      <p className="text-[9px] text-text-muted normal-case tracking-normal mt-1 leading-relaxed">
+                        Selecting a subrole unlocks its portal and applies its preset permissions. Removing the last subrole in a portal removes access to that portal.
                       </p>
                     </div>
+
+                    {PORTAL_GROUPS.map(group => {
+                      const GroupIcon = group.icon;
+                      return (
+                        <div key={group.portal} className="space-y-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <GroupIcon size={11} className={group.accent} />
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">{group.label}</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {SUBROLES_BY_PORTAL[group.portal].map(role => {
+                              const def = SUBROLE_DEFINITIONS[role];
+                              const Icon = ROLE_ICONS[role] ?? Shield;
+                              const selected = form.roles.includes(role);
+                              return (
+                                <button
+                                  key={role}
+                                  type="button"
+                                  onClick={() => toggleRole(role)}
+                                  className={cn(
+                                    'flex items-start gap-2 px-3 py-2 rounded-lg border text-left transition-all',
+                                    selected
+                                      ? 'bg-brand-red/10 border-brand-red/30 text-text-primary'
+                                      : 'border-border-sub bg-bg-secondary text-text-muted hover:border-border-main',
+                                  )}
+                                >
+                                  <div className={cn('w-3 h-3 mt-0.5 rounded border flex items-center justify-center shrink-0',
+                                    selected ? 'bg-brand-red border-brand-red' : 'border-border-main bg-bg-primary')}>
+                                    {selected && <div className="w-1.5 h-1.5 rounded-sm bg-white" />}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <Icon size={11} className={selected ? group.accent : 'text-text-muted'} />
+                                      <span className="text-[10px] font-bold uppercase truncate">{def.label}</span>
+                                    </div>
+                                    <p className="text-[9px] text-text-muted leading-tight mt-0.5">{def.permissions.length} permissions</p>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className={labelCls}>Portal Access (derived from subroles)</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {PORTAL_GROUPS.map(group => {
+                        const unlocked = form.roles.some(r => SUBROLE_DEFINITIONS[r]?.portal === group.portal);
+                        return (
+                          <span key={group.portal} className={cn(
+                            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest border',
+                            unlocked ? cn('border-current', group.accent, 'bg-bg-secondary') : 'border-border-sub text-text-muted/40',
+                          )}>
+                            <group.icon size={10} /> {group.portal} {unlocked ? '' : '· locked'}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    {form.roles.length === 0 && (
+                      <p className="text-[9px] text-brand-red/80 normal-case tracking-normal">No portal access. Select a subrole to assign portal access and preset permissions.</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className={labelCls}>Primary Portal <span className="text-text-muted/60 normal-case tracking-normal">— default landing after login</span></Label>
+                    <Select
+                      value={form.primaryPortal || '__none__'}
+                      onValueChange={v => set('primaryPortal', v === '__none__' ? '' : v)}
+                    >
+                      <SelectTrigger className={inputCls}><SelectValue placeholder="Auto (first available)" /></SelectTrigger>
+                      <SelectContent className="bg-bg-elevated border-border-main">
+                        <SelectItem value="__none__" className="text-[11px]">Auto (first available)</SelectItem>
+                        {(['admin', 'tech', 'client'] as SubrolePortal[])
+                          .filter(portal => form.roles.some(r => SUBROLE_DEFINITIONS[r]?.portal === portal))
+                          .map(portal => (
+                            <SelectItem key={portal} value={portal} className="text-[11px] capitalize">{portal} Portal</SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[9px] text-text-muted uppercase tracking-wider">Only unlocked portals can be chosen. Primary Portal does not grant access.</p>
                   </div>
                 </div>
               </div>

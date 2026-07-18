@@ -1,3 +1,7 @@
+// Subroles. Each value belongs to exactly one portal (see SUBROLE_DEFINITIONS
+// in permissions.ts) and carries a preset permission set. The stored `roles`
+// field on a user IS the subrole array. safety_officer / training_coordinator
+// were removed — do not reintroduce them.
 export type AppRole =
   | 'super_admin'
   | 'dispatch_admin'
@@ -6,9 +10,7 @@ export type AppRole =
   | 'project_lead'
   | 'field_technician'
   | 'client'
-  | 'sales'
-  | 'safety_officer'
-  | 'training_coordinator';
+  | 'sales';
 
 export type AdminMessage = {
   id: string;
@@ -210,6 +212,8 @@ export type Technician = {
   };
   notificationPreferences?: NotificationPreferences;
   permissionOverrides?: Record<string, boolean>;
+  /** @deprecated Portal access is derived from subroles (see getPortalAccess).
+   *  No longer written; retained only so legacy documents type-check on read. */
   portalAccess?: { admin?: boolean; tech?: boolean; client?: boolean };
   primaryPortal?: 'admin' | 'tech' | 'client';
   messagingBlockedClientIds?: string[];

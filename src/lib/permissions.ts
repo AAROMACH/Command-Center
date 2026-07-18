@@ -337,14 +337,14 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     'tech.assignments.check_in', 'tech.assignments.check_out', 'tech.assignments.complete',
     'tech.assignments.report_issue', 'tech.schedule.view', 'tech.projects.view',
     'tech.projects.create_task', 'tech.projects.assign_task', 'tech.projects.complete_task',
-    'tech.logs.view', 'tech.logs.create', 'tech.earnings.view',
+    'tech.logs.view', 'tech.logs.create', 'tech.logs.unsubmit', 'tech.earnings.view',
     'tech.messages.view', 'tech.messages.send', 'tech.profile.view', 'tech.profile.edit',
   ],
   field_technician: [
     'tech.dashboard.view', 'tech.assignments.view', 'tech.assignments.confirm', 'tech.assignments.start_trip',
     'tech.assignments.check_in', 'tech.assignments.check_out', 'tech.assignments.complete',
     'tech.assignments.report_issue', 'tech.schedule.view', 'tech.projects.view',
-    'tech.logs.view', 'tech.logs.create', 'tech.earnings.view',
+    'tech.logs.view', 'tech.logs.create', 'tech.logs.unsubmit', 'tech.earnings.view',
     'tech.messages.view', 'tech.messages.send', 'tech.profile.view', 'tech.profile.edit',
   ],
   client: [

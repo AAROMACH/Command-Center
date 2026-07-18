@@ -870,7 +870,7 @@ export default function TechWeeklyLogPage() {
                             onDispute={handleDispute}
                             onAddReimbursement={handleAddReimbursement}
                             onDeleteReimbursement={handleDeleteReimbursement}
-                            canMove={!isLocked && moveDestinations.length > 0}
+                            canMove={!isLocked}
                             onRequestMove={() => setMoveItem(item)}
                             techId={currentTechId}
                         />
@@ -920,7 +920,10 @@ export default function TechWeeklyLogPage() {
                     </DialogHeader>
                     <div className="space-y-2 max-h-[45vh] overflow-y-auto py-1">
                         {moveDestinations.length === 0 ? (
-                            <p className="text-[11px] text-text-muted text-center py-6 uppercase tracking-widest">No other active draft logs</p>
+                            <div className="text-center py-6 space-y-1">
+                                <p className="text-[11px] text-text-muted uppercase tracking-widest font-bold">No other draft logs</p>
+                                <p className="text-[10px] text-text-muted/70 leading-relaxed px-4">You need a second draft weekly log to move this assignment into. Start a draft for another week first.</p>
+                            </div>
                         ) : moveDestinations.map(l => (
                             <button
                                 key={l.id}

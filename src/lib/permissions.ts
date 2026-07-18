@@ -472,9 +472,33 @@ export function normalizeLegacyRole(role: string | null | undefined): AppRole | 
   if (r.includes('tech')) return 'field_technician';
   if (r.includes('sales')) return 'sales';
   if (r.includes('manager')) return 'project_manager';
+  // Catch-all so pre-subrole admin accounts are never locked out by an
+  // unrecognised free-text title (e.g. "Administrator", "Owner", "Operator").
+  if (r.includes('admin') || r.includes('owner') || r.includes('operator')) return 'super_admin';
   // safety_officer / training_coordinator and any unknown value → unmapped.
   return null;
 }
+
+// Backward-compat: a pre-subrole account whose ONLY role was the removed
+// safety_officer / training_coordinator (both admin-portal roles). Detected
+// from the raw stored value so these users keep admin-portal access and their
+// old view-level permissions instead of being bounced to pending-approval.
+function hasLegacyRemovedAdminRole(user: RoleLike | null | undefined): boolean {
+  if (!user) return false;
+  const raw = (user.roles || []) as string[];
+  const legacy = (user.role || '').toLowerCase();
+  return raw.includes('safety_officer') || raw.includes('training_coordinator')
+      || legacy.includes('safety') || legacy.includes('training');
+}
+
+// The permissions the removed safety_officer / training_coordinator roles used
+// to grant — preserved only as a legacy fallback so existing users of those
+// roles keep working until an admin reassigns them a real subrole.
+const LEGACY_REMOVED_ADMIN_PERMISSIONS: Permission[] = [
+  'admin.dashboard.view', 'admin.assignments.view', 'admin.projects.view',
+  'admin.directory.view', 'admin.directory.upload_documents', 'admin.directory.approve_documents',
+  'admin.reports.view', 'admin.reports.generate',
+];
 
 // The effective subroles for a user: the typed `roles` array (filtered to
 // valid subroles) unioned with any legacy free-text `role`. This is the single
@@ -517,7 +541,12 @@ export function hasPermission(user: RoleLike | null | undefined, permission: Per
     if (user.permissionOverrides[permission] === true) return true;
   }
 
-  return getSubroles(user).some(role => ROLE_PERMISSIONS[role]?.includes(permission));
+  if (getSubroles(user).some(role => ROLE_PERMISSIONS[role]?.includes(permission))) return true;
+
+  // Legacy fallback: keep removed-role (safety/training) accounts working.
+  if (hasLegacyRemovedAdminRole(user) && LEGACY_REMOVED_ADMIN_PERMISSIONS.includes(permission)) return true;
+
+  return false;
 }
 
 // Portal-access predicate: does the user hold any subrole that unlocks `portal`?
@@ -573,10 +602,17 @@ export function isClient(user: RoleLike | null | undefined): boolean {
 // so edge and client agree on one effective result.
 export function getPortalAccess(user: Technician | null | undefined): { admin: boolean; tech: boolean; client: boolean } {
   if (!user) return { admin: false, tech: false, client: false };
+  // Subroles are the authority. The legacy `portalAccess.{portal} === true`
+  // grant and the removed admin roles are honoured ONLY additively, purely so
+  // pre-subrole accounts are never locked out (migration safety net). They can
+  // never DENY access, and the permission-derived portal grant that caused the
+  // stray-access bug is intentionally not consulted.
+  const legacy = user.portalAccess || {};
+  const legacyAdmin = legacy.admin === true || hasLegacyRemovedAdminRole(user);
   return {
-    admin: hasPortalSubrole(user, 'admin'),
-    tech: hasPortalSubrole(user, 'tech'),
-    client: hasPortalSubrole(user, 'client'),
+    admin: hasPortalSubrole(user, 'admin') || legacyAdmin,
+    tech: hasPortalSubrole(user, 'tech') || legacy.tech === true,
+    client: hasPortalSubrole(user, 'client') || legacy.client === true,
   };
 }
 

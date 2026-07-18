@@ -42,7 +42,8 @@ import {
     Loader2,
     Car,
     Activity as ActivityIcon,
-    Trash2
+    Trash2,
+    ArrowLeftRight
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -126,6 +127,8 @@ export default function TechWeeklyLogPage() {
     // Direct unsubmit (permission-gated) confirm state + current user for the check
     const [isDirectUnsubmitOpen, setIsDirectUnsubmitOpen] = useState(false);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
+    // Move-between-logs state
+    const [moveItem, setMoveItem] = useState<WeeklyLogItem | null>(null);
 
     const { toast } = useToast();
 
@@ -432,6 +435,54 @@ export default function TechWeeklyLogPage() {
         && activeLog.status === 'Submitted'
         && !(activeLog as any).archived
         && !(activeLog as any).paid;
+
+    // Other active (Draft) logs owned by this tech that an item can move into.
+    const moveDestinations = useMemo(
+        () => weeklyLogs.filter(l => l.techId === currentTechId && l.id !== activeLog?.id && l.status === 'Draft'),
+        [weeklyLogs, currentTechId, activeLog?.id]
+    );
+
+    // Log total = job pay + counted (approved / legacy) reimbursements; mirrors
+    // the payroll settlement so both logs stay correct after a move.
+    const logTotal = (items?: WeeklyLogItem[], reimbs?: FinancialRecord[]) =>
+        (items || []).reduce((a, i) => a + (i.jobPay || 0), 0)
+        + (reimbs || []).filter(r => r.status !== 'pending' && r.status !== 'rejected').reduce((a, r) => a + (r.amount || 0), 0);
+
+    // Move one assignment (weekly-log item) + its reimbursements from the active
+    // log into another active log, updating both logs' totals. The item exists in
+    // exactly one log at a time — no duplication. Notes/time logs/mileage/photos
+    // live on the assignment/trip records (not the log item), so they follow the
+    // assignment automatically and are unaffected.
+    const handleMoveItem = async (destLogId: string) => {
+        if (!activeLog || !moveItem) return;
+        const dest = weeklyLogs.find(l => l.id === destLogId);
+        if (!dest || dest.status !== 'Draft') return;
+        if ((dest.items || []).some(i => i.workOrderId === moveItem.workOrderId)) {
+            toast({ variant: 'destructive', title: 'Already In That Log', description: 'This assignment already exists in the destination log.' });
+            return;
+        }
+        const woId = moveItem.workOrderId;
+        const srcItems = (activeLog.items || []).filter(i => i.id !== moveItem.id);
+        const destItems = [...(dest.items || []), moveItem];
+        const movingReimbs = (activeLog.reimbursements || []).filter(r => r.workOrderId === woId);
+        const srcReimbs = (activeLog.reimbursements || []).filter(r => r.workOrderId !== woId);
+        const destReimbs = [...(dest.reimbursements || []), ...movingReimbs];
+        const stamp = (from: string, to: string) => ({ type: 'item_moved', workOrderId: woId, fromWeek: from, toWeek: to, by: currentTechId || '', at: new Date().toISOString() });
+        try {
+            await updateDoc(doc(db, 'weeklyLogs', activeLog.id), {
+                items: srcItems, reimbursements: srcReimbs, totalPayout: logTotal(srcItems, srcReimbs),
+                history: [...((activeLog as any).history || []), stamp(activeLog.weekOf, dest.weekOf)],
+            });
+            await updateDoc(doc(db, 'weeklyLogs', dest.id), {
+                items: destItems, reimbursements: destReimbs, totalPayout: logTotal(destItems, destReimbs),
+                history: [...((dest as any).history || []), stamp(activeLog.weekOf, dest.weekOf)],
+            });
+            toast({ title: 'Assignment Moved', description: `Moved to the week of ${dest.weekOf}.` });
+            setMoveItem(null);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Move Failed', description: e.message });
+        }
+    };
 
     const handleDirectUnsubmit = async () => {
         if (!activeLog || !canUnsubmitOwnLog || !isUnsubmitEligible) return;
@@ -819,6 +870,8 @@ export default function TechWeeklyLogPage() {
                             onDispute={handleDispute}
                             onAddReimbursement={handleAddReimbursement}
                             onDeleteReimbursement={handleDeleteReimbursement}
+                            canMove={!isLocked && moveDestinations.length > 0}
+                            onRequestMove={() => setMoveItem(item)}
                             techId={currentTechId}
                         />
                     ))}
@@ -852,6 +905,41 @@ export default function TechWeeklyLogPage() {
                     ))}
                 </div>
             </div>
+
+            {/* MOVE ASSIGNMENT TO ANOTHER ACTIVE LOG */}
+            <Dialog open={!!moveItem} onOpenChange={v => { if (!v) setMoveItem(null); }}>
+                <DialogContent className="sm:max-w-[460px] bg-bg-elevated border-border-default shadow-2xl">
+                    <DialogHeader className="text-left">
+                        <div className="flex items-center gap-2 mb-1">
+                            <ArrowLeftRight className="text-blue-400 h-5 w-5" />
+                            <DialogTitle className="text-base font-bold uppercase tracking-widest">Move to Another Log</DialogTitle>
+                        </div>
+                        <p className="text-[11px] text-text-muted leading-relaxed">
+                            Moving from the week of <span className="text-text-primary font-bold">{activeLog?.weekOf}</span>. Choose a destination draft log — all notes, time, mileage, reimbursements, receipts, and payout stay with the assignment.
+                        </p>
+                    </DialogHeader>
+                    <div className="space-y-2 max-h-[45vh] overflow-y-auto py-1">
+                        {moveDestinations.length === 0 ? (
+                            <p className="text-[11px] text-text-muted text-center py-6 uppercase tracking-widest">No other active draft logs</p>
+                        ) : moveDestinations.map(l => (
+                            <button
+                                key={l.id}
+                                onClick={() => handleMoveItem(l.id)}
+                                className="w-full flex items-center justify-between gap-3 p-3 rounded-lg border border-border-sub bg-bg-secondary hover:border-blue-400/50 hover:bg-blue-400/5 transition-colors text-left"
+                            >
+                                <div>
+                                    <p className="text-[12px] font-bold text-text-primary">Week of {l.weekOf}</p>
+                                    <p className="text-[9px] text-text-muted uppercase tracking-widest font-bold">{l.status} · {(l.items || []).length} assignment{(l.items || []).length !== 1 ? 's' : ''}</p>
+                                </div>
+                                <ArrowLeftRight size={14} className="text-blue-400 shrink-0" />
+                            </button>
+                        ))}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" className="h-9 text-[10px] font-bold uppercase tracking-widest" onClick={() => setMoveItem(null)}>Cancel</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* DIRECT UNSUBMIT CONFIRM (permission-gated) */}
             <Dialog open={isDirectUnsubmitOpen} onOpenChange={setIsDirectUnsubmitOpen}>
@@ -927,7 +1015,7 @@ export default function TechWeeklyLogPage() {
     );
 }
 
-function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, techId }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, techId: string | null }) {
+function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null }) {
     const job = workOrders.find(wo => wo.id === item.workOrderId);
     const itemReimbursements = reimbursements.filter(r => r.workOrderId === item.workOrderId);
     const totalReimbursed = itemReimbursements.reduce((acc, r) => acc + (r.amount || 0), 0);
@@ -1066,6 +1154,16 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                             >
                                 <DollarSign size={13} className="mr-1"/> Add Reimbursement
                             </Button>
+                            {canMove && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 px-3 uppercase text-[9px] font-bold tracking-widest border-blue-400/40 text-blue-400 hover:bg-blue-400/10"
+                                    onClick={onRequestMove}
+                                >
+                                    <ArrowLeftRight size={13} className="mr-1"/> Move to Another Log
+                                </Button>
+                            )}
                         </div>
                         {!canAddReimbursement && (
                             <p className="text-[8px] font-bold uppercase tracking-widest text-text-muted text-right pr-1">

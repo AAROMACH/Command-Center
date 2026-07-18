@@ -24,7 +24,8 @@ import { cn, getTacticalLocation, getTacticalCoords, calculateDistance } from '@
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { externalWorkOrderId } from '@/lib/work-order-identity';
-import { fileCompletedAssignment } from '@/lib/weekly-log';
+import { fileCompletedAssignment, resolveCompletionPlacement, type CompletionPlacement } from '@/lib/weekly-log';
+import { CompletionWeekDialog } from '@/components/completion-week-dialog';
 import { getDocs, setDoc } from 'firebase/firestore';
 import { startOfWeek } from 'date-fns';
 
@@ -128,6 +129,7 @@ export default function TechAssignmentDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [detailView, setDetailView] = useState<'overview' | 'history'>('overview');
   const [historyTypeFilter, setHistoryTypeFilter] = useState('all');
+  const [weekPrompt, setWeekPrompt] = useState<(CompletionPlacement & { item: WeeklyLogItem; scheduleDate: string | undefined }) | null>(null);
 
   useEffect(() => {
     const uid = sessionStorage.getItem('currentUserId');
@@ -233,14 +235,32 @@ export default function TechAssignmentDetailPage() {
       isComplete: true,
       isAdminReviewed: false,
     };
-    // Files in the scheduled week's draft log, or the reporting week (flagged)
-    // when that log is already closed. Never duplicates a week's log.
+    // If the job is scheduled for a different week than we're completing in,
+    // ask which log should hold it; otherwise file it straight into its week.
+    const placement = await resolveCompletionPlacement({ techId: currentTechId, scheduleDate: assignment.scheduleDate });
+    if (placement.differentWeek) {
+      setWeekPrompt({ item: newItem, scheduleDate: assignment.scheduleDate, ...placement });
+      return;
+    }
     await fileCompletedAssignment({
       techId: currentTechId,
       scheduleDate: assignment.scheduleDate,
       item: newItem,
       makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
     });
+  };
+
+  const resolveWeekPrompt = async (choice: 'scheduled' | 'reporting') => {
+    if (!currentTechId || !weekPrompt) return;
+    await fileCompletedAssignment({
+      techId: currentTechId,
+      scheduleDate: weekPrompt.scheduleDate,
+      item: weekPrompt.item,
+      makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
+      placement: choice,
+    });
+    toast({ title: 'Filed to Weekly Log', description: choice === 'scheduled' ? `Added to the week of ${weekPrompt.scheduledWeek}.` : `Added to the current week (${weekPrompt.reportingWeek}).` });
+    setWeekPrompt(null);
   };
 
   // ── Status action handlers ────────────────────────────────────────────────
@@ -862,6 +882,16 @@ export default function TechAssignmentDetailPage() {
           })()}
         </div>
       )}
+
+      <CompletionWeekDialog
+        open={!!weekPrompt}
+        scheduledWeek={weekPrompt?.scheduledWeek || ''}
+        reportingWeek={weekPrompt?.reportingWeek || ''}
+        scheduledWeekEligible={!!weekPrompt?.scheduledWeekEligible}
+        onCorrectWeek={() => resolveWeekPrompt('scheduled')}
+        onCurrentWeek={() => resolveWeekPrompt('reporting')}
+        onCancel={() => setWeekPrompt(null)}
+      />
     </div>
   );
 }

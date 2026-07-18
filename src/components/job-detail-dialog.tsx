@@ -26,7 +26,7 @@ import {
   ClipboardList, ExternalLink, Building2,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import {
   collection, query, where, getDocs, onSnapshot,
   orderBy, limit, doc, updateDoc, arrayUnion,
@@ -174,10 +174,18 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   const handleSwapTech = async () => {
     if (!swapTechId || !mission) return;
     const nt = technicians.find(t => t.id === swapTechId);
+    const prevTechId = mission.assignedTechnicianId || mission.techId || '';
+    const prevTech = technicians.find(t => t.id === prevTechId);
+    const admin = auth.currentUser?.displayName || 'Admin';
+    // Ownership moves to the new tech (assignedTechnicianId + techId) so the
+    // previous tech immediately loses access via Firestore rules and their
+    // live queries. Record the full reassignment for the audit trail.
     await updateDoc(doc(db, 'assignments', mission.id), {
       assignedTechnicianId: swapTechId, techId: swapTechId,
       history: arrayUnion({ date: new Date().toISOString(), type: 'tech_swapped',
-        details: `Technician changed to ${nt?.name || swapTechId}`, user: 'Admin' }),
+        previousTechnicianId: prevTechId, previousTechnicianName: prevTech?.name || prevTechId,
+        newTechnicianId: swapTechId, newTechnicianName: nt?.name || swapTechId,
+        details: `Reassigned from ${prevTech?.name || 'unassigned'} to ${nt?.name || swapTechId}`, user: admin }),
     });
     setSwapOpen(false); setSwapTechId('');
   };

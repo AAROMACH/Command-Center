@@ -23,6 +23,8 @@ import { ImportLeadsDialog } from './components/import-leads-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-context';
+import { hasPermission } from '@/lib/permissions';
 
 type Stage = Lead['stage'];
 
@@ -143,6 +145,8 @@ export default function CRMPage() {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [currentUserId, setCurrentUserId] = useState('');
+  const { user: currentUser } = useAuth();
+  const canImportLeads = hasPermission(currentUser, 'admin.crm.import_leads');
   const [viewMode, _setViewModeRaw] = useState<'kanban' | 'list'>(() => { try { return (localStorage.getItem('cc:crm:view') as 'kanban' | 'list') || 'kanban'; } catch { return 'kanban'; } });
   const setViewMode = (v: 'kanban' | 'list') => { _setViewModeRaw(v); try { localStorage.setItem('cc:crm:view', v); } catch {} };
   const [listSort, setListSort] = useState<{ col: 'company' | 'stage' | 'value' | 'updated'; dir: 'asc' | 'desc' }>({ col: 'updated', dir: 'desc' });
@@ -290,6 +294,7 @@ export default function CRMPage() {
           <p className="page-subtitle">Leads & opportunities from first contact to closed deal.</p>
         </div>
         <div className="page-header-right gap-2">
+          {canImportLeads && (
           <Button
             variant="outline"
             size="sm"
@@ -299,6 +304,7 @@ export default function CRMPage() {
             <Upload size={12} className="mr-1.5" />
             Import Leads
           </Button>
+          )}
           <Button
             variant="outline"
             size="sm"

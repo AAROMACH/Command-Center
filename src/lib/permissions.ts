@@ -59,6 +59,13 @@ export type Permission =
   // Clients
   | 'admin.clients.view'
   | 'admin.clients.manage'
+  // Weekly logs (admin-side review)
+  | 'admin.logs.view'
+  | 'admin.logs.approve'
+  | 'admin.logs.return'
+  | 'admin.logs.reopen'
+  | 'admin.logs.move_assignment'
+  | 'admin.logs.lock'
   // Directory
   | 'admin.directory.view'
   | 'admin.directory.manage'
@@ -124,7 +131,9 @@ export type Permission =
   | 'tech.projects.complete_task'
   | 'tech.logs.view'
   | 'tech.logs.create'
-  | 'tech.logs.unsubmit'
+  | 'tech.logs.submit'
+  | 'tech.logs.unsubmit_own'
+  | 'tech.logs.move_assignment'
   | 'tech.earnings.view'
   | 'tech.messages.view'
   | 'tech.messages.send'
@@ -170,6 +179,9 @@ export const ALL_PERMISSIONS: Permission[] = [
   'admin.crm.import_leads',
   // Admin - clients
   'admin.clients.view', 'admin.clients.manage',
+  // Admin - weekly logs
+  'admin.logs.view', 'admin.logs.approve', 'admin.logs.return',
+  'admin.logs.reopen', 'admin.logs.move_assignment', 'admin.logs.lock',
   // Admin - directory
   'admin.directory.view', 'admin.directory.manage', 'admin.directory.assign_roles',
   'admin.directory.edit_permissions', 'admin.directory.upload_documents', 'admin.directory.approve_documents',
@@ -197,7 +209,8 @@ export const ALL_PERMISSIONS: Permission[] = [
   'tech.assignments.check_in', 'tech.assignments.check_out', 'tech.assignments.complete',
   'tech.assignments.report_issue', 'tech.schedule.view', 'tech.projects.view',
   'tech.projects.create_task', 'tech.projects.assign_task', 'tech.projects.complete_task',
-  'tech.logs.view', 'tech.logs.create', 'tech.logs.unsubmit', 'tech.earnings.view', 'tech.messages.view', 'tech.messages.send',
+  'tech.logs.view', 'tech.logs.create', 'tech.logs.submit', 'tech.logs.unsubmit_own', 'tech.logs.move_assignment',
+  'tech.earnings.view', 'tech.messages.view', 'tech.messages.send',
   'tech.profile.view', 'tech.profile.edit',
   // Client
   'client.dashboard.view', 'client.tickets.view', 'client.tickets.create', 'client.projects.view',
@@ -237,6 +250,10 @@ export const PERMISSION_TREE: PermissionTree = {
       'admin.crm.import_leads',
     ],
     clients: ['admin.clients.view', 'admin.clients.manage'],
+    logs: [
+      'admin.logs.view', 'admin.logs.approve', 'admin.logs.return',
+      'admin.logs.reopen', 'admin.logs.move_assignment', 'admin.logs.lock',
+    ],
     directory: [
       'admin.directory.view', 'admin.directory.manage', 'admin.directory.assign_roles',
       'admin.directory.edit_permissions', 'admin.directory.upload_documents',
@@ -273,7 +290,10 @@ export const PERMISSION_TREE: PermissionTree = {
     ],
     schedule: ['tech.schedule.view'],
     projects: ['tech.projects.view', 'tech.projects.create_task', 'tech.projects.assign_task', 'tech.projects.complete_task'],
-    logs: ['tech.logs.view', 'tech.logs.create', 'tech.logs.unsubmit'],
+    logs: [
+      'tech.logs.view', 'tech.logs.create', 'tech.logs.submit',
+      'tech.logs.unsubmit_own', 'tech.logs.move_assignment',
+    ],
     earnings: ['tech.earnings.view'],
     messages: ['tech.messages.view', 'tech.messages.send'],
     profile: ['tech.profile.view', 'tech.profile.edit'],
@@ -306,82 +326,140 @@ export type Portal = {
   path: string;
 };
 
-const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
-  super_admin: ALL_PERMISSIONS,
-  dispatch_admin: [
-    'admin.dashboard.view', 'admin.requests.view', 'admin.assignments.view', 'admin.assignments.manage',
-    'admin.dispatch.view', 'admin.dispatch.assign_technician', 'admin.dispatch.swap_technician',
-    'admin.dispatch.remove_technician', 'admin.dispatch.add_technician', 'admin.dispatch.assign_helper',
-    'admin.dispatch.create_route', 'admin.dispatch.edit_route', 'admin.dispatch.delete_route',
-    'admin.dispatch.optimize_routes', 'admin.dispatch.dispatch_route', 'admin.dispatch.reschedule_job',
-    'admin.dispatch.cancel_assignment', 'admin.dispatch.override_conflicts',
-    'admin.schedule.view', 'admin.projects.view', 'admin.directory.view',
-    'admin.reports.view', 'admin.messages.view', 'admin.messages.group_chat', 'admin.messages.broadcast',
-  ],
-  payroll_admin: [
-    'admin.dashboard.view', 'admin.assignments.view', 'admin.directory.view',
-    'admin.financials.view', 'admin.financials.view_profit', 'admin.financials.create_invoice',
-    'admin.financials.edit_invoice', 'admin.financials.void_invoice', 'admin.financials.approve_reimbursements',
-    'admin.financials.process_payroll', 'admin.financials.export', 'admin.financials.approve_pay_changes',
-    'admin.reports.view', 'admin.reports.generate', 'admin.reports.export',
-  ],
-  project_manager: [
-    'admin.dashboard.view', 'admin.requests.view', 'admin.assignments.view', 'admin.schedule.view',
-    'admin.projects.view', 'admin.projects.manage', 'admin.projects.create', 'admin.projects.edit',
-    'admin.projects.archive', 'admin.projects.create_phase', 'admin.projects.create_task',
-    'admin.projects.assign_task', 'admin.projects.complete_task', 'admin.projects.reopen_task', 'admin.projects.close',
-    'admin.directory.view', 'admin.reports.view', 'admin.reports.generate',
-  ],
-  project_lead: [
-    'tech.dashboard.view', 'tech.assignments.view', 'tech.assignments.confirm', 'tech.assignments.start_trip',
-    'tech.assignments.check_in', 'tech.assignments.check_out', 'tech.assignments.complete',
-    'tech.assignments.report_issue', 'tech.schedule.view', 'tech.projects.view',
-    'tech.projects.create_task', 'tech.projects.assign_task', 'tech.projects.complete_task',
-    'tech.logs.view', 'tech.logs.create', 'tech.earnings.view',
-    'tech.messages.view', 'tech.messages.send', 'tech.profile.view', 'tech.profile.edit',
-  ],
-  field_technician: [
-    'tech.dashboard.view', 'tech.assignments.view', 'tech.assignments.confirm', 'tech.assignments.start_trip',
-    'tech.assignments.check_in', 'tech.assignments.check_out', 'tech.assignments.complete',
-    'tech.assignments.report_issue', 'tech.schedule.view', 'tech.projects.view',
-    'tech.logs.view', 'tech.logs.create', 'tech.earnings.view',
-    'tech.messages.view', 'tech.messages.send', 'tech.profile.view', 'tech.profile.edit',
-  ],
-  client: [
-    'client.dashboard.view', 'client.tickets.view', 'client.tickets.create', 'client.projects.view',
-    'client.sites.view', 'client.quotes.view', 'client.financials.view',
-    'client.messages.view', 'client.messages.send', 'client.profile.view', 'client.profile.edit',
-  ],
-  sales: [
-    'admin.dashboard.view', 'admin.crm.view', 'admin.crm.view_leads', 'admin.crm.manage_leads',
-    'admin.crm.create_lead', 'admin.crm.create_opportunity', 'admin.crm.create_quote',
-    'admin.crm.edit_quote', 'admin.crm.send_quote', 'admin.crm.mark_won', 'admin.crm.mark_lost',
-    'admin.crm.import_leads',
-    'admin.projects.view', 'admin.clients.view', 'admin.directory.view',
-    'admin.reports.view', 'admin.reports.generate',
-  ],
-  safety_officer: [
-    'admin.dashboard.view', 'admin.assignments.view', 'admin.projects.view', 'admin.directory.view',
-    'admin.directory.upload_documents',
-    'admin.reports.view', 'admin.reports.generate',
-  ],
-  training_coordinator: [
-    'admin.dashboard.view', 'admin.directory.view', 'admin.directory.upload_documents',
-    'admin.directory.approve_documents',
-    'admin.reports.view', 'admin.reports.generate',
-  ],
+// ── Central subrole definitions ───────────────────────────────────────
+// The single source of truth for the subrole system. Each subrole belongs to
+// exactly one portal and carries a preset permission set. Selecting a subrole
+// grants access to its portal and applies these permissions; portal access is
+// derived from subroles alone (never from individual permission overrides).
+// All selectors, access summaries, portal checks and permission presets read
+// from this map.
+export type SubrolePortal = 'admin' | 'tech' | 'client';
+
+export type SubroleDefinition = {
+  portal: SubrolePortal;
+  label: string;
+  description: string;
+  permissions: Permission[];
 };
 
-export const APP_ROLES: AppRole[] = [
-  'super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager',
-  'project_lead', 'field_technician', 'client', 'sales',
-  'safety_officer', 'training_coordinator',
+// Reusable tech permission block (Field Technician preset), so Project Lead can
+// extend it without duplication.
+const FIELD_TECH_PERMISSIONS: Permission[] = [
+  'tech.dashboard.view', 'tech.assignments.view', 'tech.assignments.confirm', 'tech.assignments.start_trip',
+  'tech.assignments.check_in', 'tech.assignments.check_out', 'tech.assignments.complete',
+  'tech.assignments.report_issue', 'tech.schedule.view', 'tech.projects.view', 'tech.projects.complete_task',
+  'tech.logs.view', 'tech.logs.create', 'tech.logs.submit', 'tech.logs.unsubmit_own', 'tech.logs.move_assignment',
+  'tech.earnings.view', 'tech.messages.view', 'tech.messages.send', 'tech.profile.view', 'tech.profile.edit',
 ];
 
+export const SUBROLE_DEFINITIONS: Record<AppRole, SubroleDefinition> = {
+  super_admin: {
+    portal: 'admin',
+    label: 'Super Admin',
+    description: 'Full Admin Portal authority — every page, permission management and administrative overrides.',
+    // Full admin portal (all admin.* permissions). Tech/Client access is NOT
+    // implied — a tech or client subrole must be selected separately.
+    permissions: ALL_PERMISSIONS.filter(p => p.startsWith('admin.')),
+  },
+  dispatch_admin: {
+    portal: 'admin',
+    label: 'Dispatch Admin',
+    description: 'Logistics and scheduling — dispatch hub, technician assignment, routes and requests.',
+    permissions: [
+      'admin.dashboard.view', 'admin.requests.view', 'admin.requests.manage',
+      'admin.dispatch.view', 'admin.dispatch.assign_technician', 'admin.dispatch.swap_technician',
+      'admin.dispatch.remove_technician', 'admin.dispatch.add_technician', 'admin.dispatch.assign_helper',
+      'admin.dispatch.create_route', 'admin.dispatch.edit_route', 'admin.dispatch.delete_route',
+      'admin.dispatch.optimize_routes', 'admin.dispatch.dispatch_route', 'admin.dispatch.reschedule_job',
+      'admin.dispatch.cancel_assignment', 'admin.dispatch.override_conflicts',
+      'admin.schedule.view', 'admin.assignments.view', 'admin.assignments.manage',
+      'admin.projects.view', 'admin.directory.view', 'admin.reports.view',
+      'admin.messages.view', 'admin.messages.group_chat',
+    ],
+  },
+  payroll_admin: {
+    portal: 'admin',
+    label: 'Payroll Admin',
+    description: 'Weekly-log review, reimbursements, invoicing and payroll processing.',
+    permissions: [
+      'admin.dashboard.view', 'admin.assignments.view', 'admin.directory.view',
+      'admin.logs.view', 'admin.logs.approve', 'admin.logs.return', 'admin.logs.reopen',
+      'admin.financials.view', 'admin.financials.view_profit', 'admin.financials.create_invoice',
+      'admin.financials.edit_invoice', 'admin.financials.void_invoice', 'admin.financials.approve_reimbursements',
+      'admin.financials.process_payroll', 'admin.financials.export', 'admin.financials.approve_pay_changes',
+      'admin.reports.view', 'admin.reports.generate',
+    ],
+  },
+  project_manager: {
+    portal: 'admin',
+    label: 'Project Manager',
+    description: 'Project lifecycle — creation, phases, tasks and closeout oversight.',
+    permissions: [
+      'admin.dashboard.view', 'admin.requests.view', 'admin.assignments.view', 'admin.schedule.view',
+      'admin.projects.view', 'admin.projects.manage', 'admin.projects.create', 'admin.projects.edit',
+      'admin.projects.archive', 'admin.projects.create_phase', 'admin.projects.create_task',
+      'admin.projects.assign_task', 'admin.projects.complete_task', 'admin.projects.reopen_task', 'admin.projects.close',
+      'admin.directory.view', 'admin.reports.view', 'admin.reports.generate',
+    ],
+  },
+  sales: {
+    portal: 'admin',
+    label: 'Sales',
+    description: 'CRM — leads, opportunities, quotes and lead import.',
+    permissions: [
+      'admin.dashboard.view', 'admin.crm.view', 'admin.crm.view_leads', 'admin.crm.manage_leads',
+      'admin.crm.create_lead', 'admin.crm.create_opportunity', 'admin.crm.create_quote',
+      'admin.crm.edit_quote', 'admin.crm.send_quote', 'admin.crm.mark_won', 'admin.crm.mark_lost',
+      'admin.crm.import_leads',
+      'admin.projects.view', 'admin.clients.view', 'admin.directory.view',
+      'admin.reports.view', 'admin.reports.generate',
+    ],
+  },
+  field_technician: {
+    portal: 'tech',
+    label: 'Field Technician',
+    description: 'Field work — assignments, trips, check-in/out, weekly logs and earnings.',
+    permissions: FIELD_TECH_PERMISSIONS,
+  },
+  project_lead: {
+    portal: 'tech',
+    label: 'Project Lead',
+    description: 'On-site lead — all Field Technician abilities plus project task coordination.',
+    permissions: [
+      ...FIELD_TECH_PERMISSIONS,
+      'tech.projects.create_task', 'tech.projects.assign_task',
+    ],
+  },
+  client: {
+    portal: 'client',
+    label: 'Client User',
+    description: 'Client Portal — tickets, service requests, projects, quotes and invoices.',
+    permissions: [
+      'client.dashboard.view', 'client.tickets.view', 'client.tickets.create', 'client.projects.view',
+      'client.sites.view', 'client.quotes.view', 'client.financials.view',
+      'client.messages.view', 'client.messages.send', 'client.profile.view', 'client.profile.edit',
+    ],
+  },
+};
+
+// Preset permission set per subrole, derived from SUBROLE_DEFINITIONS.
+const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = Object.fromEntries(
+  (Object.keys(SUBROLE_DEFINITIONS) as AppRole[]).map(r => [r, SUBROLE_DEFINITIONS[r].permissions])
+) as Record<AppRole, Permission[]>;
+
+export const APP_ROLES: AppRole[] = Object.keys(SUBROLE_DEFINITIONS) as AppRole[];
+
+// Subroles grouped by the portal they unlock — for building the directory UI.
+export const SUBROLES_BY_PORTAL: Record<SubrolePortal, AppRole[]> = {
+  admin: APP_ROLES.filter(r => SUBROLE_DEFINITIONS[r].portal === 'admin'),
+  tech: APP_ROLES.filter(r => SUBROLE_DEFINITIONS[r].portal === 'tech'),
+  client: APP_ROLES.filter(r => SUBROLE_DEFINITIONS[r].portal === 'client'),
+};
+
 // Map a legacy free-text `role` value (e.g. "Technician", "Dispatcher") to a
-// valid AppRole, using the same heuristics hasPermission applies. Returns
-// null when the value maps to nothing — never write unmapped strings into
-// the typed `roles` array.
+// valid subrole. Returns null when the value maps to nothing (including the
+// removed safety_officer / training_coordinator) — never write unmapped
+// strings into the typed `roles` array.
 export function normalizeLegacyRole(role: string | null | undefined): AppRole | null {
   const r = (role || '').toLowerCase().trim();
   if (!r) return null;
@@ -393,10 +471,26 @@ export function normalizeLegacyRole(role: string | null | undefined): AppRole | 
   if (r.includes('lead')) return 'project_lead';
   if (r.includes('tech')) return 'field_technician';
   if (r.includes('sales')) return 'sales';
-  if (r.includes('safety')) return 'safety_officer';
-  if (r.includes('training')) return 'training_coordinator';
   if (r.includes('manager')) return 'project_manager';
+  // safety_officer / training_coordinator and any unknown value → unmapped.
   return null;
+}
+
+// The effective subroles for a user: the typed `roles` array (filtered to
+// valid subroles) unioned with any legacy free-text `role`. This is the single
+// derivation every portal/permission check builds on.
+export function getSubroles(user: RoleLike | null | undefined): AppRole[] {
+  if (!user) return [];
+  const fromArray = (user.roles || []).filter(r => (APP_ROLES as string[]).includes(r));
+  const fromLegacy = normalizeLegacyRole(user.role);
+  const all = fromLegacy ? [...fromArray, fromLegacy] : fromArray;
+  return Array.from(new Set(all));
+}
+
+// Which selected subroles supply a given permission (for "Included by …" in the
+// permission editor). Ignores individual overrides — presets only.
+export function permissionSources(subroles: AppRole[], permission: Permission): AppRole[] {
+  return subroles.filter(r => ROLE_PERMISSIONS[r]?.includes(permission));
 }
 
 // Minimal shape the role/permission checks below actually need. Accepting
@@ -408,62 +502,50 @@ export type RoleLike = {
   permissionOverrides?: Record<string, boolean>;
 };
 
+// Effective permission check. Precedence:
+//   1. Individual restriction (permissionOverrides[perm] === false) → deny
+//   2. Individual addition   (permissionOverrides[perm] === true)  → allow
+//   3. Selected subrole presets                                    → allow
+//   4. Deny by default
+// Note: an individual addition grants the action only — it never grants portal
+// access. Portal access comes solely from subroles (getPortalAccess).
 export function hasPermission(user: RoleLike | null | undefined, permission: Permission): boolean {
   if (!user) return false;
 
   if (user.permissionOverrides) {
-    if (user.permissionOverrides[permission] === true) return true;
     if (user.permissionOverrides[permission] === false) return false;
+    if (user.permissionOverrides[permission] === true) return true;
   }
 
-  const userRoles: AppRole[] = [...(user.roles || [])];
-
-  const currentRole = user.role?.toLowerCase() || '';
-  if (currentRole === 'admin' || currentRole === 'super_admin') userRoles.push('super_admin');
-  if (currentRole.includes('dispatcher')) userRoles.push('dispatch_admin');
-  if (currentRole.includes('client')) userRoles.push('client');
-  if (currentRole.includes('lead')) userRoles.push('project_lead');
-  if (currentRole.includes('tech')) userRoles.push('field_technician');
-  if (currentRole === 'sales' || currentRole.includes('sales')) userRoles.push('sales');
-  if (currentRole.includes('safety')) userRoles.push('safety_officer');
-  if (currentRole.includes('training')) userRoles.push('training_coordinator');
-
-  const uniqueRoles = Array.from(new Set(userRoles));
-  return uniqueRoles.some(role => ROLE_PERMISSIONS[role as AppRole]?.includes(permission));
+  return getSubroles(user).some(role => ROLE_PERMISSIONS[role]?.includes(permission));
 }
 
-// The 4 core admin/office roles. Note: sales/safety_officer/training_coordinator
-// are NOT blanket-admin — they're granted whatever specific permissions
-// ROLE_PERMISSIONS lists for them via hasPermission(), but do not get general
-// admin UI/access. This matches firestore.rules/storage.rules isAdmin(),
-// which only recognizes these 4 — keeping this list wider than the rules
-// would show admin UI the server then silently rejects.
+// Portal-access predicate: does the user hold any subrole that unlocks `portal`?
+// The single authority for portal access — individual permission overrides and
+// the legacy portalAccess field are deliberately NOT consulted.
+export function hasPortalSubrole(user: RoleLike | null | undefined, portal: SubrolePortal): boolean {
+  return getSubroles(user).some(role => SUBROLE_DEFINITIONS[role]?.portal === portal);
+}
+
+// The 4 admin-portal management subroles. Kept for firestore.rules/storage.rules
+// parity (their isAdmin() recognises exactly these). Sales unlocks the admin
+// portal but is not a blanket admin, so it is excluded here on purpose.
 export function isAdmin(user: RoleLike | null | undefined): boolean {
   if (!user) return false;
   const adminRoles: AppRole[] = ['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'];
-  const userRoles: AppRole[] = user.roles || [];
-  const currentRole = user.role?.toLowerCase() || '';
-  const isLegacyAdmin = currentRole.includes('admin') || currentRole.includes('dispatcher') || currentRole.includes('manager');
-  return isLegacyAdmin || userRoles.some(role => adminRoles.includes(role));
+  return getSubroles(user).some(role => adminRoles.includes(role));
 }
 
 export function isSales(user: RoleLike | null | undefined): boolean {
-  if (!user) return false;
-  const currentRole = user.role?.toLowerCase() || '';
-  return user.roles?.includes('sales') || currentRole === 'sales' || currentRole.includes('sales');
+  return getSubroles(user).includes('sales');
 }
 
 export function isSuperAdmin(user: RoleLike | null | undefined): boolean {
-  if (!user) return false;
-  const userRoles: AppRole[] = user.roles || [];
-  const legacyRole = user.role?.toLowerCase() || '';
-  return userRoles.includes('super_admin') || legacyRole === 'admin' || legacyRole === 'super_admin';
+  return getSubroles(user).includes('super_admin');
 }
 
 export function isDispatchAdmin(user: RoleLike | null | undefined): boolean {
-  if (!user) return false;
-  const userRoles: AppRole[] = user.roles || [];
-  return userRoles.includes('dispatch_admin') || (user.role?.toLowerCase() || '').includes('dispatcher');
+  return getSubroles(user).includes('dispatch_admin');
 }
 
 export function isPayAdmin(user: RoleLike | null | undefined): boolean {
@@ -472,50 +554,29 @@ export function isPayAdmin(user: RoleLike | null | undefined): boolean {
 }
 
 export function isTech(user: RoleLike | null | undefined): boolean {
-  if (!user) return false;
-  const techRoles: AppRole[] = ['project_lead', 'field_technician'];
-  const userRoles: AppRole[] = user.roles || [];
-  const currentRole = user.role?.toLowerCase() || '';
-  const isLegacyTech = currentRole.includes('tech') || currentRole.includes('lead') || currentRole.includes('operative');
-  return isLegacyTech || userRoles.some(role => techRoles.includes(role));
+  return hasPortalSubrole(user, 'tech');
 }
 
 export function isClient(user: RoleLike | null | undefined): boolean {
-  if (!user) return false;
-  const currentRole = user.role?.toLowerCase() || '';
-  return user.roles?.includes('client') || currentRole.includes('client');
+  return hasPortalSubrole(user, 'client');
 }
 
-// A user can enter a portal iff they effectively hold at least one permission
-// inside it. This makes the permission set the single source of truth for
-// portal access, so it can never contradict the pages a role is granted —
-// e.g. the office roles (sales/safety_officer/training_coordinator) hold
-// admin-portal permissions and therefore get admin-portal access, which the
-// old role-bucket derivation (isAdmin, which excludes them) silently denied.
-export function hasAnyPortalPermission(user: RoleLike | null | undefined, portal: 'admin' | 'tech' | 'client'): boolean {
-  if (!user) return false;
-  const pages = PERMISSION_TREE[portal];
-  for (const page of Object.keys(pages)) {
-    for (const perm of pages[page]) {
-      if (hasPermission(user, perm)) return true;
-    }
-  }
-  return false;
-}
-
-// Effective portal access. Precedence (single documented rule):
-//   1. Explicit portalAccess.{portal} (an admin-set lock/grant) wins when present.
-//   2. Otherwise derive from the permission set via hasAnyPortalPermission,
-//      which itself honours permissionOverrides → ROLE_PERMISSIONS.
-// This is the same value written to the login `aaromach_portals` cookie
-// (middleware) and consumed by the client route guard (canAccessPath), so the
-// edge and client agree on one effective result.
+// Effective portal access — the single documented rule:
+//   admin  = user holds any Admin  subrole
+//   tech   = user holds any Tech   subrole
+//   client = user holds any Client subrole
+// Portal access comes ONLY from subroles. The legacy portalAccess field and
+// individual permission overrides are intentionally ignored, so a stray
+// permission (e.g. a client.* override) can never grant a portal the user has
+// no subrole for. This is the same value written to the login `aaromach_portals`
+// cookie (middleware) and consumed by the client route guard (canAccessPath),
+// so edge and client agree on one effective result.
 export function getPortalAccess(user: Technician | null | undefined): { admin: boolean; tech: boolean; client: boolean } {
   if (!user) return { admin: false, tech: false, client: false };
   return {
-    admin: user.portalAccess?.admin !== undefined ? user.portalAccess.admin : hasAnyPortalPermission(user, 'admin'),
-    tech: user.portalAccess?.tech !== undefined ? user.portalAccess.tech : hasAnyPortalPermission(user, 'tech'),
-    client: user.portalAccess?.client !== undefined ? user.portalAccess.client : hasAnyPortalPermission(user, 'client'),
+    admin: hasPortalSubrole(user, 'admin'),
+    tech: hasPortalSubrole(user, 'tech'),
+    client: hasPortalSubrole(user, 'client'),
   };
 }
 

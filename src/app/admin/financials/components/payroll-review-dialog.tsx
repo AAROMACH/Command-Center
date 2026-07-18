@@ -56,6 +56,7 @@ import { db, auth } from '@/lib/firebase';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-context';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 
 type PayrollReviewDialogProps = {
@@ -216,6 +217,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     const [selectedJobForDetail, setSelectedJobForDetail] = useState<WorkOrder | null>(null);
     const [isJobDetailOpen, setIsJobDetailOpen] = useState(false);
     const { toast } = useToast();
+    const { hasPermission } = useAuth();
+    // Weekly-log review authority (subrole-driven). Approve settles a submitted
+    // log; return sends it back to the tech (Deny / Authorize Unsubmit).
+    const canApproveLog = hasPermission('admin.logs.approve');
+    const canReturnLog = hasPermission('admin.logs.return');
 
     useEffect(() => {
         if (isOpen && initialLog) {
@@ -283,6 +289,13 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     };
 
     const handleStatusChange = async (status: WeeklyLog['status']) => {
+        // Approving a log needs admin.logs.approve; sending it back
+        // (Rejected/Draft) needs admin.logs.return.
+        const needed = status === 'Approved' ? canApproveLog : canReturnLog;
+        if (!needed) {
+            toast({ variant: 'destructive', title: 'Not permitted', description: `You do not have permission to ${status === 'Approved' ? 'approve' : 'return'} weekly logs.` });
+            return;
+        }
         if (localLog) {
             const finalTotal = calculatedTotalPayout;
             try {
@@ -307,6 +320,10 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
     const handleApproveUnsubmit = async () => {
         if (!localLog) return;
+        if (!canReturnLog) {
+            toast({ variant: 'destructive', title: 'Not permitted', description: 'You do not have permission to return weekly logs.' });
+            return;
+        }
         try {
             const logRef = doc(db, 'weeklyLogs', localLog.id);
             const previousStatus = localLog.status;
@@ -490,13 +507,17 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     </div>
                                                     <p className="text-[9px] text-text-secondary leading-relaxed uppercase font-medium italic text-left">&quot;{localLog.unsubmitReason}&quot;</p>
                                                     <div className="pt-1.5">
-                                                        <Button 
-                                                            size="sm" 
-                                                            className="h-7 px-4 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[8px] tracking-widest text-white"
-                                                            onClick={handleApproveUnsubmit}
-                                                        >
-                                                            <Undo2 size={10} className="mr-1.5"/> Authorize Unsubmit
-                                                        </Button>
+                                                        {canReturnLog ? (
+                                                            <Button
+                                                                size="sm"
+                                                                className="h-7 px-4 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[8px] tracking-widest text-white"
+                                                                onClick={handleApproveUnsubmit}
+                                                            >
+                                                                <Undo2 size={10} className="mr-1.5"/> Authorize Unsubmit
+                                                            </Button>
+                                                        ) : (
+                                                            <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Requires weekly-log return permission</p>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -863,25 +884,34 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                     </div>
 
                     <DialogFooter className="p-3 sm:p-4 border-t border-border-sub bg-bg-tertiary/50 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 shrink-0">
-                        {localLog?.status === 'Submitted' ? (
+                        {localLog?.status === 'Submitted' && (canApproveLog || canReturnLog) ? (
                             <>
-                                <Button variant="destructive-outline" className="w-full sm:w-auto order-3 sm:order-1 h-10 px-6 sm:px-8 uppercase font-bold text-[10px] tracking-widest" onClick={() => handleStatusChange('Rejected')}>
-                                    <X size={16} className="mr-2"/> Deny Manifest
-                                </Button>
+                                {canReturnLog && (
+                                    <Button variant="destructive-outline" className="w-full sm:w-auto order-3 sm:order-1 h-10 px-6 sm:px-8 uppercase font-bold text-[10px] tracking-widest" onClick={() => handleStatusChange('Rejected')}>
+                                        <X size={16} className="mr-2"/> Deny Manifest
+                                    </Button>
+                                )}
                                 <div className="hidden sm:block flex-1 order-2" />
                                 <Button variant="outline" className="w-full sm:w-auto order-2 sm:order-3 h-11 px-6 sm:px-8 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsOpen(false)}>Close Feed</Button>
-                                <Button
-                                    disabled={!isManifestFullyAudited}
-                                    className={cn(
-                                        "w-full sm:w-auto order-1 sm:order-4 h-11 px-6 sm:px-12 uppercase font-bold text-[10px] tracking-[0.15em] shadow-lg transition-all",
-                                        isManifestFullyAudited ? "bg-brand-red hover:bg-brand-red-hover" : "bg-bg-tertiary text-text-muted cursor-not-allowed border border-border-sub"
-                                    )}
-                                    onClick={() => handleStatusChange('Approved')}
-                                >
-                                    <Check size={16} className="mr-2"/>
-                                    {isManifestFullyAudited ? 'Authorize Disbursement' : 'Audit Pending'}
-                                </Button>
+                                {canApproveLog && (
+                                    <Button
+                                        disabled={!isManifestFullyAudited}
+                                        className={cn(
+                                            "w-full sm:w-auto order-1 sm:order-4 h-11 px-6 sm:px-12 uppercase font-bold text-[10px] tracking-[0.15em] shadow-lg transition-all",
+                                            isManifestFullyAudited ? "bg-brand-red hover:bg-brand-red-hover" : "bg-bg-tertiary text-text-muted cursor-not-allowed border border-border-sub"
+                                        )}
+                                        onClick={() => handleStatusChange('Approved')}
+                                    >
+                                        <Check size={16} className="mr-2"/>
+                                        {isManifestFullyAudited ? 'Authorize Disbursement' : 'Audit Pending'}
+                                    </Button>
+                                )}
                             </>
+                        ) : localLog?.status === 'Submitted' ? (
+                            <div className="w-full flex items-center justify-between gap-3">
+                                <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">View only — you cannot approve or return weekly logs</p>
+                                <Button variant="outline" className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest shrink-0" onClick={() => setIsOpen(false)}>Close Feed</Button>
+                            </div>
                         ) : (
                             <Button variant="outline" className="w-full h-11 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsOpen(false)}>Exit Registry Audit</Button>
                         )}

@@ -90,10 +90,8 @@ const ALL_ROLES = [
     { value: 'project_manager', label: 'Project Manager' },
     { value: 'project_lead', label: 'Project Lead' },
     { value: 'field_technician', label: 'Field Technician' },
-    { value: 'client', label: 'Client' },
+    { value: 'client', label: 'Client User' },
     { value: 'sales', label: 'Sales' },
-    { value: 'safety_officer', label: 'Safety Officer' },
-    { value: 'training_coordinator', label: 'Training Coordinator' },
 ];
 
 type DirectoryClientProps = {

@@ -1,123 +1,129 @@
 # Access Control Audit & Model
 
-Describes the access-control system **as implemented** in code, the conflicts
-found during the audit, the consolidation applied, and the resulting effective
-access. Update this file when roles, permissions, portal logic, or the route
-guard change.
+Describes the access-control system **as implemented** in code. Update this file
+when subroles, permissions, portal logic, or the route guard change.
 
-## 1. Layers (source files)
+## 1. Subroles are the single source of portal access
+
+The stored `roles: AppRole[]` field on a user is the **subrole** array (the two
+are identical — `roles` was kept as the field name to avoid a live-data
+migration). Every subrole belongs to exactly one portal and carries a preset
+permission set, both declared in the one central map:
+
+```
+src/lib/permissions.ts → SUBROLE_DEFINITIONS
+```
+
+- Selecting a subrole **unlocks its portal** and **applies its preset
+  permissions**.
+- Portal access is derived from subroles **only** — never from individual
+  permission overrides and never from a separate `portalAccess` field (that
+  authority was removed).
+- Removing the last subrole in a portal group removes access to that portal.
+
+```
+admin  = user holds any subrole whose portal === 'admin'
+tech   = user holds any subrole whose portal === 'tech'
+client = user holds any subrole whose portal === 'client'
+```
+
+## 2. Layers (source files)
 
 | Layer | File | Enforces | Reads from |
 |---|---|---|---|
-| Effective permission | `src/lib/permissions.ts` → `hasPermission()` | page & action permissions | `permissionOverrides` (explicit `true`/`false`) → `ROLE_PERMISSIONS[roles]` |
-| Portal access | `src/lib/permissions.ts` → `getPortalAccess()` | which portals a user may enter | explicit `portalAccess.{portal}` → else `hasAnyPortalPermission()` (permission-derived) |
-| Composite route guard | `src/lib/route-permissions.ts` → `canAccessPath()`, used in `src/components/sidebar-layout.tsx` | direct-URL / refresh / in-app navigation | live user doc (portal + page permission) |
-| Nav visibility | `src/components/app-sidebar.tsx` | sidebar items | `hasPermission` per item, within the active portal |
-| Edge / middleware | `src/middleware.ts` | portal gate at the edge | `aaromach_portals` cookie (written at login from `getPortalAccess`) |
+| Effective permission | `permissions.ts` → `hasPermission()` | page & action permissions | `permissionOverrides` (explicit `true`/`false`) → subrole presets |
+| Portal access | `permissions.ts` → `getPortalAccess()` / `hasPortalSubrole()` | which portals a user may enter | selected subroles only |
+| Composite route guard | `route-permissions.ts` → `canAccessPath()` | direct-URL / refresh / in-app navigation | live user doc (portal + page permission) |
+| Nav visibility | `app-sidebar.tsx` | sidebar items | `hasPermission` per item, within the active portal |
+| Edge / middleware | `middleware.ts` | portal gate at the edge | `aaromach_portals` cookie (written at login from `getPortalAccess`) |
 | Backend data | `firestore.rules` | Firestore reads/writes | `roles[]` / legacy `role` + document ownership |
 
-## 2. Precedence rule (single documented source of truth)
+## 3. Precedence rules
 
-Permissions are the source of truth. Effective access for a route is decided by
-`canAccessPath(user, pathname)` in this order:
+**Permission** (`hasPermission`):
 
-1. **Portal lock** — `getPortalAccess(user)[portal]`. Explicit
-   `portalAccess.{portal}` (an admin-set lock or grant) wins when present;
-   otherwise the portal is derived from whether the user holds **any** permission
-   in it. If the portal that owns the path is not accessible, access is denied
-   regardless of any page permission the role grants. *(Top-level gate.)*
+```
+1. individual restriction  (permissionOverrides[perm] === false)  → deny
+2. individual addition      (permissionOverrides[perm] === true)   → allow
+3. selected subrole presets                                        → allow
+4. deny by default
+```
+
+An individual **addition grants the action only — it never grants portal
+access.** Portal access comes solely from subroles.
+
+**Route** (`canAccessPath`):
+
+1. **Portal lock** — `getPortalAccess(user)[portal]` (subrole-derived). If the
+   portal owning the path is not unlocked, access is denied regardless of any
+   page permission.
 2. **Page permission** — `hasPermission(user, requiredPermissionForPath(path))`.
-   `permissionOverrides` (explicit `true`/`false`) override role defaults. Paths
-   not in the route map (profile, settings, detail pages) are gated by portal
-   access only.
-3. **Action permission** — individual buttons/actions call `hasPermission` with
-   their specific `portal.page.action` key at the call site.
+3. **Action permission** — buttons/actions call `hasPermission` with their
+   `portal.page.action` key at the call site.
 4. **Backend backstop** — `firestore.rules` enforce role + ownership on every
    read/write, independent of the UI.
 
-`canAccessPath` reads the **live** user document, so portal/permission changes
+`canAccessPath` reads the **live** user document, so subrole/permission changes
 take effect on the client without waiting for the login cookie to refresh.
 
-## 3. Conflicts found in the audit and how they were resolved
+## 4. Primary Portal
 
-1. **Two axes enforced in different layers that did not compose.** The client
-   route guard and nav checked only page permission; portal locks were enforced
-   *only* by middleware via the login-time cookie (stale until re-login; bypassed
-   entirely if the cookie was missing/malformed). **Resolved:** `canAccessPath`
-   composes both axes and is used by the client guard, giving a client backstop
-   and live enforcement that agrees with the edge.
+`primaryPortal` is **landing only** — it decides which unlocked portal opens
+after login and grants no access. Login (`src/app/login/page.tsx`) routes to it
+when it is still unlocked, otherwise to the first available portal; with no
+subroles at all the user is sent to `pending-approval`. The directory editors
+only offer unlocked portals and auto-adjust `primaryPortal` when its portal
+loses its last subrole.
 
-2. **Portal access derived from role buckets, contradicting granted pages.** The
-   old `getPortalAccess` derived `admin` from `isAdmin()`, which excludes the
-   office roles (`sales`, `safety_officer`, `training_coordinator`). Those roles
-   hold admin-portal permissions but were denied admin-portal access, so
-   middleware bounced them out of every `/admin` route their role granted.
-   **Resolved:** portal access is now derived from the permission set
-   (`hasAnyPortalPermission`), so it can never contradict the pages a role holds.
+## 5. Known limitations
 
-3. **Page permissions have no server-side enforcement.** Middleware gates portal
-   (cookie) but not page permissions; Firestore rules gate role + ownership but
-   not the granular `page.action` keys. A hidden action whose write the user's
-   *role* is allowed to make is still callable. **Status:** documented; data the
-   role cannot write is still stopped by Firestore. Closing this fully requires
-   moving page-permission checks server-side (see Known limitations).
+- **Cookie staleness.** The `aaromach_portals` cookie is a ≤24h snapshot from
+  login; `canAccessPath` re-derives from the live user doc so a **revocation**
+  takes effect immediately on the client, but immediate effect of a fresh
+  **grant** at the edge needs a cookie/session refresh (deferred).
+- **Coarse route permissions.** Several pages share one `.view` key
+  (`admin.reports.view` gates Reports + Intel + Company Planning + Plans;
+  `admin.assignments.view` also gates Assets; `admin.crm.view` also gates Quotes;
+  `admin.clients.view` gates `/admin/sites`). Splitting them is a follow-up.
+- **`admin.logs.*` permissions** exist and are assignable (granted to
+  `payroll_admin`/`super_admin`) but the payroll UI still gates its actions on
+  the existing `admin.financials.*` keys — full re-wiring is a follow-up.
+- **`super_admin` does not imply tech/client access.** It unlocks the admin
+  portal only; a tech or client subrole must be added separately.
 
-## 4. Known limitations (documented, not yet changed)
+## 6. Subroles (from `SUBROLE_DEFINITIONS`)
 
-- **Cookie staleness / session revocation.** The `aaromach_portals` cookie and
-  the session are a ≤24h snapshot from login. `canAccessPath` re-derives from the
-  live user doc, so a **revocation** takes effect immediately on the client even
-  if the cookie is still permissive; a full server-side revocation (and immediate
-  effect of a *grant*, which the stale cookie can still block at the edge until
-  re-login) needs a cookie/session refresh mechanism. Deferred.
-- **Coarse route permissions.** Several distinct pages share one `.view` key:
-  `admin.reports.view` gates Reports **and** Intel (`/admin/analytics`), Company
-  Planning, and Service Plans (`/admin/plans`); `admin.assignments.view` also
-  gates Assets; `admin.crm.view` also gates Quotes; `admin.clients.view` gates
-  `/admin/sites`. Granting one of these grants the others. Splitting them would
-  add new permission keys and is left as a follow-up (only add a key when a real
-  workflow needs the finer control).
-- **`super_admin` now derives access to all three portals** (it holds every
-  permission, including `tech.*`/`client.*`). Login routes it via `primaryPortal`
-  or the portal picker. Set `primaryPortal` or an explicit `portalAccess` to
-  tailor landing behavior.
+### Admin portal
 
-## 5. Effective access matrix (generated from `ROLE_PERMISSIONS`)
+| Subrole | Preset summary |
+|---|---|
+| `super_admin` | Full Admin Portal — every admin page, permission management, overrides |
+| `dispatch_admin` | Dashboard, Requests, Dispatch (assign/swap/routes), Schedule, Assignments, Projects (view), Directory, Reports, Messages |
+| `payroll_admin` | Dashboard, Assignments, Directory, Weekly Logs (view/approve/return/reopen), Financials, Payroll, Reports |
+| `project_manager` | Dashboard, Requests, Assignments, Schedule, full Projects lifecycle, Directory, Reports |
+| `sales` | Dashboard, CRM (leads/opportunities/quotes/import), Projects (view), Clients (view), Directory, Reports |
 
-Portal column = permission-derived default (before any explicit `portalAccess`
-override). Page columns list the portal pages each role can **view** (via its
-`.view` permission and the `route-permissions.ts` map). Actions beyond view
-(create/edit/approve/etc.) are governed per-key by `hasPermission`.
+### Tech portal
 
-### Admin portal roles
+| Subrole | Preset summary |
+|---|---|
+| `field_technician` | Dashboard, Assignments (confirm/trip/check-in-out/complete/report), Schedule, Projects, Logs (view/create/submit/unsubmit-own/move), Earnings, Messages, Profile |
+| `project_lead` | All Field Technician + project task create/assign |
 
-| Role | Portal(s) | Admin pages viewable |
-|---|---|---|
-| `super_admin` | admin, tech, client | **All** pages in every portal |
-| `dispatch_admin` | admin | Dashboard, Requests, Dispatch, Schedule, Assignments, Assets, Projects, Directory, Reports/Intel/Company-Planning/Plans, Messages |
-| `payroll_admin` | admin | Dashboard, Assignments, Assets, Directory, Financials, Reports/Intel/Company-Planning/Plans |
-| `project_manager` | admin | Dashboard, Requests, Assignments, Assets, Schedule, Projects, Directory, Reports/Intel/Company-Planning/Plans |
-| `sales` | admin | Dashboard, CRM, Quotes, Projects, Clients (`/admin/sites`), Directory, Reports/Intel/Company-Planning/Plans |
-| `safety_officer` | admin | Dashboard, Assignments, Assets, Projects, Directory, Reports/Intel/Company-Planning/Plans (+ Safety events, doc upload) |
-| `training_coordinator` | admin | Dashboard, Directory, Reports/Intel/Company-Planning/Plans (+ Certifications, doc upload/approve) |
+### Client portal
 
-### Tech portal roles
+| Subrole | Preset summary |
+|---|---|
+| `client` | Dashboard, Tickets, Service requests, Projects, Sites, Quotes, Financials, Messages, Profile |
 
-| Role | Portal(s) | Tech pages viewable |
-|---|---|---|
-| `project_lead` | tech | Dashboard, Activity, Schedule, Assignments, Projects (+ task create/assign), Logs, Earnings, Messages, Profile |
-| `field_technician` | tech | Dashboard, Activity, Schedule, Assignments, Projects (view), Logs, Earnings, Messages, Profile |
+`safety_officer` and `training_coordinator` were removed from the system.
 
-### Client portal role
+## 7. Weekly-log permission keys
 
-| Role | Portal(s) | Client pages viewable |
-|---|---|---|
-| `client` | client | Dashboard, Requests (tickets), Clients (`/client/sites`), Quotes, Projects, Messages, Financials, Profile |
+- **Tech:** `tech.logs.view`, `tech.logs.create`, `tech.logs.submit`,
+  `tech.logs.unsubmit_own`, `tech.logs.move_assignment`.
+- **Admin:** `admin.logs.view`, `admin.logs.approve`, `admin.logs.return`,
+  `admin.logs.reopen`, `admin.logs.move_assignment`, `admin.logs.lock`.
 
-Notes:
-- "Reports/Intel/Company-Planning/Plans" is one bucket because those four routes
-  all require `admin.reports.view` (see Known limitations → coarse permissions).
-- `field_technician` differs from `project_lead` only by lacking the project
-  task-management actions (`tech.projects.create_task`/`assign_task`/`complete_task`).
-- Any role's row can be overridden per user by `permissionOverrides` (page/action)
-  and `portalAccess` (portal); explicit overrides win per the precedence rule.
+A tech may unsubmit only their **own** log, and only while it is Submitted (not
+approved, paid, or archived) — enforced in the UI and in `firestore.rules`.

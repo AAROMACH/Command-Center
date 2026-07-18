@@ -7,8 +7,6 @@ import {
   Hammer,
   Building2,
   Handshake,
-  HardHat,
-  GraduationCap,
 } from 'lucide-react';
 import type { AppRole } from '@/lib/types';
 
@@ -20,10 +18,10 @@ export type RoleOption = {
     permissions: string[];
 };
 
-// Note: 'office' roles (sales/safety_officer/training_coordinator) are NOT
-// blanket-admin — isAdmin() only covers the 4 roles in the 'admin' bucket
-// below, matching firestore.rules/storage.rules. Office roles get whatever
-// specific permissions ROLE_PERMISSIONS (permissions.ts) grants them.
+// Note: the 'office' subrole (sales) is NOT blanket-admin — isAdmin() only
+// covers the 4 subroles in the 'admin' bucket below, matching
+// firestore.rules/storage.rules. Sales unlocks the admin portal but gets only
+// the specific permissions SUBROLE_DEFINITIONS (permissions.ts) grants it.
 export const ROLE_DATA: Record<'admin' | 'tech' | 'client' | 'office', RoleOption[]> = {
     admin: [
         { 
@@ -87,20 +85,6 @@ export const ROLE_DATA: Record<'admin' | 'tech' | 'client' | 'office', RoleOptio
             desc: 'CRM, leads, and quoting specialist.',
             icon: Handshake,
             permissions: ['Manage Leads & Opportunities', 'Create & Send Quotes', 'View Reports']
-        },
-        {
-            id: 'safety_officer',
-            label: 'Safety Officer',
-            desc: 'Field safety compliance lead.',
-            icon: HardHat,
-            permissions: ['Manage Safety Events', 'Upload Personnel Documents', 'View Reports']
-        },
-        {
-            id: 'training_coordinator',
-            label: 'Training Coordinator',
-            desc: 'Certifications and onboarding lead.',
-            icon: GraduationCap,
-            permissions: ['Manage Certifications', 'Approve Personnel Documents', 'View Reports']
         },
     ]
 };

@@ -138,15 +138,19 @@ service cloud.firestore {
       );
       allow create: if isTech();
       // Techs edit their own Draft logs. They may also self-UNSUBMIT (flip a
-      // Submitted log back to Draft) only when granted tech.logs.unsubmit and
-      // the log is still Submitted (never once Approved/paid).
+      // Submitted log back to Draft) when the log is still Submitted and not yet
+      // approved/paid/archived. tech.logs.unsubmit_own is granted by the tech
+      // subroles, so rules default it ON and only block techs with an explicit
+      // `false` override (revocation).
       allow update: if isAdmin()
           || (isTech() && resource.data.techId == request.auth.uid
               && resource.data.status == 'Draft')
           || (isTech() && resource.data.techId == request.auth.uid
               && resource.data.status == 'Submitted'
               && request.resource.data.status == 'Draft'
-              && userData().get('permissionOverrides', {}).get('tech.logs.unsubmit', false) == true);
+              && resource.data.get('paid', false) != true
+              && resource.data.get('archived', false) != true
+              && userData().get('permissionOverrides', {}).get('tech.logs.unsubmit_own', true) == true);
       allow delete: if isSuperAdmin();
     }
 

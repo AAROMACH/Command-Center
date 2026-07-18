@@ -35,13 +35,68 @@ export type FileCompletedResult = {
   placedIn: 'scheduled_week' | 'reporting_week_override';
 };
 
+export type CompletionPlacement = {
+  scheduledWeek: string;
+  reportingWeek: string;
+  /** true when the job was scheduled in a different week than it's being completed. */
+  differentWeek: boolean;
+  /** true when the scheduled week has no log yet or its log is still Draft (so
+   *  "Add to Correct Week" is a valid choice). */
+  scheduledWeekEligible: boolean;
+};
+
 /**
- * File a completed assignment's weekly-log item into the correct log:
- *   - the scheduled week's Draft log (created if that week has no log yet), OR
- *   - when the scheduled week's log already exists but is closed
- *     (Submitted/Approved/etc.), the current reporting week's Draft log, with
- *     the item flagged (assignmentWeekId/reportedWeekId/wasMovedBetweenWeeks…)
- *     so payroll can see it belongs to a different service week.
+ * Inspect where a completed job could be filed without writing anything — used
+ * to decide whether to prompt the tech "correct week vs current week".
+ */
+export async function resolveCompletionPlacement(opts: {
+  techId: string;
+  scheduleDate: string | undefined | null;
+}): Promise<CompletionPlacement> {
+  const scheduledWeek = weekOfForScheduleDate(opts.scheduleDate);
+  const reportingWeek = weekOfForScheduleDate(format(new Date(), 'yyyy-MM-dd'));
+  const schedSnap = await getDocs(query(
+    collection(db, 'weeklyLogs'),
+    where('techId', '==', opts.techId),
+    where('weekOf', '==', scheduledWeek),
+  ));
+  const scheduledWeekEligible = schedSnap.empty || schedSnap.docs.some(d => d.data().status === 'Draft');
+  return { scheduledWeek, reportingWeek, differentWeek: scheduledWeek !== reportingWeek, scheduledWeekEligible };
+}
+
+async function fileInReportingWeek(techId: string, item: WeeklyLogItem, scheduledWeek: string, reportingWeek: string, makeLogId: () => Promise<string>) {
+  const flagged: WeeklyLogItem = {
+    ...item,
+    assignmentWeekId: scheduledWeek,
+    reportedWeekId: reportingWeek,
+    wasMovedBetweenWeeks: true,
+    weekOverrideReason: 'Filed in reporting week (scheduled week unavailable or overridden)',
+    weekOverrideAt: new Date().toISOString(),
+  };
+  const curSnap = await getDocs(query(
+    collection(db, 'weeklyLogs'),
+    where('techId', '==', techId),
+    where('weekOf', '==', reportingWeek),
+    where('status', '==', 'Draft'),
+  ));
+  if (!curSnap.empty) {
+    await updateDoc(doc(db, 'weeklyLogs', curSnap.docs[0].id), { items: arrayUnion(flagged) });
+  } else {
+    const logId = await makeLogId();
+    await setDoc(doc(db, 'weeklyLogs', logId), {
+      id: logId, techId, weekOf: reportingWeek, status: 'Draft', items: [flagged], reimbursements: [], totalPayout: 0,
+    });
+  }
+}
+
+/**
+ * File a completed assignment's weekly-log item into the correct log.
+ *   - `placement: 'scheduled'` → the scheduled week's Draft log (created if
+ *      that week has no log yet).
+ *   - `placement: 'reporting'` → the current reporting week's Draft log, flagged
+ *      as a cross-week entry.
+ *   - default (no placement) → auto: scheduled week when possible, otherwise the
+ *      reporting week flagged (used when the scheduled week's log is closed).
  * Never creates a second log for a week that already has one.
  */
 export async function fileCompletedAssignment(opts: {
@@ -49,10 +104,16 @@ export async function fileCompletedAssignment(opts: {
   scheduleDate: string | undefined | null;
   item: WeeklyLogItem;
   makeLogId: () => Promise<string>;
+  placement?: 'scheduled' | 'reporting';
 }): Promise<FileCompletedResult> {
-  const { techId, scheduleDate, item, makeLogId } = opts;
+  const { techId, scheduleDate, item, makeLogId, placement } = opts;
   const scheduledWeek = weekOfForScheduleDate(scheduleDate);
   const reportingWeek = weekOfForScheduleDate(format(new Date(), 'yyyy-MM-dd'));
+
+  if (placement === 'reporting') {
+    await fileInReportingWeek(techId, item, scheduledWeek, reportingWeek, makeLogId);
+    return { weekOf: reportingWeek, placedIn: 'reporting_week_override' };
+  }
 
   const schedSnap = await getDocs(query(
     collection(db, 'weeklyLogs'),
@@ -73,28 +134,8 @@ export async function fileCompletedAssignment(opts: {
     return { weekOf: scheduledWeek, placedIn: 'scheduled_week' };
   }
 
-  // Scheduled week's log is closed — file in the reporting week, flagged.
-  const flagged: WeeklyLogItem = {
-    ...item,
-    assignmentWeekId: scheduledWeek,
-    reportedWeekId: reportingWeek,
-    wasMovedBetweenWeeks: true,
-    weekOverrideReason: 'Scheduled week log already closed',
-    weekOverrideAt: new Date().toISOString(),
-  };
-  const curSnap = await getDocs(query(
-    collection(db, 'weeklyLogs'),
-    where('techId', '==', techId),
-    where('weekOf', '==', reportingWeek),
-    where('status', '==', 'Draft'),
-  ));
-  if (!curSnap.empty) {
-    await updateDoc(doc(db, 'weeklyLogs', curSnap.docs[0].id), { items: arrayUnion(flagged) });
-  } else {
-    const logId = await makeLogId();
-    await setDoc(doc(db, 'weeklyLogs', logId), {
-      id: logId, techId, weekOf: reportingWeek, status: 'Draft', items: [flagged], reimbursements: [], totalPayout: 0,
-    });
-  }
+  // Scheduled week's log is closed (or caller forced reporting) — file in the
+  // reporting week, flagged.
+  await fileInReportingWeek(techId, item, scheduledWeek, reportingWeek, makeLogId);
   return { weekOf: reportingWeek, placedIn: 'reporting_week_override' };
 }

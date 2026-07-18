@@ -43,7 +43,8 @@ import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
 import { format, startOfWeek, parseISO } from 'date-fns';
-import { fileCompletedAssignment } from '@/lib/weekly-log';
+import { fileCompletedAssignment, resolveCompletionPlacement, type CompletionPlacement } from '@/lib/weekly-log';
+import { CompletionWeekDialog } from '@/components/completion-week-dialog';
 import { cn, getTacticalLocation, compareScheduleTime } from '@/lib/utils';
 import { NotificationService } from '@/lib/notification-service';
 
@@ -58,6 +59,7 @@ export default function TechDashboardPage() {
     const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
     const [isCheckInDialogOpen, setIsCheckInDialogOpen] = useState(false);
     const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
+    const [weekPrompt, setWeekPrompt] = useState<(CompletionPlacement & { item: WeeklyLogItem; scheduleDate: string | undefined }) | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     
     const { toast } = useToast();
@@ -186,13 +188,30 @@ export default function TechDashboardPage() {
             isComplete: true,
             isAdminReviewed: false
         };
-        // Scheduled-week draft log, or reporting week (flagged) if it is closed.
+        const placement = await resolveCompletionPlacement({ techId: currentTechId, scheduleDate: wo.scheduleDate });
+        if (placement.differentWeek) {
+            setWeekPrompt({ item: newItem, scheduleDate: wo.scheduleDate, ...placement });
+            return;
+        }
         await fileCompletedAssignment({
             techId: currentTechId,
             scheduleDate: wo.scheduleDate,
             item: newItem,
             makeLogId: makeWeeklyLogId,
         });
+    };
+
+    const resolveWeekPrompt = async (choice: 'scheduled' | 'reporting') => {
+        if (!currentTechId || !weekPrompt) return;
+        await fileCompletedAssignment({
+            techId: currentTechId,
+            scheduleDate: weekPrompt.scheduleDate,
+            item: weekPrompt.item,
+            makeLogId: makeWeeklyLogId,
+            placement: choice,
+        });
+        toast({ title: 'Filed to Weekly Log', description: choice === 'scheduled' ? `Added to the week of ${weekPrompt.scheduledWeek}.` : `Added to the current week (${weekPrompt.reportingWeek}).` });
+        setWeekPrompt(null);
     };
 
     const handleStatusTransition = async (woId: string, newStatus: WorkOrder['status']) => {
@@ -442,6 +461,15 @@ export default function TechDashboardPage() {
             <JobDetailDialog isOpen={isDetailOpen} setIsOpen={setIsDetailOpen} mission={selectedJob} />
             {selectedLog && <WeeklyLogDialog isOpen={!!selectedLog} setIsOpen={() => setSelectedLog(null)} log={selectedLog} onSubmitted={() => setSelectedLog(null)} />}
 
+            <CompletionWeekDialog
+                open={!!weekPrompt}
+                scheduledWeek={weekPrompt?.scheduledWeek || ''}
+                reportingWeek={weekPrompt?.reportingWeek || ''}
+                scheduledWeekEligible={!!weekPrompt?.scheduledWeekEligible}
+                onCorrectWeek={() => resolveWeekPrompt('scheduled')}
+                onCurrentWeek={() => resolveWeekPrompt('reporting')}
+                onCancel={() => setWeekPrompt(null)}
+            />
         </div>
     );
 }

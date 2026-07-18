@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog } from '@/lib/types';
 import { externalWorkOrderId, displayWorkOrderNumber } from '@/lib/work-order-identity';
+import { hasPermission } from '@/lib/permissions';
 import { uploadFile } from '@/lib/upload';
 import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
@@ -122,6 +123,9 @@ export default function TechWeeklyLogPage() {
     // Unsubmit Request State
     const [isUnsubmitDialogOpen, setIsUnsubmitDialogOpen] = useState(false);
     const [unsubmitReason, setUnsubmitReason] = useState("");
+    // Direct unsubmit (permission-gated) confirm state + current user for the check
+    const [isDirectUnsubmitOpen, setIsDirectUnsubmitOpen] = useState(false);
+    const [currentUser, setCurrentUser] = useState<Technician | null>(null);
 
     const { toast } = useToast();
 
@@ -143,7 +147,10 @@ export default function TechWeeklyLogPage() {
                 setTripLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as TripLog)));
             });
             const unsubProfile = onSnapshot(doc(db, 'users', userId), (snap) => {
-                if (snap.exists()) setMileageUnit((snap.data().mileageUnit as 'mi' | 'km') || 'mi');
+                if (snap.exists()) {
+                    setMileageUnit((snap.data().mileageUnit as 'mi' | 'km') || 'mi');
+                    setCurrentUser({ ...snap.data(), id: snap.id } as Technician);
+                }
             });
             return () => {
                 unsubLogs(); unsubWO(); unsubTrips(); unsubProfile();
@@ -417,6 +424,40 @@ export default function TechWeeklyLogPage() {
         }
     };
 
+    // Direct self-unsubmit — only for techs granted tech.logs.unsubmit, and only
+    // while the log is still Submitted (payroll approval flips it to Approved,
+    // which is ineligible). Returns the log to Draft and records the action.
+    const canUnsubmitOwnLog = hasPermission(currentUser, 'tech.logs.unsubmit');
+    const isUnsubmitEligible = !!activeLog
+        && activeLog.status === 'Submitted'
+        && !(activeLog as any).archived
+        && !(activeLog as any).paid;
+
+    const handleDirectUnsubmit = async () => {
+        if (!activeLog || !canUnsubmitOwnLog || !isUnsubmitEligible) return;
+        try {
+            const historyEntry = {
+                type: 'unsubmit',
+                by: currentUser?.name || currentTechId || 'Technician',
+                byId: currentTechId || '',
+                previousStatus: activeLog.status,
+                newStatus: 'Draft',
+                at: new Date().toISOString(),
+            };
+            await updateDoc(doc(db, 'weeklyLogs', activeLog.id), {
+                status: 'Draft',
+                unsubmitRequested: false,
+                unsubmitReason: null,
+                unsubmitRequestedAt: null,
+                history: [...((activeLog as any).history || []), historyEntry],
+            });
+            toast({ title: 'Log Unsubmitted', description: 'Returned to Draft — assignments and entries are editable again.' });
+            setIsDirectUnsubmitOpen(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Unsubmit Failed', description: e.message });
+        }
+    };
+
     const handleRequestUnsubmit = async () => {
         if (!activeLog || !unsubmitReason.trim()) return;
         try {
@@ -673,15 +714,24 @@ export default function TechWeeklyLogPage() {
                 <div className="flex items-center gap-3 text-right">
                     {activeLog.status === 'Submitted' ? (
                         <div className="flex flex-col items-end gap-3 text-right">
-                            {activeLog.unsubmitRequested ? (
+                            {canUnsubmitOwnLog && isUnsubmitEligible ? (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 px-6 text-[10px] font-bold uppercase tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim"
+                                    onClick={() => setIsDirectUnsubmitOpen(true)}
+                                >
+                                    <Undo2 size={14} className="mr-2" /> Unsubmit Log
+                                </Button>
+                            ) : activeLog.unsubmitRequested ? (
                                 <div className="flex items-center gap-2 p-2 rounded-lg bg-bg-tertiary border border-border-sub text-accent-gold">
                                     <AlertCircle size={14} className="animate-pulse" />
                                     <p className="text-[9px] font-black uppercase tracking-widest">Unsubmit Pending Approval</p>
                                 </div>
                             ) : (
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
+                                <Button
+                                    variant="outline"
+                                    size="sm"
                                     className="h-9 px-6 text-[10px] font-bold uppercase tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim"
                                     onClick={() => setIsUnsubmitDialogOpen(true)}
                                 >
@@ -802,6 +852,27 @@ export default function TechWeeklyLogPage() {
                     ))}
                 </div>
             </div>
+
+            {/* DIRECT UNSUBMIT CONFIRM (permission-gated) */}
+            <Dialog open={isDirectUnsubmitOpen} onOpenChange={setIsDirectUnsubmitOpen}>
+                <DialogContent className="sm:max-w-[440px] bg-bg-elevated border-border-default shadow-2xl">
+                    <DialogHeader className="text-left">
+                        <div className="flex items-center gap-2 mb-1">
+                            <Undo2 className="text-brand-red h-5 w-5" />
+                            <DialogTitle className="text-base font-bold uppercase tracking-widest">Unsubmit Weekly Log</DialogTitle>
+                        </div>
+                        <p className="text-[11px] text-text-muted leading-relaxed">
+                            Unsubmitting this weekly log will return it to Draft status and allow its assignments and entries to be edited. Continue?
+                        </p>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" className="h-9 text-[10px] font-bold uppercase tracking-widest" onClick={() => setIsDirectUnsubmitOpen(false)}>Cancel</Button>
+                        <Button className="h-9 text-[10px] font-bold uppercase tracking-widest bg-brand-red hover:bg-brand-red-hover text-white" onClick={handleDirectUnsubmit}>
+                            <Undo2 size={14} className="mr-2" /> Unsubmit Log
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* UN-SUBMIT REQUEST DIALOG */}
             <Dialog open={isUnsubmitDialogOpen} onOpenChange={setIsUnsubmitDialogOpen}>

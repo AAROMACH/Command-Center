@@ -137,9 +137,16 @@ service cloud.firestore {
           || (isTech() && resource.data.techId == request.auth.uid)
       );
       allow create: if isTech();
+      // Techs edit their own Draft logs. They may also self-UNSUBMIT (flip a
+      // Submitted log back to Draft) only when granted tech.logs.unsubmit and
+      // the log is still Submitted (never once Approved/paid).
       allow update: if isAdmin()
           || (isTech() && resource.data.techId == request.auth.uid
-              && resource.data.status == 'Draft');
+              && resource.data.status == 'Draft')
+          || (isTech() && resource.data.techId == request.auth.uid
+              && resource.data.status == 'Submitted'
+              && request.resource.data.status == 'Draft'
+              && userData().get('permissionOverrides', {}).get('tech.logs.unsubmit', false) == true);
       allow delete: if isSuperAdmin();
     }
 

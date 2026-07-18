@@ -57,7 +57,7 @@ import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, setDoc, 
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { fieldNationUrl, displayWorkOrderNumber } from '@/lib/work-order-identity';
-import { weekOfForScheduleDate } from '@/lib/weekly-log';
+import { fileCompletedAssignment } from '@/lib/weekly-log';
 import { Car } from 'lucide-react';
 import { LogTripDialog } from './components/log-trip-dialog';
 
@@ -237,17 +237,6 @@ export default function TechAssignmentsPage() {
         const wo = allWorkOrders.find(w => w.id === woId);
         if (!wo) return;
 
-        // File in the log for the job's SCHEDULED week, not the current week.
-        const weekOf = weekOfForScheduleDate(wo.scheduleDate);
-        
-        const logQuery = query(
-            collection(db, 'weeklyLogs'),
-            where('techId', '==', currentTechId),
-            where('weekOf', '==', weekOf),
-            where('status', '==', 'Draft')
-        );
-
-        const snap = await getDocs(logQuery);
         const itemId = await createDocId(ID_PREFIXES.WEEKLY_LOG_ITEM);
         const newItem: WeeklyLogItem = {
             id: itemId,
@@ -257,24 +246,13 @@ export default function TechAssignmentsPage() {
             isComplete: true,
             isAdminReviewed: false
         };
-
-        if (!snap.empty) {
-            const logDoc = snap.docs[0];
-            await updateDoc(doc(db, 'weeklyLogs', logDoc.id), {
-                items: arrayUnion(newItem)
-            });
-        } else {
-            const logId = await createDocId(ID_PREFIXES.WEEKLY_LOG);
-            await setDoc(doc(db, 'weeklyLogs', logId), {
-                id: logId,
-                techId: currentTechId,
-                weekOf,
-                status: 'Draft',
-                items: [newItem],
-                reimbursements: [],
-                totalPayout: 0
-            });
-        }
+        // Scheduled-week draft log, or reporting week (flagged) if it is closed.
+        await fileCompletedAssignment({
+            techId: currentTechId,
+            scheduleDate: wo.scheduleDate,
+            item: newItem,
+            makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
+        });
     };
 
     const handleConfirm = async (woId: string) => {

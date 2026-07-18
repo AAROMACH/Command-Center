@@ -43,7 +43,7 @@ import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
 import { format, startOfWeek, parseISO } from 'date-fns';
-import { weekOfForScheduleDate } from '@/lib/weekly-log';
+import { fileCompletedAssignment } from '@/lib/weekly-log';
 import { cn, getTacticalLocation, compareScheduleTime } from '@/lib/utils';
 import { NotificationService } from '@/lib/notification-service';
 
@@ -177,17 +177,6 @@ export default function TechDashboardPage() {
         const wo = allWorkOrders.find(w => w.id === woId);
         if (!wo) return;
 
-        // File in the log for the job's SCHEDULED week, not the current week.
-        const weekOf = weekOfForScheduleDate(wo.scheduleDate);
-
-        const logQuery = query(
-            collection(db, 'weeklyLogs'),
-            where('techId', '==', currentTechId),
-            where('weekOf', '==', weekOf),
-            where('status', '==', 'Draft')
-        );
-
-        const snap = await getDocs(logQuery);
         const itemId = await makeWeeklyLogItemId();
         const newItem: WeeklyLogItem = {
             id: itemId,
@@ -197,24 +186,13 @@ export default function TechDashboardPage() {
             isComplete: true,
             isAdminReviewed: false
         };
-
-        if (!snap.empty) {
-            const logDoc = snap.docs[0];
-            await updateDoc(doc(db, 'weeklyLogs', logDoc.id), {
-                items: arrayUnion(newItem)
-            });
-        } else {
-            const logId = await makeWeeklyLogId();
-            await setDoc(doc(db, 'weeklyLogs', logId), {
-                id: logId,
-                techId: currentTechId,
-                weekOf,
-                status: 'Draft',
-                items: [newItem],
-                reimbursements: [],
-                totalPayout: 0
-            });
-        }
+        // Scheduled-week draft log, or reporting week (flagged) if it is closed.
+        await fileCompletedAssignment({
+            techId: currentTechId,
+            scheduleDate: wo.scheduleDate,
+            item: newItem,
+            makeLogId: makeWeeklyLogId,
+        });
     };
 
     const handleStatusTransition = async (woId: string, newStatus: WorkOrder['status']) => {

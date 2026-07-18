@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import {
   doc, getDoc, collection, query, where, onSnapshot,
   updateDoc, arrayUnion, arrayRemove,
@@ -175,12 +175,17 @@ export default function AssignmentDetailPage() {
   const handleSwapTech = async () => {
     if (!swapTechId || !assignment) return;
     const nt = allTechs.find(t => t.id === swapTechId);
+    const prevTechId = assignment.assignedTechnicianId || assignment.techId || '';
+    const prevTech = allTechs.find(t => t.id === prevTechId);
+    const admin = auth.currentUser?.displayName || 'Admin';
     try {
       await updateDoc(doc(db, 'assignments', assignment.id), {
         assignedTechnicianId: swapTechId, techId: swapTechId,
         technicianName: nt?.name || '',
         history: arrayUnion({ date: new Date().toISOString(), type: 'tech_swapped',
-          details: `Technician changed to ${nt?.name || swapTechId}`, user: 'Admin' }),
+          previousTechnicianId: prevTechId, previousTechnicianName: prevTech?.name || prevTechId,
+          newTechnicianId: swapTechId, newTechnicianName: nt?.name || swapTechId,
+          details: `Reassigned from ${prevTech?.name || 'unassigned'} to ${nt?.name || swapTechId}`, user: admin }),
       });
       setAssignment(p => p ? { ...p, assignedTechnicianId: swapTechId, techId: swapTechId } : p);
       setSwapOpen(false); setSwapTechId('');

@@ -115,8 +115,6 @@ const QUICK_PERMISSIONS: { key: Permission; label: string }[] = [
   { key: 'admin.financials.approve_pay_changes', label: 'Approve Pay Changes' },
   { key: 'admin.reports.view', label: 'View Reports' },
   { key: 'admin.crm.view', label: 'CRM Access' },
-  { key: 'admin.safety.manage_events', label: 'Safety Events' },
-  { key: 'admin.training.manage_certifications', label: 'Certifications' },
   { key: 'tech.assignments.check_in', label: 'Tech Check-In' },
   { key: 'tech.logs.create', label: 'Field Logs' },
   { key: 'client.profile.edit', label: 'Edit Client Profile' },

@@ -495,6 +495,14 @@ export type WeeklyLogItem = {
   payoutAmount?: number;
   reimbursementAmount?: number;
   payNotes?: string;
+  // Cross-week placement audit — set when a completed job could not go in its
+  // scheduled week's log (that log was already closed) and was filed in the
+  // reporting week instead.
+  assignmentWeekId?: string;
+  reportedWeekId?: string;
+  wasMovedBetweenWeeks?: boolean;
+  weekOverrideReason?: string;
+  weekOverrideAt?: string;
 };
 
 export type MissingAssignmentReport = {

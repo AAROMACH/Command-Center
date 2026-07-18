@@ -24,6 +24,7 @@ import { cn, getTacticalLocation, getTacticalCoords, calculateDistance } from '@
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { externalWorkOrderId } from '@/lib/work-order-identity';
+import { fileCompletedAssignment } from '@/lib/weekly-log';
 import { getDocs, setDoc } from 'firebase/firestore';
 import { startOfWeek } from 'date-fns';
 
@@ -223,15 +224,6 @@ export default function TechAssignmentDetailPage() {
 
   const syncToWeeklyLog = async (woId: string) => {
     if (!currentTechId || !assignment) return;
-    const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
-    const weekOf = format(monday, 'MM-dd-yyyy');
-    const q = query(
-      collection(db, 'weeklyLogs'),
-      where('techId', '==', currentTechId),
-      where('weekOf', '==', weekOf),
-      where('status', '==', 'Draft')
-    );
-    const snap = await getDocs(q);
     const itemId = await createDocId(ID_PREFIXES.WEEKLY_LOG_ITEM);
     const newItem: WeeklyLogItem = {
       id: itemId,
@@ -241,15 +233,14 @@ export default function TechAssignmentDetailPage() {
       isComplete: true,
       isAdminReviewed: false,
     };
-    if (!snap.empty) {
-      await updateDoc(doc(db, 'weeklyLogs', snap.docs[0].id), { items: arrayUnion(newItem) });
-    } else {
-      const logId = await createDocId(ID_PREFIXES.WEEKLY_LOG);
-      await setDoc(doc(db, 'weeklyLogs', logId), {
-        id: logId, techId: currentTechId, weekOf, status: 'Draft',
-        items: [newItem], reimbursements: [], totalPayout: 0,
-      });
-    }
+    // Files in the scheduled week's draft log, or the reporting week (flagged)
+    // when that log is already closed. Never duplicates a week's log.
+    await fileCompletedAssignment({
+      techId: currentTechId,
+      scheduleDate: assignment.scheduleDate,
+      item: newItem,
+      makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
+    });
   };
 
   // ── Status action handlers ────────────────────────────────────────────────

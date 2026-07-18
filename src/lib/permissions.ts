@@ -55,6 +55,7 @@ export type Permission =
   | 'admin.crm.convert_quote'
   | 'admin.crm.mark_won'
   | 'admin.crm.mark_lost'
+  | 'admin.crm.import_leads'
   // Clients
   | 'admin.clients.view'
   | 'admin.clients.manage'
@@ -97,9 +98,6 @@ export type Permission =
   | 'admin.settings.api_keys'
   | 'admin.settings.audit_logs'
   | 'admin.settings.automation_rules'
-  // Safety & Training
-  | 'admin.safety.manage_events'
-  | 'admin.training.manage_certifications'
   // Admin overrides
   | 'admin.overrides.edit_completed_assignments'
   | 'admin.overrides.edit_closed_projects'
@@ -126,6 +124,7 @@ export type Permission =
   | 'tech.projects.complete_task'
   | 'tech.logs.view'
   | 'tech.logs.create'
+  | 'tech.logs.unsubmit'
   | 'tech.earnings.view'
   | 'tech.messages.view'
   | 'tech.messages.send'
@@ -168,6 +167,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   'admin.crm.view', 'admin.crm.view_leads', 'admin.crm.manage_leads', 'admin.crm.create_lead',
   'admin.crm.create_opportunity', 'admin.crm.create_quote', 'admin.crm.edit_quote', 'admin.crm.send_quote',
   'admin.crm.approve_quote', 'admin.crm.convert_quote', 'admin.crm.mark_won', 'admin.crm.mark_lost',
+  'admin.crm.import_leads',
   // Admin - clients
   'admin.clients.view', 'admin.clients.manage',
   // Admin - directory
@@ -187,8 +187,6 @@ export const ALL_PERMISSIONS: Permission[] = [
   'admin.settings.view', 'admin.settings.manage', 'admin.settings.company',
   'admin.settings.integrations', 'admin.settings.api_keys', 'admin.settings.audit_logs',
   'admin.settings.automation_rules',
-  // Admin - safety & training
-  'admin.safety.manage_events', 'admin.training.manage_certifications',
   // Admin - overrides
   'admin.overrides.edit_completed_assignments', 'admin.overrides.edit_closed_projects',
   'admin.overrides.override_payroll_locks', 'admin.overrides.override_scheduling_locks',
@@ -199,7 +197,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   'tech.assignments.check_in', 'tech.assignments.check_out', 'tech.assignments.complete',
   'tech.assignments.report_issue', 'tech.schedule.view', 'tech.projects.view',
   'tech.projects.create_task', 'tech.projects.assign_task', 'tech.projects.complete_task',
-  'tech.logs.view', 'tech.logs.create', 'tech.earnings.view', 'tech.messages.view', 'tech.messages.send',
+  'tech.logs.view', 'tech.logs.create', 'tech.logs.unsubmit', 'tech.earnings.view', 'tech.messages.view', 'tech.messages.send',
   'tech.profile.view', 'tech.profile.edit',
   // Client
   'client.dashboard.view', 'client.tickets.view', 'client.tickets.create', 'client.projects.view',
@@ -236,6 +234,7 @@ export const PERMISSION_TREE: PermissionTree = {
       'admin.crm.view', 'admin.crm.view_leads', 'admin.crm.manage_leads', 'admin.crm.create_lead',
       'admin.crm.create_opportunity', 'admin.crm.create_quote', 'admin.crm.edit_quote', 'admin.crm.send_quote',
       'admin.crm.approve_quote', 'admin.crm.convert_quote', 'admin.crm.mark_won', 'admin.crm.mark_lost',
+      'admin.crm.import_leads',
     ],
     clients: ['admin.clients.view', 'admin.clients.manage'],
     directory: [
@@ -258,8 +257,6 @@ export const PERMISSION_TREE: PermissionTree = {
       'admin.settings.integrations', 'admin.settings.api_keys', 'admin.settings.audit_logs',
       'admin.settings.automation_rules',
     ],
-    safety: ['admin.safety.manage_events'],
-    training: ['admin.training.manage_certifications'],
     overrides: [
       'admin.overrides.edit_completed_assignments', 'admin.overrides.edit_closed_projects',
       'admin.overrides.override_payroll_locks', 'admin.overrides.override_scheduling_locks',
@@ -276,7 +273,7 @@ export const PERMISSION_TREE: PermissionTree = {
     ],
     schedule: ['tech.schedule.view'],
     projects: ['tech.projects.view', 'tech.projects.create_task', 'tech.projects.assign_task', 'tech.projects.complete_task'],
-    logs: ['tech.logs.view', 'tech.logs.create'],
+    logs: ['tech.logs.view', 'tech.logs.create', 'tech.logs.unsubmit'],
     earnings: ['tech.earnings.view'],
     messages: ['tech.messages.view', 'tech.messages.send'],
     profile: ['tech.profile.view', 'tech.profile.edit'],
@@ -359,17 +356,18 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     'admin.dashboard.view', 'admin.crm.view', 'admin.crm.view_leads', 'admin.crm.manage_leads',
     'admin.crm.create_lead', 'admin.crm.create_opportunity', 'admin.crm.create_quote',
     'admin.crm.edit_quote', 'admin.crm.send_quote', 'admin.crm.mark_won', 'admin.crm.mark_lost',
+    'admin.crm.import_leads',
     'admin.projects.view', 'admin.clients.view', 'admin.directory.view',
     'admin.reports.view', 'admin.reports.generate',
   ],
   safety_officer: [
     'admin.dashboard.view', 'admin.assignments.view', 'admin.projects.view', 'admin.directory.view',
-    'admin.directory.upload_documents', 'admin.safety.manage_events',
+    'admin.directory.upload_documents',
     'admin.reports.view', 'admin.reports.generate',
   ],
   training_coordinator: [
     'admin.dashboard.view', 'admin.directory.view', 'admin.directory.upload_documents',
-    'admin.directory.approve_documents', 'admin.training.manage_certifications',
+    'admin.directory.approve_documents',
     'admin.reports.view', 'admin.reports.generate',
   ],
 };

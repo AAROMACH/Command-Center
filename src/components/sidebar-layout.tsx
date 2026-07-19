@@ -44,7 +44,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           {/* Page content */}
-          <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden bg-bg-primary">
+          <main className="flex-1 min-w-0 overflow-y-auto bg-bg-primary">
             <div className="page-content">
               {denied ? null : children}
             </div>

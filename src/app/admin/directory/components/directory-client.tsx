@@ -514,7 +514,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                     <TabsContent value="technicians" className="m-0">
                         {viewMode === 'rows' ? (
                             <div className="table-wrap">
-                                <div className="grid grid-cols-[2fr,1fr,1.5fr,1.2fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
+                                <div className="hidden md:grid grid-cols-[2fr,1fr,1.5fr,1.2fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
                                     <div className="text-left pl-0">TECHNICIAN</div>
                                     <div className="text-left">ROLE</div>
                                     <div className="text-left">CONTACT</div>
@@ -529,7 +529,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                         const isRestricted = tier === 'Restricted' || tier === 'Suspended Review';
 
                                         return (
-                                        <div key={tech.id} className="grid grid-cols-[2fr,1fr,1.5fr,1.2fr,1fr] items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors last:border-none" onClick={() => handleRowClick(tech)}>
+                                        <div key={tech.id} className="grid grid-cols-1 gap-1.5 md:gap-0 md:grid-cols-[2fr,1fr,1.5fr,1.2fr,1fr] items-start md:items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors last:border-none" onClick={() => handleRowClick(tech)}>
                                             <div className="flex items-center justify-start gap-3 pl-0">
                                                 <Avatar className="h-8 w-8 shrink-0 border border-border-sub">
                                                     <AvatarImage src={tech.avatarUrl} />
@@ -623,13 +623,13 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                     <TabsContent value="staff" className="m-0">
                         {viewMode === 'rows' ? (
                             <div className="table-wrap">
-                                <div className="grid grid-cols-[2fr,1.2fr,2fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
+                                <div className="hidden md:grid grid-cols-[2fr,1.2fr,2fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
                                     <div className="text-left pl-0">STAFF MEMBER</div>
                                     <div className="text-left">ROLE</div>
                                     <div className="text-left">CONTACT</div>
                                 </div>
                                 {paginatedStaff.map(s => (
-                                    <div key={s.id} className="grid grid-cols-[2fr,1.2fr,2fr] items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors last:border-none" onClick={() => handleRowClick(s)}>
+                                    <div key={s.id} className="grid grid-cols-1 gap-1.5 md:gap-0 md:grid-cols-[2fr,1.2fr,2fr] items-start md:items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors last:border-none" onClick={() => handleRowClick(s)}>
                                         <div className="flex items-center justify-start gap-3 pl-0">
                                             <Avatar className="h-8 w-8 shrink-0 border border-border-sub">
                                                 <AvatarImage src={s.avatarUrl} />
@@ -684,14 +684,14 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                     <TabsContent value="clients" className="m-0">
                         {viewMode === 'rows' ? (
                             <div className="table-wrap">
-                                <div className="grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
+                                <div className="hidden md:grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
                                     <div className="text-left pl-0">CORPORATE ENTITY</div>
                                     <div className="text-left">CLASSIFICATION</div>
                                     <div className="text-center">CONTACTS</div>
                                     <div className="text-center">REGISTRY</div>
                                 </div>
                                 {paginatedCompanies.map(company => (
-                                    <div key={company.name} className="grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary group transition-colors last:border-none" onClick={() => handleCompanyClick(company.name)}>
+                                    <div key={company.name} className="grid grid-cols-1 gap-1.5 md:gap-0 md:grid-cols-[2fr,1.5fr,1fr,1fr] items-start md:items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary group transition-colors last:border-none" onClick={() => handleCompanyClick(company.name)}>
                                         <div className="flex items-center justify-start gap-3 pl-0">
                                             <div className="p-1.5 bg-bg-tertiary rounded border border-border-sub group-hover:bg-brand-red-dim transition-colors">
                                                 <Building2 size={14} className="text-text-muted group-hover:text-brand-red transition-colors" />

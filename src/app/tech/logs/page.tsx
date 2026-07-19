@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog } from '@/lib/types';
-import { externalWorkOrderId, displayWorkOrderNumber } from '@/lib/work-order-identity';
+import { externalWorkOrderId, displayWorkOrderNumber, fieldNationUrl, isImported } from '@/lib/work-order-identity';
 import { hasPermission } from '@/lib/permissions';
 import { uploadFile } from '@/lib/upload';
 import { technicians } from '@/lib/data';
@@ -588,7 +588,7 @@ export default function TechWeeklyLogPage() {
                     </div>
                 </header>
 
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-bg-secondary border border-border-sub shadow-sm max-w-4xl mx-auto mb-6 text-left">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-bg-secondary border border-border-sub shadow-sm max-w-6xl mx-auto mb-6 text-left">
                     <div className="search-wrap flex-1 !mb-0 w-full md:w-auto text-left">
                         <Search className="h-4 w-4" />
                         <input 
@@ -626,7 +626,7 @@ export default function TechWeeklyLogPage() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 max-w-4xl mx-auto">
+                <div className="grid grid-cols-1 gap-3 max-w-6xl mx-auto">
                     {(() => {
                         const draftLogs = filteredAndSortedLogs.filter(l => l.status === 'Draft');
                         const pastLogs = filteredAndSortedLogs.filter(l => l.status !== 'Draft');
@@ -826,7 +826,7 @@ export default function TechWeeklyLogPage() {
 
             {/* UNSET REASONS WARNING */}
             {!isLocked && counts.pending > 0 && (
-                <div className="max-w-4xl mx-auto p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex items-start gap-4 shadow-sm animate-pulse text-left">
+                <div className="max-w-6xl mx-auto p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex items-start gap-4 shadow-sm animate-pulse text-left">
                     <ShieldAlert size={20} className="text-text-red shrink-0 mt-0.5" />
                     <div className="space-y-1 text-left">
                         <p className="text-[11px] font-bold text-text-red uppercase tracking-wide text-left">Registry Verification Required</p>
@@ -838,7 +838,7 @@ export default function TechWeeklyLogPage() {
             )}
 
             {!isLocked && !canSubmitActiveLog && (
-                <div className="max-w-4xl mx-auto p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-start gap-4 shadow-sm text-left">
+                <div className="max-w-6xl mx-auto p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-start gap-4 shadow-sm text-left">
                     <Info size={20} className="text-accent-gold shrink-0 mt-0.5" />
                     <div className="space-y-1 text-left">
                         <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide text-left">Audit Manifest Preparation</p>
@@ -849,7 +849,7 @@ export default function TechWeeklyLogPage() {
                 </div>
             )}
 
-            <div className="space-y-4 max-w-4xl mx-auto text-left">
+            <div className="space-y-4 max-w-6xl mx-auto text-left">
                 <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1 text-left">
                     <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Tactical Assignment Registry</h3>
                     {!isLocked && (
@@ -892,7 +892,7 @@ export default function TechWeeklyLogPage() {
                                 </div>
                                 <div className="min-w-0 text-left flex-1">
                                     <div className="flex items-center gap-3 text-left">
-                                        <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[350px] text-left">{report.summary || 'Missing Assignment'}</h4>
+                                        <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[520px] text-left">{report.summary || 'Missing Assignment'}</h4>
                                         <Badge variant="pending" className="text-[7px] h-3.5 uppercase tracking-tighter">Reported Missing</Badge>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
@@ -1083,7 +1083,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                         </div>
                         <div className="min-w-0 text-left flex-1">
                             <div className="flex items-center gap-3 text-left">
-                                <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[350px] text-left">{job.title || job.description}</h4>
+                                <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[520px] text-left">{job.title || job.description}</h4>
                                 {isConfirmed && <Badge variant="active" className="text-[7px] h-3.5 uppercase tracking-tighter">VERIFIED</Badge>}
                                 {isDisputed && <Badge variant="missed" className="text-[7px] h-3.5 uppercase tracking-tighter">DISPUTED</Badge>}
                                 {itemReimbursements.length > 0 && (
@@ -1095,7 +1095,19 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
                                 <span className="flex items-center gap-1.5 text-left"><MapPin size={10} className="text-brand-red shrink-0"/> {formatCityState(job.location)}</span>
                                 <span className="flex items-center gap-1.5 text-left"><CalendarIcon size={10} className="shrink-0"/> {job.scheduleDate}</span>
-                                <span className="font-mono text-brand-red font-bold text-left">ID: {job.id.toUpperCase()}</span>
+                                <span className="font-mono text-brand-red font-bold text-left">ASMT: {job.id.toUpperCase()}</span>
+                                {isImported(job) && externalWorkOrderId(job) && (
+                                    <a
+                                        href={fieldNationUrl(job)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={e => e.stopPropagation()}
+                                        className="flex items-center gap-1 font-mono text-blue-400 font-bold hover:text-blue-300 hover:underline text-left"
+                                        title="Open in Field Nation"
+                                    >
+                                        WO# {displayWorkOrderNumber(job)} <ExternalLink size={9} className="shrink-0" />
+                                    </a>
+                                )}
                             </div>
                         </div>
 
@@ -1152,20 +1164,23 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                 variant="outline"
                                 size="sm"
                                 disabled={!canAddReimbursement}
-                                title={canAddReimbursement ? undefined : "Reimbursements open Friday 6:00 PM ET"}
-                                className="h-8 px-3 uppercase text-[9px] font-bold tracking-widest border-accent-gold/40 text-accent-gold hover:bg-accent-gold/10 disabled:opacity-40 disabled:cursor-not-allowed"
+                                title={canAddReimbursement ? "Add Reimbursement" : "Reimbursements open Friday 6:00 PM ET"}
+                                aria-label="Add Reimbursement"
+                                className="h-8 w-8 p-0 shrink-0 border-accent-gold/40 text-accent-gold hover:bg-accent-gold/10 disabled:opacity-40 disabled:cursor-not-allowed"
                                 onClick={() => setIsReimbursing(v => !v)}
                             >
-                                <DollarSign size={13} className="mr-1"/> Add Reimbursement
+                                <DollarSign size={14}/>
                             </Button>
                             {canMove && (
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-8 px-3 uppercase text-[9px] font-bold tracking-widest border-blue-400/40 text-blue-400 hover:bg-blue-400/10"
+                                    title="Move to Another Log"
+                                    aria-label="Move to Another Log"
+                                    className="h-8 w-8 p-0 shrink-0 border-blue-400/40 text-blue-400 hover:bg-blue-400/10"
                                     onClick={onRequestMove}
                                 >
-                                    <ArrowLeftRight size={13} className="mr-1"/> Move to Another Log
+                                    <ArrowLeftRight size={14}/>
                                 </Button>
                             )}
                         </div>

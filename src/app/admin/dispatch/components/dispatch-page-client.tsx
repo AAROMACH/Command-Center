@@ -26,6 +26,7 @@ import {
 import { NewAssignmentDialog } from "./new-assignment-dialog";
 import { ImportJobsDialog, type ExistingRef as ImportExistingRef } from "./import-jobs-dialog";
 import { normalizeExternalId, isImported } from "@/lib/work-order-identity";
+import { jobTechId, isArchivedJob } from "@/lib/jobs";
 import { NewRequestDialog } from "../../requests/components/new-request-dialog";
 import type { WorkOrder, Route, ServiceRequest, Technician } from "@/lib/types";
 import { isServiceTicketDoc, toDateSafe } from '@/lib/request-intake';
@@ -165,7 +166,7 @@ export function DispatchPageClient() {
     const push = (o: any, where: string) => {
       const ext = normalizeExternalId((o?.externalWorkOrderId) || o?.workOrderId || o?.id);
       if (!ext) return;
-      const techName = technicians.find(t => t.id === (o.assignedTechnicianId || o.techId))?.name;
+      const techName = technicians.find(t => t.id === (jobTechId(o)))?.name;
       refs.push({
         externalId: ext,
         label: ((o.externalWorkOrderId) || o.workOrderId || o.id || '').toString().toUpperCase(),
@@ -250,7 +251,7 @@ export function DispatchPageClient() {
     let results = items.filter(order => {
       // Soft-archived records live on in Firestore for restore/dedup but must
       // never appear in the active Dispatch Hub.
-      if (order.archived || order.status === 'archived') return false;
+      if (isArchivedJob(order)) return false;
       const q = searchQuery.toLowerCase();
       const matchesSearch = 
         (order.id || '').toLowerCase().includes(q) ||
@@ -299,8 +300,8 @@ export function DispatchPageClient() {
             case 'pay': return (b.pay || 0) - (a.pay || 0);
             case 'type': return (a.projectType || '').localeCompare(b.projectType || '');
             case 'tech':
-                const idA = a.assignedTechnicianId || a.assignedTechIds?.[0] || a.techId;
-                const idB = b.assignedTechnicianId || b.assignedTechIds?.[0] || b.techId;
+                const idA = jobTechId(a);
+                const idB = jobTechId(b);
                 const techA = technicians.find(t => t.id === idA)?.name || 'Unassigned';
                 const techB = technicians.find(t => t.id === idB)?.name || 'Unassigned';
                 return techA.localeCompare(techB);

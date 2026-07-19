@@ -86,6 +86,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { isAdmin, isPayAdmin } from "@/lib/permissions";
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { fieldNationUrl, displayWorkOrderNumber } from '@/lib/work-order-identity';
+import { jobTechId, isArchivedJob, isCompletedJob } from '@/lib/jobs';
 
 type SortOption = 'date' | 'client' | 'status' | 'pay' | 'tech';
 
@@ -185,7 +186,7 @@ export default function AssignmentsHubPage() {
   const filteredWorkOrders = useMemo(() => {
     return workOrders
       .filter(wo => {
-        const techId = wo.assignedTechnicianId || (wo.assignedTechIds && wo.assignedTechIds[0]) || wo.techId;
+        const techId = jobTechId(wo);
         
         const tech = technicians.find(t => t.id === techId);
         const queryStr = searchQuery.toLowerCase();
@@ -232,8 +233,8 @@ export default function AssignmentsHubPage() {
           case 'status': return safeA.status.localeCompare(safeB.status);
           case 'pay': return (b.pay || 0) - (a.pay || 0);
           case 'tech': 
-            const idA = a.assignedTechnicianId || a.assignedTechIds?.[0] || a.techId;
-            const idB = b.assignedTechnicianId || b.assignedTechIds?.[0] || b.techId;
+            const idA = jobTechId(a);
+            const idB = jobTechId(b);
             const techA = technicians.find(t => t.id === idA)?.name || 'Unassigned';
             const techB = technicians.find(t => t.id === idB)?.name || 'Unassigned';
             return techA.localeCompare(techB);
@@ -245,11 +246,11 @@ export default function AssignmentsHubPage() {
   }, [workOrders, technicians, searchQuery, dateRange, sortBy, activePriorities, activeSources]);
 
   const activeWorkOrders = useMemo(() =>
-    filteredWorkOrders.filter(wo => !wo.archived && wo.status !== 'completed' && wo.status !== 'archived'),
+    filteredWorkOrders.filter(wo => !isArchivedJob(wo) && !isCompletedJob(wo)),
   [filteredWorkOrders]);
 
   const archivedWorkOrders = useMemo(() =>
-    filteredWorkOrders.filter(wo => wo.archived || wo.status === 'completed' || wo.status === 'archived'),
+    filteredWorkOrders.filter(wo => isArchivedJob(wo) || isCompletedJob(wo)),
   [filteredWorkOrders]);
 
   const formatDateDisplay = (dateStr: string) => {
@@ -592,7 +593,7 @@ export default function AssignmentsHubPage() {
                         </thead>
                         <tbody>
                             {activeWorkOrders.map(wo => {
-                                const techId = wo.assignedTechnicianId || wo.assignedTechIds?.[0] || wo.techId;
+                                const techId = jobTechId(wo);
                                 const tech = technicians.find(t => t.id === techId);
                                 return (
                                     <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors text-left" onClick={() => handleCardClick(wo)}>
@@ -701,7 +702,7 @@ export default function AssignmentsHubPage() {
                         </thead>
                         <tbody>
                             {archivedWorkOrders.map(wo => {
-                                const techId = wo.assignedTechnicianId || wo.assignedTechIds?.[0] || wo.techId;
+                                const techId = jobTechId(wo);
                                 const tech = technicians.find(t => t.id === techId);
                                 return (
                                     <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors text-left" onClick={() => handleCardClick(wo)}>

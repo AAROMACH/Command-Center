@@ -193,7 +193,7 @@ export function NotificationBell() {
         <ScrollArea className="max-h-[350px]">
             {messages.length > 0 ? (
                 <div className="divide-y divide-border-sub">
-                    {messages.map((msg) => {
+                    {messages.slice(0, 3).map((msg) => {
                         const Icon = getIcon(msg.type);
                         return (
                             <div key={msg.id} className="p-4 hover:bg-bg-tertiary/50 cursor-default transition-all group relative pr-12">
@@ -252,6 +252,13 @@ export function NotificationBell() {
                 </div>
             )}
         </ScrollArea>
+        {messages.length > 3 && (
+            <div className="p-2.5 border-t border-border-sub bg-bg-tertiary/50 text-center">
+                <p className="text-[8px] font-bold text-text-muted uppercase tracking-[0.2em]">
+                    Showing 3 most recent · {messages.length - 3} more active
+                </p>
+            </div>
+        )}
       </PopoverContent>
     </Popover>
     </div>

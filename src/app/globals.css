@@ -145,6 +145,16 @@
   * {
     @apply border-border-main;
   }
+  /* Window-level guard: the page shell never slides sideways on mobile. The
+     app's real content scrolls inside <main>, so this clips nothing there — it
+     only stops a stray full-bleed element from scrolling the whole window. */
+  html, body {
+    overflow-x: hidden;
+  }
+  /* Media never forces the page wider than the screen. */
+  img, svg, video, canvas, iframe {
+    max-width: 100%;
+  }
   body {
     background-color: var(--bg-primary);
     color: var(--text-secondary);

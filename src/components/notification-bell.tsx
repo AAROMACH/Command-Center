@@ -17,11 +17,13 @@ import { format, parseISO, isAfter } from 'date-fns';
 import type { AdminMessage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { useAuth } from '@/contexts/auth-context';
 
 export function NotificationBell() {
   const pathname = usePathname();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [messages, setMessages] = useState<AdminMessage[]>([]);
   const [firestoreBroadcasts, setFirestoreBroadcasts] = useState<AdminMessage[]>([]);
   const [open, setOpen] = useState(false);
@@ -56,11 +58,13 @@ export function NotificationBell() {
         if (json) storedMessages = JSON.parse(json);
     } catch (e) {}
 
-    // 2. Load Cleared Registry (Seen by this user)
-    let clearedIds: string[] = [];
+    // 2. Cleared Registry — the user's synced acknowledgments (Firestore) merged
+    //    with any legacy local-only ones, so a dismissal on one device applies
+    //    on all of them.
+    let clearedIds: string[] = [...(user?.acknowledgedBroadcastIds || [])];
     try {
         const clearedJson = localStorage.getItem('aaromach_cleared_messages');
-        if (clearedJson) clearedIds = JSON.parse(clearedJson);
+        if (clearedJson) clearedIds = Array.from(new Set([...clearedIds, ...JSON.parse(clearedJson)]));
     } catch (e) {}
 
     // 3. Load Revoked Registry (Pulled by Admin for all)
@@ -88,7 +92,7 @@ export function NotificationBell() {
     const sorted = unique.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     setMessages(sorted);
-  }, [pathname, firestoreBroadcasts]);
+  }, [pathname, firestoreBroadcasts, user?.acknowledgedBroadcastIds]);
 
   useEffect(() => {
     fetchMessages();
@@ -102,21 +106,27 @@ export function NotificationBell() {
   }, [fetchMessages]);
 
   const handleClearMessage = (id: string, subject: string) => {
+    // Persist per-user in Firestore so the acknowledgment syncs across devices.
+    if (user?.id) {
+        updateDoc(doc(db, 'users', user.id), { acknowledgedBroadcastIds: arrayUnion(id) })
+            .catch(() => { /* fall back to local-only below */ });
+    }
+    // Also keep a local copy so it clears instantly and still works if the write
+    // is offline or the user record is unavailable.
     let clearedIds: string[] = [];
     try {
         const clearedJson = localStorage.getItem('aaromach_cleared_messages');
         if (clearedJson) clearedIds = JSON.parse(clearedJson);
     } catch (e) {}
-
     if (!clearedIds.includes(id)) {
         clearedIds.push(id);
         localStorage.setItem('aaromach_cleared_messages', JSON.stringify(clearedIds));
-        fetchMessages();
-        toast({
-            title: "Directive Acknowledged",
-            description: `Message "${subject}" cleared from active terminal.`,
-        });
     }
+    fetchMessages();
+    toast({
+        title: "Directive Acknowledged",
+        description: `Message "${subject}" cleared from active terminal.`,
+    });
   };
 
   const getIcon = (type: string) => {

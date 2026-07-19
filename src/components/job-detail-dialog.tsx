@@ -66,6 +66,15 @@ const displayTime = (t?: string) => {
   } catch { return t; }
 };
 
+// Format a history entry's timestamp for the timeline. A full ISO datetime
+// (recorded events) shows date + time-of-day; a plain date shows just the date.
+const displayStamp = (t?: string) => {
+  if (!t) return 'TBD';
+  const d = new Date(t);
+  if (isNaN(d.getTime())) return t;
+  return /[T:]/.test(t) ? format(d, 'MMM d, yyyy · h:mm a') : format(d, 'MMM d, yyyy');
+};
+
 // ─── Pay helper ───────────────────────────────────────────────────────────────
 
 function calcPayout(wo: WorkOrder, hoursWorked?: number) {
@@ -487,7 +496,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                   else if (details.includes('trip') || details.includes('en route')) { dot = 'gold'; title = 'Trip Initiated / En Route'; }
                   else if (details.includes('confirmed')) { dot = 'blue'; title = 'Mission Confirmed'; }
                   else if ((type === 'note' && details.includes('created')) || details.includes('initialized')) { dot = 'blue'; title = 'Registry Entry Created'; }
-                  return <TimelineEntry key={idx} dot={dot} time={entry.date || 'TBD'} title={title} note={entry.details || 'No additional notes recorded.'} by={entry.user || 'System'} isLast={isLast} />;
+                  return <TimelineEntry key={idx} dot={dot} time={displayStamp(entry.date)} title={title} note={entry.details || 'No additional notes recorded.'} by={entry.user || 'System'} isLast={isLast} />;
                 }) : (
                   <div className="p-12 text-center border-2 border-dashed border-border-sub rounded-2xl opacity-40 bg-bg-secondary/30">
                     <History size={48} className="mx-auto text-text-muted mb-4 opacity-20" />

@@ -12,7 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Expense, Invoice, WeeklyLog, Technician, WorkOrder, Reimbursement } from '@/lib/types';
 import { InvoiceEditor } from './components/invoice-editor';
-import { PayrollReviewDialog } from './components/payroll-review-dialog';
 import { RevenueChart } from './components/revenue-chart';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -50,8 +49,6 @@ export default function FinancialsPage() {
 
     const [isInvoiceEditorOpen, setIsInvoiceEditorOpen] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-    const [selectedLog, setSelectedLog] = useState<WeeklyLog | null>(null);
-    const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
     
     const [isClosePeriodOpen, setIsClosePeriodOpen] = useState(false);
     const [confirmationText, setConfirmationText] = useState("");
@@ -240,20 +237,6 @@ export default function FinancialsPage() {
         }
     };
 
-    const handleReviewLog = (log: WeeklyLog) => {
-        setSelectedLog(log);
-        setIsReviewDialogOpen(true);
-    };
-
-    const handleUpdateLogStatus = useCallback((logId: string, status: WeeklyLog['status'], total?: number) => {
-        toast({
-            title: `Audit Finalized: ${status}`,
-            description: `Manifest for log ${logId.split('-').pop()?.toUpperCase()} updated. Final settlement: $${total?.toFixed(2) || '0.00'}`
-        });
-        setIsReviewDialogOpen(false);
-        setSelectedLog(null);
-    }, [toast]);
-
     const handleExecuteExport = () => {
         if (exportConfig.types.length === 0) {
             toast({ variant: 'destructive', title: 'Export Configuration Error', description: 'Please select at least one data category.' });
@@ -325,10 +308,6 @@ export default function FinancialsPage() {
         setIsExportDialogOpen(false);
     };
 
-    const filteredWeeklyLogs = useMemo(() => {
-        const q = searchQuery.toLowerCase();
-        return weeklyLogs.filter(log => (log.weekOf || '').includes(q) || getTechnicianName(log.techId).toLowerCase().includes(q));
-    }, [weeklyLogs, searchQuery, technicians]);
 
     const filteredInvoices = useMemo(() => {
         const q = searchQuery.toLowerCase();
@@ -368,7 +347,6 @@ export default function FinancialsPage() {
                     <TabsList className="tabs !p-0 !bg-bg-tertiary">
                         <TabsTrigger value="summary" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">SUMMARY</TabsTrigger>
                         <TabsTrigger value="invoices" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">INVOICES</TabsTrigger>
-                        <TabsTrigger value="logs" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">LOGS</TabsTrigger>
                         <TabsTrigger value="reimbursements" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">REIMBURSEMENTS</TabsTrigger>
                     </TabsList>
                     <button
@@ -424,66 +402,6 @@ export default function FinancialsPage() {
                             </CardHeader>
                             <CardContent className="p-8">
                                 <RevenueChart data={chartData} />
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-
-                    <TabsContent value="logs" className="m-0">
-                        <Card>
-                            <CardHeader className="text-left">
-                                <CardTitle>Weekly Logs</CardTitle>
-                                <CardDescription>Submitted logs from field operatives. Filter by status to review and audit.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                <Tabs defaultValue="Submitted" className="w-full">
-                                    <TabsList className="tabs !rounded-none border-b border-border-sub !bg-transparent !p-0 w-full justify-start">
-                                        {(['Submitted', 'Approved', 'Rejected'] as const).map(status => (
-                                            <TabsTrigger key={status} value={status} className="tab !px-6 !py-3 data-[state=active]:bg-brand-red data-[state=active]:text-white">
-                                                {status} <span className="ml-1.5 text-[8px]">({filteredWeeklyLogs.filter(l => l.status === status).length})</span>
-                                            </TabsTrigger>
-                                        ))}
-                                    </TabsList>
-                                    {(['Submitted', 'Approved', 'Rejected'] as const).map(status => (
-                                        <TabsContent key={status} value={status} className="m-0">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow className="hover:bg-transparent border-border-sub">
-                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-6">Week Of</TableHead>
-                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Technician</TableHead>
-                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
-                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest text-center">Requests</TableHead>
-                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Payout</TableHead>
-                                                        <TableHead className="text-right pr-6"></TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {filteredWeeklyLogs.filter(l => l.status === status).map(log => (
-                                                        <TableRow key={log.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
-                                                            <TableCell className="font-bold uppercase text-xs pl-6">{log.weekOf}</TableCell>
-                                                            <TableCell className="text-sm font-semibold uppercase">{getTechnicianName(log.techId)}</TableCell>
-                                                            <TableCell>
-                                                                <Badge variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'onhold' : 'pending'} className="uppercase text-[8px] h-4">
-                                                                    {log.status}
-                                                                </Badge>
-                                                            </TableCell>
-                                                            <TableCell className="text-center">
-                                                                {log.unsubmitRequested && (
-                                                                    <Badge variant="destructive" className="uppercase text-[7px] h-4 animate-pulse">
-                                                                        <Undo2 size={8} className="mr-1"/> Unsubmit
-                                                                    </Badge>
-                                                                )}
-                                                            </TableCell>
-                                                            <TableCell className="font-mono text-text-green font-bold tabular-nums">{log.totalPayout ? `$${log.totalPayout.toFixed(2)}` : 'N/A'}</TableCell>
-                                                            <TableCell className="text-right pr-6">
-                                                                <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase font-bold" onClick={() => handleReviewLog(log)}>Audit Log</Button>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        </TabsContent>
-                                    ))}
-                                </Tabs>
                             </CardContent>
                         </Card>
                     </TabsContent>
@@ -802,7 +720,6 @@ export default function FinancialsPage() {
             </Dialog>
 
             <InvoiceEditor isOpen={isInvoiceEditorOpen} setIsOpen={setIsInvoiceEditorOpen} invoice={selectedInvoice} clients={clientsList} projects={projects} workOrders={allMissions} onSave={handleSaveInvoice} />
-            {selectedLog && <PayrollReviewDialog isOpen={isReviewDialogOpen} setIsOpen={setIsReviewDialogOpen} log={selectedLog} technician={getTechnician(selectedLog.techId)} missions={allMissions} allTechnicians={technicians} onStatusChange={handleUpdateLogStatus} />}
         </div>
     );
 }

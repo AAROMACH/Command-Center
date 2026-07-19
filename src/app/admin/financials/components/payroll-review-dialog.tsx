@@ -19,7 +19,6 @@ import {
     ShieldAlert, 
     Check, 
     X,
-    FileText,
     ExternalLink,
     DollarSign,
     Wrench,
@@ -45,7 +44,6 @@ import { cn, formatCityState } from '@/lib/utils';
 import { displayWorkOrderNumber, fieldNationUrl } from '@/lib/work-order-identity';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
@@ -856,19 +854,6 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                     </div>
                                 </ScrollArea>
                             </TabsContent>
-                        </div>
-
-                        <Separator className="bg-border-sub shrink-0" />
-
-                        <div className="p-2 bg-bg-tertiary/10 shrink-0">
-                            <div className="flex items-center justify-between gap-4 px-4 py-2 rounded-lg bg-bg-secondary border border-green-border/20 shadow-inner max-w-md ml-auto">
-                                <p className="text-[8px] font-black text-text-green uppercase tracking-[0.2em] flex items-center gap-1.5">
-                                    <FileText size={10} className="text-brand-red" /> Settlement Disbursement
-                                </p>
-                                <p className="text-lg font-mono font-bold text-text-green leading-none">
-                                    ${calculatedTotalPayout.toFixed(2)}
-                                </p>
-                            </div>
                         </div>
                     </Tabs>
 

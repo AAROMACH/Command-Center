@@ -24,6 +24,7 @@ export function NotificationBell() {
   const { toast } = useToast();
   const [messages, setMessages] = useState<AdminMessage[]>([]);
   const [firestoreBroadcasts, setFirestoreBroadcasts] = useState<AdminMessage[]>([]);
+  const [open, setOpen] = useState(false);
 
   // Listen to Firestore broadcasts in real-time
   useEffect(() => {
@@ -127,8 +128,45 @@ export function NotificationBell() {
     }
   };
 
+  const latest = messages[0];
+  const LatestIcon = latest ? getIcon(latest.type) : Info;
+
   return (
-    <Popover>
+    <div className="flex items-center gap-2">
+      {/* Always-visible preview of the most recent broadcast, so users see it on
+          open without having to notice the blinking alert dot. Opens the full
+          list on click. */}
+      {latest && (
+        <button
+          onClick={() => setOpen(true)}
+          aria-label={`Latest alert: ${latest.subject}. Open all alerts.`}
+          className={cn(
+            'hidden md:flex items-center gap-2 h-10 max-w-[280px] rounded-lg border pl-2.5 pr-3 transition-colors text-left',
+            latest.type === 'critical' ? 'border-brand-red/40 bg-brand-red-dim/40 hover:bg-brand-red-dim/60 animate-pulse'
+              : latest.type === 'warning' ? 'border-accent-gold/40 bg-accent-gold-dim/40 hover:bg-accent-gold-dim/60'
+              : latest.type === 'success' ? 'border-green-border/40 bg-green-dim/40 hover:bg-green-dim/60'
+              : 'border-border-main bg-bg-secondary hover:bg-bg-tertiary',
+          )}
+        >
+          <LatestIcon size={14} className={cn('shrink-0',
+            latest.type === 'critical' ? 'text-text-red'
+              : latest.type === 'warning' ? 'text-accent-gold'
+              : latest.type === 'success' ? 'text-text-green'
+              : 'text-text-muted',
+          )} />
+          <span className="min-w-0 flex flex-col leading-tight">
+            <span className="text-[9px] font-black uppercase tracking-wide text-text-primary truncate">{latest.subject}</span>
+            <span className="text-[8px] text-text-muted uppercase tracking-widest truncate">{latest.body}</span>
+          </span>
+          {messages.length > 1 && (
+            <span className="shrink-0 ml-0.5 h-4 min-w-4 px-1 rounded-full bg-bg-primary border border-border-sub text-[8px] font-mono font-bold text-text-muted flex items-center justify-center">
+              +{messages.length - 1}
+            </span>
+          )}
+        </button>
+      )}
+
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -216,5 +254,6 @@ export function NotificationBell() {
         </ScrollArea>
       </PopoverContent>
     </Popover>
+    </div>
   );
 }

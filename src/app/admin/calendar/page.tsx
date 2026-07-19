@@ -6,6 +6,7 @@ import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { isClient } from '@/lib/permissions';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { displayWorkOrderNumber } from '@/lib/work-order-identity';
+import { type JobWithSrc, jobTechId, isAssigned, isArchivedJob, mergeJobs } from '@/lib/jobs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -38,12 +39,6 @@ const PRIORITY_META: Record<string, { label: string; cls: string }> = {
   medium:   { label: 'Medium',   cls: 'text-accent-gold bg-accent-gold/10 border-accent-gold/30' },
   low:      { label: 'Low',      cls: 'text-text-muted bg-bg-tertiary border-border-sub' },
 };
-
-type JobWithSrc = WorkOrder & { _src: 'workOrder' | 'assignment' };
-
-function isAssigned(wo: WorkOrder) {
-  return !!(wo.assignedTechnicianId || (wo as any).techId || (wo.assignedTechIds?.length));
-}
 
 // ── Draggable calendar chip ──────────────────────────────────────
 function CalendarChip({ wo, index, onClick }: { wo: WorkOrder; index: number; onClick: () => void }) {
@@ -110,15 +105,11 @@ export default function AdminCalendarPage() {
     return () => { u1(); u2(); u3(); };
   }, []);
 
-  // Deduplicate — assignments take precedence (same id means job was assigned & moved)
-  const allJobs = useMemo<JobWithSrc[]>(() => {
-    const seen = new Set<string>();
-    const out: JobWithSrc[] = [];
-    [...rawAssignments, ...rawWorkOrders].forEach(j => {
-      if (!seen.has(j.id)) { seen.add(j.id); out.push(j); }
-    });
-    return out;
-  }, [rawWorkOrders, rawAssignments]);
+  // Union of the pool + assignments (assignments win on a transient id clash).
+  const allJobs = useMemo<JobWithSrc[]>(
+    () => mergeJobs(rawWorkOrders, rawAssignments),
+    [rawWorkOrders, rawAssignments],
+  );
 
   const adminTechs = useMemo(() =>
     technicians.filter(t => !isClient(t)), [technicians]);
@@ -146,10 +137,9 @@ export default function AdminCalendarPage() {
 
   // Filtered jobs
   const filteredJobs = useMemo(() => allJobs.filter(wo => {
-    if (wo.archived || wo.status === 'archived') return false;
+    if (isArchivedJob(wo)) return false;
     if (filterTech !== 'all') {
-      const tid = wo.assignedTechnicianId || (wo as any).techId;
-      if (tid !== filterTech) return false;
+      if (jobTechId(wo) !== filterTech) return false;
     }
     if (filterStatus !== 'all' && wo.status !== filterStatus) return false;
     return true;
@@ -204,7 +194,7 @@ export default function AdminCalendarPage() {
       scheduleTime:    drawerJob.scheduleTime || '',
       scheduleEndTime: (drawerJob as any).scheduleEndTime || '',
       priority:        drawerJob.priority || '',
-      assignedTechnicianId: drawerJob.assignedTechnicianId || (drawerJob as any).techId || '',
+      assignedTechnicianId: jobTechId(drawerJob) || '',
       notes:           drawerJob.notes || '',
     });
     setShowAssignPanel(false);
@@ -269,7 +259,7 @@ export default function AdminCalendarPage() {
         notes:           editForm.notes,
       };
       if (editForm.priority) updates.priority = editForm.priority;
-      const prevTech = drawerJob.assignedTechnicianId || (drawerJob as any).techId;
+      const prevTech = jobTechId(drawerJob);
       if (editForm.assignedTechnicianId && editForm.assignedTechnicianId !== prevTech) {
         updates.assignedTechnicianId = editForm.assignedTechnicianId;
         updates.status = 'assigned';
@@ -331,7 +321,7 @@ export default function AdminCalendarPage() {
     allJobs.filter(j => j.scheduleDate).forEach(wo => {
       const ds = toIcs(wo.scheduleDate);
       if (!ds) return;
-      const t = technicians.find(x => x.id === (wo.assignedTechnicianId || (wo as any).techId));
+      const t = technicians.find(x => x.id === (jobTechId(wo)));
       lines.push(
         'BEGIN:VEVENT', `UID:${wo.id}@aaromach.com`,
         `DTSTART;VALUE=DATE:${ds}`, `DTEND;VALUE=DATE:${ds}`,
@@ -350,7 +340,7 @@ export default function AdminCalendarPage() {
 
   // Derived
   const drawerAssignedTech = drawerJob
-    ? adminTechs.find(t => t.id === (drawerJob.assignedTechnicianId || (drawerJob as any).techId || editForm.assignedTechnicianId))
+    ? adminTechs.find(t => t.id === (jobTechId(drawerJob) || editForm.assignedTechnicianId))
     : null;
   const activeDragJob = activeId ? allJobs.find(j => j.id === activeId) : null;
 
@@ -568,7 +558,7 @@ export default function AdminCalendarPage() {
               ) : (
                 selectedDateJobs.map((wo, idx) => {
                   const assigned  = isAssigned(wo);
-                  const tech      = adminTechs.find(t => t.id === (wo.assignedTechnicianId || (wo as any).techId));
+                  const tech      = adminTechs.find(t => t.id === (jobTechId(wo)));
                   const isSelected = selectedJobId === wo.id;
                   const pm        = PRIORITY_META[wo.priority] || PRIORITY_META.low;
                   return (
@@ -818,7 +808,7 @@ export default function AdminCalendarPage() {
                   {showAssignPanel && (
                     <div className="absolute bottom-full left-0 right-0 mb-1 bg-bg-elevated border border-border-main rounded-lg shadow-2xl z-[500] max-h-[180px] overflow-y-auto">
                       {adminTechs.map(t => {
-                        const currentId = drawerJob.assignedTechnicianId || (drawerJob as any).techId;
+                        const currentId = jobTechId(drawerJob);
                         const isCurrent = currentId === t.id;
                         return (
                           <button

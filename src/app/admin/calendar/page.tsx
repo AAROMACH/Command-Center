@@ -7,6 +7,7 @@ import { isClient } from '@/lib/permissions';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { type JobWithSrc, jobTechId, isAssigned, isArchivedJob, mergeJobs } from '@/lib/jobs';
+import { assignJobToTechnician } from '@/lib/job-actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -252,21 +253,34 @@ export default function AdminCalendarPage() {
     setSavingEdit(true);
     try {
       const coll = drawerJob._src === 'assignment' ? 'assignments' : 'workOrders';
-      const updates: Record<string, any> = {
+      const fieldUpdates: Record<string, any> = {
         scheduleDate:    editForm.scheduleDate || drawerJob.scheduleDate,
         scheduleTime:    editForm.scheduleTime,
         scheduleEndTime: editForm.scheduleEndTime,
         notes:           editForm.notes,
       };
-      if (editForm.priority) updates.priority = editForm.priority;
+      if (editForm.priority) fieldUpdates.priority = editForm.priority;
+
       const prevTech = jobTechId(drawerJob);
-      if (editForm.assignedTechnicianId && editForm.assignedTechnicianId !== prevTech) {
-        updates.assignedTechnicianId = editForm.assignedTechnicianId;
-        updates.status = 'assigned';
+      const techChanged = editForm.assignedTechnicianId && editForm.assignedTechnicianId !== prevTech;
+
+      if (techChanged) {
+        // Route through the shared action so a pool job MOVES into assignments
+        // (create + delete) and both techId + assignedTechnicianId are written,
+        // so the change reflects on Dispatch, the Assignments hub and the tech
+        // portal — not just here.
         const t = adminTechs.find(x => x.id === editForm.assignedTechnicianId);
-        if (t) updates.technicianName = t.name;
+        const moved = drawerJob._src !== 'assignment';
+        await assignJobToTechnician({
+          job: drawerJob, source: drawerJob._src === 'assignment' ? 'assignment' : 'workOrder',
+          techId: editForm.assignedTechnicianId, techName: t?.name,
+          previousTechId: prevTech, previousTechName: adminTechs.find(x => x.id === prevTech)?.name,
+          actorName: 'Admin', extraFields: fieldUpdates,
+        });
+        if (moved) setDrawerJob(null); // its doc id changed — close the stale drawer
+      } else {
+        await updateDoc(doc(db, coll, drawerJob.id), fieldUpdates);
       }
-      await updateDoc(doc(db, coll, drawerJob.id), updates);
       if (editForm.scheduleDate) {
         try { setSelectedDate(parseISO(editForm.scheduleDate)); } catch { }
       }
@@ -282,14 +296,19 @@ export default function AdminCalendarPage() {
     if (!drawerJob) return;
     setShowAssignPanel(false);
     try {
-      const coll = drawerJob._src === 'assignment' ? 'assignments' : 'workOrders';
       const tech = adminTechs.find(t => t.id === techId);
-      await updateDoc(doc(db, coll, drawerJob.id), {
-        assignedTechnicianId: techId,
-        technicianName: tech?.name || '',
-        status: 'assigned',
+      const prevTech = jobTechId(drawerJob);
+      const moved = drawerJob._src !== 'assignment';
+      // Shared action: moves a pool job into assignments and writes both techId
+      // + assignedTechnicianId, so the assignment reflects across every view.
+      await assignJobToTechnician({
+        job: drawerJob, source: drawerJob._src === 'assignment' ? 'assignment' : 'workOrder',
+        techId, techName: tech?.name,
+        previousTechId: prevTech, previousTechName: adminTechs.find(t => t.id === prevTech)?.name,
+        actorName: 'Admin',
       });
       setEditForm(f => ({ ...f, assignedTechnicianId: techId }));
+      if (moved) setDrawerJob(null);
       toast({ title: `Assigned to ${tech?.name || techId}` });
     } catch {
       toast({ title: 'Assignment failed', variant: 'destructive' });

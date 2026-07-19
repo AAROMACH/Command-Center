@@ -4,11 +4,13 @@
 
 @layer base {
   :root {
-    /* Design System Palette - Light Mode (High Contrast) */
-    --bg-primary: #fcfcfc;
-    --bg-secondary: #f7f7f7;
-    --bg-tertiary: #f2f2f2;
-    --bg-elevated: #f4f4f4;
+    /* Design System Palette - Light Mode.
+       Soft gray canvas + white surfaces so cards read with depth instead of
+       white-on-white. */
+    --bg-primary: #eceef2;   /* app canvas — soft cool gray */
+    --bg-secondary: #ffffff;  /* cards / surfaces — pop against the canvas */
+    --bg-tertiary: #f2f4f7;   /* subtle hover / table headers / nested blocks */
+    --bg-elevated: #ffffff;   /* dialogs, popovers, dropdowns */
 
     --brand-red: #CC2200;
     --brand-red-hover: #E02500;
@@ -26,8 +28,8 @@
     --text-gold: #8b6c2a;
     --text-green: #1f8a55;
 
-    --border-main: #d4d4d4;
-    --border-sub: #e5e5e5;
+    --border-main: #d7dbe1;
+    --border-sub: #e7eaef;
     --border-alert: #ffcccc;
     --border-gold: #f5e6cc;
     --border-green: #ccebd8;
@@ -43,7 +45,7 @@
     --status-approved: #1f8a55;
 
     /* ShadCN Theme Mapping (HSL) - Light */
-    --background: 0 0% 98%;
+    --background: 220 19% 94%;
     --foreground: 0 0% 0%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 0%;
@@ -59,8 +61,8 @@
     --accent-foreground: 0 0% 100%;
     --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 83%;
-    --input: 0 0% 83%;
+    --border: 215 14% 86%;
+    --input: 215 14% 86%;
     --ring: 10 100% 40%;
     
     --radius: 0.5rem;

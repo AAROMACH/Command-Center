@@ -103,6 +103,16 @@ service cloud.firestore {
       match /accessInfo/{infoId} {
         allow read, write: if isAdmin();
       }
+      // Canonical personnel documents — admin manages; the owning user may read
+      // their own. Written by the directory detail page.
+      match /documents/{docId} {
+        allow read: if isSignedIn() && (isAdmin() || request.auth.uid == userId);
+        allow write: if isAdmin();
+      }
+      // Admin-only personnel notes.
+      match /techNotes/{noteId} {
+        allow read, write: if isAdmin();
+      }
     }
 
     match /assignments/{id} {

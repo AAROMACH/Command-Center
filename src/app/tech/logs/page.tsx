@@ -1094,7 +1094,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                             </div>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
                                 <span className="flex items-center gap-1.5 text-left"><MapPin size={10} className="text-brand-red shrink-0"/> {formatCityState(job.location)}</span>
-                                <span className="flex items-center gap-1.5 text-left"><CalendarIcon size={10} className="shrink-0"/> {job.scheduleDate}</span>
+                                <span className="flex items-center gap-1.5 text-left"><CalendarIcon size={10} className="shrink-0"/> {job.scheduleDate}{job.scheduleTime ? ` · ${job.scheduleTime}` : ''}</span>
                                 <span className="font-mono text-brand-red font-bold text-left">ASMT: {job.id.toUpperCase()}</span>
                                 {isImported(job) && externalWorkOrderId(job) && (
                                     <a

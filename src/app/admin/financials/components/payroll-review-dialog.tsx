@@ -34,7 +34,6 @@ import {
     FileCheck,
     Pencil,
     Activity as ActivityIcon,
-    Info,
     ChevronRight,
     MapPin,
     Save,
@@ -872,16 +871,6 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             </div>
                         </div>
                     </Tabs>
-
-                    <div className="hidden sm:flex p-5 rounded-xl bg-bg-tertiary/20 border border-dashed border-border-sub items-start gap-4 mx-6 mb-4">
-                        <Info size={18} className="text-accent-gold shrink-0 mt-0.5" />
-                        <div className="space-y-1 text-left">
-                            <p className="text-[10px] font-black text-text-primary uppercase tracking-widest">Audit Terminal Protocol</p>
-                            <p className="text-[10px] text-text-muted leading-relaxed uppercase font-medium text-left">
-                                Registry verification is required for all mission line items before financial disbursement authorization.
-                            </p>
-                        </div>
-                    </div>
 
                     <DialogFooter className="p-3 sm:p-4 border-t border-border-sub bg-bg-tertiary/50 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 shrink-0">
                         {localLog?.status === 'Submitted' && (canApproveLog || canReturnLog) ? (

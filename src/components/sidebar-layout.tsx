@@ -33,7 +33,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider defaultOpen={true}>
       <div className="flex h-svh w-full overflow-hidden">
         <AppSidebar />
-        <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           {/* Top strip: trigger on desktop, minimal on mobile */}
           <div className="flex items-center shrink-0 bg-[#0f0f0f] border-b border-border-main z-40">
             <div className="flex items-center gap-2 px-2 py-1.5 border-r border-border-sub">
@@ -44,7 +44,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           {/* Page content */}
-          <main className="flex-1 overflow-y-auto bg-bg-primary">
+          <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden bg-bg-primary">
             <div className="page-content">
               {denied ? null : children}
             </div>

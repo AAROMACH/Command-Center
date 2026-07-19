@@ -128,7 +128,7 @@ function ImportedJobAudit({
 
     return (
         <div className={cn(
-            "flex flex-wrap items-center gap-x-4 gap-y-2 p-2 bg-bg-primary border rounded-lg text-left w-full transition-all",
+            "flex flex-wrap items-center gap-x-2 sm:gap-x-4 gap-y-2 p-2 bg-bg-primary border rounded-lg text-left w-full min-w-0 max-w-full transition-all",
             isDirty ? "border-brand-red ring-1 ring-brand-red/20 shadow-lg" : "border-border-sub"
         )} onClick={e => e.stopPropagation()}>
              <div className="flex flex-wrap items-center gap-2">
@@ -140,7 +140,7 @@ function ImportedJobAudit({
                             type="number"
                             value={localPay}
                             onChange={(e) => setLocalPay(parseFloat(e.target.value) || 0)}
-                            className="h-7 w-20 text-xs pl-5 bg-bg-secondary font-mono font-bold border border-border-sub shadow-none focus-visible:ring-1"
+                            className="h-7 w-16 sm:w-20 text-xs pl-5 bg-bg-secondary font-mono font-bold border border-border-sub shadow-none focus-visible:ring-1"
                         />
                     </div>
                 </div>
@@ -152,7 +152,7 @@ function ImportedJobAudit({
                             type="number"
                             value={localReimb}
                             onChange={(e) => setLocalReimb(parseFloat(e.target.value) || 0)}
-                            className="h-7 w-20 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
+                            className="h-7 w-16 sm:w-20 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
                         />
                     </div>
                 </div>
@@ -164,7 +164,7 @@ function ImportedJobAudit({
                             type="number"
                             value={localOverhead}
                             onChange={(e) => setLocalOverhead(parseFloat(e.target.value) || 0)}
-                            className="h-7 w-20 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
+                            className="h-7 w-16 sm:w-20 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
                         />
                     </div>
                 </div>

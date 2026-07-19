@@ -168,7 +168,7 @@ function ImportedJobAudit({
                 </div>
              </div>
 
-             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-3 border-l border-border-sub/50">
+             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0 sm:pl-3 sm:border-l border-border-sub/50">
                 <div className="flex items-center gap-1 whitespace-nowrap">
                     <span className="text-[7px] font-black text-text-muted uppercase">FN (15.85%)</span>
                     <span className="text-[11px] font-mono font-bold text-text-primary">${totalFnFee.toFixed(2)}</span>
@@ -433,7 +433,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     return (
         <>
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogContent className="w-screen max-w-full h-[100dvh] rounded-none border-0 bg-bg-elevated flex flex-col p-0 overflow-hidden shadow-2xl text-left">
+                <DialogContent className="w-screen max-w-full h-[100dvh] rounded-none border-0 bg-bg-elevated flex flex-col p-0 overflow-y-auto sm:overflow-hidden shadow-2xl text-left">
                     <DialogHeader className="p-3 sm:p-4 border-b border-border-sub bg-bg-tertiary/30 text-left shrink-0 space-y-0">
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                             <div className="flex items-center gap-3 sm:gap-4 min-w-0">
@@ -467,7 +467,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                         </div>
                     </DialogHeader>
 
-                    <Tabs defaultValue="verified" className="flex-1 min-h-0 overflow-hidden flex flex-col">
+                    <Tabs defaultValue="verified" className="flex flex-col sm:flex-1 sm:min-h-0 sm:overflow-hidden">
                         <div className="px-3 sm:px-6 border-b border-border-sub bg-bg-tertiary/20 flex flex-col sm:flex-row sm:justify-between sm:items-center shrink-0">
                             <TabsList className="h-11 sm:h-12 bg-transparent p-0 gap-5 sm:gap-8 justify-start w-full sm:w-auto overflow-x-auto no-scrollbar">
                                 <TabsTrigger value="verified" className="tab-trigger-payroll flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0">
@@ -490,9 +490,9 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             </div>
                         </div>
 
-                        <div className="flex-1 min-h-0 overflow-hidden relative">
+                        <div className="relative sm:flex-1 sm:min-h-0 sm:overflow-hidden">
                             <TabsContent value="verified" className="m-0 h-full text-left">
-                                <ScrollArea className="h-full min-h-0 p-2">
+                                <ScrollArea className="p-2 sm:h-full sm:min-h-0">
                                     <div className="space-y-1">
                                         {localLog.unsubmitRequested && (
                                             <div className="p-3 rounded-lg border border-border-alert bg-brand-red-dim/5 flex items-start gap-4 mb-2">
@@ -659,7 +659,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             </TabsContent>
 
                             <TabsContent value="discrepancy" className="m-0 h-full text-left">
-                                <ScrollArea className="h-full min-h-0 p-2 text-left">
+                                <ScrollArea className="p-2 text-left sm:h-full sm:min-h-0">
                                     <div className="space-y-1 text-left">
                                         {(localLog?.items || []).filter(i => i.confirmationStatus === 'disputed').map(item => {
                                             const wo = findWorkOrder(item.workOrderId);
@@ -858,9 +858,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                     </Tabs>
 
                     <DialogFooter className="p-3 sm:p-4 border-t border-border-sub bg-bg-tertiary/50 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 shrink-0">
-                        {localLog?.status === 'Submitted' && (canApproveLog || canReturnLog) ? (
+                        {localLog && (localLog.status === 'Approved' || (localLog as any).status === 'Paid') ? (
+                            <Button variant="outline" className="w-full h-11 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsOpen(false)}>Exit Registry Audit</Button>
+                        ) : (canApproveLog || canReturnLog) ? (
                             <>
-                                {canReturnLog && (
+                                {canReturnLog && localLog?.status === 'Submitted' && (
                                     <Button variant="destructive-outline" className="w-full sm:w-auto order-3 sm:order-1 h-10 px-6 sm:px-8 uppercase font-bold text-[10px] tracking-widest" onClick={() => handleStatusChange('Rejected')}>
                                         <X size={16} className="mr-2"/> Deny Manifest
                                     </Button>
@@ -870,6 +872,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                 {canApproveLog && (
                                     <Button
                                         disabled={!isManifestFullyAudited}
+                                        title={isManifestFullyAudited ? undefined : 'Verify all assignments before approving'}
                                         className={cn(
                                             "w-full sm:w-auto order-1 sm:order-4 h-11 px-6 sm:px-12 uppercase font-bold text-[10px] tracking-[0.15em] shadow-lg transition-all",
                                             isManifestFullyAudited ? "bg-brand-red hover:bg-brand-red-hover" : "bg-bg-tertiary text-text-muted cursor-not-allowed border border-border-sub"
@@ -877,17 +880,15 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         onClick={() => handleStatusChange('Approved')}
                                     >
                                         <Check size={16} className="mr-2"/>
-                                        {isManifestFullyAudited ? 'Authorize Disbursement' : 'Audit Pending'}
+                                        {isManifestFullyAudited ? 'Approve Log' : 'Audit Pending'}
                                     </Button>
                                 )}
                             </>
-                        ) : localLog?.status === 'Submitted' ? (
+                        ) : (
                             <div className="w-full flex items-center justify-between gap-3">
                                 <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">View only — you cannot approve or return weekly logs</p>
                                 <Button variant="outline" className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest shrink-0" onClick={() => setIsOpen(false)}>Close Feed</Button>
                             </div>
-                        ) : (
-                            <Button variant="outline" className="w-full h-11 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsOpen(false)}>Exit Registry Audit</Button>
                         )}
                     </DialogFooter>
                 </DialogContent>

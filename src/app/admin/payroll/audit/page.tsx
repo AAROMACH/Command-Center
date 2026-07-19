@@ -14,8 +14,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Receipt, Search, ChevronDown, ChevronRight, DollarSign, CheckCircle, Clock, X, Download, Plus, SlidersHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isWithinInterval } from 'date-fns';
-import type { Technician, WeeklyLog, WeeklyLogItem } from '@/lib/types';
+import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder } from '@/lib/types';
 import { isClient, isTech } from '@/lib/permissions';
+import { mergeJobs } from '@/lib/jobs';
+import { PayrollReviewDialog } from '@/app/admin/financials/components/payroll-review-dialog';
 
 export default function PayrollAuditPage() {
     const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -29,6 +31,12 @@ export default function PayrollAuditPage() {
     const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
     const [adjustForm, setAdjustForm] = useState({ techId: '', amount: '', reason: '', date: '' });
     const [adjustSaving, setAdjustSaving] = useState(false);
+    // Weekly-log audit review (moved here from the Accounting page).
+    const [reviewLog, setReviewLog] = useState<WeeklyLog | null>(null);
+    const [reviewOpen, setReviewOpen] = useState(false);
+    const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+    const [assignments, setAssignments] = useState<WorkOrder[]>([]);
+    const missions = useMemo(() => mergeJobs(workOrders, assignments), [workOrders, assignments]);
 
     useEffect(() => {
         const unsubT = onSnapshot(collection(db, 'users'), snap => {
@@ -40,8 +48,16 @@ export default function PayrollAuditPage() {
         const unsubAdj = onSnapshot(collection(db, 'payrollAdjustments'), snap => {
             setAdjustments(snap.docs.map(d => ({ ...d.data(), id: d.id })));
         });
-        return () => { unsubT(); unsubL(); unsubAdj(); };
+        const unsubWO = onSnapshot(collection(db, 'workOrders'), snap => {
+            setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+        });
+        const unsubAsmt = onSnapshot(collection(db, 'assignments'), snap => {
+            setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+        });
+        return () => { unsubT(); unsubL(); unsubAdj(); unsubWO(); unsubAsmt(); };
     }, []);
+
+    const openReview = (log: WeeklyLog) => { setReviewLog(log); setReviewOpen(true); };
 
     const staffTechs = useMemo(
         () => technicians.filter(t => !isClient(t)),
@@ -144,11 +160,11 @@ export default function PayrollAuditPage() {
                     const isExpanded = expandedLogs.has(log.id);
                     return (
                         <div key={log.id} className="rounded-xl border border-border-sub bg-bg-secondary overflow-hidden">
-                            <button
-                                onClick={() => toggleExpand(log.id)}
-                                className="w-full flex items-center gap-4 p-3 hover:bg-bg-tertiary transition-colors text-left"
-                            >
-                                <div className="flex-1 min-w-0 grid grid-cols-4 gap-3 items-center">
+                            <div className="w-full flex items-center gap-3 p-3 hover:bg-bg-tertiary transition-colors text-left">
+                                <button
+                                    onClick={() => toggleExpand(log.id)}
+                                    className="flex-1 min-w-0 grid grid-cols-4 gap-3 items-center text-left"
+                                >
                                     <div>
                                         <p className="text-[11px] font-bold text-text-primary uppercase">{tech?.name || log.techId}</p>
                                         <p className="text-[9px] text-text-muted font-mono">Week of {log.weekOf}</p>
@@ -163,9 +179,19 @@ export default function PayrollAuditPage() {
                                     <div className="text-right text-[9px] text-text-muted uppercase">
                                         {log.submittedAt ? format(parseISO(log.submittedAt), 'MM/dd/yy') : '—'}
                                     </div>
-                                </div>
-                                {isExpanded ? <ChevronDown size={14} className="text-text-muted shrink-0" /> : <ChevronRight size={14} className="text-text-muted shrink-0" />}
-                            </button>
+                                </button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 shrink-0 text-[9px] font-bold uppercase tracking-widest"
+                                    onClick={() => openReview(log)}
+                                >
+                                    <Receipt size={11} className="mr-1.5" /> Audit Log
+                                </Button>
+                                <button onClick={() => toggleExpand(log.id)} className="shrink-0 p-1 text-text-muted" aria-label="Expand">
+                                    {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                </button>
+                            </div>
                             {isExpanded && log.items && log.items.length > 0 && (
                                 <div className="border-t border-border-sub divide-y divide-border-sub">
                                     {log.items.map((item: WeeklyLogItem) => (
@@ -455,6 +481,18 @@ export default function PayrollAuditPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {reviewLog && (
+                <PayrollReviewDialog
+                    isOpen={reviewOpen}
+                    setIsOpen={setReviewOpen}
+                    log={reviewLog}
+                    technician={technicians.find(t => t.id === reviewLog.techId)}
+                    missions={missions}
+                    allTechnicians={technicians}
+                    onStatusChange={() => { /* weeklyLogs listener refreshes the list live */ }}
+                />
+            )}
         </div>
     );
 }

@@ -218,6 +218,9 @@ export type Technician = {
   primaryPortal?: 'admin' | 'tech' | 'client';
   messagingBlockedClientIds?: string[];
   messagingAllowedRoles?: 'all' | 'admins' | 'techs' | 'clients' | 'none';
+  /** Broadcast ids this user has acknowledged/cleared — synced so a dismissal
+   *  on one device clears the alert on all their devices. */
+  acknowledgedBroadcastIds?: string[];
   googleCalendarSyncEnabled?: boolean;
   googleCalendarToken?: string;
   routePreference?: 'optimized' | 'by-time' | 'by-mileage';

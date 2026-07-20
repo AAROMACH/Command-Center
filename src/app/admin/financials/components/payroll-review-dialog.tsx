@@ -129,59 +129,59 @@ function ImportedJobAudit({
             "flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-x-4 sm:gap-y-2 p-2 bg-bg-primary border rounded-lg text-left w-full min-w-0 max-w-full transition-all",
             isDirty ? "border-brand-red ring-1 ring-brand-red/20 shadow-lg" : "border-border-sub"
         )} onClick={e => e.stopPropagation()}>
-             <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 w-full sm:w-auto">
-                <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
+             <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:flex-row sm:flex-wrap sm:items-center sm:w-auto">
+                <div className="flex flex-col items-start gap-1 min-w-0 sm:flex-row sm:items-center sm:gap-2 sm:w-auto">
                     <Label className="text-[8px] font-black uppercase text-text-muted whitespace-nowrap">Pay</Label>
-                    <div className="relative">
+                    <div className="relative w-full sm:w-auto">
                         <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input
                             type="number"
                             value={localPay}
                             onChange={(e) => setLocalPay(parseFloat(e.target.value) || 0)}
-                            className="h-7 w-16 sm:w-20 text-xs pl-5 bg-bg-secondary font-mono font-bold border border-border-sub shadow-none focus-visible:ring-1"
+                            className="h-7 w-full sm:w-20 text-xs pl-5 bg-bg-secondary font-mono font-bold border border-border-sub shadow-none focus-visible:ring-1"
                         />
                     </div>
                 </div>
-                <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
+                <div className="flex flex-col items-start gap-1 min-w-0 sm:flex-row sm:items-center sm:gap-2 sm:w-auto">
                     <Label className="text-[8px] font-black uppercase text-text-muted whitespace-nowrap">Reimb.</Label>
-                    <div className="relative">
+                    <div className="relative w-full sm:w-auto">
                         <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input
                             type="number"
                             value={localReimb}
                             onChange={(e) => setLocalReimb(parseFloat(e.target.value) || 0)}
-                            className="h-7 w-16 sm:w-20 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
+                            className="h-7 w-full sm:w-20 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
                         />
                     </div>
                 </div>
-                <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
+                <div className="flex flex-col items-start gap-1 min-w-0 sm:flex-row sm:items-center sm:gap-2 sm:w-auto">
                     <Label className="text-[8px] font-black uppercase text-text-muted whitespace-nowrap">Ovhd.</Label>
-                    <div className="relative">
+                    <div className="relative w-full sm:w-auto">
                         <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input
                             type="number"
                             value={localOverhead}
                             onChange={(e) => setLocalOverhead(parseFloat(e.target.value) || 0)}
-                            className="h-7 w-16 sm:w-20 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
+                            className="h-7 w-full sm:w-20 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
                         />
                     </div>
                 </div>
              </div>
 
-             <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1.5 sm:gap-x-3 sm:gap-y-1 min-w-0 w-full sm:w-auto sm:pl-3 sm:border-l border-border-sub/50">
-                <div className="flex items-center justify-between sm:justify-start gap-1 w-full sm:w-auto whitespace-nowrap">
+             <div className="grid grid-cols-4 gap-1.5 min-w-0 w-full sm:flex sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-1 sm:w-auto sm:pl-3 sm:border-l border-border-sub/50">
+                <div className="flex flex-col items-start gap-0.5 min-w-0 sm:flex-row sm:items-center sm:gap-1 sm:w-auto whitespace-nowrap">
                     <span className="text-[7px] font-black text-text-muted uppercase">FN (15.85%)</span>
                     <span className="text-[11px] font-mono font-bold text-text-primary">${totalFnFee.toFixed(2)}</span>
                 </div>
-                <div className="flex items-center justify-between sm:justify-start gap-1 w-full sm:w-auto whitespace-nowrap">
+                <div className="flex flex-col items-start gap-0.5 min-w-0 sm:flex-row sm:items-center sm:gap-1 sm:w-auto whitespace-nowrap">
                     <span className="text-[7px] font-black text-text-muted uppercase">Net</span>
                     <span className="text-[11px] font-mono font-bold text-text-primary">${netLabor.toFixed(2)}</span>
                 </div>
-                <div className="flex items-center justify-between sm:justify-start gap-1 w-full sm:w-auto whitespace-nowrap">
+                <div className="flex flex-col items-start gap-0.5 min-w-0 sm:flex-row sm:items-center sm:gap-1 sm:w-auto whitespace-nowrap">
                     <span className="text-[7px] font-black text-text-green uppercase">Payout</span>
                     <span className="text-[11px] font-mono font-bold text-text-green">${techPayout.toFixed(2)}</span>
                 </div>
-                <div className="flex items-center justify-between sm:justify-start gap-1 w-full sm:w-auto whitespace-nowrap">
+                <div className="flex flex-col items-start gap-0.5 min-w-0 sm:flex-row sm:items-center sm:gap-1 sm:w-auto whitespace-nowrap">
                     <span className="text-[7px] font-black text-brand-red uppercase">Aaromach</span>
                     <span className="text-[11px] font-mono font-bold text-brand-red">${aaromachPay.toFixed(2)}</span>
                 </div>
@@ -557,7 +557,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     <div className={cn("order-1 sm:order-2 flex-1 flex flex-col gap-2", !isImported && "sm:flex-row sm:items-center sm:justify-between")}>
                                                         <div className="min-w-0 text-left">
                                                             <div className="flex items-center gap-2 text-left flex-wrap">
-                                                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
+                                                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide break-words sm:truncate text-left">{displayTitle}</p>
                                                                 {isImported && <Badge variant="outline" className="text-[6px] bg-brand-red-dim border-brand-red/20 text-brand-red h-3 px-1">IMPORTED</Badge>}
                                                                 {helperNames.length > 0 && (
                                                                     <Badge variant="outline" className="text-[6px] bg-blue-400/10 border-blue-400/30 text-blue-400 h-3 px-1">
@@ -698,7 +698,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     <div className="order-1 sm:order-2 flex-1 flex flex-col gap-2">
                                                         <div className="min-w-0 text-left">
                                                             <div className="flex items-center gap-2 text-left flex-wrap">
-                                                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate text-left">{displayTitle}</p>
+                                                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide break-words sm:truncate text-left">{displayTitle}</p>
                                                                 {isImported && <Badge variant="outline" className="text-[6px] bg-brand-red-dim border-brand-red/20 text-brand-red h-3 px-1">IMPORTED</Badge>}
                                                                 {helperNames.length > 0 && (
                                                                     <Badge variant="outline" className="text-[6px] bg-blue-400/10 border-blue-400/30 text-blue-400 h-3 px-1">

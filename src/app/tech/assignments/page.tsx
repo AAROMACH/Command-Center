@@ -699,7 +699,7 @@ export default function TechAssignmentsPage() {
                                             </td>
                                             <td>
                                                 <div className="text-center">
-                                                  <div className="text-xs text-text-secondary">{wo.scheduleDate}</div>
+                                                  <div className="text-xs text-text-secondary">{wo.scheduleDate}{wo.scheduleTime ? ` · ${wo.scheduleTime}` : ''}</div>
                                                   <div className="mt-1">
                                                     <Badge variant="active" className="uppercase text-[7px] h-3.5 px-1.5">
                                                         <FileCheck size={10} className="mr-1"/>

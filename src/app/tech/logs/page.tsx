@@ -103,6 +103,31 @@ function getEasternParts(date: Date) {
 }
 
 
+// Sortable timestamp for a job's scheduled date + time. Accepts ISO
+// (YYYY-MM-DD) and M/D/YYYY dates and "h:mm AM/PM" or 24h times; undated jobs
+// sort last.
+function jobDateTimeValue(dateStr?: string | null, timeStr?: string | null): number {
+    if (!dateStr) return Number.MAX_SAFE_INTEGER;
+    const parts = dateStr.split(/[-/]/);
+    let d: Date | null = null;
+    if (parts.length === 3) {
+        if (parts[0].length === 4) d = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+        else d = new Date(+parts[2], +parts[0] - 1, +parts[1]);
+    }
+    if (!d || isNaN(d.getTime())) return Number.MAX_SAFE_INTEGER;
+    if (timeStr) {
+        const m = timeStr.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+        if (m) {
+            let h = +m[1];
+            const ap = m[3]?.toUpperCase();
+            if (ap === 'PM' && h < 12) h += 12;
+            if (ap === 'AM' && h === 12) h = 0;
+            d.setHours(h, +m[2], 0, 0);
+        }
+    }
+    return d.getTime();
+}
+
 export default function TechWeeklyLogPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
@@ -859,7 +884,13 @@ export default function TechWeeklyLogPage() {
                     )}
                 </div>
                 <div className="space-y-3 text-left">
-                    {(activeLog.items || []).map((item, itemIdx) => (
+                    {[...(activeLog.items || [])]
+                        .sort((a, b) => {
+                            const ja = workOrders.find(w => w.id === a.workOrderId);
+                            const jb = workOrders.find(w => w.id === b.workOrderId);
+                            return jobDateTimeValue(ja?.scheduleDate, ja?.scheduleTime) - jobDateTimeValue(jb?.scheduleDate, jb?.scheduleTime);
+                        })
+                        .map((item, itemIdx) => (
                         <JobAuditCard
                             key={item.id || item.workOrderId || `item-${itemIdx}`}
                             item={item}

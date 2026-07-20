@@ -126,11 +126,11 @@ function ImportedJobAudit({
 
     return (
         <div className={cn(
-            "flex flex-wrap items-center gap-x-2 sm:gap-x-4 gap-y-2 p-2 bg-bg-primary border rounded-lg text-left w-full min-w-0 max-w-full transition-all",
+            "flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-x-4 sm:gap-y-2 p-2 bg-bg-primary border rounded-lg text-left w-full min-w-0 max-w-full transition-all",
             isDirty ? "border-brand-red ring-1 ring-brand-red/20 shadow-lg" : "border-border-sub"
         )} onClick={e => e.stopPropagation()}>
-             <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-1">
+             <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 w-full sm:w-auto">
+                <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
                     <Label className="text-[8px] font-black uppercase text-text-muted whitespace-nowrap">Pay</Label>
                     <div className="relative">
                         <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
@@ -142,7 +142,7 @@ function ImportedJobAudit({
                         />
                     </div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
                     <Label className="text-[8px] font-black uppercase text-text-muted whitespace-nowrap">Reimb.</Label>
                     <div className="relative">
                         <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
@@ -154,7 +154,7 @@ function ImportedJobAudit({
                         />
                     </div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
                     <Label className="text-[8px] font-black uppercase text-text-muted whitespace-nowrap">Ovhd.</Label>
                     <div className="relative">
                         <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
@@ -168,20 +168,20 @@ function ImportedJobAudit({
                 </div>
              </div>
 
-             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0 sm:pl-3 sm:border-l border-border-sub/50">
-                <div className="flex items-center gap-1 whitespace-nowrap">
+             <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1.5 sm:gap-x-3 sm:gap-y-1 min-w-0 w-full sm:w-auto sm:pl-3 sm:border-l border-border-sub/50">
+                <div className="flex items-center justify-between sm:justify-start gap-1 w-full sm:w-auto whitespace-nowrap">
                     <span className="text-[7px] font-black text-text-muted uppercase">FN (15.85%)</span>
                     <span className="text-[11px] font-mono font-bold text-text-primary">${totalFnFee.toFixed(2)}</span>
                 </div>
-                <div className="flex items-center gap-1 whitespace-nowrap">
+                <div className="flex items-center justify-between sm:justify-start gap-1 w-full sm:w-auto whitespace-nowrap">
                     <span className="text-[7px] font-black text-text-muted uppercase">Net</span>
                     <span className="text-[11px] font-mono font-bold text-text-primary">${netLabor.toFixed(2)}</span>
                 </div>
-                <div className="flex items-center gap-1 whitespace-nowrap">
+                <div className="flex items-center justify-between sm:justify-start gap-1 w-full sm:w-auto whitespace-nowrap">
                     <span className="text-[7px] font-black text-text-green uppercase">Payout</span>
                     <span className="text-[11px] font-mono font-bold text-text-green">${techPayout.toFixed(2)}</span>
                 </div>
-                <div className="flex items-center gap-1 whitespace-nowrap">
+                <div className="flex items-center justify-between sm:justify-start gap-1 w-full sm:w-auto whitespace-nowrap">
                     <span className="text-[7px] font-black text-brand-red uppercase">Aaromach</span>
                     <span className="text-[11px] font-mono font-bold text-brand-red">${aaromachPay.toFixed(2)}</span>
                 </div>

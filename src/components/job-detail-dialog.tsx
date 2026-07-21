@@ -147,6 +147,9 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   const [helperOpen, setHelperOpen] = useState(false);
   const [swapTechId, setSwapTechId] = useState('');
   const [helperTechId, setHelperTechId] = useState('');
+  // Optimistic assigned-tech override so a swap shows the new tech instantly,
+  // even though the `mission` prop is a snapshot from when the dialog opened.
+  const [optimisticTechId, setOptimisticTechId] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'users'), (snap) => {
@@ -154,6 +157,9 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     });
     return () => unsub();
   }, []);
+
+  // Clear the optimistic override whenever a different assignment is shown.
+  useEffect(() => { setOptimisticTechId(null); }, [mission?.id]);
 
   useEffect(() => {
     if (!isOpen || !mission || activeTab !== 'Admin Review') return;
@@ -186,17 +192,25 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     const prevTechId = mission.assignedTechnicianId || mission.techId || '';
     const prevTech = technicians.find(t => t.id === prevTechId);
     const admin = auth.currentUser?.displayName || 'Admin';
+    // Reflect the new tech immediately in this dialog (the mission prop is a
+    // stale snapshot until the parent's listener re-passes it).
+    setOptimisticTechId(swapTechId);
+    setSwapOpen(false); setSwapTechId('');
     // Ownership moves to the new tech (assignedTechnicianId + techId) so the
     // previous tech immediately loses access via Firestore rules and their
     // live queries. Record the full reassignment for the audit trail.
-    await updateDoc(doc(db, 'assignments', mission.id), {
-      assignedTechnicianId: swapTechId, techId: swapTechId,
-      history: arrayUnion({ date: new Date().toISOString(), type: 'tech_swapped',
-        previousTechnicianId: prevTechId, previousTechnicianName: prevTech?.name || prevTechId,
-        newTechnicianId: swapTechId, newTechnicianName: nt?.name || swapTechId,
-        details: `Reassigned from ${prevTech?.name || 'unassigned'} to ${nt?.name || swapTechId}`, user: admin }),
-    });
-    setSwapOpen(false); setSwapTechId('');
+    try {
+      await updateDoc(doc(db, 'assignments', mission.id), {
+        assignedTechnicianId: swapTechId, techId: swapTechId,
+        history: arrayUnion({ date: new Date().toISOString(), type: 'tech_swapped',
+          previousTechnicianId: prevTechId, previousTechnicianName: prevTech?.name || prevTechId,
+          newTechnicianId: swapTechId, newTechnicianName: nt?.name || swapTechId,
+          details: `Reassigned from ${prevTech?.name || 'unassigned'} to ${nt?.name || swapTechId}`, user: admin }),
+      });
+    } catch (e) {
+      setOptimisticTechId(null); // revert the optimistic display if the write failed
+      throw e;
+    }
   };
 
   const handleAddHelper = async () => {
@@ -212,7 +226,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
 
   if (!mission) return null;
 
-  const leadTech = technicians.find(t => t.id === (mission.assignedTechnicianId || mission.techId));
+  const leadTech = technicians.find(t => t.id === (optimisticTechId ?? mission.assignedTechnicianId ?? mission.techId));
 
   // ── Derived values ─────────────────────────────────────────────────────────
   const isConfirmed = mission.status === 'confirmed' || mission.status === 'completed';

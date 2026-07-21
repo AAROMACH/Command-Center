@@ -212,7 +212,7 @@
     @apply w-full sm:w-[300px] rounded-md border border-border-main bg-bg-secondary py-1 pl-8 pr-3 text-xs text-text-primary placeholder:text-text-muted focus:border-brand-red focus:outline-none focus:ring-0;
   }
   .tabs {
-    @apply mb-3 flex gap-1 p-0;
+    @apply mb-3 flex flex-wrap gap-1 p-0;
   }
   .tab {
     @apply h-auto cursor-pointer rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-text-muted transition-all;

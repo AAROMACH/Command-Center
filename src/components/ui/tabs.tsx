@@ -14,7 +14,9 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+      // On mobile, wrap onto multiple rows instead of forcing a horizontal
+      // scroll list; restore the inline single row on sm+ (web).
+      "flex flex-wrap sm:inline-flex sm:flex-nowrap max-w-full h-auto sm:h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
       className
     )}
     {...props}

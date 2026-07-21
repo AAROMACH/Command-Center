@@ -523,7 +523,90 @@ export default function TechAssignmentsPage() {
                 </div>
                 
                 <TabsContent value="active" className="mt-0">
-                    <div className="table-wrap">
+                    {/* Mobile: card view */}
+                    <div className="md:hidden space-y-3">
+                        {sortedActive.map((wo) => (
+                            <div
+                                key={wo.id}
+                                className="rounded-xl border border-border-sub bg-bg-secondary p-4 shadow-sm cursor-pointer active:bg-bg-tertiary transition-colors"
+                                onClick={() => handleOpenDetail(wo)}
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="cell-id">{displayWorkOrderNumber(wo)}</span>
+                                            {wo.source === 'Imported' && (
+                                                <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                    <ExternalLink size={10} />
+                                                </a>
+                                            )}
+                                        </div>
+                                        <div className="cell-desc-title break-words mt-1">{wo.title || wo.description}</div>
+                                        <div className="text-[10px] text-text-muted uppercase tracking-widest">{wo.clientName}</div>
+                                    </div>
+                                    <Badge
+                                        variant={
+                                            wo.status === 'in-progress' ? 'inprogress' :
+                                            wo.status === 'on-my-way' ? 'pending' :
+                                            wo.status === 'confirmed' ? 'active' :
+                                            wo.status === 'checked-out' ? 'checked-out' :
+                                            'scheduled'
+                                        }
+                                        className="capitalize text-[8px] h-4 px-1.5 shrink-0"
+                                    >
+                                        {wo.status.replace(/-/g, ' ')}
+                                    </Badge>
+                                </div>
+                                <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-text-secondary">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        <MapPin className="h-3.5 w-3.5 text-text-muted shrink-0" />
+                                        <span className="truncate">{formatCityState(wo.location)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 justify-end">
+                                        <CalendarIcon size={13} className="text-text-muted shrink-0" />
+                                        <span>{formatDateStr(wo.scheduleDate)}{wo.scheduleTime ? ` · ${wo.scheduleTime}` : ''}</span>
+                                    </div>
+                                </div>
+                                <div className="mt-3 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                    {wo.status === 'assigned' && (
+                                        <Button variant="outline" size="sm" className="h-8 flex-1 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleConfirm(wo.id)}>
+                                            <Check size={14} className="mr-2"/> Confirm
+                                        </Button>
+                                    )}
+                                    {wo.status === 'confirmed' && (
+                                        <Button variant="outline" size="sm" className="h-8 flex-1 !text-[10px] border-brand-red text-brand-red hover:bg-brand-red-dim" onClick={() => handleStartTrip(wo.id)}>
+                                            <Navigation size={14} className="mr-2"/> Start Trip
+                                        </Button>
+                                    )}
+                                    {wo.status === 'on-my-way' && (
+                                        <Button disabled={hasActiveSession} variant="outline" size="sm" className="h-8 flex-1 !text-[10px] border-text-green text-text-green hover:bg-green-dim disabled:opacity-50" onClick={() => handleCheckIn(wo.id)}>
+                                            <Play size={14} className="mr-2 fill-current"/> Check In
+                                        </Button>
+                                    )}
+                                    {wo.status === 'in-progress' && (
+                                        <Button variant="outline" size="sm" className="h-8 flex-1 !text-[10px] border-text-red text-text-red hover:bg-brand-red-dim" onClick={() => handleCheckOut(wo.id)}>
+                                            <LogOut size={14} className="mr-2"/> Check Out
+                                        </Button>
+                                    )}
+                                    {wo.status === 'checked-out' && (
+                                        <>
+                                            <Button disabled={hasActiveSession} variant="outline" size="sm" className="h-8 flex-1 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim disabled:opacity-50" onClick={() => handleCheckIn(wo.id)}>
+                                                <RotateCcw size={14} className="mr-2"/> Check back in
+                                            </Button>
+                                            <Button variant="default" size="sm" className="h-8 flex-1 !text-[10px] bg-text-green hover:bg-text-green/90" onClick={() => handleMarkComplete(wo.id)}>
+                                                <CheckCircle2 size={14} className="mr-2"/> Complete
+                                            </Button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                        {activeAssignments.length === 0 && (
+                            <div className="text-center py-12 text-text-muted uppercase text-[10px] tracking-widest italic">No active assignments match your registry filters.</div>
+                        )}
+                    </div>
+                    {/* Desktop: table view */}
+                    <div className="table-wrap hidden md:block">
                         <table className="tbl">
                             <thead>
                                 <tr>
@@ -655,7 +738,59 @@ export default function TechAssignmentsPage() {
                 </TabsContent>
 
                 <TabsContent value="history" className="mt-0">
-                    <div className="table-wrap">
+                    {/* Mobile: card view */}
+                    <div className="md:hidden space-y-3">
+                        {completedAssignments.map((wo) => (
+                            <div
+                                key={wo.id}
+                                className="rounded-xl border border-border-sub bg-bg-secondary p-4 shadow-sm cursor-pointer active:bg-bg-tertiary transition-colors"
+                                onClick={() => handleOpenDetail(wo)}
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="cell-id">{displayWorkOrderNumber(wo)}</span>
+                                            {wo.source === 'Imported' && (
+                                                <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                    <ExternalLink size={10} />
+                                                </a>
+                                            )}
+                                        </div>
+                                        <div className="cell-desc-title break-words mt-1">{wo.title || wo.description}</div>
+                                        <div className="text-[10px] text-text-muted uppercase tracking-widest">{wo.clientName}</div>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-green shrink-0">
+                                        <CheckCircle2 size={12}/> DONE
+                                    </div>
+                                </div>
+                                <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-text-secondary">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        <MapPin className="h-3.5 w-3.5 text-text-muted shrink-0" />
+                                        <span className="truncate">{formatCityState(wo.location)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 justify-end">
+                                        <CalendarIcon size={13} className="text-text-muted shrink-0" />
+                                        <span>{wo.scheduleDate}{wo.scheduleTime ? ` · ${wo.scheduleTime}` : ''}</span>
+                                    </div>
+                                </div>
+                                <div className="mt-3 flex items-center justify-between gap-2">
+                                    <Badge variant="active" className="uppercase text-[7px] h-3.5 px-1.5">
+                                        <FileCheck size={10} className="mr-1"/> Logged
+                                    </Badge>
+                                    <div onClick={(e) => e.stopPropagation()}>
+                                        <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleReopen(wo.id)}>
+                                            <RotateCcw size={14} className="mr-2"/> Reopen
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        {completedAssignments.length === 0 && (
+                            <div className="text-center py-12 text-text-muted uppercase text-[10px] tracking-widest italic">History terminal clear. No assignments match your filters.</div>
+                        )}
+                    </div>
+                    {/* Desktop: table view */}
+                    <div className="table-wrap hidden md:block">
                         <table className="tbl">
                             <thead>
                                 <tr>

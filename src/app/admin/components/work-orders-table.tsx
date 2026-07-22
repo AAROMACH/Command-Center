@@ -72,7 +72,7 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { cn, formatCityState, isAssignableTechnician } from "@/lib/utils";
+import { cn, formatCityState, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from "@/lib/utils";
 import { JobDetailDialog } from "@/components/job-detail-dialog";
 import { isPayAdmin } from "@/lib/permissions";
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from "@/lib/reliability";
@@ -180,10 +180,12 @@ export const WorkOrdersTable = React.memo(({
   }, []);
 
   const filteredTechniciansRegistry = useMemo(() => {
-    return technicians
+    const matched = technicians
       .filter(isAssignableTechnician)
       .filter(t => (t.name || '').toLowerCase().includes(techSearchQuery.toLowerCase()))
       .sort((a, b) => (b.reliabilityScore || 0) - (a.reliabilityScore || 0));
+    // Deactivated accounts stay deployable but drop to the bottom of the list.
+    return sortTechniciansForDeployment(matched);
   }, [technicians, techSearchQuery]);
 
   const handleAssign = useCallback(async (techId: string) => {
@@ -630,6 +632,9 @@ export const WorkOrdersTable = React.memo(({
                                             <div className="flex items-center gap-2">
                                                 <p className="text-xs font-black uppercase tracking-tight text-left">{tech.name}</p>
                                                 <Badge variant={getTierBadgeVariant(tier)} className="text-[7px] h-3.5 uppercase px-1.5">{tier}</Badge>
+                                                {isInactiveTechnician(tech) && (
+                                                    <Badge variant="outline" className="text-[7px] h-3.5 uppercase px-1.5 border-text-muted/40 text-text-muted">Inactive</Badge>
+                                                )}
                                             </div>
                                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
                                                 <div className="flex items-center gap-1.5">
@@ -815,7 +820,7 @@ export const WorkOrdersTable = React.memo(({
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest">UNASSIGNED</SelectItem>
-                                        {technicians.filter(isAssignableTechnician).map(tech => <SelectItem key={tech.id} value={tech.id} className="text-xs uppercase font-bold">{tech.name}</SelectItem>)}
+                                        {sortTechniciansForDeployment(technicians.filter(isAssignableTechnician)).map(tech => <SelectItem key={tech.id} value={tech.id} className="text-xs uppercase font-bold">{tech.name}{isInactiveTechnician(tech) ? ' · Inactive' : ''}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>

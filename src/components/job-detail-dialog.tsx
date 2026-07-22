@@ -15,7 +15,7 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn, formatCityState, isAssignableTechnician } from '@/lib/utils';
+import { cn, formatCityState, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
 import {
   MapPin, Calendar, Clock, DollarSign,
   Check, AlertTriangle, ShieldCheck,
@@ -640,8 +640,10 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                 <SelectValue placeholder="Choose technician..." />
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
-                {technicians.filter(isAssignableTechnician).map(t => (
-                  <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name}</SelectItem>
+                {sortTechniciansForDeployment(technicians.filter(isAssignableTechnician)).map(t => (
+                  <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">
+                    {t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -666,10 +668,12 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                 <SelectValue placeholder="Choose technician..." />
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
-                {technicians
-                  .filter(t => isAssignableTechnician(t) && t.id !== (mission?.assignedTechnicianId || mission?.techId))
+                {sortTechniciansForDeployment(technicians
+                  .filter(t => isAssignableTechnician(t) && t.id !== (mission?.assignedTechnicianId || mission?.techId)))
                   .map(t => (
-                    <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name}</SelectItem>
+                    <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">
+                      {t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}
+                    </SelectItem>
                   ))}
               </SelectContent>
             </Select>

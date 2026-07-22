@@ -45,7 +45,7 @@ import {
     SelectTrigger, 
     SelectValue 
 } from '@/components/ui/select';
-import { cn, formatCityState, isAssignableTechnician } from '@/lib/utils';
+import { cn, formatCityState, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
 import {
   DndContext,
   closestCenter,
@@ -202,9 +202,9 @@ function DroppableRoute({
                         </div>
                     </SelectTrigger>
                     <SelectContent>
-                        {technicians.filter(isAssignableTechnician).map(tech => (
+                        {sortTechniciansForDeployment(technicians.filter(isAssignableTechnician)).map(tech => (
                             <SelectItem key={tech.id} value={tech.name} className="text-[10px] font-bold uppercase">
-                                {tech.name}
+                                {tech.name}{isInactiveTechnician(tech) ? ' · Inactive' : ''}
                             </SelectItem>
                         ))}
                     </SelectContent>

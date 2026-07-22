@@ -23,6 +23,27 @@ export function isAssignableTechnician(t: { roles?: string[]; role?: string }): 
 }
 
 /**
+ * A technician whose account has been deactivated. They remain deployable
+ * (marking inactive never removes them from assignment pickers) but are
+ * sorted to the bottom of tech lists and shown with an "Inactive" tag.
+ */
+export function isInactiveTechnician(t: { accountStatus?: string }): boolean {
+  return t.accountStatus === 'inactive';
+}
+
+/**
+ * Orders a technician list for assignment/deployment pickers: active
+ * operatives first, deactivated accounts grouped at the bottom. This is a
+ * stable partition — it only moves inactive techs down and otherwise preserves
+ * whatever order the caller already applied (reliability, alphabetical, etc.).
+ */
+export function sortTechniciansForDeployment<T extends { accountStatus?: string }>(techs: T[]): T[] {
+  const active = techs.filter(t => !isInactiveTechnician(t));
+  const inactive = techs.filter(isInactiveTechnician);
+  return [...active, ...inactive];
+}
+
+/**
  * Recursively strips `undefined` values from an object/array. Firestore's
  * updateDoc() rejects any undefined field value, even nested inside an
  * array of objects, so build write payloads through this first.

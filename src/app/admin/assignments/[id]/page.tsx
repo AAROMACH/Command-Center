@@ -21,7 +21,7 @@ import {
   ArrowLeftRight, Check, Flag, Activity, MessageSquare, ExternalLink, Wrench,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn, isAssignableTechnician } from '@/lib/utils';
+import { cn, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
 
 const AssignmentMap = dynamic(() => import('./assignment-map'), { ssr: false });
 
@@ -701,8 +701,8 @@ export default function AssignmentDetailPage() {
                 <SelectValue placeholder="Choose technician..." />
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
-                {allTechs.filter(isAssignableTechnician).map(t => (
-                  <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name}</SelectItem>
+                {sortTechniciansForDeployment(allTechs.filter(isAssignableTechnician)).map(t => (
+                  <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -726,10 +726,10 @@ export default function AssignmentDetailPage() {
                 <SelectValue placeholder="Choose technician..." />
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
-                {allTechs
-                  .filter(t => isAssignableTechnician(t) && t.id !== primTechId)
+                {sortTechniciansForDeployment(allTechs
+                  .filter(t => isAssignableTechnician(t) && t.id !== primTechId))
                   .map(t => (
-                    <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name}</SelectItem>
+                    <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}</SelectItem>
                   ))}
               </SelectContent>
             </Select>

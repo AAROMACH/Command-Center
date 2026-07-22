@@ -51,6 +51,34 @@ export function isActiveJob(job: Partial<WorkOrder> | null | undefined): boolean
 }
 
 /**
+ * A single comparable timestamp for a job's schedule, combining the date and
+ * the (free-text) start time. Handles both MM-DD-YYYY and YYYY-MM-DD dates and
+ * time strings like "10:00 AM" or "10:00 AM EST". Jobs with no/invalid date
+ * return 0 so they sort last in a most-recent-first (descending) ordering.
+ */
+export function jobDateTimeValue(dateStr?: string | null, timeStr?: string | null): number {
+  if (!dateStr) return 0;
+  const parts = dateStr.split(/[-/]/);
+  let d: Date | null = null;
+  if (parts.length === 3) {
+    if (parts[0].length === 4) d = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+    else d = new Date(+parts[2], +parts[0] - 1, +parts[1]);
+  }
+  if (!d || isNaN(d.getTime())) return 0;
+  if (timeStr) {
+    const m = timeStr.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    if (m) {
+      let h = +m[1];
+      const ap = m[3]?.toUpperCase();
+      if (ap === 'PM' && h < 12) h += 12;
+      if (ap === 'AM' && h === 12) h = 0;
+      d.setHours(h, +m[2], 0, 0);
+    }
+  }
+  return d.getTime();
+}
+
+/**
  * Merge the workOrders pool and assignments into one job list for the union
  * views (Schedule / Calendar). A job is normally in only one collection, but
  * dedup by id — assignments winning — guards against a transient double if an

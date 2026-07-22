@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, setPersistence, browserSessionPersistence } from "firebase/auth";
+import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
@@ -21,9 +21,8 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
-// Session-scoped persistence: auth state is isolated per browser tab.
-// Prevents cross-window session contamination when multiple users share the same browser.
-if (typeof window !== 'undefined') {
-  setPersistence(auth, browserSessionPersistence).catch(console.warn);
-}
+// Persistence is chosen at login: local persistence (survives browser restarts)
+// when "Remember Me" is on, session persistence otherwise. We intentionally do
+// NOT force a persistence here — the Firebase default is local, so a
+// remembered session is restored on return instead of being dropped on load.
 

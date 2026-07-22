@@ -99,6 +99,8 @@ export default function AssignmentsHubPage() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   
   const [sortBy, setSortBy] = useState<SortOption>('date');
+  // Date sort direction: false = latest first (default), true = earliest first.
+  const [dateAsc, setDateAsc] = useState(false);
   const [activePriorities, setActivePriorities] = useState<string[]>([]);
   const [activeSources, setActiveSources] = useState<string[]>([]);
 
@@ -239,11 +241,16 @@ export default function AssignmentsHubPage() {
             const techB = technicians.find(t => t.id === idB)?.name || 'Unassigned';
             return techA.localeCompare(techB);
           case 'date':
-          default:
-            return safeA.date.localeCompare(safeB.date);
+          default: {
+            // Sort by actual parsed date so mixed MM-DD-YYYY / YYYY-MM-DD
+            // formats order correctly. Default is latest first (descending).
+            const da = parseTacticalDate(safeA.date)?.getTime() ?? 0;
+            const dbb = parseTacticalDate(safeB.date)?.getTime() ?? 0;
+            return dateAsc ? da - dbb : dbb - da;
+          }
         }
       });
-  }, [workOrders, technicians, searchQuery, dateRange, sortBy, activePriorities, activeSources]);
+  }, [workOrders, technicians, searchQuery, dateRange, sortBy, activePriorities, activeSources, dateAsc]);
 
   const activeWorkOrders = useMemo(() =>
     filteredWorkOrders.filter(wo => !isArchivedJob(wo) && !isCompletedJob(wo)),
@@ -256,6 +263,16 @@ export default function AssignmentsHubPage() {
   const formatDateDisplay = (dateStr: string) => {
     const woDate = parseTacticalDate(dateStr);
     return woDate ? format(woDate, 'MM-dd-yyyy') : dateStr;
+  };
+
+  // Clicking a date column header sorts by date and toggles earliest/oldest.
+  const toggleDateSort = () => {
+    if (sortBy !== 'date') {
+      setSortBy('date');
+      setDateAsc(false);
+    } else {
+      setDateAsc(prev => !prev);
+    }
   };
 
   const handleCardClick = (wo: WorkOrder) => {
@@ -579,7 +596,85 @@ export default function AssignmentsHubPage() {
 
         <div className="space-y-6 text-left">
             <TabsContent value="schedule" className="mt-0 space-y-6 text-left">
-                <div className="table-wrap text-left">
+                {/* Mobile: date-sort toggle + card list */}
+                <div className="md:hidden space-y-3">
+                    <button
+                        onClick={toggleDateSort}
+                        className="w-full flex items-center justify-between rounded-lg border border-border-sub bg-bg-secondary px-3 py-2.5"
+                    >
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Sort by Date</span>
+                        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-brand-red">
+                            {sortBy === 'date' ? (dateAsc ? 'Oldest First' : 'Latest First') : 'Latest First'}
+                            <ArrowUpDown size={12} />
+                        </span>
+                    </button>
+                    {activeWorkOrders.map(wo => {
+                        const techId = jobTechId(wo);
+                        const tech = technicians.find(t => t.id === techId);
+                        return (
+                            <div
+                                key={wo.id}
+                                className="rounded-xl border border-border-sub bg-bg-secondary p-4 shadow-sm cursor-pointer active:bg-bg-tertiary transition-colors"
+                                onClick={() => handleCardClick(wo)}
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="cell-id font-mono text-brand-red font-bold">{displayWorkOrderNumber(wo)}</span>
+                                            {wo.source === 'Imported' && (
+                                                <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                    <ExternalLink size={10} />
+                                                </a>
+                                            )}
+                                        </div>
+                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide mt-1 break-words">{wo.title || wo.description}</p>
+                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{wo.clientName}</p>
+                                    </div>
+                                    <Badge variant={wo.status === 'in-progress' ? 'inprogress' : wo.status === 'checked-out' ? 'checked-out' : 'scheduled'} className="text-[8px] h-4 px-1.5 uppercase tracking-widest shrink-0">{wo.status}</Badge>
+                                </div>
+                                <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-text-secondary font-bold uppercase">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        <MapPin size={11} className="text-brand-red shrink-0" />
+                                        <span className="truncate">{formatCityState(wo.location)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 justify-end font-mono">
+                                        <CalendarIcon size={12} className="text-text-muted shrink-0" />
+                                        <span>{formatDateDisplay(wo.scheduleDate)}{wo.scheduleTime ? ` · ${wo.scheduleTime}` : ''}</span>
+                                    </div>
+                                </div>
+                                <div className="mt-3 flex items-center justify-between gap-2 pt-3 border-t border-border-sub">
+                                    {tech ? (
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <Avatar className="h-6 w-6 border border-border-sub">
+                                                <AvatarImage src={tech.avatarUrl} />
+                                                <AvatarFallback className="text-[9px]">{tech.name?.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <span className="text-[10px] font-bold text-text-primary uppercase truncate">{tech.name}</span>
+                                        </div>
+                                    ) : (
+                                        <Button variant="outline" size="sm" className="h-7 !text-[10px] border-brand-red text-brand-red hover:bg-brand-red-dim uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleOpenEditDialog(wo); }}>
+                                            <UserPlus size={13} className="mr-1.5"/> Assign
+                                        </Button>
+                                    )}
+                                    <span className="text-xs font-mono font-bold text-text-green shrink-0">
+                                        {wo.payType === 'blended'
+                                            ? `$${(wo.blendedFixedPay || 0).toFixed(0)}+$${(wo.blendedHourlyRate || 0).toFixed(0)}/hr`
+                                            : wo.payType === 'hourly'
+                                                ? `$${(wo.pay || 0).toFixed(2)}/hr`
+                                                : `$${(wo.pay || 0).toFixed(2)}`}
+                                    </span>
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {activeWorkOrders.length === 0 && (
+                        <div className="p-8 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] italic">No active jobs found matching search criteria</p>
+                        </div>
+                    )}
+                </div>
+                {/* Desktop: table */}
+                <div className="table-wrap text-left hidden md:block">
                     <table className="tbl">
                         <thead>
                             <tr className="bg-bg-tertiary">
@@ -587,7 +682,19 @@ export default function AssignmentsHubPage() {
                                 <th className="text-left pl-0">Assignment Identification</th>
                                 <th className="text-center">Operative</th>
                                 <th className="text-left pl-0">Site Coordinates</th>
-                                <th className="text-left pl-0">Schedule Date</th>
+                                <th className="text-left pl-0">
+                                    <button
+                                        onClick={toggleDateSort}
+                                        className="inline-flex items-center gap-1.5 uppercase tracking-widest hover:text-brand-red transition-colors"
+                                        title="Sort by date"
+                                    >
+                                        Schedule Date
+                                        <ArrowUpDown size={11} className={cn("shrink-0", sortBy === 'date' ? "text-brand-red" : "text-text-muted opacity-50")} />
+                                        {sortBy === 'date' && (
+                                            <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Oldest' : 'Latest'}</span>
+                                        )}
+                                    </button>
+                                </th>
                                 <th className="text-right pr-6">Labor Rate</th>
                             </tr>
                         </thead>
@@ -681,7 +788,7 @@ export default function AssignmentsHubPage() {
                 </div>
 
                 {activeWorkOrders.length === 0 && (
-                    <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30 text-left">
+                    <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30 text-left hidden md:block">
                         <Activity size={32} className="mx-auto text-text-muted mb-4 opacity-20" />
                         <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] italic text-center">No active jobs found matching search criteria</p>
                     </div>
@@ -689,14 +796,101 @@ export default function AssignmentsHubPage() {
             </TabsContent>
 
             <TabsContent value="archive" className="mt-0 text-left">
-                <div className="table-wrap text-left">
+                {/* Mobile: date-sort toggle + card list */}
+                <div className="md:hidden space-y-3">
+                    <button
+                        onClick={toggleDateSort}
+                        className="w-full flex items-center justify-between rounded-lg border border-border-sub bg-bg-secondary px-3 py-2.5"
+                    >
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Sort by Date</span>
+                        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-brand-red">
+                            {sortBy === 'date' ? (dateAsc ? 'Oldest First' : 'Latest First') : 'Latest First'}
+                            <ArrowUpDown size={12} />
+                        </span>
+                    </button>
+                    {archivedWorkOrders.map(wo => {
+                        const techId = jobTechId(wo);
+                        const tech = technicians.find(t => t.id === techId);
+                        return (
+                            <div
+                                key={wo.id}
+                                className="rounded-xl border border-border-sub bg-bg-secondary p-4 shadow-sm cursor-pointer active:bg-bg-tertiary transition-colors"
+                                onClick={() => handleCardClick(wo)}
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="cell-id font-mono text-brand-red font-bold">{displayWorkOrderNumber(wo)}</span>
+                                            {wo.source === 'Imported' && (
+                                                <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                    <ExternalLink size={10} />
+                                                </a>
+                                            )}
+                                        </div>
+                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide mt-1 break-words">{wo.title || wo.description}</p>
+                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{wo.clientName}</p>
+                                    </div>
+                                    <Badge variant="completed" className="text-[8px] h-4 px-1.5 shrink-0">CLOSED</Badge>
+                                </div>
+                                <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-text-secondary font-bold uppercase">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        <MapPin size={11} className="text-brand-red shrink-0" />
+                                        <span className="truncate">{formatCityState(wo.location)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 justify-end font-mono">
+                                        <CalendarIcon size={12} className="text-text-muted shrink-0" />
+                                        <span>{formatDateDisplay(wo.scheduleDate)}</span>
+                                    </div>
+                                </div>
+                                <div className="mt-3 flex items-center justify-between gap-2 pt-3 border-t border-border-sub" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center gap-1.5 text-[10px] text-text-muted font-bold uppercase min-w-0">
+                                        <User size={11} className="shrink-0" /><span className="truncate">{tech?.name || 'Field Ops'}</span>
+                                    </div>
+                                    {wo.isAudited ? (
+                                        <Badge variant="active" className="h-6 px-3 uppercase text-[9px] tracking-widest font-black flex items-center gap-1.5 shrink-0">
+                                            <ShieldCheck size={13} className="text-text-green"/> Verified
+                                        </Badge>
+                                    ) : (
+                                        <div className="flex gap-2 shrink-0">
+                                            <Button variant="outline" size="sm" className="h-7 text-[9px] font-bold uppercase tracking-widest border-text-green text-text-green hover:bg-green-dim" onClick={() => handleVerifyAssignment(wo.id)}>
+                                                <Check size={13} className="mr-1"/> Verify
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-red" onClick={() => requestArchive(wo)}>
+                                                <Trash2 size={13}/>
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {archivedWorkOrders.length === 0 && (
+                        <div className="p-8 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] italic">No historical records found matching current filters.</p>
+                        </div>
+                    )}
+                </div>
+                {/* Desktop: table */}
+                <div className="table-wrap text-left hidden md:block">
                     <table className="tbl">
                         <thead>
                             <tr className="bg-bg-tertiary">
                                 <th className="text-left pl-6 w-[200px]">Assignment Identification</th>
                                 <th className="text-center">Client & Service Result</th>
                                 <th className="text-center">Deployment Coordinates</th>
-                                <th className="text-center">Finalized Date</th>
+                                <th className="text-center">
+                                    <button
+                                        onClick={toggleDateSort}
+                                        className="inline-flex items-center gap-1.5 uppercase tracking-widest hover:text-brand-red transition-colors"
+                                        title="Sort by date"
+                                    >
+                                        Finalized Date
+                                        <ArrowUpDown size={11} className={cn("shrink-0", sortBy === 'date' ? "text-brand-red" : "text-text-muted opacity-50")} />
+                                        {sortBy === 'date' && (
+                                            <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Oldest' : 'Latest'}</span>
+                                        )}
+                                    </button>
+                                </th>
                                 <th className="text-right pr-6">Audit Status</th>
                             </tr>
                         </thead>

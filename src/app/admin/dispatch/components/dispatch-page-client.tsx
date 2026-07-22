@@ -91,7 +91,8 @@ export function DispatchPageClient() {
   
   const [searchQuery, setSearchQuery] = useState("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-  const [sortBy, setSortBy] = useState<SortOption>('priority');
+  // Default to date sort so the newest assignments/jobs surface first.
+  const [sortBy, setSortBy] = useState<SortOption>('date');
 
   const [activePriorities, setActivePriorities] = useState<string[]>([]);
   const [activeTypes, setActiveTypes] = useState<string[]>([]);
@@ -243,7 +244,7 @@ export function DispatchPageClient() {
     setActivePriorities([]);
     setActiveTypes([]);
     setActiveSources([]);
-    setSortBy('priority');
+    setSortBy('date');
     toast({ title: "Filters Cleared", description: "Operational registry constraints removed." });
   };
 
@@ -306,7 +307,8 @@ export function DispatchPageClient() {
                 const techB = technicians.find(t => t.id === idB)?.name || 'Unassigned';
                 return techA.localeCompare(techB);
             default:
-                return (a.scheduleDate || '').localeCompare(b.scheduleDate || '');
+                // Latest scheduled date first.
+                return (b.scheduleDate || '').localeCompare(a.scheduleDate || '');
         }
     });
   };
@@ -364,7 +366,7 @@ export function DispatchPageClient() {
     });
   }, [allRequests, searchQuery, dateRange, activePriorities, activeTypes, sortBy]);
 
-  const hasActiveFilters = searchQuery !== "" || !!dateRange?.from || activePriorities.length > 0 || activeTypes.length > 0 || activeSources.length > 0 || sortBy !== 'priority';
+  const hasActiveFilters = searchQuery !== "" || !!dateRange?.from || activePriorities.length > 0 || activeTypes.length > 0 || activeSources.length > 0 || sortBy !== 'date';
 
   return (
     <div className="space-y-6">
@@ -375,7 +377,7 @@ export function DispatchPageClient() {
               <p className="page-subtitle text-left">Unified terminal for client requests and logistical job routing.</p>
             </div>
             <div className="flex items-center gap-3">
-                {activeMasterTab !== 'assignments' && (
+                {activeMasterTab === 'requests' && (
                   <Button variant="outline" onClick={() => setIsNewRequestOpen(true)} className="h-10 px-4 text-[10px] uppercase font-bold tracking-widest border-border-main">+ New Service Request</Button>
                 )}
                 {activeMasterTab !== 'requests' && (

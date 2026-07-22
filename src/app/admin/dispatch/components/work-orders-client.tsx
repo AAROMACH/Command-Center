@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import type { WorkOrder, Technician, Route } from "@/lib/types";
-import { MapPin, Building2, Calendar, Clock, ChevronRight } from "lucide-react";
+import { MapPin, Building2, Calendar, Clock, ChevronRight, ExternalLink } from "lucide-react";
 import { PAY_TYPE_LABELS } from "@/lib/constants";
 import { cn, formatCityState } from "@/lib/utils";
+import { externalWorkOrderId, fieldNationUrl } from "@/lib/work-order-identity";
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -98,9 +99,25 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
             >
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="min-w-0">
-                  <p className="text-[11px] text-text-muted tracking-wide mb-0.5 font-mono">
-                    #{wo.id.toUpperCase()}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-0.5">
+                    <span className="text-[11px] text-text-muted tracking-wide font-mono">
+                      ASMT #{wo.id.toUpperCase()}
+                    </span>
+                    {externalWorkOrderId(wo) && (
+                      <span className="flex items-center gap-1 text-[11px] text-brand-red tracking-wide font-mono">
+                        WO #{externalWorkOrderId(wo).toUpperCase()}
+                        <a
+                          href={fieldNationUrl(wo)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-text-muted hover:text-brand-red transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink size={10} />
+                        </a>
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[13px] font-bold text-text-primary uppercase tracking-wide truncate">
                     {wo.title || wo.description}
                   </p>

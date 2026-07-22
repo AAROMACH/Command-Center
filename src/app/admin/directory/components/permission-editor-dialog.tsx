@@ -104,6 +104,18 @@ export function PermissionEditorDialog({ open, onClose, person }: Props) {
     });
   };
 
+  // Select-all / deselect-all for a single section (page) of permissions.
+  const bulkPerms = (perms: string[], value: boolean | undefined) => {
+    setOverrides(prev => {
+      const next = { ...prev };
+      for (const p of perms) {
+        if (value === undefined) delete next[p];
+        else next[p] = value;
+      }
+      return next;
+    });
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -273,11 +285,22 @@ export function PermissionEditorDialog({ open, onClose, person }: Props) {
 
                         {!isCollapsed && (
                           <div className="p-3 space-y-4">
-                            {Object.entries(pages).map(([page, perms]) => (
+                            {Object.entries(pages).map(([page, perms]) => {
+                              const sectionPerms = perms as Permission[];
+                              const allOn = sectionPerms.length > 0 && sectionPerms.every(p => effectivePermissions.has(p));
+                              const someOn = sectionPerms.some(p => effectivePermissions.has(p));
+                              return (
                               <div key={page}>
-                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-2">{page}</p>
+                                <label className="flex items-center gap-2 mb-2 cursor-pointer w-fit">
+                                  <Checkbox
+                                    checked={allOn ? true : (someOn ? 'indeterminate' : false)}
+                                    onCheckedChange={() => bulkPerms(sectionPerms, allOn ? false : true)}
+                                    className="h-3.5 w-3.5 data-[state=checked]:bg-brand-red data-[state=checked]:border-brand-red data-[state=indeterminate]:bg-brand-red/40 data-[state=indeterminate]:border-brand-red"
+                                  />
+                                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">{page}</span>
+                                </label>
                                 <div className="space-y-1">
-                                  {(perms as Permission[]).map(perm => {
+                                  {sectionPerms.map(perm => {
                                     const state = permState(perm);
                                     const sources = permissionSources(roles, perm);
                                     const override = overrides[perm];
@@ -324,7 +347,8 @@ export function PermissionEditorDialog({ open, onClose, person }: Props) {
                                   })}
                                 </div>
                               </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>

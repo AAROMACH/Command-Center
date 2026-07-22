@@ -512,8 +512,9 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
 
                 <div className="w-full mt-3">
                     <TabsContent value="technicians" className="m-0">
-                        {viewMode === 'rows' ? (
-                            <div className="table-wrap">
+                        {/* Rows view is desktop-only; mobile always uses the card grid below. */}
+                        {viewMode === 'rows' && (
+                            <div className="table-wrap hidden md:block">
                                 <div className="hidden md:grid grid-cols-[2fr,1fr,1.5fr,1.2fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
                                     <div className="text-left pl-0">TECHNICIAN</div>
                                     <div className="text-left">ROLE</div>
@@ -573,8 +574,8 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                     )})}
                                 </ScrollArea>
                             </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        )}
+                        <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4", viewMode === 'rows' && "md:hidden")}>
                                 {paginatedTechnicians.map(tech => {
                                     const tier = tech.reliabilityTier || getReliabilityTier(tech.reliabilityScore || 0);
                                     const badgeVariant = getTierBadgeVariant(tier);
@@ -616,13 +617,13 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                         </Card>
                                     )
                                 })}
-                            </div>
-                        )}
+                        </div>
                     </TabsContent>
-                    
+
                     <TabsContent value="staff" className="m-0">
-                        {viewMode === 'rows' ? (
-                            <div className="table-wrap">
+                        {/* Rows view is desktop-only; mobile always uses the card grid below. */}
+                        {viewMode === 'rows' && (
+                            <div className="table-wrap hidden md:block">
                                 <div className="hidden md:grid grid-cols-[2fr,1.2fr,2fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
                                     <div className="text-left pl-0">STAFF MEMBER</div>
                                     <div className="text-left">ROLE</div>
@@ -651,8 +652,8 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                     </div>
                                 ))}
                             </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        )}
+                        <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4", viewMode === 'rows' && "md:hidden")}>
                                 {paginatedStaff.map(s => (
                                     <Card key={s.id} className="bg-bg-secondary border-border-main hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleRowClick(s)}>
                                         <CardHeader className="p-4 pb-2 flex flex-row items-center gap-4 text-left">
@@ -677,13 +678,13 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                         </CardContent>
                                     </Card>
                                 ))}
-                            </div>
-                        )}
+                        </div>
                     </TabsContent>
-                    
+
                     <TabsContent value="clients" className="m-0">
-                        {viewMode === 'rows' ? (
-                            <div className="table-wrap">
+                        {/* Rows view is desktop-only; mobile always uses the card grid below. */}
+                        {viewMode === 'rows' && (
+                            <div className="table-wrap hidden md:block">
                                 <div className="hidden md:grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
                                     <div className="text-left pl-0">CORPORATE ENTITY</div>
                                     <div className="text-left">CLASSIFICATION</div>
@@ -710,8 +711,8 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                     </div>
                                 ))}
                             </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        )}
+                        <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4", viewMode === 'rows' && "md:hidden")}>
                                 {paginatedCompanies.map(company => (
                                     <Card key={company.name} className="bg-bg-secondary border-border-main hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleCompanyClick(company.name)}>
                                         <CardHeader className="p-4 pb-2 text-left">
@@ -729,8 +730,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                         </CardContent>
                                     </Card>
                                 ))}
-                            </div>
-                        )}
+                        </div>
                     </TabsContent>
 
                     <TabsContent value="requests" className="m-0 animate-in fade-in duration-300">

@@ -152,6 +152,19 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
     (['admin', 'tech', 'client'] as SubrolePortal[])
       .filter(portal => roles.some(r => SUBROLE_DEFINITIONS[r]?.portal === portal));
 
+  // Account Status vocabulary depends on the account type. Client accounts use
+  // CRM lifecycle terms (lead, prospect, VIP, collections…); personnel
+  // (tech / admin / office) use simple workforce states. Mixing them made the
+  // dropdown show client-only terms on techs.
+  const CLIENT_STATUSES = ['active', 'inactive', 'lead', 'prospect', 'past_client', 'on_hold', 'do_not_service', 'collections', 'vip', 'archived'];
+  const PERSONNEL_STATUSES = ['active', 'inactive', 'on_hold', 'archived'];
+  const isClientAccount = unlockedPortals(form.roles).includes('client') || !!form.clientCompany;
+  const accountStatusOptions = (() => {
+    const base = isClientAccount ? CLIENT_STATUSES : PERSONNEL_STATUSES;
+    // Always keep the currently-saved value selectable even if it's off-list.
+    return base.includes(form.accountStatus) ? base : [form.accountStatus, ...base];
+  })();
+
   const toggleRole = (role: AppRole) => {
     const nextRoles = form.roles.includes(role)
       ? form.roles.filter(r => r !== role)
@@ -371,7 +384,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                       <Select value={form.accountStatus} onValueChange={v => set('accountStatus', v)}>
                         <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-bg-elevated border-border-main">
-                          {['active', 'inactive', 'lead', 'past_client', 'on_hold', 'do_not_service', 'collections', 'prospect', 'vip', 'archived'].map(s => (
+                          {accountStatusOptions.map(s => (
                             <SelectItem key={s} value={s} className="text-[11px]">{s.replace(/_/g, ' ')}</SelectItem>
                           ))}
                         </SelectContent>

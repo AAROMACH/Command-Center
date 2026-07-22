@@ -8,16 +8,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { auth, db } from "@/lib/firebase";
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, setPersistence, browserLocalPersistence, browserSessionPersistence } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { getPortalAccess, getAvailablePortals } from "@/lib/permissions";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
@@ -35,7 +36,13 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const logo = PlaceHolderImages.find(img => img.id === 'app-logo');
+
+  // Keep the auth session across browser restarts when "Remember Me" is on;
+  // otherwise scope it to the tab session (the app default).
+  const applyPersistence = () =>
+    setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence).catch(console.warn);
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -44,6 +51,7 @@ export default function LoginPage() {
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true);
     try {
+      await applyPersistence();
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
       toast({ title: "Authorization Successful", description: "Terminal access granted." });
       await handleRedirect(userCredential.user);
@@ -57,6 +65,7 @@ export default function LoginPage() {
   async function onGoogleSignIn() {
     setIsGoogleLoading(true);
     try {
+      await applyPersistence();
       const result = await signInWithPopup(auth, googleProvider);
       const firebaseUser = result.user;
 
@@ -154,8 +163,10 @@ export default function LoginPage() {
       }
 
       sessionStorage.setItem('currentUserId', firebaseUser.uid);
-      document.cookie = `aaromach_session=${firebaseUser.uid}; path=/; max-age=86400; SameSite=Strict`;
-      document.cookie = `aaromach_portals=${JSON.stringify(access)}; path=/; max-age=86400; SameSite=Strict`;
+      // Remember Me: keep the routing cookies for 30 days; otherwise 1 day.
+      const cookieMaxAge = rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24;
+      document.cookie = `aaromach_session=${firebaseUser.uid}; path=/; max-age=${cookieMaxAge}; SameSite=Strict`;
+      document.cookie = `aaromach_portals=${JSON.stringify(access)}; path=/; max-age=${cookieMaxAge}; SameSite=Strict`;
 
       if (portals.length > 1 && typedUser.primaryPortal) {
         const primary = portals.find(p => p.id === typedUser.primaryPortal);
@@ -206,6 +217,18 @@ export default function LoginPage() {
               </div>
               {errors.password && <p className="text-[10px] font-bold text-brand-red uppercase text-left">{errors.password.message}</p>}
             </div>
+            <div className="flex items-center gap-2 pt-1">
+              <Checkbox
+                id="rememberMe"
+                checked={rememberMe}
+                onCheckedChange={(v) => setRememberMe(v === true)}
+                disabled={isLoading || isGoogleLoading}
+                className="border-border-main data-[state=checked]:bg-brand-red data-[state=checked]:border-brand-red"
+              />
+              <Label htmlFor="rememberMe" className="text-[10px] font-bold uppercase tracking-widest text-text-muted cursor-pointer select-none">
+                Remember Me
+              </Label>
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-3 pb-6">
             <Button type="submit" disabled={isLoading || isGoogleLoading} className="w-full h-12 bg-brand-red hover:bg-brand-red-hover text-white font-bold uppercase tracking-widest text-xs">
@@ -237,6 +260,21 @@ export default function LoginPage() {
               )}
               Continue with Google
             </Button>
+
+            <div className="w-full pt-1 text-center">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted mb-2">Need an account?</p>
+              <Link href="/get-access" className="block">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isLoading || isGoogleLoading}
+                  className="w-full h-11 border-brand-red/40 text-brand-red hover:bg-brand-red-dim font-bold uppercase tracking-widest text-xs flex items-center gap-2"
+                >
+                  <UserPlus size={15} className="shrink-0" />
+                  Get Access
+                </Button>
+              </Link>
+            </div>
 
             <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest text-center px-4 pt-1">Authorized personnel only. All access events are logged.</p>
           </CardFooter>

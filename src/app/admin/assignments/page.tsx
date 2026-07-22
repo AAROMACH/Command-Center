@@ -86,7 +86,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { isAdmin, isPayAdmin } from "@/lib/permissions";
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { fieldNationUrl, displayWorkOrderNumber } from '@/lib/work-order-identity';
-import { jobTechId, isArchivedJob, isCompletedJob } from '@/lib/jobs';
+import { jobTechId, isArchivedJob, isCompletedJob, jobDateTimeValue } from '@/lib/jobs';
 
 type SortOption = 'date' | 'client' | 'status' | 'pay' | 'tech';
 
@@ -242,10 +242,11 @@ export default function AssignmentsHubPage() {
             return techA.localeCompare(techB);
           case 'date':
           default: {
-            // Sort by actual parsed date so mixed MM-DD-YYYY / YYYY-MM-DD
-            // formats order correctly. Default is latest first (descending).
-            const da = parseTacticalDate(safeA.date)?.getTime() ?? 0;
-            const dbb = parseTacticalDate(safeB.date)?.getTime() ?? 0;
+            // Sort by actual parsed date AND time so mixed MM-DD-YYYY /
+            // YYYY-MM-DD formats order correctly and same-day jobs order by
+            // start time. Default is latest first (descending).
+            const da = jobDateTimeValue(a.scheduleDate, a.scheduleTime);
+            const dbb = jobDateTimeValue(b.scheduleDate, b.scheduleTime);
             return dateAsc ? da - dbb : dbb - da;
           }
         }

@@ -26,7 +26,7 @@ import {
 import { NewAssignmentDialog } from "./new-assignment-dialog";
 import { ImportJobsDialog, type ExistingRef as ImportExistingRef } from "./import-jobs-dialog";
 import { normalizeExternalId, isImported } from "@/lib/work-order-identity";
-import { jobTechId, isArchivedJob } from "@/lib/jobs";
+import { jobTechId, isArchivedJob, jobDateTimeValue } from "@/lib/jobs";
 import { NewRequestDialog } from "../../requests/components/new-request-dialog";
 import type { WorkOrder, Route, ServiceRequest, Technician } from "@/lib/types";
 import { isServiceTicketDoc, toDateSafe } from '@/lib/request-intake';
@@ -307,8 +307,8 @@ export function DispatchPageClient() {
                 const techB = technicians.find(t => t.id === idB)?.name || 'Unassigned';
                 return techA.localeCompare(techB);
             default:
-                // Latest scheduled date first.
-                return (b.scheduleDate || '').localeCompare(a.scheduleDate || '');
+                // Latest scheduled date + time first.
+                return jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime);
         }
     });
   };

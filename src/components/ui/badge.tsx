@@ -12,16 +12,21 @@ const badgeVariants = cva(
         secondary: "border-transparent bg-secondary text-secondary-foreground",
         destructive: "border-transparent bg-destructive text-destructive-foreground",
         outline: "text-foreground",
-        // Project Status
+        // ── Canonical status tag colors (theme-aware, one meaning per color) ──
+        // green  = good / active / verified / done-well
+        // gold   = attention / pending / in-progress
+        // red    = alert / missed / failed
+        // blue   = neutral-complete / closed / informational
+        // grey   = inactive / low / not-started
         active: "border-green-border bg-green-dim text-text-green",
         onhold: "border-gold-border bg-accent-gold-dim text-accent-gold",
         "on-hold": "border-gold-border bg-accent-gold-dim text-accent-gold",
-        completed: "border-[#2a3a5a] bg-[#1a1a2a] text-[#6688CC]",
+        completed: "border-blue-500/30 bg-blue-500/10 text-blue-500",
         // Assignment Status
-        high: "bg-brand-red-dim text-text-red",
-        medium: "bg-accent-gold-dim text-accent-gold",
-        low: "bg-[#1f1f1f] text-[#888]",
-        scheduled: "border-[#333] bg-[#1f1f1f] text-[#888]",
+        high: "border-border-red bg-brand-red-dim text-text-red",
+        medium: "border-gold-border bg-accent-gold-dim text-accent-gold",
+        low: "border-border-sub bg-bg-tertiary text-text-muted",
+        scheduled: "border-border-sub bg-bg-tertiary text-text-muted",
         inprogress: "border-accent-gold/50 bg-accent-gold-dim text-accent-gold",
         "checked-out": "border-border-sub bg-bg-tertiary text-text-primary",
         missed: "border-border-red bg-brand-red-dim text-text-red",

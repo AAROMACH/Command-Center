@@ -41,6 +41,7 @@ import {
     Receipt
 } from 'lucide-react';
 import { cn, formatCityState } from '@/lib/utils';
+import { FIELD_NATION_FEE_RATE, netOfFieldNationFee } from '@/lib/payroll';
 import { displayWorkOrderNumber, fieldNationUrl } from '@/lib/work-order-identity';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -101,20 +102,27 @@ function ImportedJobAudit({
 
     const isDirty = localPay !== wo.pay || localReimb !== (wo.auditReimbursement || 0) || localOverhead !== (wo.auditOverhead || 0);
 
-    // Dynamic Financial Projections (Local) — formula unchanged
-    const fnFeeLabor = localPay * 0.1585;
-    const fnFeeReimb = localReimb * 0.1585;
+    // Dynamic Financial Projections (Local).
+    // The Field Nation fee is taken off labor AND reimbursement; the tech nets
+    // the remainder of each. Aaromach keeps a clean 50% of net labor (minus
+    // overhead) and no longer absorbs the fee on reimbursements — a $100
+    // reimbursement pays the tech netOfFieldNationFee($100) = $84.15.
+    const fnFeeLabor = localPay * FIELD_NATION_FEE_RATE;
+    const fnFeeReimb = localReimb * FIELD_NATION_FEE_RATE;
     const totalFnFee = fnFeeLabor + fnFeeReimb;
     const netLabor = localPay - fnFeeLabor;
-    const techPayout = (netLabor * 0.50) + localReimb;
-    const aaromachPay = (netLabor * 0.50) - fnFeeReimb - localOverhead;
+    const laborPayout = netLabor * 0.50;                 // tech's labor share (stored as finalPay)
+    const reimbPayout = netOfFieldNationFee(localReimb); // tech's reimbursement, net of the FN fee
+    const aaromachPay = laborPayout - localOverhead;     // overhead stays a full Aaromach cost
 
     const handleCommit = () => {
         onUpdateWorkOrder(wo.id, {
             pay: localPay,
             auditReimbursement: localReimb,
             auditOverhead: localOverhead,
-            finalPay: Math.max(0, techPayout)
+            // Store LABOR ONLY. Reimbursement is added once, net of fee, at the
+            // log-total level so it is never double-counted.
+            finalPay: Math.max(0, laborPayout)
         });
     };
 
@@ -152,6 +160,11 @@ function ImportedJobAudit({
                             onChange={(e) => setLocalReimb(parseFloat(e.target.value) || 0)}
                             className="h-7 w-full sm:w-20 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
                         />
+                        {localReimb > 0 && (
+                            <span className="block sm:absolute sm:left-0 sm:top-full mt-0.5 text-[7px] font-bold text-text-green uppercase tracking-tight whitespace-nowrap" title="Reimbursement paid to tech, net of the Field Nation fee">
+                                → ${reimbPayout.toFixed(2)} to tech
+                            </span>
+                        )}
                     </div>
                 </div>
                 <div className="flex flex-col items-start gap-1 min-w-0 sm:flex-row sm:items-center sm:gap-2 sm:w-auto">
@@ -179,7 +192,7 @@ function ImportedJobAudit({
                 </div>
                 <div className="flex flex-col items-start gap-0.5 min-w-0 sm:flex-row sm:items-center sm:gap-1 sm:w-auto whitespace-nowrap">
                     <span className="text-[7px] font-black text-text-green uppercase">Payout</span>
-                    <span className="text-[11px] font-mono font-bold text-text-green">${techPayout.toFixed(2)}</span>
+                    <span className="text-[11px] font-mono font-bold text-text-green" title="Tech labor payout (50% of net labor). Reimbursement is added separately, net of the FN fee.">${laborPayout.toFixed(2)}</span>
                 </div>
                 <div className="flex flex-col items-start gap-0.5 min-w-0 sm:flex-row sm:items-center sm:gap-1 sm:w-auto whitespace-nowrap">
                     <span className="text-[7px] font-black text-brand-red uppercase">Aaromach</span>
@@ -263,10 +276,12 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         if (!localLog) return 0;
         const assignmentPay = (localLog.items || []).reduce((acc, i) => acc + (i.jobPay || 0), 0);
         // Count reimbursements that are approved (or legacy ones with no status).
-        // Pending awaits review; rejected never counts. Formula is otherwise unchanged.
+        // Pending awaits review; rejected never counts. Each is paid NET of the
+        // Field Nation fee (the tech absorbs it, Aaromach does not), and counted
+        // exactly once — job payouts (jobPay) hold labor only.
         const reimbursementPay = (localLog.reimbursements || [])
             .filter(r => r.status !== 'pending' && r.status !== 'rejected')
-            .reduce((acc, r) => acc + r.amount, 0);
+            .reduce((acc, r) => acc + netOfFieldNationFee(r.amount), 0);
         return assignmentPay + reimbursementPay;
     }, [localLog]);
     

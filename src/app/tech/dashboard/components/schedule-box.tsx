@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import type { WorkOrder } from '@/lib/types';
-import { displayWorkOrderNumber } from '@/lib/work-order-identity';
+import { displayWorkOrderNumber, isImported } from '@/lib/work-order-identity';
 import { 
   addMonths, 
   subMonths, 
@@ -175,6 +175,12 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
       if (onStatusTransition) onStatusTransition(workOrderId, 'checked-out');
     };
 
+    // Imported jobs check out off-app, so they finalize straight from on-site.
+    const handleComplete = (e: React.MouseEvent, workOrderId: string) => {
+      e.stopPropagation();
+      if (onStatusTransition) onStatusTransition(workOrderId, 'completed');
+    };
+
     const handleCardClick = (wo: WorkOrder) => {
         setSelectedMission(wo);
         setIsDetailOpen(true);
@@ -307,9 +313,15 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                                             {wo.status === 'completed' ? (
                                                 <div className="text-[10px] font-bold text-text-green flex items-center gap-1 uppercase"><CircleCheck size={12}/> Done</div>
                                             ) : wo.status === 'in-progress' ? (
-                                                <button className="h-7 px-3 rounded bg-bg-primary border border-border-sub text-[10px] text-text-red uppercase font-bold hover:bg-brand-red-dim" onClick={(e) => handleCheckOut(e, wo.id)}>
-                                                    OUT
-                                                </button>
+                                                isImported(wo) ? (
+                                                    <button className="h-7 px-3 rounded bg-text-green text-white text-[10px] uppercase font-bold hover:bg-text-green/90" onClick={(e) => handleComplete(e, wo.id)}>
+                                                        DONE
+                                                    </button>
+                                                ) : (
+                                                    <button className="h-7 px-3 rounded bg-bg-primary border border-border-sub text-[10px] text-text-red uppercase font-bold hover:bg-brand-red-dim" onClick={(e) => handleCheckOut(e, wo.id)}>
+                                                        OUT
+                                                    </button>
+                                                )
                                             ) : (
                                                 <button 
                                                     className="h-7 px-3 rounded bg-brand-red text-white text-[10px] uppercase font-bold hover:bg-brand-red-hover disabled:opacity-50 disabled:cursor-not-allowed"

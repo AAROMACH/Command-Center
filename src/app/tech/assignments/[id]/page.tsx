@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn, getTacticalLocation, getTacticalCoords, calculateDistance } from '@/lib/utils';
+import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete, reopenStatusFor } from '@/lib/trip-flow';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { externalWorkOrderId } from '@/lib/work-order-identity';
@@ -414,7 +415,7 @@ export default function TechAssignmentDetailPage() {
     const location = await getTacticalLocation();
     await removeFromWeeklyLogs(assignmentId);
     await updateDoc(doc(db, 'assignments', assignmentId), {
-      status: 'checked-out',
+      status: reopenStatusFor(assignment),
       history: arrayUnion({
         type: 'note', date: format(new Date(), 'MM-dd-yyyy'),
         details: `Mission re-opened at ${now} for correction. Location: [${location}].`, user: techName,
@@ -501,31 +502,31 @@ export default function TechAssignmentDetailPage() {
   const techActions = [
     {
       key: 'confirm', label: 'Confirm', icon: Check,
-      show: status === 'assigned',
+      show: canConfirm(assignment),
       handler: handleConfirm,
       cls: 'bg-text-green hover:bg-text-green/90 text-white border-0',
     },
     {
       key: 'start-trip', label: 'Start Trip', icon: Play,
-      show: status === 'confirmed',
+      show: canStartTrip(assignment),
       handler: handleStartTrip,
       cls: 'bg-blue-600 hover:bg-blue-500 text-white border-0',
     },
     {
       key: 'check-in', label: 'Check In', icon: LogIn,
-      show: status === 'on-my-way',
+      show: canCheckIn(assignment),
       handler: handleCheckIn,
       cls: 'bg-text-green hover:bg-text-green/90 text-white border-0',
     },
     {
       key: 'check-out', label: 'Check Out', icon: LogOut,
-      show: status === 'in-progress',
+      show: canCheckOut(assignment),
       handler: handleCheckOut,
       cls: '',
     },
     {
       key: 'complete', label: 'Mark Complete', icon: CheckCircle2,
-      show: status === 'checked-out',
+      show: canComplete(assignment),
       handler: handleMarkComplete,
       cls: 'bg-text-green hover:bg-text-green/90 text-white border-0',
     },

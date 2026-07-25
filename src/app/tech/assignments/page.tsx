@@ -58,6 +58,7 @@ import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { fieldNationUrl, displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { fileCompletedAssignment, resolveCompletionPlacement, type CompletionPlacement } from '@/lib/weekly-log';
+import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete, reopenStatusFor } from '@/lib/trip-flow';
 import { CompletionWeekDialog } from '@/components/completion-week-dialog';
 import { Car } from 'lucide-react';
 import { LogTripDialog } from './components/log-trip-dialog';
@@ -357,7 +358,7 @@ export default function TechAssignmentsPage() {
         try {
             await removeFromWeeklyLogs(woId);
             await updateDoc(docRef, {
-                status: 'checked-out',
+                status: reopenStatusFor(allWorkOrders.find(wo => wo.id === woId)),
                 history: [
                     ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
                     { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission re-opened at ${now} for correction. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
@@ -568,24 +569,29 @@ export default function TechAssignmentsPage() {
                                     </div>
                                 </div>
                                 <div className="mt-3 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                    {wo.status === 'assigned' && (
+                                    {canConfirm(wo) && (
                                         <Button variant="outline" size="sm" className="h-8 flex-1 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleConfirm(wo.id)}>
                                             <Check size={14} className="mr-2"/> Confirm
                                         </Button>
                                     )}
-                                    {wo.status === 'confirmed' && (
+                                    {canStartTrip(wo) && (
                                         <Button variant="outline" size="sm" className="h-8 flex-1 !text-[10px] border-brand-red text-brand-red hover:bg-brand-red-dim" onClick={() => handleStartTrip(wo.id)}>
                                             <Navigation size={14} className="mr-2"/> Start Trip
                                         </Button>
                                     )}
-                                    {wo.status === 'on-my-way' && (
+                                    {canCheckIn(wo) && (
                                         <Button disabled={hasActiveSession} variant="outline" size="sm" className="h-8 flex-1 !text-[10px] border-text-green text-text-green hover:bg-green-dim disabled:opacity-50" onClick={() => handleCheckIn(wo.id)}>
                                             <Play size={14} className="mr-2 fill-current"/> Check In
                                         </Button>
                                     )}
-                                    {wo.status === 'in-progress' && (
+                                    {canCheckOut(wo) && (
                                         <Button variant="outline" size="sm" className="h-8 flex-1 !text-[10px] border-text-red text-text-red hover:bg-brand-red-dim" onClick={() => handleCheckOut(wo.id)}>
                                             <LogOut size={14} className="mr-2"/> Check Out
+                                        </Button>
+                                    )}
+                                    {canComplete(wo) && wo.status === 'in-progress' && (
+                                        <Button variant="default" size="sm" className="h-8 flex-1 !text-[10px] bg-text-green hover:bg-text-green/90" onClick={() => handleMarkComplete(wo.id)}>
+                                            <CheckCircle2 size={14} className="mr-2"/> Complete
                                         </Button>
                                     )}
                                     {wo.status === 'checked-out' && (
@@ -670,34 +676,40 @@ export default function TechAssignmentsPage() {
                                         </td>
                                         <td>
                                             <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                              {wo.status === 'assigned' && (
+                                              {canConfirm(wo) && (
                                                   <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleConfirm(wo.id)}>
                                                       <Check size={14} className="mr-2"/>
                                                       Confirm
                                                   </Button>
                                               )}
-                                              {wo.status === 'confirmed' && (
+                                              {canStartTrip(wo) && (
                                                   <Button variant="outline" size="sm" className="h-8 !text-[10px] border-brand-red text-brand-red hover:bg-brand-red-dim" onClick={() => handleStartTrip(wo.id)}>
                                                       <Navigation size={14} className="mr-2"/>
                                                       Start Trip
                                                   </Button>
                                               )}
-                                              {wo.status === 'on-my-way' && (
-                                                  <Button 
+                                              {canCheckIn(wo) && (
+                                                  <Button
                                                     disabled={hasActiveSession}
-                                                    variant="outline" 
-                                                    size="sm" 
-                                                    className="h-8 !text-[10px] border-text-green text-text-green hover:bg-green-dim disabled:opacity-50" 
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 !text-[10px] border-text-green text-text-green hover:bg-green-dim disabled:opacity-50"
                                                     onClick={() => handleCheckIn(wo.id)}
                                                   >
                                                       <Play size={14} className="mr-2 fill-current"/>
                                                       Check In
                                                   </Button>
                                               )}
-                                              {wo.status === 'in-progress' && (
+                                              {canCheckOut(wo) && (
                                                   <Button variant="outline" size="sm" className="h-8 !text-[10px] border-text-red text-text-red hover:bg-brand-red-dim" onClick={() => handleCheckOut(wo.id)}>
                                                       <LogOut size={14} className="mr-2"/>
                                                       Check Out
+                                                  </Button>
+                                              )}
+                                              {canComplete(wo) && wo.status === 'in-progress' && (
+                                                  <Button variant="default" size="sm" className="h-8 !text-[10px] bg-text-green hover:bg-text-green/90" onClick={() => handleMarkComplete(wo.id)}>
+                                                      <CheckCircle2 size={14} className="mr-2"/>
+                                                      Mark Complete
                                                   </Button>
                                               )}
                                               {wo.status === 'checked-out' && (

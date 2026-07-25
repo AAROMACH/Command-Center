@@ -113,7 +113,7 @@ function ImportedJobAudit({
     const netLabor = localPay - fnFeeLabor;
     const laborPayout = netLabor * 0.50;                 // tech's labor share (stored as finalPay)
     const reimbPayout = netOfFieldNationFee(localReimb); // tech's reimbursement, net of the FN fee
-    const aaromachPay = laborPayout - localOverhead;     // overhead stays a full Aaromach cost
+    const aaromachPay = laborPayout + localOverhead;     // overhead goes back to Aaromach (added)
 
     const handleCommit = () => {
         onUpdateWorkOrder(wo.id, {
@@ -144,7 +144,8 @@ function ImportedJobAudit({
                         <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input
                             type="number"
-                            value={localPay}
+                            value={localPay === 0 ? '' : localPay}
+                            placeholder="0"
                             onChange={(e) => setLocalPay(parseFloat(e.target.value) || 0)}
                             className="h-7 w-full sm:w-20 text-xs pl-5 bg-bg-secondary font-mono font-bold border border-border-sub shadow-none focus-visible:ring-1"
                         />
@@ -156,7 +157,8 @@ function ImportedJobAudit({
                         <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input
                             type="number"
-                            value={localReimb}
+                            value={localReimb === 0 ? '' : localReimb}
+                            placeholder="0"
                             onChange={(e) => setLocalReimb(parseFloat(e.target.value) || 0)}
                             className="h-7 w-full sm:w-20 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
                         />
@@ -173,7 +175,8 @@ function ImportedJobAudit({
                         <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input
                             type="number"
-                            value={localOverhead}
+                            value={localOverhead === 0 ? '' : localOverhead}
+                            placeholder="0"
                             onChange={(e) => setLocalOverhead(parseFloat(e.target.value) || 0)}
                             className="h-7 w-full sm:w-20 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
                         />

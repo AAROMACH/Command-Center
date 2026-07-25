@@ -119,6 +119,10 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
           isAdmin()
           || (isTech() && resource.data.techId == request.auth.uid)
+          // A helper (additional technician) may read the jobs they assisted on,
+          // so the job can surface on their own weekly work log.
+          || (isTech() && resource.data.additionalTechnicianIds is list
+              && request.auth.uid in resource.data.additionalTechnicianIds)
           || (isClient() && resource.data.clientId == request.auth.uid)
       );
       allow create: if isAdmin();

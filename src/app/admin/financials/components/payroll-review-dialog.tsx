@@ -608,6 +608,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             <div className="flex items-center gap-2 text-left flex-wrap">
                                                                 <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide break-words sm:truncate text-left">{displayTitle}</p>
                                                                 {isImported && <Badge variant="outline" className="text-[6px] bg-brand-red-dim border-brand-red/20 text-brand-red h-3 px-1">IMPORTED</Badge>}
+                                                                {item.isHelper && (
+                                                                    <Badge variant="outline" className="text-[6px] bg-blue-400/15 border-blue-400/40 text-blue-400 h-3 px-1">
+                                                                        AS HELPER
+                                                                    </Badge>
+                                                                )}
                                                                 {helperNames.length > 0 && (
                                                                     <Badge variant="outline" className="text-[6px] bg-blue-400/10 border-blue-400/30 text-blue-400 h-3 px-1">
                                                                         HELPER ADDED
@@ -749,6 +754,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             <div className="flex items-center gap-2 text-left flex-wrap">
                                                                 <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide break-words sm:truncate text-left">{displayTitle}</p>
                                                                 {isImported && <Badge variant="outline" className="text-[6px] bg-brand-red-dim border-brand-red/20 text-brand-red h-3 px-1">IMPORTED</Badge>}
+                                                                {item.isHelper && (
+                                                                    <Badge variant="outline" className="text-[6px] bg-blue-400/15 border-blue-400/40 text-blue-400 h-3 px-1">
+                                                                        AS HELPER
+                                                                    </Badge>
+                                                                )}
                                                                 {helperNames.length > 0 && (
                                                                     <Badge variant="outline" className="text-[6px] bg-blue-400/10 border-blue-400/30 text-blue-400 h-3 px-1">
                                                                         HELPER ADDED

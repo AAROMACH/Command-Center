@@ -499,6 +499,10 @@ export type WeeklyLogItem = {
   projectId?: string;
   projectPayoutId?: string;
   workDate?: string;
+  // A job the tech assisted on as a helper (the lead tech owns the primary
+  // entry). Helper entries start at $0 for payroll to price separately.
+  isHelper?: boolean;
+  helperLeadTechId?: string;
   payoutAmount?: number;
   reimbursementAmount?: number;
   payNotes?: string;

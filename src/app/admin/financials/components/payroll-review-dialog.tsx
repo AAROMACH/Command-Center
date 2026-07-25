@@ -285,7 +285,13 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         const reimbursementPay = (localLog.reimbursements || [])
             .filter(r => r.status !== 'pending' && r.status !== 'rejected')
             .reduce((acc, r) => acc + netOfFieldNationFee(r.amount), 0);
-        return assignmentPay + reimbursementPay;
+        // Manually-added missing jobs: imported ones run the FN pay calc (labor
+        // finalPay + reimbursement net of fee); manual ones are a flat pay.
+        const reportPay = (localLog.missingAssignmentReports || []).reduce((acc, r) =>
+            acc + (r.jobType === 'Imported'
+                ? (r.finalPay || 0) + netOfFieldNationFee(r.auditReimbursement || 0)
+                : (r.pay || 0)), 0);
+        return assignmentPay + reimbursementPay + reportPay;
     }, [localLog]);
     
     const reviewReimbursement = async (reimbId: string, decision: 'approved' | 'rejected') => {
@@ -393,6 +399,31 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             });
         } catch (e: any) {
             console.error("Registry update error", e);
+        }
+    }, [localLog, toast]);
+
+    // A manually-added missing job has no assignment/workOrder doc, so the pay
+    // calc writes its results straight back onto the report inside the log.
+    const auditMissingReport = useCallback(async (reportId: string, updates: Partial<WorkOrder>) => {
+        if (!localLog) return;
+        const updatedReports = (localLog.missingAssignmentReports || []).map(r =>
+            r.id === reportId ? {
+                ...r,
+                pay: updates.pay ?? r.pay ?? 0,
+                auditReimbursement: updates.auditReimbursement ?? r.auditReimbursement ?? 0,
+                auditOverhead: updates.auditOverhead ?? r.auditOverhead ?? 0,
+                finalPay: updates.finalPay ?? r.finalPay ?? 0,
+                isAudited: true,
+                auditedAt: new Date().toISOString(),
+                auditedBy: auth.currentUser?.displayName || 'Admin',
+            } : r
+        );
+        try {
+            await updateDoc(doc(db, 'weeklyLogs', localLog.id), { missingAssignmentReports: updatedReports });
+            setLocalLog({ ...localLog, missingAssignmentReports: updatedReports });
+            toast({ title: 'Pay Registry Updated', description: 'Missing-job audit saved to the log.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Sync Error', description: e.message });
         }
     }, [localLog, toast]);
 
@@ -819,45 +850,86 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         })}
 
                                         {localLog?.missingAssignmentReports?.map(report => {
-                                            const isAudited = (report as any).isAudited;
+                                            const isAudited = !!report.isAudited;
+                                            const isImportedReport = report.jobType === 'Imported';
+                                            // Synthetic work order so the imported pay calc + FN link work
+                                            // without an assignment/workOrder doc (there is none).
+                                            const reportWo = {
+                                                id: report.id,
+                                                source: 'Imported',
+                                                externalWorkOrderId: report.externalWorkOrderId,
+                                                pay: report.pay || 0,
+                                                payType: 'fixed',
+                                                auditReimbursement: report.auditReimbursement || 0,
+                                                auditOverhead: report.auditOverhead || 0,
+                                                clientName: report.clientName,
+                                                title: report.summary,
+                                                location: report.location,
+                                                scheduleDate: report.date,
+                                            } as WorkOrder;
                                             return (
                                                 <div key={report.id} className={cn(
-                                                    "p-2 rounded-lg border transition-all flex flex-col sm:flex-row group gap-3 sm:gap-4 sm:min-h-[3rem] sm:items-center",
+                                                    "p-2 rounded-lg border transition-all flex flex-col gap-2",
                                                     isAudited ? "border-green-border/30 bg-bg-primary" : "border-accent-gold/30 bg-bg-secondary shadow-sm"
                                                 )}>
-                                                    <div className="order-2 sm:order-1 shrink-0 text-left">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className={cn(
-                                                                "w-full sm:w-auto h-9 sm:h-7 px-3 uppercase text-[9px] sm:text-[8px] font-bold tracking-widest",
-                                                                isAudited ? "bg-text-green text-white border-text-green" : "border-accent-gold text-accent-gold hover:bg-accent-gold/10"
-                                                            )}
-                                                            onClick={async () => {
-                                                                const updatedReports = (localLog.missingAssignmentReports || []).map(r =>
-                                                                    r.id === report.id ? { ...r, isAudited: !isAudited } : r
-                                                                );
-                                                                await updateDoc(doc(db, 'weeklyLogs', localLog.id), { missingAssignmentReports: updatedReports });
-                                                                setLocalLog({ ...localLog, missingAssignmentReports: updatedReports });
-                                                            }}
-                                                        >
-                                                            {isAudited ? <Check size={12} className="mr-1"/> : <Wrench size={12} className="mr-1"/>}
-                                                            {isAudited ? 'Cleared' : 'Authorize'}
-                                                        </Button>
+                                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                                        <div className="flex-1 text-left min-w-0">
+                                                            <div className="flex items-center gap-2 text-left flex-wrap">
+                                                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide text-left truncate max-w-[220px]">{report.summary || 'Missing Assignment'}</p>
+                                                                <Badge variant="onhold" className="text-[6px] h-3.5 px-1 uppercase">Manually Added · Was Missing</Badge>
+                                                                <Badge variant="outline" className="text-[6px] h-3.5 px-1 uppercase">{report.jobType || 'Manual'}</Badge>
+                                                            </div>
+                                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-[8px] text-text-muted font-medium uppercase tracking-widest text-left">
+                                                                {report.clientName && <span>{report.clientName}</span>}
+                                                                {isImportedReport && report.externalWorkOrderId && (
+                                                                    <a href={fieldNationUrl(reportWo)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-brand-red hover:underline" onClick={e => e.stopPropagation()}>
+                                                                        WO #{report.externalWorkOrderId} <ExternalLink size={9} />
+                                                                    </a>
+                                                                )}
+                                                                <span>{report.date} · {report.location.split(',')[0]}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="shrink-0 text-left" onClick={e => e.stopPropagation()}>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className={cn(
+                                                                    "w-full sm:w-auto h-9 sm:h-7 px-3 uppercase text-[9px] sm:text-[8px] font-bold tracking-widest",
+                                                                    isAudited ? "bg-text-green text-white border-text-green" : "border-accent-gold text-accent-gold hover:bg-accent-gold/10"
+                                                                )}
+                                                                onClick={async () => {
+                                                                    const updatedReports = (localLog.missingAssignmentReports || []).map(r =>
+                                                                        r.id === report.id ? { ...r, isAudited: !isAudited } : r
+                                                                    );
+                                                                    await updateDoc(doc(db, 'weeklyLogs', localLog.id), { missingAssignmentReports: updatedReports });
+                                                                    setLocalLog({ ...localLog, missingAssignmentReports: updatedReports });
+                                                                }}
+                                                            >
+                                                                {isAudited ? <Check size={12} className="mr-1"/> : <Wrench size={12} className="mr-1"/>}
+                                                                {isAudited ? 'Cleared' : 'Authorize'}
+                                                            </Button>
+                                                        </div>
                                                     </div>
 
-                                                    <div className="order-1 sm:order-2 flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-8">
-                                                        <div className="text-left">
-                                                            <div className="flex items-center gap-2 text-left flex-wrap">
-                                                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide text-left">Missing Assignment Report</p>
-                                                                <Badge variant="onhold" className="text-[6px] h-3.5 px-1 uppercase">MANUAL PAY</Badge>
+                                                    {/* Settlement: imported → FN pay calc; manual → flat pay input. */}
+                                                    <div onClick={e => e.stopPropagation()}>
+                                                        {isImportedReport ? (
+                                                            <ImportedJobAudit wo={reportWo} onUpdateWorkOrder={(id, updates) => auditMissingReport(report.id, updates)} approvedReimbTotal={0} />
+                                                        ) : (
+                                                            <div className="flex items-center gap-2">
+                                                                <Label className="text-[8px] font-black uppercase text-text-muted whitespace-nowrap">Manual Pay</Label>
+                                                                <div className="relative">
+                                                                    <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
+                                                                    <Input
+                                                                        type="number"
+                                                                        defaultValue={report.pay || 0}
+                                                                        onBlur={(e) => auditMissingReport(report.id, { pay: parseFloat(e.target.value) || 0, finalPay: parseFloat(e.target.value) || 0 })}
+                                                                        className="h-7 w-28 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub"
+                                                                    />
+                                                                </div>
+                                                                <span className="text-[8px] text-text-muted uppercase">tech payout</span>
                                                             </div>
-                                                            <p className="text-[8px] text-text-muted font-medium uppercase tracking-widest text-left">{report.date} · {report.location.split(',')[0]}</p>
-                                                        </div>
-
-                                                        <div className="w-full sm:w-auto sm:max-w-[400px] p-2 rounded bg-accent-gold-dim/10 border border-accent-gold/10 text-left">
-                                                            <p className="text-[9px] text-text-secondary leading-tight uppercase font-medium italic truncate text-left">&quot;{report.summary}&quot;</p>
-                                                        </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             );

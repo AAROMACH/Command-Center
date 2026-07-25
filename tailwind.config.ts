@@ -73,6 +73,8 @@ export default {
         'border-sub': 'var(--border-sub)',
         'border-alert': 'var(--border-alert)',
         'border-gold': 'var(--border-gold)',
+        'border-red': 'var(--brand-red)',
+        'border-green': 'var(--border-green)',
         'green-border': 'var(--green-border)',
         sidebar: {
           DEFAULT: 'hsl(var(--sidebar-background))',

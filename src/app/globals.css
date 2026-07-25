@@ -7,9 +7,9 @@
     /* Design System Palette - Light Mode.
        Soft gray canvas + white surfaces so cards read with depth instead of
        white-on-white. */
-    --bg-primary: #eceef2;   /* app canvas — soft cool gray */
+    --bg-primary: #e7eaf0;   /* app canvas — deeper cool gray so white cards lift */
     --bg-secondary: #ffffff;  /* cards / surfaces — pop against the canvas */
-    --bg-tertiary: #f2f4f7;   /* subtle hover / table headers / nested blocks */
+    --bg-tertiary: #e2e7ef;   /* sunken — clearly darker than surface (hover / headers) */
     --bg-elevated: #ffffff;   /* dialogs, popovers, dropdowns */
 
     --brand-red: #CC2200;
@@ -23,16 +23,17 @@
 
     --text-primary: #000000;
     --text-secondary: #262626;
-    --text-muted: #525252;
+    --text-muted: #596273;   /* deeper slate so muted labels/ghost text read */
     --text-red: #CC2200;
     --text-gold: #8b6c2a;
     --text-green: #1f8a55;
 
-    --border-main: #d7dbe1;
-    --border-sub: #e7eaef;
+    --border-main: #bcc4d1;  /* stronger — outline buttons/inputs/cards read clearly */
+    --border-sub: #d3dae4;
     --border-alert: #ffcccc;
     --border-gold: #f5e6cc;
     --border-green: #ccebd8;
+    --green-border: #ccebd8;  /* alias: Tailwind `green-border` maps to this */
     --green-dim: #eef9f3;
 
     /* Status Colors */
@@ -43,6 +44,12 @@
     --status-missed: #CC2200;
     --status-pending: #C89B3C;
     --status-approved: #1f8a55;
+
+    /* Priority ramp (severity scale, its own dimension) */
+    --priority-critical: #CC2200;
+    --priority-high: #E0662A;
+    --priority-medium: #C89B3C;
+    --priority-low: #596273;
 
     /* ShadCN Theme Mapping (HSL) - Light */
     --background: 220 19% 94%;
@@ -56,13 +63,13 @@
     --secondary: 0 0% 90%;
     --secondary-foreground: 0 0% 0%;
     --muted: 0 0% 90%;
-    --muted-foreground: 0 0% 32%;
+    --muted-foreground: 219 13% 40%;
     --accent: 43 56% 51%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 215 14% 86%;
-    --input: 215 14% 86%;
+    --border: 217 18% 78%;
+    --input: 217 18% 78%;
     --ring: 10 100% 40%;
     
     --radius: 0.5rem;
@@ -80,10 +87,10 @@
 
   .dark {
     /* Design System Palette - Dark Mode */
-    --bg-primary: #141414;
-    --bg-secondary: #1c1c1c;
-    --bg-tertiary: #242424;
-    --bg-elevated: #2a2a2a;
+    --bg-primary: #121212;
+    --bg-secondary: #1e1e1e;   /* surface lifts off canvas */
+    --bg-tertiary: #2e2e2e;    /* sunken clearly distinct from surface */
+    --bg-elevated: #333333;
 
     --brand-red: #CC2200;
     --brand-red-hover: #E02500;
@@ -95,38 +102,45 @@
     --accent-gold-dim: #2a1f00;
 
     --text-primary: #FFFFFF;
-    --text-secondary: #AAAAAA;
-    --text-muted: #666666;
+    --text-secondary: #B4B4B4;
+    --text-muted: #8a8f99;     /* lifted so muted/ghost text is legible */
     --text-red: #FF4422;
     --text-gold: #C89B3C;
     --text-green: #44CC88;
 
-    --border-main: #2a2a2a;
-    --border-sub: #1f1f1f;
+    --border-main: #3d3d3d;    /* stronger outline against surface */
+    --border-sub: #2c2c2c;
     --border-alert: #5a1000;
     --border-gold: #4a3500;
     --border-green: #0f3a1a;
+    --green-border: #1f5a33;   /* alias: Tailwind `green-border` maps to this */
     --green-dim: #0a1f0f;
 
+    /* Priority ramp (severity scale, its own dimension) */
+    --priority-critical: #FF4422;
+    --priority-high: #F97316;
+    --priority-medium: #C89B3C;
+    --priority-low: #8a8f99;
+
     /* ShadCN Theme Mapping (HSL) - Dark */
-    --background: 0 0% 8%;
+    --background: 0 0% 7%;
     --foreground: 0 0% 100%;
-    --card: 0 0% 11%;
+    --card: 0 0% 12%;
     --card-foreground: 0 0% 100%;
-    --popover: 0 0% 16%;
+    --popover: 0 0% 20%;
     --popover-foreground: 0 0% 100%;
     --primary: 10 100% 40%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 14%;
+    --secondary: 0 0% 18%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 14%;
-    --muted-foreground: 0 0% 40%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 220 7% 57%;
     --accent: 43 56% 51%;
     --accent-foreground: 0 0% 8%;
     --destructive: 10 100% 40%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 16%;
-    --input: 0 0% 14%;
+    --border: 0 0% 24%;
+    --input: 0 0% 24%;
     --ring: 10 100% 40%;
 
     /* Sidebar */
@@ -177,6 +191,10 @@
   .table-header    { @apply text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted; }
   .body-text       { @apply text-[12px] leading-relaxed text-text-secondary; }
   .id-text         { @apply font-mono text-[11px] text-brand-red; }
+  /* External Field Nation work-order numbers — cyan + link affordance, so they
+     read as distinct from internal (red) assignment IDs. */
+  .id-external     { @apply inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-brand-cyan; }
+  .id-external svg { @apply h-2.5 w-2.5; }
 
   /* Page Layout */
   .page-wrapper {

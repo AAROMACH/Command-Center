@@ -413,7 +413,8 @@ export default function TechWeeklyLogPage() {
     const handleReportMissing = async (report: MissingAssignmentReport) => {
         if (!activeLog) return;
         try {
-            const updatedReports = [...(activeLog.missingAssignmentReports || []), report];
+            // Strip undefined fields — Firestore rejects them inside array values.
+            const updatedReports = [...(activeLog.missingAssignmentReports || []), sanitize(report)];
             await updateDoc(doc(db, 'weeklyLogs', activeLog.id), { missingAssignmentReports: updatedReports });
             toast({ title: "Discrepancy Transmitted", description: "Inquiry folder initialized for audit." });
         } catch (e: any) {
@@ -434,8 +435,13 @@ export default function TechWeeklyLogPage() {
         }
         
         // Reimbursements are paid net of the Field Nation fee (tech absorbs it).
+        // Manually-added missing jobs also contribute (imported = labor finalPay
+        // + reimb net of fee; manual = flat pay).
         const total = (activeLog.items || []).reduce((acc, i) => acc + (i.jobPay || 0), 0) +
-                      (activeLog.reimbursements || []).reduce((acc, r) => acc + netOfFieldNationFee(r.amount), 0);
+                      (activeLog.reimbursements || []).reduce((acc, r) => acc + netOfFieldNationFee(r.amount), 0) +
+                      (activeLog.missingAssignmentReports || []).reduce((acc, r) => acc + (r.jobType === 'Imported'
+                          ? (r.finalPay || 0) + netOfFieldNationFee(r.auditReimbursement || 0)
+                          : (r.pay || 0)), 0);
 
         try {
             await updateDoc(doc(db, 'weeklyLogs', activeLog.id), {
@@ -924,14 +930,27 @@ export default function TechWeeklyLogPage() {
                                     <Search size={18}/>
                                 </div>
                                 <div className="min-w-0 text-left flex-1">
-                                    <div className="flex items-center gap-3 text-left">
-                                        <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[520px] text-left">{report.summary || 'Missing Assignment'}</h4>
-                                        <Badge variant="pending" className="text-[7px] h-3.5 uppercase tracking-tighter">Reported Missing</Badge>
+                                    <div className="flex flex-wrap items-center gap-2 text-left">
+                                        <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[420px] text-left">{report.summary || 'Missing Assignment'}</h4>
+                                        <Badge variant="pending" className="text-[7px] h-3.5 uppercase tracking-tighter">Manually Added · Was Missing</Badge>
+                                        {report.jobType && <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter">{report.jobType}</Badge>}
                                     </div>
                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
                                         {report.clientName && <span>{report.clientName}</span>}
+                                        {report.jobType === 'Imported' && report.externalWorkOrderId && (
+                                            <a
+                                                href={`https://app.fieldnation.com/workorders/${report.externalWorkOrderId}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-1 text-brand-red hover:underline"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                WO #{report.externalWorkOrderId} <ExternalLink size={9} />
+                                            </a>
+                                        )}
                                         <span className="flex items-center gap-1.5 text-left"><MapPin size={10} className="text-brand-red shrink-0"/> {formatCityState(report.location)}</span>
                                         <span className="flex items-center gap-1.5 text-left"><CalendarIcon size={10} className="shrink-0"/> {report.date}{report.time ? ` · ${report.time}` : ''}</span>
+                                        {report.pay != null && <span className="text-text-green">${report.pay.toFixed(2)}</span>}
                                     </div>
                                 </div>
                             </CardContent>
@@ -1360,9 +1379,12 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
 }
 
 function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean, setIsOpen: (val: boolean) => void, onSave: (report: MissingAssignmentReport) => void }) {
+    const [jobType, setJobType] = useState<'Manual' | 'Imported'>('Imported');
+
     const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
+        const payRaw = parseFloat(formData.get('pay') as string);
         onSave({
             id: await createDocId(ID_PREFIXES.MISSING_REPORT),
             assignmentId: formData.get('assignmentId') as string,
@@ -1371,7 +1393,11 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
             time: formData.get('time') as string,
             location: formData.get('location') as string,
             summary: formData.get('summary') as string,
+            jobType,
+            externalWorkOrderId: jobType === 'Imported' ? ((formData.get('externalWorkOrderId') as string) || '').trim() : undefined,
+            pay: isNaN(payRaw) ? undefined : payRaw,
         });
+        setJobType('Imported');
         setIsOpen(false);
     };
 
@@ -1386,6 +1412,30 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                     <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Submit details for a mission that is absent from the weekly registry.</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSave} className="space-y-4 py-4 text-left">
+                    {/* Job type — decides how payroll settles it. */}
+                    <div className="space-y-2 text-left">
+                        <Label className="text-[10px] uppercase font-bold text-text-muted">Job Type</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {(['Imported', 'Manual'] as const).map(t => (
+                                <button
+                                    key={t}
+                                    type="button"
+                                    onClick={() => setJobType(t)}
+                                    className={cn(
+                                        "h-10 rounded-md border text-[10px] font-bold uppercase tracking-widest transition-colors",
+                                        jobType === t ? "border-brand-red bg-brand-red/10 text-brand-red" : "border-border-sub bg-bg-primary text-text-muted hover:text-text-primary"
+                                    )}
+                                >
+                                    {t === 'Imported' ? 'Imported (Field Nation)' : 'Manual'}
+                                </button>
+                            ))}
+                        </div>
+                        <p className="text-[9px] text-text-muted normal-case tracking-normal">
+                            {jobType === 'Imported'
+                                ? 'Enter the Field Nation work order number so payroll can open the FN link and run the pay calculator.'
+                                : 'Manual jobs use a flat pay you enter below; payroll verifies it.'}
+                        </p>
+                    </div>
                     <div className="grid grid-cols-2 gap-4 text-left">
                         <div className="space-y-2 text-left">
                             <Label className="text-[10px] uppercase font-bold text-text-muted">Assignment ID</Label>
@@ -1394,6 +1444,18 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                         <div className="space-y-2 text-left">
                             <Label className="text-[10px] uppercase font-bold text-text-muted">Client Entity</Label>
                             <Input name="clientName" className="bg-bg-primary h-10 text-xs uppercase font-bold" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-left">
+                        {jobType === 'Imported' && (
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted">Work Order # (Field Nation)</Label>
+                                <Input name="externalWorkOrderId" required placeholder="e.g. 18927456" className="bg-bg-primary h-10 text-xs uppercase font-bold" />
+                            </div>
+                        )}
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">{jobType === 'Imported' ? 'Job Pay (optional)' : 'Job Pay'}</Label>
+                            <Input name="pay" type="number" step="0.01" required={jobType === 'Manual'} placeholder="0.00" className="bg-bg-primary h-10 text-xs font-mono" />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-left">

@@ -520,6 +520,21 @@ export type MissingAssignmentReport = {
   time?: string;
   location: string;
   summary: string;
+  // A missing job the tech adds to their own log. `jobType` decides how payroll
+  // settles it: 'Imported' carries a Field Nation work order number (payroll
+  // opens the FN link + the pay calculator); 'Manual' is a flat, tech-entered
+  // pay. Either way it is flagged as manually added / originally missing.
+  jobType?: 'Manual' | 'Imported';
+  externalWorkOrderId?: string;
+  pay?: number;
+  // Payroll audit results, persisted back onto the report (there is no
+  // assignment/workOrder doc for a manually-added missing job).
+  auditReimbursement?: number;
+  auditOverhead?: number;
+  finalPay?: number;
+  isAudited?: boolean;
+  auditedAt?: string;
+  auditedBy?: string;
 };
 
 export type FinancialRecord = {

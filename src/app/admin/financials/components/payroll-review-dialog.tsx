@@ -42,6 +42,8 @@ import {
 } from 'lucide-react';
 import { cn, formatCityState } from '@/lib/utils';
 import { FIELD_NATION_FEE_RATE, netOfFieldNationFee } from '@/lib/payroll';
+import { createDocId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
 import { displayWorkOrderNumber, fieldNationUrl } from '@/lib/work-order-identity';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -896,6 +898,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                         WO #{report.externalWorkOrderId} <ExternalLink size={9} />
                                                                     </a>
                                                                 )}
+                                                                {report.assignmentId && <span className="font-mono text-brand-red">ASMT #{report.assignmentId.toUpperCase()}</span>}
                                                                 <span>{report.date} · {report.location.split(',')[0]}</span>
                                                             </div>
                                                         </div>
@@ -908,8 +911,14 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                     isAudited ? "bg-text-green text-white border-text-green" : "border-accent-gold text-accent-gold hover:bg-accent-gold/10"
                                                                 )}
                                                                 onClick={async () => {
+                                                                    // Authorizing a missing job promotes it to a real assignment:
+                                                                    // auto-generate its assignment number the first time (the tech
+                                                                    // never enters one).
+                                                                    const nextAssignmentId = (!isAudited && !report.assignmentId)
+                                                                        ? await createDocId(ID_PREFIXES.ASSIGNMENT)
+                                                                        : report.assignmentId;
                                                                     const updatedReports = (localLog.missingAssignmentReports || []).map(r =>
-                                                                        r.id === report.id ? { ...r, isAudited: !isAudited } : r
+                                                                        r.id === report.id ? { ...r, isAudited: !isAudited, assignmentId: nextAssignmentId } : r
                                                                     );
                                                                     await updateDoc(doc(db, 'weeklyLogs', localLog.id), { missingAssignmentReports: updatedReports });
                                                                     setLocalLog({ ...localLog, missingAssignmentReports: updatedReports });

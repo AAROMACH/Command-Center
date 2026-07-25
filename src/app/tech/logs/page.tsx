@@ -1006,6 +1006,7 @@ export default function TechWeeklyLogPage() {
                                                 WO #{report.externalWorkOrderId} <ExternalLink size={9} />
                                             </a>
                                         )}
+                                        {report.assignmentId && <span className="font-mono text-brand-red">ASMT #{report.assignmentId.toUpperCase()}</span>}
                                         <span className="flex items-center gap-1.5 text-left"><MapPin size={10} className="text-brand-red shrink-0"/> {formatCityState(report.location)}</span>
                                         <span className="flex items-center gap-1.5 text-left"><CalendarIcon size={10} className="shrink-0"/> {report.date}{report.time ? ` · ${report.time}` : ''}</span>
                                         {report.pay != null && <span className="text-text-green">${report.pay.toFixed(2)}</span>}
@@ -1446,7 +1447,8 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
         const payRaw = parseFloat(formData.get('pay') as string);
         onSave({
             id: await createDocId(ID_PREFIXES.MISSING_REPORT),
-            assignmentId: formData.get('assignmentId') as string,
+            // No assignment number here — it is auto-generated when payroll
+            // authorizes the missing job as a real assignment.
             clientName: formData.get('clientName') as string,
             date: formData.get('date') as string,
             time: formData.get('time') as string,
@@ -1495,15 +1497,9 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                                 : 'Manual jobs use a flat pay you enter below; payroll verifies it.'}
                         </p>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 text-left">
-                        <div className="space-y-2 text-left">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted">Assignment ID</Label>
-                            <Input name="assignmentId" className="bg-bg-primary h-10 text-xs uppercase font-bold" />
-                        </div>
-                        <div className="space-y-2 text-left">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted">Client Entity</Label>
-                            <Input name="clientName" className="bg-bg-primary h-10 text-xs uppercase font-bold" />
-                        </div>
+                    <div className="space-y-2 text-left">
+                        <Label className="text-[10px] uppercase font-bold text-text-muted">Client Entity</Label>
+                        <Input name="clientName" className="bg-bg-primary h-10 text-xs uppercase font-bold" />
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-left">
                         {jobType === 'Imported' && (

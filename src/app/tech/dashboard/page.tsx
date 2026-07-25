@@ -46,6 +46,7 @@ import { format, startOfWeek, parseISO } from 'date-fns';
 import { fileCompletedAssignment, resolveCompletionPlacement, type CompletionPlacement } from '@/lib/weekly-log';
 import { CompletionWeekDialog } from '@/components/completion-week-dialog';
 import { cn, getTacticalLocation, compareScheduleTime } from '@/lib/utils';
+import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete } from '@/lib/trip-flow';
 import { NotificationService } from '@/lib/notification-service';
 
 export default function TechDashboardPage() {
@@ -365,24 +366,29 @@ export default function TechDashboardPage() {
                                     </div>
                                 </div>
                                 <div className="flex gap-2 shrink-0 self-start md:self-center">
-                                    {activeJob.status === 'assigned' && (
+                                    {canConfirm(activeJob) && (
                                         <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'confirmed'); }} className="h-9 px-5 bg-accent-gold text-white text-[10px] font-bold uppercase tracking-widest">
                                             <Check size={14} className="mr-2"/> Confirm
                                         </Button>
                                     )}
-                                    {activeJob.status === 'confirmed' && (
+                                    {canStartTrip(activeJob) && (
                                         <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'on-my-way'); }} className="h-9 px-5 bg-brand-red text-white text-[10px] uppercase font-bold tracking-widest">
                                             <Navigation size={14} className="mr-2"/> Start Trip
                                         </Button>
                                     )}
-                                    {activeJob.status === 'on-my-way' && (
+                                    {canCheckIn(activeJob) && (
                                         <Button disabled={hasActiveSession} className="h-9 px-5 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
                                             <Play size={14} className="mr-2 fill-current"/> Check In
                                         </Button>
                                     )}
-                                    {activeJob.status === 'in-progress' && (
+                                    {canCheckOut(activeJob) && (
                                         <Button variant="outline" className="h-9 px-5 border-text-red text-text-red hover:bg-brand-red-dim text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'checked-out'); }}>
                                             <LogOut size={14} className="mr-2"/> Check Out
+                                        </Button>
+                                    )}
+                                    {canComplete(activeJob) && activeJob.status === 'in-progress' && (
+                                        <Button className="h-9 px-5 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
+                                            <CheckCircle2 size={14} className="mr-2"/> Finalize
                                         </Button>
                                     )}
                                     {activeJob.status === 'checked-out' && (

@@ -19,6 +19,7 @@ import {
   eachDayOfInterval, getDay, isSameDay, isToday, parseISO,
 } from 'date-fns';
 import { cn, getTacticalLocation, geocodeAddress, sumRouteMileage, compareScheduleTime, calculateDistance, formatDistance } from '@/lib/utils';
+import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete } from '@/lib/trip-flow';
 import { Button } from '@/components/ui/button';
 
 const MapView = dynamic(() => import('../map/components/map-view'), {
@@ -283,11 +284,11 @@ export default function TechCalendarPage() {
   };
 
   const techActions = (wo: JobWithSrc) => [
-    { key: 'confirm',   label: 'Confirm',       icon: Check,        show: wo.status === 'assigned',    newStatus: 'confirmed',   cls: 'bg-text-green hover:bg-text-green/90 text-white' },
-    { key: 'trip',      label: 'Start Trip',    icon: Play,         show: wo.status === 'confirmed',   newStatus: 'on-my-way',   cls: 'bg-blue-600 hover:bg-blue-600/90 text-white' },
-    { key: 'checkin',   label: 'Check In',      icon: LogIn,        show: wo.status === 'on-my-way',   newStatus: 'in-progress', cls: 'bg-text-green hover:bg-text-green/90 text-white' },
-    { key: 'checkout',  label: 'Check Out',     icon: LogOut,       show: wo.status === 'in-progress', newStatus: 'checked-out', cls: 'bg-amber-500 hover:bg-amber-500/90 text-white' },
-    { key: 'complete',  label: 'Mark Complete', icon: CheckCircle2, show: wo.status === 'checked-out', newStatus: 'completed',   cls: 'bg-text-green hover:bg-text-green/90 text-white' },
+    { key: 'confirm',   label: 'Confirm',       icon: Check,        show: canConfirm(wo),   newStatus: 'confirmed',   cls: 'bg-text-green hover:bg-text-green/90 text-white' },
+    { key: 'trip',      label: 'Start Trip',    icon: Play,         show: canStartTrip(wo), newStatus: 'on-my-way',   cls: 'bg-blue-600 hover:bg-blue-600/90 text-white' },
+    { key: 'checkin',   label: 'Check In',      icon: LogIn,        show: canCheckIn(wo),   newStatus: 'in-progress', cls: 'bg-text-green hover:bg-text-green/90 text-white' },
+    { key: 'checkout',  label: 'Check Out',     icon: LogOut,       show: canCheckOut(wo),  newStatus: 'checked-out', cls: 'bg-amber-500 hover:bg-amber-500/90 text-white' },
+    { key: 'complete',  label: 'Mark Complete', icon: CheckCircle2, show: canComplete(wo),  newStatus: 'completed',   cls: 'bg-text-green hover:bg-text-green/90 text-white' },
     { key: 'reopen',    label: 'Re-open',       icon: RotateCcw,    show: wo.status === 'completed',   newStatus: 'assigned',    cls: 'bg-bg-tertiary hover:bg-bg-primary border border-border-main text-text-secondary' },
   ].filter(a => a.show);
 

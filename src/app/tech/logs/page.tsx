@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog } from '@/lib/types';
 import { externalWorkOrderId, displayWorkOrderNumber, fieldNationUrl, isImported } from '@/lib/work-order-identity';
 import { hasPermission } from '@/lib/permissions';
+import { netOfFieldNationFee } from '@/lib/payroll';
 import { uploadFile } from '@/lib/upload';
 import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
@@ -432,8 +433,9 @@ export default function TechWeeklyLogPage() {
             return;
         }
         
-        const total = (activeLog.items || []).reduce((acc, i) => acc + (i.jobPay || 0), 0) + 
-                      (activeLog.reimbursements || []).reduce((acc, r) => acc + r.amount, 0);
+        // Reimbursements are paid net of the Field Nation fee (tech absorbs it).
+        const total = (activeLog.items || []).reduce((acc, i) => acc + (i.jobPay || 0), 0) +
+                      (activeLog.reimbursements || []).reduce((acc, r) => acc + netOfFieldNationFee(r.amount), 0);
 
         try {
             await updateDoc(doc(db, 'weeklyLogs', activeLog.id), {
@@ -472,7 +474,7 @@ export default function TechWeeklyLogPage() {
     // the payroll settlement so both logs stay correct after a move.
     const logTotal = (items?: WeeklyLogItem[], reimbs?: FinancialRecord[]) =>
         (items || []).reduce((a, i) => a + (i.jobPay || 0), 0)
-        + (reimbs || []).filter(r => r.status !== 'pending' && r.status !== 'rejected').reduce((a, r) => a + (r.amount || 0), 0);
+        + (reimbs || []).filter(r => r.status !== 'pending' && r.status !== 'rejected').reduce((a, r) => a + netOfFieldNationFee(r.amount || 0), 0);
 
     // Move one assignment (weekly-log item) + its reimbursements from the active
     // log into another active log, updating both logs' totals. The item exists in

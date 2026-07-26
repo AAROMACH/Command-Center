@@ -44,7 +44,8 @@ import { cn, formatCityState } from '@/lib/utils';
 import { FIELD_NATION_FEE_RATE, netOfFieldNationFee } from '@/lib/payroll';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
-import { displayWorkOrderNumber, fieldNationUrl } from '@/lib/work-order-identity';
+import { fieldNationUrl } from '@/lib/work-order-identity';
+import { WorkOrderId } from '@/components/work-order-id';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -627,19 +628,10 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 )}
                                                             </div>
                                                             <div className="flex items-center gap-2 mt-0.5 text-[8px] text-text-muted font-medium uppercase tracking-widest text-left">
-                                                                {isImported && wo ? (
-                                                                    <a
-                                                                        href={fieldNationUrl(wo)}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        onClick={e => e.stopPropagation()}
-                                                                        className="text-brand-red font-mono font-bold hover:underline inline-flex items-center gap-1"
-                                                                    >
-                                                                        {displayWorkOrderNumber(wo)}
-                                                                        <ExternalLink size={9} />
-                                                                    </a>
+                                                                {wo ? (
+                                                                    <WorkOrderId wo={wo} className="!text-[8px]" />
                                                                 ) : (
-                                                                    <span className="text-brand-red font-mono font-bold">{displayWorkOrderNumber(wo) || (wo?.id || item.workOrderId || '').toUpperCase()}</span>
+                                                                    <span className="text-brand-red font-mono font-bold">{(item.workOrderId || '').toUpperCase()}</span>
                                                                 )}
                                                                 <span>•</span>
                                                                 <span>{wo?.location ? formatCityState(wo.location) : 'Location Pending'}</span>
@@ -773,19 +765,10 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 )}
                                                             </div>
                                                             <div className="flex items-center gap-2 mt-0.5 text-[8px] text-text-muted font-medium uppercase tracking-widest text-left">
-                                                                {isImported && wo ? (
-                                                                    <a
-                                                                        href={fieldNationUrl(wo)}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        onClick={e => e.stopPropagation()}
-                                                                        className="text-brand-red font-mono font-bold hover:underline inline-flex items-center gap-1"
-                                                                    >
-                                                                        {displayWorkOrderNumber(wo)}
-                                                                        <ExternalLink size={9} />
-                                                                    </a>
+                                                                {wo ? (
+                                                                    <WorkOrderId wo={wo} className="!text-[8px]" />
                                                                 ) : (
-                                                                    <span className="text-brand-red font-mono font-bold">{displayWorkOrderNumber(wo) || (wo?.id || item.workOrderId || '').toUpperCase()}</span>
+                                                                    <span className="text-brand-red font-mono font-bold">{(item.workOrderId || '').toUpperCase()}</span>
                                                                 )}
                                                                 <span>•</span>
                                                                 <span>{wo?.location ? formatCityState(wo.location) : 'Location Pending'}</span>

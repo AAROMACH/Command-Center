@@ -1179,7 +1179,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
     return (
         <Card className={cn(
             "bg-bg-secondary border-border-main overflow-hidden transition-all text-left",
-            isDisputed ? "border-brand-red shadow-[0_0_15px_rgba(204,34,0,0.05)]" : 
+            isDisputed ? "border-brand-red shadow-[0_0_15px_color-mix(in_srgb,var(--brand-red)_5%,transparent)]" :
             isConfirmed ? "border-green-border bg-green-dim/5" : "hover:border-text-muted"
         )}>
             <CardContent className="p-0 text-left">

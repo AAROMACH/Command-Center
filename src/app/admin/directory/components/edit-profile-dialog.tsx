@@ -45,8 +45,8 @@ const ROLE_ICONS: Partial<Record<AppRole, typeof User>> = Object.fromEntries(
 
 const PORTAL_GROUPS: { portal: SubrolePortal; label: string; icon: typeof User; accent: string }[] = [
   { portal: 'admin', label: 'Admin Subroles', icon: ShieldCheck, accent: 'text-brand-red' },
-  { portal: 'tech', label: 'Tech Subroles', icon: Wrench, accent: 'text-[#3b82f6]' },
-  { portal: 'client', label: 'Client Subroles', icon: Building2, accent: 'text-[#10b981]' },
+  { portal: 'tech', label: 'Tech Subroles', icon: Wrench, accent: 'text-brand-blue' },
+  { portal: 'client', label: 'Client Subroles', icon: Building2, accent: 'text-brand-emerald' },
 ];
 
 const SECTIONS = [

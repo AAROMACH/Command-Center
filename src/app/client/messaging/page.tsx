@@ -331,7 +331,7 @@ export default function ClientMessagingPage() {
                     </div>
                   </>
                 )}
-                <span className="ml-auto text-[8px] font-bold uppercase tracking-widest" style={{ color: '#00d36f' }}>Active</span>
+                <span className="ml-auto text-[8px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-green)' }}>Active</span>
               </div>
 
               {/* Messages */}

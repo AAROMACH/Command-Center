@@ -12,9 +12,9 @@ const buttonVariants = cva(
         default: "bg-brand-red text-white hover:bg-brand-red-hover uppercase tracking-wider font-bold text-xs",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         "destructive-outline": "border border-border-red bg-transparent text-text-red hover:bg-brand-red-dim",
-        outline: "border border-border-default bg-transparent hover:bg-bg-tertiary hover:text-text-primary uppercase tracking-wider text-xs",
+        outline: "border border-border-main bg-bg-secondary text-text-secondary hover:bg-bg-tertiary hover:border-text-muted hover:text-text-primary uppercase tracking-wider text-xs",
         secondary: "bg-transparent border border-accent-gold text-accent-gold hover:bg-accent-gold-dim uppercase tracking-wider font-bold text-xs",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+        ghost: "text-text-secondary hover:bg-bg-tertiary hover:text-text-primary",
         link: "text-primary underline-offset-4 hover:underline",
         folder: "inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border-red bg-brand-red-dim px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-brand-red transition-all hover:bg-brand-red hover:text-white",
         dashed: "flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border-default py-4 text-sm font-semibold uppercase tracking-wider text-text-muted transition-colors hover:border-brand-red hover:text-brand-red"

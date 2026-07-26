@@ -5,7 +5,7 @@ import { db } from '@/lib/firebase';
 import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { isClient } from '@/lib/permissions';
 import type { WorkOrder, Technician } from '@/lib/types';
-import { displayWorkOrderNumber } from '@/lib/work-order-identity';
+import { WorkOrderId } from '@/components/work-order-id';
 import { type JobWithSrc, jobTechId, isAssigned, isArchivedJob, mergeJobs } from '@/lib/jobs';
 import { assignJobToTechnician } from '@/lib/job-actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -540,8 +540,8 @@ export default function AdminCalendarPage() {
                   }}
                 />
               ) : (
-                <div className="flex items-center justify-center h-full bg-[#1a1f2e]">
-                  <p className="text-[9px] font-bold uppercase text-[#6b7db3] tracking-widest text-center px-4">
+                <div className="flex items-center justify-center h-full bg-bg-tertiary">
+                  <p className="text-[9px] font-bold uppercase text-text-muted tracking-widest text-center px-4">
                     No jobs on {format(selectedDate, 'EEE, MMM d')}
                   </p>
                 </div>
@@ -595,7 +595,7 @@ export default function AdminCalendarPage() {
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                           <span
                             className="shrink-0 w-5 h-5 rounded-full text-[9px] font-black text-white flex items-center justify-center leading-none"
-                            style={{ background: assigned ? '#22c55e' : '#cc2200' }}
+                            style={{ background: assigned ? 'var(--text-green)' : 'var(--brand-red)' }}
                           >{idx + 1}</span>
                           <span className={cn('text-[12px] font-medium truncate', isSelected ? 'text-brand-red' : 'text-text-primary')}>
                             {wo.title || wo.description || `#${wo.id.slice(0, 6)}`}
@@ -653,9 +653,7 @@ export default function AdminCalendarPage() {
                       'text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-widest',
                       isAssigned(drawerJob) ? 'bg-text-green/10 text-text-green border-text-green/20' : 'bg-brand-red/10 text-brand-red border-brand-red/20',
                     )}>{isAssigned(drawerJob) ? 'Assigned' : 'Unassigned'}</span>
-                    <span className="text-[9px] text-text-muted font-mono uppercase">
-                      {displayWorkOrderNumber(drawerJob)}
-                    </span>
+                    <WorkOrderId wo={drawerJob} className="!text-[9px]" />
                   </div>
                   <p className="text-[13px] font-medium text-text-primary leading-tight">
                     {drawerJob.title || drawerJob.description || `#${drawerJob.id.slice(0, 6)}`}

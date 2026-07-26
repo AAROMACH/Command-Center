@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button';
 const MapView = dynamic(() => import('../map/components/map-view'), {
   ssr: false,
   loading: () => (
-    <div className="flex items-center justify-center h-full bg-[#1a1f2e] text-[#6b7db3] text-[10px] uppercase tracking-widest">
+    <div className="flex items-center justify-center h-full bg-bg-tertiary text-text-muted text-[10px] uppercase tracking-widest">
       Loading map...
     </div>
   ),
@@ -471,8 +471,8 @@ export default function TechCalendarPage() {
                   onSelectJob={(wo) => { if (wo) openDrawer(wo as JobWithSrc); else closeDrawer(); }}
                 />
               ) : (
-                <div className="flex items-center justify-center h-full bg-[#1a1f2e]">
-                  <p className="text-[9px] font-bold uppercase text-[#6b7db3] tracking-widest text-center px-4">
+                <div className="flex items-center justify-center h-full bg-bg-tertiary">
+                  <p className="text-[9px] font-bold uppercase text-text-muted tracking-widest text-center px-4">
                     No jobs on {format(selectedDate, 'EEE, MMM d')}
                   </p>
                 </div>
@@ -523,7 +523,7 @@ export default function TechCalendarPage() {
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                           <span
                             className="shrink-0 w-5 h-5 rounded-full text-[9px] font-black text-white flex items-center justify-center leading-none"
-                            style={{ background: wo.status === 'completed' ? '#6b7db3' : wo.status === 'in-progress' || wo.status === 'confirmed' || wo.status === 'on-my-way' ? '#22c55e' : '#EF9F27' }}
+                            style={{ background: wo.status === 'completed' ? 'var(--text-muted)' : wo.status === 'in-progress' || wo.status === 'confirmed' || wo.status === 'on-my-way' ? 'var(--text-green)' : 'var(--accent-gold)' }}
                           >{idx + 1}</span>
                           <span className={cn('text-[12px] font-medium truncate', isSelected ? 'text-brand-red' : 'text-text-primary')}>
                             {wo.title || wo.description || `#${wo.id.slice(0, 6)}`}

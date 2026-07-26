@@ -26,17 +26,17 @@ const PORTAL_META = {
     icon: Wrench,
     label: 'Field Terminal',
     description: 'Assignments, logs, earnings, and schedule.',
-    color: 'text-[#3b82f6]',
-    border: 'border-[#3b82f6]/30 hover:border-[#3b82f6]',
-    bg: 'bg-[#3b82f6]/5 hover:bg-[#3b82f6]/10',
+    color: 'text-brand-blue',
+    border: 'border-brand-blue/30 hover:border-brand-blue',
+    bg: 'bg-brand-blue/5 hover:bg-brand-blue/10',
   },
   client: {
     icon: Building2,
     label: 'Client Portal',
     description: 'Projects, support tickets, invoices, and sites.',
-    color: 'text-[#10b981]',
-    border: 'border-[#10b981]/30 hover:border-[#10b981]',
-    bg: 'bg-[#10b981]/5 hover:bg-[#10b981]/10',
+    color: 'text-brand-emerald',
+    border: 'border-brand-emerald/30 hover:border-brand-emerald',
+    bg: 'bg-brand-emerald/5 hover:bg-brand-emerald/10',
   },
 };
 

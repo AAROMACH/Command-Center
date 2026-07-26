@@ -45,7 +45,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn, compareScheduleTime } from '@/lib/utils';
 import type { WorkOrder, Technician, Project, WeeklyLog, SiteRequest, ServiceRequest, TimeOffRequest, Invoice } from '@/lib/types';
 import { computeSla, slaStatusColor, SLA_DEFAULTS } from '@/lib/sla';
-import { isServiceTicketDoc } from '@/lib/request-intake';
 import { Timer, AlertTriangle as SlaAlertIcon } from 'lucide-react';
 import { format, parseISO, isSameDay, startOfMonth } from 'date-fns';
 
@@ -105,14 +104,13 @@ export default function DashboardPage() {
         );
 
         const unsubClientReq = onSnapshot(
-            // Open service tickets: app-created tickets use 'new', public-form
-            // tickets 'pending_review'. Intake/partnership docs (also
-            // pending_review) are excluded — they are reviewed on /admin/requests.
+            // All open global requests — service tickets, intake, and partnership
+            // docs alike (app-created use 'new', public-form use 'pending_review').
+            // Mirrors the /admin/requests inbox so the dashboard tile reflects the
+            // full active request volume, not just service tickets.
             query(collection(db, 'clientRequests'), where('status', 'in', ['new', 'pending_review'])),
             (snap) => setClientRequests(
-                snap.docs
-                    .filter(d => isServiceTicketDoc(d.data()))
-                    .map(d => ({ ...d.data(), id: d.id } as ServiceRequest))
+                snap.docs.map(d => ({ ...d.data(), id: d.id } as ServiceRequest))
             )
         );
 
@@ -622,7 +620,7 @@ export default function DashboardPage() {
                         <div className="px-6 border-b border-border-sub bg-bg-secondary/30">
                             <TabsList className="h-12 bg-transparent p-0 gap-8 justify-start">
                                 <TabsTrigger value="tickets" className="tab-trigger-dashboard flex items-center gap-2">
-                                    <ClipboardList size={14} /> Service Tickets <Badge variant="outline" className="h-4 px-1.5 text-[8px]">{pendingRequests.tickets.length}</Badge>
+                                    <ClipboardList size={14} /> Requests <Badge variant="outline" className="h-4 px-1.5 text-[8px]">{pendingRequests.tickets.length}</Badge>
                                 </TabsTrigger>
                                 <TabsTrigger value="timeoff" className="tab-trigger-dashboard flex items-center gap-2">
                                     <Users size={14} /> Personnel Logs <Badge variant="outline" className="h-4 px-1.5 text-[8px]">{pendingRequests.timeOff.length}</Badge>
@@ -646,10 +644,10 @@ export default function DashboardPage() {
                                                     <span className="text-[10px] font-mono font-bold text-brand-red uppercase">{req.id}</span>
                                                     <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : 'medium'} className="text-[7px] h-3.5 px-1 uppercase">{req.priority}</Badge>
                                                 </div>
-                                                <p className="text-xs font-bold text-text-primary uppercase truncate max-w-[400px]">{req.clientName} — {req.requestType}</p>
-                                                <p className="text-[10px] text-text-muted font-medium uppercase tracking-widest">{req.location.split(',')[0]}</p>
+                                                <p className="text-xs font-bold text-text-primary uppercase truncate max-w-[400px]">{[req.clientName, req.requestType].filter(Boolean).join(' — ') || 'Request'}</p>
+                                                <p className="text-[10px] text-text-muted font-medium uppercase tracking-widest">{(req.location || '').split(',')[0] || '—'}</p>
                                             </div>
-                                            <Button size="sm" variant="ghost" className="h-8 text-[9px] font-bold uppercase tracking-widest" onClick={() => { setIsPendingDialogOpen(false); router.push('/admin/dispatch?tab=requests'); }}>Audit detail</Button>
+                                            <Button size="sm" variant="ghost" className="h-8 text-[9px] font-bold uppercase tracking-widest" onClick={() => { setIsPendingDialogOpen(false); router.push('/admin/requests'); }}>Audit detail</Button>
                                         </div>
                                     ))}
                                     {pendingRequests.tickets.length === 0 && <EmptyState icon={ClipboardList} label="Service funnel clear" />}

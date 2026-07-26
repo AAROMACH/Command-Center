@@ -24,15 +24,20 @@ import {
   RotateCcw, UserPlus,
   Wrench, Flag, Database,
   ClipboardList, ExternalLink, Building2,
+  CheckCircle2, Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { db, auth } from '@/lib/firebase';
 import {
-  collection, query, where, getDocs, onSnapshot,
+  collection, query, where, getDocs, getDoc, onSnapshot,
   orderBy, limit, doc, updateDoc, arrayUnion,
 } from 'firebase/firestore';
-import type { WorkOrder, WeeklyLog, AssignmentTimeLog, Technician } from '@/lib/types';
+import type { WorkOrder, WeeklyLog, WeeklyLogItem, AssignmentTimeLog, Technician } from '@/lib/types';
 import { displayWorkOrderNumber } from '@/lib/work-order-identity';
+import { fileCompletedAssignment } from '@/lib/weekly-log';
+import { createDocId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
+import { useToast } from '@/hooks/use-toast';
 import { assignmentTimeLogs } from '@/lib/data';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -150,6 +155,12 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   // Optimistic assigned-tech override so a swap shows the new tech instantly,
   // even though the `mission` prop is a snapshot from when the dialog opened.
   const [optimisticTechId, setOptimisticTechId] = useState<string | null>(null);
+  // Admin force-complete (close out a job on behalf of a tech who can't).
+  const [forceOpen, setForceOpen] = useState(false);
+  const [forceFilePayroll, setForceFilePayroll] = useState(false);
+  const [forcing, setForcing] = useState(false);
+  const [forcedDone, setForcedDone] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'users'), (snap) => {
@@ -158,8 +169,13 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     return () => unsub();
   }, []);
 
-  // Clear the optimistic override whenever a different assignment is shown.
-  useEffect(() => { setOptimisticTechId(null); }, [mission?.id]);
+  // Clear per-assignment UI state whenever a different assignment is shown.
+  useEffect(() => {
+    setOptimisticTechId(null);
+    setForceOpen(false);
+    setForceFilePayroll(false);
+    setForcedDone(false);
+  }, [mission?.id]);
 
   useEffect(() => {
     if (!isOpen || !mission || activeTab !== 'Admin Review') return;
@@ -227,6 +243,65 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   if (!mission) return null;
 
   const leadTech = technicians.find(t => t.id === (optimisticTechId ?? mission.assignedTechnicianId ?? mission.techId));
+
+  // The job's tech id straight off the record — a departed tech may no longer
+  // exist in the users list (so leadTech is undefined), but we can still file
+  // their completed work to payroll by this id.
+  const jobTechId = mission.assignedTechnicianId || mission.techId || mission.assignedTechIds?.[0] || '';
+  const isCompleted = mission.status === 'completed' || forcedDone;
+
+  // Admin override: close out a job the tech can't finish themselves (e.g. an
+  // operative who has left). Writes to whichever collection actually holds the
+  // doc, records who did it, and optionally files the work to the tech's
+  // weekly log so it flows to payroll.
+  const handleForceComplete = async () => {
+    if (!mission || forcing) return;
+    setForcing(true);
+    try {
+      const asmtRef = doc(db, 'assignments', mission.id);
+      const ref = (await getDoc(asmtRef)).exists() ? asmtRef : doc(db, 'workOrders', mission.id);
+      const adminName = auth.currentUser?.displayName || 'Admin';
+      await updateDoc(ref, {
+        status: 'completed',
+        activeTripLogId: null,
+        history: arrayUnion({
+          type: 'status_change',
+          date: format(new Date(), 'MM-dd-yyyy'),
+          details: `Force-completed by ${adminName}${forceFilePayroll ? ' · filed to weekly log' : ''}.`,
+          user: adminName,
+        }),
+      });
+      if (forceFilePayroll && jobTechId) {
+        const item: WeeklyLogItem = {
+          id: await createDocId(ID_PREFIXES.WEEKLY_LOG_ITEM),
+          workOrderId: mission.id,
+          jobPay: mission.pay,
+          outcomeCode: null,
+          isComplete: true,
+          isAdminReviewed: false,
+        };
+        await fileCompletedAssignment({
+          techId: jobTechId,
+          scheduleDate: mission.scheduleDate,
+          item,
+          makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
+        });
+      }
+      setForcedDone(true);
+      setForceOpen(false);
+      toast({
+        title: 'Job force-completed',
+        description: forceFilePayroll && jobTechId
+          ? 'Marked completed and filed to the weekly log.'
+          : 'Marked completed.',
+      });
+    } catch (e) {
+      console.error('Force complete failed', e);
+      toast({ variant: 'destructive', title: 'Could not complete', description: 'Please try again.' });
+    } finally {
+      setForcing(false);
+    }
+  };
 
   // ── Derived values ─────────────────────────────────────────────────────────
   const isConfirmed = mission.status === 'confirmed' || mission.status === 'completed';
@@ -529,6 +604,61 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                 </div>
               ) : (
                 <>
+                  {/* Administrative override — force-complete a job the tech can't close themselves */}
+                  <div className="space-y-4">
+                    <SectionLabel>Administrative Override</SectionLabel>
+                    {isCompleted ? (
+                      <div className="flex items-center gap-3 p-4 rounded-xl border border-border-green bg-green-dim">
+                        <CheckCircle2 size={18} className="text-text-green shrink-0" />
+                        <div>
+                          <p className="text-[11px] font-black uppercase tracking-wide text-text-green">Job Completed</p>
+                          <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest mt-0.5">This assignment is closed out.</p>
+                        </div>
+                      </div>
+                    ) : !forceOpen ? (
+                      <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-border-sub bg-bg-secondary">
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">Force Complete</p>
+                          <p className="text-[9px] text-text-muted font-medium mt-1 leading-relaxed">
+                            Close out this job on the operative&apos;s behalf — for work already done by a tech who can&apos;t mark it complete themselves.
+                          </p>
+                        </div>
+                        <Button variant="secondary" className="shrink-0" onClick={() => setForceOpen(true)}>
+                          <CheckCircle2 size={13} /> Force Complete
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="p-4 rounded-xl border border-accent-gold/40 bg-accent-gold-dim space-y-3">
+                        <p className="text-[11px] font-black uppercase tracking-wide text-text-primary">Confirm force completion</p>
+                        <p className="text-[10px] text-text-muted leading-relaxed">
+                          Marks <span className="font-mono font-bold text-text-primary">{displayWorkOrderNumber(mission)}</span> as{' '}
+                          <span className="text-text-green font-bold">completed</span>
+                          {leadTech ? <> on behalf of <span className="font-bold text-text-primary">{leadTech.name}</span></> : ''}. Recorded in the audit trail.
+                        </p>
+                        {jobTechId && (
+                          <label className="flex items-start gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={forceFilePayroll}
+                              onChange={e => setForceFilePayroll(e.target.checked)}
+                              className="mt-0.5 h-3.5 w-3.5 accent-brand-red"
+                            />
+                            <span className="text-[10px] font-bold text-text-secondary leading-tight">
+                              Also file to {leadTech?.name || 'the tech'}&apos;s weekly log (payroll)
+                            </span>
+                          </label>
+                        )}
+                        <div className="flex items-center gap-2 pt-1">
+                          <Button variant="default" disabled={forcing} onClick={handleForceComplete}>
+                            {forcing ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Confirm Complete
+                          </Button>
+                          <Button variant="outline" disabled={forcing} onClick={() => { setForceOpen(false); setForceFilePayroll(false); }}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <div className="space-y-4">
                     <SectionLabel>Settlement Manifest</SectionLabel>
                     {adminData.weeklyLog ? (

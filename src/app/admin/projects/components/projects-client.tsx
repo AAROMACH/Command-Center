@@ -195,7 +195,7 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
 
                         return (
                             <React.Fragment key={project.id}>
-                                <tr onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer group border-b-0">
+                                <tr onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer group !border-b-0">
                                     <td className="pl-0 pt-4 pb-2">
                                         <div className="flex flex-col items-center justify-center gap-1.5">
                                             <div className="cell-id !text-[10px] font-mono font-bold !mt-0 !text-center">{(project.id || '').toUpperCase()}</div>

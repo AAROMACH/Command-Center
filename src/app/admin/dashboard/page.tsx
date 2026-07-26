@@ -224,10 +224,12 @@ export default function DashboardPage() {
         if (techPortal) router.push(techPortal.path);
     }, [router, techPortal]);
 
+    // Green = good (Elite/Reliable), yellow = moderate (Monitored),
+    // red = unreliable (Restricted/Suspended Review).
     const getTierStyle = (tier?: string) => {
         switch (tier) {
-            case 'Elite': return 'text-text-green bg-text-green/10 border-text-green/20';
-            case 'Reliable': return 'text-text-muted bg-bg-tertiary border-border-sub';
+            case 'Elite':
+            case 'Reliable': return 'text-text-green bg-text-green/10 border-text-green/20';
             case 'Monitored': return 'text-accent-gold bg-accent-gold/10 border-accent-gold/20';
             default: return 'text-brand-red bg-brand-red/10 border-brand-red/20';
         }
@@ -287,11 +289,6 @@ export default function DashboardPage() {
                         <Plus size={11} /> New Work Order
                     </Button>
                 </Link>
-                <Link href="/admin/directory?tab=add">
-                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest gap-1.5">
-                        <Users size={11} /> Add Technician
-                    </Button>
-                </Link>
                 <Link href="/admin/projects?action=new">
                     <Button size="sm" variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest gap-1.5">
                         <FolderKanban size={11} /> New Project
@@ -343,7 +340,7 @@ export default function DashboardPage() {
                         <span className="inline-block px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest bg-accent-gold/10 text-accent-gold border border-accent-gold/20">ON HOLD</span>
                     </div>
                 </Link>
-                <Link href="/admin/financials?tab=payroll">
+                <Link href="/admin/payroll/audit">
                     <div className="bg-bg-secondary p-4 rounded-xl border border-border-default hover:border-border-main transition-colors h-full">
                         <ClipboardList size={13} className="text-text-muted mb-3" />
                         <p className="text-3xl font-bold text-text-primary tracking-tighter">{pendingLogs.length}</p>

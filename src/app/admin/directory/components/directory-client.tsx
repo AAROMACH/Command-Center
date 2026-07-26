@@ -52,7 +52,7 @@ import { AddPersonnelDialog } from './add-personnel-dialog';
 import { EditPersonnelDialog } from './edit-personnel-dialog';
 import { PersonnelDetailDialog } from './personnel-detail-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+import { cn, isInactiveTechnician } from '@/lib/utils';
 import { 
     Select, 
     SelectContent, 
@@ -110,6 +110,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
     const [searchQuery, setSearchQuery] = useState("");
     const [viewMode, setViewMode] = useState<ViewMode>('rows');
     const [sortBy, setSortBy] = useState<SortOption>('name');
+    const [showInactive, setShowInactive] = useState(false);
     const [activeTab, _setActiveTabRaw] = useState(() => { const sp = searchParams.get('tab'); if (sp) return sp; try { return localStorage.getItem('cc:directory:tab') || 'technicians'; } catch { return 'technicians'; } });
     const setActiveTab = (v: string) => { _setActiveTabRaw(v); try { localStorage.setItem('cc:directory:tab', v); } catch {} };
     const [mapViewMode, setMapViewMode] = useState<'techs' | 'sites'>('techs');
@@ -281,17 +282,26 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
 
     const lowercasedQuery = searchQuery.toLowerCase();
 
+    // Deactivated operatives are hidden by default and grouped at the bottom of
+    // the list when revealed, so the active roster stays clean.
+    const inactiveTechCount = useMemo(() => techniciansList.filter(isInactiveTechnician).length, [techniciansList]);
+
     const filteredTechnicians = useMemo(() => {
         return techniciansList
             .filter((tech) =>
                 (tech.name || '').toLowerCase().includes(lowercasedQuery) ||
                 (tech.email || '').toLowerCase().includes(lowercasedQuery)
             )
+            .filter((tech) => showInactive || !isInactiveTechnician(tech))
             .sort((a, b) => {
+                // Active first, inactive grouped at the bottom.
+                const ai = isInactiveTechnician(a) ? 1 : 0;
+                const bi = isInactiveTechnician(b) ? 1 : 0;
+                if (ai !== bi) return ai - bi;
                 if (sortBy === 'reliability') return (b.reliabilityScore || 0) - (a.reliabilityScore || 0);
                 return (a.name || '').localeCompare(b.name || '');
             });
-    }, [techniciansList, lowercasedQuery, sortBy]);
+    }, [techniciansList, lowercasedQuery, sortBy, showInactive]);
 
     const filteredStaff = useMemo(() => {
         return staffList
@@ -495,6 +505,16 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                {activeTab === 'technicians' && inactiveTechCount > 0 && (
+                                    <Button
+                                        variant={showInactive ? 'default' : 'outline'}
+                                        size="sm"
+                                        onClick={() => setShowInactive(v => !v)}
+                                        className={cn("h-7 px-3 text-[8px] uppercase font-bold tracking-widest gap-1.5", showInactive ? "bg-brand-red" : "border-border-sub bg-bg-tertiary")}
+                                    >
+                                        {showInactive ? 'Hide' : 'Show'} Inactive ({inactiveTechCount})
+                                    </Button>
+                                )}
                             </div>
 
                             <div className="search-wrap flex-1 md:flex-none">
@@ -562,7 +582,11 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                 </div>
                                             </div>
                                             <div className="flex items-center justify-center">
-                                                {isRestricted ? (
+                                                {isInactiveTechnician(tech) ? (
+                                                    <Badge variant="outline" className="text-[8px] h-4 uppercase tracking-widest gap-1 text-text-muted border-border-sub bg-bg-tertiary">
+                                                        Inactive
+                                                    </Badge>
+                                                ) : isRestricted ? (
                                                     <Badge variant="missed" className="text-[8px] h-4 uppercase tracking-widest gap-1">
                                                         <Lock size={10}/> FLAG
                                                     </Badge>

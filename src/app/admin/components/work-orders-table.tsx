@@ -55,7 +55,6 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
-  ExternalLink,
   Activity,
   Gauge,
   Type,
@@ -74,12 +73,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { cn, formatCityState, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from "@/lib/utils";
 import { JobDetailDialog } from "@/components/job-detail-dialog";
+import { WorkOrderId } from "@/components/work-order-id";
 import { isPayAdmin } from "@/lib/permissions";
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from "@/lib/reliability";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
-import { fieldNationUrl, displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { createDocId } from '@/lib/generateId';
 import { computeSla, slaStatusColor, formatSlaCountdown } from '@/lib/sla';
 import { auditFieldChange } from '@/lib/audit';
@@ -324,8 +323,6 @@ export const WorkOrdersTable = React.memo(({
     });
   }, [mode, toast]);
 
-  const getFieldNationLink = (order: WorkOrder) => fieldNationUrl(order);
-
   return (
     <div className="w-full space-y-4">
       <div className="table-wrap border-none rounded-none overflow-x-auto">
@@ -344,7 +341,6 @@ export const WorkOrdersTable = React.memo(({
             {paginatedOrders.map((order) => {
               const techId = order.assignedTechnicianId || order.assignedTechIds?.[0] || order.techId;
               const technician = technicians.find(t => t.id === techId);
-              const displayId = displayWorkOrderNumber(order);
               const isLocked = order.status === 'completed';
               
               return (
@@ -352,14 +348,7 @@ export const WorkOrdersTable = React.memo(({
                   <td className="pl-0 py-4">
                     <div className="flex flex-col items-center justify-center gap-1.5">
                       <Badge variant={order.status === 'unassigned' ? 'pending' : order.status === 'completed' ? 'completed' : order.status === 'checked-out' ? 'checked-out' : order.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="capitalize text-[8px] h-4 px-1.5 tracking-widest">{order.status}</Badge>
-                      <div className="flex items-center gap-1.5">
-                        <div className="cell-id !text-[10px] font-mono font-bold group-hover:text-brand-red transition-colors">{(displayId || '').toUpperCase()}</div>
-                        {order.source === 'Imported' && (
-                          <a href={getFieldNationLink(order)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
-                            <ExternalLink size={10} />
-                          </a>
-                        )}
-                      </div>
+                      <WorkOrderId wo={order} className="!text-[10px]" />
                       {order.status !== 'completed' && (() => {
                         const sla = computeSla(order);
                         if (sla.status === 'on-track') return null;

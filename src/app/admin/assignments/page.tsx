@@ -85,7 +85,7 @@ import { DateRange } from "react-day-picker";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { isAdmin, isPayAdmin } from "@/lib/permissions";
 import { PAY_TYPE_LABELS } from '@/lib/constants';
-import { WorkOrderId } from './components/work-order-id';
+import { WorkOrderId } from '@/components/work-order-id';
 import { jobTechId, isArchivedJob, isCompletedJob, jobDateTimeValue } from '@/lib/jobs';
 
 type SortOption = 'date' | 'client' | 'status' | 'pay' | 'tech';

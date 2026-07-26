@@ -12,8 +12,8 @@ import { fieldNationUrl, displayWorkOrderNumber, isImported } from '@/lib/work-o
 export function WorkOrderId({ wo, className = '' }: { wo: WorkOrder; className?: string }) {
   const imported = isImported(wo);
   return (
-    <span className={`inline-flex items-center gap-1.5 ${className}`}>
-      <span className={`cell-id font-mono font-bold ${imported ? 'text-brand-cyan' : 'text-brand-red'}`}>
+    <span className="inline-flex items-center gap-1.5">
+      <span className={`cell-id font-mono font-bold ${imported ? 'text-brand-cyan' : 'text-brand-red'} ${className}`}>
         {displayWorkOrderNumber(wo)}
       </span>
       {imported && (

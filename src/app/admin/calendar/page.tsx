@@ -54,7 +54,9 @@ function CalendarChip({ wo, index, onClick }: { wo: WorkOrder; index: number; on
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       className={cn(
         'flex items-center gap-0.5 rounded px-1 py-0.5 text-[8px] font-bold uppercase tracking-tight cursor-grab active:cursor-grabbing select-none truncate border w-full',
-        assigned
+        wo.status === 'completed'
+          ? 'bg-brand-blue/15 text-brand-blue border-brand-blue/30'
+          : assigned
           ? 'bg-text-green/15 text-text-green border-text-green/30'
           : 'bg-brand-red/15 text-brand-red border-brand-red/30',
         isDragging && 'opacity-30',
@@ -62,7 +64,7 @@ function CalendarChip({ wo, index, onClick }: { wo: WorkOrder; index: number; on
     >
       <span className={cn(
         'shrink-0 w-3.5 h-3.5 rounded-full text-[7px] flex items-center justify-center font-black',
-        assigned ? 'bg-text-green/30' : 'bg-brand-red/30',
+        wo.status === 'completed' ? 'bg-brand-blue/30' : assigned ? 'bg-text-green/30' : 'bg-brand-red/30',
       )}>{index + 1}</span>
       <span className="truncate ml-0.5">{wo.title || wo.description || wo.id.slice(0, 6)}</span>
     </div>

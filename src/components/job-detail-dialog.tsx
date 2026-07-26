@@ -261,7 +261,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     { icon: DollarSign,    label: 'Settlement',  value: payDisplay,                   cls: 'text-[#00d36f]' },
     { icon: Database,      label: 'Registry',    value: mission.source || 'Manual',   cls: 'text-text-primary' },
     { icon: AlertTriangle, label: 'Risk Level',  value: riskLabel,                    cls: riskColor },
-    { icon: ShieldCheck,   label: 'Status',      value: statusLabel,                  cls: isConfirmed ? 'text-[#00d36f]' : isInProgress ? 'text-[#3b82f6]' : 'text-text-muted' },
+    { icon: ShieldCheck,   label: 'Status',      value: statusLabel,                  cls: isConfirmed ? 'text-[#00d36f]' : isInProgress ? 'text-brand-blue' : 'text-text-muted' },
   ];
 
   const actionButtons = [
@@ -274,7 +274,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   ];
 
   const footerItems = [
-    { label: 'Assignment Status', value: statusLabel, cls: isConfirmed ? 'text-[#00d36f]' : isInProgress ? 'text-[#3b82f6]' : 'text-[#f59e0b]' },
+    { label: 'Assignment Status', value: statusLabel, cls: isConfirmed ? 'text-[#00d36f]' : isInProgress ? 'text-brand-blue' : 'text-[#f59e0b]' },
     { label: 'Check-In Status',   value: checkInLabel, cls: checkInColor },
     { label: 'GPS Status',        value: 'Restricted', cls: 'text-[#f59e0b]' },
     { label: 'Last Updated',      value: lastUpdated || '—', cls: 'text-text-primary' },
@@ -302,15 +302,15 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
             <span className={cn(
               'flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-wider',
               isConfirmed ? 'border-[#00d36f]/40 bg-[#00d36f]/10 text-[#00d36f]'
-                : isInProgress ? 'border-[#3b82f6]/30 bg-[#3b82f6]/10 text-[#3b82f6]'
+                : isInProgress ? 'border-brand-blue/30 bg-brand-blue/10 text-brand-blue'
                 : 'border-border-sub bg-bg-secondary text-text-muted'
             )}>
               {isConfirmed && <Check size={8} strokeWidth={3} />}
               {statusLabel}
             </span>
             {mission.source && (
-              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-[#3b82f6]/30 bg-[#3b82f6]/10 text-[#3b82f6] text-[9px] font-black uppercase tracking-wider">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#3b82f6] shrink-0" />
+              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-brand-blue/30 bg-brand-blue/10 text-brand-blue text-[9px] font-black uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-brand-blue shrink-0" />
                 {mission.source}
               </span>
             )}

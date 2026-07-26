@@ -580,11 +580,8 @@ export default function TechAssignmentDetailPage() {
             </>
           )}
           {assignment.source && (
-            <span
-              className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded"
-              style={{ background: 'rgba(59,130,246,0.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.2)' }}
-            >
-              <span className="h-1.5 w-1.5 rounded-full inline-block" style={{ background: '#60a5fa' }} />
+            <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded bg-brand-blue/10 text-brand-blue border border-brand-blue/20">
+              <span className="h-1.5 w-1.5 rounded-full inline-block bg-brand-blue" />
               {assignment.source}
             </span>
           )}

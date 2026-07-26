@@ -33,8 +33,8 @@ import { cn } from '@/lib/utils';
 
 const PORTAL_META: Record<SubrolePortal, { icon: typeof ShieldCheck; label: string; group: string; color: string; border: string; bg: string }> = {
   admin:  { icon: ShieldCheck, label: 'Admin Portal',  group: 'Admin Subroles',  color: 'text-brand-red',   border: 'border-brand-red/30',   bg: 'bg-brand-red/5' },
-  tech:   { icon: Wrench,      label: 'Tech Portal',   group: 'Tech Subroles',   color: 'text-[#3b82f6]',   border: 'border-[#3b82f6]/30',   bg: 'bg-[#3b82f6]/5' },
-  client: { icon: Building2,   label: 'Client Portal', group: 'Client Subroles', color: 'text-[#10b981]',   border: 'border-[#10b981]/30',   bg: 'bg-[#10b981]/5' },
+  tech:   { icon: Wrench,      label: 'Tech Portal',   group: 'Tech Subroles',   color: 'text-brand-blue',    border: 'border-brand-blue/30',    bg: 'bg-brand-blue/5' },
+  client: { icon: Building2,   label: 'Client Portal', group: 'Client Subroles', color: 'text-brand-emerald', border: 'border-brand-emerald/30', bg: 'bg-brand-emerald/5' },
 };
 
 const PORTALS: SubrolePortal[] = ['admin', 'tech', 'client'];

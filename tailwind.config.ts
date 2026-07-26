@@ -59,6 +59,8 @@ export default {
         'brand-red-hover': 'var(--brand-red-hover)',
         'brand-red-dim': 'var(--brand-red-dim)',
         'brand-cyan': 'var(--brand-cyan)',
+        'brand-blue': 'var(--brand-blue)',
+        'brand-emerald': 'var(--brand-emerald)',
         'accent-gold': 'var(--accent-gold)',
         'accent-gold-dim': 'var(--accent-gold-dim)',
         'green-dim': 'var(--green-dim)',

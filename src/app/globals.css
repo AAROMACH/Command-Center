@@ -18,6 +18,12 @@
 
     --brand-cyan: #0095A8;
 
+    /* Blue = "in progress / info" semantic and the Tech-portal accent.
+       Emerald = the Client-portal accent (its own labeled dimension, kept
+       distinct from the status green). */
+    --brand-blue: #2563eb;
+    --brand-emerald: #059669;
+
     --accent-gold: #C89B3C;
     --accent-gold-dim: #fdf8eb;
 
@@ -97,6 +103,10 @@
     --brand-red-dim: #3a0a00;
 
     --brand-cyan: #00e5ff;
+
+    /* Blue / emerald lifted for legibility on the dark canvas */
+    --brand-blue: #60a5fa;
+    --brand-emerald: #10b981;
 
     --accent-gold: #C89B3C;
     --accent-gold-dim: #2a1f00;

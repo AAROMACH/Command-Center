@@ -40,10 +40,10 @@ export function DispatchTabs({
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabsList className="tabs">
-        <TabsTrigger value="unassigned" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
+        <TabsTrigger value="unassigned" className="tab">
           Unassigned <span className="tab-count">({unassignedWorkOrders.length})</span>
         </TabsTrigger>
-        <TabsTrigger value="routes" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
+        <TabsTrigger value="routes" className="tab">
           Routes <span className="tab-count">({routes.length})</span>
         </TabsTrigger>
       </TabsList>

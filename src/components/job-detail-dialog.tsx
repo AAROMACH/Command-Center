@@ -240,11 +240,11 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   const payDisplay = mission.payType === 'hourly' ? `$${mission.pay}/hr` : `$${(mission.pay || 0).toFixed(2)}`;
 
   const riskLabel = mission.slaStatus === 'breached' ? 'Breached' : mission.slaStatus === 'at-risk' ? 'At Risk' : mission.slaStatus === 'met' ? 'Met' : mission.slaStatus === 'on-track' ? 'On Track' : 'Normal';
-  const riskColor = mission.slaStatus === 'breached' ? 'text-[#ef4444]' : mission.slaStatus === 'at-risk' ? 'text-[#f59e0b]' : (mission.slaStatus === 'met' || mission.slaStatus === 'on-track') ? 'text-[#00d36f]' : 'text-text-muted';
+  const riskColor = mission.slaStatus === 'breached' ? 'text-[#ef4444]' : mission.slaStatus === 'at-risk' ? 'text-[#f59e0b]' : (mission.slaStatus === 'met' || mission.slaStatus === 'on-track') ? 'text-text-green' : 'text-text-muted';
 
   const checkInEntry = mission.history?.find(h => h.details?.toLowerCase().includes('check-in') || h.details?.toLowerCase().includes('arrival'));
   const checkInLabel = checkInEntry ? 'Checked In' : 'Not Checked In';
-  const checkInColor = checkInEntry ? 'text-[#00d36f]' : 'text-[#f59e0b]';
+  const checkInColor = checkInEntry ? 'text-text-green' : 'text-[#f59e0b]';
 
   const lastUpdated = mission.history?.length
     ? [...mission.history].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date
@@ -258,10 +258,10 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   const logicGrid = [
     { icon: Wrench,        label: 'Job Type',    value: mission.projectType || '—',  cls: 'text-text-primary' },
     { icon: Flag,          label: 'Priority',    value: mission.priority,             cls: mission.priority === 'critical' ? 'text-[#ef4444]' : mission.priority === 'high' ? 'text-[#f97316]' : mission.priority === 'medium' ? 'text-[#f59e0b]' : 'text-text-muted' },
-    { icon: DollarSign,    label: 'Settlement',  value: payDisplay,                   cls: 'text-[#00d36f]' },
+    { icon: DollarSign,    label: 'Settlement',  value: payDisplay,                   cls: 'text-text-green' },
     { icon: Database,      label: 'Registry',    value: mission.source || 'Manual',   cls: 'text-text-primary' },
     { icon: AlertTriangle, label: 'Risk Level',  value: riskLabel,                    cls: riskColor },
-    { icon: ShieldCheck,   label: 'Status',      value: statusLabel,                  cls: isConfirmed ? 'text-[#00d36f]' : isInProgress ? 'text-brand-blue' : 'text-text-muted' },
+    { icon: ShieldCheck,   label: 'Status',      value: statusLabel,                  cls: isConfirmed ? 'text-text-green' : isInProgress ? 'text-brand-blue' : 'text-text-muted' },
   ];
 
   const actionButtons = [
@@ -274,7 +274,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   ];
 
   const footerItems = [
-    { label: 'Assignment Status', value: statusLabel, cls: isConfirmed ? 'text-[#00d36f]' : isInProgress ? 'text-brand-blue' : 'text-[#f59e0b]' },
+    { label: 'Assignment Status', value: statusLabel, cls: isConfirmed ? 'text-text-green' : isInProgress ? 'text-brand-blue' : 'text-accent-gold' },
     { label: 'Check-In Status',   value: checkInLabel, cls: checkInColor },
     { label: 'GPS Status',        value: 'Restricted', cls: 'text-[#f59e0b]' },
     { label: 'Last Updated',      value: lastUpdated || '—', cls: 'text-text-primary' },
@@ -301,7 +301,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
             </span>
             <span className={cn(
               'flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-wider',
-              isConfirmed ? 'border-[#00d36f]/40 bg-[#00d36f]/10 text-[#00d36f]'
+              isConfirmed ? 'border-text-green/40 bg-text-green/10 text-text-green'
                 : isInProgress ? 'border-brand-blue/30 bg-brand-blue/10 text-brand-blue'
                 : 'border-border-sub bg-bg-secondary text-text-muted'
             )}>
@@ -324,7 +324,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
           {/* Metadata row */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="flex items-center gap-1.5">
-              <MapPin size={12} className="text-[#00d36f] shrink-0" />
+              <MapPin size={12} className="text-text-green shrink-0" />
               <span className="text-[11px] text-text-secondary font-medium">{formatCityState(mission.location)}</span>
             </span>
             <span className="text-[#333] select-none">|</span>
@@ -339,7 +339,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
             </span>
             <span className="text-[#333] select-none">|</span>
             <span className="flex items-center gap-1.5">
-              <DollarSign size={12} className="text-[#00d36f] shrink-0" />
+              <DollarSign size={12} className="text-text-green shrink-0" />
               <span className="text-[11px] text-text-secondary font-medium">{payDisplay}</span>
             </span>
             {mission.clientName && (
@@ -362,7 +362,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                 className={cn(
                   'text-[10px] font-black uppercase tracking-widest px-4 py-3 transition-colors border-b-2 -mb-px',
                   activeTab === tab
-                    ? 'text-white border-[#00d36f]'
+                    ? 'text-white border-text-green'
                     : 'text-[#555] border-transparent hover:text-[#888]'
                 )}
               >

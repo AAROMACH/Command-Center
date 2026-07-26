@@ -61,6 +61,7 @@ export default {
         'brand-cyan': 'var(--brand-cyan)',
         'brand-blue': 'var(--brand-blue)',
         'brand-emerald': 'var(--brand-emerald)',
+        'brand-purple': 'var(--brand-purple)',
         'accent-gold': 'var(--accent-gold)',
         'accent-gold-dim': 'var(--accent-gold-dim)',
         'green-dim': 'var(--green-dim)',

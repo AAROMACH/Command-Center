@@ -21,9 +21,9 @@ type WorkOrdersClientProps = {
 };
 
 const PAY_PILL: Record<string, string> = {
-  fixed:   "bg-[#E6F1FB] text-[#0C447C]",
-  hourly:  "bg-[#EAF3DE] text-[#27500A]",
-  blended: "bg-[#EEEDFE] text-[#3C3489]",
+  fixed:   "bg-brand-blue/10 text-brand-blue",
+  hourly:  "bg-brand-emerald/10 text-brand-emerald",
+  blended: "bg-brand-purple/10 text-brand-purple",
 };
 
 function PayDisplay({ wo }: { wo: WorkOrder }) {

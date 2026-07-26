@@ -23,6 +23,7 @@
        distinct from the status green). */
     --brand-blue: #2563eb;
     --brand-emerald: #059669;
+    --brand-purple: #6d28d9;
 
     --accent-gold: #C89B3C;
     --accent-gold-dim: #fdf8eb;
@@ -107,6 +108,7 @@
     /* Blue / emerald lifted for legibility on the dark canvas */
     --brand-blue: #60a5fa;
     --brand-emerald: #10b981;
+    --brand-purple: #a78bfa;
 
     --accent-gold: #C89B3C;
     --accent-gold-dim: #2a1f00;

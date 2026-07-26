@@ -240,11 +240,11 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   const payDisplay = mission.payType === 'hourly' ? `$${mission.pay}/hr` : `$${(mission.pay || 0).toFixed(2)}`;
 
   const riskLabel = mission.slaStatus === 'breached' ? 'Breached' : mission.slaStatus === 'at-risk' ? 'At Risk' : mission.slaStatus === 'met' ? 'Met' : mission.slaStatus === 'on-track' ? 'On Track' : 'Normal';
-  const riskColor = mission.slaStatus === 'breached' ? 'text-[#ef4444]' : mission.slaStatus === 'at-risk' ? 'text-[#f59e0b]' : (mission.slaStatus === 'met' || mission.slaStatus === 'on-track') ? 'text-text-green' : 'text-text-muted';
+  const riskColor = mission.slaStatus === 'breached' ? 'text-priority-critical' : mission.slaStatus === 'at-risk' ? 'text-accent-gold' : (mission.slaStatus === 'met' || mission.slaStatus === 'on-track') ? 'text-text-green' : 'text-text-muted';
 
   const checkInEntry = mission.history?.find(h => h.details?.toLowerCase().includes('check-in') || h.details?.toLowerCase().includes('arrival'));
   const checkInLabel = checkInEntry ? 'Checked In' : 'Not Checked In';
-  const checkInColor = checkInEntry ? 'text-text-green' : 'text-[#f59e0b]';
+  const checkInColor = checkInEntry ? 'text-text-green' : 'text-accent-gold';
 
   const lastUpdated = mission.history?.length
     ? [...mission.history].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date
@@ -257,7 +257,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
 
   const logicGrid = [
     { icon: Wrench,        label: 'Job Type',    value: mission.projectType || '—',  cls: 'text-text-primary' },
-    { icon: Flag,          label: 'Priority',    value: mission.priority,             cls: mission.priority === 'critical' ? 'text-[#ef4444]' : mission.priority === 'high' ? 'text-[#f97316]' : mission.priority === 'medium' ? 'text-[#f59e0b]' : 'text-text-muted' },
+    { icon: Flag,          label: 'Priority',    value: mission.priority,             cls: mission.priority === 'critical' ? 'text-priority-critical' : mission.priority === 'high' ? 'text-priority-high' : mission.priority === 'medium' ? 'text-accent-gold' : 'text-text-muted' },
     { icon: DollarSign,    label: 'Settlement',  value: payDisplay,                   cls: 'text-text-green' },
     { icon: Database,      label: 'Registry',    value: mission.source || 'Manual',   cls: 'text-text-primary' },
     { icon: AlertTriangle, label: 'Risk Level',  value: riskLabel,                    cls: riskColor },
@@ -276,7 +276,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   const footerItems = [
     { label: 'Assignment Status', value: statusLabel, cls: isConfirmed ? 'text-text-green' : isInProgress ? 'text-brand-blue' : 'text-accent-gold' },
     { label: 'Check-In Status',   value: checkInLabel, cls: checkInColor },
-    { label: 'GPS Status',        value: 'Restricted', cls: 'text-[#f59e0b]' },
+    { label: 'GPS Status',        value: 'Restricted', cls: 'text-accent-gold' },
     { label: 'Last Updated',      value: lastUpdated || '—', cls: 'text-text-primary' },
   ];
 
@@ -284,7 +284,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetContent
         side="right"
-        className="sm:max-w-[680px] w-full p-0 gap-0 bg-bg-elevated border-l border-[#252525] shadow-2xl overflow-hidden flex flex-col [&>button]:top-5 [&>button]:right-5 [&>button]:text-text-muted [&>button]:hover:text-text-primary"
+        className="sm:max-w-[680px] w-full p-0 gap-0 bg-bg-elevated border-l border-border-main shadow-2xl overflow-hidden flex flex-col [&>button]:top-5 [&>button]:right-5 [&>button]:text-text-muted [&>button]:hover:text-text-primary"
       >
 
         {/* a11y */}
@@ -327,26 +327,26 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
               <MapPin size={12} className="text-text-green shrink-0" />
               <span className="text-[11px] text-text-secondary font-medium">{formatCityState(mission.location)}</span>
             </span>
-            <span className="text-[#333] select-none">|</span>
+            <span className="text-border-sub select-none">|</span>
             <span className="flex items-center gap-1.5">
-              <Calendar size={12} className="text-[#f59e0b] shrink-0" />
+              <Calendar size={12} className="text-accent-gold shrink-0" />
               <span className="text-[11px] text-text-secondary font-medium">{mission.scheduleDate || 'TBD'}</span>
             </span>
-            <span className="text-[#333] select-none">|</span>
+            <span className="text-border-sub select-none">|</span>
             <span className="flex items-center gap-1.5">
               <Clock size={12} className="text-[#f43f5e] shrink-0" />
               <span className="text-[11px] text-text-secondary font-medium">{displayTime(mission.scheduleTime)}</span>
             </span>
-            <span className="text-[#333] select-none">|</span>
+            <span className="text-border-sub select-none">|</span>
             <span className="flex items-center gap-1.5">
               <DollarSign size={12} className="text-text-green shrink-0" />
               <span className="text-[11px] text-text-secondary font-medium">{payDisplay}</span>
             </span>
             {mission.clientName && (
               <>
-                <span className="text-[#333] select-none">|</span>
+                <span className="text-border-sub select-none">|</span>
                 <span className="flex items-center gap-1.5">
-                  <Building2 size={12} className="text-[#8b5cf6] shrink-0" />
+                  <Building2 size={12} className="text-brand-purple shrink-0" />
                   <span className="text-[11px] text-text-secondary font-medium">{mission.clientName}</span>
                 </span>
               </>
@@ -354,7 +354,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
           </div>
 
           {/* Tab bar */}
-          <div className="flex gap-0 border-b border-[#252525] mt-4">
+          <div className="flex gap-0 border-b border-border-main mt-4">
             {TABS.map(tab => (
               <button
                 key={tab}
@@ -362,8 +362,8 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                 className={cn(
                   'text-[10px] font-black uppercase tracking-widest px-4 py-3 transition-colors border-b-2 -mb-px',
                   activeTab === tab
-                    ? 'text-white border-text-green'
-                    : 'text-[#555] border-transparent hover:text-[#888]'
+                    ? 'text-text-primary border-text-green'
+                    : 'text-text-muted border-transparent hover:text-text-secondary'
                 )}
               >
                 {tab}
@@ -382,12 +382,12 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                 {/* Assignment Logic */}
-                <div className="rounded-xl border border-[#2a2a2a] bg-bg-secondary overflow-hidden">
-                  <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#222]">
+                <div className="rounded-xl border border-border-main bg-bg-secondary overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-sub">
                     <Wrench size={12} className="text-text-muted" />
                     <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Assignment Logic</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-px bg-[#222]">
+                  <div className="grid grid-cols-2 gap-px bg-border-sub">
                     {logicGrid.map(({ icon: Icon, label, value, cls }) => (
                       <div key={label} className="flex items-start gap-3 p-3 bg-bg-secondary">
                         <Icon size={13} className="text-text-muted mt-0.5 shrink-0" />
@@ -401,9 +401,9 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                 </div>
 
                 {/* Lead Allocation */}
-                <div className="rounded-xl border border-[#2a2a2a] bg-bg-secondary overflow-hidden">
-                  <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#222]">
-                    <UserPlus size={12} className="text-[#8b5cf6]" />
+                <div className="rounded-xl border border-border-main bg-bg-secondary overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-sub">
+                    <UserPlus size={12} className="text-brand-purple" />
                     <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Lead Allocation</p>
                   </div>
                   {leadTech ? (
@@ -420,16 +420,16 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                           <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">{leadTech.role || 'Field Technician'}</p>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <a href={`tel:${leadTech.phone}`} className="w-8 h-8 rounded-lg border border-[#333] bg-bg-primary flex items-center justify-center hover:border-[#555] transition-colors">
+                          <a href={`tel:${leadTech.phone}`} className="w-8 h-8 rounded-lg border border-border-sub bg-bg-primary flex items-center justify-center hover:border-border-main transition-colors">
                             <Phone size={13} className="text-text-muted" />
                           </a>
-                          <a href={`mailto:${leadTech.email}`} className="w-8 h-8 rounded-lg border border-[#333] bg-bg-primary flex items-center justify-center hover:border-[#555] transition-colors">
+                          <a href={`mailto:${leadTech.email}`} className="w-8 h-8 rounded-lg border border-border-sub bg-bg-primary flex items-center justify-center hover:border-border-main transition-colors">
                             <Mail size={13} className="text-text-muted" />
                           </a>
                         </div>
                       </div>
-                      <div className="h-px bg-[#222] mx-4" />
-                      <div className="flex items-stretch divide-x divide-[#222]">
+                      <div className="h-px bg-border-sub mx-4" />
+                      <div className="flex items-stretch divide-x divide-border-sub">
                         {[
                           { icon: ShieldCheck, stat: leadTech.reliabilityScore ?? '—', sub: 'Reliability' },
                           { icon: ClipboardList, stat: leadTech.currentWorkload ?? '—', sub: 'Jobs Completed' },
@@ -458,7 +458,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                   <button
                     key={label}
                     onClick={onClick}
-                    className="flex flex-col items-center gap-1.5 py-3 px-1 rounded-lg border border-[#2a2a2a] bg-bg-secondary hover:bg-bg-tertiary hover:border-[#444] transition-colors"
+                    className="flex flex-col items-center gap-1.5 py-3 px-1 rounded-lg border border-border-main bg-bg-secondary hover:bg-bg-tertiary hover:border-border-main transition-colors"
                   >
                     <Icon size={14} className="text-text-muted" />
                     <span className="text-[8px] font-black uppercase tracking-wider text-text-muted leading-tight text-center">{label}</span>
@@ -614,11 +614,11 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
         </div>
 
         {/* ── Footer ─────────────────────────────────────────────────── */}
-        <div className="shrink-0 border-t border-[#222] bg-[#0d0d0d]">
-          <div className="flex items-stretch divide-x divide-[#222]">
+        <div className="shrink-0 border-t border-border-sub bg-bg-primary">
+          <div className="flex items-stretch divide-x divide-border-sub">
             {footerItems.map(({ label, value, cls }) => (
               <div key={label} className="flex-1 flex flex-col gap-0.5 px-4 py-3 min-w-0">
-                <p className="text-[8px] font-black text-[#444] uppercase tracking-widest truncate">{label}</p>
+                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest truncate">{label}</p>
                 <p className={cn('text-[11px] font-bold truncate', cls)}>{value}</p>
               </div>
             ))}

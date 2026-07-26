@@ -85,7 +85,7 @@ import { DateRange } from "react-day-picker";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { isAdmin, isPayAdmin } from "@/lib/permissions";
 import { PAY_TYPE_LABELS } from '@/lib/constants';
-import { fieldNationUrl, displayWorkOrderNumber } from '@/lib/work-order-identity';
+import { WorkOrderId } from './components/work-order-id';
 import { jobTechId, isArchivedJob, isCompletedJob, jobDateTimeValue } from '@/lib/jobs';
 
 type SortOption = 'date' | 'client' | 'status' | 'pay' | 'tech';
@@ -621,12 +621,7 @@ export default function AssignmentsHubPage() {
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
                                         <div className="flex items-center gap-1.5">
-                                            <span className="cell-id font-mono text-brand-red font-bold">{displayWorkOrderNumber(wo)}</span>
-                                            {wo.source === 'Imported' && (
-                                                <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
-                                                    <ExternalLink size={10} />
-                                                </a>
-                                            )}
+                                            <WorkOrderId wo={wo} />
                                         </div>
                                         <p className="text-xs font-bold text-text-primary uppercase tracking-wide mt-1 break-words">{wo.title || wo.description}</p>
                                         <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{wo.clientName}</p>
@@ -708,12 +703,7 @@ export default function AssignmentsHubPage() {
                                         <td className="text-left pl-6 py-4">
                                             <div className="flex flex-col items-start gap-1.5 text-left">
                                                 <div className="flex items-center gap-1.5 text-left">
-                                                    <div className="cell-id font-mono text-brand-red font-bold text-left">{displayWorkOrderNumber(wo)}</div>
-                                                    {wo.source === 'Imported' && (
-                                                    <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
-                                                        <ExternalLink size={10} />
-                                                    </a>
-                                                    )}
+                                                    <WorkOrderId wo={wo} />
                                                 </div>
                                                 <Badge variant={wo.status === 'in-progress' ? 'inprogress' : wo.status === 'checked-out' ? 'checked-out' : 'scheduled'} className="text-[8px] h-4 px-1.5 uppercase tracking-widest">{wo.status}</Badge>
                                             </div>
@@ -821,12 +811,7 @@ export default function AssignmentsHubPage() {
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
                                         <div className="flex items-center gap-1.5">
-                                            <span className="cell-id font-mono text-brand-red font-bold">{displayWorkOrderNumber(wo)}</span>
-                                            {wo.source === 'Imported' && (
-                                                <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
-                                                    <ExternalLink size={10} />
-                                                </a>
-                                            )}
+                                            <WorkOrderId wo={wo} />
                                         </div>
                                         <p className="text-xs font-bold text-text-primary uppercase tracking-wide mt-1 break-words">{wo.title || wo.description}</p>
                                         <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{wo.clientName}</p>
@@ -905,12 +890,7 @@ export default function AssignmentsHubPage() {
                                             <div className="flex items-center gap-3 text-left">
                                                 <div className="flex flex-col items-center text-center">
                                                     <div className="flex items-center gap-1.5 text-center">
-                                                      <div className="cell-id font-mono text-brand-red text-center">{displayWorkOrderNumber(wo)}</div>
-                                                      {wo.source === 'Imported' && (
-                                                        <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
-                                                          <ExternalLink size={10} />
-                                                        </a>
-                                                      )}
+                                                      <WorkOrderId wo={wo} />
                                                     </div>
                                                     <Badge variant="completed" className="text-[8px] h-3.5 mt-1">CLOSED</Badge>
                                                 </div>

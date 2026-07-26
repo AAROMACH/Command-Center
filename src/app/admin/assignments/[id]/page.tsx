@@ -82,9 +82,9 @@ function TechCard({ tech, label }: { tech: Technician; label?: string }) {
             <span
               className="shrink-0 text-[7px] font-black uppercase tracking-widest px-1.5 py-px rounded border"
               style={{
-                background: isPrimary ? 'rgba(0,211,111,0.1)' : 'rgba(245,158,11,0.1)',
-                color: isPrimary ? '#00d36f' : '#f59e0b',
-                borderColor: isPrimary ? 'rgba(0,211,111,0.2)' : 'rgba(245,158,11,0.2)',
+                background: isPrimary ? 'var(--green-dim)' : 'var(--accent-gold-dim)',
+                color: isPrimary ? 'var(--text-green)' : 'var(--accent-gold)',
+                borderColor: isPrimary ? 'var(--border-green)' : 'var(--border-gold)',
               }}
             >
               {label}
@@ -95,7 +95,7 @@ function TechCard({ tech, label }: { tech: Technician; label?: string }) {
           <Phone size={8} />
           <Mail size={8} />
           <div className="w-px h-3 bg-border-sub" />
-          <ShieldCheck size={8} style={{ color: '#00d36f' }} />
+          <ShieldCheck size={8} style={{ color: 'var(--text-green)' }} />
           <span className="text-[9px] font-mono text-text-secondary">{(tech.reliabilityScore ?? 0).toFixed(1)}</span>
           <Calendar size={8} />
           <span className="text-[9px] font-mono text-text-secondary">{tech.currentWorkload ?? '—'}</span>
@@ -279,7 +279,7 @@ export default function AssignmentDetailPage() {
   const dayNum   = dateObj ? format(dateObj, 'd') : '—';
   const yearStr  = dateObj ? format(dateObj, 'yyyy') : '—';
 
-  const HISTORY_COLORS = ['#00d36f', '#f59e0b', '#3b82f6', '#f43f5e'];
+  const HISTORY_COLORS = ['var(--text-green)', '#f59e0b', '#3b82f6', '#f43f5e'];
   const recentHistory = [...(assignment.history || [])].reverse().slice(0, 6);
 
   const jobDetailRows: { label: string; value?: string; icon: React.ElementType }[] = [
@@ -294,19 +294,19 @@ export default function AssignmentDetailPage() {
   const statusStripItems = [
     { icon: Flag,          label: 'Priority',   value: assignment.priority
         ? assignment.priority.charAt(0).toUpperCase() + assignment.priority.slice(1) : '—',
-      color: assignment.priority === 'critical' ? '#f43f5e'
-        : assignment.priority === 'high' ? '#f97316'
-        : assignment.priority === 'medium' ? '#f59e0b'
+      color: assignment.priority === 'critical' ? 'var(--priority-critical)'
+        : assignment.priority === 'high' ? 'var(--priority-high)'
+        : assignment.priority === 'medium' ? 'var(--priority-medium)'
         : undefined },
     { icon: ShieldCheck,   label: 'Status',     value: getStatusLabel(assignment.status),
-      color: assignment.status === 'confirmed' || assignment.status === 'completed' ? '#00d36f' : undefined },
+      color: assignment.status === 'confirmed' || assignment.status === 'completed' ? 'var(--text-green)' : undefined },
     { icon: AlertTriangle, label: 'Risk Level', value: riskLabel,
-      color: riskLabel === 'At Risk' || riskLabel === 'Breached' ? '#f59e0b' : undefined },
+      color: riskLabel === 'At Risk' || riskLabel === 'Breached' ? 'var(--accent-gold)' : undefined },
     { icon: DollarSign,    label: 'Pay Type',   value: assignment.payType
         ? assignment.payType.charAt(0).toUpperCase() + assignment.payType.slice(1) : '—',
       color: undefined },
     { icon: DollarSign,    label: 'Pay Amount', value: payLabel,
-      color: '#00d36f' },
+      color: 'var(--text-green)' },
   ];
 
   return (
@@ -325,11 +325,11 @@ export default function AssignmentDetailPage() {
           <h1 className="text-xl font-black uppercase tracking-tight text-text-primary leading-none">
             {assignment.title || assignment.description?.split('\n')[0]?.slice(0, 80) || assignmentId.toUpperCase()}
           </h1>
-          <ShieldCheck size={18} className="shrink-0 mt-0.5" style={{ color: '#00d36f' }} />
+          <ShieldCheck size={18} className="shrink-0 mt-0.5" style={{ color: 'var(--text-green)' }} />
           {assignment.priority && (
             <span
               className="text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded border shrink-0 self-start"
-              style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b', borderColor: 'rgba(245,158,11,0.3)' }}
+              style={{ background: 'rgba(245,158,11,0.1)', color: 'var(--accent-gold)', borderColor: 'rgba(245,158,11,0.3)' }}
             >
               {assignment.priority} Priority
             </span>
@@ -339,7 +339,7 @@ export default function AssignmentDetailPage() {
         <div className="flex items-center gap-2 flex-wrap">
           <span
             className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded"
-            style={{ background: 'rgba(0,211,111,0.12)', color: '#00d36f', border: '1px solid rgba(0,211,111,0.25)' }}
+            style={{ background: 'rgba(0,211,111,0.12)', color: 'var(--text-green)', border: '1px solid rgba(0,211,111,0.25)' }}
           >
             <Check size={9} /> {getStatusLabel(assignment.status)}
           </span>
@@ -490,12 +490,12 @@ export default function AssignmentDetailPage() {
           {/* Location header */}
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-border-sub shrink-0 gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
-              <MapPin size={11} style={{ color: '#00d36f' }} className="shrink-0" />
+              <MapPin size={11} style={{ color: 'var(--text-green)' }} className="shrink-0" />
               <span className="text-[10px] font-bold text-text-primary truncate">{assignment.location || '—'}</span>
             </div>
             <button
               className="text-[8px] font-black uppercase tracking-widest flex items-center gap-0.5 shrink-0 transition-colors"
-              style={{ color: '#00d36f' }}
+              style={{ color: 'var(--text-green)' }}
               onClick={() => window.open(
                 `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(assignment.location || '')}`,
                 '_blank', 'noopener'
@@ -606,7 +606,7 @@ export default function AssignmentDetailPage() {
             {relatedLogs.map(log => (
               <div key={log.id} className="p-3 rounded-lg bg-bg-primary border border-border-sub">
                 <p className="text-[9px] font-bold uppercase text-text-primary">Week of {log.weekOf}</p>
-                <p className="text-sm font-mono font-bold mt-0.5" style={{ color: '#00d36f' }}>
+                <p className="text-sm font-mono font-bold mt-0.5" style={{ color: 'var(--text-green)' }}>
                   ${(log.totalPayout || 0).toFixed(2)}
                 </p>
                 <Badge variant="outline" className="h-4 text-[7px] mt-1 uppercase">{log.status}</Badge>

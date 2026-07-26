@@ -35,7 +35,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           {/* Top strip: trigger on desktop, minimal on mobile */}
-          <div className="flex items-center shrink-0 bg-[#0f0f0f] border-b border-border-main z-40">
+          <div className="flex items-center shrink-0 bg-sidebar border-b border-border-main z-40">
             <div className="flex items-center gap-2 px-2 py-1.5 border-r border-border-sub">
               <SidebarTrigger className="text-text-muted hover:text-text-primary h-7 w-7" />
             </div>
@@ -73,14 +73,14 @@ function TechBottomNav() {
   ];
 
   return (
-    <nav className="md:hidden shrink-0 bg-[#0f0f0f] border-t border-border-main z-50">
+    <nav className="md:hidden shrink-0 bg-sidebar border-t border-border-main z-50">
       <div className="flex items-center">
         {items.map(({ href, label, Icon }) => (
           <a
             key={href}
             href={href}
             className={`flex flex-col items-center gap-0.5 py-2.5 flex-1 transition-colors ${
-              isActive(href) ? "text-brand-red" : "text-[#666] hover:text-text-primary"
+              isActive(href) ? "text-brand-red" : "text-sidebar-foreground hover:text-text-primary"
             }`}
           >
             <Icon />

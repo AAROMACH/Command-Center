@@ -116,7 +116,7 @@ export function Navbar() {
     };
   }, [mounted, pathname, currentUser]);
 
-  if (!mounted) return <nav className="flex h-[52px] items-center border-b border-border-default bg-[#0f0f0f] px-6 w-full opacity-0" />;
+  if (!mounted) return <nav className="flex h-[52px] items-center border-b border-border-default bg-sidebar px-6 w-full opacity-0" />;
 
   const isClientPortal = pathname.startsWith('/client');
   const isTechPortal = pathname.startsWith('/tech');
@@ -129,7 +129,7 @@ export function Navbar() {
 
   return (
     <>
-      <nav className="flex h-[52px] items-center border-b border-border-default bg-[#0f0f0f] px-6 w-full">
+      <nav className="flex h-[52px] items-center border-b border-border-default bg-sidebar px-6 w-full">
         <div className="flex w-1/4 items-center">
           <Link href={dashboardItem?.href || '/'} className="flex items-center gap-2 group">
             {logo && (
@@ -161,7 +161,7 @@ export function Navbar() {
               href={item.href}
               className={cn(
                 'nav-item flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-all whitespace-nowrap',
-                isActive(item.href) ? 'bg-brand-red text-white' : 'text-[#888888] hover:bg-bg-tertiary hover:text-text-primary'
+                isActive(item.href) ? 'bg-brand-red text-white' : 'text-sidebar-foreground hover:bg-bg-tertiary hover:text-text-primary'
               )}
             >
               <item.icon className="h-3.5 w-3.5" />
@@ -188,7 +188,7 @@ export function Navbar() {
               href={item.href}
               className={cn(
                 'nav-item flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-all whitespace-nowrap',
-                isActive(item.href) ? 'bg-brand-red text-white' : 'text-[#888888] hover:bg-bg-tertiary hover:text-text-primary'
+                isActive(item.href) ? 'bg-brand-red text-white' : 'text-sidebar-foreground hover:bg-bg-tertiary hover:text-text-primary'
               )}
             >
               <item.icon className="h-3.5 w-3.5" />
@@ -214,7 +214,7 @@ export function Navbar() {
 
       {/* Tech portal — mobile bottom navigation bar */}
       {isTechPortal && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[60] bg-[#0f0f0f] border-t border-border-default">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[60] bg-sidebar border-t border-border-default">
           <div className="flex items-center">
             {allNavItems.map(item => (
               <Link
@@ -222,7 +222,7 @@ export function Navbar() {
                 href={item.href}
                 className={cn(
                   'flex flex-col items-center gap-0.5 py-3 flex-1 transition-colors',
-                  isActive(item.href) ? 'text-brand-red' : 'text-[#666] hover:text-text-primary'
+                  isActive(item.href) ? 'text-brand-red' : 'text-sidebar-foreground hover:text-text-primary'
                 )}
               >
                 <item.icon className="w-[18px] h-[18px]" />

@@ -540,8 +540,8 @@ export default function AdminCalendarPage() {
                   }}
                 />
               ) : (
-                <div className="flex items-center justify-center h-full bg-[#1a1f2e]">
-                  <p className="text-[9px] font-bold uppercase text-[#6b7db3] tracking-widest text-center px-4">
+                <div className="flex items-center justify-center h-full bg-bg-tertiary">
+                  <p className="text-[9px] font-bold uppercase text-text-muted tracking-widest text-center px-4">
                     No jobs on {format(selectedDate, 'EEE, MMM d')}
                   </p>
                 </div>
@@ -595,7 +595,7 @@ export default function AdminCalendarPage() {
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                           <span
                             className="shrink-0 w-5 h-5 rounded-full text-[9px] font-black text-white flex items-center justify-center leading-none"
-                            style={{ background: assigned ? '#22c55e' : '#cc2200' }}
+                            style={{ background: assigned ? 'var(--text-green)' : 'var(--brand-red)' }}
                           >{idx + 1}</span>
                           <span className={cn('text-[12px] font-medium truncate', isSelected ? 'text-brand-red' : 'text-text-primary')}>
                             {wo.title || wo.description || `#${wo.id.slice(0, 6)}`}

@@ -5,7 +5,7 @@ import { db } from '@/lib/firebase';
 import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { isClient } from '@/lib/permissions';
 import type { WorkOrder, Technician } from '@/lib/types';
-import { displayWorkOrderNumber } from '@/lib/work-order-identity';
+import { WorkOrderId } from '@/components/work-order-id';
 import { type JobWithSrc, jobTechId, isAssigned, isArchivedJob, mergeJobs } from '@/lib/jobs';
 import { assignJobToTechnician } from '@/lib/job-actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -653,9 +653,7 @@ export default function AdminCalendarPage() {
                       'text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-widest',
                       isAssigned(drawerJob) ? 'bg-text-green/10 text-text-green border-text-green/20' : 'bg-brand-red/10 text-brand-red border-brand-red/20',
                     )}>{isAssigned(drawerJob) ? 'Assigned' : 'Unassigned'}</span>
-                    <span className="text-[9px] text-text-muted font-mono uppercase">
-                      {displayWorkOrderNumber(drawerJob)}
-                    </span>
+                    <WorkOrderId wo={drawerJob} className="!text-[9px]" />
                   </div>
                   <p className="text-[13px] font-medium text-text-primary leading-tight">
                     {drawerJob.title || drawerJob.description || `#${drawerJob.id.slice(0, 6)}`}

@@ -147,9 +147,9 @@ export default function ClientDashboardPage() {
         const pending = myInvoices.filter(i => i.status === 'sent' || i.status === 'draft').length;
         const overdue = myInvoices.filter(i => i.status === 'overdue').length;
         return [
-            { name: 'Paid', value: paid, color: '#1f8a55' },
-            { name: 'Pending', value: pending, color: '#C89B3C' },
-            { name: 'Overdue', value: overdue, color: '#CC2200' },
+            { name: 'Paid', value: paid, color: 'var(--text-green)' },
+            { name: 'Pending', value: pending, color: 'var(--accent-gold)' },
+            { name: 'Overdue', value: overdue, color: 'var(--brand-red)' },
         ].filter(d => d.value > 0);
     }, [myInvoices]);
 
@@ -275,10 +275,10 @@ export default function ClientDashboardPage() {
                     {requestsByMonth.length > 0 ? (
                         <ResponsiveContainer width="100%" height={160}>
                             <BarChart data={requestsByMonth} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
-                                <XAxis dataKey="month" tick={{ fontSize: 8, fill: '#525252' }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 8, fill: '#525252' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                                <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 10 }} cursor={{ fill: 'rgba(204,34,0,0.08)' }} />
-                                <Bar dataKey="count" fill="#CC2200" radius={[3, 3, 0, 0]} name="Requests" />
+                                <XAxis dataKey="month" tick={{ fontSize: 8, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 8, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                                <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 10 }} cursor={{ fill: 'color-mix(in srgb, var(--brand-red) 8%, transparent)' }} />
+                                <Bar dataKey="count" fill="var(--brand-red)" radius={[3, 3, 0, 0]} name="Requests" />
                             </BarChart>
                         </ResponsiveContainer>
                     ) : (
@@ -305,10 +305,10 @@ export default function ClientDashboardPage() {
                     {projectProgress.length > 0 ? (
                         <ResponsiveContainer width="100%" height={160}>
                             <BarChart data={projectProgress} layout="vertical" margin={{ top: 0, right: 4, bottom: 0, left: 0 }}>
-                                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 8, fill: '#525252' }} axisLine={false} tickLine={false} unit="%" />
-                                <YAxis type="category" dataKey="name" tick={{ fontSize: 8, fill: '#525252' }} axisLine={false} tickLine={false} width={70} />
+                                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 8, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} unit="%" />
+                                <YAxis type="category" dataKey="name" tick={{ fontSize: 8, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={70} />
                                 <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 10 }} formatter={(v: number) => [`${v}%`, 'Complete']} />
-                                <Bar dataKey="pct" fill="#1f8a55" radius={[0, 3, 3, 0]} name="% Complete" />
+                                <Bar dataKey="pct" fill="var(--text-green)" radius={[0, 3, 3, 0]} name="% Complete" />
                             </BarChart>
                         </ResponsiveContainer>
                     ) : (

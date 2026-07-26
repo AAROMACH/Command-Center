@@ -337,7 +337,7 @@ export default function TechDashboardPage() {
                     {activeJob ? (
                         <Card className={cn(
                             "border-2 bg-bg-secondary cursor-pointer transition-all overflow-hidden",
-                            activeJob.status === 'in-progress' ? "border-text-green shadow-[0_0_15px_rgba(31,138,85,0.1)]" : "border-brand-red bg-brand-red-dim/5"
+                            activeJob.status === 'in-progress' ? "border-text-green shadow-[0_0_15px_color-mix(in_srgb,var(--text-green)_10%,transparent)]" : "border-brand-red bg-brand-red-dim/5"
                         )} onClick={() => { setSelectedJob(activeJob); setIsDetailOpen(true); }}>
                             <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div className="text-left space-y-2 flex-1 min-w-0">

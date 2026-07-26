@@ -143,9 +143,9 @@ export default function TechActivityPage() {
   }, [filteredLogs]);
 
   const assignmentPie = [
-    { name: 'Completed', value: jobCounts.completed, color: '#1f8a55' },
-    { name: 'In Progress', value: jobCounts.inProgress, color: '#60a5fa' },
-    { name: 'Scheduled', value: jobCounts.assigned, color: '#C89B3C' },
+    { name: 'Completed', value: jobCounts.completed, color: 'var(--text-green)' },
+    { name: 'In Progress', value: jobCounts.inProgress, color: 'var(--brand-blue)' },
+    { name: 'Scheduled', value: jobCounts.assigned, color: 'var(--accent-gold)' },
   ].filter(d => d.value > 0);
 
   if (!mounted) return null;
@@ -199,10 +199,10 @@ export default function TechActivityPage() {
           {jobsPerWeek.length > 0 ? (
             <ResponsiveContainer width="100%" height={160}>
               <BarChart data={jobsPerWeek} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
-                <XAxis dataKey="week" tick={{ fontSize: 8, fill: '#525252' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 8, fill: '#525252' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 10 }} cursor={{ fill: 'rgba(204,34,0,0.08)' }} />
-                <Bar dataKey="count" fill="#CC2200" radius={[3, 3, 0, 0]} name="Logs" />
+                <XAxis dataKey="week" tick={{ fontSize: 8, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 8, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 10 }} cursor={{ fill: 'color-mix(in srgb, var(--brand-red) 8%, transparent)' }} />
+                <Bar dataKey="count" fill="var(--brand-red)" radius={[3, 3, 0, 0]} name="Logs" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -229,10 +229,10 @@ export default function TechActivityPage() {
           {earningsTrend.length > 0 ? (
             <ResponsiveContainer width="100%" height={160}>
               <LineChart data={earningsTrend} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-                <XAxis dataKey="week" tick={{ fontSize: 8, fill: '#525252' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 8, fill: '#525252' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="week" tick={{ fontSize: 8, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 8, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 10 }} formatter={(v: number) => [`$${v.toFixed(2)}`, 'Payout']} />
-                <Line dataKey="pay" stroke="#1f8a55" strokeWidth={2} dot={{ r: 3, fill: '#1f8a55', strokeWidth: 0 }} activeDot={{ r: 4 }} name="Payout" />
+                <Line dataKey="pay" stroke="var(--text-green)" strokeWidth={2} dot={{ r: 3, fill: 'var(--text-green)', strokeWidth: 0 }} activeDot={{ r: 4 }} name="Payout" />
               </LineChart>
             </ResponsiveContainer>
           ) : (

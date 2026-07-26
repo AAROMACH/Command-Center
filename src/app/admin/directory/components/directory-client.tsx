@@ -875,7 +875,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                 <div className="max-w-3xl space-y-4">
                                     <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1">
                                         <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
-                                            <Clock size={14} className="text-[#f59e0b]"/>
+                                            <Clock size={14} className="text-accent-gold"/>
                                             Pending Access Requests
                                         </h3>
                                         <Badge variant="outline" className="text-[8px] uppercase tracking-widest">{pendingUsers.length} Pending</Badge>
@@ -895,7 +895,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                                 <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest truncate">{user.email}</p>
                                                             </div>
                                                         </div>
-                                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-[#f59e0b]/40 bg-[#f59e0b]/10 text-[#f59e0b] text-[8px] font-black uppercase tracking-widest shrink-0">
+                                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-accent-gold/40 bg-accent-gold/10 text-accent-gold text-[8px] font-black uppercase tracking-widest shrink-0">
                                                             <Clock size={8} /> Pending
                                                         </span>
                                                     </div>

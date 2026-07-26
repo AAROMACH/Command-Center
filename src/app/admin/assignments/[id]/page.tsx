@@ -279,7 +279,7 @@ export default function AssignmentDetailPage() {
   const dayNum   = dateObj ? format(dateObj, 'd') : '—';
   const yearStr  = dateObj ? format(dateObj, 'yyyy') : '—';
 
-  const HISTORY_COLORS = ['var(--text-green)', '#f59e0b', '#3b82f6', '#f43f5e'];
+  const HISTORY_COLORS = ['var(--text-green)', 'var(--accent-gold)', 'var(--brand-blue)', 'var(--priority-critical)'];
   const recentHistory = [...(assignment.history || [])].reverse().slice(0, 6);
 
   const jobDetailRows: { label: string; value?: string; icon: React.ElementType }[] = [
@@ -329,7 +329,7 @@ export default function AssignmentDetailPage() {
           {assignment.priority && (
             <span
               className="text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded border shrink-0 self-start"
-              style={{ background: 'rgba(245,158,11,0.1)', color: 'var(--accent-gold)', borderColor: 'rgba(245,158,11,0.3)' }}
+              style={{ background: 'color-mix(in srgb, var(--accent-gold) 10%, transparent)', color: 'var(--accent-gold)', borderColor: 'color-mix(in srgb, var(--accent-gold) 30%, transparent)' }}
             >
               {assignment.priority} Priority
             </span>
@@ -339,7 +339,7 @@ export default function AssignmentDetailPage() {
         <div className="flex items-center gap-2 flex-wrap">
           <span
             className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded"
-            style={{ background: 'rgba(0,211,111,0.12)', color: 'var(--text-green)', border: '1px solid rgba(0,211,111,0.25)' }}
+            style={{ background: 'color-mix(in srgb, var(--text-green) 12%, transparent)', color: 'var(--text-green)', border: '1px solid color-mix(in srgb, var(--text-green) 25%, transparent)' }}
           >
             <Check size={9} /> {getStatusLabel(assignment.status)}
           </span>

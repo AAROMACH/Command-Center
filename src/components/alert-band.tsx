@@ -294,7 +294,7 @@ export function AlertBand() {
 
   return (
     <>
-      <div className="flex items-center justify-between border-b border-border-main bg-[#0f0f0f] px-4 md:px-8 py-2 overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border-main bg-sidebar px-4 md:px-8 py-2 overflow-hidden">
         <div className="flex flex-wrap items-center gap-3">
           {alerts.map((alert) => (
             <div
@@ -307,7 +307,7 @@ export function AlertBand() {
               className={cn(
                 'flex cursor-pointer items-center gap-2 rounded-md px-3 py-1 text-[10px] font-bold uppercase tracking-widest transition-all hover:opacity-80 active:scale-[0.98] whitespace-nowrap',
                 {
-                  'border border-border-alert bg-brand-red-dim text-text-red shadow-[0_0_10px_rgba(204,34,0,0.15)]': alert.type === 'critical',
+                  'border border-border-alert bg-brand-red-dim text-text-red shadow-[0_0_10px_color-mix(in_srgb,var(--brand-red)_15%,transparent)]': alert.type === 'critical',
                   'border border-border-gold bg-accent-gold-dim text-accent-gold': alert.type === 'warning',
                   'border border-border-main bg-bg-tertiary text-text-secondary': alert.type === 'info',
                   'border border-green-border bg-green-dim text-text-green animate-pulse': alert.type === 'success',

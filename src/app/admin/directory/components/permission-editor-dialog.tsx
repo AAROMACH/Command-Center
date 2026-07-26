@@ -277,8 +277,8 @@ export function PermissionEditorDialog({ open, onClose, person }: Props) {
                             <span className={cn('text-[10px] font-black uppercase tracking-widest', meta.color)}>{meta.label}</span>
                           </button>
                           <div className="flex items-center gap-1.5">
-                            <button onClick={() => bulkPortal(portal, true)} className="h-6 px-2 rounded text-[9px] font-bold border border-[#10b981]/40 text-[#10b981] hover:bg-[#10b981]/10 transition-colors">Select All</button>
-                            <button onClick={() => bulkPortal(portal, false)} className="h-6 px-2 rounded text-[9px] font-bold border border-[#ef4444]/40 text-[#ef4444] hover:bg-[#ef4444]/10 transition-colors">Deselect All</button>
+                            <button onClick={() => bulkPortal(portal, true)} className="h-6 px-2 rounded text-[9px] font-bold border border-text-green/40 text-text-green hover:bg-text-green/10 transition-colors">Select All</button>
+                            <button onClick={() => bulkPortal(portal, false)} className="h-6 px-2 rounded text-[9px] font-bold border border-brand-red/40 text-brand-red hover:bg-brand-red/10 transition-colors">Deselect All</button>
                             <button onClick={() => bulkPortal(portal, undefined)} className="h-6 px-2 rounded text-[9px] font-bold border border-border-sub text-text-muted hover:border-border-main transition-colors">Reset</button>
                           </div>
                         </div>
@@ -305,16 +305,16 @@ export function PermissionEditorDialog({ open, onClose, person }: Props) {
                                     const sources = permissionSources(roles, perm);
                                     const override = overrides[perm];
                                     const badge = {
-                                      restricted: { t: 'Restricted', c: 'text-[#ef4444] border-[#ef4444]/30 bg-[#ef4444]/5' },
-                                      added:      { t: 'Added',      c: 'text-[#10b981] border-[#10b981]/30 bg-[#10b981]/5' },
+                                      restricted: { t: 'Restricted', c: 'text-brand-red border-brand-red/30 bg-brand-red/5' },
+                                      added:      { t: 'Added',      c: 'text-text-green border-text-green/30 bg-text-green/5' },
                                       preset:     { t: 'Preset',     c: 'text-text-muted border-border-sub bg-bg-secondary' },
                                       off:        { t: 'Off',        c: 'text-text-muted/50 border-border-sub' },
                                     }[state];
                                     return (
                                       <div key={perm} className={cn('flex items-center justify-between gap-3 py-1.5 px-2.5 rounded-md border transition-colors',
-                                        state === 'restricted' ? 'border-[#ef4444]/20 bg-[#ef4444]/5'
+                                        state === 'restricted' ? 'border-brand-red/20 bg-brand-red/5'
                                           : state === 'off' ? 'border-border-sub bg-bg-primary'
-                                          : 'border-[#10b981]/15 bg-[#10b981]/5'
+                                          : 'border-text-green/15 bg-text-green/5'
                                       )}>
                                         <div className="min-w-0">
                                           <div className="flex items-center gap-2">
@@ -331,12 +331,12 @@ export function PermissionEditorDialog({ open, onClose, person }: Props) {
                                           <button
                                             onClick={() => setPermOverride(perm, true)}
                                             className={cn('h-6 px-2 rounded text-[9px] font-bold border transition-colors',
-                                              override === true ? 'border-[#10b981] bg-[#10b981]/10 text-[#10b981]' : 'border-border-sub text-text-muted hover:border-border-main')}
+                                              override === true ? 'border-text-green bg-text-green/10 text-text-green' : 'border-border-sub text-text-muted hover:border-border-main')}
                                           >Add</button>
                                           <button
                                             onClick={() => setPermOverride(perm, false)}
                                             className={cn('h-6 px-2 rounded text-[9px] font-bold border transition-colors',
-                                              override === false ? 'border-[#ef4444] bg-[#ef4444]/10 text-[#ef4444]' : 'border-border-sub text-text-muted hover:border-border-main')}
+                                              override === false ? 'border-brand-red bg-brand-red/10 text-brand-red' : 'border-border-sub text-text-muted hover:border-border-main')}
                                           >Restrict</button>
                                           {override !== undefined && (
                                             <button onClick={() => setPermOverride(perm, undefined)} className="h-6 px-2 rounded text-[9px] font-bold border border-border-sub text-text-muted hover:border-border-main">Reset</button>
@@ -400,7 +400,7 @@ export function PermissionEditorDialog({ open, onClose, person }: Props) {
                               <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mb-1">{page}</p>
                               <div className="flex flex-wrap gap-1 ml-2">
                                 {granted.map(p => (
-                                  <span key={p} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono border border-[#10b981]/30 bg-[#10b981]/5 text-[#10b981]">
+                                  <span key={p} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono border border-text-green/30 bg-text-green/5 text-text-green">
                                     {permissionLabel(p)}
                                   </span>
                                 ))}

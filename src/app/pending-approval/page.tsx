@@ -145,12 +145,12 @@ export default function PendingApprovalPage() {
         {/* Status icon */}
         <div className="flex justify-center">
           {isDenied ? (
-            <div className="w-20 h-20 rounded-full bg-[#ef4444]/10 border border-[#ef4444]/30 flex items-center justify-center">
-              <ShieldOff size={36} className="text-[#ef4444]" />
+            <div className="w-20 h-20 rounded-full bg-brand-red/10 border border-brand-red/30 flex items-center justify-center">
+              <ShieldOff size={36} className="text-brand-red" />
             </div>
           ) : (
-            <div className="w-20 h-20 rounded-full bg-[#f59e0b]/10 border border-[#f59e0b]/30 flex items-center justify-center">
-              <Clock size={36} className="text-[#f59e0b]" />
+            <div className="w-20 h-20 rounded-full bg-accent-gold/10 border border-accent-gold/30 flex items-center justify-center">
+              <Clock size={36} className="text-accent-gold" />
             </div>
           )}
         </div>
@@ -177,11 +177,11 @@ export default function PendingApprovalPage() {
         {/* Status badge */}
         <div className="flex justify-center">
           {isDenied ? (
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#ef4444]/40 bg-[#ef4444]/10 text-[#ef4444] text-[10px] font-black uppercase tracking-widest">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-brand-red/40 bg-brand-red/10 text-brand-red text-[10px] font-black uppercase tracking-widest">
               <ShieldOff size={10} /> Access Denied
             </span>
           ) : (
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#f59e0b]/40 bg-[#f59e0b]/10 text-[#f59e0b] text-[10px] font-black uppercase tracking-widest">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-accent-gold/40 bg-accent-gold/10 text-accent-gold text-[10px] font-black uppercase tracking-widest">
               <Clock size={10} /> Pending Approval
             </span>
           )}
@@ -189,7 +189,7 @@ export default function PendingApprovalPage() {
 
         {/* Denial reason */}
         {isDenied && denialReason && (
-          <div className="rounded-lg border border-[#ef4444]/20 bg-[#ef4444]/5 px-4 py-3">
+          <div className="rounded-lg border border-brand-red/20 bg-brand-red/5 px-4 py-3">
             <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">Reason</p>
             <p className="text-sm text-text-secondary">{denialReason}</p>
           </div>

@@ -163,6 +163,7 @@ export const ID_PREFIXES = {
   MESSAGE:           'msg',
   MISSING_REPORT:    'msr',
   NOTIFICATION:      'noti',
+  PAYROLL_DISPUTE:   'pdis',
   PENALTY_EVENT:     'pen',
   PLAN_TIER:         'plan',
   PROJECT:           'prj',

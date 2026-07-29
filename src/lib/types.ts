@@ -579,6 +579,28 @@ export type WeeklyLog = {
   unsubmitRequestedAt?: string;
 };
 
+/**
+ * A tech's dispute filed after their weekly log has left Draft (Submitted,
+ * Approved, or Rejected) — a separate, append-only ticket rather than a direct
+ * edit to the (now locked) log, since payroll records shouldn't be mutable by
+ * the tech once submitted.
+ */
+export type PayrollDispute = {
+  id: string;
+  techId: string;
+  techName: string;
+  weeklyLogId: string;
+  weekOf: string;
+  /** The job this dispute concerns, when known — absent for "missing job". */
+  workOrderId?: string | null;
+  reason: 'incorrect_pay' | 'missing_reimbursement' | 'missing_job';
+  notes: string;
+  status: 'open' | 'resolved';
+  createdAt: string;
+  resolvedAt?: string | null;
+  resolvedBy?: string | null;
+};
+
 export type TimeOffRequest = {
   id: string;
   techId: string;

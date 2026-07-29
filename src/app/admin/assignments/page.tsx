@@ -289,7 +289,7 @@ export default function AssignmentsHubPage() {
   }, [workOrders, technicians, searchQuery, dateRange, sortBy, activePriorities, activeSources, dateAsc]);
 
   const activeWorkOrders = useMemo(() =>
-    filteredWorkOrders.filter(wo => !isArchivedJob(wo) && !isCompletedJob(wo)),
+    filteredWorkOrders.filter(wo => !isArchivedJob(wo) && !isCompletedJob(wo) && wo.status !== 'cancelled'),
   [filteredWorkOrders]);
 
   const archivedWorkOrders = useMemo(() =>

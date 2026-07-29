@@ -179,6 +179,20 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // A tech's dispute filed after their weekly log left Draft (Submitted /
+    // Approved / Rejected). Append-only from the tech's side — they can file
+    // one but never edit or delete it after the fact — since the underlying
+    // log is locked from direct tech edits by then. Only admin resolves them.
+    match /payrollDisputes/{id} {
+      allow read: if isSignedIn() && (
+          isAdmin()
+          || (isTech() && resource.data.techId == request.auth.uid)
+      );
+      allow create: if isTech() && request.resource.data.techId == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
     match /projectDailyLogs/{id} {
       allow read: if isSignedIn() && (
           isAdmin()

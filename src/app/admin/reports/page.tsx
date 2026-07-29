@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, setDoc, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, setDoc, addDoc, arrayUnion } from 'firebase/firestore';
 import { makeMessageId } from '@/lib/doc-ids';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -307,19 +307,39 @@ export default function ActivityAuditPage() {
 
     const handleDeleteAssignment = (woId: string) => {
         if (!isSuperAdmin(currentUser)) {
-            toast({ variant: 'destructive', title: 'Unauthorized', description: 'Super Admin credentials required for record purging.' });
+            toast({ variant: 'destructive', title: 'Unauthorized', description: 'Super Admin credentials required.' });
             return;
         }
         setDeleteConfirmId(woId);
     };
 
+    // Never hard-delete a job — soft-archive it in place (same pattern used
+    // everywhere else in the app) so it's recoverable from the Job Archive
+    // instead of vanishing with no trace.
     const executeDeleteAssignment = async (woId: string) => {
-        const docRef = doc(db, 'assignments', woId);
+        const record = assignments.find(a => a.id === woId) || workOrders.find(w => w.id === woId);
+        const adminName = currentUser?.name || 'Admin';
+        const patch: Record<string, any> = {
+            archived: true,
+            status: 'archived',
+            previousStatus: record?.status || 'completed',
+            archivedAt: new Date().toISOString(),
+            archivedBy: adminName,
+            archiveReason: `Archived from Reports by ${adminName}.`,
+            history: arrayUnion({
+                type: 'status_change',
+                date: format(new Date(), 'MM-dd-yyyy'),
+                details: `Archived by ${adminName} from the Reports registry.`,
+                user: adminName,
+            }),
+        };
         try {
-            await deleteDoc(docRef);
-            toast({ variant: 'destructive', title: 'Record Deleted', description: `Assignment ${woId.toUpperCase()} removed from system.` });
+            const asmtRef = doc(db, 'assignments', woId);
+            const woRef = doc(db, 'workOrders', woId);
+            await updateDoc(asmtRef, patch).catch(async () => { await updateDoc(woRef, patch); });
+            toast({ title: 'Archived', description: `Assignment ${woId.toUpperCase()} moved to Archives — recoverable from the Job Archive.` });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Delete Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Archive Failed', description: e.message });
         }
         setDeleteConfirmId(null);
     };
@@ -1608,9 +1628,9 @@ export default function ActivityAuditPage() {
             <AlertDialog open={!!deleteConfirmId} onOpenChange={open => { if (!open) setDeleteConfirmId(null); }}>
                 <AlertDialogContent className="bg-bg-elevated border-border-main">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-text-primary uppercase font-black tracking-wide text-sm">Delete Assignment?</AlertDialogTitle>
+                        <AlertDialogTitle className="text-text-primary uppercase font-black tracking-wide text-sm">Archive Assignment?</AlertDialogTitle>
                         <AlertDialogDescription className="text-text-muted text-[11px]">
-                            This will permanently remove assignment <span className="font-bold text-text-primary">{deleteConfirmId?.toUpperCase()}</span> from the system. This action cannot be undone.
+                            This will move assignment <span className="font-bold text-text-primary">{deleteConfirmId?.toUpperCase()}</span> to Archives. It will no longer appear in active views, but stays recoverable from the Job Archive.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -1619,7 +1639,7 @@ export default function ActivityAuditPage() {
                             className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] uppercase font-bold"
                             onClick={() => deleteConfirmId && executeDeleteAssignment(deleteConfirmId)}
                         >
-                            <Trash2 size={12} className="mr-1.5" />Delete
+                            <ArchiveIcon size={12} className="mr-1.5" />Archive
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -419,7 +419,7 @@ export function DispatchPageClient() {
       const asmtRef = doc(db, 'assignments', wo.id);
       const woRef = doc(db, 'workOrders', wo.id);
       await updateDoc(asmtRef, patch).catch(async () => { await updateDoc(woRef, patch); });
-      toast({ title: "Sent to Dispatch Hub", description: "Job reset to unassigned for redispatch." });
+      toast({ title: "Moved to Unassigned", description: "Job reset to unassigned for redispatch." });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Update Failed", description: e.message });
     }

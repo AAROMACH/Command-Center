@@ -76,7 +76,9 @@ export type WorkOrder = {
   locationText?: string;
   requiredSkills: string[];
   priority: 'low' | 'medium' | 'high' | 'critical';
-  status: 'unassigned' | 'assigned' | 'confirmed' | 'on-my-way' | 'in-progress' | 'checked-out' | 'completed' | 'archived';
+  status: 'unassigned' | 'assigned' | 'confirmed' | 'on-my-way' | 'in-progress' | 'checked-out' | 'completed' | 'archived' | 'cancelled';
+  /** Tech-reported terminal outcome when a job won't be completed. */
+  techOutcome?: 'cancelled' | 'did_not_do';
   assignedTechnicianId?: string | null;
   assignedTechIds?: string[];
   additionalTechnicianIds?: string[];

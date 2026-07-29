@@ -60,7 +60,8 @@ import { fieldNationUrl, displayWorkOrderNumber } from '@/lib/work-order-identit
 import { fileCompletedAssignment, resolveCompletionPlacement, type CompletionPlacement } from '@/lib/weekly-log';
 import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete, reopenStatusFor } from '@/lib/trip-flow';
 import { CompletionWeekDialog } from '@/components/completion-week-dialog';
-import { Car } from 'lucide-react';
+import { Car, MoreVertical, Ban, XCircle } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { LogTripDialog } from './components/log-trip-dialog';
 
 const formatDateStr = (dateStr: string) => {
@@ -188,7 +189,7 @@ export default function TechAssignmentsPage() {
     }, [allWorkOrders, currentTechId, searchQuery, dateRange]);
 
     const activeAssignments = useMemo(() => 
-        techWorkOrders.filter(wo => wo.status !== 'unassigned' && wo.status !== 'completed'),
+        techWorkOrders.filter(wo => wo.status !== 'unassigned' && wo.status !== 'completed' && wo.status !== 'cancelled'),
     [techWorkOrders]);
 
     const sortedActive = useMemo(() => {
@@ -371,6 +372,27 @@ export default function TechAssignmentsPage() {
         }
     };
 
+    // Tech reports a terminal non-completion outcome (job cancelled, or the tech
+    // did not perform it). Moves the job off the active board and flags it for
+    // admin review — no payroll is generated.
+    const handleMarkOutcome = async (woId: string, outcome: 'cancelled' | 'did_not_do') => {
+        const label = outcome === 'cancelled' ? 'Cancelled' : 'Did Not Do';
+        const now = format(new Date(), 'h:mm a');
+        try {
+            await updateDoc(doc(db, 'assignments', woId), {
+                status: 'cancelled',
+                techOutcome: outcome,
+                history: [
+                    ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
+                    { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Tech marked job as ${label} at ${now}.`, user: currentTech?.name || 'Field Operative' }
+                ]
+            });
+            toast({ title: `Marked as ${label}`, description: "Removed from your active board and flagged for admin review." });
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Update Failed", description: e.message });
+        }
+    };
+
     const handleOpenDetail = (wo: WorkOrder) => {
         router.push('/tech/assignments/' + wo.id);
     };
@@ -545,18 +567,45 @@ export default function TechAssignmentsPage() {
                                         <div className="cell-desc-title break-words mt-1">{wo.title || wo.description}</div>
                                         <div className="text-[10px] text-text-muted uppercase tracking-widest">{wo.clientName}</div>
                                     </div>
-                                    <Badge
-                                        variant={
-                                            wo.status === 'in-progress' ? 'inprogress' :
-                                            wo.status === 'on-my-way' ? 'pending' :
-                                            wo.status === 'confirmed' ? 'active' :
-                                            wo.status === 'checked-out' ? 'checked-out' :
-                                            'scheduled'
-                                        }
-                                        className="capitalize text-[8px] h-4 px-1.5 shrink-0"
-                                    >
-                                        {wo.status.replace(/-/g, ' ')}
-                                    </Badge>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                        <Badge
+                                            variant={
+                                                wo.status === 'in-progress' ? 'inprogress' :
+                                                wo.status === 'on-my-way' ? 'pending' :
+                                                wo.status === 'confirmed' ? 'active' :
+                                                wo.status === 'checked-out' ? 'checked-out' :
+                                                'scheduled'
+                                            }
+                                            className="capitalize text-[8px] h-4 px-1.5"
+                                        >
+                                            {wo.status.replace(/-/g, ' ')}
+                                        </Badge>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <button
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    aria-label="More actions"
+                                                    className="p-1 -m-0.5 rounded text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+                                                >
+                                                    <MoreVertical size={15} />
+                                                </button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                                <DropdownMenuItem
+                                                    className="text-[11px] uppercase font-bold tracking-wide"
+                                                    onClick={() => handleMarkOutcome(wo.id, 'cancelled')}
+                                                >
+                                                    <Ban size={13} className="mr-2 text-text-muted" /> Mark as Cancelled
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    className="text-[11px] uppercase font-bold tracking-wide text-text-red focus:text-text-red"
+                                                    onClick={() => handleMarkOutcome(wo.id, 'did_not_do')}
+                                                >
+                                                    <XCircle size={13} className="mr-2" /> Did Not Do
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
                                 </div>
                                 <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-text-secondary">
                                     <div className="flex items-center gap-1.5 min-w-0">
@@ -735,6 +784,25 @@ export default function TechAssignmentsPage() {
                                                       </Button>
                                                   </>
                                               )}
+                                              <DropdownMenu>
+                                                  <DropdownMenuTrigger asChild>
+                                                      <button
+                                                          onClick={(e) => e.stopPropagation()}
+                                                          aria-label="More actions"
+                                                          className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+                                                      >
+                                                          <MoreVertical size={16} />
+                                                      </button>
+                                                  </DropdownMenuTrigger>
+                                                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                                      <DropdownMenuItem className="text-[11px] uppercase font-bold tracking-wide" onClick={() => handleMarkOutcome(wo.id, 'cancelled')}>
+                                                          <Ban size={13} className="mr-2 text-text-muted" /> Mark as Cancelled
+                                                      </DropdownMenuItem>
+                                                      <DropdownMenuItem className="text-[11px] uppercase font-bold tracking-wide text-text-red focus:text-text-red" onClick={() => handleMarkOutcome(wo.id, 'did_not_do')}>
+                                                          <XCircle size={13} className="mr-2" /> Did Not Do
+                                                      </DropdownMenuItem>
+                                                  </DropdownMenuContent>
+                                              </DropdownMenu>
                                             </div>
                                         </td>
                                     </tr>

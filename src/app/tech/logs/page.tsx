@@ -80,11 +80,15 @@ import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 
 const DISPUTE_REASONS = [
+    "Pay amount is incorrect",
+    "Hours logged are incorrect",
     "Another tech did this job",
-    "Revisit needed, not complete",
-    "I don't recognize this job",
+    "I did not do this job",
+    "Revisit needed — not complete",
     "Wrong date on my log",
-    "This appears to be a duplicate"
+    "Duplicate entry",
+    "Missing reimbursement",
+    "Other",
 ];
 
 /** Current wall-clock weekday/hour/date in America/New_York, independent of the browser's local timezone. */
@@ -1394,11 +1398,11 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                 </RadioGroup>
 
                                 <div className="space-y-2 text-left">
-                                    <Label className="text-[9px] uppercase font-black text-text-muted ml-1 text-left">Additional Context (Optional)</Label>
-                                    <Textarea 
+                                    <Label className="text-[9px] uppercase font-black text-text-muted ml-1 text-left">{reason === 'Other' ? 'Please specify (required)' : 'Additional Context (Optional)'}</Label>
+                                    <Textarea
                                         value={notes}
                                         onChange={e => setNotes(e.target.value)}
-                                        placeholder="Provide specific details for administrative audit..."
+                                        placeholder={reason === 'Other' ? "Describe the reason for this dispute..." : "Provide specific details for administrative audit..."}
                                         className="bg-bg-secondary h-20 text-xs font-medium uppercase leading-relaxed text-left"
                                     />
                                 </div>
@@ -1409,7 +1413,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                 <Button 
                                     size="sm" 
                                     className="h-8 bg-brand-red hover:bg-brand-red-hover text-white uppercase text-[9px] font-bold tracking-widest"
-                                    disabled={!reason}
+                                    disabled={!reason || (reason === 'Other' && !notes.trim())}
                                     onClick={() => { onDispute(item.id, reason, notes); setIsDisputing(false); }}
                                 >
                                     Commit Dispute

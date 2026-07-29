@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import type { WeeklyLog, Technician, WorkOrder, WeeklyLogItem, FinancialRecord } from '@/lib/types';
+import type { WeeklyLog, Technician, WorkOrder, WeeklyLogItem, FinancialRecord, PayrollDispute } from '@/lib/types';
 import { assignmentTimeLogs } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import {
@@ -58,7 +58,7 @@ import { differenceInMinutes, parseISO, format } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { db, auth } from '@/lib/firebase';
-import { doc, updateDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, arrayUnion, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
@@ -252,6 +252,34 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             setLocalLog(JSON.parse(JSON.stringify(initialLog)));
         }
     }, [isOpen, initialLog]);
+
+    // Post-approval disputes a tech filed against this log after it left
+    // Draft — a separate ticket collection, since the log itself is locked
+    // from direct tech edits by then.
+    const [payrollDisputes, setPayrollDisputes] = useState<PayrollDispute[]>([]);
+    useEffect(() => {
+        if (!isOpen || !initialLog?.id) { setPayrollDisputes([]); return; }
+        const unsub = onSnapshot(
+            query(collection(db, 'payrollDisputes'), where('weeklyLogId', '==', initialLog.id)),
+            (snap) => setPayrollDisputes(snap.docs.map(d => ({ ...d.data(), id: d.id } as PayrollDispute))),
+            () => setPayrollDisputes([]),
+        );
+        return () => unsub();
+    }, [isOpen, initialLog?.id]);
+
+    const handleResolvePayrollDispute = async (disputeId: string) => {
+        const adminName = auth.currentUser?.displayName || 'Admin';
+        try {
+            await updateDoc(doc(db, 'payrollDisputes', disputeId), {
+                status: 'resolved',
+                resolvedAt: new Date().toISOString(),
+                resolvedBy: adminName,
+            });
+            toast({ title: "Dispute Resolved" });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could Not Resolve', description: e.message });
+        }
+    };
 
     const findWorkOrder = useCallback((id: string): WorkOrder | undefined => {
         return missions.find(wo => wo.id === id);
@@ -644,6 +672,13 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                     <span className="hidden xs:inline">Discrepancy Registry</span><span className="xs:hidden">Discrepancy</span>
                                     <span className="ml-1 opacity-50">({discrepancyItems.length})</span>
                                 </TabsTrigger>
+                                {payrollDisputes.length > 0 && (
+                                    <TabsTrigger value="post-approval" className="tab-trigger-payroll flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0">
+                                        <AlertTriangle size={14} />
+                                        <span className="hidden xs:inline">Post-Approval Disputes</span><span className="xs:hidden">Post-Approval</span>
+                                        <span className="ml-1 opacity-50">({payrollDisputes.filter(d => d.status === 'open').length})</span>
+                                    </TabsTrigger>
+                                )}
                             </TabsList>
                             <div className="flex items-center justify-between sm:justify-end gap-2 pb-2 sm:pb-0 border-t sm:border-t-0 border-border-sub/50 pt-2 sm:pt-0">
                                 <p className="text-[8px] font-black text-text-muted uppercase tracking-widest sm:hidden">Net Tech Settlement</p>
@@ -1084,6 +1119,50 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                     </div>
                                 </ScrollArea>
                             </TabsContent>
+
+                            {payrollDisputes.length > 0 && (
+                                <TabsContent value="post-approval" className="m-0 h-full text-left">
+                                    <ScrollArea className="p-2 text-left sm:h-full sm:min-h-0">
+                                        <div className="space-y-2 text-left">
+                                            {[...payrollDisputes].sort((a, b) => (a.status === b.status ? 0 : a.status === 'open' ? -1 : 1)).map(dispute => {
+                                                const reasonLabel = dispute.reason === 'incorrect_pay' ? 'Incorrect Pay'
+                                                    : dispute.reason === 'missing_reimbursement' ? 'Missing Reimbursement'
+                                                    : 'Missing Job';
+                                                const relatedWo = dispute.workOrderId ? findWorkOrder(dispute.workOrderId) : undefined;
+                                                const isOpenDispute = dispute.status === 'open';
+                                                return (
+                                                    <div key={dispute.id} className={cn(
+                                                        "p-3 rounded-lg border flex flex-col sm:flex-row sm:items-center gap-3 text-left",
+                                                        isOpenDispute ? "bg-bg-secondary border-brand-red/30" : "bg-bg-primary border-border-sub/40 opacity-70"
+                                                    )}>
+                                                        <div className="flex-1 min-w-0 text-left">
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <Badge variant="outline" className={cn("text-[7px] h-3.5 px-1.5 uppercase", isOpenDispute ? "border-brand-red/40 text-brand-red bg-brand-red/5" : "border-text-green/40 text-text-green bg-text-green/5")}>
+                                                                    {reasonLabel}
+                                                                </Badge>
+                                                                <span className="text-[10px] font-bold text-text-primary uppercase tracking-wide">{dispute.techName}</span>
+                                                                {relatedWo && <WorkOrderId wo={relatedWo} className="!text-[8px]" />}
+                                                            </div>
+                                                            <p className="text-[10px] text-text-secondary leading-relaxed mt-1 text-left">{dispute.notes}</p>
+                                                            <p className="text-[8px] text-text-muted font-mono mt-1">
+                                                                {new Date(dispute.createdAt).toLocaleString()}
+                                                                {!isOpenDispute && dispute.resolvedBy && ` · Resolved by ${dispute.resolvedBy}`}
+                                                            </p>
+                                                        </div>
+                                                        {isOpenDispute ? (
+                                                            <Button variant="outline" size="sm" className="h-8 shrink-0 text-[9px] font-bold uppercase tracking-widest border-text-green text-text-green hover:bg-green-dim" onClick={() => handleResolvePayrollDispute(dispute.id)}>
+                                                                <Check size={13} className="mr-1.5"/> Mark Resolved
+                                                            </Button>
+                                                        ) : (
+                                                            <Badge variant="active" className="shrink-0 h-6 px-3 text-[8px] uppercase tracking-widest">Resolved</Badge>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </ScrollArea>
+                                </TabsContent>
+                            )}
                         </div>
                     </Tabs>
 

@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, doc, setDoc, addDoc, onSnapshot, query, where, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, onSnapshot, query, where, updateDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
 import { DispatchTabs } from "./dispatch-tabs";
 import { RequestsTabs } from "../../requests/components/requests-tabs";
 import { WorkOrdersClient } from "./work-orders-client";
@@ -387,6 +387,70 @@ export function DispatchPageClient() {
 
   const hasActiveFilters = searchQuery !== "" || !!dateRange?.from || activePriorities.length > 0 || activeTypes.length > 0 || activeSources.length > 0 || sortBy !== 'date';
 
+  // Jobs a tech marked Cancelled / Did Not Do sit in the Dispatch Hub's Review
+  // Queue until an admin explicitly resolves them — never left ambiguous in
+  // the active lists.
+  const reviewQueueJobs = useMemo(() =>
+    allAssignments.filter(wo => wo.status === 'cancelled'),
+  [allAssignments]);
+
+  const currentAdminName = () =>
+    technicians.find(t => t.id === (typeof window !== 'undefined' ? sessionStorage.getItem('currentUserId') : null))?.name || 'Admin';
+
+  const handleReviewSendToDispatch = async (wo: WorkOrder) => {
+    const adminName = currentAdminName();
+    const patch: Record<string, any> = {
+      status: 'unassigned',
+      assignedTechnicianId: null,
+      techId: null,
+      assignedTechIds: [],
+      additionalTechnicianIds: [],
+      activeTripLogId: null,
+      routeId: null,
+      techOutcome: null,
+      history: arrayUnion({
+        type: 'status_change',
+        date: format(new Date(), 'MM-dd-yyyy'),
+        details: `Sent back to Dispatch Hub by ${adminName} from the review queue.`,
+        user: adminName,
+      }),
+    };
+    try {
+      const asmtRef = doc(db, 'assignments', wo.id);
+      const woRef = doc(db, 'workOrders', wo.id);
+      await updateDoc(asmtRef, patch).catch(async () => { await updateDoc(woRef, patch); });
+      toast({ title: "Sent to Dispatch Hub", description: "Job reset to unassigned for redispatch." });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Update Failed", description: e.message });
+    }
+  };
+
+  const handleReviewArchive = async (wo: WorkOrder) => {
+    const adminName = currentAdminName();
+    const patch: Record<string, any> = {
+      archived: true,
+      status: 'archived',
+      previousStatus: wo.status,
+      archivedAt: new Date().toISOString(),
+      archivedBy: adminName,
+      archiveReason: `${wo.techOutcome === 'did_not_do' ? 'Did Not Do' : 'Cancelled'} — closed from the Dispatch Hub review queue.`,
+      history: arrayUnion({
+        type: 'status_change',
+        date: format(new Date(), 'MM-dd-yyyy'),
+        details: `Archived by ${adminName} from the review queue.`,
+        user: adminName,
+      }),
+    };
+    try {
+      const asmtRef = doc(db, 'assignments', wo.id);
+      const woRef = doc(db, 'workOrders', wo.id);
+      await updateDoc(asmtRef, patch).catch(async () => { await updateDoc(woRef, patch); });
+      toast({ title: "Job Archived", description: "Moved to Archives — recoverable from the Archives page." });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Archive Failed", description: e.message });
+    }
+  };
+
   return (
     <div className="space-y-6">
         <header className="page-header flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -657,6 +721,9 @@ export function DispatchPageClient() {
                   }
                 }
               }}
+              reviewQueueJobs={reviewQueueJobs}
+              onReviewSendToDispatch={handleReviewSendToDispatch}
+              onReviewArchive={handleReviewArchive}
            />
         </TabsContent>
 
@@ -675,7 +742,7 @@ export function DispatchPageClient() {
 
                 <TabsContent value="active" className="m-0 text-left">
                    <WorkOrdersClient 
-                      workOrders={filteredAssignments.filter(wo => wo.status !== 'completed')} 
+                      workOrders={filteredAssignments.filter(wo => wo.status !== 'completed' && wo.status !== 'cancelled')}
                       allWorkOrders={allAssignments} 
                       technicians={technicians} 
                       onWorkOrdersChange={(updated) => {

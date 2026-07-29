@@ -80,35 +80,14 @@ import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 
 const DISPUTE_REASONS = [
-    "Pay amount is incorrect",
     "Hours logged are incorrect",
     "Another tech did this job",
     "I did not do this job",
     "Revisit needed — not complete",
     "Wrong date on my log",
     "Duplicate entry",
-    "Missing reimbursement",
     "Other",
 ];
-
-/** Current wall-clock weekday/hour/date in America/New_York, independent of the browser's local timezone. */
-function getEasternParts(date: Date) {
-    const fmt = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'America/New_York',
-        weekday: 'short', hour: 'numeric', hour12: false,
-        year: 'numeric', month: '2-digit', day: '2-digit',
-    });
-    const parts = fmt.formatToParts(date).reduce((acc, p) => { acc[p.type] = p.value; return acc; }, {} as Record<string, string>);
-    const weekdayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-    return {
-        dow: weekdayMap[parts.weekday],
-        hour: parts.hour === '24' ? 0 : parseInt(parts.hour, 10),
-        year: parseInt(parts.year, 10),
-        month: parseInt(parts.month, 10),
-        day: parseInt(parts.day, 10),
-    };
-}
-
 
 // Sortable timestamp for a job's scheduled date + time. Accepts ISO
 // (YYYY-MM-DD) and M/D/YYYY dates and "h:mm AM/PM" or 24h times; undated jobs
@@ -153,6 +132,14 @@ export default function TechWeeklyLogPage() {
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
     const [isReportMissingOpen, setIsReportMissingOpen] = useState(false);
+    // Post-approval dispute: a tech's log has left Draft (Submitted / Approved
+    // / Rejected) and the rich in-place dispute editor is no longer available,
+    // so this simple popup files a payrollDisputes ticket instead.
+    const [isPayrollDisputeOpen, setIsPayrollDisputeOpen] = useState(false);
+    const [payrollDisputeReason, setPayrollDisputeReason] = useState<'incorrect_pay' | 'missing_reimbursement' | 'missing_job' | ''>('');
+    const [payrollDisputeWorkOrderId, setPayrollDisputeWorkOrderId] = useState<string>('');
+    const [payrollDisputeNotes, setPayrollDisputeNotes] = useState('');
+    const [payrollDisputeSaving, setPayrollDisputeSaving] = useState(false);
     const [isCreateLogOpen, setIsCreateLogOpen] = useState(false);
     const [newLogDate, setNewLogDate] = useState<Date | undefined>(new Date());
 
@@ -286,34 +273,9 @@ export default function TechWeeklyLogPage() {
         return isPastWeek || (isCurrentWeek && isWeekend);
     }, [activeLog?.weekOf]);
 
-    /**
-     * Reimbursement Window Validator.
-     * Current week: opens Friday 6:00 PM Eastern and stays open through the weekend.
-     * Past weeks: always allowed (catch-up submissions).
-     */
-    const canAddReimbursement = useMemo(() => {
-        if (!activeLog?.weekOf) return false;
-        const et = getEasternParts(new Date());
-        const todayET = new Date(et.year, et.month - 1, et.day);
-        const daysToMonday = et.dow === 0 ? 6 : et.dow - 1;
-        const thisWeekMondayET = new Date(todayET);
-        thisWeekMondayET.setDate(todayET.getDate() - daysToMonday);
-
-        const parts = activeLog.weekOf.split('-').map(Number);
-        let logMonday: Date;
-        if (parts[2] > 1000) {
-            logMonday = new Date(parts[2], parts[0] - 1, parts[1]);
-        } else {
-            logMonday = new Date(activeLog.weekOf);
-        }
-        logMonday.setHours(0, 0, 0, 0);
-
-        const isPastWeek = logMonday.getTime() < thisWeekMondayET.getTime();
-        const isCurrentWeek = logMonday.getTime() === thisWeekMondayET.getTime();
-        const windowOpen = et.dow === 6 || et.dow === 0 || (et.dow === 5 && et.hour >= 18);
-
-        return isPastWeek || (isCurrentWeek && windowOpen);
-    }, [activeLog?.weekOf]);
+    // Reimbursements can be added any time the log is still in Draft — no
+    // day/time-of-week window (previously Friday 6PM ET through the weekend).
+    const canAddReimbursement = useMemo(() => !!activeLog?.weekOf, [activeLog?.weekOf]);
 
     // 3. Registry Filtering & Sorting
     const filteredAndSortedLogs = useMemo(() => {
@@ -481,6 +443,39 @@ export default function TechWeeklyLogPage() {
             toast({ title: "Discrepancy Transmitted", description: "Inquiry folder initialized for audit." });
         } catch (e: any) {
             toast({ variant: "destructive", title: "Report Failed", description: e.message });
+        }
+    };
+
+    const handleSubmitPayrollDispute = async () => {
+        if (!activeLog || !currentTechId || !payrollDisputeReason) return;
+        if (!payrollDisputeNotes.trim()) {
+            toast({ variant: "destructive", title: "Missing details", description: "Describe the issue for the admin." });
+            return;
+        }
+        setPayrollDisputeSaving(true);
+        try {
+            const id = await createDocId(ID_PREFIXES.PAYROLL_DISPUTE);
+            await setDoc(doc(db, 'payrollDisputes', id), {
+                id,
+                techId: currentTechId,
+                techName: currentUser?.name || 'Field Operative',
+                weeklyLogId: activeLog.id,
+                weekOf: activeLog.weekOf,
+                workOrderId: payrollDisputeWorkOrderId || null,
+                reason: payrollDisputeReason,
+                notes: payrollDisputeNotes.trim(),
+                status: 'open',
+                createdAt: new Date().toISOString(),
+            });
+            toast({ title: "Dispute Filed", description: "An admin will review this against your weekly log." });
+            setIsPayrollDisputeOpen(false);
+            setPayrollDisputeReason('');
+            setPayrollDisputeWorkOrderId('');
+            setPayrollDisputeNotes('');
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Could Not File Dispute", description: e.message });
+        } finally {
+            setPayrollDisputeSaving(false);
         }
     };
 
@@ -947,9 +942,13 @@ export default function TechWeeklyLogPage() {
             <div className="space-y-4 max-w-6xl mx-auto text-left">
                 <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1 text-left">
                     <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Tactical Assignment Registry</h3>
-                    {!isLocked && (
+                    {!isLocked ? (
                         <Button variant="ghost" size="sm" className="h-6 text-[9px] uppercase font-bold text-brand-red hover:bg-brand-red/10" onClick={() => setIsReportMissingOpen(true)}>
                             <Search size={12} className="mr-1.5"/> Report Missing Assignment
+                        </Button>
+                    ) : (
+                        <Button variant="ghost" size="sm" className="h-6 text-[9px] uppercase font-bold text-brand-red hover:bg-brand-red/10" onClick={() => setIsPayrollDisputeOpen(true)}>
+                            <AlertTriangle size={12} className="mr-1.5"/> Dispute This Log
                         </Button>
                     )}
                 </div>
@@ -1125,11 +1124,84 @@ export default function TechWeeklyLogPage() {
                 </DialogContent>
             </Dialog>
 
-            <ReportMissingJobDialog 
-                isOpen={isReportMissingOpen} 
-                setIsOpen={setIsReportMissingOpen} 
+            <ReportMissingJobDialog
+                isOpen={isReportMissingOpen}
+                setIsOpen={setIsReportMissingOpen}
                 onSave={handleReportMissing}
             />
+
+            {/* Post-approval dispute — simple popup for logs that have left Draft. */}
+            <Dialog open={isPayrollDisputeOpen} onOpenChange={(open) => { setIsPayrollDisputeOpen(open); if (!open) { setPayrollDisputeReason(''); setPayrollDisputeWorkOrderId(''); setPayrollDisputeNotes(''); } }}>
+                <DialogContent className="sm:max-w-[480px] bg-bg-elevated border-border-default shadow-2xl">
+                    <DialogHeader className="text-left">
+                        <div className="flex items-center gap-2 mb-1 text-left">
+                            <AlertTriangle className="text-brand-red h-5 w-5" />
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary text-left">Dispute This Log</DialogTitle>
+                        </div>
+                        <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">
+                            This log has already been submitted. Flag an issue for admin review.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2 text-left">
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">Reason</Label>
+                            <RadioGroup value={payrollDisputeReason} onValueChange={(v: any) => setPayrollDisputeReason(v)} className="space-y-2">
+                                {[
+                                    { value: 'incorrect_pay', label: 'Incorrect Pay' },
+                                    { value: 'missing_reimbursement', label: 'Missing Reimbursement' },
+                                    { value: 'missing_job', label: 'Missing Job' },
+                                ].map(r => (
+                                    <div key={r.value} className="flex items-center space-x-2 p-2 rounded hover:bg-bg-tertiary transition-colors cursor-pointer text-left">
+                                        <RadioGroupItem value={r.value} id={`pap-${r.value}`} />
+                                        <Label htmlFor={`pap-${r.value}`} className="text-[10px] uppercase font-bold text-text-primary cursor-pointer flex-1 text-left">{r.label}</Label>
+                                    </div>
+                                ))}
+                            </RadioGroup>
+                        </div>
+
+                        {(payrollDisputeReason === 'incorrect_pay' || payrollDisputeReason === 'missing_reimbursement') && (activeLog?.items?.length ?? 0) > 0 && (
+                            <div className="space-y-2 text-left">
+                                <Label className="text-[10px] uppercase font-bold text-text-muted">Which Job? (Optional)</Label>
+                                <Select value={payrollDisputeWorkOrderId} onValueChange={setPayrollDisputeWorkOrderId}>
+                                    <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs">
+                                        <SelectValue placeholder="Select a job" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {(activeLog?.items || []).map(item => {
+                                            const job = allJobs.find(wo => wo.id === item.workOrderId);
+                                            return (
+                                                <SelectItem key={item.id} value={item.workOrderId} className="text-xs">
+                                                    {job ? `${displayWorkOrderNumber(job)} — ${job.title || job.description}` : item.workOrderId}
+                                                </SelectItem>
+                                            );
+                                        })}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] uppercase font-bold text-text-muted">Details</Label>
+                            <Textarea
+                                value={payrollDisputeNotes}
+                                onChange={e => setPayrollDisputeNotes(e.target.value)}
+                                placeholder="Describe the issue..."
+                                className="bg-bg-secondary h-24 text-xs font-medium leading-relaxed text-left"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter className="gap-3 flex-row">
+                        <Button variant="outline" onClick={() => setIsPayrollDisputeOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Cancel</Button>
+                        <Button
+                            disabled={!payrollDisputeReason || !payrollDisputeNotes.trim() || payrollDisputeSaving}
+                            onClick={handleSubmitPayrollDispute}
+                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white shadow-lg"
+                        >
+                            <Send size={16} className="mr-2" /> {payrollDisputeSaving ? 'Filing...' : 'File Dispute'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
@@ -1151,7 +1223,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
 
     const submitReimbursement = async () => {
         if (!canAddReimbursement) {
-            reimbToast({ variant: 'destructive', title: 'Not Open Yet', description: 'Reimbursements open Friday 6:00 PM ET.' });
+            reimbToast({ variant: 'destructive', title: 'Not Available', description: 'No active log to attach this reimbursement to.' });
             return;
         }
         const amount = parseFloat(reimbAmount);
@@ -1280,7 +1352,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                 variant="outline"
                                 size="sm"
                                 disabled={!canAddReimbursement}
-                                title={canAddReimbursement ? "Add Reimbursement" : "Reimbursements open Friday 6:00 PM ET"}
+                                title="Add Reimbursement"
                                 aria-label="Add Reimbursement"
                                 className="h-8 w-8 p-0 shrink-0 border-accent-gold/40 text-accent-gold hover:bg-accent-gold/10 disabled:opacity-40 disabled:cursor-not-allowed"
                                 onClick={() => setIsReimbursing(v => !v)}
@@ -1300,11 +1372,6 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                 </Button>
                             )}
                         </div>
-                        {!canAddReimbursement && (
-                            <p className="text-[8px] font-bold uppercase tracking-widest text-text-muted text-right pr-1">
-                                Reimbursements open Friday 6:00 PM ET
-                            </p>
-                        )}
                         </div>
                     )}
                 </div>

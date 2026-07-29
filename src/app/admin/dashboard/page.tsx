@@ -133,6 +133,11 @@ export default function DashboardPage() {
         workOrders.filter(wo => wo.status === 'unassigned'),
     [workOrders]);
 
+    // Cancelled jobs sit in the Dispatch Hub review queue, not the active count.
+    const activeAssignmentsCount = useMemo(() =>
+        assignments.filter(wo => wo.status !== 'cancelled').length,
+    [assignments]);
+
     const pendingLogs = useMemo(() =>
         weeklyLogs.filter(l => l.status === 'Submitted'),
     [weeklyLogs]);
@@ -148,7 +153,7 @@ export default function DashboardPage() {
                 id: tech.id,
                 name: tech.name,
                 avatarUrl: tech.avatarUrl,
-                assigned: assignments.filter(wo => (wo.assignedTechnicianId === tech.id || wo.techId === tech.id) && wo.status !== 'completed').length
+                assigned: assignments.filter(wo => (wo.assignedTechnicianId === tech.id || wo.techId === tech.id) && wo.status !== 'completed' && wo.status !== 'cancelled').length
             }))
             .filter(t => t.assigned > 0)
             .sort((a, b) => b.assigned - a.assigned)
@@ -317,7 +322,7 @@ export default function DashboardPage() {
                 <Link href="/admin/dispatch?subtab=assignments">
                     <div className="bg-bg-secondary p-4 rounded-xl border border-border-default hover:border-border-main transition-colors h-full">
                         <Wrench size={13} className="text-text-muted mb-3" />
-                        <p className="text-3xl font-bold text-text-primary tracking-tighter">{assignments.length}</p>
+                        <p className="text-3xl font-bold text-text-primary tracking-tighter">{activeAssignmentsCount}</p>
                         <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mt-0.5 mb-2">Active Jobs</p>
                         <span className="inline-block px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest bg-text-green/10 text-text-green border border-text-green/20">ACTIVE</span>
                     </div>
@@ -591,7 +596,7 @@ export default function DashboardPage() {
                         <CardContent className="space-y-0">
                             {[
                                 { label: 'Pending Pay', value: `$${pendingPay.toLocaleString(undefined, { maximumFractionDigits: 0 })}` },
-                                { label: 'Active Jobs', value: assignments.length },
+                                { label: 'Active Jobs', value: activeAssignmentsCount },
                                 { label: 'Pending Invoices', value: invoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').length },
                                 { label: 'Open Projects', value: projects.filter(p => p.status === 'active').length },
                             ].map(({ label, value }) => (

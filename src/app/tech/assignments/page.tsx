@@ -59,6 +59,7 @@ import { ID_PREFIXES } from '@/lib/constants';
 import { fieldNationUrl, displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { fileCompletedAssignment, resolveCompletionPlacement, type CompletionPlacement } from '@/lib/weekly-log';
 import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete, reopenStatusFor } from '@/lib/trip-flow';
+import { jobDateTimeValue } from '@/lib/jobs';
 import { CompletionWeekDialog } from '@/components/completion-week-dialog';
 import { Car, MoreVertical, Ban, XCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
@@ -89,6 +90,7 @@ export default function TechAssignmentsPage() {
     const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>([]);
     const [mounted, setMounted] = useState(false);
     const [sortBy, setSortBy] = useState<string>('date');
+    const [dateAsc, setDateAsc] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'active');
@@ -199,14 +201,29 @@ export default function TechAssignmentsPage() {
                 return prio[a.priority as keyof typeof prio] - prio[b.priority as keyof typeof prio];
             }
             if (sortBy === 'pay') return b.pay - a.pay;
-            return (a.scheduleDate || '').localeCompare(b.scheduleDate || '');
+            const da = jobDateTimeValue(a.scheduleDate, a.scheduleTime);
+            const db = jobDateTimeValue(b.scheduleDate, b.scheduleTime);
+            return dateAsc ? da - db : db - da;
         });
-    }, [activeAssignments, sortBy]);
+    }, [activeAssignments, sortBy, dateAsc]);
 
-    const completedAssignments = useMemo(() => 
-        techWorkOrders.filter(wo => wo.status === 'completed')
-            .sort((a, b) => (b.scheduleDate || '').localeCompare(a.scheduleDate || '')),
-    [techWorkOrders]);
+    const completedAssignments = useMemo(() => {
+        return techWorkOrders.filter(wo => wo.status === 'completed').sort((a, b) => {
+            const da = jobDateTimeValue(a.scheduleDate, a.scheduleTime);
+            const db = jobDateTimeValue(b.scheduleDate, b.scheduleTime);
+            return dateAsc ? da - db : db - da;
+        });
+    }, [techWorkOrders, dateAsc]);
+
+    // Clicking a date column header sorts by date and toggles soonest/latest.
+    const toggleDateSort = () => {
+        if (sortBy !== 'date') {
+            setSortBy('date');
+            setDateAsc(false);
+        } else {
+            setDateAsc(prev => !prev);
+        }
+    };
 
     const hasActiveSession = useMemo(() => {
         return allWorkOrders.some(wo => wo.status === 'in-progress');
@@ -548,6 +565,16 @@ export default function TechAssignmentsPage() {
                 <TabsContent value="active" className="mt-0">
                     {/* Mobile: card view */}
                     <div className="md:hidden space-y-3">
+                        <button
+                            onClick={toggleDateSort}
+                            className="w-full flex items-center justify-between rounded-lg border border-border-sub bg-bg-secondary px-3 py-2.5"
+                        >
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Sort by Date</span>
+                            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-brand-red">
+                                {sortBy === 'date' ? (dateAsc ? 'Soonest First' : 'Latest First') : 'Latest First'}
+                                <ArrowUpDown size={12} />
+                            </span>
+                        </button>
                         {sortedActive.map((wo) => (
                             <div
                                 key={wo.id}
@@ -668,7 +695,19 @@ export default function TechAssignmentsPage() {
                                     <th className="text-center">Work Order / Status</th>
                                     <th className="text-center">Assignment Identifier</th>
                                     <th className="text-center">Site Location</th>
-                                    <th className="text-center">Schedule Window</th>
+                                    <th className="text-center">
+                                        <button
+                                            onClick={toggleDateSort}
+                                            className="inline-flex items-center gap-1.5 uppercase tracking-widest hover:text-brand-red transition-colors"
+                                            title="Sort by date"
+                                        >
+                                            Schedule Window
+                                            <ArrowUpDown size={11} className={cn("shrink-0", sortBy === 'date' ? "text-brand-red" : "text-text-muted opacity-50")} />
+                                            {sortBy === 'date' && (
+                                                <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Soonest' : 'Latest'}</span>
+                                            )}
+                                        </button>
+                                    </th>
                                     <th className="text-center">Action</th>
                                 </tr>
                             </thead>
@@ -820,6 +859,16 @@ export default function TechAssignmentsPage() {
                 <TabsContent value="history" className="mt-0">
                     {/* Mobile: card view */}
                     <div className="md:hidden space-y-3">
+                        <button
+                            onClick={toggleDateSort}
+                            className="w-full flex items-center justify-between rounded-lg border border-border-sub bg-bg-secondary px-3 py-2.5"
+                        >
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Sort by Date</span>
+                            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-brand-red">
+                                {dateAsc ? 'Soonest First' : 'Latest First'}
+                                <ArrowUpDown size={12} />
+                            </span>
+                        </button>
                         {completedAssignments.map((wo) => (
                             <div
                                 key={wo.id}
@@ -877,7 +926,17 @@ export default function TechAssignmentsPage() {
                                     <th className="text-center">Work Order</th>
                                     <th className="text-center">Service Result</th>
                                     <th className="text-center">Site Location</th>
-                                    <th className="text-center">Date Completed</th>
+                                    <th className="text-center">
+                                        <button
+                                            onClick={toggleDateSort}
+                                            className="inline-flex items-center gap-1.5 uppercase tracking-widest hover:text-brand-red transition-colors"
+                                            title="Sort by date"
+                                        >
+                                            Date Completed
+                                            <ArrowUpDown size={11} className="shrink-0 text-brand-red" />
+                                            <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Soonest' : 'Latest'}</span>
+                                        </button>
+                                    </th>
                                     <th className="text-center">Action</th>
                                 </tr>
                             </thead>

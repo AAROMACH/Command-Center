@@ -93,6 +93,10 @@ export function DispatchPageClient() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   // Default to date sort so the newest assignments/jobs surface first.
   const [sortBy, setSortBy] = useState<SortOption>('date');
+  // Direction for the 'date' sort mode — shared across every Dispatch tab
+  // (Dispatch Hub, Service Requests, Assignments) since they all read from
+  // this same toolbar. false = latest first, true = soonest first.
+  const [dateAsc, setDateAsc] = useState(false);
 
   const [activePriorities, setActivePriorities] = useState<string[]>([]);
   const [activeTypes, setActiveTypes] = useState<string[]>([]);
@@ -306,15 +310,28 @@ export function DispatchPageClient() {
                 const techA = technicians.find(t => t.id === idA)?.name || 'Unassigned';
                 const techB = technicians.find(t => t.id === idB)?.name || 'Unassigned';
                 return techA.localeCompare(techB);
-            default:
-                // Latest scheduled date + time first.
-                return jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime);
+            default: {
+                const da = jobDateTimeValue(a.scheduleDate, a.scheduleTime);
+                const db = jobDateTimeValue(b.scheduleDate, b.scheduleTime);
+                return dateAsc ? da - db : db - da;
+            }
         }
     });
   };
 
-  const filteredOrders = useMemo(() => filterAndSort(allWorkOrders), [allWorkOrders, searchQuery, dateRange, activePriorities, activeTypes, activeSources, sortBy, technicians]);
-  const filteredAssignments = useMemo(() => filterAndSort(allAssignments), [allAssignments, searchQuery, dateRange, activePriorities, activeTypes, activeSources, sortBy, technicians]);
+  // Clicking the date-sort toggle sorts by date and flips soonest/latest —
+  // shared across every tab since they all read from this one toolbar.
+  const toggleDateSort = () => {
+    if (sortBy !== 'date') {
+      setSortBy('date');
+      setDateAsc(false);
+    } else {
+      setDateAsc(prev => !prev);
+    }
+  };
+
+  const filteredOrders = useMemo(() => filterAndSort(allWorkOrders), [allWorkOrders, searchQuery, dateRange, activePriorities, activeTypes, activeSources, sortBy, dateAsc, technicians]);
+  const filteredAssignments = useMemo(() => filterAndSort(allAssignments), [allAssignments, searchQuery, dateRange, activePriorities, activeTypes, activeSources, sortBy, dateAsc, technicians]);
 
   const filteredRequests = useMemo(() => {
     let results = allRequests.filter(req => {
@@ -362,9 +379,11 @@ export function DispatchPageClient() {
         }
         if (sortBy === 'client') return (a.clientName || '').localeCompare(b.clientName || '');
         if (sortBy === 'type') return (a.requestType || '').localeCompare(b.requestType || '');
-        return (b.submittedDate || '').localeCompare(a.submittedDate || '');
+        const da = toDateSafe(a.submittedDate)?.getTime() || 0;
+        const db = toDateSafe(b.submittedDate)?.getTime() || 0;
+        return dateAsc ? da - db : db - da;
     });
-  }, [allRequests, searchQuery, dateRange, activePriorities, activeTypes, sortBy]);
+  }, [allRequests, searchQuery, dateRange, activePriorities, activeTypes, sortBy, dateAsc]);
 
   const hasActiveFilters = searchQuery !== "" || !!dateRange?.from || activePriorities.length > 0 || activeTypes.length > 0 || activeSources.length > 0 || sortBy !== 'date';
 
@@ -425,6 +444,18 @@ export function DispatchPageClient() {
                       <SelectItem value="type" className="text-[10px] uppercase font-bold">Type</SelectItem>
                   </SelectContent>
               </Select>
+
+              <button
+                  onClick={toggleDateSort}
+                  title="Sort by date"
+                  className={cn(
+                      "flex items-center gap-1.5 h-9 shrink-0 rounded-md border px-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors",
+                      sortBy === 'date' ? "border-brand-red text-brand-red bg-brand-red-dim" : "border-border-main bg-bg-primary text-text-muted hover:text-text-primary"
+                  )}
+              >
+                  <ArrowUpDown size={12} />
+                  {sortBy === 'date' ? (dateAsc ? 'Soonest' : 'Latest') : 'Latest'}
+              </button>
 
               <Popover>
                   <PopoverTrigger asChild>

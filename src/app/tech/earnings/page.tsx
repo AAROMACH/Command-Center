@@ -18,6 +18,7 @@ import {
     Upload,
     X,
     Loader2,
+    Wrench,
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -140,6 +141,13 @@ export default function TechEarningsPage() {
         });
     }, [weeklyLogs, logSearchQuery, logSortBy, dateRange]);
 
+    // Reimbursements added from job verification during weekly log review —
+    // these live in an embedded array on each weeklyLogs doc, separate from
+    // the standalone `reimbursements` collection submitted from this page.
+    const jobReimbursements = useMemo(() =>
+        weeklyLogs.flatMap(log => (log.reimbursements || []).filter(r => r.type === 'reimbursement')),
+    [weeklyLogs]);
+
     const metrics = useMemo(() => {
         const settled = filteredLogs.filter(l => l.status === 'Approved').reduce((acc, log) => acc + (log.totalPayout || 0), 0);
         const pending = filteredLogs.filter(l => l.status === 'Submitted').reduce((acc, log) => acc + (log.totalPayout || 0), 0);
@@ -148,9 +156,10 @@ export default function TechEarningsPage() {
             ...reimbursements.filter(r => r.status === 'pending').map(r =>
                 r.type === 'mileage' ? (r.distanceMiles || 0) * (r.mileageRate || mileageRate) : r.amount
             ),
+            ...jobReimbursements.filter(r => (r.status || 'approved') === 'pending').map(r => r.amount),
         ].reduce((a, b) => a + b, 0);
         return { settled, pending, pendingReim };
-    }, [filteredLogs, expenses, reimbursements, mileageRate]);
+    }, [filteredLogs, expenses, reimbursements, jobReimbursements, mileageRate]);
 
     const handleReceiptPhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -270,8 +279,21 @@ export default function TechEarningsPage() {
             sub: e.category,
             receiptPhotoUrls: undefined as string[] | undefined,
         }));
-        return [...newItems, ...legacyItems].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-    }, [reimbursements, expenses, mileageRate]);
+        // Job-tied reimbursements filed during weekly log verification — status
+        // undefined on a legacy record counts as already-approved (see FinancialRecord).
+        const jobItems = jobReimbursements.map(r => ({
+            id: r.id,
+            source: 'job' as const,
+            date: r.date,
+            type: 'job' as const,
+            status: (r.status || 'approved') as 'pending' | 'approved' | 'rejected',
+            amount: r.amount,
+            label: r.description,
+            sub: r.externalWorkOrderId ? `WO ${r.externalWorkOrderId}` : (r.workOrderId ? `WO ${r.workOrderId.toUpperCase()}` : 'Job reimbursement'),
+            receiptPhotoUrls: r.receiptUrl ? [r.receiptUrl] : undefined as string[] | undefined,
+        }));
+        return [...newItems, ...legacyItems, ...jobItems].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    }, [reimbursements, expenses, jobReimbursements, mileageRate]);
 
     const distanceMilesNum = parseFloat(mileageForm.distanceMiles) || 0;
     const calculatedMileageAmount = distanceMilesNum * mileageRate;
@@ -456,10 +478,10 @@ export default function TechEarningsPage() {
                                             <TableCell className="text-xs font-bold uppercase pl-4">{item.date}</TableCell>
                                             <TableCell>
                                                 <Badge
-                                                    variant={item.type === 'mileage' ? 'onhold' : 'default'}
+                                                    variant={item.type === 'mileage' ? 'onhold' : item.type === 'job' ? 'outline' : 'default'}
                                                     className="text-[8px] h-4 uppercase flex items-center gap-1 w-fit"
                                                 >
-                                                    {item.type === 'mileage' ? <><Car size={8} />&nbsp;Mileage</> : 'Receipt'}
+                                                    {item.type === 'mileage' ? <><Car size={8} />&nbsp;Mileage</> : item.type === 'job' ? <><Wrench size={8} />&nbsp;Job Reimb.</> : 'Receipt'}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>

@@ -38,7 +38,8 @@ import {
   Map
 } from "lucide-react";
 import AdminMapView from '@/app/admin/map/components/admin-map-view';
-import type { WorkOrder, Technician } from "@/lib/types";
+import type { WorkOrder, Technician, WeeklyLog } from "@/lib/types";
+import { externalWorkOrderId, isImported } from "@/lib/work-order-identity";
 import { format, isSameDay, startOfDay, isValid } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import {
@@ -93,6 +94,7 @@ type SortOption = 'date' | 'client' | 'status' | 'pay' | 'tech';
 export default function AssignmentsHubPage() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
@@ -179,11 +181,44 @@ export default function AssignmentsHubPage() {
       }
     });
 
+    // Weekly logs let the Job Archive show each closed job's payroll stage
+    // (logged → submitted → paid) without a per-row lookup.
+    const logUnsub = onSnapshot(collection(db, 'weeklyLogs'), (snapshot) => {
+      setWeeklyLogs(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
+    });
+
     return () => {
       unsub();
       techUnsub();
+      logUnsub();
     };
   }, []);
+
+  // Map every work-order id to the payroll stage of the weekly log that carries
+  // it, so the archive's Audit Status column reflects submitted / paid at a
+  // glance. Verification itself happens during pay review, not here.
+  const auditStatusByWo = useMemo(() => {
+    const byWo: Record<string, { label: string; cls: string }> = {};
+    for (const log of weeklyLogs) {
+      const s = log.status as string;
+      const stage =
+        s === 'Paid' ? { label: 'Paid Out', cls: 'bg-text-green/10 text-text-green border-text-green/30' }
+        : s === 'Approved' ? { label: 'Approved', cls: 'bg-text-green/10 text-text-green border-text-green/30' }
+        : s === 'Submitted' ? { label: 'Submitted', cls: 'bg-brand-blue/10 text-brand-blue border-brand-blue/30' }
+        : s === 'Rejected' ? { label: 'Rejected', cls: 'bg-brand-red/10 text-brand-red border-brand-red/30' }
+        : { label: 'In Draft Log', cls: 'bg-bg-tertiary text-text-muted border-border-sub' };
+      for (const item of log.items || []) {
+        if (item?.workOrderId) byWo[item.workOrderId] = stage;
+      }
+    }
+    return byWo;
+  }, [weeklyLogs]);
+
+  const getAuditStatus = (wo: WorkOrder) =>
+    auditStatusByWo[wo.id]
+    ?? (wo.isAudited
+      ? { label: 'Verified', cls: 'bg-text-green/10 text-text-green border-text-green/30' }
+      : { label: 'Not Logged', cls: 'bg-bg-tertiary text-text-muted border-border-sub' });
 
   const filteredWorkOrders = useMemo(() => {
     return workOrders
@@ -802,6 +837,8 @@ export default function AssignmentsHubPage() {
                     {archivedWorkOrders.map(wo => {
                         const techId = jobTechId(wo);
                         const tech = technicians.find(t => t.id === techId);
+                        const audit = getAuditStatus(wo);
+                        const ext = externalWorkOrderId(wo);
                         return (
                             <div
                                 key={wo.id}
@@ -810,8 +847,11 @@ export default function AssignmentsHubPage() {
                             >
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
-                                        <div className="flex items-center gap-1.5">
-                                            <WorkOrderId wo={wo} />
+                                        <div className="flex flex-col leading-tight">
+                                            <span className="cell-id font-mono font-bold text-brand-red !text-[10px]">{(wo.id || '').toUpperCase()}</span>
+                                            {isImported(wo) && ext && (
+                                                <span className="font-mono font-bold text-brand-cyan text-[9px]">FN #{ext}</span>
+                                            )}
                                         </div>
                                         <p className="text-xs font-bold text-text-primary uppercase tracking-wide mt-1 break-words">{wo.title || wo.description}</p>
                                         <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{wo.clientName}</p>
@@ -832,20 +872,12 @@ export default function AssignmentsHubPage() {
                                     <div className="flex items-center gap-1.5 text-[10px] text-text-muted font-bold uppercase min-w-0">
                                         <User size={11} className="shrink-0" /><span className="truncate">{tech?.name || 'Field Ops'}</span>
                                     </div>
-                                    {wo.isAudited ? (
-                                        <Badge variant="active" className="h-6 px-3 uppercase text-[9px] tracking-widest font-black flex items-center gap-1.5 shrink-0">
-                                            <ShieldCheck size={13} className="text-text-green"/> Verified
-                                        </Badge>
-                                    ) : (
-                                        <div className="flex gap-2 shrink-0">
-                                            <Button variant="outline" size="sm" className="h-7 text-[9px] font-bold uppercase tracking-widest border-text-green text-text-green hover:bg-green-dim" onClick={() => handleVerifyAssignment(wo.id)}>
-                                                <Check size={13} className="mr-1"/> Verify
-                                            </Button>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-red" onClick={() => requestArchive(wo)}>
-                                                <Trash2 size={13}/>
-                                            </Button>
-                                        </div>
-                                    )}
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <Badge variant="outline" className={cn("h-6 px-3 uppercase text-[9px] tracking-widest font-black", audit.cls)}>{audit.label}</Badge>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-red" onClick={() => requestArchive(wo)}>
+                                            <Trash2 size={13}/>
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         );
@@ -861,8 +893,8 @@ export default function AssignmentsHubPage() {
                     <table className="tbl">
                         <thead>
                             <tr className="bg-bg-tertiary">
-                                <th className="text-left pl-6 w-[200px]">Assignment Identification</th>
-                                <th className="text-center">Client & Service Result</th>
+                                <th className="text-left pl-6 w-[180px]">Status &amp; ID</th>
+                                <th className="text-left pl-0">Assignment Identification</th>
                                 <th className="text-center">Deployment Coordinates</th>
                                 <th className="text-center">
                                     <button
@@ -870,7 +902,7 @@ export default function AssignmentsHubPage() {
                                         className="inline-flex items-center gap-1.5 uppercase tracking-widest hover:text-brand-red transition-colors"
                                         title="Sort by date"
                                     >
-                                        Finalized Date
+                                        Original Date &amp; Time
                                         <ArrowUpDown size={11} className={cn("shrink-0", sortBy === 'date' ? "text-brand-red" : "text-text-muted opacity-50")} />
                                         {sortBy === 'date' && (
                                             <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Oldest' : 'Latest'}</span>
@@ -884,62 +916,50 @@ export default function AssignmentsHubPage() {
                             {archivedWorkOrders.map(wo => {
                                 const techId = jobTechId(wo);
                                 const tech = technicians.find(t => t.id === techId);
+                                const audit = getAuditStatus(wo);
+                                const ext = externalWorkOrderId(wo);
                                 return (
                                     <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors text-left" onClick={() => handleCardClick(wo)}>
-                                        <td className="text-left pl-6 py-4 text-left">
-                                            <div className="flex items-center gap-3 text-left">
-                                                <div className="flex flex-col items-center text-center">
-                                                    <div className="flex items-center gap-1.5 text-center">
-                                                      <WorkOrderId wo={wo} />
-                                                    </div>
-                                                    <Badge variant="completed" className="text-[8px] h-3.5 mt-1">CLOSED</Badge>
+                                        {/* Status & ID — internal id + imported (Field Nation) id */}
+                                        <td className="text-left pl-6 py-4">
+                                            <div className="flex flex-col items-start gap-1.5">
+                                                <Badge variant="completed" className="text-[8px] h-4 px-1.5 tracking-widest capitalize">{wo.status === 'archived' ? 'Archived' : 'Completed'}</Badge>
+                                                <div className="flex flex-col items-start leading-tight">
+                                                    <span className="cell-id font-mono font-bold text-brand-red !text-[10px]">{(wo.id || '').toUpperCase()}</span>
+                                                    {isImported(wo) && ext && (
+                                                        <span className="font-mono font-bold text-brand-cyan text-[9px]">FN #{ext}</span>
+                                                    )}
                                                 </div>
-                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors whitespace-normal text-left">{wo.title || wo.description}</p>
                                             </div>
                                         </td>
+                                        {/* Assignment Identification + client */}
+                                        <td className="py-4 text-left">
+                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors whitespace-normal text-left">{wo.title || wo.description}</p>
+                                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1"><Briefcase size={11}/> {wo.clientName || 'Unassigned Client'}</div>
+                                        </td>
+                                        {/* Deployment Coordinates */}
                                         <td className="py-4 text-center">
-                                            <div className="flex flex-col items-center justify-center text-center">
-                                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 text-center"><Briefcase size={12}/> {wo.clientName}</div>
-                                                <div className="flex items-center gap-1.5 text-xs text-text-green font-bold uppercase text-center"><CheckCircle2 size={14}/> Successfully Finalized</div>
-                                            </div>
+                                            <div className="flex items-center justify-center gap-2 text-[10px] text-text-secondary font-bold uppercase"><MapPin size={12} className="text-brand-red shrink-0" /><span className="whitespace-normal text-center">{formatCityState(wo.location)}</span></div>
                                         </td>
+                                        {/* Original Date & Time */}
                                         <td className="py-4 text-center">
-                                            <div className="flex items-center justify-center text-center gap-2 text-[10px] text-text-secondary font-bold uppercase text-center"><MapPin size={12} className="text-brand-red shrink-0 text-center" /><span className="whitespace-normal text-center">{formatCityState(wo.location)}</span></div>
-                                        </td>
-                                        <td className="py-4 text-center text-center">
-                                            <div className="flex flex-col items-center justify-center text-center">
-                                                <div className="flex items-center gap-2 text-[10px] text-text-primary font-bold uppercase tracking-tight text-center"><CalendarIcon size={12} className="text-text-muted" />{formatDateDisplay(wo.scheduleDate)}</div>
-                                                <div className="flex items-center gap-1.5 mt-1 text-[10px] text-text-muted font-bold uppercase text-center"><User size={10}/> {tech?.name || 'Field Ops'}</div>
+                                            <div className="flex flex-col items-center justify-center">
+                                                <div className="flex items-center gap-2 text-[10px] text-text-primary font-bold uppercase tracking-tight"><CalendarIcon size={12} className="text-text-muted" />{formatDateDisplay(wo.scheduleDate)}{wo.scheduleTime ? ` · ${wo.scheduleTime}` : ''}</div>
+                                                <div className="flex items-center gap-1.5 mt-1 text-[10px] text-text-muted font-bold uppercase"><User size={10}/> {tech?.name || 'Field Ops'}</div>
                                             </div>
                                         </td>
-                                        <td className="py-4 text-right pr-6 text-right">
-                                            <div className="flex items-center justify-end gap-2 text-right" onClick={e => e.stopPropagation()}>
-                                                {wo.isAudited ? (
-                                                    <Badge variant="active" className="h-7 px-4 uppercase text-[9px] tracking-widest font-black flex items-center gap-1.5 text-right">
-                                                        <ShieldCheck size={14} className="text-text-green"/>
-                                                        Verified
-                                                    </Badge>
-                                                ) : (
-                                                    <div className="flex gap-2 text-right">
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="sm" 
-                                                            className="h-7 text-[9px] font-bold uppercase tracking-widest border-text-green text-text-green hover:bg-green-dim"
-                                                            onClick={() => handleVerifyAssignment(wo.id)}
-                                                        >
-                                                            <Check size={14} className="mr-1.5"/>
-                                                            Verify
-                                                        </Button>
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon" 
-                                                            className="h-7 w-7 text-text-muted hover:text-text-red"
-                                                            onClick={() => requestArchive(wo)}
-                                                        >
-                                                            <Trash2 size={14}/>
-                                                        </Button>
-                                                    </div>
-                                                )}
+                                        {/* Audit Status — payroll stage; verification happens during pay review */}
+                                        <td className="py-4 text-right pr-6">
+                                            <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
+                                                <Badge variant="outline" className={cn("h-7 px-3 uppercase text-[9px] tracking-widest font-black", audit.cls)}>{audit.label}</Badge>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-7 w-7 text-text-muted hover:text-text-red"
+                                                    onClick={() => requestArchive(wo)}
+                                                >
+                                                    <Trash2 size={14}/>
+                                                </Button>
                                             </div>
                                         </td>
                                     </tr>

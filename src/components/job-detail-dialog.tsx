@@ -317,9 +317,18 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   const riskLabel = mission.slaStatus === 'breached' ? 'Breached' : mission.slaStatus === 'at-risk' ? 'At Risk' : mission.slaStatus === 'met' ? 'Met' : mission.slaStatus === 'on-track' ? 'On Track' : 'Normal';
   const riskColor = mission.slaStatus === 'breached' ? 'text-priority-critical' : mission.slaStatus === 'at-risk' ? 'text-accent-gold' : (mission.slaStatus === 'met' || mission.slaStatus === 'on-track') ? 'text-text-green' : 'text-text-muted';
 
-  const checkInEntry = mission.history?.find(h => h.details?.toLowerCase().includes('check-in') || h.details?.toLowerCase().includes('arrival'));
-  const checkInLabel = checkInEntry ? 'Checked In' : 'Not Checked In';
-  const checkInColor = checkInEntry ? 'text-text-green' : 'text-accent-gold';
+  // Trip status follows the operative's trip-log path:
+  // Start Trip → En Route (on-my-way) → Checked In (in-progress) →
+  // Checked Out → Completed.
+  const tripStatus = (() => {
+    switch (mission.status) {
+      case 'on-my-way':   return { label: 'En Route',     cls: 'text-brand-blue' };
+      case 'in-progress': return { label: 'Checked In',   cls: 'text-text-green' };
+      case 'checked-out': return { label: 'Checked Out',  cls: 'text-accent-gold' };
+      case 'completed':   return { label: 'Completed',    cls: 'text-text-green' };
+      default:            return { label: 'Not Started',  cls: 'text-text-muted' };
+    }
+  })();
 
   const lastUpdated = mission.history?.length
     ? [...mission.history].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date
@@ -350,7 +359,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
 
   const footerItems = [
     { label: 'Assignment Status', value: statusLabel, cls: isConfirmed ? 'text-text-green' : isInProgress ? 'text-brand-blue' : 'text-accent-gold' },
-    { label: 'Check-In Status',   value: checkInLabel, cls: checkInColor },
+    { label: 'Trip Status',       value: tripStatus.label, cls: tripStatus.cls },
     { label: 'GPS Status',        value: 'Restricted', cls: 'text-accent-gold' },
     { label: 'Last Updated',      value: lastUpdated || '—', cls: 'text-text-primary' },
   ];

@@ -38,7 +38,10 @@ import {
     Save,
     RotateCcw,
     Lock,
-    Receipt
+    Receipt,
+    MoreVertical,
+    Archive as ArchiveIcon,
+    Send
 } from 'lucide-react';
 import { cn, formatCityState } from '@/lib/utils';
 import { FIELD_NATION_FEE_RATE, netOfFieldNationFee } from '@/lib/payroll';
@@ -53,8 +56,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { differenceInMinutes, parseISO, format } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { db, auth } from '@/lib/firebase';
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
 import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
@@ -238,6 +242,10 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     // log; return sends it back to the tech (Deny / Authorize Unsubmit).
     const canApproveLog = hasPermission('admin.logs.approve');
     const canReturnLog = hasPermission('admin.logs.return');
+    // Overriding a tech's dispute (sending the job back to Dispatch, or
+    // archiving it outright) is a step beyond acknowledging the dispute —
+    // gate it the same as reopening a closed assignment.
+    const canOverrideDispute = hasPermission('admin.logs.reopen');
 
     useEffect(() => {
         if (isOpen && initialLog) {
@@ -430,28 +438,31 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         }
     }, [localLog, toast]);
 
+    // Toggles a CONFIRMED item's payroll-verified state. Never touches a
+    // disputed item — a dispute is only cleared via acknowledgment or one of
+    // the explicit overrides below, never by this "Verify" toggle.
     const toggleAuditItem = async (itemId: string, workOrderId: string) => {
         if (!localLog) return;
-        
+
         const item = (localLog.items || []).find(i => i.id === itemId);
-        if (!item) return;
+        if (!item || item.confirmationStatus === 'disputed') return;
 
         const nextStatus: 'confirmed' | null = item.confirmationStatus === 'confirmed' ? null : 'confirmed';
         const updatedItems = (localLog.items || []).map(i =>
             i.id === itemId ? { ...i, confirmationStatus: nextStatus, isAdminReviewed: !!nextStatus } : i
         );
-        
+
         try {
             const logRef = doc(db, 'weeklyLogs', localLog.id);
             await updateDoc(logRef, { items: updatedItems });
-            
+
             const asmtRef = doc(db, 'assignments', workOrderId);
             const woRef = doc(db, 'workOrders', workOrderId);
-            
-            const auditUpdates = { 
-                isAudited: !!nextStatus, 
-                auditedAt: nextStatus ? new Date().toISOString() : null, 
-                auditedBy: nextStatus ? 'Admin' : null 
+
+            const auditUpdates = {
+                isAudited: !!nextStatus,
+                auditedAt: nextStatus ? new Date().toISOString() : null,
+                auditedBy: nextStatus ? 'Admin' : null
             };
 
             await updateDoc(asmtRef, auditUpdates).catch(async () => {
@@ -462,6 +473,107 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             toast({ title: nextStatus ? "Item Verified" : "Review Reset", description: "Audit trail synchronized with registry." });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Audit Sync Error', description: e.message });
+        }
+    };
+
+    // Acknowledging a dispute only marks that admin has looked at it — it stays
+    // in the Discrepancy list with confirmationStatus:'disputed' untouched.
+    // Clearing a dispute out of this list is a deliberate override (below), not
+    // a side effect of acknowledgment.
+    const toggleDisputeAcknowledged = async (itemId: string) => {
+        if (!localLog) return;
+        const item = (localLog.items || []).find(i => i.id === itemId);
+        if (!item) return;
+
+        const nextReviewed = !item.isAdminReviewed;
+        const updatedItems = (localLog.items || []).map(i =>
+            i.id === itemId ? { ...i, isAdminReviewed: nextReviewed } : i
+        );
+
+        try {
+            await updateDoc(doc(db, 'weeklyLogs', localLog.id), { items: updatedItems });
+            setLocalLog({ ...localLog, items: updatedItems });
+            toast({
+                title: nextReviewed ? "Dispute Acknowledged" : "Acknowledgment Cleared",
+                description: nextReviewed
+                    ? "Flagged as reviewed. It stays in Discrepancies until you return it to Dispatch or archive it."
+                    : "Marked as unreviewed."
+            });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Sync Error', description: e.message });
+        }
+    };
+
+    const removeLogItem = async (itemId: string) => {
+        if (!localLog) return;
+        const updatedItems = (localLog.items || []).filter(i => i.id !== itemId);
+        await updateDoc(doc(db, 'weeklyLogs', localLog.id), { items: updatedItems });
+        setLocalLog({ ...localLog, items: updatedItems });
+    };
+
+    // Override: the dispute isn't being resolved through payroll at all — the
+    // admin is sending the job back to the Dispatch Hub for reassignment (e.g.
+    // "another tech did this job" / "I did not do this job"). Resets the job to
+    // unassigned and drops it from this manifest, so it's never paid out here.
+    const handleReturnDisputeToDispatch = async (item: WeeklyLogItem) => {
+        if (!canOverrideDispute) return;
+        const adminName = auth.currentUser?.displayName || 'Admin';
+        const wo = findWorkOrder(item.workOrderId);
+        try {
+            const asmtRef = doc(db, 'assignments', item.workOrderId);
+            const woRef = doc(db, 'workOrders', item.workOrderId);
+            const patch: Record<string, any> = {
+                status: 'unassigned',
+                assignedTechnicianId: null,
+                techId: null,
+                assignedTechIds: [],
+                additionalTechnicianIds: [],
+                activeTripLogId: null,
+                routeId: null,
+                history: arrayUnion({
+                    type: 'status_change',
+                    date: format(new Date(), 'MM-dd-yyyy'),
+                    details: `Sent back to Dispatch Hub by ${adminName} — dispute override (${item.disputeReason || 'disputed'}).`,
+                    user: adminName,
+                }),
+            };
+            await updateDoc(asmtRef, patch).catch(async () => { await updateDoc(woRef, patch); });
+            await removeLogItem(item.id);
+            toast({ title: "Sent to Dispatch Hub", description: "Job reset to unassigned and removed from this payroll manifest." });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Override Failed', description: e.message });
+        }
+    };
+
+    // Override: the admin is closing this job out entirely rather than
+    // redispatching it — soft-archives it (recoverable from Archives) and drops
+    // it from this manifest so it's never paid out here.
+    const handleArchiveDispute = async (item: WeeklyLogItem) => {
+        if (!canOverrideDispute) return;
+        const adminName = auth.currentUser?.displayName || 'Admin';
+        const wo = findWorkOrder(item.workOrderId);
+        try {
+            const asmtRef = doc(db, 'assignments', item.workOrderId);
+            const woRef = doc(db, 'workOrders', item.workOrderId);
+            const patch: Record<string, any> = {
+                archived: true,
+                status: 'archived',
+                previousStatus: wo?.status || 'completed',
+                archivedAt: new Date().toISOString(),
+                archivedBy: adminName,
+                archiveReason: `Disputed payroll item overridden and archived (${item.disputeReason || 'disputed'}).`,
+                history: arrayUnion({
+                    type: 'status_change',
+                    date: format(new Date(), 'MM-dd-yyyy'),
+                    details: `Archived by ${adminName} — dispute override (${item.disputeReason || 'disputed'}).`,
+                    user: adminName,
+                }),
+            };
+            await updateDoc(asmtRef, patch).catch(async () => { await updateDoc(woRef, patch); });
+            await removeLogItem(item.id);
+            toast({ title: "Job Archived", description: "Moved to Archives and removed from this payroll manifest." });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Override Failed', description: e.message });
         }
     };
 
@@ -725,22 +837,48 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     isAudited ? "bg-bg-primary border-green-border/30" : "bg-bg-secondary border-brand-red/30 shadow-sm"
                                                 )}>
                                                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:min-h-[3rem] sm:items-center cursor-pointer" onClick={() => wo && handleOpenJobDetail(wo)}>
-                                                    <div className="order-2 sm:order-1 shrink-0 flex items-center gap-2 sm:pr-2 sm:border-r border-border-sub/30" onClick={e => e.stopPropagation()}>
+                                                    <div className="order-2 sm:order-1 shrink-0 flex items-center gap-1.5 sm:pr-2 sm:border-r border-border-sub/30" onClick={e => e.stopPropagation()}>
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
                                                             disabled={hasPendingReimb}
-                                                            title={hasPendingReimb ? 'Locked: pending reimbursement must be approved first' : undefined}
+                                                            title={hasPendingReimb ? 'Locked: pending reimbursement must be approved first' : 'Marks that you\'ve reviewed this — it stays in Discrepancies until you send it to Dispatch or archive it.'}
                                                             className={cn(
                                                                 "w-full sm:w-auto h-9 sm:h-7 px-3 uppercase text-[9px] sm:text-[8px] font-bold tracking-widest",
                                                                 isAudited ? "bg-text-green text-white border-text-green" : "border-brand-red text-text-red hover:bg-brand-red-dim",
                                                                 hasPendingReimb && "opacity-40 cursor-not-allowed hover:bg-transparent"
                                                             )}
-                                                            onClick={() => !hasPendingReimb && toggleAuditItem(item.id, item.workOrderId)}
+                                                            onClick={() => !hasPendingReimb && toggleDisputeAcknowledged(item.id)}
                                                         >
                                                             {hasPendingReimb ? <Lock size={12} className="mr-1"/> : isAudited ? <Check size={12} className="mr-1"/> : <AlertTriangle size={12} className="mr-1"/>}
-                                                            {hasPendingReimb ? 'Locked' : isAudited ? 'Resolved' : 'Resolve'}
+                                                            {hasPendingReimb ? 'Locked' : isAudited ? 'Acknowledged' : 'Acknowledge'}
                                                         </Button>
+                                                        {canOverrideDispute && (
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <button
+                                                                        title="Override this dispute"
+                                                                        className="h-9 w-9 sm:h-7 sm:w-7 shrink-0 flex items-center justify-center rounded border border-border-sub text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+                                                                    >
+                                                                        <MoreVertical size={14} />
+                                                                    </button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="start">
+                                                                    <DropdownMenuItem
+                                                                        className="text-[11px] uppercase font-bold tracking-wide"
+                                                                        onClick={() => handleReturnDisputeToDispatch(item)}
+                                                                    >
+                                                                        <Send size={13} className="mr-2 text-text-muted" /> Send to Dispatch Hub
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem
+                                                                        className="text-[11px] uppercase font-bold tracking-wide text-text-red focus:text-text-red"
+                                                                        onClick={() => handleArchiveDispute(item)}
+                                                                    >
+                                                                        <ArchiveIcon size={13} className="mr-2" /> Move to Archives
+                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        )}
                                                     </div>
 
                                                     <div className="order-1 sm:order-2 flex-1 flex flex-col gap-2">

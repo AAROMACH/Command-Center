@@ -304,6 +304,7 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                                                 <span className="job-title !text-[11px] text-left truncate w-full">{wo.title || wo.description}</span>
                                             </div>
                                             <div className="job-meta !gap-3 !justify-start text-left">
+                                                <div className="job-meta-item !text-[10px] text-left font-bold text-text-secondary"><CalendarIcon size={11} className="text-brand-blue"/> {(() => { const d = parseTacticalDate(wo.scheduleDate); return d ? format(d, 'EEE, MMM d') : (wo.scheduleDate || 'TBD'); })()}</div>
                                                 <div className="job-meta-item !text-[10px] text-left"><Building2 size={11} className="text-text-muted"/> {wo.clientName}</div>
                                                 <div className="job-meta-item !text-[10px] text-left"><Clock size={11} className="text-accent-gold"/> {wo.scheduleTime}</div>
                                                 <div className="job-meta-item !text-[10px] text-left"><MapPin size={11} className="text-brand-red"/> {formatCityState(wo.location)}</div>

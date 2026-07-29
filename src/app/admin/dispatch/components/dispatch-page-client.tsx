@@ -391,7 +391,7 @@ export function DispatchPageClient() {
 
       <Tabs value={activeMasterTab} onValueChange={(val: any) => setActiveMasterTab(val)} className="w-full">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub shadow-sm">
-            <TabsList className="tabs !mb-0 !p-0 !bg-bg-tertiary">
+            <TabsList className="tabs !mb-0">
               <TabsTrigger value="dispatch" className="tab">DISPATCH HUB</TabsTrigger>
               <TabsTrigger value="requests" className="tab">SERVICE REQUESTS</TabsTrigger>
               <TabsTrigger value="assignments" className="tab">ASSIGNMENTS</TabsTrigger>

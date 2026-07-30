@@ -79,6 +79,31 @@ export function jobDateTimeValue(dateStr?: string | null, timeStr?: string | nul
 }
 
 /**
+ * Reverses the workOrders→assignments transition: given an assignment doc
+ * whose technician is being cleared, returns the doc to write back into the
+ * `workOrders` collection (unassigned pool) — original id restored via
+ * `workOrderId`, dispatch/tech-only fields stripped. The caller still owns
+ * the actual `setDoc` (into `workOrders`) + `deleteDoc` (from `assignments`).
+ */
+export function toUnassignedWorkOrder(
+  assignment: WorkOrder,
+  extraHistory: NonNullable<WorkOrder['history']> = []
+): WorkOrder {
+  const targetId = (assignment as { workOrderId?: string }).workOrderId || assignment.id;
+  const {
+    techId, assignedAt, workOrderId, activeTripLogId, routeId, techOutcome,
+    assignedTechnicianId, assignedTechIds, additionalTechnicianIds,
+    ...rest
+  } = assignment as WorkOrder & Record<string, any>;
+  return {
+    ...rest,
+    id: targetId,
+    status: 'unassigned',
+    history: [...(assignment.history || []), ...extraHistory],
+  } as WorkOrder;
+}
+
+/**
  * Merge the workOrders pool and assignments into one job list for the union
  * views (Schedule / Calendar). A job is normally in only one collection, but
  * dedup by id — assignments winning — guards against a transient double if an

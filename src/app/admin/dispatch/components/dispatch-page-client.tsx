@@ -26,7 +26,7 @@ import {
 import { NewAssignmentDialog } from "./new-assignment-dialog";
 import { ImportJobsDialog, type ExistingRef as ImportExistingRef } from "./import-jobs-dialog";
 import { normalizeExternalId, isImported } from "@/lib/work-order-identity";
-import { jobTechId, isArchivedJob, jobDateTimeValue } from "@/lib/jobs";
+import { jobTechId, isArchivedJob, jobDateTimeValue, toUnassignedWorkOrder } from "@/lib/jobs";
 import { NewRequestDialog } from "../../requests/components/new-request-dialog";
 import type { WorkOrder, Route, ServiceRequest, Technician } from "@/lib/types";
 import { isServiceTicketDoc, toDateSafe } from '@/lib/request-intake';
@@ -399,26 +399,19 @@ export function DispatchPageClient() {
 
   const handleReviewSendToDispatch = async (wo: WorkOrder) => {
     const adminName = currentAdminName();
-    const patch: Record<string, any> = {
-      status: 'unassigned',
-      assignedTechnicianId: null,
-      techId: null,
-      assignedTechIds: [],
-      additionalTechnicianIds: [],
-      activeTripLogId: null,
-      routeId: null,
-      techOutcome: null,
-      history: arrayUnion({
+    // Every unassigned job lives in the `workOrders` pool, not `assignments`
+    // (see lib/jobs.ts) — so clearing the tech has to migrate the doc back,
+    // mirroring the reverse of the assign transition, or it silently
+    // disappears from the Dispatch Hub's Unassigned tab.
+    try {
+      const target = toUnassignedWorkOrder(wo, [{
         type: 'status_change',
         date: format(new Date(), 'MM-dd-yyyy'),
         details: `Sent back to Dispatch Hub by ${adminName} from the review queue.`,
         user: adminName,
-      }),
-    };
-    try {
-      const asmtRef = doc(db, 'assignments', wo.id);
-      const woRef = doc(db, 'workOrders', wo.id);
-      await updateDoc(asmtRef, patch).catch(async () => { await updateDoc(woRef, patch); });
+      }]);
+      await setDoc(doc(db, 'workOrders', target.id), sanitize(target));
+      await deleteDoc(doc(db, 'assignments', wo.id));
       toast({ title: "Moved to Unassigned", description: "Job reset to unassigned for redispatch." });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Update Failed", description: e.message });

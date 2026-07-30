@@ -43,7 +43,7 @@ import {
     Archive as ArchiveIcon,
     Send
 } from 'lucide-react';
-import { cn, formatCityState } from '@/lib/utils';
+import { cn, formatCityState, sanitize } from '@/lib/utils';
 import { FIELD_NATION_FEE_RATE, netOfFieldNationFee } from '@/lib/payroll';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
@@ -58,7 +58,8 @@ import { differenceInMinutes, parseISO, format } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { db, auth } from '@/lib/firebase';
-import { doc, updateDoc, deleteDoc, arrayUnion, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, arrayUnion, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { toUnassignedWorkOrder } from '@/lib/jobs';
 import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
@@ -547,25 +548,19 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         if (!canOverrideDispute) return;
         const adminName = auth.currentUser?.displayName || 'Admin';
         const wo = findWorkOrder(item.workOrderId);
+        if (!wo) return;
         try {
-            const asmtRef = doc(db, 'assignments', item.workOrderId);
-            const woRef = doc(db, 'workOrders', item.workOrderId);
-            const patch: Record<string, any> = {
-                status: 'unassigned',
-                assignedTechnicianId: null,
-                techId: null,
-                assignedTechIds: [],
-                additionalTechnicianIds: [],
-                activeTripLogId: null,
-                routeId: null,
-                history: arrayUnion({
-                    type: 'status_change',
-                    date: format(new Date(), 'MM-dd-yyyy'),
-                    details: `Sent back to Dispatch Hub by ${adminName} — dispute override (${item.disputeReason || 'disputed'}).`,
-                    user: adminName,
-                }),
-            };
-            await updateDoc(asmtRef, patch).catch(async () => { await updateDoc(woRef, patch); });
+            // Every unassigned job lives in the `workOrders` pool, not
+            // `assignments` (see lib/jobs.ts) — migrate the doc back so it
+            // actually surfaces in the Dispatch Hub's Unassigned tab.
+            const target = toUnassignedWorkOrder(wo, [{
+                type: 'status_change',
+                date: format(new Date(), 'MM-dd-yyyy'),
+                details: `Sent back to Dispatch Hub by ${adminName} — dispute override (${item.disputeReason || 'disputed'}).`,
+                user: adminName,
+            }]);
+            await setDoc(doc(db, 'workOrders', target.id), sanitize(target));
+            await deleteDoc(doc(db, 'assignments', item.workOrderId));
             await removeLogItem(item.id);
             toast({ title: "Sent to Dispatch Hub", description: "Job reset to unassigned and removed from this payroll manifest." });
         } catch (e: any) {

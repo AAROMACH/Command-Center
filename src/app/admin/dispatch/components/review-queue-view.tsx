@@ -75,7 +75,7 @@ export function ReviewQueueView({ jobs, technicians, onSendToDispatch, onArchive
                     className="h-8 text-[9px] font-bold uppercase tracking-widest border-brand-blue text-brand-blue hover:bg-brand-blue/10"
                     onClick={() => onSendToDispatch(wo)}
                   >
-                    <Send size={13} className="mr-1.5" /> Send to Dispatch
+                    <Send size={13} className="mr-1.5" /> Move to Unassigned
                   </Button>
                   <Button
                     variant="outline"
@@ -83,7 +83,7 @@ export function ReviewQueueView({ jobs, technicians, onSendToDispatch, onArchive
                     className="h-8 text-[9px] font-bold uppercase tracking-widest border-text-muted text-text-muted hover:bg-bg-tertiary"
                     onClick={() => onArchive(wo)}
                   >
-                    <ArchiveIcon size={13} className="mr-1.5" /> Archive
+                    <ArchiveIcon size={13} className="mr-1.5" /> Move to Archives
                   </Button>
                 </div>
               </div>

@@ -147,10 +147,6 @@ export default function PayrollAuditPage() {
 
     const statusVariant = (s: string): any => s === 'Approved' ? 'active' : s === 'Submitted' ? 'scheduled' : s === 'Rejected' ? 'destructive' : 'onhold';
 
-    // A disputed item can still sit inside an Approved log — the log-level
-    // status badge alone would read as fully settled, so surface it here too.
-    const hasDispute = (log: WeeklyLog) => (log.items || []).some(i => i.confirmationStatus === 'disputed');
-
     const renderLogList = (logs: WeeklyLog[]) => (
         logs.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
@@ -173,10 +169,7 @@ export default function PayrollAuditPage() {
                                         <p className="text-[11px] font-bold text-text-primary uppercase">{tech?.name || log.techId}</p>
                                         <p className="text-[9px] text-text-muted font-mono">Week of {log.weekOf}</p>
                                     </div>
-                                    <div className="flex items-center gap-1.5 w-fit">
-                                        <Badge variant={statusVariant(log.status)} className="text-[7px] uppercase h-4 w-fit">{log.status}</Badge>
-                                        {hasDispute(log) && <Badge variant="destructive" className="text-[7px] uppercase h-4 w-fit">Disputed</Badge>}
-                                    </div>
+                                    <Badge variant={statusVariant(log.status)} className="text-[7px] uppercase h-4 w-fit">{log.status}</Badge>
                                     <div className="text-right">
                                         <p className={cn('text-[12px] font-bold font-mono', log.status === 'Approved' ? 'text-text-green' : 'text-text-primary')}>
                                             ${(log.totalPayout || 0).toFixed(2)}
@@ -367,10 +360,7 @@ export default function PayrollAuditPage() {
                                 {logs.slice(0, 12).map(log => (
                                     <div key={log.id} className="flex items-center justify-between px-4 py-2.5">
                                         <div>
-                                            <div className="flex items-center gap-1.5">
-                                                <p className="text-[10px] font-bold text-text-primary font-mono">Week of {log.weekOf}</p>
-                                                {hasDispute(log) && <Badge variant="destructive" className="text-[7px] uppercase h-4">Disputed</Badge>}
-                                            </div>
+                                            <p className="text-[10px] font-bold text-text-primary font-mono">Week of {log.weekOf}</p>
                                             <p className="text-[9px] text-text-muted">{log.items?.length || 0} items</p>
                                         </div>
                                         <div className="flex items-center gap-3">

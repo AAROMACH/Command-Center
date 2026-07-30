@@ -12,6 +12,16 @@ import {
   DialogFooter,
   DialogDescription
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { 
     AlertTriangle, 
@@ -38,6 +48,7 @@ import {
     Save,
     RotateCcw,
     Lock,
+    Unlock,
     Receipt,
     MoreVertical,
     Archive as ArchiveIcon,
@@ -87,10 +98,12 @@ function ImportedJobAudit({
     wo,
     onUpdateWorkOrder,
     approvedReimbTotal = 0,
+    isLocked = false,
 }: {
     wo: WorkOrder;
     onUpdateWorkOrder: (id: string, updates: Partial<WorkOrder>) => void;
     approvedReimbTotal?: number;
+    isLocked?: boolean;
 }) {
     // Local Buffer State
     const [localPay, setLocalPay] = useState(wo.pay);
@@ -124,6 +137,7 @@ function ImportedJobAudit({
     const aaromachPay = laborPayout + localOverhead;     // overhead goes back to Aaromach (added)
 
     const handleCommit = () => {
+        if (isLocked) return;
         onUpdateWorkOrder(wo.id, {
             pay: localPay,
             auditReimbursement: localReimb,
@@ -154,8 +168,9 @@ function ImportedJobAudit({
                             type="number"
                             value={localPay === 0 ? '' : localPay}
                             placeholder="0"
+                            disabled={isLocked}
                             onChange={(e) => setLocalPay(parseFloat(e.target.value) || 0)}
-                            className="h-7 w-full sm:w-20 text-xs pl-5 bg-bg-secondary font-mono font-bold border border-border-sub shadow-none focus-visible:ring-1"
+                            className="h-7 w-full sm:w-20 text-xs pl-5 bg-bg-secondary font-mono font-bold border border-border-sub shadow-none focus-visible:ring-1 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                     </div>
                 </div>
@@ -167,8 +182,9 @@ function ImportedJobAudit({
                             type="number"
                             value={localReimb === 0 ? '' : localReimb}
                             placeholder="0"
+                            disabled={isLocked}
                             onChange={(e) => setLocalReimb(parseFloat(e.target.value) || 0)}
-                            className="h-7 w-full sm:w-20 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
+                            className="h-7 w-full sm:w-20 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         {localReimb > 0 && (
                             <span className="block sm:absolute sm:left-0 sm:top-full mt-0.5 text-[7px] font-bold text-text-green uppercase tracking-tight whitespace-nowrap" title="Reimbursement paid to tech, net of the Field Nation fee">
@@ -185,8 +201,9 @@ function ImportedJobAudit({
                             type="number"
                             value={localOverhead === 0 ? '' : localOverhead}
                             placeholder="0"
+                            disabled={isLocked}
                             onChange={(e) => setLocalOverhead(parseFloat(e.target.value) || 0)}
-                            className="h-7 w-full sm:w-20 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1"
+                            className="h-7 w-full sm:w-20 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                     </div>
                 </div>
@@ -229,6 +246,12 @@ function ImportedJobAudit({
                     </button>
                 </div>
              )}
+             {isLocked && (
+                <div className="flex items-center gap-1 ml-auto text-text-muted" title="Log approved — reopen it above to edit">
+                    <Lock size={10}/>
+                    <span className="text-[8px] font-bold uppercase tracking-widest">Locked</span>
+                </div>
+             )}
         </div>
     );
 }
@@ -248,11 +271,22 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     // gate it the same as reopening a closed assignment.
     const canOverrideDispute = hasPermission('admin.logs.reopen');
 
+    // An Approved log's pay figures are locked by default — reopening them
+    // requires the same authority as overriding a dispute (super admin /
+    // payroll admin / an explicit permission override) plus an explicit
+    // confirm, and resets every time the dialog is reopened.
+    const [isReopenedForEdit, setIsReopenedForEdit] = useState(false);
+    const [reopenConfirmOpen, setReopenConfirmOpen] = useState(false);
+
     useEffect(() => {
         if (isOpen && initialLog) {
             setLocalLog(JSON.parse(JSON.stringify(initialLog)));
+            setIsReopenedForEdit(false);
         }
     }, [isOpen, initialLog]);
+
+    const isLogApproved = localLog?.status === 'Approved' || (localLog as any)?.status === 'Paid';
+    const isLogLockedForEdit = isLogApproved && !isReopenedForEdit;
 
     // Post-approval disputes a tech filed against this log after it left
     // Draft — a separate ticket collection, since the log itself is locked
@@ -414,16 +448,33 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         }
     };
 
+    // A pay edit that lands on an already-Approved log means the log was
+    // reopened — record it distinctly from the normal approve/return audit
+    // trail so a settled paycheck that got changed afterward is traceable.
+    const logReopenedPayEdit = useCallback((logId: string, weekOf: string) => {
+        const adminId = auth.currentUser?.uid ?? '';
+        const adminName = auth.currentUser?.displayName ?? 'Admin';
+        auditEvent(
+            'weeklyLogs',
+            logId,
+            adminId,
+            adminName,
+            'payroll_reopened_edit',
+            `${adminName} reopened and made changes to ${technician?.name ?? 'tech'}'s weekly log settlement date ${weekOf}.`
+        ).catch(() => {});
+    }, [technician]);
+
     const handleUpdateWorkOrder = useCallback(async (woId: string, updates: Partial<WorkOrder>) => {
         if (updates.finalPay !== undefined && localLog) {
-            const updatedItems = (localLog.items || []).map(item => 
+            const updatedItems = (localLog.items || []).map(item =>
                 item.workOrderId === woId ? { ...item, jobPay: updates.finalPay! } : item
             );
-            
+
             try {
                 const logRef = doc(db, 'weeklyLogs', localLog.id);
                 await updateDoc(logRef, { items: updatedItems });
                 setLocalLog({ ...localLog, items: updatedItems });
+                if (isLogApproved) logReopenedPayEdit(localLog.id, localLog.weekOf);
                 // NOTIFICATION DISPATCHED ONLY ON FORMAL COMMIT
                 toast({ title: "Pay Registry Updated", description: "Audit adjustment reflected in current manifest." });
             } catch (e: any) {
@@ -440,7 +491,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         } catch (e: any) {
             console.error("Registry update error", e);
         }
-    }, [localLog, toast]);
+    }, [localLog, toast, isLogApproved, logReopenedPayEdit]);
 
     // A manually-added missing job has no assignment/workOrder doc, so the pay
     // calc writes its results straight back onto the report inside the log.
@@ -461,11 +512,12 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         try {
             await updateDoc(doc(db, 'weeklyLogs', localLog.id), { missingAssignmentReports: updatedReports });
             setLocalLog({ ...localLog, missingAssignmentReports: updatedReports });
+            if (isLogApproved) logReopenedPayEdit(localLog.id, localLog.weekOf);
             toast({ title: 'Pay Registry Updated', description: 'Missing-job audit saved to the log.' });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Sync Error', description: e.message });
         }
-    }, [localLog, toast]);
+    }, [localLog, toast, isLogApproved, logReopenedPayEdit]);
 
     // Toggles a CONFIRMED item's payroll-verified state. Never touches a
     // disputed item — a dispute is only cleared via acknowledgment or one of
@@ -645,6 +697,30 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                         </div>
                     </DialogHeader>
 
+                    {isLogApproved && (
+                        <div className={cn(
+                            "flex items-center justify-between gap-3 px-3 sm:px-4 py-2 border-b border-border-sub shrink-0 text-[10px] font-bold uppercase tracking-widest",
+                            isReopenedForEdit ? "bg-accent-gold/10 text-accent-gold" : "bg-bg-tertiary/50 text-text-muted"
+                        )}>
+                            <span className="flex items-center gap-1.5">
+                                {isReopenedForEdit ? <Unlock size={12} /> : <Lock size={12} />}
+                                {isReopenedForEdit
+                                    ? "Reopened — pay changes on this settled log are being logged to activity."
+                                    : "This log is approved and locked from editing."}
+                            </span>
+                            {canOverrideDispute && !isReopenedForEdit && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 shrink-0 text-[9px] font-bold uppercase tracking-widest"
+                                    onClick={() => setReopenConfirmOpen(true)}
+                                >
+                                    <Unlock size={11} className="mr-1.5" /> Reopen to Edit
+                                </Button>
+                            )}
+                        </div>
+                    )}
+
                     <Tabs defaultValue="verified" className="flex flex-col sm:flex-1 sm:min-h-0 sm:overflow-hidden">
                         <div className="px-3 sm:px-6 border-b border-border-sub bg-bg-tertiary/20 flex flex-col sm:flex-row sm:justify-between sm:items-center shrink-0">
                             <TabsList className="h-11 sm:h-12 bg-transparent p-0 gap-5 sm:gap-8 justify-start w-full sm:w-auto overflow-x-auto no-scrollbar">
@@ -781,7 +857,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         <div className={cn("w-full min-w-0", !isImported && "sm:w-auto")} onClick={e => e.stopPropagation()}>
                                                             {isImported && wo ? (
                                                                 <div className="border-t border-border-sub/40 pt-2">
-                                                                    <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} approvedReimbTotal={approvedReimbTotal} />
+                                                                    <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} approvedReimbTotal={approvedReimbTotal} isLocked={isLogLockedForEdit} />
                                                                 </div>
                                                             ) : (
                                                                 <div className="flex items-center gap-6 p-2 rounded bg-bg-tertiary/30 border border-border-sub/50">
@@ -943,7 +1019,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                                                         <div className={cn("flex flex-col gap-2", !isImported && "sm:flex-row sm:items-center")} onClick={e => e.stopPropagation()}>
                                                             {isImported && wo ? (
-                                                                <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} approvedReimbTotal={approvedReimbTotal} />
+                                                                <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} approvedReimbTotal={approvedReimbTotal} isLocked={isLogLockedForEdit} />
                                                             ) : (
                                                                 <div className="flex items-center gap-6 p-2 rounded bg-bg-tertiary/30 border border-border-sub/50 text-left">
                                                                     <div className="text-left">
@@ -1075,7 +1151,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     {/* Settlement: imported → FN pay calc; manual → flat pay input. */}
                                                     <div onClick={e => e.stopPropagation()}>
                                                         {isImportedReport ? (
-                                                            <ImportedJobAudit wo={reportWo} onUpdateWorkOrder={(id, updates) => auditMissingReport(report.id, updates)} approvedReimbTotal={0} />
+                                                            <ImportedJobAudit wo={reportWo} onUpdateWorkOrder={(id, updates) => auditMissingReport(report.id, updates)} approvedReimbTotal={0} isLocked={isLogLockedForEdit} />
                                                         ) : (
                                                             <div className="flex items-center gap-2">
                                                                 <Label className="text-[8px] font-black uppercase text-text-muted whitespace-nowrap">Manual Pay</Label>
@@ -1084,8 +1160,9 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                     <Input
                                                                         type="number"
                                                                         defaultValue={report.pay || 0}
+                                                                        disabled={isLogLockedForEdit}
                                                                         onBlur={(e) => auditMissingReport(report.id, { pay: parseFloat(e.target.value) || 0, finalPay: parseFloat(e.target.value) || 0 })}
-                                                                        className="h-7 w-28 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub"
+                                                                        className="h-7 w-28 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub disabled:opacity-50 disabled:cursor-not-allowed"
                                                                     />
                                                                 </div>
                                                                 <span className="text-[8px] text-text-muted uppercase">tech payout</span>
@@ -1197,11 +1274,31 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                 `}</style>
             </Dialog>
 
-            <JobDetailDialog 
-                isOpen={isJobDetailOpen} 
-                setIsOpen={setIsJobDetailOpen} 
-                mission={selectedJobForDetail} 
+            <JobDetailDialog
+                isOpen={isJobDetailOpen}
+                setIsOpen={setIsJobDetailOpen}
+                mission={selectedJobForDetail}
             />
+
+            <AlertDialog open={reopenConfirmOpen} onOpenChange={setReopenConfirmOpen}>
+                <AlertDialogContent className="bg-bg-elevated border-border-main">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-text-primary uppercase font-black tracking-wide text-sm">Reopen This Approved Log?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-text-muted text-[11px]">
+                            {technician?.name}'s log for week of {localLog?.weekOf} has already been approved and settled. Reopening it unlocks pay, reimbursement, and overhead for editing, and every change you commit will be recorded to the activity log under this technician. Only do this to correct a genuine payroll error.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="text-[10px] uppercase font-bold">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] uppercase font-bold"
+                            onClick={() => { setIsReopenedForEdit(true); setReopenConfirmOpen(false); }}
+                        >
+                            <Unlock size={12} className="mr-1.5" />Reopen to Edit
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }

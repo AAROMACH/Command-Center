@@ -366,21 +366,27 @@ export default function ActivityAuditPage() {
     // Archived jobs (assignments/work orders) — soft-archived in place, shown
     // in the Archive tab instead of mixed into Assignment History.
     const archivedJobsList = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
         return [...workOrders, ...assignments]
             .filter(isArchivedJob)
             .filter(wo => matchesArchiveRange(wo.archivedAt))
+            .filter(wo => !q || [wo.id, (wo as any).externalWorkOrderId, wo.title, wo.description, wo.clientName]
+                .some(v => (v || '').toString().toLowerCase().includes(q)))
             .sort((a, b) => {
                 const da = a.archivedAt ? new Date(a.archivedAt).getTime() : 0;
                 const db = b.archivedAt ? new Date(b.archivedAt).getTime() : 0;
                 return archiveSortDir === 'desc' ? db - da : da - db;
             });
-    }, [workOrders, assignments, matchesArchiveRange, archiveSortDir]);
+    }, [workOrders, assignments, matchesArchiveRange, archiveSortDir, searchQuery]);
 
     const filteredArchivedEvents = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
         return [...archivedEvents]
             .filter(e => matchesArchiveRange(e.archivedAt))
+            .filter(e => !q || [e.entity, e.eventLabel, e.techName, e.clientName]
+                .some(v => (v || '').toString().toLowerCase().includes(q)))
             .sort((a, b) => archiveSortDir === 'desc' ? b.archivedAt.localeCompare(a.archivedAt) : a.archivedAt.localeCompare(b.archivedAt));
-    }, [archivedEvents, matchesArchiveRange, archiveSortDir]);
+    }, [archivedEvents, matchesArchiveRange, archiveSortDir, searchQuery]);
 
     const handleArchiveEvent = async (event: TimelineEvent) => {
         try {
@@ -1049,7 +1055,10 @@ export default function ActivityAuditPage() {
                     />
                 </div>
 
-                {!searchQuery ? (
+                {/* The Archive tab's own tables already filter on searchQuery in
+                    place (see archivedJobsList/filteredArchivedEvents) — only the
+                    other tabs fall back to the cross-category search results. */}
+                {(!searchQuery || activeTab === 'archive') ? (
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full text-left">
                         <div className="flex justify-center text-left">
                             <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-center mb-8 flex-wrap">
@@ -1634,13 +1643,11 @@ export default function ActivityAuditPage() {
                                                             <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Archived</TableHead>
                                                             <TableHead className="text-[9px] uppercase font-black tracking-widest">Job ID / Title</TableHead>
                                                             <TableHead className="text-[9px] uppercase font-black tracking-widest">Client</TableHead>
-                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Technician</TableHead>
                                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-right pr-6">Actions</TableHead>
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
                                                         {archivedJobsList.map(wo => {
-                                                            const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || wo.techId));
                                                             let archivedDisplay = '—';
                                                             if (wo.archivedAt) {
                                                                 const d = new Date(wo.archivedAt);
@@ -1654,7 +1661,6 @@ export default function ActivityAuditPage() {
                                                                         <p className="text-xs font-bold text-text-primary uppercase mt-0.5">{wo.title || wo.description}</p>
                                                                     </TableCell>
                                                                     <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{wo.clientName}</TableCell>
-                                                                    <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{tech?.name || '—'}</TableCell>
                                                                     <TableCell className="py-3 text-right pr-6" onClick={e => e.stopPropagation()}>
                                                                         <Button variant="outline" size="sm" className="h-7 text-[9px] uppercase font-bold tracking-widest" onClick={() => handleRestoreArchived(wo)}>
                                                                             Restore

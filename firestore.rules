@@ -361,6 +361,15 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // The friendly-ID counter (wlog-001, asmt-001, ...) is incremented by
+    // whoever creates the doc — techs filing their own weekly logs included.
+    // Without this, non-admins can't touch systemConfig/idCounters, the
+    // transaction in lib/generateId.ts throws, and every non-admin write
+    // falls back to the ugly `${prefix}-${Date.now().toString(36)}` id.
+    match /systemConfig/idCounters {
+      allow read, write: if isSignedIn();
+    }
+
     match /systemConfig/{id} {
       allow read: if isSignedIn();
       allow write: if isAdmin();

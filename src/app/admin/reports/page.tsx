@@ -1392,6 +1392,17 @@ export default function ActivityAuditPage() {
                                         const completedJobs = [...workOrders, ...assignments]
                                             .filter(wo => wo.status === 'completed' && !isArchivedJob(wo))
                                             .sort((a, b) => ((b.archivedAt || b.scheduleDate) || '').localeCompare((a.archivedAt || a.scheduleDate) || ''));
+                                        // A job the tech disputed still shows "completed" on the log
+                                        // item itself — but once that log is Approved, the assignment
+                                        // record should read Disputed here, not Completed, so a
+                                        // lingering pay/reimbursement disagreement stays visible.
+                                        const disputedWorkOrderIds = new Set(
+                                            weeklyLogs
+                                                .filter(log => log.status === 'Approved')
+                                                .flatMap(log => (log.items || [])
+                                                    .filter(item => item.confirmationStatus === 'disputed')
+                                                    .map(item => item.workOrderId))
+                                        );
                                         return (
                                             <>
                                                 <div className="flex items-center justify-between">
@@ -1433,7 +1444,13 @@ export default function ActivityAuditPage() {
                                                                         </TableCell>
                                                                         <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{wo.clientName}</TableCell>
                                                                         <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{tech?.name || '—'}</TableCell>
-                                                                        <TableCell className="py-3 text-right pr-6"><Badge variant="active" className="text-[8px] uppercase">completed</Badge></TableCell>
+                                                                        <TableCell className="py-3 text-right pr-6">
+                                                                            {disputedWorkOrderIds.has(wo.id) ? (
+                                                                                <Badge variant="destructive" className="text-[8px] uppercase">disputed</Badge>
+                                                                            ) : (
+                                                                                <Badge variant="active" className="text-[8px] uppercase">completed</Badge>
+                                                                            )}
+                                                                        </TableCell>
                                                                     </TableRow>
                                                                 );
                                                             })}

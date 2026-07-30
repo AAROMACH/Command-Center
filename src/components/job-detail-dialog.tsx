@@ -24,7 +24,7 @@ import {
   RotateCcw, UserPlus,
   Wrench, Flag, Database,
   ClipboardList, ExternalLink, Building2,
-  CheckCircle2, Loader2,
+  CheckCircle2, Loader2, Tag,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { db, auth } from '@/lib/firebase';
@@ -33,10 +33,10 @@ import {
   orderBy, limit, doc, updateDoc, arrayUnion,
 } from 'firebase/firestore';
 import type { WorkOrder, WeeklyLog, WeeklyLogItem, AssignmentTimeLog, Technician } from '@/lib/types';
-import { displayWorkOrderNumber } from '@/lib/work-order-identity';
+import { displayWorkOrderNumber, isImported } from '@/lib/work-order-identity';
 import { fileCompletedAssignment } from '@/lib/weekly-log';
 import { createDocId } from '@/lib/generateId';
-import { ID_PREFIXES } from '@/lib/constants';
+import { ID_PREFIXES, PAY_TYPE_LABELS } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { assignmentTimeLogs } from '@/lib/data';
 
@@ -312,7 +312,12 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     return map[mission.status] || mission.status;
   })();
 
-  const payDisplay = mission.payType === 'hourly' ? `$${mission.pay}/hr` : `$${(mission.pay || 0).toFixed(2)}`;
+  const originalPayDisplay = mission.payType === 'blended'
+    ? `$${(mission.blendedFixedPay ?? mission.pay ?? 0).toFixed(2)} + $${(mission.blendedHourlyRate ?? 0).toFixed(2)}/hr`
+    : mission.payType === 'hourly'
+      ? `$${(mission.pay ?? 0).toFixed(2)}/hr`
+      : `$${(mission.pay ?? 0).toFixed(2)}`;
+  const finalPayDisplay = mission.finalPay != null ? `$${mission.finalPay.toFixed(2)}` : 'Pending Audit';
 
   const riskLabel = mission.slaStatus === 'breached' ? 'Breached' : mission.slaStatus === 'at-risk' ? 'At Risk' : mission.slaStatus === 'met' ? 'Met' : mission.slaStatus === 'on-track' ? 'On Track' : 'Normal';
   const riskColor = mission.slaStatus === 'breached' ? 'text-priority-critical' : mission.slaStatus === 'at-risk' ? 'text-accent-gold' : (mission.slaStatus === 'met' || mission.slaStatus === 'on-track') ? 'text-text-green' : 'text-text-muted';
@@ -340,12 +345,14 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   };
 
   const logicGrid = [
-    { icon: Wrench,        label: 'Job Type',    value: mission.projectType || '—',  cls: 'text-text-primary' },
-    { icon: Flag,          label: 'Priority',    value: mission.priority,             cls: mission.priority === 'critical' ? 'text-priority-critical' : mission.priority === 'high' ? 'text-priority-high' : mission.priority === 'medium' ? 'text-accent-gold' : 'text-text-muted' },
-    { icon: DollarSign,    label: 'Settlement',  value: payDisplay,                   cls: 'text-text-green' },
-    { icon: Database,      label: 'Registry',    value: mission.source || 'Manual',   cls: 'text-text-primary' },
-    { icon: AlertTriangle, label: 'Risk Level',  value: riskLabel,                    cls: riskColor },
-    { icon: ShieldCheck,   label: 'Status',      value: statusLabel,                  cls: isConfirmed ? 'text-text-green' : isInProgress ? 'text-brand-blue' : 'text-text-muted' },
+    { icon: Wrench,        label: 'Job Type',     value: mission.projectType || '—',              cls: 'text-text-primary' },
+    { icon: Flag,          label: 'Priority',     value: mission.priority,                        cls: mission.priority === 'critical' ? 'text-priority-critical' : mission.priority === 'high' ? 'text-priority-high' : mission.priority === 'medium' ? 'text-accent-gold' : 'text-text-muted' },
+    { icon: Tag,           label: 'Pay Type',     value: PAY_TYPE_LABELS[mission.payType] || mission.payType, cls: 'text-text-primary' },
+    { icon: DollarSign,    label: 'Original Pay', value: originalPayDisplay,                      cls: 'text-text-secondary' },
+    { icon: DollarSign,    label: 'Settlement',   value: finalPayDisplay,                         cls: 'text-text-green' },
+    { icon: Database,      label: 'Registry',     value: mission.source || 'Manual',              cls: 'text-text-primary' },
+    { icon: AlertTriangle, label: 'Risk Level',   value: riskLabel,                                cls: riskColor },
+    { icon: ShieldCheck,   label: 'Status',       value: statusLabel,                             cls: isConfirmed ? 'text-text-green' : isInProgress ? 'text-brand-blue' : 'text-text-muted' },
   ];
 
   const actionButtons = [
@@ -383,6 +390,11 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
             <span className="font-mono text-[11px] font-bold text-brand-red uppercase tracking-[0.15em]">
               WO: {displayWorkOrderNumber(mission)}
             </span>
+            {isImported(mission) && (
+              <span className="font-mono text-[11px] font-bold text-text-muted uppercase tracking-[0.15em]">
+                ASMT: {mission.id.toUpperCase()}
+              </span>
+            )}
             <span className={cn(
               'flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-wider',
               isConfirmed ? 'border-text-green/40 bg-text-green/10 text-text-green'
@@ -424,7 +436,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
             <span className="text-border-sub select-none">|</span>
             <span className="flex items-center gap-1.5">
               <DollarSign size={12} className="text-text-green shrink-0" />
-              <span className="text-[11px] text-text-secondary font-medium">{payDisplay}</span>
+              <span className="text-[11px] text-text-secondary font-medium">{originalPayDisplay}</span>
             </span>
             {mission.clientName && (
               <>

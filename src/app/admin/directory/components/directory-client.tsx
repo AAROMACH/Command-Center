@@ -98,6 +98,7 @@ type DirectoryClientProps = {
     technicians: Technician[];
     timeOffRequests: TimeOffRequest[];
     workOrders: WorkOrder[];
+    assignments: WorkOrder[];
     siteRequests: SiteRequest[];
     pendingUsers: Technician[];
 };
@@ -105,7 +106,7 @@ type DirectoryClientProps = {
 type ViewMode = 'rows' | 'grid';
 type SortOption = 'name' | 'reliability' | 'contacts' | 'role';
 
-export function DirectoryClient({ technicians: personnel, timeOffRequests, workOrders, siteRequests, pendingUsers }: DirectoryClientProps) {
+export function DirectoryClient({ technicians: personnel, timeOffRequests, workOrders, assignments, siteRequests, pendingUsers }: DirectoryClientProps) {
     const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState("");
     const [viewMode, setViewMode] = useState<ViewMode>('rows');
@@ -1204,6 +1205,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                 setIsOpen={setIsDetailOpen}
                 person={selectedPerson}
                 workOrders={workOrders}
+                assignments={assignments}
                 onEdit={() => handleEditClick(selectedPerson!)}
                 timeOffRequests={timeOffRequests}
             />

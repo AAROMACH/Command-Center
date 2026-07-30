@@ -92,7 +92,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { penaltyEvents } from '@/lib/data';
 import { cn, formatCityState } from '@/lib/utils';
-import { isArchivedJob } from '@/lib/jobs';
+import { isArchivedJob, archiveJobRecord } from '@/lib/jobs';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { IntelligenceTerminal } from './components/intelligence-terminal';
 import type { Technician, WorkOrder, WeeklyLog, TimeOffRequest, AdminMessage, Invoice, Project } from '@/lib/types';
@@ -323,26 +323,18 @@ export default function ActivityAuditPage() {
     // everywhere else in the app) so it's recoverable from the Job Archive
     // instead of vanishing with no trace.
     const executeDeleteAssignment = async (woId: string) => {
-        const record = assignments.find(a => a.id === woId) || workOrders.find(w => w.id === woId);
+        const fromAssignments = assignments.find(a => a.id === woId);
+        const record = fromAssignments || workOrders.find(w => w.id === woId);
+        if (!record) { setDeleteConfirmId(null); return; }
         const adminName = currentUser?.name || 'Admin';
-        const patch: Record<string, any> = {
-            archived: true,
-            status: 'archived',
-            previousStatus: record?.status || 'completed',
-            archivedAt: new Date().toISOString(),
-            archivedBy: adminName,
-            archiveReason: `Archived from Reports by ${adminName}.`,
-            history: arrayUnion({
-                type: 'status_change',
-                date: format(new Date(), 'MM-dd-yyyy'),
-                details: `Archived by ${adminName} from the Reports registry.`,
-                user: adminName,
-            }),
-        };
         try {
-            const asmtRef = doc(db, 'assignments', woId);
-            const woRef = doc(db, 'workOrders', woId);
-            await updateDoc(asmtRef, patch).catch(async () => { await updateDoc(woRef, patch); });
+            await archiveJobRecord({
+                job: record,
+                collectionName: fromAssignments ? 'assignments' : 'workOrders',
+                archivedBy: adminName,
+                archiveReason: `Archived from Reports by ${adminName}.`,
+                techName: technicians.find(t => t.id === (record.assignedTechnicianId || record.techId))?.name,
+            });
             toast({ title: 'Archived', description: `Assignment ${woId.toUpperCase()} moved to Archives — recoverable from the Job Archive.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Archive Failed', description: e.message });
@@ -366,21 +358,27 @@ export default function ActivityAuditPage() {
     // Archived jobs (assignments/work orders) — soft-archived in place, shown
     // in the Archive tab instead of mixed into Assignment History.
     const archivedJobsList = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
         return [...workOrders, ...assignments]
             .filter(isArchivedJob)
             .filter(wo => matchesArchiveRange(wo.archivedAt))
+            .filter(wo => !q || [wo.id, (wo as any).externalWorkOrderId, wo.title, wo.description, wo.clientName]
+                .some(v => (v || '').toString().toLowerCase().includes(q)))
             .sort((a, b) => {
                 const da = a.archivedAt ? new Date(a.archivedAt).getTime() : 0;
                 const db = b.archivedAt ? new Date(b.archivedAt).getTime() : 0;
                 return archiveSortDir === 'desc' ? db - da : da - db;
             });
-    }, [workOrders, assignments, matchesArchiveRange, archiveSortDir]);
+    }, [workOrders, assignments, matchesArchiveRange, archiveSortDir, searchQuery]);
 
     const filteredArchivedEvents = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
         return [...archivedEvents]
             .filter(e => matchesArchiveRange(e.archivedAt))
+            .filter(e => !q || [e.entity, e.eventLabel, e.techName, e.clientName]
+                .some(v => (v || '').toString().toLowerCase().includes(q)))
             .sort((a, b) => archiveSortDir === 'desc' ? b.archivedAt.localeCompare(a.archivedAt) : a.archivedAt.localeCompare(b.archivedAt));
-    }, [archivedEvents, matchesArchiveRange, archiveSortDir]);
+    }, [archivedEvents, matchesArchiveRange, archiveSortDir, searchQuery]);
 
     const handleArchiveEvent = async (event: TimelineEvent) => {
         try {
@@ -1049,7 +1047,10 @@ export default function ActivityAuditPage() {
                     />
                 </div>
 
-                {!searchQuery ? (
+                {/* The Archive tab's own tables already filter on searchQuery in
+                    place (see archivedJobsList/filteredArchivedEvents) — only the
+                    other tabs fall back to the cross-category search results. */}
+                {(!searchQuery || activeTab === 'archive') ? (
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full text-left">
                         <div className="flex justify-center text-left">
                             <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-center mb-8 flex-wrap">
@@ -1392,6 +1393,17 @@ export default function ActivityAuditPage() {
                                         const completedJobs = [...workOrders, ...assignments]
                                             .filter(wo => wo.status === 'completed' && !isArchivedJob(wo))
                                             .sort((a, b) => ((b.archivedAt || b.scheduleDate) || '').localeCompare((a.archivedAt || a.scheduleDate) || ''));
+                                        // A job the tech disputed still shows "completed" on the log
+                                        // item itself — but once that log is Approved, the assignment
+                                        // record should read Disputed here, not Completed, so a
+                                        // lingering pay/reimbursement disagreement stays visible.
+                                        const disputedWorkOrderIds = new Set(
+                                            weeklyLogs
+                                                .filter(log => log.status === 'Approved')
+                                                .flatMap(log => (log.items || [])
+                                                    .filter(item => item.confirmationStatus === 'disputed')
+                                                    .map(item => item.workOrderId))
+                                        );
                                         return (
                                             <>
                                                 <div className="flex items-center justify-between">
@@ -1433,7 +1445,13 @@ export default function ActivityAuditPage() {
                                                                         </TableCell>
                                                                         <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{wo.clientName}</TableCell>
                                                                         <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{tech?.name || '—'}</TableCell>
-                                                                        <TableCell className="py-3 text-right pr-6"><Badge variant="active" className="text-[8px] uppercase">completed</Badge></TableCell>
+                                                                        <TableCell className="py-3 text-right pr-6">
+                                                                            {disputedWorkOrderIds.has(wo.id) ? (
+                                                                                <Badge variant="destructive" className="text-[8px] uppercase">disputed</Badge>
+                                                                            ) : (
+                                                                                <Badge variant="active" className="text-[8px] uppercase">completed</Badge>
+                                                                            )}
+                                                                        </TableCell>
                                                                     </TableRow>
                                                                 );
                                                             })}
@@ -1617,13 +1635,11 @@ export default function ActivityAuditPage() {
                                                             <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Archived</TableHead>
                                                             <TableHead className="text-[9px] uppercase font-black tracking-widest">Job ID / Title</TableHead>
                                                             <TableHead className="text-[9px] uppercase font-black tracking-widest">Client</TableHead>
-                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Technician</TableHead>
                                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-right pr-6">Actions</TableHead>
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
                                                         {archivedJobsList.map(wo => {
-                                                            const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || wo.techId));
                                                             let archivedDisplay = '—';
                                                             if (wo.archivedAt) {
                                                                 const d = new Date(wo.archivedAt);
@@ -1637,7 +1653,6 @@ export default function ActivityAuditPage() {
                                                                         <p className="text-xs font-bold text-text-primary uppercase mt-0.5">{wo.title || wo.description}</p>
                                                                     </TableCell>
                                                                     <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{wo.clientName}</TableCell>
-                                                                    <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{tech?.name || '—'}</TableCell>
                                                                     <TableCell className="py-3 text-right pr-6" onClick={e => e.stopPropagation()}>
                                                                         <Button variant="outline" size="sm" className="h-7 text-[9px] uppercase font-bold tracking-widest" onClick={() => handleRestoreArchived(wo)}>
                                                                             Restore

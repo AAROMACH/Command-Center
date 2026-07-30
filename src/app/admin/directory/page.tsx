@@ -11,6 +11,7 @@ export default function DirectoryPage() {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [assignments, setAssignments] = useState<WorkOrder[]>([]);
   const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
 
   useEffect(() => {
@@ -23,6 +24,11 @@ export default function DirectoryPage() {
     const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
       setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
     });
+    // Dispatched jobs live in `assignments`, not `workOrders` (see lib/jobs.ts)
+    // — a tech's assignment history is otherwise invisible in the directory.
+    const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
+      setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+    });
     const unsubSite = onSnapshot(collection(db, 'siteRequests'), (snap) => {
       setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)));
     });
@@ -31,6 +37,7 @@ export default function DirectoryPage() {
       unsubTech();
       unsubTOR();
       unsubWO();
+      unsubAsmt();
       unsubSite();
     };
   }, []);
@@ -55,6 +62,7 @@ export default function DirectoryPage() {
           technicians={technicians}
           timeOffRequests={timeOffRequests}
           workOrders={workOrders}
+          assignments={assignments}
           siteRequests={siteRequests}
           pendingUsers={pendingUsers}
         />

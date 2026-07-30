@@ -87,7 +87,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { isAdmin, isPayAdmin } from "@/lib/permissions";
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { WorkOrderId } from '@/components/work-order-id';
-import { jobTechId, isArchivedJob, isCompletedJob, jobDateTimeValue } from '@/lib/jobs';
+import { jobTechId, isArchivedJob, isCompletedJob, jobDateTimeValue, archiveJobRecord } from '@/lib/jobs';
 
 type SortOption = 'date' | 'client' | 'status' | 'pay' | 'tech';
 
@@ -375,14 +375,12 @@ export default function AssignmentsHubPage() {
     }
     setIsArchiving(true);
     try {
-      const docRef = doc(db, 'assignments', order.id);
-      await updateDoc(docRef, {
-        archived: true,
-        status: 'archived',
-        previousStatus: order.status || 'unassigned',
-        archivedAt: new Date().toISOString(),
+      await archiveJobRecord({
+        job: order,
+        collectionName: 'assignments',
         archivedBy: currentUser?.name || currentUser?.id || 'Admin',
         archiveReason: 'Manually archived from assignments page',
+        techName: technicians.find(t => t.id === jobTechId(order))?.name,
       });
       toast({ title: "Archived", description: "Assignment moved to Archives." });
       setOrderToArchive(null);

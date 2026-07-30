@@ -75,6 +75,7 @@ import { cn, formatCityState, isAssignableTechnician, isInactiveTechnician, sort
 import { JobDetailDialog } from "@/components/job-detail-dialog";
 import { WorkOrderId } from "@/components/work-order-id";
 import { isPayAdmin } from "@/lib/permissions";
+import { archiveJobRecord } from "@/lib/jobs";
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from "@/lib/reliability";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
@@ -293,18 +294,17 @@ export const WorkOrdersTable = React.memo(({
     setIsDeleteConfirmOpen(false);
     setOrderToDelete(null);
 
-    // Soft-archive in place: keep the document and flip it to archived, so every
-    // field (WO number, external WO id, tech, logs, notes, history) is preserved
-    // and the record can be restored. Never deleteDoc.
+    // Moves the doc into activityArchive (see lib/jobs.ts#archiveJobRecord) —
+    // every field is preserved in the archived copy and the record can be
+    // restored from the Archives page.
     (async () => {
       try {
-        await updateDoc(doc(db, collectionName, order.id), {
-          archived: true,
-          status: 'archived',
-          previousStatus: order.status || (mode === 'unassigned' ? 'unassigned' : 'assigned'),
-          archivedAt: new Date().toISOString(),
+        await archiveJobRecord({
+          job: order,
+          collectionName: collectionName as 'workOrders' | 'assignments',
           archivedBy: 'Admin',
           archiveReason: `Archived from Dispatch Hub`,
+          techName: technicians.find(t => t.id === (order.assignedTechnicianId || order.techId))?.name,
         });
         toast({ title: `${label} Archived`, description: "Moved to Archives — recoverable from the Archives page." });
       } catch (e: any) {
@@ -421,10 +421,14 @@ export const WorkOrdersTable = React.memo(({
                                 </div>
                               )}
                             </div>
+                        ) : order.status === 'unassigned' ? (
+                          // The Actions column already carries the Assign button for
+                          // unassigned rows — a second one here would just duplicate it.
+                          <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Unassigned</span>
                         ) : (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
+                          <Button
+                            variant="outline"
+                            size="sm"
                             className="h-8 !text-[10px] border-brand-red text-brand-red hover:bg-brand-red-dim uppercase font-bold tracking-widest"
                             onClick={(e) => { e.stopPropagation(); handleOpenAssignDialog(order); }}
                           >
@@ -669,7 +673,7 @@ export const WorkOrdersTable = React.memo(({
                 </div>
             </DialogHeader>
             {editedOrder && (
-                <ScrollArea className="flex-1">
+                <ScrollArea className="flex-1 min-h-0">
                     <div className="px-6 py-4 space-y-6">
                         <div className="space-y-4">
                             <div className="space-y-2 text-left">

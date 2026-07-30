@@ -19,6 +19,8 @@ import {
     X,
     Loader2,
     Wrench,
+    ChevronDown,
+    ChevronRight,
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,7 +34,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
-import { format, isSameDay, startOfDay } from 'date-fns';
+import { format, isSameDay, startOfDay, addDays } from 'date-fns';
+import { weekOfForScheduleDate } from '@/lib/weekly-log';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, addDoc, getDoc } from 'firebase/firestore';
 import { uploadFile } from '@/lib/upload';
@@ -85,6 +88,9 @@ export default function TechEarningsPage() {
     const [logSearchQuery, setLogSearchQuery] = useState("");
     const [logSortBy, setLogSortBy] = useState<LogSortOption>('date-desc');
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+    // Which week folders are collapsed in the reimbursement table — open by
+    // default, collapse individually to declutter.
+    const [collapsedWeeks, setCollapsedWeeks] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         setMounted(true);
@@ -295,6 +301,29 @@ export default function TechEarningsPage() {
         return [...newItems, ...legacyItems, ...jobItems].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     }, [reimbursements, expenses, jobReimbursements, mileageRate]);
 
+    // Reimbursements grouped into "week folders" (Monday-start, matching the
+    // weekly log convention) — most recent week first, items within a week
+    // newest first.
+    const reimbursementWeeks = useMemo(() => {
+        const buckets = new Map<string, typeof allReimbursements>();
+        for (const item of allReimbursements) {
+            const weekOf = weekOfForScheduleDate(item.date);
+            if (!buckets.has(weekOf)) buckets.set(weekOf, []);
+            buckets.get(weekOf)!.push(item);
+        }
+        return Array.from(buckets.entries())
+            .map(([weekOf, items]) => ({
+                weekOf,
+                items,
+                total: items.reduce((sum, i) => sum + i.amount, 0),
+            }))
+            .sort((a, b) => {
+                const [monthA, dayA, yearA] = a.weekOf.split('-').map(Number);
+                const [monthB, dayB, yearB] = b.weekOf.split('-').map(Number);
+                return new Date(yearB, monthB - 1, dayB).getTime() - new Date(yearA, monthA - 1, dayA).getTime();
+            });
+    }, [allReimbursements]);
+
     const distanceMilesNum = parseFloat(mileageForm.distanceMiles) || 0;
     const calculatedMileageAmount = distanceMilesNum * mileageRate;
 
@@ -458,54 +487,78 @@ export default function TechEarningsPage() {
                             </div>
                         </CardHeader>
                         <CardContent className="p-0">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="hover:bg-transparent border-border-sub">
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-4">Date</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Type</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Details</TableHead>
-                                        <TableHead className="text-right text-[10px] uppercase font-bold tracking-widest">Amount</TableHead>
-                                        <TableHead className="text-center text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {allReimbursements.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={5} className="text-center py-12 text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No reimbursement requests on file.</TableCell>
-                                        </TableRow>
-                                    ) : allReimbursements.map(item => (
-                                        <TableRow key={`${item.source}-${item.id}`} className="hover:bg-bg-tertiary transition-colors border-border-sub">
-                                            <TableCell className="text-xs font-bold uppercase pl-4">{item.date}</TableCell>
-                                            <TableCell>
-                                                <Badge
-                                                    variant={item.type === 'mileage' ? 'onhold' : item.type === 'job' ? 'outline' : 'default'}
-                                                    className="text-[8px] h-4 uppercase flex items-center gap-1 w-fit"
-                                                >
-                                                    {item.type === 'mileage' ? <><Car size={8} />&nbsp;Mileage</> : item.type === 'job' ? <><Wrench size={8} />&nbsp;Job Reimb.</> : 'Receipt'}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="text-xs text-text-primary truncate max-w-[200px]">{item.label}</div>
-                                                {item.sub && <div className="text-[10px] text-text-muted">{item.sub}</div>}
-                                                {item.receiptPhotoUrls?.[0] && (
-                                                    <button
-                                                        className="text-[9px] text-brand-red hover:underline mt-0.5"
-                                                        onClick={() => window.open(item.receiptPhotoUrls![0], '_blank')}
-                                                    >
-                                                        View receipt
-                                                    </button>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-right font-mono text-sm font-bold">${item.amount.toFixed(2)}</TableCell>
-                                            <TableCell className="text-center">
-                                                <Badge variant={getStatusVariant(item.status)} className="text-[8px] h-4 uppercase">
-                                                    {item.status}
-                                                </Badge>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                            {reimbursementWeeks.length === 0 ? (
+                                <p className="text-center py-12 text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No reimbursement requests on file.</p>
+                            ) : reimbursementWeeks.map(({ weekOf, items, total }) => {
+                                const [m, d, y] = weekOf.split('-').map(Number);
+                                const weekStart = new Date(y, m - 1, d);
+                                const weekEnd = addDays(weekStart, 6);
+                                const isCollapsed = !!collapsedWeeks[weekOf];
+                                return (
+                                    <div key={weekOf} className="border-b border-border-sub last:border-b-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => setCollapsedWeeks(prev => ({ ...prev, [weekOf]: !prev[weekOf] }))}
+                                            className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-bg-tertiary/30 hover:bg-bg-tertiary transition-colors text-left"
+                                        >
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                {isCollapsed ? <ChevronRight size={14} className="text-text-muted shrink-0" /> : <ChevronDown size={14} className="text-text-muted shrink-0" />}
+                                                <span className="text-[11px] font-bold uppercase tracking-widest text-text-primary truncate">
+                                                    Week of {format(weekStart, 'MMM d')} – {format(weekEnd, 'MMM d, yyyy')}
+                                                </span>
+                                                <span className="text-[10px] text-text-muted font-bold uppercase shrink-0">({items.length})</span>
+                                            </div>
+                                            <span className="text-xs font-mono font-bold text-text-green shrink-0">${total.toFixed(2)}</span>
+                                        </button>
+                                        {!isCollapsed && (
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow className="hover:bg-transparent border-border-sub">
+                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-4">Date</TableHead>
+                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Type</TableHead>
+                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Details</TableHead>
+                                                        <TableHead className="text-right text-[10px] uppercase font-bold tracking-widest">Amount</TableHead>
+                                                        <TableHead className="text-center text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {items.map(item => (
+                                                        <TableRow key={`${item.source}-${item.id}`} className="hover:bg-bg-tertiary transition-colors border-border-sub">
+                                                            <TableCell className="text-xs font-bold uppercase pl-4">{item.date}</TableCell>
+                                                            <TableCell>
+                                                                <Badge
+                                                                    variant={item.type === 'mileage' ? 'onhold' : item.type === 'job' ? 'outline' : 'default'}
+                                                                    className="text-[8px] h-4 uppercase flex items-center gap-1 w-fit"
+                                                                >
+                                                                    {item.type === 'mileage' ? <><Car size={8} />&nbsp;Mileage</> : item.type === 'job' ? <><Wrench size={8} />&nbsp;Job Reimb.</> : 'Receipt'}
+                                                                </Badge>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <div className="text-xs text-text-primary truncate max-w-[200px]">{item.label}</div>
+                                                                {item.sub && <div className="text-[10px] text-text-muted">{item.sub}</div>}
+                                                                {item.receiptPhotoUrls?.[0] && (
+                                                                    <button
+                                                                        className="text-[9px] text-brand-red hover:underline mt-0.5"
+                                                                        onClick={() => window.open(item.receiptPhotoUrls![0], '_blank')}
+                                                                    >
+                                                                        View receipt
+                                                                    </button>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="text-right font-mono text-sm font-bold">${item.amount.toFixed(2)}</TableCell>
+                                                            <TableCell className="text-center">
+                                                                <Badge variant={getStatusVariant(item.status)} className="text-[8px] h-4 uppercase">
+                                                                    {item.status}
+                                                                </Badge>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </CardContent>
                     </Card>
                 </TabsContent>

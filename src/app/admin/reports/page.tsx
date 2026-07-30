@@ -92,6 +92,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { penaltyEvents } from '@/lib/data';
 import { cn, formatCityState } from '@/lib/utils';
+import { isArchivedJob } from '@/lib/jobs';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { IntelligenceTerminal } from './components/intelligence-terminal';
 import type { Technician, WorkOrder, WeeklyLog, TimeOffRequest, AdminMessage, Invoice, Project } from '@/lib/types';
@@ -162,6 +163,11 @@ export default function ActivityAuditPage() {
     const [visitSortDir, setVisitSortDir] = useState<'desc' | 'asc'>('desc');
     const [auditRange, setAuditRange] = useState<AuditRange>('all');
     const [customVisitRange, setCustomVisitRange] = useState<DateRange | undefined>(undefined);
+
+    // Archive Tab — date sort + filter (shared by archived assignments and
+    // archived activity, both keyed off archivedAt)
+    const [archiveSortDir, setArchiveSortDir] = useState<'desc' | 'asc'>('desc');
+    const [archiveDateRange, setArchiveDateRange] = useState<DateRange | undefined>(undefined);
 
     // Messaging State
     const [messages, setMessages] = useState<AdminMessage[]>([]);
@@ -345,6 +351,36 @@ export default function ActivityAuditPage() {
     };
 
     const archivedEventIds = useMemo(() => new Set(archivedEvents.map(e => e.id)), [archivedEvents]);
+
+    // Whether a timestamp falls inside the Archive tab's selected date range
+    // (inclusive, by calendar day). No range selected = always matches.
+    const matchesArchiveRange = useCallback((iso: string | undefined | null) => {
+        if (!archiveDateRange?.from || !iso) return !archiveDateRange?.from;
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return false;
+        const start = startOfDay(archiveDateRange.from);
+        const end = archiveDateRange.to ? startOfDay(archiveDateRange.to) : start;
+        return isWithinInterval(startOfDay(d), { start, end });
+    }, [archiveDateRange]);
+
+    // Archived jobs (assignments/work orders) — soft-archived in place, shown
+    // in the Archive tab instead of mixed into Assignment History.
+    const archivedJobsList = useMemo(() => {
+        return [...workOrders, ...assignments]
+            .filter(isArchivedJob)
+            .filter(wo => matchesArchiveRange(wo.archivedAt))
+            .sort((a, b) => {
+                const da = a.archivedAt ? new Date(a.archivedAt).getTime() : 0;
+                const db = b.archivedAt ? new Date(b.archivedAt).getTime() : 0;
+                return archiveSortDir === 'desc' ? db - da : da - db;
+            });
+    }, [workOrders, assignments, matchesArchiveRange, archiveSortDir]);
+
+    const filteredArchivedEvents = useMemo(() => {
+        return [...archivedEvents]
+            .filter(e => matchesArchiveRange(e.archivedAt))
+            .sort((a, b) => archiveSortDir === 'desc' ? b.archivedAt.localeCompare(a.archivedAt) : a.archivedAt.localeCompare(b.archivedAt));
+    }, [archivedEvents, matchesArchiveRange, archiveSortDir]);
 
     const handleArchiveEvent = async (event: TimelineEvent) => {
         try {
@@ -1351,13 +1387,15 @@ export default function ActivityAuditPage() {
                             <TabsContent value="assignments_history" className="m-0 text-left">
                                 <div className="space-y-4">
                                     {(() => {
+                                        // Archived jobs live in the Archive tab, not here — this is
+                                        // purely a record of work that was actually completed.
                                         const completedJobs = [...workOrders, ...assignments]
-                                            .filter(wo => wo.status === 'completed' || wo.archived || wo.status === 'archived')
+                                            .filter(wo => wo.status === 'completed' && !isArchivedJob(wo))
                                             .sort((a, b) => ((b.archivedAt || b.scheduleDate) || '').localeCompare((a.archivedAt || a.scheduleDate) || ''));
                                         return (
                                             <>
                                                 <div className="flex items-center justify-between">
-                                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{completedJobs.length} Archived / Completed Records</p>
+                                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{completedJobs.length} Completed Records</p>
                                                     <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest" onClick={() => {
                                                         const rows = [['DATE','ID','TITLE','CLIENT','TECH','STATUS']];
                                                         completedJobs.forEach(wo => {
@@ -1380,14 +1418,12 @@ export default function ActivityAuditPage() {
                                                                 <TableHead className="text-[9px] uppercase font-black tracking-widest">Job ID / Title</TableHead>
                                                                 <TableHead className="text-[9px] uppercase font-black tracking-widest">Client</TableHead>
                                                                 <TableHead className="text-[9px] uppercase font-black tracking-widest">Technician</TableHead>
-                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest">Status</TableHead>
-                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest text-right pr-6">Actions</TableHead>
+                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest text-right pr-6">Status</TableHead>
                                                             </TableRow>
                                                         </TableHeader>
                                                         <TableBody>
                                                             {completedJobs.map(wo => {
                                                                 const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || wo.techId));
-                                                                const isArchived = !!wo.archived || wo.status === 'archived';
                                                                 return (
                                                                     <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary cursor-pointer" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
                                                                         <TableCell className="py-3 pl-6 text-[10px] font-mono text-text-secondary uppercase">{formatDateDisplay(wo.scheduleDate)}</TableCell>
@@ -1397,19 +1433,12 @@ export default function ActivityAuditPage() {
                                                                         </TableCell>
                                                                         <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{wo.clientName}</TableCell>
                                                                         <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{tech?.name || '—'}</TableCell>
-                                                                        <TableCell className="py-3"><Badge variant={isArchived ? 'pending' : 'active'} className="text-[8px] uppercase">{isArchived ? 'archived' : 'completed'}</Badge></TableCell>
-                                                                        <TableCell className="py-3 text-right pr-6" onClick={e => e.stopPropagation()}>
-                                                                            {isArchived && (
-                                                                                <Button variant="outline" size="sm" className="h-7 text-[9px] uppercase font-bold tracking-widest" onClick={() => handleRestoreArchived(wo)}>
-                                                                                    Restore
-                                                                                </Button>
-                                                                            )}
-                                                                        </TableCell>
+                                                                        <TableCell className="py-3 text-right pr-6"><Badge variant="active" className="text-[8px] uppercase">completed</Badge></TableCell>
                                                                     </TableRow>
                                                                 );
                                                             })}
                                                             {completedJobs.length === 0 && (
-                                                                <TableRow><TableCell colSpan={6} className="py-16 text-center text-[10px] font-bold text-text-muted uppercase">No archived or completed assignments</TableCell></TableRow>
+                                                                <TableRow><TableCell colSpan={5} className="py-16 text-center text-[10px] font-bold text-text-muted uppercase">No completed assignments</TableCell></TableRow>
                                                             )}
                                                         </TableBody>
                                                     </Table>
@@ -1531,20 +1560,108 @@ export default function ActivityAuditPage() {
 
                             {/* ARCHIVE TAB */}
                             <TabsContent value="archive" className="m-0 text-left">
-                                <div className="space-y-5">
-                                    <div className="flex items-center justify-between">
+                                <div className="space-y-6">
+                                    <div className="flex flex-wrap items-center justify-between gap-3">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                                            Archived Activity ({archivedEvents.length})
+                                            {archivedJobsList.length} Archived Assignments · {filteredArchivedEvents.length} Archived Activity
                                         </p>
+                                        <div className="flex items-center gap-2">
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <div className={cn(
+                                                        "flex items-center h-9 rounded-md border border-border-main bg-bg-primary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-8",
+                                                        archiveDateRange?.from && "border-brand-red ring-1 ring-brand-red"
+                                                    )}>
+                                                        <CalendarIcon size={12} className={cn("mr-2", archiveDateRange?.from ? "text-brand-red" : "text-text-muted")} />
+                                                        <span className={cn("text-[10px] font-bold uppercase tracking-widest whitespace-nowrap", archiveDateRange?.from ? "text-text-primary" : "text-text-muted")}>
+                                                            {archiveDateRange?.from ? (
+                                                                archiveDateRange.to ? `${format(archiveDateRange.from, "MM-dd-yyyy")} – ${format(archiveDateRange.to, "MM-dd-yyyy")}` : format(archiveDateRange.from, "MM-dd-yyyy")
+                                                            ) : "Filter by Date"}
+                                                        </span>
+                                                        {archiveDateRange?.from && (
+                                                            <button
+                                                                className="absolute right-2 p-0.5 rounded-full hover:bg-brand-red/20 text-text-muted hover:text-brand-red transition-colors"
+                                                                onClick={(e) => { e.stopPropagation(); setArchiveDateRange(undefined); }}
+                                                            >
+                                                                <X size={10} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+                                                    <Calendar initialFocus mode="range" selected={archiveDateRange} onSelect={setArchiveDateRange} numberOfMonths={1} />
+                                                </PopoverContent>
+                                            </Popover>
+                                            <button
+                                                onClick={() => setArchiveSortDir(d => d === 'desc' ? 'asc' : 'desc')}
+                                                className="flex items-center gap-1.5 h-9 rounded-md border border-border-main bg-bg-primary px-3 text-[10px] font-bold uppercase tracking-widest text-text-muted hover:text-text-primary transition-colors"
+                                            >
+                                                <ArrowUpDown size={12} />
+                                                {archiveSortDir === 'desc' ? 'Latest First' : 'Oldest First'}
+                                            </button>
+                                        </div>
                                     </div>
-                                    {archivedEvents.length === 0 ? (
+
+                                    <div className="space-y-3">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Archived Assignments ({archivedJobsList.length})</p>
+                                        {archivedJobsList.length === 0 ? (
+                                            <div className="py-16 text-center border border-dashed border-border-sub rounded-xl opacity-40">
+                                                <ArchiveIcon size={28} className="mx-auto text-text-muted mb-2" />
+                                                <p className="text-[10px] font-bold uppercase text-text-muted">No archived assignments{archiveDateRange?.from ? ' in this range' : ''}.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="table-wrap text-left">
+                                                <Table>
+                                                    <TableHeader className="bg-bg-tertiary">
+                                                        <TableRow className="hover:bg-transparent border-border-sub">
+                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Archived</TableHead>
+                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Job ID / Title</TableHead>
+                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Client</TableHead>
+                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Technician</TableHead>
+                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest text-right pr-6">Actions</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {archivedJobsList.map(wo => {
+                                                            const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || wo.techId));
+                                                            let archivedDisplay = '—';
+                                                            if (wo.archivedAt) {
+                                                                const d = new Date(wo.archivedAt);
+                                                                archivedDisplay = isNaN(d.getTime()) ? wo.archivedAt : format(d, 'MMM d, yyyy');
+                                                            }
+                                                            return (
+                                                                <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary cursor-pointer" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
+                                                                    <TableCell className="py-3 pl-6 text-[10px] font-mono text-text-secondary uppercase">{archivedDisplay}</TableCell>
+                                                                    <TableCell className="py-3">
+                                                                        <p className="text-[9px] font-bold text-brand-red font-mono uppercase">{((wo as any).externalWorkOrderId || wo.id).toString().toUpperCase()}</p>
+                                                                        <p className="text-xs font-bold text-text-primary uppercase mt-0.5">{wo.title || wo.description}</p>
+                                                                    </TableCell>
+                                                                    <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{wo.clientName}</TableCell>
+                                                                    <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{tech?.name || '—'}</TableCell>
+                                                                    <TableCell className="py-3 text-right pr-6" onClick={e => e.stopPropagation()}>
+                                                                        <Button variant="outline" size="sm" className="h-7 text-[9px] uppercase font-bold tracking-widest" onClick={() => handleRestoreArchived(wo)}>
+                                                                            Restore
+                                                                        </Button>
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            );
+                                                        })}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Archived Activity ({filteredArchivedEvents.length})</p>
+                                    {filteredArchivedEvents.length === 0 ? (
                                         <div className="py-24 text-center border border-dashed border-border-sub rounded-xl opacity-40">
                                             <ArchiveIcon size={32} className="mx-auto text-text-muted mb-2" />
-                                            <p className="text-[10px] font-bold uppercase text-text-muted">No archived activity yet.</p>
+                                            <p className="text-[10px] font-bold uppercase text-text-muted">No archived activity{archiveDateRange?.from ? ' in this range' : ' yet'}.</p>
                                         </div>
                                     ) : (
                                         <div className="space-y-1">
-                                            {[...archivedEvents].sort((a, b) => b.archivedAt.localeCompare(a.archivedAt)).map(event => {
+                                            {filteredArchivedEvents.map(event => {
                                                 let tsDisplay = '';
                                                 try {
                                                     const d = new Date(event.timestamp);
@@ -1590,6 +1707,7 @@ export default function ActivityAuditPage() {
                                             })}
                                         </div>
                                     )}
+                                    </div>
                                 </div>
                             </TabsContent>
 

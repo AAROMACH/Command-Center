@@ -59,7 +59,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { db, auth } from '@/lib/firebase';
 import { doc, setDoc, updateDoc, deleteDoc, arrayUnion, collection, query, where, onSnapshot } from 'firebase/firestore';
-import { toUnassignedWorkOrder } from '@/lib/jobs';
+import { toUnassignedWorkOrder, archiveJobRecord } from '@/lib/jobs';
 import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
@@ -575,24 +575,15 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         if (!canOverrideDispute) return;
         const adminName = auth.currentUser?.displayName || 'Admin';
         const wo = findWorkOrder(item.workOrderId);
+        if (!wo) return;
         try {
-            const asmtRef = doc(db, 'assignments', item.workOrderId);
-            const woRef = doc(db, 'workOrders', item.workOrderId);
-            const patch: Record<string, any> = {
-                archived: true,
-                status: 'archived',
-                previousStatus: wo?.status || 'completed',
-                archivedAt: new Date().toISOString(),
+            await archiveJobRecord({
+                job: wo,
+                collectionName: 'assignments',
                 archivedBy: adminName,
                 archiveReason: `Disputed payroll item overridden and archived (${item.disputeReason || 'disputed'}).`,
-                history: arrayUnion({
-                    type: 'status_change',
-                    date: format(new Date(), 'MM-dd-yyyy'),
-                    details: `Archived by ${adminName} — dispute override (${item.disputeReason || 'disputed'}).`,
-                    user: adminName,
-                }),
-            };
-            await updateDoc(asmtRef, patch).catch(async () => { await updateDoc(woRef, patch); });
+                techName: technician?.name,
+            });
             await removeLogItem(item.id);
             toast({ title: "Job Archived", description: "Moved to Archives and removed from this payroll manifest." });
         } catch (e: any) {

@@ -26,7 +26,7 @@ import {
 import { NewAssignmentDialog } from "./new-assignment-dialog";
 import { ImportJobsDialog, type ExistingRef as ImportExistingRef } from "./import-jobs-dialog";
 import { normalizeExternalId, isImported } from "@/lib/work-order-identity";
-import { jobTechId, isArchivedJob, jobDateTimeValue, toUnassignedWorkOrder } from "@/lib/jobs";
+import { jobTechId, isArchivedJob, jobDateTimeValue, toUnassignedWorkOrder, archiveJobRecord } from "@/lib/jobs";
 import { NewRequestDialog } from "../../requests/components/new-request-dialog";
 import type { WorkOrder, Route, ServiceRequest, Technician } from "@/lib/types";
 import { isServiceTicketDoc, toDateSafe } from '@/lib/request-intake';
@@ -420,24 +420,14 @@ export function DispatchPageClient() {
 
   const handleReviewArchive = async (wo: WorkOrder) => {
     const adminName = currentAdminName();
-    const patch: Record<string, any> = {
-      archived: true,
-      status: 'archived',
-      previousStatus: wo.status,
-      archivedAt: new Date().toISOString(),
-      archivedBy: adminName,
-      archiveReason: `${wo.techOutcome === 'did_not_do' ? 'Did Not Do' : 'Cancelled'} — closed from the Dispatch Hub review queue.`,
-      history: arrayUnion({
-        type: 'status_change',
-        date: format(new Date(), 'MM-dd-yyyy'),
-        details: `Archived by ${adminName} from the review queue.`,
-        user: adminName,
-      }),
-    };
     try {
-      const asmtRef = doc(db, 'assignments', wo.id);
-      const woRef = doc(db, 'workOrders', wo.id);
-      await updateDoc(asmtRef, patch).catch(async () => { await updateDoc(woRef, patch); });
+      await archiveJobRecord({
+        job: wo,
+        collectionName: 'assignments',
+        archivedBy: adminName,
+        archiveReason: `${wo.techOutcome === 'did_not_do' ? 'Did Not Do' : 'Cancelled'} — closed from the Dispatch Hub review queue.`,
+        techName: technicians.find(t => t.id === jobTechId(wo))?.name,
+      });
       toast({ title: "Job Archived", description: "Moved to Archives — recoverable from the Archives page." });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Archive Failed", description: e.message });

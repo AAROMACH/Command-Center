@@ -88,6 +88,7 @@ type PersonnelDetailDialogProps = {
   setIsOpen: (open: boolean) => void;
   person: Technician | null;
   workOrders: WorkOrder[];
+  assignments: WorkOrder[];
   timeOffRequests: TimeOffRequest[];
   onEdit?: () => void;
 };
@@ -120,7 +121,7 @@ const QUICK_PERMISSIONS: { key: Permission; label: string }[] = [
   { key: 'client.profile.edit', label: 'Edit Client Profile' },
 ];
 
-export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, timeOffRequests, onEdit }: PersonnelDetailDialogProps) {
+export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, assignments, timeOffRequests, onEdit }: PersonnelDetailDialogProps) {
   const [isLogEventOpen, setIsLogEventOpen] = useState(false);
   const [isPermEditorOpen, setIsPermEditorOpen] = useState(false);
   const [legacyDocuments, setLegacyDocuments] = useState<PersonnelDocument[]>([]);
@@ -232,33 +233,20 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
     };
   }, [person]);
 
+  // Dispatched jobs (active or completed) live in the `assignments` collection,
+  // not `workOrders` (see lib/jobs.ts) — the full history has to read both so a
+  // tech's completed missions aren't invisible here.
   const personWorkOrders = useMemo(() => {
     if (!person) return [];
-    
-    const filtered = workOrders.filter(wo => 
-      wo.assignedTechnicianId === person.id || 
-      (wo.additionalTechnicianIds || []).includes(person.id)
-    );
 
-    return filtered.sort((a, b) => {
-      const getStatusRank = (status: string) => {
-        if (status === 'in-progress') return 0;
-        if (status === 'on-my-way') return 1;
-        if (status === 'confirmed') return 2;
-        if (status === 'assigned') return 3;
-        return 4;
-      };
+    const isPersons = (wo: WorkOrder) =>
+      wo.assignedTechnicianId === person.id ||
+      (wo.additionalTechnicianIds || []).includes(person.id);
 
-      const rankA = getStatusRank(a.status);
-      const rankB = getStatusRank(b.status);
-
-      if (rankA !== rankB) return rankA - rankB;
-
-      const dateA = a.scheduleDate || '';
-      const dateB = b.scheduleDate || '';
-      return dateB.localeCompare(dateA);
-    }).slice(0, 1); 
-  }, [person, workOrders]);
+    return [...assignments, ...workOrders]
+      .filter(isPersons)
+      .sort((a, b) => (b.scheduleDate || '').localeCompare(a.scheduleDate || ''));
+  }, [person, workOrders, assignments]);
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -609,13 +597,15 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
 
                       <TabsContent value="assignments" className="m-0 space-y-6">
                           <div className="space-y-4">
-                              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Most Recent Mission Registry</h3>
+                              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Assignment History ({personWorkOrders.length})</h3>
                               <div className="table-wrap p-0">
+                                  <ScrollArea className="max-h-[420px]">
                                   <Table>
                                       <TableHeader className="bg-bg-tertiary">
                                           <TableRow className="hover:bg-transparent border-border-sub">
                                               <TableHead className="text-[10px] tracking-widest pl-6">Mission ID</TableHead>
                                               <TableHead className="text-[10px] tracking-widest text-left">Scope & Client</TableHead>
+                                              <TableHead className="text-[10px] tracking-widest text-center">Date</TableHead>
                                               <TableHead className="text-[10px] tracking-widest text-center">Status</TableHead>
                                               <TableHead className="text-right pr-6 text-[10px] tracking-widest">Settlement</TableHead>
                                           </TableRow>
@@ -625,24 +615,26 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, t
                                               <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer">
                                                   <TableCell className="font-mono text-brand-red font-bold text-xs pl-6 text-left">{wo.id.toUpperCase()}</TableCell>
                                                   <TableCell className="text-left">
-                                                      <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[250px]">{wo.description}</p>
+                                                      <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[250px]">{wo.title || wo.description}</p>
                                                       <p className="text-[9px] text-text-muted uppercase tracking-widest">{wo.clientName}</p>
                                                   </TableCell>
+                                                  <TableCell className="text-center text-[10px] font-mono font-bold text-text-secondary">{wo.scheduleDate || '—'}</TableCell>
                                                   <TableCell className="text-center">
                                                       <Badge variant={wo.status === 'completed' ? 'active' : wo.status === 'in-progress' ? 'inprogress' : 'onhold'} className="text-[8px] uppercase">
                                                           {wo.status}
                                                       </Badge>
                                                   </TableCell>
-                                                  <TableCell className="text-right pr-6 font-mono font-bold text-text-primary">${wo.pay.toFixed(2)}</TableCell>
+                                                  <TableCell className="text-right pr-6 font-mono font-bold text-text-primary">${(wo.finalPay ?? wo.pay ?? 0).toFixed(2)}</TableCell>
                                               </TableRow>
                                           ))}
                                           {personWorkOrders.length === 0 && (
                                             <TableRow>
-                                                <TableCell colSpan={4} className="h-32 text-center text-text-muted italic uppercase text-[10px] tracking-widest">No assignments on record.</TableCell>
+                                                <TableCell colSpan={5} className="h-32 text-center text-text-muted italic uppercase text-[10px] tracking-widest">No assignments on record.</TableCell>
                                             </TableRow>
                                           )}
                                       </TableBody>
                                   </Table>
+                                  </ScrollArea>
                               </div>
                           </div>
                       </TabsContent>

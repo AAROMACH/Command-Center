@@ -92,7 +92,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { penaltyEvents } from '@/lib/data';
 import { cn, formatCityState } from '@/lib/utils';
-import { isArchivedJob } from '@/lib/jobs';
+import { isArchivedJob, archiveJobRecord } from '@/lib/jobs';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { IntelligenceTerminal } from './components/intelligence-terminal';
 import type { Technician, WorkOrder, WeeklyLog, TimeOffRequest, AdminMessage, Invoice, Project } from '@/lib/types';
@@ -323,26 +323,18 @@ export default function ActivityAuditPage() {
     // everywhere else in the app) so it's recoverable from the Job Archive
     // instead of vanishing with no trace.
     const executeDeleteAssignment = async (woId: string) => {
-        const record = assignments.find(a => a.id === woId) || workOrders.find(w => w.id === woId);
+        const fromAssignments = assignments.find(a => a.id === woId);
+        const record = fromAssignments || workOrders.find(w => w.id === woId);
+        if (!record) { setDeleteConfirmId(null); return; }
         const adminName = currentUser?.name || 'Admin';
-        const patch: Record<string, any> = {
-            archived: true,
-            status: 'archived',
-            previousStatus: record?.status || 'completed',
-            archivedAt: new Date().toISOString(),
-            archivedBy: adminName,
-            archiveReason: `Archived from Reports by ${adminName}.`,
-            history: arrayUnion({
-                type: 'status_change',
-                date: format(new Date(), 'MM-dd-yyyy'),
-                details: `Archived by ${adminName} from the Reports registry.`,
-                user: adminName,
-            }),
-        };
         try {
-            const asmtRef = doc(db, 'assignments', woId);
-            const woRef = doc(db, 'workOrders', woId);
-            await updateDoc(asmtRef, patch).catch(async () => { await updateDoc(woRef, patch); });
+            await archiveJobRecord({
+                job: record,
+                collectionName: fromAssignments ? 'assignments' : 'workOrders',
+                archivedBy: adminName,
+                archiveReason: `Archived from Reports by ${adminName}.`,
+                techName: technicians.find(t => t.id === (record.assignedTechnicianId || record.techId))?.name,
+            });
             toast({ title: 'Archived', description: `Assignment ${woId.toUpperCase()} moved to Archives — recoverable from the Job Archive.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Archive Failed', description: e.message });

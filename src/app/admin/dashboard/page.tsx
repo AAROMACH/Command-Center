@@ -25,7 +25,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { getAvailablePortals } from '@/lib/permissions';
+import { getAvailablePortals, isTech } from '@/lib/permissions';
 import { useRouter } from 'next/navigation';
 import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
@@ -164,7 +164,7 @@ export default function DashboardPage() {
 
     const reliabilityData = useMemo(() =>
         technicians
-            .filter(t => t.reliabilityScore !== undefined && t.reliabilityScore !== null)
+            .filter(t => isTech(t) && t.reliabilityScore !== undefined && t.reliabilityScore !== null)
             .sort((a, b) => (b.reliabilityScore || 0) - (a.reliabilityScore || 0))
             .slice(0, 5),
     [technicians]);

@@ -1,4 +1,6 @@
 import type { WorkOrder } from './types';
+import { db } from './firebase';
+import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 // ── Unified job model ───────────────────────────────────────────────────────
 //
@@ -101,6 +103,53 @@ export function toUnassignedWorkOrder(
     status: 'unassigned',
     history: [...(assignment.history || []), ...extraHistory],
   } as WorkOrder;
+}
+
+export type ArchiveJobOptions = {
+  job: WorkOrder;
+  /** Which collection the job doc currently lives in. */
+  collectionName: 'workOrders' | 'assignments';
+  archivedBy: string;
+  archiveReason: string;
+  /** Resolved technician name, if any — display only. */
+  techName?: string;
+};
+
+/**
+ * Archives a job by moving it into `activityArchive` rather than flipping
+ * `archived`/`status` fields in place — the doc is removed from
+ * workOrders/assignments entirely, and a restorable copy is written in the
+ * same archivedFrom/archivedRecordJson shape the generic activity-archive
+ * restore flow (admin/reports handleRestoreEvent) already understands, so
+ * jobs and other archived activity share one collection and one restore path.
+ */
+export async function archiveJobRecord({ job, collectionName, archivedBy, archiveReason, techName }: ArchiveJobOptions): Promise<void> {
+  const now = new Date().toISOString();
+  const record = {
+    ...job,
+    archived: true,
+    status: 'archived',
+    previousStatus: job.status,
+    archivedAt: now,
+    archivedBy,
+    archiveReason,
+  };
+  await setDoc(doc(db, 'activityArchive', job.id), {
+    id: job.id,
+    timestamp: now,
+    archivedAt: now,
+    type: collectionName === 'assignments' ? 'assignment' : 'work_order',
+    eventLabel: 'Job Archived',
+    entity: job.title || job.description || job.id,
+    techName: techName || null,
+    techId: jobTechId(job) || null,
+    clientName: job.clientName || null,
+    color: 'text-text-muted',
+    icon: 'archive',
+    archivedFrom: collectionName,
+    archivedRecordJson: JSON.stringify(record),
+  });
+  await deleteDoc(doc(db, collectionName, job.id));
 }
 
 /**

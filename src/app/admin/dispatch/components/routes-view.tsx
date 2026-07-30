@@ -59,6 +59,7 @@ import {
 } from '@dnd-kit/core';
 import { getOptimizedRoutes } from '../actions';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
+import { isArchivedJob } from '@/lib/jobs';
 
 type RoutesViewProps = {
     routes: Route[];
@@ -341,7 +342,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     const handleTacticalOptimization = async () => {
         const placed = new Set(routes.flatMap(r => r.workOrderIds || []));
         const unassigned = allWorkOrders.filter(wo =>
-            (!wo.assignedTechnicianId || wo.status === 'unassigned') && !placed.has(wo.id));
+            (!wo.assignedTechnicianId || wo.status === 'unassigned') && !isArchivedJob(wo) && !placed.has(wo.id));
         if (unassigned.length === 0) {
             toast({ variant: 'destructive', title: 'Optimization Aborted', description: 'No unassigned jobs found in mission pool.' });
             return;
@@ -467,7 +468,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     const hasNoTech = (wo: WorkOrder) => !wo.assignedTechnicianId || wo.status === 'unassigned';
 
     const unassignedJobs = useMemo(() =>
-        allWorkOrders.filter(wo => hasNoTech(wo) && !placedJobIds.has(wo.id)),
+        allWorkOrders.filter(wo => hasNoTech(wo) && !isArchivedJob(wo) && !placedJobIds.has(wo.id)),
     [allWorkOrders, placedJobIds]);
 
     const filteredUnassigned = useMemo(() => 

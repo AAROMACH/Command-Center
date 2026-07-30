@@ -421,10 +421,14 @@ export const WorkOrdersTable = React.memo(({
                                 </div>
                               )}
                             </div>
+                        ) : order.status === 'unassigned' ? (
+                          // The Actions column already carries the Assign button for
+                          // unassigned rows — a second one here would just duplicate it.
+                          <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Unassigned</span>
                         ) : (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
+                          <Button
+                            variant="outline"
+                            size="sm"
                             className="h-8 !text-[10px] border-brand-red text-brand-red hover:bg-brand-red-dim uppercase font-bold tracking-widest"
                             onClick={(e) => { e.stopPropagation(); handleOpenAssignDialog(order); }}
                           >
@@ -669,7 +673,7 @@ export const WorkOrdersTable = React.memo(({
                 </div>
             </DialogHeader>
             {editedOrder && (
-                <ScrollArea className="flex-1">
+                <ScrollArea className="flex-1 min-h-0">
                     <div className="px-6 py-4 space-y-6">
                         <div className="space-y-4">
                             <div className="space-y-2 text-left">

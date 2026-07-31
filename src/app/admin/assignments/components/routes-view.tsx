@@ -80,7 +80,7 @@ function DraggableJob({ job, routeId, onRemove }: { job: WorkOrder, routeId: str
           <GripVertical size={14} />
         </div>
         <div className="space-y-0 overflow-hidden">
-          <p className="text-[10px] font-bold text-text-primary uppercase truncate leading-tight">{job.description}</p>
+          <p className="text-[10px] font-bold text-text-primary uppercase truncate leading-tight">{job.title || job.description}</p>
           <p className="text-[8px] text-text-muted font-mono leading-tight">{job.id.toUpperCase()}</p>
         </div>
       </div>
@@ -296,17 +296,18 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
         allWorkOrders.filter(wo => !wo.routeId && wo.status === 'unassigned'),
     [allWorkOrders]);
 
-    const filteredUnassigned = useMemo(() => 
-        unassignedJobs.filter(wo => 
-            wo.description.toLowerCase().includes(jobSearch.toLowerCase()) ||
-            wo.id.toLowerCase().includes(jobSearch.toLowerCase())
-        ),
-    [unassignedJobs, jobSearch]);
+    const filteredUnassigned = useMemo(() => {
+        const q = jobSearch.toLowerCase();
+        return unassignedJobs.filter(wo =>
+            (wo.title || wo.description || '').toLowerCase().includes(q) ||
+            wo.id.toLowerCase().includes(q)
+        );
+    }, [unassignedJobs, jobSearch]);
 
     const getRouteTotalPay = (route: Route) => {
         return allWorkOrders
             .filter(wo => route.workOrderIds.includes(wo.id))
-            .reduce((acc, wo) => acc + wo.pay, 0);
+            .reduce((acc, wo) => acc + (wo.pay || 0), 0);
     };
 
     return (
@@ -420,11 +421,11 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                                             <Wrench size={16} />
                                         </div>
                                         <div>
-                                            <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">{job.description}</p>
+                                            <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">{job.title || job.description}</p>
                                             <div className="flex items-center gap-3 text-[9px] text-text-muted uppercase font-bold tracking-widest mt-1">
                                                 <span>{job.clientName}</span>
                                                 <span>•</span>
-                                                <span className="text-text-green font-mono font-bold">${job.pay.toFixed(2)}</span>
+                                                <span className="text-text-green font-mono font-bold">${(job.pay || 0).toFixed(2)}</span>
                                             </div>
                                         </div>
                                     </div>

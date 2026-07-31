@@ -151,15 +151,14 @@ export const WorkOrdersTable = React.memo(({
     setCurrentPage(1);
   }, [workOrders.length, itemsPerPage]);
 
-  const sortedWorkOrders = useMemo(() => {
-    return [...workOrders].sort((a, b) => (a.scheduleDate || '').localeCompare(b.scheduleDate || ''));
-  }, [workOrders]);
-
-  const totalPages = Math.ceil(sortedWorkOrders.length / (itemsPerPage || 1));
+  // workOrders arrives pre-sorted from the parent (respects the Latest/Soonest
+  // toggle) — re-sorting here by scheduleDate string would both discard that
+  // order and mis-sort non-ISO date strings alphabetically.
+  const totalPages = Math.ceil(workOrders.length / (itemsPerPage || 1));
   const paginatedOrders = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
-    return sortedWorkOrders.slice(start, start + itemsPerPage);
-  }, [sortedWorkOrders, currentPage, itemsPerPage]);
+    return workOrders.slice(start, start + itemsPerPage);
+  }, [workOrders, currentPage, itemsPerPage]);
 
   const handleOpenAssignDialog = useCallback((order: WorkOrder) => {
     setSelectedOrder(order);
@@ -488,13 +487,13 @@ export const WorkOrdersTable = React.memo(({
                 </tr>
               );
             })}
-             {sortedWorkOrders.length === 0 && (
+             {workOrders.length === 0 && (
                 <tr><td colSpan={6} className="text-center py-12 text-text-muted italic font-bold uppercase tracking-widest text-xs opacity-40">Job pool clear. Awaiting further intake.</td></tr>
             )}
           </tbody>
         </table>
 
-        {sortedWorkOrders.length > 0 && (
+        {workOrders.length > 0 && (
           <div className="bg-bg-tertiary/50 px-4 py-3 flex items-center justify-between border-t border-border-sub">
             <div className="flex items-center gap-4 text-left">
               <div className="flex items-center gap-1.5">

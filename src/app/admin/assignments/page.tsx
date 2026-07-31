@@ -991,7 +991,7 @@ export default function AssignmentsHubPage() {
                 </div>
               </DialogHeader>
               {editedOrder && (
-                  <ScrollArea className="flex-1 text-left">
+                  <ScrollArea className="flex-1 min-h-0 text-left">
                     <div className="px-6 py-4 space-y-6 text-left">
                         <div className="space-y-4 text-left">
                             <div className="space-y-2 text-left">

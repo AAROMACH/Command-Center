@@ -48,10 +48,15 @@ import { CompletionWeekDialog } from '@/components/completion-week-dialog';
 import { cn, getTacticalLocation, compareScheduleTime } from '@/lib/utils';
 import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete } from '@/lib/trip-flow';
 import { NotificationService } from '@/lib/notification-service';
+import { useHelperLogSync } from '@/hooks/use-helper-log-sync';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [tech, setTech] = useState<Technician | null>(null);
+    // Files a completed job this tech helped on into their own weekly log —
+    // mounted here too (not just tech/logs) so it fires as soon as a helper
+    // lands on their dashboard, not only when they specifically open Logs.
+    useHelperLogSync(currentTechId);
     const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>([]);
     const [unsubmittedLogs, setUnsubmittedLogs] = useState<WeeklyLog[]>([]);
     

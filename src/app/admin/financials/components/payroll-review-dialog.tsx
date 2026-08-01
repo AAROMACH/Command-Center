@@ -61,6 +61,7 @@ import { ID_PREFIXES } from '@/lib/constants';
 import { fieldNationUrl } from '@/lib/work-order-identity';
 import { WorkOrderId } from '@/components/work-order-id';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -83,8 +84,69 @@ type PayrollReviewDialogProps = {
     technician: Technician | undefined;
     missions: WorkOrder[];
     allTechnicians?: Technician[];
+    // Every tech's weekly logs — used to look up the counterpart's pay on a
+    // shared job (lead <-> helper) so the admin can set appropriate pay for
+    // whichever side they're currently auditing.
+    allWeeklyLogs?: WeeklyLog[];
     onStatusChange: (logId: string, status: WeeklyLog['status'], total?: number) => void;
 };
+
+/**
+ * Quicklink tag: on a lead's job row, shows the helper's pay on that same
+ * job; on a helper's job row, shows the lead's pay instead. Looks the
+ * counterpart's weekly-log item up across every tech's logs by workOrderId,
+ * so the admin can see both sides while deciding what's appropriate to pay.
+ * Renders nothing if the counterpart hasn't filed that job yet.
+ */
+function CounterpartPayBadge({
+    workOrderId,
+    wantHelper,
+    allWeeklyLogs,
+    allTechnicians,
+}: {
+    workOrderId: string;
+    wantHelper: boolean;
+    allWeeklyLogs: WeeklyLog[];
+    allTechnicians: Technician[];
+}) {
+    const counterpart = useMemo(() => {
+        for (const log of allWeeklyLogs) {
+            const item = (log.items || []).find(i => i.workOrderId === workOrderId && !!i.isHelper === wantHelper);
+            if (item) {
+                return {
+                    techName: allTechnicians.find(t => t.id === log.techId)?.name || log.techId,
+                    jobPay: item.jobPay || 0,
+                    weekOf: log.weekOf,
+                    status: log.status,
+                };
+            }
+        }
+        return null;
+    }, [allWeeklyLogs, allTechnicians, workOrderId, wantHelper]);
+
+    if (!counterpart) return null;
+
+    return (
+        <Popover>
+            <PopoverTrigger asChild onClick={e => e.stopPropagation()}>
+                <button type="button">
+                    <Badge variant="outline" className={cn(
+                        "text-[6px] h-3 px-1 cursor-pointer hover:brightness-125 transition-all",
+                        wantHelper ? "bg-blue-400/15 border-blue-400/40 text-blue-400" : "bg-blue-400/10 border-blue-400/30 text-blue-400"
+                    )}>
+                        {wantHelper ? 'HELPER ADDED' : 'AS HELPER'}
+                    </Badge>
+                </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-3 bg-bg-elevated border-border-main shadow-2xl text-left" onClick={e => e.stopPropagation()}>
+                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">{wantHelper ? 'Helper Pay' : 'Lead Pay'}</p>
+                <p className="text-xs font-bold text-text-primary uppercase mt-1">{counterpart.techName}</p>
+                <p className="text-lg font-mono font-bold text-text-green mt-0.5">${counterpart.jobPay.toFixed(2)}</p>
+                <p className="text-[8px] text-text-muted uppercase mt-1">Week of {counterpart.weekOf} · {counterpart.status}</p>
+            </PopoverContent>
+        </Popover>
+    );
+}
 
 /**
  * @fileOverview Internal Audit Sub-Component for individual mission settlement.
@@ -256,7 +318,7 @@ function ImportedJobAudit({
     );
 }
 
-export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, technician, missions, allTechnicians = [], onStatusChange }: PayrollReviewDialogProps) {
+export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, technician, missions, allTechnicians = [], allWeeklyLogs = [], onStatusChange }: PayrollReviewDialogProps) {
     const [localLog, setLocalLog] = useState<WeeklyLog | null>(null);
     const [selectedJobForDetail, setSelectedJobForDetail] = useState<WorkOrder | null>(null);
     const [isJobDetailOpen, setIsJobDetailOpen] = useState(false);
@@ -821,14 +883,10 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide break-words sm:truncate text-left">{displayTitle}</p>
                                                                 {isImported && <Badge variant="outline" className="text-[6px] bg-brand-red-dim border-brand-red/20 text-brand-red h-3 px-1">IMPORTED</Badge>}
                                                                 {item.isHelper && (
-                                                                    <Badge variant="outline" className="text-[6px] bg-blue-400/15 border-blue-400/40 text-blue-400 h-3 px-1">
-                                                                        AS HELPER
-                                                                    </Badge>
+                                                                    <CounterpartPayBadge workOrderId={item.workOrderId} wantHelper={false} allWeeklyLogs={allWeeklyLogs} allTechnicians={allTechnicians} />
                                                                 )}
                                                                 {helperNames.length > 0 && (
-                                                                    <Badge variant="outline" className="text-[6px] bg-blue-400/10 border-blue-400/30 text-blue-400 h-3 px-1">
-                                                                        HELPER ADDED
-                                                                    </Badge>
+                                                                    <CounterpartPayBadge workOrderId={item.workOrderId} wantHelper={true} allWeeklyLogs={allWeeklyLogs} allTechnicians={allTechnicians} />
                                                                 )}
                                                                 {hasPendingReimb && (
                                                                     <Badge variant="outline" className="text-[6px] bg-accent-gold/15 border-accent-gold/30 text-accent-gold h-3 px-1">
@@ -984,14 +1042,10 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide break-words sm:truncate text-left">{displayTitle}</p>
                                                                 {isImported && <Badge variant="outline" className="text-[6px] bg-brand-red-dim border-brand-red/20 text-brand-red h-3 px-1">IMPORTED</Badge>}
                                                                 {item.isHelper && (
-                                                                    <Badge variant="outline" className="text-[6px] bg-blue-400/15 border-blue-400/40 text-blue-400 h-3 px-1">
-                                                                        AS HELPER
-                                                                    </Badge>
+                                                                    <CounterpartPayBadge workOrderId={item.workOrderId} wantHelper={false} allWeeklyLogs={allWeeklyLogs} allTechnicians={allTechnicians} />
                                                                 )}
                                                                 {helperNames.length > 0 && (
-                                                                    <Badge variant="outline" className="text-[6px] bg-blue-400/10 border-blue-400/30 text-blue-400 h-3 px-1">
-                                                                        HELPER ADDED
-                                                                    </Badge>
+                                                                    <CounterpartPayBadge workOrderId={item.workOrderId} wantHelper={true} allWeeklyLogs={allWeeklyLogs} allTechnicians={allTechnicians} />
                                                                 )}
                                                                 {hasPendingReimb && (
                                                                     <Badge variant="outline" className="text-[6px] bg-accent-gold/15 border-accent-gold/30 text-accent-gold h-3 px-1">

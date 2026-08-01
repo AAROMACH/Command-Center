@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog } from '@/lib/types';
 import { externalWorkOrderId, displayWorkOrderNumber, fieldNationUrl, isImported } from '@/lib/work-order-identity';
 import { hasPermission } from '@/lib/permissions';
 import { netOfFieldNationFee } from '@/lib/payroll';
-import { jobTechId } from '@/lib/jobs';
-import { fileCompletedAssignment } from '@/lib/weekly-log';
+import { useHelperLogSync } from '@/hooks/use-helper-log-sync';
 import { uploadFile } from '@/lib/upload';
 import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
@@ -119,9 +118,10 @@ export default function TechWeeklyLogPage() {
     const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
-    // Jobs this tech assisted on as a helper (lead tech owns the primary entry).
-    const [helperJobs, setHelperJobs] = useState<WorkOrder[]>([]);
-    const helperFilingRef = useRef<Set<string>>(new Set());
+    // Jobs this tech assisted on as a helper (lead tech owns the primary
+    // entry) — the hook also fans a completed one into this tech's own
+    // weekly log so it shows up here and reaches payroll.
+    const { helperJobs } = useHelperLogSync(currentTechId);
     const [tripLogs, setTripLogs] = useState<TripLog[]>([]);
     const [logView, setLogView] = useState<'work' | 'trips'>('work');
     const [mounted, setMounted] = useState(false);
@@ -167,14 +167,6 @@ export default function TechWeeklyLogPage() {
             const unsubWO = onSnapshot(query(collection(db, 'assignments'), where('techId', '==', userId)), (snap) => {
                 setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
             });
-            // Jobs where this tech is a helper (additionalTechnicianIds). Guarded:
-            // if the Firestore rule for helper reads isn't deployed yet, the error
-            // handler simply leaves the helper list empty instead of breaking.
-            const unsubHelper = onSnapshot(
-                query(collection(db, 'assignments'), where('additionalTechnicianIds', 'array-contains', userId)),
-                (snap) => setHelperJobs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder))),
-                () => setHelperJobs([]),
-            );
             // Own trip logs only — techs must never see another tech's trips.
             const unsubTrips = onSnapshot(query(collection(db, 'tripLogs'), where('technicianId', '==', userId)), (snap) => {
                 setTripLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as TripLog)));
@@ -186,51 +178,10 @@ export default function TechWeeklyLogPage() {
                 }
             });
             return () => {
-                unsubLogs(); unsubWO(); unsubHelper(); unsubTrips(); unsubProfile();
+                unsubLogs(); unsubWO(); unsubTrips(); unsubProfile();
             };
         }
     }, []);
-
-    // 1b. Fan a completed job the tech HELPED on into their own weekly log, so
-    // it shows on the helper's log (and reaches payroll) alongside the lead's
-    // entry. Deduped by work order across all the tech's logs; jobPay starts at
-    // $0 for payroll to price the helper separately. Idempotent — a ref guards
-    // the window before the new item appears in the logs snapshot.
-    useEffect(() => {
-        if (!currentTechId || helperJobs.length === 0) return;
-        const existingWoIds = new Set<string>();
-        weeklyLogs.forEach(l => (l.items || []).forEach(i => existingWoIds.add(i.workOrderId)));
-        const toFile = helperJobs.filter(j =>
-            j.status === 'completed' &&
-            !existingWoIds.has(j.id) &&
-            !helperFilingRef.current.has(j.id)
-        );
-        toFile.forEach(async (j) => {
-            helperFilingRef.current.add(j.id);
-            try {
-                const itemId = await createDocId(ID_PREFIXES.WEEKLY_LOG_ITEM);
-                const item: WeeklyLogItem = {
-                    id: itemId,
-                    workOrderId: j.id,
-                    jobPay: 0,
-                    outcomeCode: null,
-                    isComplete: true,
-                    isAdminReviewed: false,
-                    isHelper: true,
-                    helperLeadTechId: jobTechId(j) || '',
-                    workDate: j.scheduleDate,
-                };
-                await fileCompletedAssignment({
-                    techId: currentTechId,
-                    scheduleDate: j.scheduleDate,
-                    item,
-                    makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
-                });
-            } catch {
-                helperFilingRef.current.delete(j.id); // allow a retry next snapshot
-            }
-        });
-    }, [helperJobs, weeklyLogs, currentTechId]);
 
     // 2. Active Log Resolution (Reactive)
     const activeLog = useMemo(() => {

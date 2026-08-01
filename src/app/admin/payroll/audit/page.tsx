@@ -490,6 +490,7 @@ export default function PayrollAuditPage() {
                     technician={technicians.find(t => t.id === reviewLog.techId)}
                     missions={missions}
                     allTechnicians={technicians}
+                    allWeeklyLogs={weeklyLogs}
                     onStatusChange={() => { /* weeklyLogs listener refreshes the list live */ }}
                 />
             )}

@@ -331,7 +331,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     const handleRemoveJobFromRoute = (woId: string, routeId: string) => {
         onRoutesChange(routes.map(r => 
             r.id === routeId 
-            ? { ...r, workOrderIds: r.workOrderIds.filter(id => id !== woId) } 
+            ? { ...r, workOrderIds: (r.workOrderIds || []).filter(id => id !== woId) } 
             : r
         ));
         onWorkOrdersChange(allWorkOrders.map(wo => 
@@ -379,7 +379,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                 })));
 
                 const updatedWorkOrders = allWorkOrders.map(wo => {
-                    const foundRoute = newRoutes.find(r => r.workOrderIds.includes(wo.id));
+                    const foundRoute = newRoutes.find(r => (r.workOrderIds || []).includes(wo.id));
                     if (foundRoute) {
                         return { ...wo, routeId: foundRoute.id };
                     }
@@ -407,7 +407,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             if (route.technicianName) {
                 const tech = technicians.find(t => t.name === route.technicianName);
                 if (tech) {
-                    route.workOrderIds.forEach(id => {
+                    (route.workOrderIds || []).forEach(id => {
                         jobsToUpdate[id] = tech.id;
                     });
                 }
@@ -440,10 +440,10 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
 
         onRoutesChange(routes.map(r => {
             if (r.id === sourceRouteId) {
-                return { ...r, workOrderIds: r.workOrderIds.filter(id => id !== jobId) };
+                return { ...r, workOrderIds: (r.workOrderIds || []).filter(id => id !== jobId) };
             }
             if (r.id === targetRouteId) {
-                return { ...r, workOrderIds: [...r.workOrderIds, jobId] };
+                return { ...r, workOrderIds: [...(r.workOrderIds || []), jobId] };
             }
             return r;
         }));
@@ -481,12 +481,12 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
 
     const getRouteTotalPay = (route: Route) => {
         return allWorkOrders
-            .filter(wo => route.workOrderIds.includes(wo.id))
+            .filter(wo => (route.workOrderIds || []).includes(wo.id))
             .reduce((acc, wo) => acc + (wo.pay || 0), 0);
     };
 
     const jobsInRoutesCount = useMemo(() => {
-        return routes.reduce((acc, r) => acc + r.workOrderIds.length, 0);
+        return routes.reduce((acc, r) => acc + (r.workOrderIds || []).length, 0);
     }, [routes]);
 
     return (
@@ -554,7 +554,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {routes.map(route => {
-                        const routeJobs = allWorkOrders.filter(wo => route.workOrderIds.includes(wo.id));
+                        const routeJobs = allWorkOrders.filter(wo => (route.workOrderIds || []).includes(wo.id));
                         const totalPay = getRouteTotalPay(route);
                         return (
                             <DroppableRoute

@@ -35,7 +35,7 @@ export default function RoutesMapView({ routes, allWorkOrders, selectedRouteId, 
 
   // Geocode jobs in routes that need it
   useEffect(() => {
-    const routeJobIds = new Set(routes.flatMap(r => r.workOrderIds));
+    const routeJobIds = new Set(routes.flatMap(r => r.workOrderIds || []));
     const routeJobs = allWorkOrders.filter(j => routeJobIds.has(j.id));
     const needsGeocode = routeJobs.filter(j => !j.lat && !j.lng && j.location && !geocodedCoords[j.id]);
     if (needsGeocode.length === 0) return;
@@ -110,7 +110,7 @@ export default function RoutesMapView({ routes, allWorkOrders, selectedRouteId, 
         const isSelected = !selectedRouteId || route.id === selectedRouteId;
         const opacity = selectedRouteId && route.id !== selectedRouteId ? 0.3 : 1;
 
-        const jobs = route.workOrderIds
+        const jobs = (route.workOrderIds || [])
           .map(id => allWorkOrders.find(j => j.id === id))
           .filter(Boolean) as WorkOrder[];
 

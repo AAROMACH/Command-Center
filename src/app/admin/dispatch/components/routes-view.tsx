@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import type { Route, WorkOrder, Technician } from '@/lib/types';
 
@@ -9,12 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { 
-    Plus, 
-    Trash2, 
-    Layers, 
-    User, 
-    ChevronRight, 
+import {
+    Plus,
+    Trash2,
+    Layers,
+    User,
+    ChevronRight,
     Search,
     Wrench,
     Check,
@@ -24,12 +24,9 @@ import {
     ExternalLink,
     Zap,
     Loader2,
-    ShieldCheck,
-    Clock,
     MapPin,
     RotateCcw,
     X,
-    ShieldAlert,
     Eye
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
@@ -38,14 +35,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { makeRouteId } from '@/lib/doc-ids';
 import { Badge } from '@/components/ui/badge';
-import { 
-    Select, 
-    SelectContent, 
-    SelectItem, 
-    SelectTrigger, 
-    SelectValue 
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
 } from '@/components/ui/select';
-import { cn, formatCityState, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
+import { cn, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
 import {
   DndContext,
   closestCenter,
@@ -69,8 +66,19 @@ type RoutesViewProps = {
     technicians: Technician[];
 };
 
+// ── Field-level defensiveness ────────────────────────────────────────────
+// Route.workOrderIds and WorkOrder.description/pay are typed as required,
+// but Firestore never enforces that — legacy docs, partial writes, or a
+// manually-edited record can land without them. Every access below reads
+// through one of these small helpers instead of the raw field, so a
+// malformed doc degrades gracefully (empty list / $0 / fallback label)
+// instead of throwing mid-render and tripping the admin error boundary.
+const jobIdsOf = (route: Route | null | undefined): string[] => route?.workOrderIds || [];
+const jobLabel = (job: WorkOrder | null | undefined): string => job?.title || job?.description || job?.id || 'Untitled Job';
+const jobPay = (job: WorkOrder | null | undefined): number => job?.pay || 0;
+
 const getFieldNationLink = (id: string) => {
-  const cleanId = id.replace(/^wo-/, '');
+  const cleanId = (id || '').replace(/^wo-/, '');
   return `https://app.fieldnation.com/workorders/${cleanId}`;
 };
 
@@ -103,13 +111,13 @@ function DraggableJob({ job, routeId, onRemove }: { job: WorkOrder, routeId: str
           <GripVertical size={14} />
         </div>
         <div className="space-y-0 overflow-hidden text-left">
-          <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide truncate leading-tight">{job.title || job.description}</p>
+          <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide truncate leading-tight">{jobLabel(job)}</p>
           <div className="flex items-center gap-1.5">
-            <p className="text-[8px] text-text-muted font-mono leading-tight">{job.id.toUpperCase()}</p>
+            <p className="text-[8px] text-text-muted font-mono leading-tight">{(job.id || '').toUpperCase()}</p>
             {job.source === 'Imported' && (
-              <a 
-                href={getFieldNationLink(job.id)} 
-                target="_blank" 
+              <a
+                href={getFieldNationLink(job.id)}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-text-muted hover:text-brand-red transition-colors"
                 onClick={(e) => e.stopPropagation()}
@@ -120,7 +128,7 @@ function DraggableJob({ job, routeId, onRemove }: { job: WorkOrder, routeId: str
           </div>
         </div>
       </div>
-      <button 
+      <button
         onClick={(e) => { e.stopPropagation(); onRemove(job.id); }}
         className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-text-red transition-all ml-1"
       >
@@ -172,7 +180,7 @@ function DroppableRoute({
             <div className="flex justify-between items-start mb-1.5">
                 <div className="flex items-center gap-1.5 flex-wrap">
                     <Badge variant="outline" className="text-[8px] bg-bg-primary uppercase font-bold tracking-widest text-brand-red border-brand-red/20 h-4">
-                        ID: {route.id.split('-').pop()?.toUpperCase()}
+                        ID: {(route.id || '').split('-').pop()?.toUpperCase() || '—'}
                     </Badge>
                     {route.status && (
                         <Badge variant="outline" className={cn(
@@ -190,7 +198,7 @@ function DroppableRoute({
                 </div>
                 <button onClick={(e) => { e.stopPropagation(); onDelete(route.id); }} className="text-text-muted hover:text-text-red transition-colors"><Trash2 size={14}/></button>
             </div>
-            <CardTitle className="text-sm font-bold text-text-primary uppercase tracking-wide leading-none text-left">{route.name}</CardTitle>
+            <CardTitle className="text-sm font-bold text-text-primary uppercase tracking-wide leading-none text-left">{route.name || 'Untitled Route'}</CardTitle>
         </CardHeader>
         <CardContent className="p-3 flex-1 space-y-3">
             <div className="space-y-1">
@@ -203,7 +211,7 @@ function DroppableRoute({
                         </div>
                     </SelectTrigger>
                     <SelectContent>
-                        {sortTechniciansForDeployment(technicians.filter(isAssignableTechnician)).map(tech => (
+                        {sortTechniciansForDeployment((technicians || []).filter(isAssignableTechnician)).map(tech => (
                             <SelectItem key={tech.id} value={tech.name} className="text-[10px] font-bold uppercase">
                                 {tech.name}{isInactiveTechnician(tech) ? ' · Inactive' : ''}
                             </SelectItem>
@@ -235,8 +243,8 @@ function DroppableRoute({
                         </div>
                     )}
                 </div>
-                <Button 
-                    variant="default" 
+                <Button
+                    variant="default"
                     className="w-full h-8 text-[9px] font-bold uppercase tracking-widest bg-brand-red/10 border border-brand-red/30 text-brand-red hover:bg-brand-red hover:text-white transition-all"
                     onClick={() => onAssignClick(route.id)}
                 >
@@ -258,6 +266,12 @@ function DroppableRoute({
 }
 
 export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrdersChange, technicians }: RoutesViewProps) {
+    // Props ultimately come from Firestore onSnapshot listeners several
+    // components up — never trust them to already be arrays on every render.
+    const safeRoutes = routes || [];
+    const safeWorkOrders = allWorkOrders || [];
+    const safeTechnicians = technicians || [];
+
     const [isNewRouteOpen, setIsNewRouteOpen] = useState(false);
     const [newRouteName, setNewRouteName] = useState("");
     const [isAddJobsOpen, setIsAddJobsOpen] = useState(false);
@@ -265,7 +279,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     const [jobSearch, setJobSearch] = useState("");
     const [isOptimizing, setIsOptimizing] = useState(false);
     const [targetRouteCount, setTargetRouteCount] = useState("3");
-    
+
     const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
     const [isJobDetailOpen, setIsJobDetailOpen] = useState(false);
     const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
@@ -282,7 +296,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     );
 
     const handleCreateRoute = async () => {
-        const name = newRouteName.trim() || `Route ${routes.length + 1}`;
+        const name = newRouteName.trim() || `Route ${safeRoutes.length + 1}`;
         const newRoute: Route = {
             id: await makeRouteId(),
             name,
@@ -291,57 +305,57 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             status: 'draft',
             createdAt: new Date().toISOString(),
         };
-        onRoutesChange([...routes, newRoute]);
+        onRoutesChange([...safeRoutes, newRoute]);
         setNewRouteName("");
         setIsNewRouteOpen(false);
         toast({ title: "Route Created", description: `${newRoute.name} is ready for job assignments.` });
     };
 
     const handleDeleteRoute = (id: string) => {
-        const route = routes.find(r => r.id === id);
+        const route = safeRoutes.find(r => r.id === id);
         if (!route) return;
-        onRoutesChange(routes.filter(r => r.id !== id));
-        onWorkOrdersChange(allWorkOrders.map(wo => wo.routeId === id ? { ...wo, routeId: null } : wo));
-        toast({ variant: "destructive", title: "Route Dissolved", description: `${route.name} removed from registry.` });
+        onRoutesChange(safeRoutes.filter(r => r.id !== id));
+        onWorkOrdersChange(safeWorkOrders.map(wo => wo.routeId === id ? { ...wo, routeId: null } : wo));
+        toast({ variant: "destructive", title: "Route Dissolved", description: `${route.name || 'Route'} removed from registry.` });
     };
 
     const handleClearAllRoutes = () => {
         onRoutesChange([]);
-        onWorkOrdersChange(allWorkOrders.map(wo => wo.routeId ? { ...wo, routeId: null } : wo));
+        onWorkOrdersChange(safeWorkOrders.map(wo => wo.routeId ? { ...wo, routeId: null } : wo));
         toast({ variant: "destructive", title: "Registry Reset", description: "All routes dissolved and jobs returned to unassigned pool." });
     };
 
     const handleTechNameChange = (routeId: string, name: string) => {
-        onRoutesChange(routes.map(r => r.id === routeId ? { ...r, technicianName: name } : r));
+        onRoutesChange(safeRoutes.map(r => r.id === routeId ? { ...r, technicianName: name } : r));
     };
 
     const handleAddJobToRoute = (woId: string) => {
         if (!activeRouteId) return;
-        onRoutesChange(routes.map(r =>
+        onRoutesChange(safeRoutes.map(r =>
             r.id === activeRouteId
             // Dedup: an orphaned job re-added must not double-list
-            ? { ...r, workOrderIds: Array.from(new Set([...(r.workOrderIds || []), woId])) }
+            ? { ...r, workOrderIds: Array.from(new Set([...jobIdsOf(r), woId])) }
             : r
         ));
-        onWorkOrdersChange(allWorkOrders.map(wo =>
+        onWorkOrdersChange(safeWorkOrders.map(wo =>
             wo.id === woId ? { ...wo, routeId: activeRouteId } : wo
         ));
     };
 
     const handleRemoveJobFromRoute = (woId: string, routeId: string) => {
-        onRoutesChange(routes.map(r => 
-            r.id === routeId 
-            ? { ...r, workOrderIds: (r.workOrderIds || []).filter(id => id !== woId) } 
+        onRoutesChange(safeRoutes.map(r =>
+            r.id === routeId
+            ? { ...r, workOrderIds: jobIdsOf(r).filter(id => id !== woId) }
             : r
         ));
-        onWorkOrdersChange(allWorkOrders.map(wo => 
+        onWorkOrdersChange(safeWorkOrders.map(wo =>
             wo.id === woId ? { ...wo, routeId: null } : wo
         ));
     };
 
     const handleTacticalOptimization = async () => {
-        const placed = new Set(routes.flatMap(r => r.workOrderIds || []));
-        const unassigned = allWorkOrders.filter(wo =>
+        const placed = new Set(safeRoutes.flatMap(jobIdsOf));
+        const unassigned = safeWorkOrders.filter(wo =>
             (!wo.assignedTechnicianId || wo.status === 'unassigned') && !isArchivedJob(wo) && !placed.has(wo.id));
         if (unassigned.length === 0) {
             toast({ variant: 'destructive', title: 'Optimization Aborted', description: 'No unassigned jobs found in mission pool.' });
@@ -350,7 +364,7 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
 
         setIsOptimizing(true);
         try {
-            const availableTechs = technicians.filter(t =>
+            const availableTechs = safeTechnicians.filter(t =>
                 isAssignableTechnician(t) &&
                 t.name &&
                 (t.address || t.currentLocation)
@@ -359,36 +373,36 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             const result = await getOptimizedRoutes({
                 unassignedJobs: unassigned,
                 availableTechnicians: availableTechs,
-                targetRouteCount: parseInt(targetRouteCount)
+                targetRouteCount: parseInt(targetRouteCount) || 1
             });
 
-            if (result.warnings && result.warnings.length > 0) {
-                toast({ 
-                    variant: result.routes.length > 0 ? "default" : "destructive", 
-                    title: "Optimization Alert", 
-                    description: result.warnings[0] 
+            if (result?.warnings && result.warnings.length > 0) {
+                toast({
+                    variant: (result.routes || []).length > 0 ? "default" : "destructive",
+                    title: "Optimization Alert",
+                    description: result.warnings[0]
                 });
             }
 
-            if (result.routes && result.routes.length > 0) {
+            if (result?.routes && result.routes.length > 0) {
                 const newRoutes: Route[] = await Promise.all(result.routes.map(async (p) => ({
                     id: await makeRouteId(),
                     name: p.estimatedRouteLabel || `Area: ${p.technicianName || 'Unassigned'}`,
                     technicianName: p.technicianName || "",
-                    workOrderIds: p.jobIds
+                    workOrderIds: p.jobIds || [],
                 })));
 
-                const updatedWorkOrders = allWorkOrders.map(wo => {
-                    const foundRoute = newRoutes.find(r => (r.workOrderIds || []).includes(wo.id));
+                const updatedWorkOrders = safeWorkOrders.map(wo => {
+                    const foundRoute = newRoutes.find(r => jobIdsOf(r).includes(wo.id));
                     if (foundRoute) {
                         return { ...wo, routeId: foundRoute.id };
                     }
                     return wo;
                 });
 
-                onRoutesChange([...routes, ...newRoutes]);
+                onRoutesChange([...safeRoutes, ...newRoutes]);
                 onWorkOrdersChange(updatedWorkOrders);
-                
+
                 toast({
                     title: "Area Optimization Applied",
                     description: `Successfully architected ${newRoutes.length} service areas based on geographic city anchors.`,
@@ -403,18 +417,18 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
 
     const handleBatchAssign = () => {
         const jobsToUpdate: Record<string, string> = {};
-        routes.forEach(route => {
+        safeRoutes.forEach(route => {
             if (route.technicianName) {
-                const tech = technicians.find(t => t.name === route.technicianName);
+                const tech = safeTechnicians.find(t => t.name === route.technicianName);
                 if (tech) {
-                    (route.workOrderIds || []).forEach(id => {
+                    jobIdsOf(route).forEach(id => {
                         jobsToUpdate[id] = tech.id;
                     });
                 }
             }
         });
 
-        const updatedWorkOrders = allWorkOrders.map(wo => {
+        const updatedWorkOrders = safeWorkOrders.map(wo => {
             if (jobsToUpdate[wo.id]) {
                 return {
                     ...wo,
@@ -438,21 +452,21 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
         const sourceRouteId = active.data.current?.sourceRouteId;
         if (sourceRouteId === targetRouteId) return;
 
-        onRoutesChange(routes.map(r => {
+        onRoutesChange(safeRoutes.map(r => {
             if (r.id === sourceRouteId) {
-                return { ...r, workOrderIds: (r.workOrderIds || []).filter(id => id !== jobId) };
+                return { ...r, workOrderIds: jobIdsOf(r).filter(id => id !== jobId) };
             }
             if (r.id === targetRouteId) {
-                return { ...r, workOrderIds: [...(r.workOrderIds || []), jobId] };
+                return { ...r, workOrderIds: [...jobIdsOf(r), jobId] };
             }
             return r;
         }));
 
-        onWorkOrdersChange(allWorkOrders.map(wo => 
+        onWorkOrdersChange(safeWorkOrders.map(wo =>
             wo.id === jobId ? { ...wo, routeId: targetRouteId } : wo
         ));
 
-        toast({ title: "Registry Relocated", description: `Job ${jobId.toUpperCase()} moved to ${routes.find(r => r.id === targetRouteId)?.name}.` });
+        toast({ title: "Registry Relocated", description: `Job ${(jobId || '').toUpperCase()} moved to ${safeRoutes.find(r => r.id === targetRouteId)?.name || 'route'}.` });
     };
 
     // A job "belongs to a route" only if some existing route actually lists it
@@ -462,32 +476,34 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
     // routeId still shows up here instead of vanishing. Requirement: any job
     // with no assigned technician must always be visible in Routes.
     const placedJobIds = useMemo(
-        () => new Set(routes.flatMap(r => r.workOrderIds || [])),
-        [routes]);
+        () => new Set(safeRoutes.flatMap(jobIdsOf)),
+        [safeRoutes]);
 
     const hasNoTech = (wo: WorkOrder) => !wo.assignedTechnicianId || wo.status === 'unassigned';
 
     const unassignedJobs = useMemo(() =>
-        allWorkOrders.filter(wo => hasNoTech(wo) && !isArchivedJob(wo) && !placedJobIds.has(wo.id)),
-    [allWorkOrders, placedJobIds]);
+        safeWorkOrders.filter(wo => hasNoTech(wo) && !isArchivedJob(wo) && !placedJobIds.has(wo.id)),
+    [safeWorkOrders, placedJobIds]);
 
     const filteredUnassigned = useMemo(() => {
-        const q = jobSearch.toLowerCase();
+        const q = jobSearch.trim().toLowerCase();
+        if (!q) return unassignedJobs;
         return unassignedJobs.filter(wo =>
-            (wo.title || wo.description || '').toLowerCase().includes(q) ||
-            wo.id.toLowerCase().includes(q)
+            jobLabel(wo).toLowerCase().includes(q) ||
+            (wo.id || '').toLowerCase().includes(q)
         );
     }, [unassignedJobs, jobSearch]);
 
     const getRouteTotalPay = (route: Route) => {
-        return allWorkOrders
-            .filter(wo => (route.workOrderIds || []).includes(wo.id))
-            .reduce((acc, wo) => acc + (wo.pay || 0), 0);
+        const ids = new Set(jobIdsOf(route));
+        return safeWorkOrders
+            .filter(wo => ids.has(wo.id))
+            .reduce((acc, wo) => acc + jobPay(wo), 0);
     };
 
     const jobsInRoutesCount = useMemo(() => {
-        return routes.reduce((acc, r) => acc + (r.workOrderIds || []).length, 0);
-    }, [routes]);
+        return safeRoutes.reduce((acc, r) => acc + jobIdsOf(r).length, 0);
+    }, [safeRoutes]);
 
     return (
         <div className="space-y-6">
@@ -534,11 +550,11 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                     <Button variant="outline" onClick={() => setIsNewRouteOpen(true)} className="h-9 px-6 text-[10px] border-border-main">
                         <Plus size={14} className="mr-2"/> New Route
                     </Button>
-                    <Button variant="ghost" onClick={handleClearAllRoutes} disabled={routes.length === 0} className="h-9 px-4 text-[10px] uppercase font-bold text-text-muted hover:text-text-red">
+                    <Button variant="ghost" onClick={handleClearAllRoutes} disabled={safeRoutes.length === 0} className="h-9 px-4 text-[10px] uppercase font-bold text-text-muted hover:text-text-red">
                         <RotateCcw size={14} className="mr-2"/> Reset
                     </Button>
-                    <Button 
-                        onClick={handleBatchAssign} 
+                    <Button
+                        onClick={handleBatchAssign}
                         disabled={jobsInRoutesCount === 0}
                         className="h-9 px-6 text-[10px] bg-accent-gold hover:bg-accent-gold/90"
                     >
@@ -547,14 +563,15 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                 </div>
             </div>
 
-            <DndContext 
+            <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {routes.map(route => {
-                        const routeJobs = allWorkOrders.filter(wo => (route.workOrderIds || []).includes(wo.id));
+                    {safeRoutes.map(route => {
+                        const ids = new Set(jobIdsOf(route));
+                        const routeJobs = safeWorkOrders.filter(wo => ids.has(wo.id));
                         const totalPay = getRouteTotalPay(route);
                         return (
                             <DroppableRoute
@@ -571,11 +588,11 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                                 }}
                                 onSelect={(id) => setSelectedRouteId(prev => prev === id ? null : id)}
                                 isSelected={selectedRouteId === route.id}
-                                technicians={technicians}
+                                technicians={safeTechnicians}
                             />
                         )
                     })}
-                    {routes.length === 0 && (
+                    {safeRoutes.length === 0 && (
                         <div className="col-span-full py-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30 flex flex-col items-center gap-4">
                             <Layers size={48} className="text-text-muted opacity-20" />
                             <div className="space-y-1">
@@ -591,14 +608,14 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
             </DndContext>
 
             {/* Route Map */}
-            {routes.length > 0 && (
+            {safeRoutes.length > 0 && (
                 <div>
                     <div className="flex items-center justify-between mb-2">
                         <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
                             <MapPin size={11} className="text-brand-red" />
                             Route Map
                             {selectedRouteId && (
-                                <span className="text-brand-red">— {routes.find(r => r.id === selectedRouteId)?.name}</span>
+                                <span className="text-brand-red">— {safeRoutes.find(r => r.id === selectedRouteId)?.name || 'Route'}</span>
                             )}
                         </p>
                         {selectedRouteId && (
@@ -611,8 +628,8 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                         )}
                     </div>
                     <RoutesMapView
-                        routes={routes}
-                        allWorkOrders={allWorkOrders}
+                        routes={safeRoutes}
+                        allWorkOrders={safeWorkOrders}
                         selectedRouteId={selectedRouteId}
                         onSelectRoute={(id) => setSelectedRouteId(prev => prev === id ? null : id)}
                     />
@@ -628,8 +645,8 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                     </DialogHeader>
                     <div className="py-4 text-left">
                         <Label className="text-[10px] font-bold uppercase text-text-muted mb-2 block text-left">Route Identifier / Name</Label>
-                        <Input 
-                            placeholder="e.g. Detroit North AM" 
+                        <Input
+                            placeholder="e.g. Detroit North AM"
                             value={newRouteName}
                             onChange={(e) => setNewRouteName(e.target.value)}
                             className="bg-bg-primary h-11 text-sm uppercase font-bold tracking-wide"
@@ -650,20 +667,20 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                             <Wrench className="text-brand-red h-5 w-5" />
                             <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary text-left">Allocation Terminal</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs text-left">Select jobs from the unassigned pool to allocate to <span className="text-text-primary font-bold">{routes.find(r => r.id === activeRouteId)?.name}</span>.</DialogDescription>
+                        <DialogDescription className="text-xs text-left">Select jobs from the unassigned pool to allocate to <span className="text-text-primary font-bold">{safeRoutes.find(r => r.id === activeRouteId)?.name || 'this route'}</span>.</DialogDescription>
                     </DialogHeader>
                     <div className="px-6 py-2">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-                            <Input 
-                                placeholder="Search Job Pool..." 
+                            <Input
+                                placeholder="Search Job Pool..."
                                 value={jobSearch}
                                 onChange={(e) => setJobSearch(e.target.value)}
                                 className="h-10 pl-10 bg-bg-primary border-border-sub text-xs uppercase font-bold"
                             />
                         </div>
                     </div>
-                    <ScrollArea className="flex-1 p-6">
+                    <ScrollArea className="flex-1 min-h-0 p-6">
                         <div className="space-y-2 text-left">
                             {filteredUnassigned.map(job => (
                                 <div key={job.id} className="p-4 rounded-lg bg-bg-primary border border-border-sub hover:bg-bg-tertiary transition-colors flex items-center justify-between group">
@@ -672,25 +689,25 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                                             <Wrench size={16} />
                                         </div>
                                         <div className="text-left">
-                                            <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide text-left">{job.title || job.description}</p>
+                                            <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide text-left">{jobLabel(job)}</p>
                                             <div className="flex items-center gap-3 text-[9px] text-text-muted uppercase font-bold tracking-widest mt-1 text-left">
-                                                <span>{job.clientName}</span>
+                                                <span>{job.clientName || 'No Client'}</span>
                                                 <span>•</span>
-                                                <span className="text-text-green font-mono font-bold">${(job.pay || 0).toFixed(2)}</span>
+                                                <span className="text-text-green font-mono font-bold">${jobPay(job).toFixed(2)}</span>
                                             </div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
                                             className="h-8 w-8 text-text-muted hover:text-text-primary"
                                             onClick={() => { setSelectedJob(job); setIsJobDetailOpen(true); }}
                                         >
                                             <Eye size={16}/>
                                         </Button>
-                                        <Button 
-                                            size="sm" 
+                                        <Button
+                                            size="sm"
                                             className="h-8 bg-brand-red/10 border border-brand-red/30 text-brand-red hover:bg-brand-red hover:text-white"
                                             onClick={() => handleAddJobToRoute(job.id)}
                                         >
@@ -711,11 +728,11 @@ export function RoutesView({ routes, onRoutesChange, allWorkOrders, onWorkOrders
                     </div>
                 </DialogContent>
             </Dialog>
-            
-            <JobDetailDialog 
-                isOpen={isJobDetailOpen} 
-                setIsOpen={setIsJobDetailOpen} 
-                mission={selectedJob} 
+
+            <JobDetailDialog
+                isOpen={isJobDetailOpen}
+                setIsOpen={setIsJobDetailOpen}
+                mission={selectedJob}
             />
         </div>
     );

@@ -1320,7 +1320,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                 </DialogContent>
                 <style jsx global>{`
                     .tab-trigger-payroll {
-                        @apply px-0 h-12 bg-transparent text-[10px] font-bold uppercase tracking-[0.15em] text-text-muted rounded-none border-b-2 border-transparent transition-all;
+                        @apply px-0 h-11 sm:h-12 bg-transparent text-[10px] font-bold uppercase tracking-[0.15em] text-text-muted rounded-none border-b-2 border-transparent transition-all;
                     }
                     .tab-trigger-payroll[data-state="active"] {
                         @apply text-text-primary border-brand-red bg-transparent shadow-none;

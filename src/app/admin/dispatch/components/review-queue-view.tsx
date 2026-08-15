@@ -41,9 +41,13 @@ export function ReviewQueueView({ jobs, technicians, onSendToDispatch, onArchive
     <>
       <div className="space-y-3">
         {jobs.map(wo => {
-          const tech = technicians.find(t => t.id === jobTechId(wo));
           const lastNote = [...(wo.history || [])].reverse()
             .find(h => h.details?.toLowerCase().includes('cancelled') || h.details?.toLowerCase().includes('did not do'));
+          // Show whoever actually recorded the outcome, not whoever the job
+          // is currently allocated to — the two can diverge if the job gets
+          // reassigned afterward, which would otherwise misattribute the
+          // cancellation/did-not-do to the new tech.
+          const techName = lastNote?.user || technicians.find(t => t.id === jobTechId(wo))?.name;
 
           return (
             <div key={wo.id} className="rounded-xl border border-brand-red/30 bg-bg-secondary p-4 shadow-sm">
@@ -62,7 +66,7 @@ export function ReviewQueueView({ jobs, technicians, onSendToDispatch, onArchive
                     <span>{wo.clientName || 'Unassigned Client'}</span>
                     <span>·</span>
                     <span>{formatCityState(wo.location)}</span>
-                    {tech && (<><span>·</span><span>{tech.name}</span></>)}
+                    {techName && (<><span>·</span><span>{techName}</span></>)}
                   </div>
                   {lastNote && (
                     <p className="text-[10px] text-text-secondary italic mt-1.5 truncate max-w-xl">{lastNote.details}</p>

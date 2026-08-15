@@ -14,14 +14,21 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import {
   ArrowLeft, ShieldCheck, Phone, Mail, Calendar, Clock, DollarSign,
   Briefcase, MapPin, Navigation, AlertTriangle, Users, UserPlus,
   ArrowLeftRight, Check, Flag, Activity, MessageSquare, ExternalLink, Wrench,
+  Pencil, Type, FileText,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
+import { cn, sanitize, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
+import { isPayAdmin } from '@/lib/permissions';
+import { PAY_TYPE_LABELS } from '@/lib/constants';
 
 const AssignmentMap = dynamic(() => import('./assignment-map'), { ssr: false });
 
@@ -115,16 +122,26 @@ export default function AssignmentDetailPage() {
   const assignmentId = params?.id as string;
 
   const [assignment, setAssignment] = useState<WorkOrder | null>(null);
+  const [sourceCollection, setSourceCollection] = useState<'assignments' | 'workOrders'>('assignments');
   const [tech, setTech] = useState<Technician | null>(null);
   const [relatedLogs, setRelatedLogs] = useState<WeeklyLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [allTechs, setAllTechs] = useState<Technician[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [swapOpen, setSwapOpen] = useState(false);
   const [swapTechId, setSwapTechId] = useState('');
   const [helperOpen, setHelperOpen] = useState(false);
   const [helperTechId, setHelperTechId] = useState('');
   const [detailView, setDetailView] = useState<'overview' | 'history'>('overview');
   const [historyTypeFilter, setHistoryTypeFilter] = useState('all');
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
+
+  useEffect(() => {
+    setCurrentUserId(typeof window !== 'undefined' ? sessionStorage.getItem('currentUserId') : null);
+  }, []);
+
+  const currentUser = allTechs.find(t => t.id === currentUserId) || null;
 
   // Load assignment (assignments collection first, fallback to workOrders)
   useEffect(() => {
@@ -133,11 +150,15 @@ export default function AssignmentDetailPage() {
       const aSnap = await getDoc(doc(db, 'assignments', assignmentId));
       if (aSnap.exists()) {
         setAssignment({ ...aSnap.data(), id: aSnap.id } as WorkOrder);
+        setSourceCollection('assignments');
         setLoading(false);
         return;
       }
       const wSnap = await getDoc(doc(db, 'workOrders', assignmentId));
-      if (wSnap.exists()) setAssignment({ ...wSnap.data(), id: wSnap.id } as WorkOrder);
+      if (wSnap.exists()) {
+        setAssignment({ ...wSnap.data(), id: wSnap.id } as WorkOrder);
+        setSourceCollection('workOrders');
+      }
       setLoading(false);
     })();
   }, [assignmentId]);
@@ -220,6 +241,69 @@ export default function AssignmentDetailPage() {
       setAssignment(p => p ? { ...p, additionalTechnicianIds: (p.additionalTechnicianIds || []).filter(x => x !== id) } : p);
       toast({ title: 'Helper Removed' });
     } catch (e: any) { toast({ variant: 'destructive', title: 'Failed', description: e.message }); }
+  };
+
+  const handleOpenEdit = () => {
+    if (!assignment) return;
+    setEditedOrder({ ...assignment });
+    setIsEditOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editedOrder || !assignment) return;
+
+    let finalUpdate: any = { ...editedOrder };
+    const payAdmin = isPayAdmin(currentUser);
+    const payChanged = (editedOrder.pay || 0) !== (assignment.pay || 0) || editedOrder.payType !== assignment.payType;
+
+    if (payChanged && !payAdmin) {
+      finalUpdate.pay = assignment.pay;
+      finalUpdate.payType = assignment.payType;
+      finalUpdate.payChangeRequest = {
+        pay: editedOrder.pay || 0,
+        payType: editedOrder.payType || 'fixed',
+        requestedBy: currentUser?.id || 'unknown',
+        requestedAt: new Date().toISOString(),
+      };
+      toast({ title: 'Pay Change Requested', description: 'Financial modifications require authorization.' });
+    }
+
+    const now = new Date().toISOString();
+    const history = [...(editedOrder.history || [])];
+
+    const prevTechId = assignment.assignedTechnicianId || (assignment as any).techId || '';
+    const newTechId = finalUpdate.assignedTechnicianId || '';
+    if (newTechId !== prevTechId) {
+      // Keep the legacy `techId` field in sync — tech-facing pages query
+      // exclusively by `techId`, so leaving it stale hides/shows the job
+      // on the wrong tech's assignments page.
+      finalUpdate.techId = newTechId || null;
+      const prevTechName = allTechs.find(t => t.id === prevTechId)?.name || (prevTechId ? prevTechId : 'Unassigned');
+      const newTechName = allTechs.find(t => t.id === newTechId)?.name || (newTechId ? newTechId : 'Unassigned');
+      history.push({
+        type: 'tech_swap',
+        date: now,
+        previousTechnicianId: prevTechId || null,
+        previousTechnicianName: prevTechName,
+        newTechnicianId: newTechId || null,
+        newTechnicianName: newTechName,
+        details: `Reassigned from ${prevTechName} to ${newTechName}`,
+        user: currentUser?.name || 'Admin',
+      } as any);
+    }
+
+    history.push({ type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: 'Registry parameters adjusted.', user: currentUser?.name || 'Admin' });
+    finalUpdate.history = history;
+
+    try {
+      await updateDoc(doc(db, sourceCollection, editedOrder.id), sanitize(finalUpdate));
+      setAssignment(finalUpdate as WorkOrder);
+      setIsEditOpen(false);
+      setEditedOrder(null);
+      toast({ title: 'Registry Updated', description: 'Job entry synchronized.' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+    }
   };
 
   const handleVerify = async () => {
@@ -313,11 +397,18 @@ export default function AssignmentDetailPage() {
     <div className="space-y-5 text-left pb-24">
 
       {/* Back ───────────────────────────────────────────────────────────── */}
-      <Button variant="ghost" size="sm"
-        className="h-8 text-[10px] uppercase font-bold text-text-muted -ml-2"
-        onClick={() => router.back()}>
-        <ArrowLeft size={13} className="mr-1.5" /> Back to Assignments
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm"
+          className="h-8 text-[10px] uppercase font-bold text-text-muted -ml-2"
+          onClick={() => router.back()}>
+          <ArrowLeft size={13} className="mr-1.5" /> Back to Assignments
+        </Button>
+        <Button size="sm" variant="outline"
+          className="h-8 text-[9px] uppercase font-black tracking-widest gap-1.5 px-3"
+          onClick={handleOpenEdit}>
+          <Pencil size={10} /> Edit
+        </Button>
+      </div>
 
       {/* Header ─────────────────────────────────────────────────────────── */}
       <div className="space-y-2">
@@ -686,6 +777,188 @@ export default function AssignmentDetailPage() {
       )}
 
       {/* Dialogs ────────────────────────────────────────────────────────── */}
+      <Dialog open={isEditOpen} onOpenChange={(open) => { if (!open) setEditedOrder(null); setIsEditOpen(open); }}>
+        <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default max-h-[90vh] overflow-hidden flex flex-col p-0 shadow-2xl">
+          <DialogHeader className="p-6 pb-2 text-left border-b border-border-sub bg-bg-tertiary/30">
+            <div className="space-y-1 text-left">
+              <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Parameters</DialogTitle>
+              <p className="text-xs text-text-muted text-left">Adjust manual parameters for record <span className="font-bold text-text-primary">{assignmentId.toUpperCase()}</span></p>
+            </div>
+          </DialogHeader>
+          {editedOrder && (
+            <ScrollArea className="flex-1 min-h-0">
+              <div className="px-6 py-4 space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                      <Type size={12} className="text-brand-red" /> Job Title
+                    </Label>
+                    <Input placeholder="e.g. Network Audit" value={editedOrder.title || ''} onChange={(e) => setEditedOrder({ ...editedOrder, title: e.target.value })} className="bg-bg-primary border-border-sub h-10 text-xs font-bold uppercase" />
+                  </div>
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                      <FileText size={12} className="text-accent-gold" /> Scope of Work
+                    </Label>
+                    <Textarea placeholder="Detailed requirements..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({ ...editedOrder, description: e.target.value })} className="bg-bg-primary border-border-sub h-24 text-xs" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
+                    <Input value={editedOrder.clientName || ''} onChange={(e) => setEditedOrder({ ...editedOrder, clientName: e.target.value })} className="bg-bg-primary h-10 text-xs font-bold uppercase" />
+                  </div>
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
+                    <Input value={editedOrder.location || ''} onChange={(e) => setEditedOrder({ ...editedOrder, location: e.target.value })} className="bg-bg-primary h-10 text-xs" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
+                    <Select value={editedOrder.projectType} onValueChange={(val) => setEditedOrder({ ...editedOrder, projectType: val })}>
+                      <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Installation">Installation</SelectItem>
+                        <SelectItem value="Troubleshooting">Troubleshooting</SelectItem>
+                        <SelectItem value="Maintenance">Maintenance</SelectItem>
+                        <SelectItem value="Survey">Survey</SelectItem>
+                        <SelectItem value="Repair">Repair</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority Level</Label>
+                    <Select value={editedOrder.priority} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, priority: val })}>
+                      <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Schedule Date</Label>
+                    <Input type="date" value={editedOrder.scheduleDate || ''} onChange={(e) => setEditedOrder({ ...editedOrder, scheduleDate: e.target.value })} className="h-10 bg-bg-primary text-xs" />
+                  </div>
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Start Window</Label>
+                    <Input placeholder="e.g. 10:00 AM EST" value={editedOrder.scheduleTime || ''} onChange={(e) => setEditedOrder({ ...editedOrder, scheduleTime: e.target.value })} className="h-10 bg-bg-primary text-xs" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pay Model</Label>
+                    <Select value={editedOrder.payType} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, payType: val })}>
+                      <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fixed" className="text-xs uppercase font-bold">{PAY_TYPE_LABELS.fixed}</SelectItem>
+                        <SelectItem value="hourly" className="text-xs font-bold">{PAY_TYPE_LABELS.hourly}</SelectItem>
+                        <SelectItem value="blended" className="text-xs font-bold">{PAY_TYPE_LABELS.blended}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {editedOrder.payType !== 'blended' && (
+                    <div className="space-y-2 text-left">
+                      <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Labor Rate ($)</Label>
+                      <Input type="number" value={editedOrder.pay || 0} onChange={(e) => setEditedOrder({ ...editedOrder, pay: parseFloat(e.target.value) || 0 })} className="bg-bg-primary h-10 text-xs font-mono text-text-green" />
+                    </div>
+                  )}
+                </div>
+
+                {editedOrder.payType === 'blended' && (
+                  <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50 text-left">
+                    <div className="space-y-2 text-left">
+                      <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Fixed Base ($)</Label>
+                      <div className="relative">
+                        <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <Input
+                          type="number"
+                          value={editedOrder.blendedFixedPay || ''}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setEditedOrder({ ...editedOrder, blendedFixedPay: val, pay: val });
+                          }}
+                          className="bg-bg-primary h-9 pl-6 font-mono text-text-green text-[11px]"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2 text-left">
+                      <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Incl. Hours</Label>
+                      <Input
+                        type="number"
+                        value={editedOrder.blendedIncludedHours || ''}
+                        onChange={(e) => setEditedOrder({ ...editedOrder, blendedIncludedHours: parseFloat(e.target.value) || 0 })}
+                        className="bg-bg-primary h-9 font-mono text-text-primary text-[11px]"
+                      />
+                    </div>
+                    <div className="space-y-2 text-left">
+                      <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Post Rate ($/hr)</Label>
+                      <div className="relative">
+                        <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <Input
+                          type="number"
+                          value={editedOrder.blendedHourlyRate || ''}
+                          onChange={(e) => setEditedOrder({ ...editedOrder, blendedHourlyRate: parseFloat(e.target.value) || 0 })}
+                          className="bg-bg-primary h-9 font-mono text-text-green text-[11px]"
+                        />
+                      </div>
+                    </div>
+                    <p className="col-span-3 text-[9px] text-text-muted uppercase font-bold italic tracking-tighter text-left">Fixed amount for specified hours, then hourly rate applies.</p>
+                  </div>
+                )}
+
+                <Separator className="bg-border-sub" />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label>
+                    <Select value={editedOrder.assignedTechnicianId || (editedOrder as any).techId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
+                      <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red text-xs">
+                        <SelectValue placeholder="Select Technician" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest">UNASSIGNED</SelectItem>
+                        {sortTechniciansForDeployment(allTechs.filter(isAssignableTechnician)).map(t => <SelectItem key={t.id} value={t.id} className="text-xs uppercase font-bold">{t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 text-left">
+                    <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Operational Status</Label>
+                    <Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}>
+                      <SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned" className="text-xs uppercase font-bold">UNASSIGNED</SelectItem>
+                        <SelectItem value="assigned" className="text-xs uppercase font-bold">ASSIGNED</SelectItem>
+                        <SelectItem value="confirmed" className="text-xs uppercase font-bold">CONFIRMED</SelectItem>
+                        <SelectItem value="on-my-way" className="text-xs uppercase font-bold">ON MY WAY</SelectItem>
+                        <SelectItem value="in-progress" className="text-xs uppercase font-bold">IN PROGRESS</SelectItem>
+                        <SelectItem value="completed" className="text-xs uppercase font-bold">COMPLETED</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
+          )}
+          <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 shrink-0 flex flex-row items-center justify-end gap-3">
+            <Button variant="outline" onClick={() => setIsEditOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
+            <Button onClick={handleSaveEdit} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white shadow-lg">
+              Commit Registry Updates
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={swapOpen} onOpenChange={setSwapOpen}>
         <DialogContent className="bg-bg-elevated border-border-main sm:max-w-sm">
           <DialogHeader>

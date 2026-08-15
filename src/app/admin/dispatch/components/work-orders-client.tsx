@@ -18,6 +18,9 @@ type WorkOrdersClientProps = {
   onWorkOrdersChange: (orders: WorkOrder[]) => void;
   routes: Route[];
   mode: 'unassigned' | 'assigned';
+  dateAsc?: boolean;
+  isDateSortActive?: boolean;
+  onToggleDateSort?: () => void;
 };
 
 const PAY_PILL: Record<string, string> = {

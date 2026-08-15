@@ -67,7 +67,8 @@ import {
   Wrench,
   Target,
   Loader2,
-  Timer
+  Timer,
+  ArrowUpDown
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
@@ -112,12 +113,18 @@ type WorkOrdersTableProps = {
   onWorkOrdersChange: (orders: WorkOrder[]) => void;
   routes: Route[];
   mode: 'unassigned' | 'scheduled' | 'assigned';
+  dateAsc?: boolean;
+  isDateSortActive?: boolean;
+  onToggleDateSort?: () => void;
 };
 
 export const WorkOrdersTable = React.memo(({
   workOrders,
   technicians,
-  mode
+  mode,
+  dateAsc,
+  isDateSortActive,
+  onToggleDateSort
 }: WorkOrdersTableProps) => {
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -351,7 +358,21 @@ export const WorkOrdersTable = React.memo(({
             <tr className="bg-bg-tertiary">
               <th className="text-center w-[160px] pl-0">Status & ID</th>
               <th className="text-left pl-0 min-w-[260px]">Assignment Title</th>
-              <th className="text-center w-[160px]">Schedule</th>
+              <th className="text-center w-[160px]">
+                {onToggleDateSort ? (
+                  <button
+                    onClick={onToggleDateSort}
+                    className="inline-flex items-center justify-center gap-1.5 uppercase tracking-widest hover:text-brand-red transition-colors"
+                    title="Sort by date"
+                  >
+                    Schedule
+                    <ArrowUpDown size={11} className={cn("shrink-0", isDateSortActive ? "text-brand-red" : "text-text-muted opacity-50")} />
+                    {isDateSortActive && (
+                      <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Soonest' : 'Latest'}</span>
+                    )}
+                  </button>
+                ) : 'Schedule'}
+              </th>
               <th className="text-left pl-0 w-[250px]">Site Coordinates</th>
               <th className="text-center w-[180px]">{mode === 'scheduled' || mode === 'assigned' ? 'Operative' : 'Labor Rate'}</th>
               <th className="text-center w-[120px]"></th>

@@ -492,18 +492,6 @@ export function DispatchPageClient() {
                   </SelectContent>
               </Select>
 
-              <button
-                  onClick={toggleDateSort}
-                  title="Sort by date"
-                  className={cn(
-                      "flex items-center gap-1.5 h-9 shrink-0 rounded-md border px-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors",
-                      sortBy === 'date' ? "border-brand-red text-brand-red bg-brand-red-dim" : "border-border-main bg-bg-primary text-text-muted hover:text-text-primary"
-                  )}
-              >
-                  <ArrowUpDown size={12} />
-                  {sortBy === 'date' ? (dateAsc ? 'Soonest' : 'Latest') : 'Latest'}
-              </button>
-
               <Popover>
                   <PopoverTrigger asChild>
                     <div className={cn(
@@ -707,6 +695,9 @@ export function DispatchPageClient() {
               reviewQueueJobs={reviewQueueJobs}
               onReviewSendToDispatch={handleReviewSendToDispatch}
               onReviewArchive={handleReviewArchive}
+              dateAsc={dateAsc}
+              isDateSortActive={sortBy === 'date'}
+              onToggleDateSort={toggleDateSort}
            />
         </TabsContent>
 
@@ -736,6 +727,9 @@ export function DispatchPageClient() {
                       }}
                       routes={routes}
                       mode="assigned"
+                      dateAsc={dateAsc}
+                      isDateSortActive={sortBy === 'date'}
+                      onToggleDateSort={toggleDateSort}
                    />
                 </TabsContent>
 
@@ -752,6 +746,9 @@ export function DispatchPageClient() {
                       }}
                       routes={routes}
                       mode="assigned"
+                      dateAsc={dateAsc}
+                      isDateSortActive={sortBy === 'date'}
+                      onToggleDateSort={toggleDateSort}
                    />
                 </TabsContent>
             </Tabs>

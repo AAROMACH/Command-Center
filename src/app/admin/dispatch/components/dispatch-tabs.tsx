@@ -19,6 +19,9 @@ type DispatchTabsProps = {
   reviewQueueJobs: WorkOrder[];
   onReviewSendToDispatch: (wo: WorkOrder) => void;
   onReviewArchive: (wo: WorkOrder) => void;
+  dateAsc?: boolean;
+  isDateSortActive?: boolean;
+  onToggleDateSort?: () => void;
 };
 
 export function DispatchTabs({
@@ -31,6 +34,9 @@ export function DispatchTabs({
   reviewQueueJobs,
   onReviewSendToDispatch,
   onReviewArchive,
+  dateAsc,
+  isDateSortActive,
+  onToggleDateSort,
 }: DispatchTabsProps) {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get('subtab') || 'unassigned');
@@ -66,6 +72,9 @@ export function DispatchTabs({
               onWorkOrdersChange={onWorkOrdersChange}
               routes={routes}
               mode="unassigned"
+              dateAsc={dateAsc}
+              isDateSortActive={isDateSortActive}
+              onToggleDateSort={onToggleDateSort}
           />
       </TabsContent>
 

@@ -244,10 +244,31 @@ export const WorkOrdersTable = React.memo(({
     }
 
     const today = format(new Date(), 'MM-dd-yyyy');
-    finalUpdate.history = [
-        ...(editedOrder.history || []),
-        { type: 'note', date: today, details: `Registry parameters adjusted.`, user: currentUser?.name || 'Admin' }
-    ];
+    const history = [...(editedOrder.history || [])];
+
+    const prevTechId = selectedOrder.assignedTechnicianId || (selectedOrder as any).techId || '';
+    const newTechId = finalUpdate.assignedTechnicianId || '';
+    if (newTechId !== prevTechId) {
+      // Keep the legacy `techId` field in sync — tech-facing pages query
+      // exclusively by `techId`, so leaving it stale hides/shows the job
+      // on the wrong tech's assignments page.
+      (finalUpdate as any).techId = newTechId || null;
+      const prevTechName = technicians.find(t => t.id === prevTechId)?.name || (prevTechId ? prevTechId : 'Unassigned');
+      const newTechName = technicians.find(t => t.id === newTechId)?.name || (newTechId ? newTechId : 'Unassigned');
+      history.push({
+        type: 'tech_swap',
+        date: today,
+        previousTechnicianId: prevTechId || null,
+        previousTechnicianName: prevTechName,
+        newTechnicianId: newTechId || null,
+        newTechnicianName: newTechName,
+        details: `Reassigned from ${prevTechName} to ${newTechName}`,
+        user: currentUser?.name || 'Admin'
+      } as any);
+    }
+
+    history.push({ type: 'note', date: today, details: `Registry parameters adjusted.`, user: currentUser?.name || 'Admin' });
+    finalUpdate.history = history;
 
     const collectionName = mode === 'unassigned' ? 'workOrders' : 'assignments';
     const docRef = doc(db, collectionName, editedOrder.id);

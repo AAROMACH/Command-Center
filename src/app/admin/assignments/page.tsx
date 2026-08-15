@@ -340,6 +340,31 @@ export default function AssignmentsHubPage() {
       toast({ title: "Pay Change Requested", description: "Financial modifications require authorization." });
     }
 
+    const today = format(new Date(), 'MM-dd-yyyy');
+    const prevTechId = selectedJob.assignedTechnicianId || (selectedJob as any).techId || '';
+    const newTechId = finalUpdate.assignedTechnicianId || '';
+    if (newTechId !== prevTechId) {
+      // Keep the legacy `techId` field in sync — tech-facing pages query
+      // exclusively by `techId`, so leaving it stale hides/shows the job
+      // on the wrong tech's assignments page.
+      (finalUpdate as any).techId = newTechId || null;
+      const prevTechName = technicians.find(t => t.id === prevTechId)?.name || (prevTechId ? prevTechId : 'Unassigned');
+      const newTechName = technicians.find(t => t.id === newTechId)?.name || (newTechId ? newTechId : 'Unassigned');
+      finalUpdate.history = [
+        ...(finalUpdate.history || []),
+        {
+          type: 'tech_swap',
+          date: today,
+          previousTechnicianId: prevTechId || null,
+          previousTechnicianName: prevTechName,
+          newTechnicianId: newTechId || null,
+          newTechnicianName: newTechName,
+          details: `Reassigned from ${prevTechName} to ${newTechName}`,
+          user: currentUser?.name || 'Admin'
+        } as any
+      ];
+    }
+
     const docRef = doc(db, 'assignments', editedOrder.id);
     updateDoc(docRef, sanitize(finalUpdate)).catch((error: any) => {
         console.error("Registry Update Error:", error);

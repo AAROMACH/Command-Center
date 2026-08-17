@@ -451,11 +451,6 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Dispatch routes (admin portal only)
-    match /routes/{id} {
-      allow read, write: if isAdmin();
-    }
-
     // Company planning (admin portal only)
     match /companyGoals/{id} {
       allow read, write: if isAdmin();

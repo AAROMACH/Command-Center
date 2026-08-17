@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import type { WorkOrder, Technician, Route } from "@/lib/types";
+import type { WorkOrder, Technician } from "@/lib/types";
 import { format } from "date-fns";
 
 import { Badge } from "@/components/ui/badge";
@@ -111,7 +111,6 @@ type WorkOrdersTableProps = {
   allWorkOrders: WorkOrder[];
   technicians: Technician[];
   onWorkOrdersChange: (orders: WorkOrder[]) => void;
-  routes: Route[];
   mode: 'unassigned' | 'scheduled' | 'assigned';
   dateAsc?: boolean;
   isDateSortActive?: boolean;

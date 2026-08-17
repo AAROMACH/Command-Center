@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import type { WorkOrder, Technician, Route } from "@/lib/types";
+import type { WorkOrder, Technician } from "@/lib/types";
 import { MapPin, Building2, Calendar, Clock, ChevronRight, ExternalLink } from "lucide-react";
 import { PAY_TYPE_LABELS } from "@/lib/constants";
 import { cn, formatCityState } from "@/lib/utils";
@@ -16,7 +16,6 @@ type WorkOrdersClientProps = {
   allWorkOrders: WorkOrder[];
   technicians: Technician[];
   onWorkOrdersChange: (orders: WorkOrder[]) => void;
-  routes: Route[];
   mode: 'unassigned' | 'assigned';
   dateAsc?: boolean;
   isDateSortActive?: boolean;

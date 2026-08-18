@@ -28,7 +28,7 @@ import { ImportJobsDialog, type ExistingRef as ImportExistingRef } from "./impor
 import { normalizeExternalId, isImported } from "@/lib/work-order-identity";
 import { jobTechId, isArchivedJob, jobDateTimeValue, toUnassignedWorkOrder, archiveJobRecord } from "@/lib/jobs";
 import { NewRequestDialog } from "../../requests/components/new-request-dialog";
-import type { WorkOrder, Route, ServiceRequest, Technician } from "@/lib/types";
+import type { WorkOrder, ServiceRequest, Technician } from "@/lib/types";
 import { isServiceTicketDoc, toDateSafe } from '@/lib/request-intake';
 import { makeAssignmentId } from '@/lib/doc-ids';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -81,7 +81,6 @@ export function DispatchPageClient() {
   const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>([]);
   const [allAssignments, setAllAssignments] = useState<WorkOrder[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
-  const [routes, setRoutes] = useState<Route[]>([]);
   const [allRequests, setAllRequests] = useState<ServiceRequest[]>([]);
   const [archivedJobs, setArchivedJobs] = useState<any[]>([]);
   
@@ -150,9 +149,6 @@ export function DispatchPageClient() {
           })
       );
     });
-    const unsubRoutes = onSnapshot(collection(db, 'routes'), (snap) => {
-      setRoutes(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Route)));
-    });
     // Archived deletions — so re-importing a work order number that was deleted
     // and archived is still flagged as a duplicate.
     const unsubArchive = onSnapshot(collection(db, 'activityArchive'), (snap) => {
@@ -160,7 +156,7 @@ export function DispatchPageClient() {
     }, () => { /* archive rule may be undeployed; dup check still covers active jobs */ });
 
     return () => {
-      unsubWO(); unsubAsmt(); unsubTech(); unsubReq(); unsubRoutes(); unsubArchive();
+      unsubWO(); unsubAsmt(); unsubTech(); unsubReq(); unsubArchive();
     };
   }, []);
 
@@ -492,18 +488,6 @@ export function DispatchPageClient() {
                   </SelectContent>
               </Select>
 
-              <button
-                  onClick={toggleDateSort}
-                  title="Sort by date"
-                  className={cn(
-                      "flex items-center gap-1.5 h-9 shrink-0 rounded-md border px-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors",
-                      sortBy === 'date' ? "border-brand-red text-brand-red bg-brand-red-dim" : "border-border-main bg-bg-primary text-text-muted hover:text-text-primary"
-                  )}
-              >
-                  <ArrowUpDown size={12} />
-                  {sortBy === 'date' ? (dateAsc ? 'Soonest' : 'Latest') : 'Latest'}
-              </button>
-
               <Popover>
                   <PopoverTrigger asChild>
                     <div className={cn(
@@ -620,7 +604,6 @@ export function DispatchPageClient() {
         <TabsContent value="dispatch" className="mt-0">
            <DispatchTabs
               workOrders={filteredOrders.filter(wo => !wo.assignedTechnicianId)}
-              allJobPool={allWorkOrders}
               technicians={technicians}
               onWorkOrdersChange={async (updated) => {
                 // Find and process assignments
@@ -655,7 +638,6 @@ export function DispatchPageClient() {
                 const unassignedChanges = updated.filter(u => {
                     if (u.status !== 'unassigned') return false;
                     const current = allWorkOrders.find(wo => wo.id === u.id);
-                    // Compare serialized objects to detect actual property mutations (e.g. routeId transition)
                     return !current || JSON.stringify(sanitize(current)) !== JSON.stringify(sanitize(u));
                 });
 
@@ -664,49 +646,12 @@ export function DispatchPageClient() {
                     await updateDoc(docRef, sanitize(wo)).catch(e => console.error("WO Update Error:", e));
                 }
               }}
-              routes={routes}
-              onRoutesChange={async (updated) => {
-                // Optimistic update: show immediately without waiting for Firestore round-trip
-                const prev = routes;
-                setRoutes(updated);
-
-                const prevById = new Map(prev.map(r => [r.id, r]));
-                const nextIds = new Set(updated.map(r => r.id));
-
-                // Remove only the routes that were actually dissolved
-                for (const r of prev) {
-                  if (nextIds.has(r.id)) continue;
-                  try {
-                    await deleteDoc(doc(db, 'routes', r.id));
-                  } catch (e: any) {
-                    console.error("Route delete error", e);
-                    toast({ variant: "destructive", title: "Route Sync Error", description: `Failed to remove "${r.name || 'route'}": ${e?.message || 'check your connection.'}` });
-                  }
-                }
-
-                // Upsert only the routes that actually changed — re-writing every
-                // route on each edit turns one bad/legacy doc into a total failure.
-                for (const r of updated) {
-                  const before = prevById.get(r.id);
-                  if (before && JSON.stringify(sanitize(before)) === JSON.stringify(sanitize(r))) continue;
-                  // Never persist an empty name or drift updatedAt out of sync
-                  const payload = sanitize({
-                    ...r,
-                    name: (r.name || '').trim() || 'Untitled Route',
-                    workOrderIds: r.workOrderIds || [],
-                    updatedAt: new Date().toISOString(),
-                  });
-                  try {
-                    await setDoc(doc(db, 'routes', r.id), payload, { merge: true });
-                  } catch (e: any) {
-                    console.error("Route save error", e);
-                    toast({ variant: "destructive", title: "Route Not Saved", description: `"${payload.name}" could not be saved: ${e?.message || 'unknown error'}` });
-                  }
-                }
-              }}
               reviewQueueJobs={reviewQueueJobs}
               onReviewSendToDispatch={handleReviewSendToDispatch}
               onReviewArchive={handleReviewArchive}
+              dateAsc={dateAsc}
+              isDateSortActive={sortBy === 'date'}
+              onToggleDateSort={toggleDateSort}
            />
         </TabsContent>
 
@@ -734,8 +679,10 @@ export function DispatchPageClient() {
                           updateDoc(docRef, sanitize(wo)).catch(e => console.error("Update error", e));
                         });
                       }}
-                      routes={routes}
                       mode="assigned"
+                      dateAsc={dateAsc}
+                      isDateSortActive={sortBy === 'date'}
+                      onToggleDateSort={toggleDateSort}
                    />
                 </TabsContent>
 
@@ -750,8 +697,10 @@ export function DispatchPageClient() {
                           updateDoc(docRef, sanitize(wo)).catch(e => console.error("Update error", e));
                         });
                       }}
-                      routes={routes}
                       mode="assigned"
+                      dateAsc={dateAsc}
+                      isDateSortActive={sortBy === 'date'}
+                      onToggleDateSort={toggleDateSort}
                    />
                 </TabsContent>
             </Tabs>

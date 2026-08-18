@@ -93,7 +93,7 @@ export function toUnassignedWorkOrder(
 ): WorkOrder {
   const targetId = (assignment as { workOrderId?: string }).workOrderId || assignment.id;
   const {
-    techId, assignedAt, workOrderId, activeTripLogId, routeId, techOutcome,
+    techId, assignedAt, workOrderId, activeTripLogId, techOutcome,
     assignedTechnicianId, assignedTechIds, additionalTechnicianIds,
     ...rest
   } = assignment as WorkOrder & Record<string, any>;

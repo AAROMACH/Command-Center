@@ -93,7 +93,6 @@ export type WorkOrder = {
   blendedIncludedHours?: number;
   blendedHourlyRate?: number;
   isAcknowledged?: boolean;
-  routeId?: string | null;
   isImported?: boolean;
   source?: 'Imported' | 'Manual' | 'Client';
   history?: { type: 'tech_swap' | 'tech_add' | 'tech_remove' | 'status_change' | 'note' | 'revisit'; date: string; details: string; user: string }[];
@@ -152,18 +151,6 @@ export type Assignment = {
   needsAdminReview?: boolean;
   acknowledgmentRequiredAt?: string;
   techId?: string;
-};
-
-export type Route = {
-  id: string;
-  name: string;
-  technicianName?: string;
-  workOrderIds: string[];
-  status?: 'draft' | 'ready' | 'dispatched' | 'in_progress' | 'completed' | 'cancelled';
-  routeDate?: string;
-  notes?: string;
-  createdAt?: string;
-  updatedAt?: string;
 };
 
 export type Technician = {

@@ -13,8 +13,17 @@ export default {
         xs: '400px',
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        // Resolves to whichever font the signed-in user picked in Settings
+        // (applied as a CSS var via [data-font] in globals.css); falls back
+        // to Inter until that's set.
+        sans: ['var(--app-font)', 'Inter', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
+        // Fixed per-font utilities — only used to render each option's own
+        // preview text in the font picker, not for the toggle itself.
+        inter: ['Inter', 'sans-serif'],
+        atkinson: ['Atkinson Hyperlegible', 'sans-serif'],
+        lexend: ['Lexend', 'sans-serif'],
+        plex: ['IBM Plex Sans', 'sans-serif'],
       },
       colors: {
         background: 'hsl(var(--background))',

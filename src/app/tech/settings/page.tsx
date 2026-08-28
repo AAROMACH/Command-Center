@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { TERMINOLOGY } from '@/lib/constants';
 import type { Technician, NotificationPreferences } from '@/lib/types';
+import { FontPreferenceSetting } from '@/components/font-preference-setting';
 
 export default function TechSettingsPage() {
     const [mounted, setMounted] = useState(false);
@@ -179,6 +180,7 @@ export default function TechSettingsPage() {
                             </div>
                         </CardContent>
                     </Card>
+                    <FontPreferenceSetting />
                 </section>
 
                 {/* WORK PREFERENCES */}

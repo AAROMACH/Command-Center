@@ -14,8 +14,13 @@
 
     /* Account-level display font (Settings → Display Font). Overridden by
        [data-font] on <html>, set from Technician.uiFontPreference — see
-       AuthProvider and layout.tsx's flash-prevention script. */
+       AuthProvider and layout.tsx's flash-prevention script. --app-mono-font
+       covers font-mono too (schedule dates/times, IDs, pay amounts, etc. —
+       most of the app's actual digits) since a chosen accessible font should
+       replace those, not just body text; it's a real (non-monospace) font
+       once overridden, trading column alignment for legibility on purpose. */
     --app-font: 'Inter', sans-serif;
+    --app-mono-font: 'JetBrains Mono', monospace;
 
     --brand-red: #CC2200;
     --brand-red-hover: #E02500;
@@ -171,9 +176,9 @@
     --sidebar-ring: 10 100% 40%;
   }
 
-  :root[data-font="atkinson"] { --app-font: 'Atkinson Hyperlegible', sans-serif; }
-  :root[data-font="lexend"]   { --app-font: 'Lexend', sans-serif; }
-  :root[data-font="plex"]     { --app-font: 'IBM Plex Sans', sans-serif; }
+  :root[data-font="atkinson"] { --app-font: 'Atkinson Hyperlegible', sans-serif; --app-mono-font: 'Atkinson Hyperlegible', sans-serif; }
+  :root[data-font="lexend"]   { --app-font: 'Lexend', sans-serif; --app-mono-font: 'Lexend', sans-serif; }
+  :root[data-font="plex"]     { --app-font: 'IBM Plex Sans', sans-serif; --app-mono-font: 'IBM Plex Sans', sans-serif; }
 }
 
 @layer base {

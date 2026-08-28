@@ -124,6 +124,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [router]);
 
+  // Keep the applied display font in sync with the account's Firestore
+  // preference — reacts immediately to a change made in Settings (this tab
+  // or another), and refreshes the localStorage cache the flash-prevention
+  // script in layout.tsx reads on the next full page load.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const pref = user?.uiFontPreference || 'default';
+    if (pref === 'default') {
+      document.documentElement.removeAttribute('data-font');
+    } else {
+      document.documentElement.setAttribute('data-font', pref);
+    }
+    try { localStorage.setItem('aaromach_font', pref); } catch {}
+  }, [user?.uiFontPreference]);
+
   const value: AuthContextValue = {
     user,
     loading,

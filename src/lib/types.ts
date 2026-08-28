@@ -214,6 +214,9 @@ export type Technician = {
   googleCalendarToken?: string;
   routePreference?: 'optimized' | 'by-time' | 'by-mileage';
   mileageUnit?: 'mi' | 'km';
+  /** Per-account display font — synced via Firestore so it follows the user
+   *  across devices, unlike the (device-only) dark/light theme toggle. */
+  uiFontPreference?: 'default' | 'atkinson' | 'lexend' | 'plex';
   approvalStatus?: 'pending' | 'approved' | 'denied';
   requestedAt?: string;
   approvedAt?: string;

@@ -341,13 +341,17 @@ export default function AssignmentsHubPage() {
     }
 
     const today = format(new Date(), 'MM-dd-yyyy');
-    const prevTechId = selectedJob.assignedTechnicianId || (selectedJob as any).techId || '';
+    // Read the RAW legacy field, not the assignedTechnicianId-preferring
+    // helper — a doc left desynced by a pre-fix swap has techId still
+    // pointing at the old tech even though assignedTechnicianId is already
+    // correct, and we need that mismatch to register as a change below.
+    const prevTechId = (selectedJob as any).techId || selectedJob.assignedTechnicianId || '';
     const newTechId = finalUpdate.assignedTechnicianId || '';
+    // Always keep techId in sync with the selected tech, even if the
+    // dropdown wasn't touched this save — self-heals any doc left stale by
+    // a swap that happened before techId syncing existed.
+    (finalUpdate as any).techId = newTechId || null;
     if (newTechId !== prevTechId) {
-      // Keep the legacy `techId` field in sync — tech-facing pages query
-      // exclusively by `techId`, so leaving it stale hides/shows the job
-      // on the wrong tech's assignments page.
-      (finalUpdate as any).techId = newTechId || null;
       const prevTechName = technicians.find(t => t.id === prevTechId)?.name || (prevTechId ? prevTechId : 'Unassigned');
       const newTechName = technicians.find(t => t.id === newTechId)?.name || (newTechId ? newTechId : 'Unassigned');
       finalUpdate.history = [

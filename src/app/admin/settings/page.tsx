@@ -20,12 +20,14 @@ import {
   Eye,
   EyeOff,
   Banknote,
+  Type,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { TERMINOLOGY } from '@/lib/constants';
 import { isSuperAdmin } from '@/lib/permissions';
 import type { Technician, NotificationPreferences } from '@/lib/types';
+import { FontPreferenceSetting } from '@/components/font-preference-setting';
 
 
 export default function AdminSettingsPage() {
@@ -203,6 +205,15 @@ export default function AdminSettingsPage() {
                             ))}
                         </CardContent>
                     </Card>
+                </section>
+
+                {/* DISPLAY (personal — this account only) */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 px-1">
+                        <Type size={14} className="text-brand-red" />
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Display</h3>
+                    </div>
+                    <FontPreferenceSetting />
                 </section>
 
                 {/* PLANS PIN (super admin only) */}

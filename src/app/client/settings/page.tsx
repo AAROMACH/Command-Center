@@ -7,17 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { 
-  Bell, 
-  Shield, 
-  Settings as SettingsIcon, 
+import {
+  Bell,
+  Shield,
+  Settings as SettingsIcon,
   Building2,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  Type,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { TERMINOLOGY } from '@/lib/constants';
 import type { Technician, NotificationPreferences } from '@/lib/types';
+import { FontPreferenceSetting } from '@/components/font-preference-setting';
 
 export default function ClientSettingsPage() {
     const [mounted, setMounted] = useState(false);
@@ -99,6 +101,15 @@ export default function ClientSettingsPage() {
                             ))}
                         </CardContent>
                     </Card>
+                </section>
+
+                {/* DISPLAY (personal — this account only) */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 px-1">
+                        <Type size={14} className="text-brand-red" />
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Display</h3>
+                    </div>
+                    <FontPreferenceSetting />
                 </section>
 
                 {/* ORGANIZATION */}

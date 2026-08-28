@@ -117,6 +117,15 @@ export const PAY_TYPE_LABELS = {
   blended: "Blended Rate",
 } as const;
 
+/** Display-font choices for the account-level "Display Font" setting
+ *  (per-user, synced via Firestore — see Technician.uiFontPreference). */
+export const FONT_OPTIONS = [
+  { value: 'default', label: 'Default (Inter)', sample: 'font-inter', description: 'Standard app font.' },
+  { value: 'atkinson', label: 'Atkinson Hyperlegible', sample: 'font-atkinson', description: 'Designed for low vision — clearly distinguishes 6/8, 0/O, 1/I.' },
+  { value: 'lexend', label: 'Lexend', sample: 'font-lexend', description: 'Optimized for reading speed and clarity.' },
+  { value: 'plex', label: 'IBM Plex Sans', sample: 'font-plex', description: 'Clean, technical, distinct digit shapes.' },
+] as const;
+
 export const OUTCOME_CODE_LABELS = {
   worked_completed: "Completed",
   worked_revisit: "Revisit Required",

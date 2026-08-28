@@ -12,6 +12,11 @@
     --bg-tertiary: #e2e7ef;   /* sunken — clearly darker than surface (hover / headers) */
     --bg-elevated: #ffffff;   /* dialogs, popovers, dropdowns */
 
+    /* Account-level display font (Settings → Display Font). Overridden by
+       [data-font] on <html>, set from Technician.uiFontPreference — see
+       AuthProvider and layout.tsx's flash-prevention script. */
+    --app-font: 'Inter', sans-serif;
+
     --brand-red: #CC2200;
     --brand-red-hover: #E02500;
     --brand-red-dim: #ffeeee;
@@ -165,6 +170,10 @@
     --sidebar-border: 0 0% 16%;
     --sidebar-ring: 10 100% 40%;
   }
+
+  :root[data-font="atkinson"] { --app-font: 'Atkinson Hyperlegible', sans-serif; }
+  :root[data-font="lexend"]   { --app-font: 'Lexend', sans-serif; }
+  :root[data-font="plex"]     { --app-font: 'IBM Plex Sans', sans-serif; }
 }
 
 @layer base {

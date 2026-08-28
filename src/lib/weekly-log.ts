@@ -1,5 +1,5 @@
 import { startOfWeek, format, isValid } from 'date-fns';
-import { collection, query, where, getDocs, doc, updateDoc, setDoc, arrayUnion } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, setDoc, arrayUnion, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { WeeklyLogItem } from '@/lib/types';
 
@@ -64,6 +64,90 @@ export async function resolveCompletionPlacement(opts: {
   return { scheduledWeek, reportingWeek, differentWeek: scheduledWeek !== reportingWeek, scheduledWeekEligible };
 }
 
+/**
+ * Claim-doc key for a tech's open weekly log for a given week — a tiny
+ * bookkeeping doc (never shown in the UI) rather than a query, because
+ * Firestore transactions can only read a fixed document reference, not run
+ * a query. This is what makes "does this tech already have a Draft log for
+ * this week" an atomic check-and-create instead of the query-then-write
+ * race that used to let two near-simultaneous completions each see "no log
+ * yet" and create their own duplicate.
+ */
+function weeklyLogClaimRef(techId: string, weekOf: string) {
+  return doc(db, 'weeklyLogClaims', `${techId}_${weekOf}`);
+}
+
+/**
+ * Atomically files `item` into the Draft weekly log for techId+weekOf,
+ * creating that log (and its claim) if none exists yet. If a log exists for
+ * that week but isn't Draft anymore: `createIfClosed` true supersedes the
+ * stale claim with a fresh Draft log (used for the reporting-week fallback,
+ * which never inspects non-Draft logs); false reports 'closed' so the
+ * caller can fall through to the reporting week instead.
+ */
+async function claimAndFileItem(
+  techId: string,
+  weekOf: string,
+  item: WeeklyLogItem,
+  makeLogId: () => Promise<string>,
+  createIfClosed: boolean,
+): Promise<'updated' | 'created' | 'closed'> {
+  // Reserved before the transaction starts — Firestore transactions can't
+  // contain another transaction, and makeLogId() runs its own against
+  // systemConfig/idCounters. Harmless if it goes unused on the rare race
+  // that finds a log already claimed: it just skips a sequence number.
+  const reservedLogId = await makeLogId();
+  const claimRef = weeklyLogClaimRef(techId, weekOf);
+
+  return runTransaction(db, async (tx) => {
+    const claimSnap = await tx.get(claimRef);
+    const claimedLogId = claimSnap.exists() ? (claimSnap.data() as any).logId as string : null;
+    const logSnap = claimedLogId ? await tx.get(doc(db, 'weeklyLogs', claimedLogId)) : null;
+
+    if (logSnap?.exists() && logSnap.data().status === 'Draft') {
+      tx.update(doc(db, 'weeklyLogs', claimedLogId!), { items: arrayUnion(item) });
+      return 'updated';
+    }
+    if (logSnap?.exists() && !createIfClosed) {
+      return 'closed';
+    }
+
+    // No claim, a dangling claim, or a closed log we're allowed to
+    // supersede — start a fresh Draft log and (re)point the claim at it.
+    const newLogRef = doc(db, 'weeklyLogs', reservedLogId);
+    tx.set(claimRef, { techId, weekOf, logId: reservedLogId });
+    tx.set(newLogRef, {
+      id: reservedLogId, techId, weekOf, status: 'Draft', items: [item], reimbursements: [], totalPayout: 0,
+    });
+    return 'created';
+  });
+}
+
+/**
+ * Pre-claim-doc fallback: the original query-then-write logic. Used only if
+ * the claim-based path throws (e.g. the weeklyLogClaims security rule
+ * hasn't been deployed yet) so filing a completion never hard-fails —
+ * it's racy under true concurrency, same as before this fix, but strictly
+ * no worse.
+ */
+async function legacyFileInWeek(techId: string, weekOf: string, item: WeeklyLogItem, makeLogId: () => Promise<string>): Promise<'updated' | 'created'> {
+  const snap = await getDocs(query(
+    collection(db, 'weeklyLogs'),
+    where('techId', '==', techId),
+    where('weekOf', '==', weekOf),
+    where('status', '==', 'Draft'),
+  ));
+  if (!snap.empty) {
+    await updateDoc(doc(db, 'weeklyLogs', snap.docs[0].id), { items: arrayUnion(item) });
+    return 'updated';
+  }
+  const logId = await makeLogId();
+  await setDoc(doc(db, 'weeklyLogs', logId), {
+    id: logId, techId, weekOf, status: 'Draft', items: [item], reimbursements: [], totalPayout: 0,
+  });
+  return 'created';
+}
+
 async function fileInReportingWeek(techId: string, item: WeeklyLogItem, scheduledWeek: string, reportingWeek: string, makeLogId: () => Promise<string>) {
   const flagged: WeeklyLogItem = {
     ...item,
@@ -73,19 +157,10 @@ async function fileInReportingWeek(techId: string, item: WeeklyLogItem, schedule
     weekOverrideReason: 'Filed in reporting week (scheduled week unavailable or overridden)',
     weekOverrideAt: new Date().toISOString(),
   };
-  const curSnap = await getDocs(query(
-    collection(db, 'weeklyLogs'),
-    where('techId', '==', techId),
-    where('weekOf', '==', reportingWeek),
-    where('status', '==', 'Draft'),
-  ));
-  if (!curSnap.empty) {
-    await updateDoc(doc(db, 'weeklyLogs', curSnap.docs[0].id), { items: arrayUnion(flagged) });
-  } else {
-    const logId = await makeLogId();
-    await setDoc(doc(db, 'weeklyLogs', logId), {
-      id: logId, techId, weekOf: reportingWeek, status: 'Draft', items: [flagged], reimbursements: [], totalPayout: 0,
-    });
+  try {
+    await claimAndFileItem(techId, reportingWeek, flagged, makeLogId, /* createIfClosed */ true);
+  } catch {
+    await legacyFileInWeek(techId, reportingWeek, flagged, makeLogId);
   }
 }
 
@@ -115,27 +190,17 @@ export async function fileCompletedAssignment(opts: {
     return { weekOf: reportingWeek, placedIn: 'reporting_week_override' };
   }
 
-  const schedSnap = await getDocs(query(
-    collection(db, 'weeklyLogs'),
-    where('techId', '==', techId),
-    where('weekOf', '==', scheduledWeek),
-  ));
-  const scheduledDraft = schedSnap.docs.find(d => d.data().status === 'Draft');
-
-  if (scheduledDraft) {
-    await updateDoc(doc(db, 'weeklyLogs', scheduledDraft.id), { items: arrayUnion(item) });
-    return { weekOf: scheduledWeek, placedIn: 'scheduled_week' };
+  let result: 'updated' | 'created' | 'closed';
+  try {
+    result = await claimAndFileItem(techId, scheduledWeek, item, makeLogId, /* createIfClosed */ false);
+  } catch {
+    result = await legacyFileInWeek(techId, scheduledWeek, item, makeLogId);
   }
-  if (schedSnap.empty) {
-    const logId = await makeLogId();
-    await setDoc(doc(db, 'weeklyLogs', logId), {
-      id: logId, techId, weekOf: scheduledWeek, status: 'Draft', items: [item], reimbursements: [], totalPayout: 0,
-    });
+  if (result !== 'closed') {
     return { weekOf: scheduledWeek, placedIn: 'scheduled_week' };
   }
 
-  // Scheduled week's log is closed (or caller forced reporting) — file in the
-  // reporting week, flagged.
+  // Scheduled week's log is closed — file in the reporting week, flagged.
   await fileInReportingWeek(techId, item, scheduledWeek, reportingWeek, makeLogId);
   return { weekOf: reportingWeek, placedIn: 'reporting_week_override' };
 }

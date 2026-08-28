@@ -168,6 +168,17 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    // Internal bookkeeping only (never rendered) — one doc per tech per week
+    // pointing at that week's open Draft weeklyLogs doc, so filing a
+    // completed job can atomically check-and-create inside a transaction
+    // instead of racing on a query. See src/lib/weekly-log.ts.
+    match /weeklyLogClaims/{id} {
+      allow read: if isSignedIn() && (isAdmin() || isTech());
+      allow create, update: if isAdmin()
+          || (isTech() && request.resource.data.techId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
     match /weeklyLogItems/{id} {
       allow read: if isSignedIn() && (
           isAdmin()

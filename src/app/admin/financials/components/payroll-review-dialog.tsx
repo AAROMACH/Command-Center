@@ -55,7 +55,7 @@ import {
     Send
 } from 'lucide-react';
 import { cn, formatCityState, sanitize } from '@/lib/utils';
-import { FIELD_NATION_FEE_RATE, netOfFieldNationFee } from '@/lib/payroll';
+import { FIELD_NATION_FEE_RATE, netOfFieldNationFee, liveLogTotal } from '@/lib/payroll';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { fieldNationUrl } from '@/lib/work-order-identity';
@@ -411,24 +411,10 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         }
     }, [technician]);
 
-    const calculatedTotalPayout = useMemo(() => {
-        if (!localLog) return 0;
-        const assignmentPay = (localLog.items || []).reduce((acc, i) => acc + (i.jobPay || 0), 0);
-        // Count reimbursements that are approved (or legacy ones with no status).
-        // Pending awaits review; rejected never counts. Each is paid NET of the
-        // Field Nation fee (the tech absorbs it, Aaromach does not), and counted
-        // exactly once — job payouts (jobPay) hold labor only.
-        const reimbursementPay = (localLog.reimbursements || [])
-            .filter(r => r.status !== 'pending' && r.status !== 'rejected')
-            .reduce((acc, r) => acc + netOfFieldNationFee(r.amount), 0);
-        // Manually-added missing jobs: imported ones run the FN pay calc (labor
-        // finalPay + reimbursement net of fee); manual ones are a flat pay.
-        const reportPay = (localLog.missingAssignmentReports || []).reduce((acc, r) =>
-            acc + (r.jobType === 'Imported'
-                ? (r.finalPay || 0) + netOfFieldNationFee(r.auditReimbursement || 0)
-                : (r.pay || 0)), 0);
-        return assignmentPay + reimbursementPay + reportPay;
-    }, [localLog]);
+    // Shared with the Payroll Audit Weekly/Staff Pay tabs, CSV export, and
+    // Paystub History via liveLogTotal() so this dialog's "Net Tech
+    // Settlement" can never drift from what those screens show.
+    const calculatedTotalPayout = useMemo(() => liveLogTotal(localLog || {}), [localLog]);
     
     const reviewReimbursement = async (reimbId: string, decision: 'approved' | 'rejected') => {
         if (!localLog) return;

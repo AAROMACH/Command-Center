@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
-import type { WeeklyLog, Expense, Technician, ProjectPayout, Reimbursement } from '@/lib/types';
+import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
+import type { WeeklyLog, Expense, Technician, ProjectPayout, Reimbursement, WorkOrder } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
@@ -21,6 +21,7 @@ import {
     Wrench,
     ChevronDown,
     ChevronRight,
+    Download,
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -40,6 +41,10 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, addDoc, getDoc } from 'firebase/firestore';
 import { uploadFile } from '@/lib/upload';
 import { useToast } from '@/hooks/use-toast';
+import { mergeJobs } from '@/lib/jobs';
+import { effectiveJobPay, computeWeeklyLogSettlement } from '@/lib/payroll';
+import { downloadPaystub } from '@/lib/paystub';
+import { displayWorkOrderNumber } from '@/lib/work-order-identity';
 
 type LogSortOption = 'date-desc' | 'date-asc' | 'payout-desc' | 'status';
 type ReimType = 'receipt' | 'mileage';
@@ -53,6 +58,12 @@ export default function TechEarningsPage() {
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [workOrders, setWorkOrders] = useState<any[]>([]);
+    // This tech's own assignment docs (current + completed/historical) — the
+    // source for resolving a weekly-log item's job title/date/time/pay in
+    // the expanded per-job breakdown below. `workOrders` above only ever
+    // holds unassigned-pool docs, which a tech's own jobs never sit in.
+    const [assignments, setAssignments] = useState<WorkOrder[]>([]);
+    const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
     const [projectPayouts, setProjectPayouts] = useState<any[]>([]);
     const [reimbursements, setReimbursements] = useState<Reimbursement[]>([]);
     const [mileageRate, setMileageRate] = useState(DEFAULT_MILEAGE_RATE);
@@ -114,15 +125,29 @@ export default function TechEarningsPage() {
             const unsubWO = onSnapshot(query(collection(db, 'workOrders'), where('assignedTechnicianId', '==', userId)), (snap) => {
                 setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id })));
             });
+            const unsubAsmt = onSnapshot(query(collection(db, 'assignments'), where('techId', '==', userId)), (snap) => {
+                setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+            });
             const unsubPayouts = onSnapshot(query(collection(db, 'projectPayouts'), where('technicianId', '==', userId)), (snap) => {
                 setProjectPayouts(snap.docs.map(d => ({ ...d.data(), id: d.id })));
             });
             const unsubReim = onSnapshot(query(collection(db, 'reimbursements'), where('techId', '==', userId)), (snap) => {
                 setReimbursements(snap.docs.map(d => ({ ...d.data(), id: d.id } as Reimbursement)));
             });
-            return () => { unsubTech(); unsubLogs(); unsubExp(); unsubWO(); unsubPayouts(); unsubReim(); };
+            return () => { unsubTech(); unsubLogs(); unsubExp(); unsubWO(); unsubAsmt(); unsubPayouts(); unsubReim(); };
         }
     }, []);
+
+    // This tech's own jobs, keyed by id — resolves a weekly-log item's
+    // title/date/time/pay for the per-job breakdown, whichever collection
+    // (unassigned-pool leftovers or the tech's live/completed assignments)
+    // the doc currently lives in.
+    const jobsById = useMemo(
+        () => new Map(mergeJobs(workOrders, assignments).map(j => [j.id, j])),
+        [workOrders, assignments],
+    );
+
+    const settlementOf = (log: WeeklyLog) => computeWeeklyLogSettlement(log, jobsById);
 
     const filteredLogs = useMemo(() => {
         let results = weeklyLogs;
@@ -142,10 +167,10 @@ export default function TechEarningsPage() {
         return results.sort((a, b) => {
             if (logSortBy === 'date-desc') return (b.weekOf || '').localeCompare(a.weekOf || '');
             if (logSortBy === 'date-asc') return (a.weekOf || '').localeCompare(b.weekOf || '');
-            if (logSortBy === 'payout-desc') return (b.totalPayout || 0) - (a.totalPayout || 0);
+            if (logSortBy === 'payout-desc') return settlementOf(b) - settlementOf(a);
             return 0;
         });
-    }, [weeklyLogs, logSearchQuery, logSortBy, dateRange]);
+    }, [weeklyLogs, logSearchQuery, logSortBy, dateRange, jobsById]);
 
     // Reimbursements added from job verification during weekly log review —
     // these live in an embedded array on each weeklyLogs doc, separate from
@@ -155,8 +180,8 @@ export default function TechEarningsPage() {
     [weeklyLogs]);
 
     const metrics = useMemo(() => {
-        const settled = filteredLogs.filter(l => l.status === 'Approved').reduce((acc, log) => acc + (log.totalPayout || 0), 0);
-        const pending = filteredLogs.filter(l => l.status === 'Submitted').reduce((acc, log) => acc + (log.totalPayout || 0), 0);
+        const settled = filteredLogs.filter(l => l.status === 'Approved').reduce((acc, log) => acc + settlementOf(log), 0);
+        const pending = filteredLogs.filter(l => l.status === 'Submitted').reduce((acc, log) => acc + settlementOf(log), 0);
         const pendingReim = [
             ...expenses.filter(e => e.status === 'Pending').map(e => e.amount),
             ...reimbursements.filter(r => r.status === 'pending').map(r =>
@@ -165,7 +190,7 @@ export default function TechEarningsPage() {
             ...jobReimbursements.filter(r => (r.status || 'approved') === 'pending').map(r => r.amount),
         ].reduce((a, b) => a + b, 0);
         return { settled, pending, pendingReim };
-    }, [filteredLogs, expenses, reimbursements, jobReimbursements, mileageRate]);
+    }, [filteredLogs, expenses, reimbursements, jobReimbursements, mileageRate, jobsById]);
 
     const handleReceiptPhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -448,22 +473,79 @@ export default function TechEarningsPage() {
                                     <TableRow className="hover:bg-transparent border-border-sub">
                                         <TableHead className="text-center text-[10px] uppercase font-bold tracking-widest">Week Period</TableHead>
                                         <TableHead className="text-center text-[10px] uppercase font-bold tracking-widest">Audit Status</TableHead>
-                                        <TableHead className="text-right pr-12 text-[10px] uppercase font-bold tracking-widest">Settlement</TableHead>
+                                        <TableHead className="text-right text-[10px] uppercase font-bold tracking-widest">Settlement</TableHead>
+                                        <TableHead className="w-[110px]" />
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredLogs.map(log => (
-                                        <TableRow key={log.id} className="hover:bg-bg-tertiary transition-colors cursor-pointer group">
-                                            <TableCell className="font-bold uppercase text-xs text-center">Week of {log.weekOf}</TableCell>
-                                            <TableCell className="text-center">
-                                                <Badge variant={getStatusVariant(log.status)}>{(log.status || '').toUpperCase()}</Badge>
-                                            </TableCell>
-                                            <TableCell className="text-right pr-12 font-mono font-bold text-text-primary">${(log.totalPayout || 0).toFixed(2)}</TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {filteredLogs.map(log => {
+                                        const isExpanded = expandedLogs.has(log.id);
+                                        const verifiedItems = (log.items || []).filter(i => i.confirmationStatus !== 'disputed');
+                                        return (
+                                            <Fragment key={log.id}>
+                                                <TableRow
+                                                    className="hover:bg-bg-tertiary transition-colors cursor-pointer group"
+                                                    onClick={() => setExpandedLogs(prev => {
+                                                        const next = new Set(prev);
+                                                        if (next.has(log.id)) next.delete(log.id); else next.add(log.id);
+                                                        return next;
+                                                    })}
+                                                >
+                                                    <TableCell className="font-bold uppercase text-xs text-center">
+                                                        <span className="inline-flex items-center gap-1.5">
+                                                            {isExpanded ? <ChevronDown size={12} className="text-text-muted" /> : <ChevronRight size={12} className="text-text-muted" />}
+                                                            Week of {log.weekOf}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Badge variant={getStatusVariant(log.status)}>{(log.status || '').toUpperCase()}</Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-mono font-bold text-text-primary">${settlementOf(log).toFixed(2)}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <button
+                                                            className="text-[9px] text-text-muted hover:text-text-primary uppercase font-bold border border-border-sub rounded px-2 py-1 hover:border-border-main transition-colors"
+                                                            onClick={(e) => { e.stopPropagation(); downloadPaystub(log, tech || undefined, currentTechId || '', jobsById); }}
+                                                        >
+                                                            <Download size={9} className="inline mr-1" /> Stub
+                                                        </button>
+                                                    </TableCell>
+                                                </TableRow>
+                                                {isExpanded && (
+                                                    <TableRow key={`${log.id}-detail`} className="hover:bg-transparent border-border-sub">
+                                                        <TableCell colSpan={4} className="bg-bg-primary/40 p-0">
+                                                            {verifiedItems.length === 0 ? (
+                                                                <p className="text-center py-6 text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No verified jobs in this log.</p>
+                                                            ) : (
+                                                                <div className="divide-y divide-border-sub">
+                                                                    {verifiedItems.map(item => {
+                                                                        const job = jobsById.get(item.workOrderId);
+                                                                        const pay = effectiveJobPay(item, job);
+                                                                        return (
+                                                                            <div key={item.id} className="flex items-center justify-between gap-4 px-6 py-3 text-left">
+                                                                                <div className="min-w-0">
+                                                                                    <p className="text-xs font-bold text-text-primary uppercase truncate">{job?.title || job?.description || 'Untitled Job'}</p>
+                                                                                    <p className="text-[9px] text-text-muted font-mono uppercase mt-0.5">
+                                                                                        ASMT: {item.workOrderId?.toUpperCase()}
+                                                                                        {job && ` · WO# ${displayWorkOrderNumber(job)}`}
+                                                                                        {job?.scheduleDate && ` · ${job.scheduleDate}`}
+                                                                                        {job?.scheduleTime && ` · ${job.scheduleTime}`}
+                                                                                    </p>
+                                                                                </div>
+                                                                                <span className="shrink-0 text-sm font-mono font-bold text-text-green">${pay.toFixed(2)}</span>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </Fragment>
+                                        );
+                                    })}
                                     {filteredLogs.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={3} className="text-center py-12 text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No billing records found in current registry window.</TableCell>
+                                            <TableCell colSpan={4} className="text-center py-12 text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No billing records found in current registry window.</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>

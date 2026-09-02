@@ -140,6 +140,14 @@ export default function TechWeeklyLogPage() {
     const [payrollDisputeWorkOrderId, setPayrollDisputeWorkOrderId] = useState<string>('');
     const [payrollDisputeNotes, setPayrollDisputeNotes] = useState('');
     const [payrollDisputeSaving, setPayrollDisputeSaving] = useState(false);
+    // Opened from a specific job's "Dispute This Job" button (once the log is
+    // locked/paid) — pre-scopes the popup to that job instead of the tech
+    // having to find it in the optional dropdown.
+    const openJobDispute = (item: WeeklyLogItem) => {
+        setPayrollDisputeWorkOrderId(item.workOrderId);
+        setPayrollDisputeReason('incorrect_pay');
+        setIsPayrollDisputeOpen(true);
+    };
     const [isCreateLogOpen, setIsCreateLogOpen] = useState(false);
     const [newLogDate, setNewLogDate] = useState<Date | undefined>(new Date());
 
@@ -921,6 +929,7 @@ export default function TechWeeklyLogPage() {
                             canMove={!isLocked && canMoveAssignment}
                             onRequestMove={() => setMoveItem(item)}
                             techId={currentTechId}
+                            onDisputeJob={openJobDispute}
                         />
                     ))}
                     {(activeLog.items || []).length === 0 && (
@@ -1083,10 +1092,14 @@ export default function TechWeeklyLogPage() {
                     <DialogHeader className="text-left">
                         <div className="flex items-center gap-2 mb-1 text-left">
                             <AlertTriangle className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary text-left">Dispute This Log</DialogTitle>
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary text-left">
+                                {payrollDisputeWorkOrderId ? 'Dispute This Job' : 'Dispute This Log'}
+                            </DialogTitle>
                         </div>
                         <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">
-                            This log has already been submitted. Flag an issue for admin review.
+                            {payrollDisputeWorkOrderId
+                                ? 'This log has already been submitted — the rest of it is unaffected. Flag just this job for admin review.'
+                                : 'This log has already been submitted. Flag an issue for admin review.'}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2 text-left">
@@ -1153,7 +1166,7 @@ export default function TechWeeklyLogPage() {
     );
 }
 
-function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null }) {
+function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId, onDisputeJob }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null, onDisputeJob?: (item: WeeklyLogItem) => void }) {
     const job = workOrders.find(wo => wo.id === item.workOrderId);
     const itemReimbursements = reimbursements.filter(r => r.workOrderId === item.workOrderId);
     const totalReimbursed = itemReimbursements.reduce((acc, r) => acc + (r.amount || 0), 0);
@@ -1319,6 +1332,19 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                 </Button>
                             )}
                         </div>
+                        </div>
+                    )}
+
+                    {isLocked && !isDisputed && onDisputeJob && (
+                        <div className="shrink-0">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-4 uppercase text-[9px] font-bold tracking-widest border-brand-red/40 text-text-red hover:bg-brand-red-dim"
+                                onClick={() => onDisputeJob(item)}
+                            >
+                                <AlertTriangle size={12} className="mr-1.5"/> Dispute This Job
+                            </Button>
                         </div>
                     )}
                 </div>

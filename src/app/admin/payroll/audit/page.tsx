@@ -27,7 +27,7 @@ import { format, parseISO, isWithinInterval } from 'date-fns';
 import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder } from '@/lib/types';
 import { isClient, isTech, isSuperAdmin } from '@/lib/permissions';
 import { mergeJobs } from '@/lib/jobs';
-import { effectiveJobPay, computeWeeklyLogSettlement } from '@/lib/payroll';
+import { effectiveJobPay, computeWeeklyLogSettlement, netOfFieldNationFee } from '@/lib/payroll';
 import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
 import { PayrollReviewDialog } from '@/app/admin/financials/components/payroll-review-dialog';
@@ -77,6 +77,51 @@ export default function PayrollAuditPage() {
         return map;
     }, [weeklyLogs, jobsById]);
     const settlementOf = (log: WeeklyLog) => settlementByLogId.get(log.id) ?? computeWeeklyLogSettlement(log, jobsById);
+
+    // Full itemized paystub text — tech name, the Mon-Sun pay period, and
+    // every VERIFIED job that contributed to the total (disputed items are
+    // excluded, same as the settlement total itself, since they aren't
+    // being paid). weekOf is stored 'MM-dd-yyyy' as the Monday of that week.
+    const buildPaystubContent = (log: WeeklyLog, techName: string): string => {
+        const [wm, wd, wy] = log.weekOf.split('-').map(Number);
+        const weekStart = new Date(wy || 1970, (wm || 1) - 1, wd || 1);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+
+        const verifiedItems = (log.items || []).filter(i => i.confirmationStatus !== 'disputed');
+        const jobLines = verifiedItems.map((item, idx) => {
+            const job = jobsById.get(item.workOrderId);
+            const label = job?.title || job?.description || item.workOrderId?.toUpperCase() || 'Untitled Job';
+            const dateStr = job?.scheduleDate || item.workDate || 'N/A';
+            const timeStr = job?.scheduleTime || 'N/A';
+            const pay = effectiveJobPay(item, job);
+            return `${idx + 1}. ${label}\n   Date: ${dateStr}   Time: ${timeStr}\n   Pay:  $${pay.toFixed(2)}`;
+        });
+
+        const approvedReimbursements = (log.reimbursements || []).filter(r => r.status !== 'pending' && r.status !== 'rejected');
+        const reimbLines = approvedReimbursements.map(r => `- ${r.description || 'Reimbursement'}: $${netOfFieldNationFee(r.amount).toFixed(2)}`);
+
+        const rule = '='.repeat(44);
+        const thin = '-'.repeat(44);
+        const lines = [
+            'PAYSTUB',
+            rule,
+            `Technician:   ${techName}`,
+            `Pay Period:   ${format(weekStart, 'MM/dd/yyyy')} - ${format(weekEnd, 'MM/dd/yyyy')}`,
+            `Status:       ${log.status}`,
+            thin,
+            `VERIFIED JOBS (${verifiedItems.length})`,
+            thin,
+            jobLines.length ? jobLines.join('\n\n') : '(none)',
+        ];
+
+        if (reimbLines.length) {
+            lines.push(thin, 'REIMBURSEMENTS', thin, reimbLines.join('\n'));
+        }
+
+        lines.push(thin, `TOTAL PAID:   $${settlementOf(log).toFixed(2)}`, rule);
+        return lines.join('\n');
+    };
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [mergingKey, setMergingKey] = useState<string | null>(null);
     const [deletingLogId, setDeletingLogId] = useState<string | null>(null);
@@ -615,7 +660,7 @@ export default function PayrollAuditPage() {
                                         <div className="flex items-center gap-3">
                                             <p className="text-[12px] font-bold font-mono text-text-green">${settlementOf(log).toFixed(2)}</p>
                                             <button className="text-[9px] text-text-muted hover:text-text-primary uppercase font-bold border border-border-sub rounded px-2 py-0.5 hover:border-border-main transition-colors" onClick={() => {
-                                                const content = `PAYSTUB\nTech: ${tech?.name || techId}\nWeek: ${log.weekOf}\nTotal: $${settlementOf(log).toFixed(2)}\nStatus: ${log.status}\nItems: ${log.items?.length || 0}`;
+                                                const content = buildPaystubContent(log, tech?.name || techId);
                                                 const blob = new Blob([content], { type: 'text/plain' });
                                                 const a = document.createElement('a');
                                                 a.href = URL.createObjectURL(blob);

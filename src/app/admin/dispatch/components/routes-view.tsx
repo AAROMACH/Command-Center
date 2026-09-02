@@ -16,7 +16,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Plus, X, MapPin, Send, Route as RouteIcon, GripVertical } from 'lucide-react';
+import { Plus, X, MapPin, Send, Route as RouteIcon, GripVertical, Map as MapIcon, PanelLeft, PanelRight } from 'lucide-react';
 import { cn, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
 import { displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { makeRouteId } from '@/lib/doc-ids';
@@ -95,6 +95,8 @@ export function RoutesView({ routes, allJobPool, technicians, onWorkOrdersChange
   const [addJobsRouteId, setAddJobsRouteId] = useState<string | null>(null);
   const [addJobsSearch, setAddJobsSearch] = useState('');
   const [sending, setSending] = useState(false);
+  const [mapOpen, setMapOpen] = useState(true);
+  const [mapSide, setMapSide] = useState<'left' | 'right'>('right');
 
   const jobsById = useMemo(() => {
     const map: Record<string, WorkOrder> = {};
@@ -212,13 +214,61 @@ export function RoutesView({ routes, allJobPool, technicians, onWorkOrdersChange
     || (j.clientName || '').toLowerCase().includes(addJobsSearch.toLowerCase()),
   );
 
+  const mapPanel = (
+    <div className="w-full lg:w-[380px] shrink-0 rounded-xl border border-border-sub overflow-hidden h-[420px] lg:h-[calc(100vh-260px)] lg:min-h-[560px]">
+      <RoutesMapView
+        routes={safeRoutes}
+        jobsById={jobsById}
+        unroutedJobs={unroutedJobs}
+        onResolveCoords={(jobId, lat, lng, address) => {
+          updateDoc(doc(db, 'workOrders', jobId), { lat, lng, geocodedAddress: address }).catch(() => {});
+        }}
+      />
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col lg:flex-row items-center justify-between gap-3">
         <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
-          {safeRoutes.length} route{safeRoutes.length !== 1 ? 's' : ''} · {unroutedJobs.length} unrouted job{unroutedJobs.length !== 1 ? 's' : ''}
+          {safeRoutes.length} route{safeRoutes.length !== 1 ? 's' : ''} · {safeJobPool.length} unassigned job{safeJobPool.length !== 1 ? 's' : ''}
         </p>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-lg border border-border-main bg-bg-primary p-0.5">
+            <button
+              onClick={() => setMapOpen(o => !o)}
+              className={cn(
+                'h-8 px-2.5 rounded flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest transition-colors',
+                mapOpen ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary',
+              )}
+            >
+              <MapIcon size={12} /> Map
+            </button>
+            {mapOpen && (
+              <>
+                <button
+                  onClick={() => setMapSide('left')}
+                  title="Open map on left"
+                  className={cn(
+                    'h-8 w-8 rounded flex items-center justify-center transition-colors',
+                    mapSide === 'left' ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary',
+                  )}
+                >
+                  <PanelLeft size={13} />
+                </button>
+                <button
+                  onClick={() => setMapSide('right')}
+                  title="Open map on right"
+                  className={cn(
+                    'h-8 w-8 rounded flex items-center justify-center transition-colors',
+                    mapSide === 'right' ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary',
+                  )}
+                >
+                  <PanelRight size={13} />
+                </button>
+              </>
+            )}
+          </div>
           <Button variant="outline" size="sm" className="h-9 text-[10px]" onClick={() => setIsNewRouteOpen(true)}>
             <Plus size={14} className="mr-2" /> New Route
           </Button>
@@ -233,78 +283,73 @@ export function RoutesView({ routes, allJobPool, technicians, onWorkOrdersChange
         </div>
       </div>
 
-      <div className="h-[360px] rounded-xl border border-border-sub overflow-hidden">
-        <RoutesMapView
-          routes={safeRoutes}
-          jobsById={jobsById}
-          unroutedJobs={unroutedJobs}
-          onResolveCoords={(jobId, lat, lng, address) => {
-            updateDoc(doc(db, 'workOrders', jobId), { lat, lng, geocodedAddress: address }).catch(() => {});
-          }}
-        />
-      </div>
+      <div className={cn('flex flex-col gap-4', mapSide === 'left' ? 'lg:flex-row' : 'lg:flex-row-reverse')}>
+        {mapOpen && mapPanel}
 
-      {safeRoutes.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-border-sub rounded-xl">
-          <RouteIcon size={28} className="text-text-muted mb-3" />
-          <p className="text-xs font-bold uppercase tracking-widest text-text-muted">No routes yet</p>
-          <p className="text-[10px] text-text-muted uppercase mt-1">Create a route and add jobs to start batch-assigning.</p>
+        <div className="flex-1 min-w-0">
+          {safeRoutes.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-border-sub rounded-xl">
+              <RouteIcon size={28} className="text-text-muted mb-3" />
+              <p className="text-xs font-bold uppercase tracking-widest text-text-muted">No routes yet</p>
+              <p className="text-[10px] text-text-muted uppercase mt-1">Create a route and add jobs to start batch-assigning.</p>
+            </div>
+          ) : (
+            <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+              <div className={cn('grid grid-cols-1 gap-4', mapOpen ? 'md:grid-cols-2' : 'md:grid-cols-2 xl:grid-cols-3')}>
+                {safeRoutes.map((route, idx) => {
+                  const jobs = jobIdsOf(route).map(id => jobsById[id]).filter((j): j is WorkOrder => !!j);
+                  const total = jobs.reduce((sum, j) => sum + jobPay(j), 0);
+                  const color = ROUTE_COLORS[idx % ROUTE_COLORS.length];
+                  return (
+                    <DroppableRoute key={route.id} route={route}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
+                          <p className="text-xs font-black uppercase tracking-widest truncate">{route.name}</p>
+                        </div>
+                        <button onClick={() => handleDeleteRoute(route.id)} className="text-text-muted hover:text-brand-red transition-colors shrink-0">
+                          <X size={14} />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-widest text-text-muted">
+                        <span>{jobs.length} job{jobs.length !== 1 ? 's' : ''}</span>
+                        <span className="font-mono">${total.toFixed(0)}</span>
+                      </div>
+
+                      <Select value={route.technicianId || 'unassigned'} onValueChange={(val) => handleAssignTech(route.id, val)}>
+                        <SelectTrigger className="bg-bg-primary h-9 text-[10px] uppercase font-bold">
+                          <SelectValue placeholder="Assign Technician" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest text-[10px]">UNASSIGNED</SelectItem>
+                          {assignableTechs.map(tech => (
+                            <SelectItem key={tech.id} value={tech.id} disabled={isInactiveTechnician(tech)} className="text-[10px] uppercase font-bold">
+                              {tech.name}{isInactiveTechnician(tech) ? ' · Inactive' : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <div className="space-y-1.5 min-h-[40px]">
+                        {jobs.length === 0 ? (
+                          <p className="text-[9px] text-text-muted uppercase text-center py-3">Drop jobs here or add below</p>
+                        ) : jobs.map(job => (
+                          <DraggableJob key={job.id} job={job} routeId={route.id} onRemove={() => handleRemoveJob(route.id, job.id)} />
+                        ))}
+                      </div>
+
+                      <Button variant="outline" size="sm" className="w-full h-8 text-[9px]" onClick={() => { setAddJobsRouteId(route.id); setAddJobsSearch(''); }}>
+                        <Plus size={12} className="mr-1.5" /> Add Jobs
+                      </Button>
+                    </DroppableRoute>
+                  );
+                })}
+              </div>
+            </DndContext>
+          )}
         </div>
-      ) : (
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {safeRoutes.map((route, idx) => {
-              const jobs = jobIdsOf(route).map(id => jobsById[id]).filter((j): j is WorkOrder => !!j);
-              const total = jobs.reduce((sum, j) => sum + jobPay(j), 0);
-              const color = ROUTE_COLORS[idx % ROUTE_COLORS.length];
-              return (
-                <DroppableRoute key={route.id} route={route}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
-                      <p className="text-xs font-black uppercase tracking-widest truncate">{route.name}</p>
-                    </div>
-                    <button onClick={() => handleDeleteRoute(route.id)} className="text-text-muted hover:text-brand-red transition-colors shrink-0">
-                      <X size={14} />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-widest text-text-muted">
-                    <span>{jobs.length} job{jobs.length !== 1 ? 's' : ''}</span>
-                    <span className="font-mono">${total.toFixed(0)}</span>
-                  </div>
-
-                  <Select value={route.technicianId || 'unassigned'} onValueChange={(val) => handleAssignTech(route.id, val)}>
-                    <SelectTrigger className="bg-bg-primary h-9 text-[10px] uppercase font-bold">
-                      <SelectValue placeholder="Assign Technician" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest text-[10px]">UNASSIGNED</SelectItem>
-                      {assignableTechs.map(tech => (
-                        <SelectItem key={tech.id} value={tech.id} disabled={isInactiveTechnician(tech)} className="text-[10px] uppercase font-bold">
-                          {tech.name}{isInactiveTechnician(tech) ? ' · Inactive' : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <div className="space-y-1.5 min-h-[40px]">
-                    {jobs.length === 0 ? (
-                      <p className="text-[9px] text-text-muted uppercase text-center py-3">Drop jobs here or add below</p>
-                    ) : jobs.map(job => (
-                      <DraggableJob key={job.id} job={job} routeId={route.id} onRemove={() => handleRemoveJob(route.id, job.id)} />
-                    ))}
-                  </div>
-
-                  <Button variant="outline" size="sm" className="w-full h-8 text-[9px]" onClick={() => { setAddJobsRouteId(route.id); setAddJobsSearch(''); }}>
-                    <Plus size={12} className="mr-1.5" /> Add Jobs
-                  </Button>
-                </DroppableRoute>
-              );
-            })}
-          </div>
-        </DndContext>
-      )}
+      </div>
 
       {/* New Route dialog */}
       <Dialog open={isNewRouteOpen} onOpenChange={setIsNewRouteOpen}>

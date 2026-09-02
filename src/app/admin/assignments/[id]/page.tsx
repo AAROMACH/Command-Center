@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { db, auth } from '@/lib/firebase';
 import {
   doc, getDoc, collection, query, where, onSnapshot,
-  updateDoc, arrayUnion, arrayRemove,
+  updateDoc, arrayUnion, arrayRemove, setDoc, deleteDoc,
 } from 'firebase/firestore';
 import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +27,9 @@ import {
 import { format } from 'date-fns';
 import { cn, sanitize, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
 import { isPayAdmin } from '@/lib/permissions';
-import { PAY_TYPE_LABELS } from '@/lib/constants';
+import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
+import { toUnassignedWorkOrder } from '@/lib/jobs';
+import { createDocId } from '@/lib/generateId';
 
 const AssignmentMap = dynamic(() => import('./assignment-map'), { ssr: false });
 
@@ -300,7 +302,43 @@ export default function AssignmentDetailPage() {
     history.push({ type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: 'Registry parameters adjusted.', user: currentUser?.name || 'Admin' });
     finalUpdate.history = history;
 
+    // A doc's collection follows its assignment state: unassigned jobs live
+    // in `workOrders`, assigned ones in `assignments`. A plain updateDoc()
+    // only ever touches the doc's CURRENT collection, so clearing/setting
+    // the tech here must also migrate the doc across collections —
+    // otherwise an "unassigned" job stays stuck in `assignments` (invisible
+    // to the Unassigned tab, which only reads workOrders).
+    const wasInAssignments = sourceCollection === 'assignments';
+    const nowUnassigned = !finalUpdate.assignedTechnicianId;
+
     try {
+      if (wasInAssignments && nowUnassigned) {
+        const targetWo = toUnassignedWorkOrder(finalUpdate as WorkOrder, [{
+          type: 'status_change', date: now,
+          details: `Unassigned by ${currentUser?.name || 'Admin'} and returned to the Unassigned pool.`,
+          user: currentUser?.name || 'Admin',
+        }]);
+        await setDoc(doc(db, 'workOrders', targetWo.id), sanitize(targetWo));
+        await deleteDoc(doc(db, 'assignments', editedOrder.id));
+        toast({ title: 'Registry Updated', description: 'Job returned to the Unassigned pool.' });
+        router.push('/admin/assignments');
+        return;
+      }
+      if (!wasInAssignments && !nowUnassigned) {
+        const assignmentId = await createDocId(ID_PREFIXES.ASSIGNMENT);
+        const assignmentData = sanitize({
+          ...finalUpdate,
+          id: assignmentId,
+          workOrderId: editedOrder.id,
+          updatedAt: new Date().toISOString(),
+        });
+        await setDoc(doc(db, 'assignments', assignmentId), assignmentData);
+        await deleteDoc(doc(db, 'workOrders', editedOrder.id));
+        toast({ title: 'Registry Updated', description: 'Job entry synchronized.' });
+        router.push(`/admin/assignments/${assignmentId}`);
+        return;
+      }
+
       await updateDoc(doc(db, sourceCollection, editedOrder.id), sanitize(finalUpdate));
       setAssignment(finalUpdate as WorkOrder);
       setIsEditOpen(false);
@@ -930,7 +968,7 @@ export default function AssignmentDetailPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2 text-left">
                     <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label>
-                    <Select value={editedOrder.assignedTechnicianId || (editedOrder as any).techId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
+                    <Select value={editedOrder.assignedTechnicianId || (editedOrder as any).techId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? null : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
                       <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red text-xs">
                         <SelectValue placeholder="Select Technician" />
                       </SelectTrigger>

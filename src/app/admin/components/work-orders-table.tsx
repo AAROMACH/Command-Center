@@ -72,11 +72,11 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { cn, formatCityState, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from "@/lib/utils";
+import { cn, formatCityState, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment, sanitize } from "@/lib/utils";
 import { JobDetailDialog } from "@/components/job-detail-dialog";
 import { WorkOrderId } from "@/components/work-order-id";
 import { isPayAdmin } from "@/lib/permissions";
-import { archiveJobRecord } from "@/lib/jobs";
+import { archiveJobRecord, toUnassignedWorkOrder } from "@/lib/jobs";
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from "@/lib/reliability";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
@@ -283,9 +283,7 @@ export const WorkOrdersTable = React.memo(({
     history.push({ type: 'note', date: today, details: `Registry parameters adjusted.`, user: currentUser?.name || 'Admin' });
     finalUpdate.history = history;
 
-    const collectionName = mode === 'unassigned' ? 'workOrders' : 'assignments';
-    const docRef = doc(db, collectionName, editedOrder.id);
-    updateDoc(docRef, { ...finalUpdate }).then(() => {
+    const runAudit = (collectionName: string) => {
       const auditableFields = ['status', 'priority', 'pay', 'payType', 'scheduleDate', 'scheduleTime', 'assignedTechnicianId', 'location', 'slaResponseTarget', 'slaResolutionTarget'];
       const oldVals: Record<string, unknown> = {};
       const newVals: Record<string, unknown> = {};
@@ -293,11 +291,60 @@ export const WorkOrdersTable = React.memo(({
         oldVals[f] = (selectedOrder as any)[f];
         newVals[f] = (finalUpdate as any)[f];
       }
-      auditFieldChange(collectionName, editedOrder.id, currentUser?.id || 'unknown', currentUser?.name || 'Admin', oldVals, newVals).catch(console.warn);
-    }).catch((e: any) => {
-        console.error("Save Changes Error:", e);
-        toast({ variant: "destructive", title: "Save Failed", description: e.message });
-    });
+      auditFieldChange(collectionName, editedOrder!.id, currentUser?.id || 'unknown', currentUser?.name || 'Admin', oldVals, newVals).catch(console.warn);
+    };
+
+    // A doc's collection follows its assignment state: unassigned jobs live in
+    // `workOrders`, assigned ones in `assignments`. A plain updateDoc() only
+    // ever touches the doc's CURRENT collection, so clearing/setting the tech
+    // here must also migrate the doc across collections — otherwise an
+    // "unassigned" job stays stuck in `assignments` (invisible to the
+    // Unassigned tab, which only reads workOrders) and a newly-assigned job
+    // stays stuck in `workOrders` (invisible to Assignments).
+    const wasInAssignments = mode !== 'unassigned';
+    const nowUnassigned = !finalUpdate.assignedTechnicianId;
+
+    if (wasInAssignments && nowUnassigned) {
+      const targetWo = toUnassignedWorkOrder(finalUpdate as WorkOrder, [{
+        type: 'status_change', date: today,
+        details: `Unassigned by ${currentUser?.name || 'Admin'} and returned to the Unassigned pool.`,
+        user: currentUser?.name || 'Admin',
+      }]);
+      setDoc(doc(db, 'workOrders', targetWo.id), sanitize(targetWo))
+        .then(() => deleteDoc(doc(db, 'assignments', editedOrder.id)))
+        .then(() => runAudit('assignments'))
+        .catch((e: any) => {
+          console.error("Unassign Error:", e);
+          toast({ variant: "destructive", title: "Save Failed", description: e.message });
+        });
+    } else if (!wasInAssignments && !nowUnassigned) {
+      (async () => {
+        try {
+          const assignmentId = await createDocId(ID_PREFIXES.ASSIGNMENT);
+          const assignmentData = sanitize({
+            ...finalUpdate,
+            id: assignmentId,
+            workOrderId: editedOrder.id,
+            updatedAt: new Date().toISOString(),
+          });
+          await setDoc(doc(db, 'assignments', assignmentId), assignmentData);
+          await deleteDoc(doc(db, 'workOrders', editedOrder.id));
+          runAudit('workOrders');
+        } catch (e: any) {
+          console.error("Assign Error:", e);
+          toast({ variant: "destructive", title: "Save Failed", description: e.message });
+        }
+      })();
+    } else {
+      const collectionName = mode === 'unassigned' ? 'workOrders' : 'assignments';
+      const docRef = doc(db, collectionName, editedOrder.id);
+      updateDoc(docRef, sanitize({ ...finalUpdate })).then(() => {
+        runAudit(collectionName);
+      }).catch((e: any) => {
+          console.error("Save Changes Error:", e);
+          toast({ variant: "destructive", title: "Save Failed", description: e.message });
+      });
+    }
 
     setIsEditDialogOpen(false);
     setSelectedOrder(null);
@@ -865,7 +912,7 @@ export const WorkOrdersTable = React.memo(({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2 text-left">
                                 <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label>
-                                <Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? undefined : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
+                                <Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? null : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
                                     <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red text-xs">
                                         <SelectValue placeholder="Select Technician" />
                                     </SelectTrigger>

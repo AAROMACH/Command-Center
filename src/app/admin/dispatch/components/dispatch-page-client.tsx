@@ -67,7 +67,7 @@ const ASSIGNMENT_SOURCES = [
   'Client'
 ];
 
-type SortOption = 'priority' | 'date' | 'client' | 'status' | 'pay' | 'tech' | 'type';
+type SortOption = 'priority' | 'date' | 'client' | 'status' | 'pay' | 'tech' | 'type' | 'assigned';
 
 export function DispatchPageClient() {
   const searchParams = useSearchParams();
@@ -330,6 +330,14 @@ export function DispatchPageClient() {
                 const techA = technicians.find(t => t.id === idA)?.name || 'Unassigned';
                 const techB = technicians.find(t => t.id === idB)?.name || 'Unassigned';
                 return techA.localeCompare(techB);
+            case 'assigned': {
+                // assignedAt lives on the assignment doc (not the WorkOrder
+                // type) — most relevant on the Assignments tab; jobs that
+                // were never assigned sort last.
+                const assignedA = (a as any).assignedAt ? new Date((a as any).assignedAt).getTime() : 0;
+                const assignedB = (b as any).assignedAt ? new Date((b as any).assignedAt).getTime() : 0;
+                return assignedB - assignedA;
+            }
             default: {
                 const da = jobDateTimeValue(a.scheduleDate, a.scheduleTime);
                 const db = jobDateTimeValue(b.scheduleDate, b.scheduleTime);
@@ -509,6 +517,7 @@ export function DispatchPageClient() {
                       <SelectItem value="pay" className="text-[10px] uppercase font-bold">Labor Rate</SelectItem>
                       <SelectItem value="tech" className="text-[10px] uppercase font-bold">Technician</SelectItem>
                       <SelectItem value="type" className="text-[10px] uppercase font-bold">Type</SelectItem>
+                      <SelectItem value="assigned" className="text-[10px] uppercase font-bold">Recently Assigned</SelectItem>
                   </SelectContent>
               </Select>
 

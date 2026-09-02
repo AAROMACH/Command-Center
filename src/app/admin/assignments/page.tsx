@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from "@/lib/firebase";
-import { collection, doc, updateDoc, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, doc, updateDoc, onSnapshot, query, where, setDoc, deleteDoc } from 'firebase/firestore';
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -86,7 +86,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { isAdmin, isPayAdmin } from "@/lib/permissions";
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { WorkOrderId } from '@/components/work-order-id';
-import { jobTechId, isArchivedJob, isCompletedJob, jobDateTimeValue, archiveJobRecord } from '@/lib/jobs';
+import { jobTechId, isArchivedJob, isCompletedJob, jobDateTimeValue, archiveJobRecord, toUnassignedWorkOrder } from '@/lib/jobs';
 
 type SortOption = 'date' | 'client' | 'status' | 'pay' | 'tech';
 
@@ -368,11 +368,29 @@ export default function AssignmentsHubPage() {
       ];
     }
 
-    const docRef = doc(db, 'assignments', editedOrder.id);
-    updateDoc(docRef, sanitize(finalUpdate)).catch((error: any) => {
-        console.error("Registry Update Error:", error);
-        toast({ variant: "destructive", title: "Update Failed", description: error.message });
-    });
+    // A plain updateDoc() only ever touches the assignments doc — clearing
+    // the tech here must also migrate it back to `workOrders`, otherwise it
+    // stays stuck in `assignments` with no tech (invisible to the
+    // Unassigned tab, which only ever reads workOrders).
+    if (!finalUpdate.assignedTechnicianId) {
+      const targetWo = toUnassignedWorkOrder(finalUpdate as WorkOrder, [{
+        type: 'status_change', date: today,
+        details: `Unassigned by ${currentUser?.name || 'Admin'} and returned to the Unassigned pool.`,
+        user: currentUser?.name || 'Admin',
+      }]);
+      setDoc(doc(db, 'workOrders', targetWo.id), sanitize(targetWo))
+        .then(() => deleteDoc(doc(db, 'assignments', editedOrder.id)))
+        .catch((error: any) => {
+          console.error("Unassign Error:", error);
+          toast({ variant: "destructive", title: "Update Failed", description: error.message });
+        });
+    } else {
+      const docRef = doc(db, 'assignments', editedOrder.id);
+      updateDoc(docRef, sanitize(finalUpdate)).catch((error: any) => {
+          console.error("Registry Update Error:", error);
+          toast({ variant: "destructive", title: "Update Failed", description: error.message });
+      });
+    }
 
     setIsEditDialogOpen(false);
     setSelectedJob(null);

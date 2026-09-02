@@ -189,12 +189,15 @@ export const WorkOrdersTable = React.memo(({
       .filter(isAssignableTechnician)
       .filter(t => (t.name || '').toLowerCase().includes(techSearchQuery.toLowerCase()))
       .sort((a, b) => (b.reliabilityScore || 0) - (a.reliabilityScore || 0));
-    // Deactivated accounts stay deployable but drop to the bottom of the list.
+    // Deactivated accounts stay visible but drop to the bottom and render
+    // disabled/greyed (see isInactiveTechnician usage below).
     return sortTechniciansForDeployment(matched);
   }, [technicians, techSearchQuery]);
 
   const handleAssign = useCallback(async (techId: string) => {
     if (!selectedOrder) return;
+    const targetTech = technicians.find(t => t.id === techId);
+    if (targetTech && isInactiveTechnician(targetTech)) return;
 
     try {
       const assignmentId = await createDocId(ID_PREFIXES.ASSIGNMENT);
@@ -657,9 +660,13 @@ export const WorkOrdersTable = React.memo(({
                         {filteredTechniciansRegistry.map(tech => {
                             const tier = getReliabilityTier(tech.reliabilityScore || 0);
                             const tierColor = getTierColor(tier);
+                            const inactive = isInactiveTechnician(tech);
 
                             return (
-                                <div key={tech.id} className="p-4 flex items-center justify-between group transition-all hover:bg-bg-tertiary">
+                                <div key={tech.id} className={cn(
+                                    "p-4 flex items-center justify-between group transition-all",
+                                    inactive ? "opacity-40" : "hover:bg-bg-tertiary"
+                                )}>
                                     <div className="flex items-center gap-4 text-left">
                                         <Avatar className="h-10 w-10 border border-border-sub transition-all group-hover:scale-105">
                                           <AvatarImage src={tech.avatarUrl} />
@@ -669,7 +676,7 @@ export const WorkOrdersTable = React.memo(({
                                             <div className="flex items-center gap-2">
                                                 <p className="text-xs font-black uppercase tracking-tight text-left">{tech.name}</p>
                                                 <Badge variant={getTierBadgeVariant(tier)} className="text-[7px] h-3.5 uppercase px-1.5">{tier}</Badge>
-                                                {isInactiveTechnician(tech) && (
+                                                {inactive && (
                                                     <Badge variant="outline" className="text-[7px] h-3.5 uppercase px-1.5 border-text-muted/40 text-text-muted">Inactive</Badge>
                                                 )}
                                             </div>
@@ -685,10 +692,12 @@ export const WorkOrdersTable = React.memo(({
                                             </div>
                                         </div>
                                     </div>
-                                    <Button 
-                                        size="sm" 
-                                        onClick={() => handleAssign(tech.id)} 
-                                        className="h-9 text-[10px] px-8 uppercase font-black tracking-widest bg-bg-tertiary text-text-muted hover:bg-brand-red hover:text-white"
+                                    <Button
+                                        size="sm"
+                                        disabled={inactive}
+                                        title={inactive ? 'Inactive technicians cannot be deployed' : undefined}
+                                        onClick={() => handleAssign(tech.id)}
+                                        className="h-9 text-[10px] px-8 uppercase font-black tracking-widest bg-bg-tertiary text-text-muted hover:bg-brand-red hover:text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-bg-tertiary disabled:hover:text-text-muted"
                                     >
                                         Deploy
                                     </Button>
@@ -862,7 +871,7 @@ export const WorkOrdersTable = React.memo(({
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest">UNASSIGNED</SelectItem>
-                                        {sortTechniciansForDeployment(technicians.filter(isAssignableTechnician)).map(tech => <SelectItem key={tech.id} value={tech.id} className="text-xs uppercase font-bold">{tech.name}{isInactiveTechnician(tech) ? ' · Inactive' : ''}</SelectItem>)}
+                                        {sortTechniciansForDeployment(technicians.filter(isAssignableTechnician)).map(tech => <SelectItem key={tech.id} value={tech.id} disabled={isInactiveTechnician(tech)} className="text-xs uppercase font-bold">{tech.name}{isInactiveTechnician(tech) ? ' · Inactive' : ''}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>

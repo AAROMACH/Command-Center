@@ -195,6 +195,7 @@ export default function AssignmentDetailPage() {
   const handleSwapTech = async () => {
     if (!swapTechId || !assignment) return;
     const nt = allTechs.find(t => t.id === swapTechId);
+    if (nt && isInactiveTechnician(nt)) return;
     const prevTechId = assignment.assignedTechnicianId || assignment.techId || '';
     const prevTech = allTechs.find(t => t.id === prevTechId);
     const admin = auth.currentUser?.displayName || 'Admin';
@@ -216,6 +217,7 @@ export default function AssignmentDetailPage() {
   const handleAddHelper = async () => {
     if (!helperTechId || !assignment) return;
     const ht = allTechs.find(t => t.id === helperTechId);
+    if (ht && isInactiveTechnician(ht)) return;
     try {
       await updateDoc(doc(db, 'assignments', assignment.id), {
         additionalTechnicianIds: arrayUnion(helperTechId),
@@ -934,7 +936,7 @@ export default function AssignmentDetailPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest">UNASSIGNED</SelectItem>
-                        {sortTechniciansForDeployment(allTechs.filter(isAssignableTechnician)).map(t => <SelectItem key={t.id} value={t.id} className="text-xs uppercase font-bold">{t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}</SelectItem>)}
+                        {sortTechniciansForDeployment(allTechs.filter(isAssignableTechnician)).map(t => <SelectItem key={t.id} value={t.id} disabled={isInactiveTechnician(t)} className="text-xs uppercase font-bold">{t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -980,7 +982,7 @@ export default function AssignmentDetailPage() {
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
                 {sortTechniciansForDeployment(allTechs.filter(isAssignableTechnician)).map(t => (
-                  <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}</SelectItem>
+                  <SelectItem key={t.id} value={t.id} disabled={isInactiveTechnician(t)} className="text-[10px] font-bold uppercase">{t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -1007,7 +1009,7 @@ export default function AssignmentDetailPage() {
                 {sortTechniciansForDeployment(allTechs
                   .filter(t => isAssignableTechnician(t) && t.id !== primTechId))
                   .map(t => (
-                    <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}</SelectItem>
+                    <SelectItem key={t.id} value={t.id} disabled={isInactiveTechnician(t)} className="text-[10px] font-bold uppercase">{t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}</SelectItem>
                   ))}
               </SelectContent>
             </Select>

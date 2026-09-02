@@ -205,6 +205,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   const handleSwapTech = async () => {
     if (!swapTechId || !mission) return;
     const nt = technicians.find(t => t.id === swapTechId);
+    if (nt && isInactiveTechnician(nt)) return;
     const prevTechId = mission.assignedTechnicianId || mission.techId || '';
     const prevTech = technicians.find(t => t.id === prevTechId);
     const admin = auth.currentUser?.displayName || 'Admin';
@@ -232,6 +233,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   const handleAddHelper = async () => {
     if (!helperTechId || !mission) return;
     const ht = technicians.find(t => t.id === helperTechId);
+    if (ht && isInactiveTechnician(ht)) return;
     await updateDoc(doc(db, 'assignments', mission.id), {
       additionalTechnicianIds: arrayUnion(helperTechId),
       history: arrayUnion({ date: new Date().toISOString(), type: 'helper_added',
@@ -792,7 +794,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
                 {sortTechniciansForDeployment(technicians.filter(isAssignableTechnician)).map(t => (
-                  <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">
+                  <SelectItem key={t.id} value={t.id} disabled={isInactiveTechnician(t)} className="text-[10px] font-bold uppercase">
                     {t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}
                   </SelectItem>
                 ))}
@@ -822,7 +824,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                 {sortTechniciansForDeployment(technicians
                   .filter(t => isAssignableTechnician(t) && t.id !== (mission?.assignedTechnicianId || mission?.techId)))
                   .map(t => (
-                    <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">
+                    <SelectItem key={t.id} value={t.id} disabled={isInactiveTechnician(t)} className="text-[10px] font-bold uppercase">
                       {t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}
                     </SelectItem>
                   ))}

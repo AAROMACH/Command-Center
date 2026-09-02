@@ -23,9 +23,12 @@ export function isAssignableTechnician(t: { roles?: string[]; role?: string }): 
 }
 
 /**
- * A technician whose account has been deactivated. They remain deployable
- * (marking inactive never removes them from assignment pickers) but are
- * sorted to the bottom of tech lists and shown with an "Inactive" tag.
+ * A technician whose account has been deactivated. They stay visible in
+ * assignment/deployment pickers (so admins can see why someone isn't an
+ * option) but are greyed out, unselectable, and sorted to the bottom —
+ * callers pair this with sortTechniciansForDeployment() and a `disabled`
+ * state on the option/button, and should also reject the id defensively in
+ * the actual assign/swap handler.
  */
 export function isInactiveTechnician(t: { accountStatus?: string }): boolean {
   return t.accountStatus === 'inactive';
@@ -33,8 +36,9 @@ export function isInactiveTechnician(t: { accountStatus?: string }): boolean {
 
 /**
  * Orders a technician list for assignment/deployment pickers: active
- * operatives first, deactivated accounts grouped at the bottom. This is a
- * stable partition — it only moves inactive techs down and otherwise preserves
+ * operatives first, deactivated accounts grouped at the bottom (where the
+ * caller renders them disabled/greyed via isInactiveTechnician). Stable
+ * partition — it only moves inactive techs down and otherwise preserves
  * whatever order the caller already applied (reliability, alphabetical, etc.).
  */
 export function sortTechniciansForDeployment<T extends { accountStatus?: string }>(techs: T[]): T[] {

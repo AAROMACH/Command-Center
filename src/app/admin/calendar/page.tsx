@@ -23,7 +23,7 @@ import {
   format, addMonths, subMonths, startOfMonth, endOfMonth,
   eachDayOfInterval, getDay, isSameDay, isToday, parseISO,
 } from 'date-fns';
-import { cn, compareScheduleTime } from '@/lib/utils';
+import { cn, compareScheduleTime, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import {
   DndContext, type DragEndEvent,
@@ -296,9 +296,10 @@ export default function AdminCalendarPage() {
 
   const handleAssignTech = async (techId: string) => {
     if (!drawerJob) return;
+    const tech = adminTechs.find(t => t.id === techId);
+    if (tech && isInactiveTechnician(tech)) return;
     setShowAssignPanel(false);
     try {
-      const tech = adminTechs.find(t => t.id === techId);
       const prevTech = jobTechId(drawerJob);
       const moved = drawerJob._src !== 'assignment';
       // Shared action: moves a pool job into assignments and writes both techId
@@ -826,20 +827,24 @@ export default function AdminCalendarPage() {
                   </Button>
                   {showAssignPanel && (
                     <div className="absolute bottom-full left-0 right-0 mb-1 bg-bg-elevated border border-border-main rounded-lg shadow-2xl z-[500] max-h-[180px] overflow-y-auto">
-                      {adminTechs.map(t => {
+                      {sortTechniciansForDeployment(adminTechs).map(t => {
                         const currentId = jobTechId(drawerJob);
                         const isCurrent = currentId === t.id;
+                        const inactive = isInactiveTechnician(t);
                         return (
                           <button
                             key={t.id}
-                            onClick={() => handleAssignTech(t.id)}
+                            disabled={inactive}
+                            title={inactive ? 'Inactive technicians cannot be deployed' : undefined}
+                            onClick={() => !inactive && handleAssignTech(t.id)}
                             className={cn(
-                              'w-full text-left px-3 py-2 text-[11px] hover:bg-bg-tertiary transition-colors flex items-center gap-2',
-                              isCurrent && 'text-brand-red font-bold bg-brand-red/5',
+                              'w-full text-left px-3 py-2 text-[11px] transition-colors flex items-center gap-2',
+                              inactive ? 'opacity-40 cursor-not-allowed' : 'hover:bg-bg-tertiary',
+                              isCurrent && !inactive && 'text-brand-red font-bold bg-brand-red/5',
                             )}
                           >
                             <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', isCurrent ? 'bg-brand-red' : 'bg-text-green')} />
-                            {t.name || t.id}
+                            {t.name || t.id}{inactive ? ' · Inactive' : ''}
                           </button>
                         );
                       })}

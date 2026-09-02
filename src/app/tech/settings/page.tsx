@@ -11,8 +11,6 @@ import {
   Bell,
   Settings as SettingsIcon,
   Monitor,
-  Moon,
-  Sun,
   Calendar,
   Route,
   Gauge,
@@ -23,11 +21,11 @@ import { cn } from '@/lib/utils';
 import { TERMINOLOGY } from '@/lib/constants';
 import type { Technician, NotificationPreferences } from '@/lib/types';
 import { FontPreferenceSetting } from '@/components/font-preference-setting';
+import { ThemeToggleSetting } from '@/components/theme-toggle-setting';
 
 export default function TechSettingsPage() {
     const [mounted, setMounted] = useState(false);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
-    const [theme, setTheme] = useState<'dark' | 'light'>('dark');
     const [routePreference, setRoutePreference] = useState<'optimized' | 'by-time' | 'by-mileage'>('optimized');
     const [mileageUnit, setMileageUnit] = useState<'mi' | 'km'>('mi');
     const [calendarSync, setCalendarSync] = useState(false);
@@ -35,9 +33,6 @@ export default function TechSettingsPage() {
 
     useEffect(() => {
         setMounted(true);
-        const saved = localStorage.getItem('aaromach_theme');
-        const isLight = saved ? saved === 'light' : document.documentElement.classList.contains('light');
-        setTheme(isLight ? 'light' : 'dark');
 
         const userId = sessionStorage.getItem('currentUserId');
         if (userId) {
@@ -80,22 +75,6 @@ export default function TechSettingsPage() {
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
         }
-    };
-
-    const toggleTheme = (newTheme: 'dark' | 'light') => {
-        setTheme(newTheme);
-        localStorage.setItem('aaromach_theme', newTheme);
-        if (newTheme === 'light') {
-            document.documentElement.classList.remove('dark');
-            document.documentElement.classList.add('light');
-        } else {
-            document.documentElement.classList.remove('light');
-            document.documentElement.classList.add('dark');
-        }
-        toast({ 
-            title: "Interface Refined", 
-            description: `Terminal visual profile set to ${newTheme.toUpperCase()}.` 
-        });
     };
 
     if (!mounted) return null;
@@ -152,34 +131,7 @@ export default function TechSettingsPage() {
                         <Monitor size={14} className="text-brand-red" />
                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Terminal Interface</h3>
                     </div>
-                    <Card>
-                        <CardHeader className="text-left">
-                            <CardTitle>Visual Mode</CardTitle>
-                            <CardDescription>Customize the tactical visibility of your field terminal.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="text-left">
-                            <div className="flex gap-2 p-1 bg-bg-primary rounded-lg border border-border-sub w-fit">
-                                <button
-                                    onClick={() => toggleTheme('dark')}
-                                    className={cn(
-                                        "px-6 h-9 rounded transition-colors text-[10px] font-bold uppercase tracking-widest",
-                                        theme === 'dark' ? "bg-brand-red text-white" : "hover:bg-bg-secondary text-text-muted"
-                                    )}
-                                >
-                                    <Moon size={14} className="inline mr-2"/> Dark
-                                </button>
-                                <button
-                                    onClick={() => toggleTheme('light')}
-                                    className={cn(
-                                        "px-6 h-9 rounded transition-colors text-[10px] font-bold uppercase tracking-widest",
-                                        theme === 'light' ? "bg-brand-red text-white" : "hover:bg-bg-secondary text-text-muted"
-                                    )}
-                                >
-                                    <Sun size={14} className="inline mr-2"/> Light
-                                </button>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <ThemeToggleSetting />
                     <FontPreferenceSetting />
                 </section>
 

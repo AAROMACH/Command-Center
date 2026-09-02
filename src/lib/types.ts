@@ -153,6 +153,21 @@ export type Assignment = {
   techId?: string;
 };
 
+/**
+ * A batch-assign grouping in the Dispatch Hub Routes tab: jobs staged
+ * together for one technician's day, built by dragging jobs between route
+ * cards before committing them all to `assignments` at once.
+ */
+export type Route = {
+  id: string;
+  name: string;
+  technicianId?: string;
+  workOrderIds: string[];
+  status?: 'draft' | 'ready' | 'dispatched';
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type Technician = {
   id: string;
   userId?: string;

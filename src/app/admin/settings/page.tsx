@@ -28,6 +28,7 @@ import { TERMINOLOGY } from '@/lib/constants';
 import { isSuperAdmin } from '@/lib/permissions';
 import type { Technician, NotificationPreferences } from '@/lib/types';
 import { FontPreferenceSetting } from '@/components/font-preference-setting';
+import { ThemeToggleSetting } from '@/components/theme-toggle-setting';
 
 
 export default function AdminSettingsPage() {
@@ -213,6 +214,7 @@ export default function AdminSettingsPage() {
                         <Type size={14} className="text-brand-red" />
                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Display</h3>
                     </div>
+                    <ThemeToggleSetting />
                     <FontPreferenceSetting />
                 </section>
 

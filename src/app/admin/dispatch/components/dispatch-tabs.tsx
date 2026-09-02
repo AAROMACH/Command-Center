@@ -4,7 +4,8 @@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WorkOrdersClient } from "./work-orders-client";
 import { ReviewQueueView } from "./review-queue-view";
-import type { WorkOrder, Technician } from "@/lib/types";
+import { RoutesView } from "./routes-view";
+import type { WorkOrder, Technician, Route } from "@/lib/types";
 import { useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
@@ -15,6 +16,9 @@ type DispatchTabsProps = {
   reviewQueueJobs: WorkOrder[];
   onReviewSendToDispatch: (wo: WorkOrder) => void;
   onReviewArchive: (wo: WorkOrder) => void;
+  routes: Route[];
+  onRoutesChange: (routes: Route[]) => void;
+  allJobPool: WorkOrder[];
   dateAsc?: boolean;
   isDateSortActive?: boolean;
   onToggleDateSort?: () => void;
@@ -27,6 +31,9 @@ export function DispatchTabs({
   reviewQueueJobs,
   onReviewSendToDispatch,
   onReviewArchive,
+  routes,
+  onRoutesChange,
+  allJobPool,
   dateAsc,
   isDateSortActive,
   onToggleDateSort,
@@ -36,7 +43,7 @@ export function DispatchTabs({
 
   useEffect(() => {
     const subtab = searchParams.get('subtab');
-    if (subtab && (subtab === 'unassigned' || subtab === 'review')) {
+    if (subtab && (subtab === 'unassigned' || subtab === 'routes' || subtab === 'review')) {
       setActiveTab(subtab);
     }
   }, [searchParams]);
@@ -48,6 +55,9 @@ export function DispatchTabs({
       <TabsList className="tabs">
         <TabsTrigger value="unassigned" className="tab">
           Unassigned <span className="tab-count">({unassignedWorkOrders.length})</span>
+        </TabsTrigger>
+        <TabsTrigger value="routes" className="tab">
+          Routes <span className="tab-count">({routes.length})</span>
         </TabsTrigger>
         <TabsTrigger value="review" className="tab">
           Review Queue <span className="tab-count">({reviewQueueJobs.length})</span>
@@ -64,6 +74,16 @@ export function DispatchTabs({
               dateAsc={dateAsc}
               isDateSortActive={isDateSortActive}
               onToggleDateSort={onToggleDateSort}
+          />
+      </TabsContent>
+
+      <TabsContent value="routes" className="mt-0">
+          <RoutesView
+              routes={routes}
+              allJobPool={allJobPool}
+              technicians={technicians}
+              onWorkOrdersChange={onWorkOrdersChange}
+              onRoutesChange={onRoutesChange}
           />
       </TabsContent>
 

@@ -28,7 +28,7 @@ import { ImportJobsDialog, type ExistingRef as ImportExistingRef } from "./impor
 import { normalizeExternalId, isImported } from "@/lib/work-order-identity";
 import { jobTechId, isArchivedJob, jobDateTimeValue, toUnassignedWorkOrder, archiveJobRecord } from "@/lib/jobs";
 import { NewRequestDialog } from "../../requests/components/new-request-dialog";
-import type { WorkOrder, ServiceRequest, Technician } from "@/lib/types";
+import type { WorkOrder, ServiceRequest, Technician, Route } from "@/lib/types";
 import { isServiceTicketDoc, toDateSafe } from '@/lib/request-intake';
 import { makeAssignmentId } from '@/lib/doc-ids';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -83,6 +83,7 @@ export function DispatchPageClient() {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [allRequests, setAllRequests] = useState<ServiceRequest[]>([]);
   const [archivedJobs, setArchivedJobs] = useState<any[]>([]);
+  const [routes, setRoutes] = useState<Route[]>([]);
   
   const [isNewDispatchOpen, setIsNewDispatchOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -154,11 +155,34 @@ export function DispatchPageClient() {
     const unsubArchive = onSnapshot(collection(db, 'activityArchive'), (snap) => {
       setArchivedJobs(snap.docs.map(doc => doc.data()));
     }, () => { /* archive rule may be undeployed; dup check still covers active jobs */ });
+    const unsubRoutes = onSnapshot(collection(db, 'routes'), (snap) => {
+      setRoutes(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Route)));
+    }, () => { /* routes rule may be undeployed; Routes tab degrades to empty */ });
 
     return () => {
-      unsubWO(); unsubAsmt(); unsubTech(); unsubReq(); unsubArchive();
+      unsubWO(); unsubAsmt(); unsubTech(); unsubReq(); unsubArchive(); unsubRoutes();
     };
   }, []);
+
+  // Optimistic-diff writer: update local state immediately, then only touch
+  // the route docs that actually changed (never blindly rewrite every route
+  // on every edit — this ran the old Routes feature into the ground before).
+  const handleRoutesChange = (updated: Route[]) => {
+    const previous = routes;
+    setRoutes(updated);
+    const updatedIds = new Set(updated.map(r => r.id));
+    previous.forEach(r => {
+      if (!updatedIds.has(r.id)) {
+        deleteDoc(doc(db, 'routes', r.id)).catch(e => console.error('Route delete error:', e));
+      }
+    });
+    updated.forEach(r => {
+      const prevRoute = previous.find(p => p.id === r.id);
+      if (!prevRoute || JSON.stringify(sanitize(prevRoute)) !== JSON.stringify(sanitize(r))) {
+        setDoc(doc(db, 'routes', r.id), sanitize(r), { merge: true }).catch(e => console.error('Route save error:', e));
+      }
+    });
+  };
 
   // Every external work order number already known to the app, for import
   // duplicate detection across active, assigned, completed, and archived jobs.
@@ -649,6 +673,9 @@ export function DispatchPageClient() {
               reviewQueueJobs={reviewQueueJobs}
               onReviewSendToDispatch={handleReviewSendToDispatch}
               onReviewArchive={handleReviewArchive}
+              routes={routes}
+              onRoutesChange={handleRoutesChange}
+              allJobPool={allWorkOrders}
               dateAsc={dateAsc}
               isDateSortActive={sortBy === 'date'}
               onToggleDateSort={toggleDateSort}

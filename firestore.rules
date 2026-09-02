@@ -131,6 +131,10 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /routes/{id} {
+      allow read, write: if isAdmin();
+    }
+
     match /workOrders/{id} {
       allow read: if isSignedIn() && (
           isAdmin()

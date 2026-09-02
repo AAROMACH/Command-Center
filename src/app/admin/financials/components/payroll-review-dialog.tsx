@@ -55,7 +55,7 @@ import {
     Send
 } from 'lucide-react';
 import { cn, formatCityState, sanitize } from '@/lib/utils';
-import { FIELD_NATION_FEE_RATE, netOfFieldNationFee, liveLogTotal } from '@/lib/payroll';
+import { FIELD_NATION_FEE_RATE, netOfFieldNationFee, computeWeeklyLogSettlement } from '@/lib/payroll';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { fieldNationUrl } from '@/lib/work-order-identity';
@@ -382,6 +382,8 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         return missions.find(wo => wo.id === id);
     }, [missions]);
 
+    const jobsById = useMemo(() => new Map(missions.map(m => [m.id, m])), [missions]);
+
     const getHelperNames = useCallback((wo: WorkOrder | undefined): string[] => {
         if (!wo?.additionalTechnicianIds?.length) return [];
         return wo.additionalTechnicianIds.map(id => allTechnicians.find(t => t.id === id)?.name || id);
@@ -412,9 +414,12 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     }, [technician]);
 
     // Shared with the Payroll Audit Weekly/Staff Pay tabs, CSV export, and
-    // Paystub History via liveLogTotal() so this dialog's "Net Tech
-    // Settlement" can never drift from what those screens show.
-    const calculatedTotalPayout = useMemo(() => liveLogTotal(localLog || {}), [localLog]);
+    // Paystub History via computeWeeklyLogSettlement() so this dialog's "Net
+    // Tech Settlement" can never drift from what those screens show.
+    const calculatedTotalPayout = useMemo(
+        () => computeWeeklyLogSettlement(localLog || {}, jobsById),
+        [localLog, jobsById],
+    );
     
     const reviewReimbursement = async (reimbId: string, decision: 'approved' | 'rejected') => {
         if (!localLog) return;

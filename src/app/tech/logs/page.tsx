@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog } from '@/lib/types';
 import { externalWorkOrderId, displayWorkOrderNumber, fieldNationUrl, isImported } from '@/lib/work-order-identity';
 import { hasPermission } from '@/lib/permissions';
-import { netOfFieldNationFee } from '@/lib/payroll';
+import { computeWeeklyLogSettlement } from '@/lib/payroll';
 import { useHelperLogSync } from '@/hooks/use-helper-log-sync';
 import { uploadFile } from '@/lib/upload';
 import { technicians } from '@/lib/data';
@@ -192,6 +192,7 @@ export default function TechWeeklyLogPage() {
     // Lead + helper jobs merged, so a helper log item can resolve its work-order
     // details (number, date, Field Nation link) for display.
     const allJobs = useMemo(() => [...workOrders, ...helperJobs], [workOrders, helperJobs]);
+    const jobsById = useMemo(() => new Map(allJobs.map(j => [j.id, j])), [allJobs]);
 
     /**
      * Submission Window Validator.
@@ -442,14 +443,9 @@ export default function TechWeeklyLogPage() {
             return;
         }
         
-        // Reimbursements are paid net of the Field Nation fee (tech absorbs it).
-        // Manually-added missing jobs also contribute (imported = labor finalPay
-        // + reimb net of fee; manual = flat pay).
-        const total = (activeLog.items || []).reduce((acc, i) => acc + (i.jobPay || 0), 0) +
-                      (activeLog.reimbursements || []).reduce((acc, r) => acc + netOfFieldNationFee(r.amount), 0) +
-                      (activeLog.missingAssignmentReports || []).reduce((acc, r) => acc + (r.jobType === 'Imported'
-                          ? (r.finalPay || 0) + netOfFieldNationFee(r.auditReimbursement || 0)
-                          : (r.pay || 0)), 0);
+        // The tech's true settlement — Imported jobs net of the FN fee/split,
+        // disputed items excluded — same formula as payroll audit uses.
+        const total = computeWeeklyLogSettlement(activeLog, jobsById);
 
         try {
             await updateDoc(doc(db, 'weeklyLogs', activeLog.id), {
@@ -484,11 +480,11 @@ export default function TechWeeklyLogPage() {
         [weeklyLogs, currentTechId, activeLog?.id]
     );
 
-    // Log total = job pay + counted (approved / legacy) reimbursements; mirrors
-    // the payroll settlement so both logs stay correct after a move.
+    // Log total = the true settlement (FN fee/split, disputed items excluded)
+    // for job pay + counted (approved / legacy) reimbursements; mirrors the
+    // payroll settlement so both logs stay correct after a move.
     const logTotal = (items?: WeeklyLogItem[], reimbs?: FinancialRecord[]) =>
-        (items || []).reduce((a, i) => a + (i.jobPay || 0), 0)
-        + (reimbs || []).filter(r => r.status !== 'pending' && r.status !== 'rejected').reduce((a, r) => a + netOfFieldNationFee(r.amount || 0), 0);
+        computeWeeklyLogSettlement({ items, reimbursements: reimbs }, jobsById);
 
     // Move one assignment (weekly-log item) + its reimbursements from the active
     // log into another active log, updating both logs' totals. The item exists in

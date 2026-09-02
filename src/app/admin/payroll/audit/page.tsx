@@ -27,7 +27,7 @@ import { format, parseISO, isWithinInterval } from 'date-fns';
 import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder } from '@/lib/types';
 import { isClient, isTech, isSuperAdmin } from '@/lib/permissions';
 import { mergeJobs } from '@/lib/jobs';
-import { netOfFieldNationFee, liveLogTotal } from '@/lib/payroll';
+import { effectiveJobPay, computeWeeklyLogSettlement } from '@/lib/payroll';
 import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
 import { PayrollReviewDialog } from '@/app/admin/financials/components/payroll-review-dialog';
@@ -66,6 +66,17 @@ export default function PayrollAuditPage() {
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
     const [assignments, setAssignments] = useState<WorkOrder[]>([]);
     const missions = useMemo(() => mergeJobs(workOrders, assignments), [workOrders, assignments]);
+    const jobsById = useMemo(() => new Map(missions.map(m => [m.id, m])), [missions]);
+    // Memoized per-log settlement so every display/export site (row totals,
+    // CSV, summary chips, Paystub History) reads the exact same number as
+    // the review dialog's "Net Tech Settlement" — computed once per log
+    // instead of re-deriving it inline at each call site.
+    const settlementByLogId = useMemo(() => {
+        const map = new Map<string, number>();
+        weeklyLogs.forEach(log => map.set(log.id, computeWeeklyLogSettlement(log, jobsById)));
+        return map;
+    }, [weeklyLogs, jobsById]);
+    const settlementOf = (log: WeeklyLog) => settlementByLogId.get(log.id) ?? computeWeeklyLogSettlement(log, jobsById);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [mergingKey, setMergingKey] = useState<string | null>(null);
     const [deletingLogId, setDeletingLogId] = useState<string | null>(null);
@@ -149,8 +160,8 @@ export default function PayrollAuditPage() {
     }, [weeklyLogs, technicians, searchQuery, statusFilter, dateFrom, dateTo]);
 
     const totals = useMemo(() => ({
-        approved: filteredLogs.filter(l => l.status === 'Approved').reduce((s, l) => s + liveLogTotal(l), 0),
-        pending: filteredLogs.filter(l => l.status === 'Submitted').reduce((s, l) => s + liveLogTotal(l), 0),
+        approved: filteredLogs.filter(l => l.status === 'Approved').reduce((s, l) => s + settlementOf(l), 0),
+        pending: filteredLogs.filter(l => l.status === 'Submitted').reduce((s, l) => s + settlementOf(l), 0),
         count: filteredLogs.length,
     }), [filteredLogs]);
 
@@ -197,12 +208,7 @@ export default function PayrollAuditPage() {
                 });
             });
 
-            const totalPayout =
-                items.reduce((s, i) => s + (i.jobPay || 0), 0) +
-                reimbursements.filter(r => r.status !== 'pending' && r.status !== 'rejected')
-                    .reduce((s, r) => s + netOfFieldNationFee(r.amount), 0) +
-                missingAssignmentReports.reduce((s, r) => s +
-                    (r.jobType === 'Imported' ? (r.finalPay || 0) + netOfFieldNationFee(r.auditReimbursement || 0) : (r.pay || 0)), 0);
+            const totalPayout = computeWeeklyLogSettlement({ items, reimbursements, missingAssignmentReports }, jobsById);
 
             await updateDoc(doc(db, 'weeklyLogs', primary.id), { items, reimbursements, missingAssignmentReports, totalPayout });
             for (const log of rest) {
@@ -264,7 +270,7 @@ export default function PayrollAuditPage() {
                 log.weekOf,
                 tech?.name || log.techId,
                 log.status,
-                String(liveLogTotal(log)),
+                String(settlementOf(log)),
                 String(log.items?.length || 0),
             ]);
         });
@@ -305,7 +311,7 @@ export default function PayrollAuditPage() {
                                     <Badge variant={statusVariant(log.status)} className="text-[7px] uppercase h-4 w-fit">{log.status}</Badge>
                                     <div className="text-right">
                                         <p className={cn('text-[12px] font-bold font-mono', log.status === 'Approved' ? 'text-text-green' : 'text-text-primary')}>
-                                            ${liveLogTotal(log).toFixed(2)}
+                                            ${settlementOf(log).toFixed(2)}
                                         </p>
                                         <p className="text-[8px] text-text-muted uppercase">{log.items?.length || 0} items</p>
                                     </div>
@@ -327,7 +333,9 @@ export default function PayrollAuditPage() {
                             </div>
                             {isExpanded && log.items && log.items.length > 0 && (
                                 <div className="border-t border-border-sub divide-y divide-border-sub">
-                                    {log.items.map((item: WeeklyLogItem) => (
+                                    {log.items.map((item: WeeklyLogItem) => {
+                                        const disputed = item.confirmationStatus === 'disputed';
+                                        return (
                                         <div key={item.id} className="flex items-center justify-between px-5 py-2.5 bg-bg-primary">
                                             <div>
                                                 <p className="text-[10px] font-bold text-text-primary uppercase font-mono">{item.workOrderId?.toUpperCase() || item.id}</p>
@@ -339,10 +347,16 @@ export default function PayrollAuditPage() {
                                                         {item.confirmationStatus}
                                                     </Badge>
                                                 )}
-                                                <p className="text-[11px] font-bold text-text-primary font-mono">${(item.jobPay || 0).toFixed(2)}</p>
+                                                <p className={cn(
+                                                    'text-[11px] font-bold font-mono',
+                                                    disputed ? 'text-text-muted line-through' : 'text-text-primary'
+                                                )}>
+                                                    ${effectiveJobPay(item, jobsById.get(item.workOrderId)).toFixed(2)}
+                                                </p>
                                             </div>
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                     {log.reimbursements && log.reimbursements.length > 0 && (
                                         <div className="px-5 py-2 bg-bg-primary/50">
                                             <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-1">Reimbursements</p>
@@ -587,7 +601,7 @@ export default function PayrollAuditPage() {
                             <div className="flex items-center justify-between px-4 py-3 bg-bg-tertiary/30 border-b border-border-sub">
                                 <div>
                                     <p className="text-[11px] font-bold text-text-primary uppercase">{tech?.name || techId}</p>
-                                    <p className="text-[9px] text-text-muted uppercase">{logs.length} approved logs · ${logs.reduce((s, l) => s + liveLogTotal(l), 0).toFixed(2)} total</p>
+                                    <p className="text-[9px] text-text-muted uppercase">{logs.length} approved logs · ${logs.reduce((s, l) => s + settlementOf(l), 0).toFixed(2)} total</p>
                                 </div>
                                 <Badge variant="active" className="text-[7px] uppercase h-4">{logs.length} stubs</Badge>
                             </div>
@@ -599,9 +613,9 @@ export default function PayrollAuditPage() {
                                             <p className="text-[9px] text-text-muted">{log.items?.length || 0} items</p>
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            <p className="text-[12px] font-bold font-mono text-text-green">${liveLogTotal(log).toFixed(2)}</p>
+                                            <p className="text-[12px] font-bold font-mono text-text-green">${settlementOf(log).toFixed(2)}</p>
                                             <button className="text-[9px] text-text-muted hover:text-text-primary uppercase font-bold border border-border-sub rounded px-2 py-0.5 hover:border-border-main transition-colors" onClick={() => {
-                                                const content = `PAYSTUB\nTech: ${tech?.name || techId}\nWeek: ${log.weekOf}\nTotal: $${liveLogTotal(log).toFixed(2)}\nStatus: ${log.status}\nItems: ${log.items?.length || 0}`;
+                                                const content = `PAYSTUB\nTech: ${tech?.name || techId}\nWeek: ${log.weekOf}\nTotal: $${settlementOf(log).toFixed(2)}\nStatus: ${log.status}\nItems: ${log.items?.length || 0}`;
                                                 const blob = new Blob([content], { type: 'text/plain' });
                                                 const a = document.createElement('a');
                                                 a.href = URL.createObjectURL(blob);

@@ -17,7 +17,10 @@ export default {
         // (applied as a CSS var via [data-font] in globals.css); falls back
         // to Inter until that's set.
         sans: ['var(--app-font)', 'Inter', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        // Same idea — most of the app's actual digits (schedule dates/times,
+        // IDs, pay amounts) render with font-mono, so this needs to follow
+        // the chosen font too, not just body text.
+        mono: ['var(--app-mono-font)', 'JetBrains Mono', 'monospace'],
         // Fixed per-font utilities — only used to render each option's own
         // preview text in the font picker, not for the toggle itself.
         inter: ['Inter', 'sans-serif'],

@@ -55,7 +55,7 @@ import {
     Send
 } from 'lucide-react';
 import { cn, formatCityState, sanitize } from '@/lib/utils';
-import { FIELD_NATION_FEE_RATE, netOfFieldNationFee } from '@/lib/payroll';
+import { FIELD_NATION_FEE_RATE, netOfFieldNationFee, computeWeeklyLogSettlement } from '@/lib/payroll';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { fieldNationUrl } from '@/lib/work-order-identity';
@@ -382,6 +382,8 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         return missions.find(wo => wo.id === id);
     }, [missions]);
 
+    const jobsById = useMemo(() => new Map(missions.map(m => [m.id, m])), [missions]);
+
     const getHelperNames = useCallback((wo: WorkOrder | undefined): string[] => {
         if (!wo?.additionalTechnicianIds?.length) return [];
         return wo.additionalTechnicianIds.map(id => allTechnicians.find(t => t.id === id)?.name || id);
@@ -411,24 +413,14 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         }
     }, [technician]);
 
+    // The tech's real settlement — after the FN fee/split for Imported jobs,
+    // excluding disputed items. See computeWeeklyLogSettlement for the shared
+    // formula (also used by the Payroll Audit Weekly tab, so both surfaces
+    // always agree on the same number for a given log).
     const calculatedTotalPayout = useMemo(() => {
         if (!localLog) return 0;
-        const assignmentPay = (localLog.items || []).reduce((acc, i) => acc + (i.jobPay || 0), 0);
-        // Count reimbursements that are approved (or legacy ones with no status).
-        // Pending awaits review; rejected never counts. Each is paid NET of the
-        // Field Nation fee (the tech absorbs it, Aaromach does not), and counted
-        // exactly once — job payouts (jobPay) hold labor only.
-        const reimbursementPay = (localLog.reimbursements || [])
-            .filter(r => r.status !== 'pending' && r.status !== 'rejected')
-            .reduce((acc, r) => acc + netOfFieldNationFee(r.amount), 0);
-        // Manually-added missing jobs: imported ones run the FN pay calc (labor
-        // finalPay + reimbursement net of fee); manual ones are a flat pay.
-        const reportPay = (localLog.missingAssignmentReports || []).reduce((acc, r) =>
-            acc + (r.jobType === 'Imported'
-                ? (r.finalPay || 0) + netOfFieldNationFee(r.auditReimbursement || 0)
-                : (r.pay || 0)), 0);
-        return assignmentPay + reimbursementPay + reportPay;
-    }, [localLog]);
+        return computeWeeklyLogSettlement(localLog, jobsById);
+    }, [localLog, jobsById]);
     
     const reviewReimbursement = async (reimbId: string, decision: 'approved' | 'rejected') => {
         if (!localLog) return;

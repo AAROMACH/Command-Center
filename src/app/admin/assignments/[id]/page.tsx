@@ -16,7 +16,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -790,7 +789,12 @@ export default function AssignmentDetailPage() {
             </div>
           </DialogHeader>
           {editedOrder && (
-            <ScrollArea className="flex-1 min-h-0">
+            // Plain native scroll, not Radix's ScrollArea — its internal
+            // Viewport hardcodes an inline position:relative that blocks
+            // percentage/flex height from reliably reaching it inside a
+            // flex-col dialog, so tall content silently got clipped instead
+            // of scrolling. Confirmed with a live browser test.
+            <div className="flex-1 min-h-0 overflow-y-auto">
               <div className="px-6 py-4 space-y-6">
                 <div className="space-y-4">
                   <div className="space-y-2 text-left">
@@ -952,7 +956,7 @@ export default function AssignmentDetailPage() {
                   </div>
                 </div>
               </div>
-            </ScrollArea>
+            </div>
           )}
           <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 shrink-0 flex flex-row items-center justify-end gap-3">
             <Button variant="outline" onClick={() => setIsEditOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>

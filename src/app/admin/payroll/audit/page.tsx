@@ -78,11 +78,12 @@ export default function PayrollAuditPage() {
     }, [weeklyLogs, jobsById]);
     const settlementOf = (log: WeeklyLog) => settlementByLogId.get(log.id) ?? computeWeeklyLogSettlement(log, jobsById);
 
-    // Full itemized paystub text — tech name, the Mon-Sun pay period, and
-    // every VERIFIED job that contributed to the total (disputed items are
-    // excluded, same as the settlement total itself, since they aren't
-    // being paid). weekOf is stored 'MM-dd-yyyy' as the Monday of that week.
-    const buildPaystubContent = (log: WeeklyLog, techName: string): string => {
+    // Full itemized paystub text — company header, tech name, the Mon-Sun
+    // pay period, and every VERIFIED job that contributed to the total
+    // (disputed items are excluded, same as the settlement total itself,
+    // since they aren't being paid). weekOf is stored 'MM-dd-yyyy' as the
+    // Monday of that week.
+    const buildPaystubContent = (log: WeeklyLog, tech: Technician | undefined, techId: string): string => {
         const [wm, wd, wy] = log.weekOf.split('-').map(Number);
         const weekStart = new Date(wy || 1970, (wm || 1) - 1, wd || 1);
         const weekEnd = new Date(weekStart);
@@ -104,10 +105,15 @@ export default function PayrollAuditPage() {
         const rule = '='.repeat(44);
         const thin = '-'.repeat(44);
         const lines = [
+            'AAROMACH LLC',
             'PAYSTUB',
             rule,
-            `Technician:   ${techName}`,
+            `Document ID:  ${log.id.toUpperCase()}`,
+            `Generated:    ${format(new Date(), 'MM/dd/yyyy h:mm a')}`,
+            thin,
+            `Technician:   ${tech?.name || techId}`,
             `Pay Period:   ${format(weekStart, 'MM/dd/yyyy')} - ${format(weekEnd, 'MM/dd/yyyy')}`,
+            `Payment Method: ${tech?.payoutPreferences?.method || 'Not on file'}`,
             `Status:       ${log.status}`,
             thin,
             `VERIFIED JOBS (${verifiedItems.length})`,
@@ -660,7 +666,7 @@ export default function PayrollAuditPage() {
                                         <div className="flex items-center gap-3">
                                             <p className="text-[12px] font-bold font-mono text-text-green">${settlementOf(log).toFixed(2)}</p>
                                             <button className="text-[9px] text-text-muted hover:text-text-primary uppercase font-bold border border-border-sub rounded px-2 py-0.5 hover:border-border-main transition-colors" onClick={() => {
-                                                const content = buildPaystubContent(log, tech?.name || techId);
+                                                const content = buildPaystubContent(log, tech, techId);
                                                 const blob = new Blob([content], { type: 'text/plain' });
                                                 const a = document.createElement('a');
                                                 a.href = URL.createObjectURL(blob);

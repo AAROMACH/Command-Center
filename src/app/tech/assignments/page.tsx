@@ -59,7 +59,7 @@ import { ID_PREFIXES } from '@/lib/constants';
 import { fieldNationUrl, displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { fileCompletedAssignment, resolveCompletionPlacement, type CompletionPlacement } from '@/lib/weekly-log';
 import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete, reopenStatusFor } from '@/lib/trip-flow';
-import { jobDateTimeValue } from '@/lib/jobs';
+import { jobDateTimeValue, isArchivedJob } from '@/lib/jobs';
 import { CompletionWeekDialog } from '@/components/completion-week-dialog';
 import { Car, MoreVertical, Ban, XCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
@@ -113,7 +113,9 @@ export default function TechAssignmentsPage() {
             const lastSeen = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
 
             const unsubAsmt = onSnapshot(query(collection(db, 'assignments'), where('techId', '==', userId)), (snap) => {
-                const orders = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder));
+                // Archived is a first line of defense before deletion — never
+                // let an archived job resurface here as live/active.
+                const orders = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)).filter(wo => !isArchivedJob(wo));
                 setAllWorkOrders(orders);
                 if (lastSeen) {
                     const count = orders.filter(o => {

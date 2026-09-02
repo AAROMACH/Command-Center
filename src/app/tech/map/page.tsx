@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import type { WorkOrder } from '@/lib/types';
+import { isArchivedJob } from '@/lib/jobs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -82,7 +83,9 @@ export default function TechMapPage() {
     );
 
     const unsub = onSnapshot(q, (snap) => {
-      const jobs = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder));
+      // Archived is a first line of defense before deletion — never plot an
+      // archived stop as a live job on the map.
+      const jobs = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)).filter(wo => !isArchivedJob(wo));
       setAssignments(jobs);
       setLoading(false);
     }, () => setLoading(false));

@@ -411,7 +411,16 @@ export default function ActivityAuditPage() {
                 }
             }
             if (rec && rec.id) {
-                await setDoc(doc(db, archived.archivedFrom, rec.id), rec);
+                // archiveJobRecord() stamps archived/status/previousStatus onto
+                // this exact record before storing it — restoring must clear
+                // those back off (mirrors handleRestoreArchived below), or the
+                // recreated doc comes back still flagged as archived and gets
+                // silently filtered out of every active view again.
+                const { archived: _archived, archivedAt: _archivedAt, archivedBy: _archivedBy, archiveReason: _archiveReason, previousStatus, ...restRec } = rec;
+                await setDoc(doc(db, archived.archivedFrom, rec.id), {
+                    ...restRec,
+                    status: previousStatus || 'unassigned',
+                });
             }
             await deleteDoc(doc(db, 'activityArchive', eventId));
             toast({ title: 'Restored', description: rec ? 'Record restored to active registry.' : 'Event restored to activity feed.' });

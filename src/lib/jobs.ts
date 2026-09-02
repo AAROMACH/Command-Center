@@ -1,6 +1,6 @@
 import type { WorkOrder } from './types';
 import { db } from './firebase';
-import { doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 
 // ── Unified job model ───────────────────────────────────────────────────────
 //
@@ -122,6 +122,13 @@ export type ArchiveJobOptions = {
  * same archivedFrom/archivedRecordJson shape the generic activity-archive
  * restore flow (admin/reports handleRestoreEvent) already understands, so
  * jobs and other archived activity share one collection and one restore path.
+ *
+ * Archiving is meant to act as a first line of defense before deletion — a
+ * job in Archives should behave as if it's gone until it's explicitly
+ * restored or permanently deleted. Writing the archive copy and deleting the
+ * source doc in one batch (instead of two sequential awaits) closes the gap
+ * where the first write could succeed and the second fail, leaving the same
+ * job live in both places at once.
  */
 export async function archiveJobRecord({ job, collectionName, archivedBy, archiveReason, techName }: ArchiveJobOptions): Promise<void> {
   const now = new Date().toISOString();
@@ -134,7 +141,8 @@ export async function archiveJobRecord({ job, collectionName, archivedBy, archiv
     archivedBy,
     archiveReason,
   };
-  await setDoc(doc(db, 'activityArchive', job.id), {
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'activityArchive', job.id), {
     id: job.id,
     timestamp: now,
     archivedAt: now,
@@ -149,7 +157,8 @@ export async function archiveJobRecord({ job, collectionName, archivedBy, archiv
     archivedFrom: collectionName,
     archivedRecordJson: JSON.stringify(record),
   });
-  await deleteDoc(doc(db, collectionName, job.id));
+  batch.delete(doc(db, collectionName, job.id));
+  await batch.commit();
 }
 
 /**

@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, doc, updateDoc, onSnapshot, query, where, getDocs, setDoc, arrayUnion } from 'firebase/firestore';
 import { makeWeeklyLogItemId, makeWeeklyLogId } from '@/lib/doc-ids';
+import { isArchivedJob } from '@/lib/jobs';
 import type { WorkOrder, Technician, WeeklyLog, WeeklyLogItem } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -89,7 +90,10 @@ export default function TechDashboardPage() {
         });
 
         const unsubAsmt = onSnapshot(query(collection(db, 'assignments'), where('techId', '==', userId)), (snap) => {
-            setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+            // Archived is a first line of defense before deletion — a job
+            // that's been archived (or somehow left behind with a stale
+            // 'archived' flag) must never resurface as live/upcoming here.
+            setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)).filter(wo => !isArchivedJob(wo)));
         });
 
         const logQ = query(collection(db, 'weeklyLogs'), where('techId', '==', userId), where('status', '==', 'Draft'));

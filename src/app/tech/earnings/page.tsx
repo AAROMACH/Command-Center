@@ -122,6 +122,11 @@ export default function TechEarningsPage() {
             const unsubExp = onSnapshot(query(collection(db, 'expenses'), where('techId', '==', userId)), (snap) => {
                 setExpenses(snap.docs.map(d => ({ ...d.data(), id: d.id } as Expense)));
             });
+            // Note: workOrders/assignments here are used only to resolve a
+            // logged job's title/date/pay for the earnings breakdown, not as
+            // a live/operational list — a job that's since been archived
+            // still needs to resolve correctly for a week that already paid
+            // out, so these are deliberately NOT archived-filtered.
             const unsubWO = onSnapshot(query(collection(db, 'workOrders'), where('assignedTechnicianId', '==', userId)), (snap) => {
                 setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id })));
             });

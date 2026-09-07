@@ -484,21 +484,28 @@ export default function TechEarningsPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {filteredLogs.map(log => {
-                                        const isExpanded = expandedLogs.has(log.id);
+                                        // Paystub view/download only makes sense once payroll has
+                                        // actually settled the log — a Draft/Submitted/Rejected log's
+                                        // numbers aren't final yet.
+                                        const isApproved = log.status === 'Approved';
+                                        const isExpanded = isApproved && expandedLogs.has(log.id);
                                         const verifiedItems = (log.items || []).filter(i => i.confirmationStatus !== 'disputed');
                                         return (
                                             <Fragment key={log.id}>
                                                 <TableRow
-                                                    className="hover:bg-bg-tertiary transition-colors cursor-pointer group"
-                                                    onClick={() => setExpandedLogs(prev => {
-                                                        const next = new Set(prev);
-                                                        if (next.has(log.id)) next.delete(log.id); else next.add(log.id);
-                                                        return next;
-                                                    })}
+                                                    className={cn("transition-colors group", isApproved ? "hover:bg-bg-tertiary cursor-pointer" : "opacity-60")}
+                                                    onClick={() => {
+                                                        if (!isApproved) return;
+                                                        setExpandedLogs(prev => {
+                                                            const next = new Set(prev);
+                                                            if (next.has(log.id)) next.delete(log.id); else next.add(log.id);
+                                                            return next;
+                                                        });
+                                                    }}
                                                 >
                                                     <TableCell className="font-bold uppercase text-xs text-center">
                                                         <span className="inline-flex items-center gap-1.5">
-                                                            {isExpanded ? <ChevronDown size={12} className="text-text-muted" /> : <ChevronRight size={12} className="text-text-muted" />}
+                                                            {isApproved && (isExpanded ? <ChevronDown size={12} className="text-text-muted" /> : <ChevronRight size={12} className="text-text-muted" />)}
                                                             Week of {log.weekOf}
                                                         </span>
                                                     </TableCell>
@@ -507,12 +514,16 @@ export default function TechEarningsPage() {
                                                     </TableCell>
                                                     <TableCell className="text-right font-mono font-bold text-text-primary">${settlementOf(log).toFixed(2)}</TableCell>
                                                     <TableCell className="text-right">
-                                                        <button
-                                                            className="text-[9px] text-text-muted hover:text-text-primary uppercase font-bold border border-border-sub rounded px-2 py-1 hover:border-border-main transition-colors"
-                                                            onClick={(e) => { e.stopPropagation(); downloadPaystub(log, tech || undefined, currentTechId || '', jobsById); }}
-                                                        >
-                                                            <Download size={9} className="inline mr-1" /> Stub
-                                                        </button>
+                                                        {isApproved ? (
+                                                            <button
+                                                                className="text-[9px] text-text-muted hover:text-text-primary uppercase font-bold border border-border-sub rounded px-2 py-1 hover:border-border-main transition-colors"
+                                                                onClick={(e) => { e.stopPropagation(); downloadPaystub(log, tech || undefined, currentTechId || '', jobsById); }}
+                                                            >
+                                                                <Download size={9} className="inline mr-1" /> Stub
+                                                            </button>
+                                                        ) : (
+                                                            <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest">Pending approval</span>
+                                                        )}
                                                     </TableCell>
                                                 </TableRow>
                                                 {isExpanded && (

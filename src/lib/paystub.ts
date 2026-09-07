@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import type { WeeklyLog, WorkOrder, Technician } from './types';
 import { effectiveJobPay, computeWeeklyLogSettlement, netOfFieldNationFee } from './payroll';
+import { displayWorkOrderNumber } from './work-order-identity';
 
 /**
  * Full itemized paystub text — company header, tech name, the Mon-Sun pay
@@ -28,7 +29,12 @@ export function buildPaystubContent(
     const dateStr = job?.scheduleDate || item.workDate || 'N/A';
     const timeStr = job?.scheduleTime || 'N/A';
     const pay = effectiveJobPay(item, job);
-    return `${idx + 1}. ${label}\n   Date: ${dateStr}   Time: ${timeStr}\n   Pay:  $${pay.toFixed(2)}`;
+    const asmtId = (item.workOrderId || '').toUpperCase();
+    const woNumber = job ? displayWorkOrderNumber(job) : '';
+    const idLine = woNumber && woNumber !== asmtId
+      ? `Assignment ID: ${asmtId}   Work Order #: ${woNumber}`
+      : `Assignment ID: ${asmtId}`;
+    return `${idx + 1}. ${label}\n   ${idLine}\n   Date: ${dateStr}   Time: ${timeStr}\n   Pay:  $${pay.toFixed(2)}`;
   });
 
   const approvedReimbursements = (log.reimbursements || []).filter(r => r.status !== 'pending' && r.status !== 'rejected');

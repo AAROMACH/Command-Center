@@ -134,18 +134,32 @@ export default function TechWeeklyLogPage() {
     const [isReportMissingOpen, setIsReportMissingOpen] = useState(false);
     // Post-approval dispute: a tech's log has left Draft (Submitted / Approved
     // / Rejected) and the rich in-place dispute editor is no longer available,
-    // so this simple popup files a payrollDisputes ticket instead.
+    // so this simple popup files a payrollDisputes ticket instead. Only
+    // offered once a log is Approved (paid out) — Submitted/Rejected logs
+    // aren't final yet, so there's nothing to dispute.
     const [isPayrollDisputeOpen, setIsPayrollDisputeOpen] = useState(false);
+    // "Dispute This Log" now just enters dispute mode — the actual per-job
+    // "Dispute This Job" buttons only appear on job cards once this is on,
+    // rather than being visible all the time.
+    const [isDisputeModeOn, setIsDisputeModeOn] = useState(false);
     const [payrollDisputeReason, setPayrollDisputeReason] = useState<'incorrect_pay' | 'missing_reimbursement' | 'missing_job' | ''>('');
     const [payrollDisputeWorkOrderId, setPayrollDisputeWorkOrderId] = useState<string>('');
     const [payrollDisputeNotes, setPayrollDisputeNotes] = useState('');
     const [payrollDisputeSaving, setPayrollDisputeSaving] = useState(false);
-    // Opened from a specific job's "Dispute This Job" button (once the log is
-    // locked/paid) — pre-scopes the popup to that job instead of the tech
-    // having to find it in the optional dropdown.
+    // Opened from a specific job's "Dispute This Job" button (shown only in
+    // dispute mode, once the log is Approved) — pre-scopes the popup to that
+    // job instead of the tech having to find it in the optional dropdown.
     const openJobDispute = (item: WeeklyLogItem) => {
         setPayrollDisputeWorkOrderId(item.workOrderId);
         setPayrollDisputeReason('incorrect_pay');
+        setIsPayrollDisputeOpen(true);
+    };
+    // For an issue that isn't tied to one of the listed jobs (e.g. a job
+    // missing from the log entirely) — reachable from dispute mode without
+    // picking a specific job card.
+    const openGeneralDispute = () => {
+        setPayrollDisputeWorkOrderId('');
+        setPayrollDisputeReason('');
         setIsPayrollDisputeOpen(true);
     };
     const [isCreateLogOpen, setIsCreateLogOpen] = useState(false);
@@ -429,6 +443,7 @@ export default function TechWeeklyLogPage() {
             });
             toast({ title: "Dispute Filed", description: "An admin will review this against your weekly log." });
             setIsPayrollDisputeOpen(false);
+            setIsDisputeModeOn(false);
             setPayrollDisputeReason('');
             setPayrollDisputeWorkOrderId('');
             setPayrollDisputeNotes('');
@@ -901,12 +916,30 @@ export default function TechWeeklyLogPage() {
                         <Button variant="ghost" size="sm" className="h-6 text-[9px] uppercase font-bold text-brand-red hover:bg-brand-red/10" onClick={() => setIsReportMissingOpen(true)}>
                             <Search size={12} className="mr-1.5"/> Report Missing Assignment
                         </Button>
-                    ) : (
-                        <Button variant="ghost" size="sm" className="h-6 text-[9px] uppercase font-bold text-brand-red hover:bg-brand-red/10" onClick={() => setIsPayrollDisputeOpen(true)}>
-                            <AlertTriangle size={12} className="mr-1.5"/> Dispute This Log
+                    ) : activeLog.status === 'Approved' ? (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                                "h-6 text-[9px] uppercase font-bold",
+                                isDisputeModeOn ? "text-text-primary hover:bg-bg-tertiary" : "text-brand-red hover:bg-brand-red/10"
+                            )}
+                            onClick={() => setIsDisputeModeOn(v => !v)}
+                        >
+                            <AlertTriangle size={12} className="mr-1.5"/> {isDisputeModeOn ? 'Cancel Dispute' : 'Dispute This Log'}
                         </Button>
-                    )}
+                    ) : null}
                 </div>
+                {isDisputeModeOn && (
+                    <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-brand-red/30 bg-brand-red-dim/5 text-left">
+                        <p className="text-[10px] font-bold text-text-red uppercase tracking-widest">
+                            Select the job below you want to dispute, or file a general issue.
+                        </p>
+                        <Button variant="outline" size="sm" className="h-7 shrink-0 text-[9px] uppercase font-bold tracking-widest" onClick={openGeneralDispute}>
+                            File General Dispute
+                        </Button>
+                    </div>
+                )}
                 <div className="space-y-3 text-left">
                     {[...(activeLog.items || [])]
                         .sort((a, b) => {
@@ -929,7 +962,7 @@ export default function TechWeeklyLogPage() {
                             canMove={!isLocked && canMoveAssignment}
                             onRequestMove={() => setMoveItem(item)}
                             techId={currentTechId}
-                            onDisputeJob={openJobDispute}
+                            onDisputeJob={isDisputeModeOn ? openJobDispute : undefined}
                         />
                     ))}
                     {(activeLog.items || []).length === 0 && (

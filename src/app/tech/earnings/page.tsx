@@ -42,7 +42,7 @@ import { collection, onSnapshot, query, where, doc, addDoc, getDoc } from 'fireb
 import { uploadFile } from '@/lib/upload';
 import { useToast } from '@/hooks/use-toast';
 import { mergeJobs } from '@/lib/jobs';
-import { effectiveJobPay, computeWeeklyLogSettlement } from '@/lib/payroll';
+import { effectiveJobPay, computeWeeklyLogSettlement, netOfFieldNationFee } from '@/lib/payroll';
 import { downloadPaystub } from '@/lib/paystub';
 import { displayWorkOrderNumber } from '@/lib/work-order-identity';
 
@@ -484,28 +484,32 @@ export default function TechEarningsPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {filteredLogs.map(log => {
-                                        // Paystub view/download only makes sense once payroll has
-                                        // actually settled the log — a Draft/Submitted/Rejected log's
-                                        // numbers aren't final yet.
+                                        // The formal paystub document (view/download) only makes
+                                        // sense once payroll has actually settled the log — a
+                                        // Draft/Submitted/Rejected log's numbers aren't final yet.
+                                        // The inline breakdown below stays available for any status
+                                        // so a tech can see what's in a week before it's approved;
+                                        // its reimbursement figure is marked Pending until then.
                                         const isApproved = log.status === 'Approved';
-                                        const isExpanded = isApproved && expandedLogs.has(log.id);
+                                        const isExpanded = expandedLogs.has(log.id);
                                         const verifiedItems = (log.items || []).filter(i => i.confirmationStatus !== 'disputed');
+                                        const nonRejectedReimbs = (log.reimbursements || []).filter(r => r.status !== 'rejected');
+                                        const reimbTotal = isApproved
+                                            ? nonRejectedReimbs.filter(r => r.status !== 'pending').reduce((s, r) => s + netOfFieldNationFee(r.amount), 0)
+                                            : nonRejectedReimbs.reduce((s, r) => s + (r.amount || 0), 0);
                                         return (
                                             <Fragment key={log.id}>
                                                 <TableRow
-                                                    className={cn("transition-colors group", isApproved ? "hover:bg-bg-tertiary cursor-pointer" : "opacity-60")}
-                                                    onClick={() => {
-                                                        if (!isApproved) return;
-                                                        setExpandedLogs(prev => {
-                                                            const next = new Set(prev);
-                                                            if (next.has(log.id)) next.delete(log.id); else next.add(log.id);
-                                                            return next;
-                                                        });
-                                                    }}
+                                                    className="hover:bg-bg-tertiary transition-colors cursor-pointer group"
+                                                    onClick={() => setExpandedLogs(prev => {
+                                                        const next = new Set(prev);
+                                                        if (next.has(log.id)) next.delete(log.id); else next.add(log.id);
+                                                        return next;
+                                                    })}
                                                 >
                                                     <TableCell className="font-bold uppercase text-xs text-center">
                                                         <span className="inline-flex items-center gap-1.5">
-                                                            {isApproved && (isExpanded ? <ChevronDown size={12} className="text-text-muted" /> : <ChevronRight size={12} className="text-text-muted" />)}
+                                                            {isExpanded ? <ChevronDown size={12} className="text-text-muted" /> : <ChevronRight size={12} className="text-text-muted" />}
                                                             Week of {log.weekOf}
                                                         </span>
                                                     </TableCell>
@@ -551,6 +555,18 @@ export default function TechEarningsPage() {
                                                                             </div>
                                                                         );
                                                                     })}
+                                                                </div>
+                                                            )}
+                                                            {nonRejectedReimbs.length > 0 && (
+                                                                <div className="flex items-center justify-between gap-4 px-6 py-3 border-t border-border-sub bg-bg-secondary/40">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Receipt size={12} className="text-accent-gold" />
+                                                                        <span className="text-xs font-bold text-text-primary uppercase">Reimbursements</span>
+                                                                        <Badge variant={isApproved ? 'active' : 'onhold'} className="text-[7px] h-3.5 uppercase">
+                                                                            {isApproved ? 'Approved' : 'Pending'}
+                                                                        </Badge>
+                                                                    </div>
+                                                                    <span className="shrink-0 text-sm font-mono font-bold text-accent-gold">${reimbTotal.toFixed(2)}</span>
                                                                 </div>
                                                             )}
                                                         </TableCell>

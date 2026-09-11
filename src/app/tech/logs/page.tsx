@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog } from '@/lib/types';
+import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog, PayrollDispute } from '@/lib/types';
 import { externalWorkOrderId, displayWorkOrderNumber, fieldNationUrl, isImported } from '@/lib/work-order-identity';
 import { hasPermission } from '@/lib/permissions';
 import { computeWeeklyLogSettlement } from '@/lib/payroll';
@@ -77,6 +77,7 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc, setDoc, getDocs } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
+import { NotificationService } from '@/lib/notification-service';
 
 const DISPUTE_REASONS = [
     "Hours logged are incorrect",
@@ -118,6 +119,7 @@ export default function TechWeeklyLogPage() {
     const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+    const [myPayrollDisputes, setMyPayrollDisputes] = useState<PayrollDispute[]>([]);
     // Jobs this tech assisted on as a helper (lead tech owns the primary
     // entry) — the hook also fans a completed one into this tech's own
     // weekly log so it shows up here and reaches payroll.
@@ -199,8 +201,11 @@ export default function TechWeeklyLogPage() {
                     setCurrentUser({ ...snap.data(), id: snap.id } as Technician);
                 }
             });
+            const unsubDisputes = onSnapshot(query(collection(db, 'payrollDisputes'), where('techId', '==', userId)), (snap) => {
+                setMyPayrollDisputes(snap.docs.map(d => ({ ...d.data(), id: d.id } as PayrollDispute)));
+            });
             return () => {
-                unsubLogs(); unsubWO(); unsubTrips(); unsubProfile();
+                unsubLogs(); unsubWO(); unsubTrips(); unsubProfile(); unsubDisputes();
             };
         }
     }, []);
@@ -215,6 +220,18 @@ export default function TechWeeklyLogPage() {
     // details (number, date, Field Nation link) for display.
     const allJobs = useMemo(() => [...workOrders, ...helperJobs], [workOrders, helperJobs]);
     const jobsById = useMemo(() => new Map(allJobs.map(j => [j.id, j])), [allJobs]);
+
+    // Open post-approval disputes filed against the active log — surfaced as
+    // an "Under Review" tag so a tech can see a dispute is being processed
+    // without having to remember whether they filed one.
+    const openDisputesForActiveLog = useMemo(
+        () => myPayrollDisputes.filter(d => d.status === 'open' && d.weeklyLogId === activeLog?.id),
+        [myPayrollDisputes, activeLog?.id],
+    );
+    const disputedWorkOrderIds = useMemo(
+        () => new Set(openDisputesForActiveLog.filter(d => d.workOrderId).map(d => d.workOrderId as string)),
+        [openDisputesForActiveLog],
+    );
 
     /**
      * Submission Window Validator.
@@ -441,6 +458,11 @@ export default function TechWeeklyLogPage() {
                 status: 'open',
                 createdAt: new Date().toISOString(),
             });
+            const disputeSubject = payrollDisputeWorkOrderId ? `job ${payrollDisputeWorkOrderId.toUpperCase()}` : 'a job';
+            NotificationService.notifyPayrollAdmins(
+                "Payroll Dispute Filed",
+                `${currentUser?.name || 'A technician'} disputed ${disputeSubject} on the weekly log for ${activeLog.weekOf}. Reason: ${payrollDisputeReason.replace(/_/g, ' ')}.`,
+            ).catch(() => {});
             toast({ title: "Dispute Filed", description: "An admin will review this against your weekly log." });
             setIsPayrollDisputeOpen(false);
             setIsDisputeModeOn(false);
@@ -911,7 +933,14 @@ export default function TechWeeklyLogPage() {
 
             <div className="space-y-4 max-w-6xl mx-auto text-left">
                 <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1 text-left">
-                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Tactical Assignment Registry</h3>
+                    <div className="flex items-center gap-2">
+                        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Tactical Assignment Registry</h3>
+                        {openDisputesForActiveLog.length > 0 && (
+                            <Badge variant="destructive" className="text-[7px] h-4 uppercase tracking-widest flex items-center gap-1 animate-pulse">
+                                <AlertTriangle size={9} /> Dispute Under Review
+                            </Badge>
+                        )}
+                    </div>
                     {!isLocked ? (
                         <Button variant="ghost" size="sm" className="h-6 text-[9px] uppercase font-bold text-brand-red hover:bg-brand-red/10" onClick={() => setIsReportMissingOpen(true)}>
                             <Search size={12} className="mr-1.5"/> Report Missing Assignment
@@ -963,6 +992,7 @@ export default function TechWeeklyLogPage() {
                             onRequestMove={() => setMoveItem(item)}
                             techId={currentTechId}
                             onDisputeJob={isDisputeModeOn ? openJobDispute : undefined}
+                            hasOpenPayrollDispute={disputedWorkOrderIds.has(item.workOrderId)}
                         />
                     ))}
                     {(activeLog.items || []).length === 0 && (
@@ -1199,7 +1229,7 @@ export default function TechWeeklyLogPage() {
     );
 }
 
-function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId, onDisputeJob }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null, onDisputeJob?: (item: WeeklyLogItem) => void }) {
+function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId, onDisputeJob, hasOpenPayrollDispute }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null, onDisputeJob?: (item: WeeklyLogItem) => void, hasOpenPayrollDispute?: boolean }) {
     const job = workOrders.find(wo => wo.id === item.workOrderId);
     const itemReimbursements = reimbursements.filter(r => r.workOrderId === item.workOrderId);
     const totalReimbursed = itemReimbursements.reduce((acc, r) => acc + (r.amount || 0), 0);
@@ -1267,6 +1297,11 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                 {item.isHelper && <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter">Helper</Badge>}
                                 {isConfirmed && <Badge variant="active" className="text-[7px] h-3.5 uppercase tracking-tighter">VERIFIED</Badge>}
                                 {isDisputed && <Badge variant="missed" className="text-[7px] h-3.5 uppercase tracking-tighter">DISPUTED</Badge>}
+                                {hasOpenPayrollDispute && (
+                                    <Badge variant="destructive" className="text-[7px] h-3.5 uppercase tracking-tighter flex items-center gap-1 animate-pulse">
+                                        <AlertTriangle size={9} /> Under Review
+                                    </Badge>
+                                )}
                                 {itemReimbursements.length > 0 && (
                                     <Badge variant="pending" className="text-[7px] h-3.5 uppercase tracking-tighter flex items-center gap-1">
                                         <DollarSign size={9} /> Reimbursement · ${totalReimbursed.toFixed(2)}
@@ -1368,7 +1403,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                         </div>
                     )}
 
-                    {isLocked && !isDisputed && onDisputeJob && (
+                    {isLocked && !isDisputed && !hasOpenPayrollDispute && onDisputeJob && (
                         <div className="shrink-0">
                             <Button
                                 variant="outline"

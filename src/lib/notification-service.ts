@@ -80,4 +80,19 @@ export const NotificationService = {
       console.error('[notify] Admin broadcast failed:', e);
     }
   },
+
+  /** Payroll-specific alerts (disputes, etc.) — reaches payroll_admin in
+   *  addition to super_admin, since dispatch_admin has no payroll stake. */
+  async notifyPayrollAdmins(title: string, body: string, entity?: { id: string, type: 'assignment' | 'project' | 'request' }) {
+    try {
+      const snap = await getDocs(
+        query(collection(db, 'users'),
+          where('roles', 'array-contains-any', ['super_admin', 'payroll_admin']))
+      );
+      const adminIds = snap.docs.map(d => d.id);
+      return this.broadcast(adminIds, title, body, entity);
+    } catch (e) {
+      console.error('[notify] Payroll admin broadcast failed:', e);
+    }
+  },
 };

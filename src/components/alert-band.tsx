@@ -31,7 +31,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
-import type { WorkOrder, Project, ServiceRequest, WeeklyLog, TimeOffRequest, SiteRequest, Invoice } from '@/lib/types';
+import type { WorkOrder, Project, ServiceRequest, WeeklyLog, TimeOffRequest, SiteRequest, Invoice, PayrollDispute } from '@/lib/types';
 
 type AlertType = 'critical' | 'warning' | 'info' | 'success';
 
@@ -60,6 +60,7 @@ export function AlertBand() {
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [assignments, setAssignments] = useState<WorkOrder[]>([]);
+  const [payrollDisputes, setPayrollDisputes] = useState<PayrollDispute[]>([]);
 
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -127,6 +128,10 @@ export function AlertBand() {
       unsubs.push(onSnapshot(
         query(collection(db, 'siteRequests'), where('status', '==', 'pending')),
         (snap) => setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)))
+      ));
+      unsubs.push(onSnapshot(
+        query(collection(db, 'payrollDisputes'), where('status', '==', 'open')),
+        (snap) => setPayrollDisputes(snap.docs.map(d => ({ ...d.data(), id: d.id } as PayrollDispute)))
       ));
     }
 
@@ -275,10 +280,22 @@ export function AlertBand() {
           actionLabel: 'Verify Coordinates'
         });
       }
+
+      if (payrollDisputes.length > 0) {
+        currentAlerts.push({
+          id: 'admin-payroll-disputes',
+          type: 'critical',
+          text: `${payrollDisputes.length} payroll dispute${payrollDisputes.length > 1 ? 's' : ''}`,
+          description: `Field operatives have disputed a job or log after payout — these require review before the discrepancy is resolved.`,
+          icon: AlertTriangle,
+          actionPath: '/admin/payroll/audit?tab=adjustments',
+          actionLabel: 'Review Disputes'
+        });
+      }
     }
 
     return currentAlerts;
-  }, [pathname, currentUser, workOrders, assignments, weeklyLogs, projects, serviceRequests, timeOffRequests, siteRequests, invoices]);
+  }, [pathname, currentUser, workOrders, assignments, weeklyLogs, projects, serviceRequests, timeOffRequests, siteRequests, invoices, payrollDisputes]);
 
   const handleAlertClick = (alert: Alert) => {
     setSelectedAlert(alert);

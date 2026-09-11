@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { db, auth } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Receipt, Search, ChevronDown, ChevronRight, DollarSign, CheckCircle, Clock, X, Download, Plus, SlidersHorizontal, MergeIcon, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isWithinInterval } from 'date-fns';
-import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder } from '@/lib/types';
+import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder, PayrollDispute } from '@/lib/types';
 import { isClient, isTech, isSuperAdmin } from '@/lib/permissions';
 import { mergeJobs } from '@/lib/jobs';
 import { effectiveJobPay, computeWeeklyLogSettlement } from '@/lib/payroll';
@@ -61,6 +61,12 @@ export default function PayrollAuditPage() {
     const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
     const [adjustForm, setAdjustForm] = useState({ techId: '', amount: '', reason: '', date: '' });
     const [adjustSaving, setAdjustSaving] = useState(false);
+    // Post-approval disputes techs file against a log/job after it's left
+    // Draft — surfaced under Adjustments so they're visible without opening
+    // each log's own review dialog. See payroll-review-dialog.tsx's
+    // "Post-Approval Disputes" tab for the per-log view of the same data.
+    const [payrollDisputes, setPayrollDisputes] = useState<PayrollDispute[]>([]);
+    const [resolvingDisputeId, setResolvingDisputeId] = useState<string | null>(null);
     // Weekly-log audit review (moved here from the Accounting page).
     const [reviewLog, setReviewLog] = useState<WeeklyLog | null>(null);
     const [reviewOpen, setReviewOpen] = useState(false);
@@ -105,8 +111,33 @@ export default function PayrollAuditPage() {
         const unsubAsmt = onSnapshot(collection(db, 'assignments'), snap => {
             setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
-        return () => { unsubT(); unsubL(); unsubAdj(); unsubWO(); unsubAsmt(); };
+        const unsubDisputes = onSnapshot(collection(db, 'payrollDisputes'), snap => {
+            setPayrollDisputes(snap.docs.map(d => ({ ...d.data(), id: d.id } as PayrollDispute)));
+        });
+        return () => { unsubT(); unsubL(); unsubAdj(); unsubWO(); unsubAsmt(); unsubDisputes(); };
     }, []);
+
+    const handleResolvePayrollDispute = async (dispute: PayrollDispute) => {
+        setResolvingDisputeId(dispute.id);
+        try {
+            const adminId = auth.currentUser?.uid || currentUser?.id || '';
+            const adminName = auth.currentUser?.displayName || currentUser?.name || 'Admin';
+            await updateDoc(doc(db, 'payrollDisputes', dispute.id), {
+                status: 'resolved',
+                resolvedAt: new Date().toISOString(),
+                resolvedBy: adminName,
+            });
+            await auditEvent(
+                'payrollDisputes', dispute.id, adminId, adminName, 'resolved_dispute',
+                `Resolved ${dispute.reason.replace(/_/g, ' ')} dispute from ${dispute.techName} for week of ${dispute.weekOf}.`
+            ).catch(() => {});
+            toast({ title: 'Dispute Resolved' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could Not Resolve', description: e.message });
+        } finally {
+            setResolvingDisputeId(null);
+        }
+    };
 
     const openReview = (log: WeeklyLog) => { setReviewLog(log); setReviewOpen(true); };
 
@@ -521,7 +552,7 @@ export default function PayrollAuditPage() {
                         { value: 'weekly', label: 'Weekly', count: filteredLogs.length },
                         { value: 'staff', label: 'Staff Pay', count: staffFilteredLogs.length },
                         { value: 'history', label: 'Paystub History', count: approvedLogsByTech.length },
-                        { value: 'adjustments', label: 'Adjustments', count: adjustments.length },
+                        { value: 'adjustments', label: 'Adjustments', count: adjustments.length + payrollDisputes.filter(d => d.status === 'open').length },
                     ].map(t => (
                         <TabsTrigger key={t.value} value={t.value} className="px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all flex items-center gap-2">
                             {t.label}
@@ -628,6 +659,71 @@ export default function PayrollAuditPage() {
 
                 {/* ── Adjustments ── */}
                 <TabsContent value="adjustments" className="m-0 space-y-4">
+                    {/* Post-approval disputes — a tech disputing a job/log after
+                        payout is an adjustment candidate just like a manual one,
+                        so it lives here instead of only inside each log's own
+                        review dialog. Open ones first, resolved ones collapsed
+                        underneath for a paper trail. */}
+                    {payrollDisputes.length > 0 && (
+                        <div className="space-y-2">
+                            <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">
+                                Payroll Disputes ({payrollDisputes.filter(d => d.status === 'open').length} open)
+                            </p>
+                            <div className="space-y-2">
+                                {[...payrollDisputes].sort((a, b) => (a.status === b.status ? b.createdAt.localeCompare(a.createdAt) : a.status === 'open' ? -1 : 1)).map(dispute => {
+                                    const isOpenDispute = dispute.status === 'open';
+                                    const reasonLabel = dispute.reason === 'incorrect_pay' ? 'Incorrect Pay'
+                                        : dispute.reason === 'missing_reimbursement' ? 'Missing Reimbursement'
+                                        : 'Missing Job';
+                                    const relatedJob = dispute.workOrderId ? jobsById.get(dispute.workOrderId) : undefined;
+                                    const relatedLog = weeklyLogs.find(l => l.id === dispute.weeklyLogId);
+                                    return (
+                                        <div key={dispute.id} className={cn(
+                                            "p-3 rounded-lg border flex flex-col sm:flex-row sm:items-center gap-3",
+                                            isOpenDispute ? "bg-brand-red-dim/10 border-brand-red/30" : "bg-bg-secondary border-border-sub opacity-70"
+                                        )}>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <Badge variant="outline" className={cn("text-[7px] h-3.5 px-1.5 uppercase", isOpenDispute ? "border-brand-red/40 text-brand-red bg-brand-red/5" : "border-text-green/40 text-text-green bg-text-green/5")}>
+                                                        {reasonLabel}
+                                                    </Badge>
+                                                    <span className="text-[10px] font-bold text-text-primary uppercase tracking-wide">{dispute.techName}</span>
+                                                    <span className="text-[9px] text-text-muted font-mono uppercase">Week of {dispute.weekOf}</span>
+                                                    {relatedJob && <span className="text-[9px] text-text-muted font-mono uppercase">{relatedJob.title || relatedJob.description || dispute.workOrderId?.toUpperCase()}</span>}
+                                                </div>
+                                                <p className="text-[10px] text-text-secondary leading-relaxed mt-1">{dispute.notes}</p>
+                                                <p className="text-[8px] text-text-muted font-mono mt-1">
+                                                    {new Date(dispute.createdAt).toLocaleString()}
+                                                    {!isOpenDispute && dispute.resolvedBy && ` · Resolved by ${dispute.resolvedBy}`}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                {relatedLog && (
+                                                    <Button variant="outline" size="sm" className="h-8 text-[9px] font-bold uppercase tracking-widest" onClick={() => openReview(relatedLog)}>
+                                                        <Receipt size={12} className="mr-1.5" /> View Log
+                                                    </Button>
+                                                )}
+                                                {isOpenDispute ? (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-8 text-[9px] font-bold uppercase tracking-widest border-text-green text-text-green hover:bg-green-dim"
+                                                        disabled={resolvingDisputeId === dispute.id}
+                                                        onClick={() => handleResolvePayrollDispute(dispute)}
+                                                    >
+                                                        <CheckCircle size={13} className="mr-1.5" /> Mark Resolved
+                                                    </Button>
+                                                ) : (
+                                                    <Badge variant="active" className="h-6 px-3 text-[8px] uppercase tracking-widest">Resolved</Badge>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex items-center justify-between">
                         <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{adjustments.length} Adjustment{adjustments.length !== 1 ? 's' : ''}</p>
                         <Button size="sm" className="h-8 text-[10px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setAdjustDialogOpen(true)}>

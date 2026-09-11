@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
-import type { WeeklyLog, Expense, Technician, ProjectPayout, Reimbursement, WorkOrder } from '@/lib/types';
+import type { WeeklyLog, Expense, Technician, ProjectPayout, Reimbursement, WorkOrder, PayrollDispute } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
@@ -56,6 +56,7 @@ export default function TechEarningsPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [tech, setTech] = useState<Technician | null>(null);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
+    const [myPayrollDisputes, setMyPayrollDisputes] = useState<PayrollDispute[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [workOrders, setWorkOrders] = useState<any[]>([]);
     // This tech's own assignment docs (current + completed/historical) — the
@@ -119,6 +120,9 @@ export default function TechEarningsPage() {
             const unsubLogs = onSnapshot(query(collection(db, 'weeklyLogs'), where('techId', '==', userId)), (snap) => {
                 setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
             });
+            const unsubDisputes = onSnapshot(query(collection(db, 'payrollDisputes'), where('techId', '==', userId)), (snap) => {
+                setMyPayrollDisputes(snap.docs.map(d => ({ ...d.data(), id: d.id } as PayrollDispute)));
+            });
             const unsubExp = onSnapshot(query(collection(db, 'expenses'), where('techId', '==', userId)), (snap) => {
                 setExpenses(snap.docs.map(d => ({ ...d.data(), id: d.id } as Expense)));
             });
@@ -139,7 +143,7 @@ export default function TechEarningsPage() {
             const unsubReim = onSnapshot(query(collection(db, 'reimbursements'), where('techId', '==', userId)), (snap) => {
                 setReimbursements(snap.docs.map(d => ({ ...d.data(), id: d.id } as Reimbursement)));
             });
-            return () => { unsubTech(); unsubLogs(); unsubExp(); unsubWO(); unsubAsmt(); unsubPayouts(); unsubReim(); };
+            return () => { unsubTech(); unsubLogs(); unsubExp(); unsubWO(); unsubAsmt(); unsubPayouts(); unsubReim(); unsubDisputes(); };
         }
     }, []);
 
@@ -497,6 +501,7 @@ export default function TechEarningsPage() {
                                         const reimbTotal = isApproved
                                             ? nonRejectedReimbs.filter(r => r.status !== 'pending').reduce((s, r) => s + netOfFieldNationFee(r.amount), 0)
                                             : nonRejectedReimbs.reduce((s, r) => s + (r.amount || 0), 0);
+                                        const hasOpenDispute = myPayrollDisputes.some(d => d.status === 'open' && d.weeklyLogId === log.id);
                                         return (
                                             <Fragment key={log.id}>
                                                 <TableRow
@@ -514,7 +519,14 @@ export default function TechEarningsPage() {
                                                         </span>
                                                     </TableCell>
                                                     <TableCell className="text-center">
-                                                        <Badge variant={getStatusVariant(log.status)}>{(log.status || '').toUpperCase()}</Badge>
+                                                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                                                            <Badge variant={getStatusVariant(log.status)}>{(log.status || '').toUpperCase()}</Badge>
+                                                            {hasOpenDispute && (
+                                                                <Badge variant="destructive" className="text-[7px] h-4 uppercase tracking-widest animate-pulse">
+                                                                    Dispute Under Review
+                                                                </Badge>
+                                                            )}
+                                                        </div>
                                                     </TableCell>
                                                     <TableCell className="text-right font-mono font-bold text-text-primary">${settlementOf(log).toFixed(2)}</TableCell>
                                                     <TableCell className="text-right">

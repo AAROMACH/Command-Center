@@ -44,17 +44,25 @@ service firebase.storage {
                    && request.resource.contentType.matches('image/.*');
     }
 
-    // Project documents: admin/tech upload; all signed-in read
+    // Project documents: admin/tech upload and read everything (matches the
+    // company-wide visibility model in firestore.rules' `projects` read
+    // rule — any tech can see any project). Clients only read their own
+    // company's project files, never another client's.
     match /projectDocuments/{projectId}/{filename} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn()
+                   && (isAdmin() || isTech()
+                       || (isClient()
+                           && firestore.get(/databases/(default)/documents/projects/$(projectId)).data.client == userData().clientCompany));
       allow write: if isSignedIn()
                    && (isAdmin() || isTech())
                    && request.resource.size < 10 * 1024 * 1024;
     }
 
-    // Personnel documents: admin upload + tech self-upload; admin + tech read
+    // Personnel documents: admin upload + tech self-upload; admin reads all,
+    // a tech only their own — these are personal records (IDs, certs), not
+    // company-wide info like project documents.
     match /personnelDocuments/{personId}/{filename} {
-      allow read: if isSignedIn() && (isAdmin() || isTech());
+      allow read: if isSignedIn() && (isAdmin() || (isTech() && request.auth.uid == personId));
       allow write: if isSignedIn()
                    && (isAdmin() || (isTech() && request.auth.uid == personId))
                    && request.resource.size < 10 * 1024 * 1024;

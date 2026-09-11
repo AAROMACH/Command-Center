@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import type { Quote, QuoteOptionalGroup } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { CheckCircle2, XCircle, Loader2, AlertTriangle, Shield } from 'lucide-react';
@@ -17,7 +15,6 @@ type PageState = 'loading' | 'error' | 'not_found' | 'already_done' | 'active' |
 export default function PublicQuotePage({ params }: { params: { token: string } }) {
   const [state, setState] = useState<PageState>('loading');
   const [quote, setQuote] = useState<Quote | null>(null);
-  const [quoteDocId, setQuoteDocId] = useState<string | null>(null);
   const [choices, setChoices] = useState<QuoteOptionalGroup[]>([]);
 
   const [approverName, setApproverName] = useState('');
@@ -29,23 +26,17 @@ export default function PublicQuotePage({ params }: { params: { token: string } 
   useEffect(() => {
     (async () => {
       try {
-        const q = query(collection(db, 'quotes'), where('publicToken', '==', params.token));
-        const snap = await getDocs(q);
-        if (snap.empty) { setState('not_found'); return; }
-        const d = snap.docs[0];
-        const data = { ...d.data(), id: d.id } as Quote;
+        const res = await fetch(`/api/public-quote?token=${encodeURIComponent(params.token)}`);
+        if (res.status === 404) { setState('not_found'); return; }
+        if (!res.ok) { setState('error'); return; }
+        const { quote: data } = await res.json() as { quote: Quote };
         setQuote(data);
-        setQuoteDocId(d.id);
         setChoices(data.optionalChoices || []);
         if (data.status === 'approved' || data.status === 'rejected') {
           setState('already_done');
           return;
         }
         setState('active');
-        // Mark as viewed
-        if (data.status === 'sent') {
-          await updateDoc(doc(db, 'quotes', d.id), { status: 'viewed', viewedAt: new Date().toISOString() });
-        }
       } catch {
         setState('error');
       }
@@ -64,18 +55,22 @@ export default function PublicQuotePage({ params }: { params: { token: string } 
   const grandTotal = (quote?.total || 0) + selectedAddon;
 
   const handleApprove = async () => {
-    if (!approverName || !approverEmail || !quoteDocId) return;
+    if (!approverName || !approverEmail) return;
     setSubmitting(true);
     try {
-      await updateDoc(doc(db, 'quotes', quoteDocId), {
-        status: 'approved',
-        approvedAt: new Date().toISOString(),
-        approvedByName: approverName,
-        approvedByEmail: approverEmail,
-        approvalNote: approvalNote || null,
-        optionalChoices: choices,
-        updatedAt: new Date().toISOString(),
+      const res = await fetch('/api/public-quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: params.token,
+          action: 'approve',
+          approverName,
+          approverEmail,
+          approvalNote: approvalNote || null,
+          optionalChoices: choices,
+        }),
       });
+      if (!res.ok) { setState('error'); return; }
       setState('success_approve');
     } catch {
       setState('error');
@@ -85,15 +80,15 @@ export default function PublicQuotePage({ params }: { params: { token: string } 
   };
 
   const handleReject = async () => {
-    if (!rejectReason || !quoteDocId) return;
+    if (!rejectReason) return;
     setSubmitting(true);
     try {
-      await updateDoc(doc(db, 'quotes', quoteDocId), {
-        status: 'rejected',
-        rejectedAt: new Date().toISOString(),
-        rejectionReason: rejectReason,
-        updatedAt: new Date().toISOString(),
+      const res = await fetch('/api/public-quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: params.token, action: 'reject', rejectReason }),
       });
+      if (!res.ok) { setState('error'); return; }
       setState('success_reject');
     } catch {
       setState('error');

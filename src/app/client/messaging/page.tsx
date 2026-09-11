@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { db, auth, storage } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, updateDoc, doc, arrayUnion } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, doc, arrayUnion, query, where, or } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { onAuthStateChanged } from 'firebase/auth';
 import type { Technician, Project } from '@/lib/types';
@@ -72,16 +72,30 @@ export default function ClientMessagingPage() {
   }, []);
 
   useEffect(() => {
-    return onSnapshot(collection(db, 'projects'), (snap) => {
+    // Scoped to the client's own company — an unconstrained read here would
+    // be denied outright by firestore.rules (which only grants clients their
+    // own company's projects), the same way every other client page already
+    // queries this collection.
+    const clientName = currentUser?.clientCompany || currentUser?.name;
+    if (!clientName) { setAllProjects([]); return; }
+    return onSnapshot(query(collection(db, 'projects'), where('client', '==', clientName)), (snap) => {
       setAllProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
     });
-  }, []);
+  }, [currentUser?.clientCompany, currentUser?.name]);
 
+  // Messages must be fetched with a query the security rules can prove is
+  // safe up front (an unconstrained listener is denied for clients): our own
+  // sent/received messages, plus group threads on our own company's
+  // projects. Waits for allProjects so the project-id filter is accurate.
   useEffect(() => {
-    return onSnapshot(collection(db, 'messages'), (snap) => {
+    if (!firebaseUid) return;
+    const companyProjectIds = allProjects.map(p => p.id).slice(0, 29);
+    const clauses = [where('senderId', '==', firebaseUid), where('receiverId', '==', firebaseUid)];
+    if (companyProjectIds.length > 0) clauses.push(where('projectId', 'in', companyProjectIds));
+    return onSnapshot(query(collection(db, 'messages'), or(...clauses)), (snap) => {
       setMessages(snap.docs.map(d => ({ ...d.data(), id: d.id } as DmMessage)));
     });
-  }, []);
+  }, [firebaseUid, allProjects]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

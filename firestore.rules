@@ -69,6 +69,14 @@ service cloud.firestore {
             || (receiverId != 'admin' && messagingRoleAllowed(allowed, receiverId))
            );
     }
+    // A client may see a project's group thread only when the project
+    // belongs to their own company — projects carry the client's company
+    // name in `client` (same convention as clientName/clientCompany
+    // elsewhere), not a uid.
+    function isMyCompanyProject(projectId) {
+      let p = get(/databases/$(database)/documents/projects/$(projectId)).data;
+      return p.client == userData().clientCompany;
+    }
 
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
@@ -334,16 +342,17 @@ service cloud.firestore {
     }
 
     match /quotes/{quoteId} {
+      // The public quote-approval page no longer talks to Firestore
+      // directly — it goes through /api/public-quote, which does the
+      // token-equality check server-side with the Admin SDK. A rules-based
+      // public bypass here can't be scoped to "only the doc matching the
+      // caller's specific token" (rules can't see query filter values), so
+      // `resource.data.publicToken != null` ended up granting anonymous
+      // read of every sent quote in the collection. Closed.
       allow read: if isAdmin()
-          || (isSignedIn() && isClient() && resource.data.clientId == request.auth.uid)
-          || resource.data.publicToken != null;
+          || (isSignedIn() && isClient() && resource.data.clientId == request.auth.uid);
       allow create: if isAdmin();
-      allow update: if isAdmin()
-          || (resource.data.publicToken != null
-              && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['status', 'approvedByName', 'approvedByEmail', 'approvalNote',
-                           'rejectionReason', 'approvedAt', 'rejectedAt', 'viewedAt',
-                           'optionalChoices']));
+      allow update: if isAdmin();
       allow delete: if isSuperAdmin();
     }
 
@@ -417,7 +426,20 @@ service cloud.firestore {
     }
 
     match /messages/{id} {
-      allow read: if isSignedIn();
+      // Staff (admin/tech) see the whole collection — matches the existing
+      // company-wide-visibility model already used for `projects` (any tech
+      // can read any project). Clients are scoped: their own sent/received
+      // messages, plus group threads on projects that belong to their own
+      // company — never another client's DMs or another company's project
+      // chat.
+      allow read: if isSignedIn() && (
+          isAdmin()
+          || isTech()
+          || resource.data.senderId == request.auth.uid
+          || resource.data.get('receiverId', null) == request.auth.uid
+          || (isClient() && resource.data.get('projectId', null) != null
+              && isMyCompanyProject(resource.data.projectId))
+      );
       // Sender must own the message, and (unless admin) must be permitted to
       // message that recipient per their messagingAllowedRoles + blocklist.
       // Project/group messages (no direct receiverId) skip the recipient check.

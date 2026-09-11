@@ -84,14 +84,57 @@ function buildPaystubData(
   };
 }
 
+// The brand mark, watermarked faintly behind every page — cached after the
+// first fetch since it's the same asset on every paystub. Served from
+// public/, hence the raw (space-containing) filename and encodeURI. The
+// source PNG is a 1024x1024 export; downscaled to 400x400 via canvas before
+// embedding — jsPDF embeds PNGs uncompressed, so skipping this turns a ~700KB
+// logo into a multi-MB PDF for what's a barely-visible background mark.
+const LOGO_WATERMARK_PX = 400;
+let logoDataUrlPromise: Promise<string | null> | null = null;
+function loadLogoDataUrl(): Promise<string | null> {
+  if (!logoDataUrlPromise) {
+    logoDataUrlPromise = fetch(encodeURI('/aaromach no bg.png'))
+      .then(res => (res.ok ? res.blob() : Promise.reject(new Error('logo fetch failed'))))
+      .then(blob => createImageBitmap(blob))
+      .then(bitmap => {
+        const canvas = document.createElement('canvas');
+        canvas.width = LOGO_WATERMARK_PX;
+        canvas.height = LOGO_WATERMARK_PX;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        ctx.drawImage(bitmap, 0, 0, LOGO_WATERMARK_PX, LOGO_WATERMARK_PX);
+        return canvas.toDataURL('image/png');
+      })
+      .catch(() => null);
+  }
+  return logoDataUrlPromise;
+}
+
+/**
+ * Draws the logo centered and very faint behind whatever page is current —
+ * called before any text is written on that page so the watermark always
+ * sits underneath, never over, the paystub's own text.
+ */
+function drawWatermark(doc: jsPDF, logoDataUrl: string, pageWidth: number, pageHeight: number) {
+  const size = Math.min(pageWidth, pageHeight) * 0.62;
+  const x = (pageWidth - size) / 2;
+  const y = (pageHeight - size) / 2;
+  doc.saveGraphicsState();
+  doc.setGState(new (doc as any).GState({ opacity: 0.07 }));
+  doc.addImage(logoDataUrl, 'PNG', x, y, size, size);
+  doc.restoreGraphicsState();
+}
+
 /** Builds and triggers a browser download of one log's itemized paystub as a PDF. */
-export function downloadPaystub(
+export async function downloadPaystub(
   log: WeeklyLog,
   tech: Technician | undefined,
   techId: string,
   jobsById: Map<string, WorkOrder>,
-): void {
+): Promise<void> {
   const data = buildPaystubData(log, tech, techId, jobsById);
+  const logoDataUrl = await loadLogoDataUrl();
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -99,9 +142,12 @@ export function downloadPaystub(
   const bottomLimit = pageHeight - 60;
   let y = 56;
 
+  if (logoDataUrl) drawWatermark(doc, logoDataUrl, pageWidth, pageHeight);
+
   const newPageIfNeeded = (needed: number) => {
     if (y + needed > bottomLimit) {
       doc.addPage();
+      if (logoDataUrl) drawWatermark(doc, logoDataUrl, pageWidth, pageHeight);
       y = 56;
     }
   };

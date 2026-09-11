@@ -1,4 +1,4 @@
-import { db } from './firebase';
+import { db, auth } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { createDocId } from './generateId';
 import { ID_PREFIXES } from './constants';
@@ -25,14 +25,21 @@ export const NotificationService = {
         // Determine delivery address
         const to = type === 'email' ? user.email : type === 'sms' ? user.phone : '';
 
-        // Attempt real delivery via server-side API route
+        // Attempt real delivery via server-side API route. The route looks
+        // up the actual delivery address itself from `userId` — it never
+        // trusts a client-supplied destination — so `to` here is only used
+        // to decide whether there's an address on file worth attempting.
         let deliveryStatus: 'sent' | 'failed' | 'pending' = 'pending';
         if (to && type !== 'push') {
           try {
+            const idToken = await auth.currentUser?.getIdToken();
             const res = await fetch('/api/notify', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ type, to, title: `[AAROMACH] ${title.toUpperCase()}`, body }),
+              headers: {
+                'Content-Type': 'application/json',
+                ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+              },
+              body: JSON.stringify({ type, userId, title: `[AAROMACH] ${title.toUpperCase()}`, body }),
             });
             const result = await res.json();
             deliveryStatus = result.status === 'sent' ? 'sent' : result.status === 'skipped' ? 'pending' : 'failed';

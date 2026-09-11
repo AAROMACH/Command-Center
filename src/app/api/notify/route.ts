@@ -1,13 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
+import { adminApp } from '@/lib/firebase-admin';
 
 type NotifyPayload = {
   type: 'email' | 'sms' | 'push';
-  to: string;
+  userId: string;
   title: string;
   body: string;
 };
 
 export async function POST(req: NextRequest) {
+  // Require a real signed-in caller — without this, this route is an open
+  // email/SMS relay anyone on the internet can fire from the company's
+  // verified sending identity to any destination.
+  const authHeader = req.headers.get('authorization') || '';
+  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!idToken) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  try {
+    await getAuth(adminApp).verifyIdToken(idToken);
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   let payload: NotifyPayload;
   try {
     payload = await req.json();
@@ -15,9 +32,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { type, to, title, body } = payload;
-  if (!type || !to || !title || !body) {
-    return NextResponse.json({ error: 'Missing required fields: type, to, title, body' }, { status: 400 });
+  const { type, userId, title, body } = payload;
+  if (!type || !userId || !title || !body) {
+    return NextResponse.json({ error: 'Missing required fields: type, userId, title, body' }, { status: 400 });
+  }
+
+  // Resolve the real delivery address server-side from the target user's own
+  // record — never trust a client-supplied destination string, or an
+  // authenticated caller could redirect delivery to an arbitrary address.
+  const userSnap = await getFirestore(adminApp).collection('users').doc(userId).get();
+  if (!userSnap.exists) {
+    return NextResponse.json({ error: 'Unknown user' }, { status: 404 });
+  }
+  const userRecord = userSnap.data() || {};
+  const to = type === 'sms' ? userRecord.phone : userRecord.email;
+  if (!to) {
+    return NextResponse.json({ status: 'skipped', reason: 'No delivery address on file' });
   }
 
   try {

@@ -126,8 +126,15 @@ service cloud.firestore {
           || (isClient() && resource.data.clientId == request.auth.uid)
       );
       allow create: if isAdmin();
+      // Techs may update their own assignment (status, notes, check-in/out)
+      // but never the financial fields — those are admin/payroll-audit-only,
+      // since effectiveJobPay() reads job.pay live off this doc.
       allow update: if isAdmin()
-          || (isTech() && resource.data.techId == request.auth.uid);
+          || (isTech() && resource.data.techId == request.auth.uid
+              && !request.resource.data.diff(resource.data).affectedKeys()
+                  .hasAny(['pay', 'payType', 'blendedFixedPay', 'blendedIncludedHours', 'blendedHourlyRate',
+                            'finalPay', 'auditReimbursement', 'auditOverhead', 'isAudited', 'auditedAt', 'auditedBy',
+                            'source']));
       allow delete: if isAdmin();
     }
 
@@ -143,9 +150,16 @@ service cloud.firestore {
           || (isClient() && resource.data.clientId == request.auth.uid)
       );
       allow create: if isAdmin();
+      // Same financial-field lockout as assignments (see comment above) —
+      // workOrders and assignments are the same doc shape, just pre/post
+      // dispatch.
       allow update: if isAdmin()
           || (isTech() && (resource.data.techId == request.auth.uid
-              || resource.data.assignedTechnicianId == request.auth.uid));
+              || resource.data.assignedTechnicianId == request.auth.uid)
+              && !request.resource.data.diff(resource.data).affectedKeys()
+                  .hasAny(['pay', 'payType', 'blendedFixedPay', 'blendedIncludedHours', 'blendedHourlyRate',
+                            'finalPay', 'auditReimbursement', 'auditOverhead', 'isAudited', 'auditedAt', 'auditedBy',
+                            'source']));
       allow delete: if isAdmin();
     }
 
@@ -179,7 +193,8 @@ service cloud.firestore {
     match /weeklyLogClaims/{id} {
       allow read: if isSignedIn() && (isAdmin() || isTech());
       allow create, update: if isAdmin()
-          || (isTech() && request.resource.data.techId == request.auth.uid);
+          || (isTech() && request.resource.data.techId == request.auth.uid
+              && (resource == null || resource.data.techId == request.auth.uid));
       allow delete: if isAdmin();
     }
 
@@ -188,7 +203,8 @@ service cloud.firestore {
           isAdmin()
           || (isTech() && resource.data.techId == request.auth.uid)
       );
-      allow create: if isTech() || isAdmin();
+      allow create: if isAdmin()
+          || (isTech() && request.resource.data.techId == request.auth.uid);
       allow update: if isAdmin()
           || (isTech() && resource.data.techId == request.auth.uid);
       allow delete: if isAdmin();
@@ -213,7 +229,8 @@ service cloud.firestore {
           isAdmin()
           || (isTech() && resource.data.techId == request.auth.uid)
       );
-      allow create: if isTech() || isAdmin();
+      allow create: if isAdmin()
+          || (isTech() && request.resource.data.techId == request.auth.uid);
       allow update: if isAdmin()
           || (isTech() && resource.data.techId == request.auth.uid);
       allow delete: if isAdmin();
@@ -263,9 +280,12 @@ service cloud.firestore {
           || (request.auth != null && (
               isAdmin()
               // Signed-in clients create service tickets with status 'new'
-              // (client portal) or 'pending_review' (intake forms)
+              // (client portal) or 'pending_review' (intake forms) — and may
+              // only attribute the ticket to themselves, never forge another
+              // client's clientId/clientName.
               || (isClient()
                   && request.resource.data.status in ['new', 'pending_review']
+                  && request.resource.data.clientId == request.auth.uid
                   && !request.resource.data.keys().hasAny(['assignedAdminId', 'adminNotes', 'reviewedAt', 'reviewedBy', 'convertedClientId']))
           ));
       allow update: if isAdmin()
@@ -277,8 +297,11 @@ service cloud.firestore {
     }
 
     match /serviceRequests/{id} {
-      // Public service request form — unauthenticated create allowed
-      allow create: if true;
+      // Legacy collection — the public intake form now writes to
+      // clientRequests instead (see src/app/public/service-request). No app
+      // code writes here anymore, so creation is closed rather than left as
+      // an open unauthenticated write.
+      allow create: if false;
       allow read, update: if isAdmin();
       allow delete: if isAdmin();
     }
@@ -291,7 +314,8 @@ service cloud.firestore {
               || resource.data.clientName == userData().clientCompany
           ))
       );
-      allow create: if isSignedIn() && (isClient() || isAdmin());
+      allow create: if isAdmin()
+          || (isSignedIn() && isClient() && request.resource.data.clientId == request.auth.uid);
       allow update: if isAdmin()
           || (isClient() && (
               resource.data.clientId == request.auth.uid
@@ -340,7 +364,8 @@ service cloud.firestore {
           isPayrollAdmin()
           || (isTech() && resource.data.techId == request.auth.uid)
       );
-      allow create: if isTech() || isAdmin();
+      allow create: if isAdmin()
+          || (isTech() && request.resource.data.techId == request.auth.uid);
       allow update: if isPayrollAdmin();
       allow delete: if isSuperAdmin();
     }
@@ -361,7 +386,8 @@ service cloud.firestore {
           isAdmin()
           || (isTech() && resource.data.techId == request.auth.uid)
       );
-      allow create: if isTech() || isAdmin();
+      allow create: if isAdmin()
+          || (isTech() && request.resource.data.techId == request.auth.uid);
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
@@ -426,9 +452,13 @@ service cloud.firestore {
           isAdmin()
           || (isTech() && resource.data.techId == request.auth.uid)
       );
-      allow create: if isTech() || isAdmin();
+      allow create: if isAdmin()
+          || (isTech() && request.resource.data.techId == request.auth.uid);
+      // Once payroll has acted on an expense (status left 'pending'), the
+      // tech can no longer edit it — only re-submit/withdraw while pending.
       allow update: if isPayrollAdmin()
-          || (isTech() && resource.data.techId == request.auth.uid);
+          || (isTech() && resource.data.techId == request.auth.uid
+              && resource.data.status == 'Pending');
       allow delete: if isPayrollAdmin();
     }
 
@@ -440,7 +470,9 @@ service cloud.firestore {
     match /auditLog/{entityId} {
       match /events/{eventId} {
         allow read: if isAdmin();
-        allow create: if isSignedIn();
+        // The event must record the real actor — otherwise anyone signed in
+        // could plant an audit entry attributed to someone else.
+        allow create: if isSignedIn() && request.resource.data.changedBy == request.auth.uid;
       }
     }
 

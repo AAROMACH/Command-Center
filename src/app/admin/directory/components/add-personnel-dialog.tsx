@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { createAuthUser } from '../actions';
+import { auth } from '@/lib/firebase';
 import { isTech, isClient } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import {
@@ -204,7 +205,12 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
     }
 
     try {
-        const { uid, error } = await createAuthUser(formData.email!);
+        const idToken = await auth.currentUser?.getIdToken();
+        if (!idToken) {
+            toast({ variant: "destructive", title: "Not signed in", description: "Please sign in again and retry." });
+            return;
+        }
+        const { uid, error } = await createAuthUser(formData.email!, idToken);
 
         if (error || !uid) {
             const isAlreadyExists = error?.toLowerCase().includes('already exists') || error?.toLowerCase().includes('already in use');

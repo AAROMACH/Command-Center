@@ -44,6 +44,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn, compareScheduleTime } from '@/lib/utils';
 import type { WorkOrder, Technician, Project, WeeklyLog, SiteRequest, ServiceRequest, TimeOffRequest, Invoice } from '@/lib/types';
+import { isArchivedJob } from '@/lib/jobs';
 import { computeSla, slaStatusColor, SLA_DEFAULTS } from '@/lib/sla';
 import { Timer, AlertTriangle as SlaAlertIcon } from 'lucide-react';
 import { format, parseISO, isSameDay, startOfMonth } from 'date-fns';
@@ -129,8 +130,13 @@ export default function DashboardPage() {
         };
     }, []);
 
+    // status === 'unassigned' alone isn't reliable — a job can be soft-archived
+    // or already have a technician attached without its status field having
+    // been updated to match (same stale-data case fixed in the Routes tab's
+    // job pool). Filter those out so the dashboard count and table match
+    // what's actually awaiting dispatch.
     const unassignedJobs = useMemo(() =>
-        workOrders.filter(wo => wo.status === 'unassigned'),
+        workOrders.filter(wo => wo.status === 'unassigned' && !wo.assignedTechnicianId && !isArchivedJob(wo)),
     [workOrders]);
 
     // Cancelled jobs sit in the Dispatch Hub review queue, not the active count.

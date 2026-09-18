@@ -577,6 +577,10 @@ export type WeeklyLog = {
   reimbursements: FinancialRecord[];
   missingAssignmentReports?: MissingAssignmentReport[];
   totalPayout?: number;
+  /** Set when an approved log receives a duplicate-log merge; cleared on reapproval. */
+  mergeReviewRequired?: boolean;
+  /** Hides an acknowledged duplicate alert until the group's entries change. */
+  duplicateAlertIgnoreSignature?: string;
   submittedAt?: string;
   submittedBy?: string;
   unsubmitRequested?: boolean;

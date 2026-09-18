@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
-import { isClient } from '@/lib/permissions';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { WorkOrderId } from '@/components/work-order-id';
 import { type JobWithSrc, jobTechId, isAssigned, isArchivedJob, mergeJobs } from '@/lib/jobs';
@@ -23,7 +22,7 @@ import {
   format, addMonths, subMonths, startOfMonth, endOfMonth,
   eachDayOfInterval, getDay, isSameDay, isToday, parseISO,
 } from 'date-fns';
-import { cn, compareScheduleTime, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
+import { cn, compareScheduleTime, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import {
   DndContext, type DragEndEvent,
@@ -115,7 +114,7 @@ export default function AdminCalendarPage() {
   );
 
   const adminTechs = useMemo(() =>
-    technicians.filter(t => !isClient(t)), [technicians]);
+    technicians.filter(isAssignableTechnician), [technicians]);
 
   // UI state
   const [monthDate, setMonthDate]         = useState(() => new Date());
@@ -272,11 +271,12 @@ export default function AdminCalendarPage() {
         // so the change reflects on Dispatch, the Assignments hub and the tech
         // portal — not just here.
         const t = adminTechs.find(x => x.id === editForm.assignedTechnicianId);
+        if (!t || isInactiveTechnician(t)) throw new Error('Select an active technician.');
         const moved = drawerJob._src !== 'assignment';
         await assignJobToTechnician({
           job: drawerJob, source: drawerJob._src === 'assignment' ? 'assignment' : 'workOrder',
           techId: editForm.assignedTechnicianId, techName: t?.name,
-          previousTechId: prevTech, previousTechName: adminTechs.find(x => x.id === prevTech)?.name,
+          previousTechId: prevTech, previousTechName: technicians.find(x => x.id === prevTech)?.name,
           actorName: 'Admin', extraFields: fieldUpdates,
         });
         if (moved) setDrawerJob(null); // its doc id changed — close the stale drawer
@@ -297,7 +297,7 @@ export default function AdminCalendarPage() {
   const handleAssignTech = async (techId: string) => {
     if (!drawerJob) return;
     const tech = adminTechs.find(t => t.id === techId);
-    if (tech && isInactiveTechnician(tech)) return;
+    if (!tech || isInactiveTechnician(tech)) return;
     setShowAssignPanel(false);
     try {
       const prevTech = jobTechId(drawerJob);
@@ -307,7 +307,7 @@ export default function AdminCalendarPage() {
       await assignJobToTechnician({
         job: drawerJob, source: drawerJob._src === 'assignment' ? 'assignment' : 'workOrder',
         techId, techName: tech?.name,
-        previousTechId: prevTech, previousTechName: adminTechs.find(t => t.id === prevTech)?.name,
+        previousTechId: prevTech, previousTechName: technicians.find(t => t.id === prevTech)?.name,
         actorName: 'Admin',
       });
       setEditForm(f => ({ ...f, assignedTechnicianId: techId }));
@@ -362,7 +362,7 @@ export default function AdminCalendarPage() {
 
   // Derived
   const drawerAssignedTech = drawerJob
-    ? adminTechs.find(t => t.id === (jobTechId(drawerJob) || editForm.assignedTechnicianId))
+    ? technicians.find(t => t.id === (jobTechId(drawerJob) || editForm.assignedTechnicianId))
     : null;
   const activeDragJob = activeId ? allJobs.find(j => j.id === activeId) : null;
 
@@ -580,7 +580,7 @@ export default function AdminCalendarPage() {
               ) : (
                 selectedDateJobs.map((wo, idx) => {
                   const assigned  = isAssigned(wo);
-                  const tech      = adminTechs.find(t => t.id === (jobTechId(wo)));
+                  const tech      = technicians.find(t => t.id === (jobTechId(wo)));
                   const isSelected = selectedJobId === wo.id;
                   const pm        = PRIORITY_META[wo.priority] || PRIORITY_META.low;
                   return (

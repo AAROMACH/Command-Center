@@ -448,7 +448,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             const finalTotal = calculatedTotalPayout;
             try {
                 const logRef = doc(db, 'weeklyLogs', localLog.id);
-                await updateDoc(logRef, { status, totalPayout: finalTotal });
+                await updateDoc(logRef, { status, totalPayout: finalTotal, ...(status === 'Approved' ? { mergeReviewRequired: false } : {}) });
                 onStatusChange(localLog.id, status, finalTotal);
                 const adminId = auth.currentUser?.uid ?? '';
                 const adminName = auth.currentUser?.displayName ?? 'Admin';

@@ -115,6 +115,8 @@ type WorkOrdersTableProps = {
   dateAsc?: boolean;
   isDateSortActive?: boolean;
   onToggleDateSort?: () => void;
+  mobileAssignOrder?: WorkOrder | null;
+  onMobileAssignOrderHandled?: () => void;
 };
 
 export const WorkOrdersTable = React.memo(({
@@ -123,7 +125,9 @@ export const WorkOrdersTable = React.memo(({
   mode,
   dateAsc,
   isDateSortActive,
-  onToggleDateSort
+  onToggleDateSort,
+  mobileAssignOrder,
+  onMobileAssignOrderHandled,
 }: WorkOrdersTableProps) => {
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -172,6 +176,12 @@ export const WorkOrdersTable = React.memo(({
     setIsDialogOpen(true);
   }, []);
 
+  useEffect(() => {
+    if (!mobileAssignOrder) return;
+    handleOpenAssignDialog(mobileAssignOrder);
+    onMobileAssignOrderHandled?.();
+  }, [mobileAssignOrder, handleOpenAssignDialog, onMobileAssignOrderHandled]);
+
   const handleOpenEditDialog = useCallback((order: WorkOrder) => {
     if (order.status === 'completed') return;
     setSelectedOrder(order);
@@ -197,7 +207,7 @@ export const WorkOrdersTable = React.memo(({
   const handleAssign = useCallback(async (techId: string) => {
     if (!selectedOrder) return;
     const targetTech = technicians.find(t => t.id === techId);
-    if (targetTech && isInactiveTechnician(targetTech)) return;
+    if (!targetTech || !isAssignableTechnician(targetTech) || isInactiveTechnician(targetTech)) return;
 
     try {
       const assignmentId = await createDocId(ID_PREFIXES.ASSIGNMENT);

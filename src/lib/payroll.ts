@@ -10,9 +10,13 @@ import type { WeeklyLogItem, FinancialRecord, MissingAssignmentReport, WorkOrder
 /** Field Nation platform fee rate (15.85%). */
 export const FIELD_NATION_FEE_RATE = 0.1585;
 
+// Settle each displayed pay line to cents before adding a weekly total. This
+// keeps the total equal to the amounts shown on job rows and paystubs.
+const payCents = (amount: number): number => Math.round((amount + Number.EPSILON) * 100);
+
 /** Amount left after the Field Nation platform fee — i.e. what the tech nets. */
 export const netOfFieldNationFee = (amount: number): number =>
-  (amount || 0) * (1 - FIELD_NATION_FEE_RATE);
+  payCents((amount || 0) * (1 - FIELD_NATION_FEE_RATE)) / 100;
 
 /**
  * The tech's actual settlement for one weekly-log item — NOT the raw
@@ -25,9 +29,9 @@ export const netOfFieldNationFee = (amount: number): number =>
  * linked job can't be found (e.g. it was later archived/deleted).
  */
 export function effectiveJobPay(item: WeeklyLogItem, job: WorkOrder | undefined): number {
-  if (!job || job.source !== 'Imported') return item.jobPay || 0;
+  if (!job || job.source !== 'Imported') return payCents(item.jobPay || 0) / 100;
   const netLabor = (job.pay || 0) * (1 - FIELD_NATION_FEE_RATE);
-  return Math.max(0, netLabor * 0.5);
+  return payCents(Math.max(0, netLabor * 0.5)) / 100;
 }
 
 /**
@@ -45,15 +49,15 @@ export function computeWeeklyLogSettlement(
   },
   jobsById: Map<string, WorkOrder> = new Map(),
 ): number {
-  const itemPay = (log.items || [])
+  const itemPayCents = (log.items || [])
     .filter(i => i.confirmationStatus !== 'disputed')
-    .reduce((s, i) => s + effectiveJobPay(i, jobsById.get(i.workOrderId)), 0);
-  const reimbursementPay = (log.reimbursements || [])
+    .reduce((s, i) => s + payCents(effectiveJobPay(i, jobsById.get(i.workOrderId))), 0);
+  const reimbursementPayCents = (log.reimbursements || [])
     .filter(r => r.status !== 'pending' && r.status !== 'rejected')
-    .reduce((s, r) => s + netOfFieldNationFee(r.amount), 0);
-  const reportPay = (log.missingAssignmentReports || []).reduce((s, r) =>
+    .reduce((s, r) => s + payCents(netOfFieldNationFee(r.amount)), 0);
+  const reportPayCents = (log.missingAssignmentReports || []).reduce((s, r) =>
     s + (r.jobType === 'Imported'
-      ? (r.finalPay || 0) + netOfFieldNationFee(r.auditReimbursement || 0)
-      : (r.pay || 0)), 0);
-  return itemPay + reimbursementPay + reportPay;
+      ? payCents(r.finalPay || 0) + payCents(netOfFieldNationFee(r.auditReimbursement || 0))
+      : payCents(r.pay || 0)), 0);
+  return (itemPayCents + reimbursementPayCents + reportPayCents) / 100;
 }

@@ -7,6 +7,7 @@ import { hasPermission } from '@/lib/permissions';
 import { computeWeeklyLogSettlement, effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
 import { mergeJobs } from '@/lib/jobs';
 import { useHelperLogSync } from '@/hooks/use-helper-log-sync';
+import { createDraftWeeklyLog } from '@/lib/weekly-log';
 import { uploadFile } from '@/lib/upload';
 import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
@@ -326,18 +327,16 @@ export default function TechWeeklyLogPage() {
             return;
         }
 
-        const newLog: Omit<WeeklyLog, 'id'> = {
-            techId: currentTechId,
-            weekOf,
-            status: 'Draft',
-            items: [],
-            reimbursements: [],
-            totalPayout: 0
-        };
-
         try {
-            const logId = await createDocId(ID_PREFIXES.WEEKLY_LOG);
-            await setDoc(doc(db, 'weeklyLogs', logId), { ...newLog, id: logId });
+            const result = await createDraftWeeklyLog({
+                techId: currentTechId,
+                weekOf,
+                makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
+            });
+            if (result === 'exists') {
+                toast({ variant: 'destructive', title: 'Registry Error', description: `A log for the week of ${weekOf} already exists.` });
+                return;
+            }
             toast({ title: "Log Initialized", description: `Weekly manifest for ${weekOf} has been created.` });
             setIsCreateLogOpen(false);
         } catch (e: any) {

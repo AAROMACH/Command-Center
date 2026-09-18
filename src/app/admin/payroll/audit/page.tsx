@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { db, auth } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, where, runTransaction } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Receipt, Search, ChevronDown, ChevronRight, DollarSign, CheckCircle, Clock, X, Download, Plus, SlidersHorizontal, MergeIcon, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isWithinInterval } from 'date-fns';
-import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder, PayrollDispute } from '@/lib/types';
+import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder, PayrollDispute, FinancialRecord } from '@/lib/types';
 import { isClient, isTech, isSuperAdmin } from '@/lib/permissions';
 import { mergeJobs } from '@/lib/jobs';
 import { effectiveJobPay, computeWeeklyLogSettlement } from '@/lib/payroll';
@@ -47,6 +47,19 @@ function pickPrimaryLog(group: WeeklyLog[]): WeeklyLog {
         if (rankDiff !== 0) return rankDiff;
         return (b.items?.length || 0) - (a.items?.length || 0);
     })[0];
+}
+
+// An ignored alert belongs to this exact set of logs and their payable
+// entries. A new log, job, reimbursement, or status change shows it again.
+function duplicateGroupSignature(group: WeeklyLog[]): string {
+    return JSON.stringify([...group].sort((a, b) => a.id.localeCompare(b.id)).map(log => ({
+        id: log.id,
+        status: log.status,
+        items: (log.items || []).map(item => [item.id, item.workOrderId, item.jobPay, item.confirmationStatus, item.isAdminReviewed]),
+        reimbursements: (log.reimbursements || []).map(r => [r.id, r.amount, r.status]),
+        reports: (log.missingAssignmentReports || []).map(r => [r.id, r.pay, r.finalPay]),
+        totalPayout: log.totalPayout,
+    })));
 }
 
 export default function PayrollAuditPage() {
@@ -88,6 +101,10 @@ export default function PayrollAuditPage() {
     const [mergingKey, setMergingKey] = useState<string | null>(null);
     const [deletingLogId, setDeletingLogId] = useState<string | null>(null);
     const [logToDelete, setLogToDelete] = useState<{ log: WeeklyLog; primary: WeeklyLog } | null>(null);
+    const [approvedMergeGroup, setApprovedMergeGroup] = useState<WeeklyLog[] | null>(null);
+    const [ignoreGroup, setIgnoreGroup] = useState<WeeklyLog[] | null>(null);
+    const [ignoringKey, setIgnoringKey] = useState<string | null>(null);
+    const [deleteSelectionKey, setDeleteSelectionKey] = useState<string | null>(null);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -197,11 +214,8 @@ export default function PayrollAuditPage() {
         count: filteredLogs.length,
     }), [filteredLogs]);
 
-    // A tech should only ever have ONE weeklyLogs doc per week. More than one
-    // for the same techId+weekOf is a data-integrity bug (a race between two
-    // near-simultaneous job completions each creating their own log before
-    // either write landed) rather than a normal state, so surface it and
-    // offer a one-click merge instead of leaving it silently wrong.
+    // Multiple Drafts are a data-integrity issue; a Draft beside an Approved
+    // log can also hold later work that needs a fresh payroll review.
     const duplicateLogGroups = useMemo(() => {
         const byKey = new Map<string, WeeklyLog[]>();
         weeklyLogs.forEach(log => {
@@ -211,50 +225,95 @@ export default function PayrollAuditPage() {
         });
         return Array.from(byKey.entries())
             .filter(([, group]) => group.length > 1)
-            .map(([key, group]) => ({ key, group, primary: pickPrimaryLog(group) }));
+            .map(([key, group]) => ({ key, group, primary: pickPrimaryLog(group) }))
+            .filter(({ group, primary }) => primary.duplicateAlertIgnoreSignature !== duplicateGroupSignature(group));
     }, [weeklyLogs]);
 
-    const handleMergeDuplicateLogs = async (group: WeeklyLog[]) => {
+    const handleIgnoreDuplicateAlert = async (group: WeeklyLog[]) => {
+        const key = `${group[0].techId}__${group[0].weekOf}`;
+        setIgnoringKey(key);
+        try {
+            const primary = pickPrimaryLog(group);
+            const signature = duplicateGroupSignature(group);
+            await updateDoc(doc(db, 'weeklyLogs', primary.id), { duplicateAlertIgnoreSignature: signature });
+            const adminId = auth.currentUser?.uid || currentUser?.id || '';
+            const adminName = auth.currentUser?.displayName || currentUser?.name || 'Admin';
+            await auditEvent('weeklyLogs', primary.id, adminId, adminName, 'ignored_duplicate_alert',
+                `Ignored duplicate log alert for ${primary.techId}, week of ${primary.weekOf}: ${group.map(log => log.id).join(', ')}.`).catch(() => {});
+            toast({ title: 'Alert Ignored', description: 'Both logs and their pay totals are unchanged.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could Not Ignore Alert', description: e.message });
+        } finally {
+            setIgnoringKey(null);
+            setIgnoreGroup(null);
+        }
+    };
+
+    const handleMergeDuplicateLogs = async (group: WeeklyLog[], confirmedApproved = false) => {
+        const primary = pickPrimaryLog(group);
+        if (primary.status === 'Approved' && !confirmedApproved) {
+            setApprovedMergeGroup(group);
+            return;
+        }
         const key = `${group[0].techId}__${group[0].weekOf}`;
         setMergingKey(key);
         try {
-            const primary = pickPrimaryLog(group);
-            const rest = group.filter(l => l.id !== primary.id);
-
-            const items = [...(primary.items || [])];
-            const seenWoIds = new Set(items.map(i => i.workOrderId));
-            const reimbursements = [...(primary.reimbursements || [])];
-            const seenReimbIds = new Set(reimbursements.map(r => r.id));
-            const missingAssignmentReports = [...(primary.missingAssignmentReports || [])];
-            const seenReportIds = new Set(missingAssignmentReports.map(r => r.id));
-
-            rest.forEach(log => {
-                (log.items || []).forEach(item => {
-                    if (!seenWoIds.has(item.workOrderId)) { items.push(item); seenWoIds.add(item.workOrderId); }
-                });
-                (log.reimbursements || []).forEach(r => {
-                    if (!seenReimbIds.has(r.id)) { reimbursements.push(r); seenReimbIds.add(r.id); }
-                });
-                (log.missingAssignmentReports || []).forEach(r => {
-                    if (!seenReportIds.has(r.id)) { missingAssignmentReports.push(r); seenReportIds.add(r.id); }
-                });
-            });
-
-            const totalPayout = computeWeeklyLogSettlement({ items, reimbursements, missingAssignmentReports }, jobsById);
-
-            await updateDoc(doc(db, 'weeklyLogs', primary.id), { items, reimbursements, missingAssignmentReports, totalPayout });
-            for (const log of rest) {
-                await deleteDoc(doc(db, 'weeklyLogs', log.id));
-            }
-
             const adminId = auth.currentUser?.uid || currentUser?.id || '';
             const adminName = auth.currentUser?.displayName || currentUser?.name || 'Admin';
+            const merged = await runTransaction(db, async tx => {
+                // Read the current documents so a completion arriving while an
+                // admin reviews the warning cannot be overwritten by the merge.
+                const snapshots = await Promise.all(group.map(log => tx.get(doc(db, 'weeklyLogs', log.id))));
+                if (snapshots.some(snap => !snap.exists())) throw new Error('One of these logs changed. Refresh and try again.');
+                const current = snapshots.map(snap => ({ ...snap.data(), id: snap.id } as WeeklyLog));
+                const kept = pickPrimaryLog(current);
+                if (kept.id !== primary.id || (kept.status === 'Approved' && !confirmedApproved)) {
+                    throw new Error('The approval state changed. Refresh and review the merge again.');
+                }
+                if ((kept as any).paid || (kept as any).archived) {
+                    throw new Error('This log is paid or archived. Reconcile it before merging.');
+                }
+                const rest = current.filter(log => log.id !== kept.id);
+                const items: WeeklyLogItem[] = [];
+                const seenWoIds = new Set<string>();
+                const reimbursements: FinancialRecord[] = [];
+                const seenReimbIds = new Set<string>();
+                const missingAssignmentReports: NonNullable<WeeklyLog['missingAssignmentReports']> = [];
+                const seenReportIds = new Set<string>();
+                [kept, ...rest].forEach(log => {
+                    (log.items || []).forEach(item => {
+                        if (!seenWoIds.has(item.workOrderId)) { items.push(item); seenWoIds.add(item.workOrderId); }
+                    });
+                    (log.reimbursements || []).forEach(r => {
+                        if (!seenReimbIds.has(r.id)) { reimbursements.push(r); seenReimbIds.add(r.id); }
+                    });
+                    (log.missingAssignmentReports || []).forEach(r => {
+                        if (!seenReportIds.has(r.id)) { missingAssignmentReports.push(r); seenReportIds.add(r.id); }
+                    });
+                });
+                const totalPayout = computeWeeklyLogSettlement({ items, reimbursements, missingAssignmentReports }, jobsById);
+                tx.update(doc(db, 'weeklyLogs', kept.id), {
+                    items, reimbursements, missingAssignmentReports, totalPayout,
+                    ...(kept.status === 'Approved' ? {
+                        status: 'Submitted', submittedAt: new Date().toISOString(),
+                        submittedBy: adminName, mergeReviewRequired: true,
+                    } : {}),
+                });
+                rest.forEach(log => tx.delete(doc(db, 'weeklyLogs', log.id)));
+                tx.set(doc(db, 'weeklyLogClaims', `${kept.techId}_${kept.weekOf}`), {
+                    techId: kept.techId, weekOf: kept.weekOf, logId: kept.id,
+                });
+                return { kept, rest };
+            });
+
             await auditEvent(
-                'weeklyLogs', primary.id, adminId, adminName, 'merged_duplicate',
-                `Merged ${rest.length} duplicate log${rest.length > 1 ? 's' : ''} (${rest.map(l => l.id).join(', ')}) for week of ${primary.weekOf} into ${primary.id}.`
+                'weeklyLogs', merged.kept.id, adminId, adminName, 'merged_duplicate',
+                `Merged ${merged.rest.length} duplicate log${merged.rest.length > 1 ? 's' : ''} (${merged.rest.map(l => l.id).join(', ')}) for week of ${merged.kept.weekOf} into ${merged.kept.id}.${merged.kept.status === 'Approved' ? ' Prior approval reopened; payroll review required.' : ''}`
             ).catch(() => {});
 
-            toast({ title: 'Logs Merged', description: `Combined ${group.length} logs for week of ${primary.weekOf} into ${primary.id.toUpperCase()}.` });
+            toast({ title: 'Logs Merged', description: merged.kept.status === 'Approved'
+                ? `Combined logs for ${merged.kept.weekOf}. Approval reopened; payroll review is required.`
+                : `Combined ${group.length} logs for week of ${merged.kept.weekOf} into ${merged.kept.id.toUpperCase()}.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Merge Failed', description: e.message });
         } finally {
@@ -340,7 +399,10 @@ export default function PayrollAuditPage() {
                                         <p className="text-[11px] font-bold text-text-primary uppercase">{tech?.name || log.techId}</p>
                                         <p className="text-[9px] text-text-muted font-mono">Week of {log.weekOf}</p>
                                     </div>
-                                    <Badge variant={statusVariant(log.status)} className="text-[7px] uppercase h-4 w-fit">{log.status}</Badge>
+                                    <div className="flex flex-col items-start gap-1">
+                                        <Badge variant={statusVariant(log.status)} className="text-[7px] uppercase h-4 w-fit">{log.status}</Badge>
+                                        {log.mergeReviewRequired && <span className="text-[8px] font-bold text-accent-gold flex items-center gap-1"><AlertTriangle size={10} /> Needs reapproval</span>}
+                                    </div>
                                     <div className="text-right">
                                         <p className={cn('text-[12px] font-bold font-mono', log.status === 'Approved' ? 'text-text-green' : 'text-text-primary')}>
                                             ${settlementOf(log).toFixed(2)}
@@ -443,11 +505,8 @@ export default function PayrollAuditPage() {
                 </div>
             </div>
 
-            {/* Duplicate weekly log warning — a tech should never have two logs
-                for the same week; surface it, identify which one is the
-                legitimate original, and offer either a one-click merge or a
-                per-log delete for the extras (the original is never
-                deletable this way). */}
+            {/* Duplicate Drafts merge directly. An Approved original requires
+                explicit review before its status is reopened. */}
             {duplicateLogGroups.length > 0 && (
                 <div className="space-y-2">
                     {duplicateLogGroups.map(({ key, group, primary }) => {
@@ -467,22 +526,50 @@ export default function PayrollAuditPage() {
                                             <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">
                                                 {totalItems} total job entries across the {group.length} logs ({uniqueItems} unique) — merge combines everything, or delete an individual duplicate below.
                                             </p>
+                                            {primary.status === 'Approved' && (
+                                                <p className="text-[10px] font-bold text-accent-gold flex items-center gap-1 mt-1">
+                                                    <AlertTriangle size={11} /> Needs review: merging will reopen this approved log.
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                     {superAdmin ? (
-                                        <Button
-                                            size="sm"
-                                            className="h-8 text-[9px] font-bold uppercase tracking-widest bg-brand-red hover:bg-brand-red-hover shrink-0"
-                                            disabled={mergingKey === key}
-                                            onClick={() => handleMergeDuplicateLogs(group)}
-                                        >
-                                            <MergeIcon size={12} className="mr-1.5" />
-                                            {mergingKey === key ? 'Merging…' : 'Merge Into One'}
-                                        </Button>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Button
+                                                size="sm" variant="outline"
+                                                className="h-8 text-[9px] font-bold uppercase tracking-widest shrink-0"
+                                                disabled={ignoringKey === key || mergingKey === key}
+                                                onClick={() => setIgnoreGroup(group)}
+                                            >
+                                                {ignoringKey === key ? 'Ignoring…' : 'Ignore'}
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                className="h-8 text-[9px] font-bold uppercase tracking-widest bg-brand-red hover:bg-brand-red-hover shrink-0"
+                                                disabled={mergingKey === key || ignoringKey === key}
+                                                onClick={() => handleMergeDuplicateLogs(group)}
+                                            >
+                                                <MergeIcon size={12} className="mr-1.5" />
+                                                {mergingKey === key ? 'Merging…' : 'Merge'}
+                                            </Button>
+                                            <Button
+                                                size="sm" variant="outline"
+                                                className="h-8 text-[9px] font-bold uppercase tracking-widest border-brand-red/40 text-brand-red shrink-0"
+                                                disabled={mergingKey === key || ignoringKey === key}
+                                                onClick={() => setDeleteSelectionKey(current => current === key ? null : key)}
+                                            >
+                                                Delete
+                                            </Button>
+                                        </div>
                                     ) : (
                                         <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted shrink-0">Super admin required</p>
                                     )}
                                 </div>
+                                {superAdmin && deleteSelectionKey === key && (
+                                    <p className="px-4 py-2 text-[10px] text-accent-gold border-t border-brand-red/20">
+                                        Choose the extra log to delete below. Its entries will not be merged.
+                                    </p>
+                                )}
                                 <div className="divide-y divide-brand-red/20 border-t border-brand-red/20 bg-bg-primary/40">
                                     {group.map(log => {
                                         const isPrimary = log.id === primary.id;
@@ -495,7 +582,7 @@ export default function PayrollAuditPage() {
                                                 </div>
                                                 {isPrimary ? (
                                                     <span className="text-[8px] font-black uppercase tracking-widest text-text-green shrink-0">Original — protected</span>
-                                                ) : superAdmin ? (
+                                                ) : superAdmin && deleteSelectionKey === key ? (
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
@@ -506,7 +593,7 @@ export default function PayrollAuditPage() {
                                                         {deletingLogId === log.id ? 'Deleting…' : 'Delete'}
                                                     </Button>
                                                 ) : (
-                                                    <span className="text-[8px] font-black uppercase tracking-widest text-text-muted shrink-0">Extra — needs super admin</span>
+                                                    <span className="text-[8px] font-black uppercase tracking-widest text-text-muted shrink-0">{superAdmin ? 'Extra — choose Delete above' : 'Extra — needs super admin'}</span>
                                                 )}
                                             </div>
                                         );
@@ -518,6 +605,53 @@ export default function PayrollAuditPage() {
                 </div>
             )}
 
+            <AlertDialog open={!!ignoreGroup} onOpenChange={(open) => { if (!open) setIgnoreGroup(null); }}>
+                <AlertDialogContent className="bg-bg-elevated border-border-main">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-text-primary uppercase font-black tracking-wide text-sm">Ignore duplicate alert?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs text-text-muted">
+                            This hides the alert for these logs. Both logs, their job entries, and their pay totals stay unchanged, so overlapping jobs may still be counted twice. The alert will return if the job or reimbursement list, status, or number of logs changes.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="uppercase font-bold text-[10px] tracking-widest">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="uppercase font-bold text-[10px] tracking-widest"
+                            onClick={() => { if (ignoreGroup) void handleIgnoreDuplicateAlert(ignoreGroup); }}
+                        >
+                            Ignore alert
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={!!approvedMergeGroup} onOpenChange={(open) => { if (!open) setApprovedMergeGroup(null); }}>
+                <AlertDialogContent className="bg-bg-elevated border-border-main">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-text-primary uppercase font-black tracking-wide text-sm flex items-center gap-2">
+                            <AlertTriangle size={16} className="text-accent-gold" /> Review approved log merge
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs text-text-muted space-y-2">
+                            <span className="block">This log was already Approved. Duplicate job entries will be kept once; the approved log's entry wins when the same job appears in both.</span>
+                            <span className="block font-bold text-accent-gold">Merging will change the combined log to Submitted. Its new payout must be reviewed and approved again before it counts as approved pay.</span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="uppercase font-bold text-[10px] tracking-widest">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest"
+                            onClick={() => {
+                                const group = approvedMergeGroup;
+                                setApprovedMergeGroup(null);
+                                if (group) void handleMergeDuplicateLogs(group, true);
+                            }}
+                        >
+                            Merge and require approval
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
             <AlertDialog open={!!logToDelete} onOpenChange={(open) => { if (!open) setLogToDelete(null); }}>
                 <AlertDialogContent className="bg-bg-elevated border-border-main">
                     <AlertDialogHeader>
@@ -528,7 +662,11 @@ export default function PayrollAuditPage() {
                                     This permanently deletes <span className="font-mono font-bold text-text-primary">{logToDelete.log.id.toUpperCase()}</span> and
                                     its {logToDelete.log.items?.length || 0} item{(logToDelete.log.items?.length || 0) === 1 ? '' : 's'} — they are NOT merged into the
                                     original. The original log <span className="font-mono font-bold text-text-primary">{logToDelete.primary.id.toUpperCase()}</span> is
-                                    kept untouched. If the duplicate has job entries the original doesn't, use Merge Into One instead so nothing is lost.
+                                    kept untouched. If the duplicate has job entries the original doesn't, use Merge instead so nothing is lost.
+                                    <span className="block mt-2 font-bold text-accent-gold">
+                                        {(logToDelete.log.items || []).filter(item => !(logToDelete.primary.items || []).some(kept => kept.workOrderId === item.workOrderId)).length} unique job entries and{' '}
+                                        {(logToDelete.log.reimbursements || []).filter(r => !(logToDelete.primary.reimbursements || []).some(kept => kept.id === r.id)).length} unique reimbursements would be removed.
+                                    </span>
                                 </>
                             )}
                         </AlertDialogDescription>

@@ -1,5 +1,5 @@
 import { startOfWeek, format, isValid } from 'date-fns';
-import { collection, query, where, getDocs, doc, updateDoc, setDoc, arrayUnion, runTransaction } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { WeeklyLogItem } from '@/lib/types';
 
@@ -77,6 +77,34 @@ function weeklyLogClaimRef(techId: string, weekOf: string) {
   return doc(db, 'weeklyLogClaims', `${techId}_${weekOf}`);
 }
 
+function logsForWeek(techId: string, weekOf: string) {
+  return query(collection(db, 'weeklyLogs'), where('techId', '==', techId), where('weekOf', '==', weekOf));
+}
+
+/** Manual creation uses the same claim as completed jobs, so either path can
+ * win a concurrent race without leaving two Drafts for the week. */
+export async function createDraftWeeklyLog(opts: {
+  techId: string;
+  weekOf: string;
+  makeLogId: () => Promise<string>;
+}): Promise<'created' | 'exists'> {
+  const { techId, weekOf, makeLogId } = opts;
+  if (!(await getDocs(logsForWeek(techId, weekOf))).empty) return 'exists';
+  const logId = await makeLogId();
+  const claimRef = weeklyLogClaimRef(techId, weekOf);
+  return runTransaction(db, async tx => {
+    const claimSnap = await tx.get(claimRef);
+    const claimedId = claimSnap.exists() ? claimSnap.data().logId as string : null;
+    const claimedLog = claimedId ? await tx.get(doc(db, 'weeklyLogs', claimedId)) : null;
+    if (claimedLog?.exists()) return 'exists';
+    tx.set(claimRef, { techId, weekOf, logId });
+    tx.set(doc(db, 'weeklyLogs', logId), {
+      id: logId, techId, weekOf, status: 'Draft', items: [], reimbursements: [], totalPayout: 0,
+    });
+    return 'created';
+  });
+}
+
 /**
  * Atomically files `item` into the Draft weekly log for techId+weekOf,
  * creating that log (and its claim) if none exists yet. If a log exists for
@@ -92,6 +120,10 @@ async function claimAndFileItem(
   makeLogId: () => Promise<string>,
   createIfClosed: boolean,
 ): Promise<'updated' | 'created' | 'closed'> {
+  // Older/manual logs may predate weeklyLogClaims. Adopt an existing Draft
+  // before the transaction considers creating a new log.
+  const existing = await getDocs(logsForWeek(techId, weekOf));
+  const existingDraft = existing.docs.find(d => d.data().status === 'Draft');
   // Reserved before the transaction starts — Firestore transactions can't
   // contain another transaction, and makeLogId() runs its own against
   // systemConfig/idCounters. Harmless if it goes unused on the rare race
@@ -103,12 +135,20 @@ async function claimAndFileItem(
     const claimSnap = await tx.get(claimRef);
     const claimedLogId = claimSnap.exists() ? (claimSnap.data() as any).logId as string : null;
     const logSnap = claimedLogId ? await tx.get(doc(db, 'weeklyLogs', claimedLogId)) : null;
+    const draftSnap = existingDraft && existingDraft.id !== claimedLogId
+      ? await tx.get(doc(db, 'weeklyLogs', existingDraft.id)) : null;
 
-    if (logSnap?.exists() && logSnap.data().status === 'Draft') {
-      tx.update(doc(db, 'weeklyLogs', claimedLogId!), { items: arrayUnion(item) });
+    const openLog = logSnap?.exists() && logSnap.data().status === 'Draft' ? logSnap
+      : draftSnap?.exists() && draftSnap.data().status === 'Draft' ? draftSnap : null;
+    if (openLog) {
+      const items = (openLog.data().items || []) as WeeklyLogItem[];
+      if (!items.some(existingItem => existingItem.workOrderId === item.workOrderId)) {
+        tx.update(openLog.ref, { items: [...items, item] });
+      }
+      if (claimedLogId !== openLog.id) tx.set(claimRef, { techId, weekOf, logId: openLog.id });
       return 'updated';
     }
-    if (logSnap?.exists() && !createIfClosed) {
+    if (!createIfClosed && (logSnap?.exists() || !existing.empty)) {
       return 'closed';
     }
 
@@ -124,23 +164,25 @@ async function claimAndFileItem(
 }
 
 /**
- * Pre-claim-doc fallback: the original query-then-write logic. Used only if
- * the claim-based path throws (e.g. the weeklyLogClaims security rule
- * hasn't been deployed yet) so filing a completion never hard-fails —
- * it's racy under true concurrency, same as before this fix, but strictly
- * no worse.
+ * Pre-claim-doc fallback when weeklyLogClaims is unavailable. Existing Draft
+ * updates still use a transaction and avoid repeating a work order. Creating
+ * a new log here remains racy if the claim security rule is not deployed.
  */
-async function legacyFileInWeek(techId: string, weekOf: string, item: WeeklyLogItem, makeLogId: () => Promise<string>): Promise<'updated' | 'created'> {
-  const snap = await getDocs(query(
-    collection(db, 'weeklyLogs'),
-    where('techId', '==', techId),
-    where('weekOf', '==', weekOf),
-    where('status', '==', 'Draft'),
-  ));
-  if (!snap.empty) {
-    await updateDoc(doc(db, 'weeklyLogs', snap.docs[0].id), { items: arrayUnion(item) });
+async function legacyFileInWeek(techId: string, weekOf: string, item: WeeklyLogItem, makeLogId: () => Promise<string>, createIfClosed: boolean): Promise<'updated' | 'created' | 'closed'> {
+  const snap = await getDocs(logsForWeek(techId, weekOf));
+  const draft = snap.docs.find(d => d.data().status === 'Draft');
+  if (draft) {
+    await runTransaction(db, async tx => {
+      const current = await tx.get(draft.ref);
+      if (!current.exists() || current.data().status !== 'Draft') throw new Error('Weekly log changed while filing. Retry the action.');
+      const items = (current.data().items || []) as WeeklyLogItem[];
+      if (!items.some(existingItem => existingItem.workOrderId === item.workOrderId)) {
+        tx.update(draft.ref, { items: [...items, item] });
+      }
+    });
     return 'updated';
   }
+  if (!createIfClosed && !snap.empty) return 'closed';
   const logId = await makeLogId();
   await setDoc(doc(db, 'weeklyLogs', logId), {
     id: logId, techId, weekOf, status: 'Draft', items: [item], reimbursements: [], totalPayout: 0,
@@ -160,7 +202,7 @@ async function fileInReportingWeek(techId: string, item: WeeklyLogItem, schedule
   try {
     await claimAndFileItem(techId, reportingWeek, flagged, makeLogId, /* createIfClosed */ true);
   } catch {
-    await legacyFileInWeek(techId, reportingWeek, flagged, makeLogId);
+    await legacyFileInWeek(techId, reportingWeek, flagged, makeLogId, true);
   }
 }
 
@@ -172,7 +214,8 @@ async function fileInReportingWeek(techId: string, item: WeeklyLogItem, schedule
  *      as a cross-week entry.
  *   - default (no placement) → auto: scheduled week when possible, otherwise the
  *      reporting week flagged (used when the scheduled week's log is closed).
- * Never creates a second log for a week that already has one.
+ * A closed week can receive a separate Draft for review. Open Drafts are
+ * reused, including older manual logs that have no claim document yet.
  */
 export async function fileCompletedAssignment(opts: {
   techId: string;
@@ -194,7 +237,7 @@ export async function fileCompletedAssignment(opts: {
   try {
     result = await claimAndFileItem(techId, scheduledWeek, item, makeLogId, /* createIfClosed */ false);
   } catch {
-    result = await legacyFileInWeek(techId, scheduledWeek, item, makeLogId);
+    result = await legacyFileInWeek(techId, scheduledWeek, item, makeLogId, false);
   }
   if (result !== 'closed') {
     return { weekOf: scheduledWeek, placedIn: 'scheduled_week' };

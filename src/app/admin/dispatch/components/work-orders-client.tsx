@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import type { WorkOrder, Technician } from "@/lib/types";
-import { MapPin, Building2, Calendar, Clock, ChevronRight, ExternalLink } from "lucide-react";
+import { MapPin, Building2, Calendar, ExternalLink } from "lucide-react";
 import { PAY_TYPE_LABELS } from "@/lib/constants";
 import { cn, formatCityState } from "@/lib/utils";
 import { externalWorkOrderId, fieldNationUrl } from "@/lib/work-order-identity";
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { WorkOrdersTable } from "../../components/work-orders-table";
 
 type WorkOrdersClientProps = {
@@ -75,6 +76,8 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
   const { workOrders, technicians } = props;
   const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [mobileAssignOrder, setMobileAssignOrder] = useState<WorkOrder | null>(null);
+  const clearMobileAssignOrder = useCallback(() => setMobileAssignOrder(null), []);
 
   const handleCardClick = (wo: WorkOrder) => {
     setSelectedJob(wo);
@@ -85,7 +88,7 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
     <div className="space-y-4">
       {/* Desktop view: Tactical Table */}
       <div className="hidden md:block">
-        <WorkOrdersTable {...props} />
+        <WorkOrdersTable {...props} mobileAssignOrder={mobileAssignOrder} onMobileAssignOrderHandled={clearMobileAssignOrder} />
       </div>
 
       {/* Mobile view: Tactical Cards */}
@@ -158,9 +161,13 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
                     </span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest group-hover:text-brand-red transition-colors">
-                     Awaiting Operative <ChevronRight size={10} />
-                  </div>
+                  <Button
+                    size="sm"
+                    onClick={(event) => { event.stopPropagation(); setMobileAssignOrder(wo); }}
+                    className="h-8 px-3 text-[10px] font-bold uppercase tracking-widest bg-brand-red text-white hover:bg-brand-red/90"
+                  >
+                    Assign
+                  </Button>
                 )}
               </div>
             </div>

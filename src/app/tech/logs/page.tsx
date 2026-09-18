@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog, PayrollDispute } from '@/lib/types';
 import { externalWorkOrderId, displayWorkOrderNumber, fieldNationUrl, isImported } from '@/lib/work-order-identity';
 import { hasPermission } from '@/lib/permissions';
-import { computeWeeklyLogSettlement } from '@/lib/payroll';
+import { computeWeeklyLogSettlement, effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
+import { mergeJobs } from '@/lib/jobs';
 import { useHelperLogSync } from '@/hooks/use-helper-log-sync';
 import { uploadFile } from '@/lib/upload';
 import { technicians } from '@/lib/data';
@@ -119,6 +120,7 @@ export default function TechWeeklyLogPage() {
     const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+    const [assignedWorkOrders, setAssignedWorkOrders] = useState<WorkOrder[]>([]);
     const [myPayrollDisputes, setMyPayrollDisputes] = useState<PayrollDispute[]>([]);
     // Jobs this tech assisted on as a helper (lead tech owns the primary
     // entry) — the hook also fans a completed one into this tech's own
@@ -191,6 +193,9 @@ export default function TechWeeklyLogPage() {
             const unsubWO = onSnapshot(query(collection(db, 'assignments'), where('techId', '==', userId)), (snap) => {
                 setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
             });
+            const unsubAssignedWO = onSnapshot(query(collection(db, 'workOrders'), where('assignedTechnicianId', '==', userId)), (snap) => {
+                setAssignedWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+            });
             // Own trip logs only — techs must never see another tech's trips.
             const unsubTrips = onSnapshot(query(collection(db, 'tripLogs'), where('technicianId', '==', userId)), (snap) => {
                 setTripLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as TripLog)));
@@ -205,7 +210,7 @@ export default function TechWeeklyLogPage() {
                 setMyPayrollDisputes(snap.docs.map(d => ({ ...d.data(), id: d.id } as PayrollDispute)));
             });
             return () => {
-                unsubLogs(); unsubWO(); unsubTrips(); unsubProfile(); unsubDisputes();
+                unsubLogs(); unsubWO(); unsubAssignedWO(); unsubTrips(); unsubProfile(); unsubDisputes();
             };
         }
     }, []);
@@ -218,8 +223,9 @@ export default function TechWeeklyLogPage() {
 
     // Lead + helper jobs merged, so a helper log item can resolve its work-order
     // details (number, date, Field Nation link) for display.
-    const allJobs = useMemo(() => [...workOrders, ...helperJobs], [workOrders, helperJobs]);
+    const allJobs = useMemo(() => [...mergeJobs(assignedWorkOrders, workOrders), ...helperJobs], [assignedWorkOrders, workOrders, helperJobs]);
     const jobsById = useMemo(() => new Map(allJobs.map(j => [j.id, j])), [allJobs]);
+    const settlementOf = (log: WeeklyLog) => computeWeeklyLogSettlement(log, jobsById);
 
     // Open post-approval disputes filed against the active log — surfaced as
     // an "Under Review" tag so a tech can see a dispute is being processed
@@ -298,14 +304,14 @@ export default function TechWeeklyLogPage() {
             });
         }
 
-        return filtered.sort((a, b) => {
+        return [...filtered].sort((a, b) => {
             if (sortBy === 'newest') return (b.weekOf || '').localeCompare(a.weekOf || '');
             if (sortBy === 'oldest') return (a.weekOf || '').localeCompare(b.weekOf || '');
             if (sortBy === 'status') return (a.status || '').localeCompare(b.status || '');
-            if (sortBy === 'billing') return (b.totalPayout || 0) - (a.totalPayout || 0);
+            if (sortBy === 'billing') return settlementOf(b) - settlementOf(a);
             return 0;
         });
-    }, [weeklyLogs, searchQuery, sortBy, statusFilter, dateRange]);
+    }, [weeklyLogs, searchQuery, sortBy, statusFilter, dateRange, jobsById]);
 
     const isLocked = useMemo(() => activeLog?.status !== 'Draft', [activeLog?.status]);
 
@@ -528,8 +534,8 @@ export default function TechWeeklyLogPage() {
     // Log total = the true settlement (FN fee/split, disputed items excluded)
     // for job pay + counted (approved / legacy) reimbursements; mirrors the
     // payroll settlement so both logs stay correct after a move.
-    const logTotal = (items?: WeeklyLogItem[], reimbs?: FinancialRecord[]) =>
-        computeWeeklyLogSettlement({ items, reimbursements: reimbs }, jobsById);
+    const logTotal = (log: WeeklyLog, items: WeeklyLogItem[], reimbs: FinancialRecord[]) =>
+        computeWeeklyLogSettlement({ ...log, items, reimbursements: reimbs }, jobsById);
 
     // Move one assignment (weekly-log item) + its reimbursements from the active
     // log into another active log, updating both logs' totals. The item exists in
@@ -553,11 +559,11 @@ export default function TechWeeklyLogPage() {
         const stamp = (from: string, to: string) => ({ type: 'item_moved', workOrderId: woId, fromWeek: from, toWeek: to, by: currentTechId || '', at: new Date().toISOString() });
         try {
             await updateDoc(doc(db, 'weeklyLogs', activeLog.id), {
-                items: srcItems, reimbursements: srcReimbs, totalPayout: logTotal(srcItems, srcReimbs),
+                items: srcItems, reimbursements: srcReimbs, totalPayout: logTotal(activeLog, srcItems, srcReimbs),
                 history: [...((activeLog as any).history || []), stamp(activeLog.weekOf, dest.weekOf)],
             });
             await updateDoc(doc(db, 'weeklyLogs', dest.id), {
-                items: destItems, reimbursements: destReimbs, totalPayout: logTotal(destItems, destReimbs),
+                items: destItems, reimbursements: destReimbs, totalPayout: logTotal(dest, destItems, destReimbs),
                 history: [...((dest as any).history || []), stamp(activeLog.weekOf, dest.weekOf)],
             });
             toast({ title: 'Assignment Moved', description: `Moved to the week of ${dest.weekOf}.` });
@@ -744,7 +750,7 @@ export default function TechWeeklyLogPage() {
                                             <div className="flex items-center gap-3 mt-0.5 text-[9px] text-text-muted font-bold uppercase tracking-widest text-left">
                                                 <span>{(log.items || []).length} Assignments</span>
                                                 <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
-                                                <span className="text-text-green font-mono">${(log.totalPayout || 0).toFixed(2)}</span>
+                                                <span className="text-text-green font-mono">${settlementOf(log).toFixed(2)}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -1232,7 +1238,12 @@ export default function TechWeeklyLogPage() {
 function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId, onDisputeJob, hasOpenPayrollDispute }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null, onDisputeJob?: (item: WeeklyLogItem) => void, hasOpenPayrollDispute?: boolean }) {
     const job = workOrders.find(wo => wo.id === item.workOrderId);
     const itemReimbursements = reimbursements.filter(r => r.workOrderId === item.workOrderId);
-    const totalReimbursed = itemReimbursements.reduce((acc, r) => acc + (r.amount || 0), 0);
+    const settledReimbursement = itemReimbursements
+        .filter(r => r.status !== 'pending' && r.status !== 'rejected')
+        .reduce((acc, r) => acc + netOfFieldNationFee(r.amount), 0);
+    const requestedReimbursement = itemReimbursements
+        .filter(r => r.status === 'pending')
+        .reduce((acc, r) => acc + (r.amount || 0), 0);
     const [isDisputing, setIsDisputing] = useState(item.confirmationStatus === 'disputed');
     const [reason, setReason] = useState(item.disputeReason || "");
     const [notes, setNotes] = useState(item.disputeNotes || "");
@@ -1302,9 +1313,14 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                         <AlertTriangle size={9} /> Under Review
                                     </Badge>
                                 )}
-                                {itemReimbursements.length > 0 && (
+                                {settledReimbursement > 0 && (
+                                    <Badge variant="active" className="text-[7px] h-3.5 uppercase tracking-tighter flex items-center gap-1">
+                                        <DollarSign size={9} /> Reimbursement Pay · ${settledReimbursement.toFixed(2)}
+                                    </Badge>
+                                )}
+                                {requestedReimbursement > 0 && (
                                     <Badge variant="pending" className="text-[7px] h-3.5 uppercase tracking-tighter flex items-center gap-1">
-                                        <DollarSign size={9} /> Reimbursement · ${totalReimbursed.toFixed(2)}
+                                        <DollarSign size={9} /> Reimbursement Requested · ${requestedReimbursement.toFixed(2)}
                                     </Badge>
                                 )}
                             </div>
@@ -1328,18 +1344,18 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                         </div>
 
                         <div className="text-right px-4 border-l border-border-sub/30 min-w-[100px]">
-                            <p className="text-[8px] font-black text-text-muted uppercase tracking-widest text-right">Settlement</p>
-                            <p className="text-sm font-mono font-bold text-text-green text-right">${(item.jobPay || 0).toFixed(2)}</p>
+                            <p className="text-[8px] font-black text-text-muted uppercase tracking-widest text-right">{isDisputed ? 'Excluded (Disputed)' : 'Settlement'}</p>
+                            <p className="text-sm font-mono font-bold text-text-green text-right">${(isDisputed ? 0 : effectiveJobPay(item, job)).toFixed(2)}</p>
                         </div>
 
                         {itemReimbursements.length > 0 && (
                             <div className="text-right px-4 border-l border-border-sub/30 min-w-[100px]">
-                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest text-right">Reimbursement</p>
-                                <p className="text-sm font-mono font-bold text-accent-gold text-right">${totalReimbursed.toFixed(2)}</p>
+                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest text-right">Reimbursement Pay</p>
+                                <p className="text-sm font-mono font-bold text-accent-gold text-right">${settledReimbursement.toFixed(2)}</p>
                                 <p className="text-[7px] font-bold uppercase tracking-widest text-text-muted text-right">
-                                    {itemReimbursements.every(r => r.status === 'approved') ? 'Approved'
-                                        : itemReimbursements.some(r => r.status === 'rejected') ? 'Includes Rejected'
-                                        : 'Pending Review'}
+                                    {requestedReimbursement > 0 ? `$${requestedReimbursement.toFixed(2)} requested`
+                                        : settledReimbursement > 0 ? 'Approved net of fee'
+                                        : 'Rejected — excluded'}
                                 </p>
                             </div>
                         )}
@@ -1426,12 +1442,12 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                     <p className="text-[8px] text-text-muted uppercase tracking-widest text-left">{r.date}</p>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
-                                    <span className="text-xs font-mono font-bold text-accent-gold">${(r.amount || 0).toFixed(2)}</span>
+                                    <span className="text-xs font-mono font-bold text-accent-gold">${(r.status === 'pending' || r.status === 'rejected' ? r.amount || 0 : netOfFieldNationFee(r.amount)).toFixed(2)}</span>
                                     <Badge
-                                        variant={r.status === 'approved' ? 'active' : r.status === 'rejected' ? 'missed' : 'pending'}
+                                        variant={r.status === 'rejected' ? 'missed' : r.status === 'pending' ? 'pending' : 'active'}
                                         className="text-[7px] h-3.5 uppercase tracking-tighter"
                                     >
-                                        {r.status || 'pending'}
+                                        {r.status === 'pending' ? 'Requested' : r.status === 'rejected' ? 'Rejected' : 'Approved net'}
                                     </Badge>
                                     {!isLocked && (
                                         <button

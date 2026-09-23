@@ -12,7 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { cn, isInactiveTechnician } from '@/lib/utils';
 import type { WorkOrder, Technician, WeeklyLog, Invoice } from '@/lib/types';
 import { IntelligenceTerminal } from '../reports/components/intelligence-terminal';
 import { penaltyEvents } from '@/lib/data';
@@ -61,8 +61,14 @@ export default function FieldIntelligencePage() {
     }, []);
 
     const staffTechs = useMemo(
-        () => technicians.filter(isTech),
+        () => technicians.filter(t => isTech(t) && !isInactiveTechnician(t)),
         [technicians]
+    );
+
+    const activeTechIds = useMemo(() => new Set(staffTechs.map(t => t.id)), [staffTechs]);
+    const activeWeeklyLogs = useMemo(
+        () => weeklyLogs.filter(log => activeTechIds.has(log.techId)),
+        [weeklyLogs, activeTechIds]
     );
 
     // The client filter must match what work orders actually store
@@ -75,8 +81,8 @@ export default function FieldIntelligencePage() {
 
     const anomalyCounts = useMemo(() =>
         workOrders.filter(wo => wo.status === 'unassigned').length +
-        weeklyLogs.filter(wl => wl.status === 'Draft').length,
-        [workOrders, weeklyLogs]
+        activeWeeklyLogs.filter(wl => wl.status === 'Draft').length,
+        [workOrders, activeWeeklyLogs]
     );
 
     const activeTech = useMemo(
@@ -133,12 +139,13 @@ export default function FieldIntelligencePage() {
     const missingDocAlerts = useMemo(() => {
         return assignments
             .filter(wo => wo.status === 'completed')
+            .filter(wo => activeTechIds.has(wo.assignedTechnicianId || wo.techId || ''))
             .filter(wo => !weeklyLogs.some(log =>
                 log.techId === (wo.assignedTechnicianId || wo.techId) &&
                 log.items?.some(item => item.workOrderId === wo.id)
             ))
             .slice(0, 20);
-    }, [assignments, weeklyLogs]);
+    }, [assignments, weeklyLogs, activeTechIds]);
 
     const profitabilityByClient = useMemo(() => {
         const map = new Map<string, { revenue: number; pending: number; jobCount: number }>();
@@ -327,7 +334,7 @@ export default function FieldIntelligencePage() {
                                         </div>
                                     </div>
                                 ))}
-                                {weeklyLogs.filter(wl => wl.status === 'Draft').map(wl => {
+                                {activeWeeklyLogs.filter(wl => wl.status === 'Draft').map(wl => {
                                     const tech = technicians.find(t => t.id === wl.techId);
                                     return (
                                         <div key={wl.id} className="p-2.5 rounded-lg border border-border-warn bg-brand-amber-dim/5 flex gap-3 text-left items-start">

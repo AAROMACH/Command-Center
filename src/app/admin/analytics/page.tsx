@@ -17,6 +17,7 @@ import type { WorkOrder, Technician, WeeklyLog, Invoice } from '@/lib/types';
 import { IntelligenceTerminal } from '../reports/components/intelligence-terminal';
 import { penaltyEvents } from '@/lib/data';
 import { getReliabilityTier } from '@/lib/reliability';
+import { effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
 import { Tabs as InnerTabs, TabsList as InnerTabsList, TabsTrigger as InnerTabsTrigger, TabsContent as InnerTabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format, parseISO } from 'date-fns';
@@ -29,6 +30,7 @@ export default function FieldIntelligencePage() {
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
+    const [archivedJobs, setArchivedJobs] = useState<WorkOrder[]>([]);
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
 
     // Intelligence filter state
@@ -57,7 +59,18 @@ export default function FieldIntelligencePage() {
         const unsubInv = onSnapshot(collection(db, 'invoices'), (snap) => {
             setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
         });
-        return () => { unsubWO(); unsubAsmt(); unsubTech(); unsubLogs(); unsubInv(); };
+        const unsubArchive = onSnapshot(collection(db, 'activityArchive'), (snap) => {
+            const jobs = snap.docs.flatMap(d => {
+                const data = d.data() as any;
+                if (!data.archivedFrom) return [];
+                try {
+                    const record = data.archivedRecordJson ? JSON.parse(data.archivedRecordJson) : data.archivedRecord;
+                    return record ? [{ ...record, id: record.id || d.id } as WorkOrder] : [];
+                } catch { return []; }
+            });
+            setArchivedJobs(jobs);
+        });
+        return () => { unsubWO(); unsubAsmt(); unsubTech(); unsubLogs(); unsubInv(); unsubArchive(); };
     }, []);
 
     const staffTechs = useMemo(
@@ -148,23 +161,65 @@ export default function FieldIntelligencePage() {
     }, [assignments, weeklyLogs, activeTechIds]);
 
     const profitabilityByClient = useMemo(() => {
-        const map = new Map<string, { revenue: number; pending: number; jobCount: number }>();
-        workOrders.forEach(wo => {
-            const client = wo.clientName || 'Unknown';
-            const prev = map.get(client) || { revenue: 0, pending: 0, jobCount: 0 };
-            if (wo.status === 'completed') {
-                prev.revenue += wo.pay || 0;
-                prev.jobCount += 1;
-            } else {
-                prev.pending += wo.pay || 0;
-            }
-            map.set(client, prev);
+        const map = new Map<string, { revenue: number; outstanding: number; laborCost: number; jobCount: number }>();
+        const rowFor = (clientName?: string) => {
+            const name = clientName || 'Unknown';
+            const row = map.get(name) || { revenue: 0, outstanding: 0, laborCost: 0, jobCount: 0 };
+            map.set(name, row);
+            return row;
+        };
+
+        invoices.forEach(invoice => {
+            const row = rowFor(invoice.clientName);
+            const revenueBeforeTax = invoice.subtotal ?? invoice.total ?? 0;
+            if (invoice.status === 'paid') row.revenue += revenueBeforeTax;
+            if (invoice.status === 'sent' || invoice.status === 'overdue') row.outstanding += revenueBeforeTax;
         });
+
+        const jobLookup = new Map<string, WorkOrder>();
+        const countedCompletedJobs = new Set<string>();
+        [...workOrders, ...assignments, ...archivedJobs].forEach(job => {
+            jobLookup.set(job.id, job);
+            const sourceId = (job as any).workOrderId;
+            const externalId = (job as any).externalWorkOrderId;
+            if (sourceId) jobLookup.set(sourceId, job);
+            if (externalId) jobLookup.set(externalId, job);
+            if (!countedCompletedJobs.has(job.id) && (job.status === 'completed' || (job as any).previousStatus === 'completed')) {
+                rowFor(job.clientName).jobCount += 1;
+                countedCompletedJobs.add(job.id);
+            }
+        });
+
+        weeklyLogs.filter(log => log.status === 'Approved').forEach(log => {
+            (log.items || []).forEach(item => {
+                if (item.confirmationStatus === 'disputed') return;
+                const job = jobLookup.get(item.workOrderId);
+                if (!job) return;
+                rowFor(job.clientName).laborCost += effectiveJobPay(item, job);
+            });
+            (log.reimbursements || []).forEach(reimbursement => {
+                if (reimbursement.status === 'pending' || reimbursement.status === 'rejected') return;
+                const job = jobLookup.get(reimbursement.workOrderId || reimbursement.assignmentId || '');
+                if (job) rowFor(job.clientName).laborCost += netOfFieldNationFee(reimbursement.amount || 0);
+            });
+            (log.missingAssignmentReports || []).forEach(report => {
+                if (!report.clientName) return;
+                const reportCost = report.jobType === 'Imported'
+                    ? (report.finalPay || 0) + netOfFieldNationFee(report.auditReimbursement || 0)
+                    : report.pay || 0;
+                rowFor(report.clientName).laborCost += reportCost;
+            });
+        });
+
         return Array.from(map.entries())
-            .map(([client, data]) => ({ client, ...data }))
-            .sort((a, b) => b.revenue - a.revenue)
+            .map(([client, data]) => {
+                const grossProfit = data.revenue - data.laborCost;
+                return { client, ...data, grossProfit, margin: data.revenue > 0 ? (grossProfit / data.revenue) * 100 : null };
+            })
+            .filter(row => row.revenue || row.outstanding || row.laborCost || row.jobCount)
+            .sort((a, b) => b.grossProfit - a.grossProfit)
             .slice(0, 10);
-    }, [workOrders]);
+    }, [workOrders, assignments, archivedJobs, weeklyLogs, invoices]);
 
     const failurePatterns = useMemo(() => {
         const revisitWOs = workOrders.filter(wo =>
@@ -608,18 +663,28 @@ export default function FieldIntelligencePage() {
 
                         {/* Profitability by Client */}
                         <div className="space-y-2">
-                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2">Profitability by Client</h3>
+                            <div className="border-b border-border-sub pb-2">
+                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Profitability by Client</h3>
+                                <p className="text-[8px] text-text-muted uppercase tracking-widest mt-1">Paid invoice subtotals less approved technician settlements and reimbursements</p>
+                            </div>
                             {profitabilityByClient.length === 0 ? (
-                                <p className="text-[10px] text-text-muted uppercase py-3">No revenue data</p>
-                            ) : profitabilityByClient.map(({ client, revenue, pending, jobCount }) => (
-                                <div key={client} className="flex items-center justify-between p-2.5 rounded-lg border border-border-sub bg-bg-secondary">
-                                    <div>
+                                <p className="text-[10px] text-text-muted uppercase py-3">No paid invoice or approved payroll data</p>
+                            ) : profitabilityByClient.map(({ client, revenue, outstanding, laborCost, grossProfit, margin, jobCount }) => (
+                                <div key={client} className="p-3 rounded-lg border border-border-sub bg-bg-secondary">
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="min-w-0">
                                         <p className="text-[11px] font-bold text-text-primary uppercase">{client}</p>
                                         <p className="text-[9px] text-text-muted uppercase">{jobCount} completed job{jobCount !== 1 ? 's' : ''}</p>
+                                      </div>
+                                      <div className="text-right shrink-0">
+                                        <p className={cn("text-sm font-black", grossProfit >= 0 ? "text-text-green" : "text-text-red")}>${grossProfit.toFixed(0)} gross profit</p>
+                                        <p className="text-[9px] text-text-muted">{margin == null ? 'No paid revenue' : `${margin.toFixed(1)}% margin`}</p>
+                                      </div>
                                     </div>
-                                    <div className="text-right shrink-0">
-                                        <p className="text-[11px] font-bold text-text-green">${revenue.toFixed(0)} earned</p>
-                                        {pending > 0 && <p className="text-[9px] text-text-amber">${pending.toFixed(0)} pending</p>}
+                                    <div className="grid grid-cols-3 gap-2 mt-3 pt-2 border-t border-border-sub">
+                                      <div><p className="text-[7px] font-black uppercase tracking-widest text-text-muted">Paid revenue</p><p className="text-[10px] font-bold text-text-primary">${revenue.toFixed(0)}</p></div>
+                                      <div><p className="text-[7px] font-black uppercase tracking-widest text-text-muted">Labor cost</p><p className="text-[10px] font-bold text-text-primary">${laborCost.toFixed(0)}</p></div>
+                                      <div><p className="text-[7px] font-black uppercase tracking-widest text-text-muted">Outstanding</p><p className="text-[10px] font-bold text-text-amber">${outstanding.toFixed(0)}</p></div>
                                     </div>
                                 </div>
                             ))}

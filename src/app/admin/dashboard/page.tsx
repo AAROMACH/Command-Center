@@ -42,7 +42,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn, compareScheduleTime } from '@/lib/utils';
+import { cn, compareScheduleTime, isInactiveTechnician } from '@/lib/utils';
 import type { WorkOrder, Technician, Project, WeeklyLog, SiteRequest, ServiceRequest, TimeOffRequest, Invoice } from '@/lib/types';
 import { isArchivedJob } from '@/lib/jobs';
 import { computeSla, slaStatusColor, SLA_DEFAULTS } from '@/lib/sla';
@@ -139,14 +139,23 @@ export default function DashboardPage() {
         workOrders.filter(wo => wo.status === 'unassigned' && !wo.assignedTechnicianId && !isArchivedJob(wo)),
     [workOrders]);
 
+    const inactiveTechIds = useMemo(
+        () => new Set(technicians.filter(isInactiveTechnician).map(t => t.id)),
+        [technicians]
+    );
+    const belongsToInactiveTech = useCallback((wo: WorkOrder) => {
+        const techId = wo.assignedTechnicianId || wo.techId;
+        return Boolean(techId && inactiveTechIds.has(techId));
+    }, [inactiveTechIds]);
+
     // Cancelled jobs sit in the Dispatch Hub review queue, not the active count.
     const activeAssignmentsCount = useMemo(() =>
         assignments.filter(wo => wo.status !== 'cancelled').length,
     [assignments]);
 
     const pendingLogs = useMemo(() =>
-        weeklyLogs.filter(l => l.status === 'Submitted'),
-    [weeklyLogs]);
+        weeklyLogs.filter(l => l.status === 'Submitted' && !inactiveTechIds.has(l.techId)),
+    [weeklyLogs, inactiveTechIds]);
 
     const pendingPay = useMemo(() =>
         pendingLogs.reduce((acc, l) =>
@@ -155,6 +164,7 @@ export default function DashboardPage() {
 
     const workloadData = useMemo(() =>
         technicians
+            .filter(t => !isInactiveTechnician(t))
             .map(tech => ({
                 id: tech.id,
                 name: tech.name,
@@ -170,25 +180,26 @@ export default function DashboardPage() {
 
     const reliabilityData = useMemo(() =>
         technicians
-            .filter(t => isTech(t) && t.reliabilityScore !== undefined && t.reliabilityScore !== null)
+            .filter(t => isTech(t) && !isInactiveTechnician(t) && t.reliabilityScore !== undefined && t.reliabilityScore !== null)
             .sort((a, b) => (b.reliabilityScore || 0) - (a.reliabilityScore || 0))
             .slice(0, 5),
     [technicians]);
 
     const pendingRequests = useMemo(() => {
-        const unsubmits = weeklyLogs.filter(l => l.unsubmitRequested);
+        const unsubmits = weeklyLogs.filter(l => l.unsubmitRequested && !inactiveTechIds.has(l.techId));
+        const activeTimeOff = timeOffRequests.filter(request => !inactiveTechIds.has(request.techId));
         return {
             tickets: clientRequests,
             sites: siteRequests,
-            timeOff: timeOffRequests,
+            timeOff: activeTimeOff,
             unsubmits,
-            total: clientRequests.length + siteRequests.length + timeOffRequests.length + unsubmits.length
+            total: clientRequests.length + siteRequests.length + activeTimeOff.length + unsubmits.length
         };
-    }, [clientRequests, siteRequests, timeOffRequests, weeklyLogs]);
+    }, [clientRequests, siteRequests, timeOffRequests, weeklyLogs, inactiveTechIds]);
 
     const slaAlerts = useMemo(() => {
         const active = [...workOrders, ...assignments].filter(wo =>
-            wo.status !== 'completed' && (wo.priority === 'critical' || wo.priority === 'high' || wo.priority === 'medium')
+            wo.status !== 'completed' && !belongsToInactiveTech(wo) && (wo.priority === 'critical' || wo.priority === 'high' || wo.priority === 'medium')
         );
         return active
             .map(wo => ({ wo, sla: computeSla(wo) }))
@@ -199,7 +210,7 @@ export default function DashboardPage() {
                 return 0;
             })
             .slice(0, 5);
-    }, [workOrders, assignments]);
+    }, [workOrders, assignments, belongsToInactiveTech]);
 
     const todayJobs = useMemo(() => {
         const today = new Date();
@@ -221,10 +232,10 @@ export default function DashboardPage() {
             .filter(inv => inv.status !== 'paid' && inv.status !== 'void')
             .reduce((s, inv) => s + inv.total, 0);
         const upcomingPayroll = weeklyLogs
-            .filter(l => l.status === 'Submitted')
+            .filter(l => l.status === 'Submitted' && !inactiveTechIds.has(l.techId))
             .reduce((s, l) => s + (l.totalPayout || 0), 0);
         return { mtdRevenue, outstanding, upcomingPayroll };
-    }, [invoices, weeklyLogs]);
+    }, [invoices, weeklyLogs, inactiveTechIds]);
 
     const availablePortals = useMemo(() => getAvailablePortals(currentUser), [currentUser]);
     const techPortal = useMemo(() => availablePortals.find(p => p.id === 'tech'), [availablePortals]);

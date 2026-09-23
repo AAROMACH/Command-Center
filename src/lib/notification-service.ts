@@ -3,6 +3,7 @@ import { collection, doc, setDoc, getDoc, getDocs, query, where } from 'firebase
 import { createDocId } from './generateId';
 import { ID_PREFIXES } from './constants';
 import type { Technician, Notification } from './types';
+import { isInactiveTechnician } from './utils';
 
 export const NotificationService = {
   async notify(userId: string, title: string, body: string, entity?: { id: string, type: 'assignment' | 'project' | 'request' }) {
@@ -14,6 +15,10 @@ export const NotificationService = {
       }
 
       const user = { ...userDoc.data(), id: userDoc.id } as Technician;
+      if (isInactiveTechnician(user)) {
+        console.log(`[notify] Skipped inactive account ${userId}`);
+        return;
+      }
       const prefs = user.notificationPreferences || { email: true, sms: true, push: true };
 
       const protocols: ('email' | 'sms' | 'push')[] = [];

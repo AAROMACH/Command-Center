@@ -136,6 +136,25 @@ type TimelineEvent = {
     icon: string;
 };
 
+type ArchivedEvent = TimelineEvent & {
+    archivedAt: string;
+    archivedFrom?: 'workOrders' | 'assignments';
+    archivedRecordJson?: string;
+    archivedRecord?: WorkOrder;
+};
+
+type ArchiveItem = {
+    id: string;
+    archivedAt: string;
+    kind: 'job' | 'activity';
+    title: string;
+    identifier?: string;
+    clientName?: string;
+    techName?: string;
+    job?: WorkOrder;
+    event?: ArchivedEvent;
+};
+
 export default function ActivityAuditPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -186,7 +205,7 @@ export default function ActivityAuditPage() {
     const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
 
     // Archive + delete confirm state
-    const [archivedEvents, setArchivedEvents] = useState<(TimelineEvent & { archivedAt: string })[]>([]);
+    const [archivedEvents, setArchivedEvents] = useState<ArchivedEvent[]>([]);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
     const { toast } = useToast();
@@ -221,7 +240,7 @@ export default function ActivityAuditPage() {
             setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)));
         });
         const unsubArchive = onSnapshot(collection(db, 'activityArchive'), (snap) => {
-            setArchivedEvents(snap.docs.map(d => ({ ...d.data() } as TimelineEvent & { archivedAt: string })));
+            setArchivedEvents(snap.docs.map(d => ({ ...d.data() } as ArchivedEvent)));
         });
 
         return () => {
@@ -355,30 +374,55 @@ export default function ActivityAuditPage() {
         return isWithinInterval(startOfDay(d), { start, end });
     }, [archiveDateRange]);
 
-    // Archived jobs (assignments/work orders) — soft-archived in place, shown
-    // in the Archive tab instead of mixed into Assignment History.
-    const archivedJobsList = useMemo(() => {
+    // One archive list for both job records and manually hidden activity.
+    // New jobs live in activityArchive with a restorable JSON snapshot; older
+    // jobs may still be soft-archived in their source collection. Dedupe by id
+    // so a legacy record and its archive snapshot never appear twice.
+    const archiveItems = useMemo(() => {
         const q = searchQuery.trim().toLowerCase();
-        return [...workOrders, ...assignments]
-            .filter(isArchivedJob)
-            .filter(wo => matchesArchiveRange(wo.archivedAt))
-            .filter(wo => !q || [wo.id, (wo as any).externalWorkOrderId, wo.title, wo.description, wo.clientName]
-                .some(v => (v || '').toString().toLowerCase().includes(q)))
-            .sort((a, b) => {
-                const da = a.archivedAt ? new Date(a.archivedAt).getTime() : 0;
-                const db = b.archivedAt ? new Date(b.archivedAt).getTime() : 0;
-                return archiveSortDir === 'desc' ? db - da : da - db;
-            });
-    }, [workOrders, assignments, matchesArchiveRange, archiveSortDir, searchQuery]);
+        const items = new Map<string, ArchiveItem>();
 
-    const filteredArchivedEvents = useMemo(() => {
-        const q = searchQuery.trim().toLowerCase();
-        return [...archivedEvents]
-            .filter(e => matchesArchiveRange(e.archivedAt))
-            .filter(e => !q || [e.entity, e.eventLabel, e.techName, e.clientName]
+        [...workOrders, ...assignments].filter(isArchivedJob).forEach(job => {
+            items.set(job.id, {
+                id: job.id,
+                archivedAt: job.archivedAt || '',
+                kind: 'job',
+                title: job.title || job.description || job.id,
+                identifier: ((job as any).externalWorkOrderId || job.id).toString(),
+                clientName: job.clientName,
+                techName: technicians.find(t => t.id === (job.assignedTechnicianId || job.techId))?.name,
+                job,
+            });
+        });
+
+        archivedEvents.forEach(event => {
+            let job: WorkOrder | undefined;
+            if (event.archivedFrom) {
+                try {
+                    job = (event.archivedRecordJson ? JSON.parse(event.archivedRecordJson) : event.archivedRecord) as WorkOrder | undefined;
+                } catch { job = undefined; }
+            }
+            items.set(event.id, {
+                id: event.id,
+                archivedAt: event.archivedAt,
+                kind: job ? 'job' : 'activity',
+                title: job?.title || job?.description || event.entity || event.eventLabel,
+                identifier: job ? ((job as any).externalWorkOrderId || job.id || event.id).toString() : event.eventLabel,
+                clientName: job?.clientName || event.clientName,
+                techName: event.techName || technicians.find(t => t.id === (job?.assignedTechnicianId || job?.techId))?.name,
+                job,
+                event,
+            });
+        });
+
+        return Array.from(items.values())
+            .filter(item => matchesArchiveRange(item.archivedAt))
+            .filter(item => !q || [item.id, item.identifier, item.title, item.clientName, item.techName, item.kind]
                 .some(v => (v || '').toString().toLowerCase().includes(q)))
-            .sort((a, b) => archiveSortDir === 'desc' ? b.archivedAt.localeCompare(a.archivedAt) : a.archivedAt.localeCompare(b.archivedAt));
-    }, [archivedEvents, matchesArchiveRange, archiveSortDir, searchQuery]);
+            .sort((a, b) => archiveSortDir === 'desc'
+                ? (b.archivedAt || '').localeCompare(a.archivedAt || '')
+                : (a.archivedAt || '').localeCompare(b.archivedAt || ''));
+    }, [archivedEvents, workOrders, assignments, technicians, matchesArchiveRange, archiveSortDir, searchQuery]);
 
     const handleArchiveEvent = async (event: TimelineEvent) => {
         try {
@@ -1056,8 +1100,8 @@ export default function ActivityAuditPage() {
                     />
                 </div>
 
-                {/* The Archive tab's own tables already filter on searchQuery in
-                    place (see archivedJobsList/filteredArchivedEvents) — only the
+                {/* The Archive tab's unified list already filters on searchQuery
+                    in place (see archiveItems) — only the
                     other tabs fall back to the cross-category search results. */}
                 {(!searchQuery || activeTab === 'archive') ? (
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full text-left">
@@ -1590,7 +1634,7 @@ export default function ActivityAuditPage() {
                                 <div className="space-y-6">
                                     <div className="flex flex-wrap items-center justify-between gap-3">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                                            {archivedJobsList.length} Archived Assignments · {filteredArchivedEvents.length} Archived Activity
+                                            {archiveItems.length} Archived Record{archiveItems.length !== 1 ? 's' : ''}
                                         </p>
                                         <div className="flex items-center gap-2">
                                             <Popover>
@@ -1630,11 +1674,14 @@ export default function ActivityAuditPage() {
                                     </div>
 
                                     <div className="space-y-3">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Archived Assignments ({archivedJobsList.length})</p>
-                                        {archivedJobsList.length === 0 ? (
-                                            <div className="py-16 text-center border border-dashed border-border-sub rounded-xl opacity-40">
-                                                <ArchiveIcon size={28} className="mx-auto text-text-muted mb-2" />
-                                                <p className="text-[10px] font-bold uppercase text-text-muted">No archived assignments{archiveDateRange?.from ? ' in this range' : ''}.</p>
+                                        <div>
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Archived Records ({archiveItems.length})</p>
+                                            <p className="text-[9px] text-text-muted mt-1">Jobs and hidden activity share one archive. Restoring a job returns it to its original registry.</p>
+                                        </div>
+                                        {archiveItems.length === 0 ? (
+                                            <div className="py-20 text-center border border-dashed border-border-sub rounded-xl opacity-40">
+                                                <ArchiveIcon size={32} className="mx-auto text-text-muted mb-2" />
+                                                <p className="text-[10px] font-bold uppercase text-text-muted">No archived records{archiveDateRange?.from ? ' in this range' : ' yet'}.</p>
                                             </div>
                                         ) : (
                                             <div className="table-wrap text-left">
@@ -1642,29 +1689,41 @@ export default function ActivityAuditPage() {
                                                     <TableHeader className="bg-bg-tertiary">
                                                         <TableRow className="hover:bg-transparent border-border-sub">
                                                             <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Archived</TableHead>
-                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Job ID / Title</TableHead>
-                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Client</TableHead>
+                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Type</TableHead>
+                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Record</TableHead>
+                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Client / Technician</TableHead>
                                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-right pr-6">Actions</TableHead>
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
-                                                        {archivedJobsList.map(wo => {
-                                                            let archivedDisplay = '—';
-                                                            if (wo.archivedAt) {
-                                                                const d = new Date(wo.archivedAt);
-                                                                archivedDisplay = isNaN(d.getTime()) ? wo.archivedAt : format(d, 'MMM d, yyyy');
-                                                            }
+                                                        {archiveItems.map(item => {
+                                                            const archivedDate = new Date(item.archivedAt);
+                                                            const archivedDisplay = isNaN(archivedDate.getTime()) ? item.archivedAt || '—' : format(archivedDate, 'MMM d, yyyy');
                                                             return (
-                                                                <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary cursor-pointer" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
+                                                                <TableRow
+                                                                    key={item.id}
+                                                                    className={cn('border-border-sub hover:bg-bg-tertiary', item.job && 'cursor-pointer')}
+                                                                    onClick={() => { if (item.job) { setSelectedJob(item.job); setIsJobOpen(true); } }}
+                                                                >
                                                                     <TableCell className="py-3 pl-6 text-[10px] font-mono text-text-secondary uppercase">{archivedDisplay}</TableCell>
+                                                                    <TableCell className="py-3"><Badge variant="outline" className="text-[7px] uppercase h-4">{item.kind}</Badge></TableCell>
                                                                     <TableCell className="py-3">
-                                                                        <p className="text-[9px] font-bold text-brand-red font-mono uppercase">{((wo as any).externalWorkOrderId || wo.id).toString().toUpperCase()}</p>
-                                                                        <p className="text-xs font-bold text-text-primary uppercase mt-0.5">{wo.title || wo.description}</p>
+                                                                        <p className="text-[9px] font-bold text-brand-red font-mono uppercase">{item.identifier}</p>
+                                                                        <p className="text-xs font-bold text-text-primary uppercase mt-0.5">{item.title}</p>
                                                                     </TableCell>
-                                                                    <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{wo.clientName}</TableCell>
+                                                                    <TableCell className="py-3">
+                                                                        {item.clientName && <p className="text-[10px] font-bold text-text-secondary uppercase">{item.clientName}</p>}
+                                                                        {item.techName && <p className="text-[9px] text-text-muted uppercase">{item.techName}</p>}
+                                                                        {!item.clientName && !item.techName && <span className="text-[10px] text-text-muted">—</span>}
+                                                                    </TableCell>
                                                                     <TableCell className="py-3 text-right pr-6" onClick={e => e.stopPropagation()}>
-                                                                        <Button variant="outline" size="sm" className="h-7 text-[9px] uppercase font-bold tracking-widest" onClick={() => handleRestoreArchived(wo)}>
-                                                                            Restore
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="h-7 text-[9px] uppercase font-bold tracking-widest"
+                                                                            onClick={() => item.event ? handleRestoreEvent(item.event.id) : item.job && handleRestoreArchived(item.job)}
+                                                                        >
+                                                                            <RotateCcw size={10} className="mr-1" />Restore
                                                                         </Button>
                                                                     </TableCell>
                                                                 </TableRow>
@@ -1674,63 +1733,6 @@ export default function ActivityAuditPage() {
                                                 </Table>
                                             </div>
                                         )}
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Archived Activity ({filteredArchivedEvents.length})</p>
-                                    {filteredArchivedEvents.length === 0 ? (
-                                        <div className="py-24 text-center border border-dashed border-border-sub rounded-xl opacity-40">
-                                            <ArchiveIcon size={32} className="mx-auto text-text-muted mb-2" />
-                                            <p className="text-[10px] font-bold uppercase text-text-muted">No archived activity{archiveDateRange?.from ? ' in this range' : ' yet'}.</p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-1">
-                                            {filteredArchivedEvents.map(event => {
-                                                let tsDisplay = '';
-                                                try {
-                                                    const d = new Date(event.timestamp);
-                                                    tsDisplay = isNaN(d.getTime()) ? event.timestamp : format(d, 'MMM d, h:mm a');
-                                                } catch { tsDisplay = event.timestamp; }
-                                                const typeColors: Record<string, string> = {
-                                                    assignment: 'border-l-accent-gold',
-                                                    work_order: 'border-l-border-main',
-                                                    log: 'border-l-brand-red',
-                                                    invoice: 'border-l-text-green',
-                                                    site_request: 'border-l-text-muted',
-                                                };
-                                                return (
-                                                    <div key={event.id} className={cn(
-                                                        'flex items-start gap-4 p-3 rounded-lg border border-border-sub border-l-4 bg-bg-secondary hover:bg-bg-tertiary transition-colors group',
-                                                        typeColors[event.type] || 'border-l-border-sub'
-                                                    )}>
-                                                        <div className="w-[120px] shrink-0 text-right">
-                                                            <p className="text-[9px] font-mono text-text-muted leading-tight">{tsDisplay}</p>
-                                                        </div>
-                                                        <div className="flex-1 min-w-0 text-left">
-                                                            <p className={cn('text-[10px] font-black uppercase tracking-wide', event.color)}>{event.eventLabel}</p>
-                                                            <p className="text-[11px] font-bold text-text-primary leading-tight mt-0.5 truncate">{event.entity}</p>
-                                                            <div className="flex items-center gap-2 mt-0.5">
-                                                                {event.techName && <span className="text-[9px] text-text-muted uppercase font-bold">{event.techName}</span>}
-                                                                {event.techName && event.clientName && <span className="text-text-muted text-[9px]">·</span>}
-                                                                {event.clientName && <span className="text-[9px] text-text-muted uppercase">{event.clientName}</span>}
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 shrink-0">
-                                                            <Badge variant="outline" className="text-[7px] uppercase h-4">{event.type.replace('_', ' ')}</Badge>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-6 px-2 text-[9px] uppercase font-bold text-text-muted hover:text-text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                onClick={() => handleRestoreEvent(event.id)}
-                                                            >
-                                                                <RotateCcw size={10} className="mr-1" />Restore
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
                                     </div>
                                 </div>
                             </TabsContent>

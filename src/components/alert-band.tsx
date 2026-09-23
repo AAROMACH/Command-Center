@@ -18,7 +18,7 @@ import {
   MapPin,
   Banknote
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, isInactiveTechnician } from "@/lib/utils";
 import { addDays } from 'date-fns';
 import {
   Dialog,
@@ -31,7 +31,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
-import type { WorkOrder, Project, ServiceRequest, WeeklyLog, TimeOffRequest, SiteRequest, Invoice, PayrollDispute } from '@/lib/types';
+import type { WorkOrder, Project, ServiceRequest, WeeklyLog, TimeOffRequest, SiteRequest, Invoice, PayrollDispute, Technician } from '@/lib/types';
 
 type AlertType = 'critical' | 'warning' | 'info' | 'success';
 
@@ -61,6 +61,7 @@ export function AlertBand() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [assignments, setAssignments] = useState<WorkOrder[]>([]);
   const [payrollDisputes, setPayrollDisputes] = useState<PayrollDispute[]>([]);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
 
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -114,6 +115,10 @@ export function AlertBand() {
     } else {
       // Admin: filtered to only the status values needed for alerts
       unsubs.push(onSnapshot(
+        collection(db, 'users'),
+        (snap) => setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)))
+      ));
+      unsubs.push(onSnapshot(
         query(collection(db, 'workOrders'), where('status', '==', 'unassigned')),
         (snap) => setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)))
       ));
@@ -142,8 +147,13 @@ export function AlertBand() {
     if (!currentUser) return [];
 
     const currentAlerts: Alert[] = [];
+    const inactiveTechIds = new Set(technicians.filter(isInactiveTechnician).map(t => t.id));
+    const activeWeeklyLogs = weeklyLogs.filter(log => !inactiveTechIds.has(log.techId));
+    const activeTimeOffRequests = timeOffRequests.filter(request => !inactiveTechIds.has(request.techId));
+    const activePayrollDisputes = payrollDisputes.filter(dispute => !inactiveTechIds.has(dispute.techId));
 
     if (pathname.startsWith('/tech')) {
+      if (isInactiveTechnician(currentUser)) return [];
       const activeJob = assignments.find(wo =>
         (wo.assignedTechnicianId === currentUser.id || wo.techId === currentUser.id) &&
         wo.status === 'in-progress'
@@ -181,11 +191,11 @@ export function AlertBand() {
       }
 
       // weeklyLogs is already filtered to Draft status for this tech
-      if (weeklyLogs.length > 0) {
+      if (activeWeeklyLogs.length > 0) {
         currentAlerts.push({
           id: 'tech-logs',
           type: 'warning',
-          text: `${weeklyLogs.length} log${weeklyLogs.length > 1 ? 's' : ''} pending`,
+          text: `${activeWeeklyLogs.length} log${activeWeeklyLogs.length > 1 ? 's' : ''} pending`,
           description: `Your weekly work log is currently in draft status. Submit for administrative audit to avoid payout delays.`,
           icon: FileWarning,
           actionPath: '/tech/logs',
@@ -245,11 +255,11 @@ export function AlertBand() {
         });
       }
 
-      if (weeklyLogs.length > 0) {
+      if (activeWeeklyLogs.length > 0) {
         currentAlerts.push({
           id: 'admin-audit',
           type: 'info',
-          text: `${weeklyLogs.length} log${weeklyLogs.length > 1 ? 's' : ''} pending`,
+          text: `${activeWeeklyLogs.length} log${activeWeeklyLogs.length > 1 ? 's' : ''} pending`,
           description: `Field operatives have submitted weekly logs that require financial and operational authorization.`,
           icon: FileCheck,
           actionPath: '/admin/financials?tab=payroll',
@@ -257,11 +267,11 @@ export function AlertBand() {
         });
       }
 
-      if (timeOffRequests.length > 0) {
+      if (activeTimeOffRequests.length > 0) {
         currentAlerts.push({
           id: 'admin-personnel-requests',
           type: 'info',
-          text: `${timeOffRequests.length} personnel request${timeOffRequests.length > 1 ? 's' : ''}`,
+          text: `${activeTimeOffRequests.length} personnel request${activeTimeOffRequests.length > 1 ? 's' : ''}`,
           description: `Field staff have submitted absence logs or time-off requests that require administrative review.`,
           icon: Users,
           actionPath: '/admin/directory?tab=requests&subtab=personnel',
@@ -281,11 +291,11 @@ export function AlertBand() {
         });
       }
 
-      if (payrollDisputes.length > 0) {
+      if (activePayrollDisputes.length > 0) {
         currentAlerts.push({
           id: 'admin-payroll-disputes',
           type: 'critical',
-          text: `${payrollDisputes.length} payroll dispute${payrollDisputes.length > 1 ? 's' : ''}`,
+          text: `${activePayrollDisputes.length} payroll dispute${activePayrollDisputes.length > 1 ? 's' : ''}`,
           description: `Field operatives have disputed a job or log after payout — these require review before the discrepancy is resolved.`,
           icon: AlertTriangle,
           actionPath: '/admin/payroll/audit?tab=adjustments',
@@ -295,7 +305,7 @@ export function AlertBand() {
     }
 
     return currentAlerts;
-  }, [pathname, currentUser, workOrders, assignments, weeklyLogs, projects, serviceRequests, timeOffRequests, siteRequests, invoices, payrollDisputes]);
+  }, [pathname, currentUser, workOrders, assignments, weeklyLogs, projects, serviceRequests, timeOffRequests, siteRequests, invoices, payrollDisputes, technicians]);
 
   const handleAlertClick = (alert: Alert) => {
     setSelectedAlert(alert);

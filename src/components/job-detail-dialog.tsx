@@ -155,6 +155,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   // Optimistic assigned-tech override so a swap shows the new tech instantly,
   // even though the `mission` prop is a snapshot from when the dialog opened.
   const [optimisticTechId, setOptimisticTechId] = useState<string | null>(null);
+  const [optimisticHelperIds, setOptimisticHelperIds] = useState<string[]>([]);
   // Admin force-complete (close out a job on behalf of a tech who can't).
   const [forceOpen, setForceOpen] = useState(false);
   const [forceFilePayroll, setForceFilePayroll] = useState(false);
@@ -172,6 +173,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   // Clear per-assignment UI state whenever a different assignment is shown.
   useEffect(() => {
     setOptimisticTechId(null);
+    setOptimisticHelperIds([]);
     setForceOpen(false);
     setForceFilePayroll(false);
     setForcedDone(false);
@@ -219,10 +221,13 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     try {
       await updateDoc(doc(db, 'assignments', mission.id), {
         assignedTechnicianId: swapTechId, techId: swapTechId,
-        history: arrayUnion({ date: new Date().toISOString(), type: 'tech_swapped',
+        history: arrayUnion({ date: new Date().toISOString(), type: prevTechId ? 'tech_swapped' : 'tech_assigned',
           previousTechnicianId: prevTechId, previousTechnicianName: prevTech?.name || prevTechId,
           newTechnicianId: swapTechId, newTechnicianName: nt?.name || swapTechId,
-          details: `Reassigned from ${prevTech?.name || 'unassigned'} to ${nt?.name || swapTechId}`, user: admin }),
+          details: prevTechId
+            ? `Reassigned from ${prevTech?.name || prevTechId} to ${nt?.name || swapTechId}`
+            : `Assigned to ${nt?.name || swapTechId}`,
+          user: admin }),
       });
     } catch (e) {
       setOptimisticTechId(null); // revert the optimistic display if the write failed
@@ -239,12 +244,23 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
       history: arrayUnion({ date: new Date().toISOString(), type: 'helper_added',
         details: `${ht?.name || helperTechId} added as helper`, user: 'Admin' }),
     });
+    setOptimisticHelperIds(ids => ids.includes(helperTechId) ? ids : [...ids, helperTechId]);
     setHelperOpen(false); setHelperTechId('');
   };
 
   if (!mission) return null;
 
-  const leadTech = technicians.find(t => t.id === (optimisticTechId ?? mission.assignedTechnicianId ?? mission.techId));
+  const assignedTechId = optimisticTechId ?? mission.assignedTechnicianId ?? mission.techId ?? '';
+  const hasAssignedTech = Boolean(assignedTechId);
+  const leadTech = technicians.find(t => t.id === assignedTechId);
+  const helperIds = Array.from(new Set([
+    ...(mission.additionalTechnicianIds || []),
+    ...optimisticHelperIds,
+  ])).filter(id => id !== assignedTechId);
+  const helperTechs = helperIds.map(id => ({
+    id,
+    tech: technicians.find(t => t.id === id),
+  }));
 
   // The job's tech id straight off the record — a departed tech may no longer
   // exist in the users list (so leadTech is undefined), but we can still file
@@ -362,7 +378,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     { icon: Phone,       label: 'Call Client',       onClick: () => {} },
     { icon: MessageSquare, label: 'Message Client',  onClick: () => {} },
     { icon: ShieldCheck, label: 'Verify Assignment', onClick: handleVerify },
-    { icon: RotateCcw,   label: 'Swap Tech',         onClick: () => { setSwapTechId(''); setSwapOpen(true); } },
+    { icon: hasAssignedTech ? RotateCcw : UserPlus, label: hasAssignedTech ? 'Swap Tech' : 'Assign Tech', onClick: () => { setSwapTechId(''); setSwapOpen(true); } },
     { icon: UserPlus,    label: 'Add Helper',        onClick: () => { setHelperTechId(''); setHelperOpen(true); } },
   ];
 
@@ -545,6 +561,30 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                     <div className="p-10 flex flex-col items-center justify-center opacity-40">
                       <UserPlus size={28} className="text-text-muted mb-2" />
                       <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Unallocated</p>
+                    </div>
+                  )}
+                  {helperTechs.length > 0 && (
+                    <div className="border-t border-border-sub px-4 py-3">
+                      <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] mb-2">Helpers</p>
+                      <div className="space-y-2">
+                        {helperTechs.map(({ id, tech }) => {
+                          const name = tech?.name || id;
+                          return (
+                            <div key={id} className="flex items-center gap-2.5 rounded-lg border border-border-sub bg-bg-primary px-3 py-2">
+                              <div
+                                className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black text-white shrink-0"
+                                style={{ background: getAvatarColor(name) }}
+                              >
+                                {name.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-[11px] font-black text-text-primary truncate">{name}</p>
+                                <p className="text-[8px] text-text-muted font-bold uppercase tracking-widest">Helper</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -780,14 +820,14 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
 
       </SheetContent>
 
-      {/* Swap Tech Dialog */}
+      {/* Assign / Swap Tech Dialog */}
       <Dialog open={swapOpen} onOpenChange={setSwapOpen}>
         <DialogContent className="bg-bg-elevated border-border-main sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Swap Technician</DialogTitle>
+            <DialogTitle className="text-[13px] font-black uppercase tracking-widest">{hasAssignedTech ? 'Swap Technician' : 'Assign Technician'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Select Replacement</Label>
+            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">{hasAssignedTech ? 'Select Replacement' : 'Select Technician'}</Label>
             <Select value={swapTechId} onValueChange={setSwapTechId}>
               <SelectTrigger className="h-9 text-[10px] font-bold uppercase bg-bg-secondary border-border-main">
                 <SelectValue placeholder="Choose technician..." />
@@ -803,7 +843,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold" onClick={() => setSwapOpen(false)}>Cancel</Button>
-            <Button size="sm" className="h-8 text-[10px] uppercase font-bold bg-brand-red hover:bg-brand-red/90 text-white" disabled={!swapTechId} onClick={handleSwapTech}>Confirm Swap</Button>
+            <Button size="sm" className="h-8 text-[10px] uppercase font-bold bg-brand-red hover:bg-brand-red/90 text-white" disabled={!swapTechId} onClick={handleSwapTech}>{hasAssignedTech ? 'Confirm Swap' : 'Assign Technician'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -822,7 +862,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
                 {sortTechniciansForDeployment(technicians
-                  .filter(t => isAssignableTechnician(t) && t.id !== (mission?.assignedTechnicianId || mission?.techId)))
+                  .filter(t => isAssignableTechnician(t) && t.id !== assignedTechId && !helperIds.includes(t.id)))
                   .map(t => (
                     <SelectItem key={t.id} value={t.id} disabled={isInactiveTechnician(t)} className="text-[10px] font-bold uppercase">
                       {t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}

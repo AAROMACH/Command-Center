@@ -58,9 +58,10 @@ export function UnloggedCompletions({ rows, technicians, currentUser }: Props) {
         ].some(v => (v || '').toString().toLowerCase().includes(q)));
     }, [rows, search, techById]);
 
-    // Rows already on another tech's log are left out of File All — those
-    // need a human decision, not a second payout.
-    const bulkRows = visible.filter(r => !r.loggedUnderTechId);
+    // Rows already on another tech's log, or matching a hand-typed missing-job
+    // report, are left out of File All — those need a human decision, not a
+    // second payout.
+    const bulkRows = visible.filter(r => !r.loggedUnderTechId && !r.reportedMissingAs);
     const totalPay = visible.reduce((s, r) => s + (Number(r.job.pay) || 0), 0);
 
     const adminName = auth.currentUser?.displayName || currentUser?.name || 'Admin';
@@ -135,11 +136,11 @@ export function UnloggedCompletions({ rows, technicians, currentUser }: Props) {
 
     const exportCsv = () => {
         const esc = (v: unknown) => `"${(v ?? '').toString().replace(/"/g, '""')}"`;
-        const header = ['Assignment', 'Work Order', 'Title', 'Client', 'Technician', 'Schedule Date', 'Week Of', 'Pay', 'Likely Cause', 'Logged Under Other Tech'];
+        const header = ['Assignment', 'Work Order', 'Title', 'Client', 'Technician', 'Schedule Date', 'Week Of', 'Pay', 'Likely Cause', 'Logged Under Other Tech', 'Missing-Job Report WO'];
         const lines = visible.map(r => [
             r.job.id, displayWorkOrderNumber(r.job), r.job.title, r.job.clientName, techName(r.techId),
             r.job.scheduleDate, weekOfForScheduleDate(r.job.scheduleDate), Number(r.job.pay) || 0, r.source,
-            r.loggedUnderTechId ? techName(r.loggedUnderTechId) : '',
+            r.loggedUnderTechId ? techName(r.loggedUnderTechId) : '', r.reportedMissingAs || '',
         ].map(esc).join(','));
         const blob = new Blob([[header.map(esc).join(','), ...lines].join('\n')], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
@@ -200,6 +201,7 @@ export function UnloggedCompletions({ rows, technicians, currentUser }: Props) {
                                         <span className="text-[10px] font-mono text-text-muted">WO {displayWorkOrderNumber(r.job)}</span>
                                         {tech && isInactiveTechnician(tech) && <Badge variant="destructive" className="text-[7px] h-4 uppercase">Inactive tech</Badge>}
                                         {r.loggedUnderTechId && <Badge variant="pending" className="text-[7px] h-4 uppercase">On {techName(r.loggedUnderTechId)}&apos;s log</Badge>}
+                                        {r.reportedMissingAs && <Badge variant="pending" className="text-[7px] h-4 uppercase">Missing-job report has WO {r.reportedMissingAs}</Badge>}
                                     </div>
                                     <p className="text-[11px] font-bold text-text-primary truncate">{r.job.title || r.job.description || '—'}</p>
                                     <p className="text-[9px] text-text-muted uppercase tracking-widest font-bold">
@@ -227,7 +229,7 @@ export function UnloggedCompletions({ rows, technicians, currentUser }: Props) {
                         <AlertDialogTitle>File {bulkRows.length} jobs to weekly logs?</AlertDialogTitle>
                         <AlertDialogDescription>
                             Each job goes to its technician&apos;s log for its scheduled week, or the current week (flagged) if that week is closed.
-                            Jobs already on another technician&apos;s log are skipped. Logs still need normal submission and approval before anything is paid.
+                            Jobs already on another technician&apos;s log or matching a missing-job report are skipped. Logs still need normal submission and approval before anything is paid.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

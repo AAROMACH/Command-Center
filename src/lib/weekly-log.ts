@@ -4,6 +4,7 @@ import { db } from '@/lib/firebase';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import type { WeeklyLog, WeeklyLogItem, WorkOrder } from '@/lib/types';
+import { externalWorkOrderId, normalizeExternalId } from '@/lib/work-order-identity';
 
 /**
  * The Monday-based `weekOf` key ('MM-dd-yyyy') for a work order's scheduled
@@ -258,13 +259,18 @@ export async function fileCompletedAssignment(opts: {
 // agree on what counts as "already in a log".
 
 /** Work-order ids a set of logs already accounts for: filed items, plus
- *  missing-job reports the tech linked to a specific assignment (those are
- *  pending payroll review and must not be double-filed). */
+ *  missing-job reports (pending or settled through payroll, so they must not
+ *  be double-filed) — matched by linked assignment id, or by Field Nation
+ *  number for reports the tech typed in by hand (stored as `ext:<number>`). */
 export function loggedWorkOrderIds(logs: Pick<WeeklyLog, 'items' | 'missingAssignmentReports'>[]): Set<string> {
   const ids = new Set<string>();
   for (const log of logs) {
     (log.items || []).forEach(i => { if (i.workOrderId) ids.add(i.workOrderId); });
-    (log.missingAssignmentReports || []).forEach(r => { if (r.assignmentId) ids.add(r.assignmentId); });
+    (log.missingAssignmentReports || []).forEach(r => {
+      if (r.assignmentId) ids.add(r.assignmentId);
+      const ext = normalizeExternalId(r.externalWorkOrderId);
+      if (ext) ids.add(`ext:${ext}`);
+    });
   }
   return ids;
 }
@@ -272,7 +278,9 @@ export function loggedWorkOrderIds(logs: Pick<WeeklyLog, 'items' | 'missingAssig
 /** Whether a job is accounted for by `ids` — matched by its doc id or, for
  *  jobs that moved from workOrders → assignments, its original workOrderId. */
 export function isJobLogged(job: Pick<WorkOrder, 'id' | 'workOrderId'>, ids: Set<string>): boolean {
-  return ids.has(job.id) || (!!job.workOrderId && ids.has(job.workOrderId));
+  if (ids.has(job.id) || (!!job.workOrderId && ids.has(job.workOrderId))) return true;
+  const ext = normalizeExternalId(externalWorkOrderId(job as Partial<WorkOrder>));
+  return !!ext && ids.has(`ext:${ext}`);
 }
 
 export async function buildCompletedJobItem(

@@ -24,6 +24,24 @@ import { jobTechId, jobDateTimeValue, isArchivedJob } from '@/lib/jobs';
  */
 export const AUTO_HEAL_LOOKBACK_DAYS = 30;
 
+/**
+ * Jobs the sync must leave to an admin (Payroll Audit → Unlogged) even inside
+ * the window, because the tech's own logs can't tell the whole story:
+ *  - reassigned jobs — the entry may still sit on the previous tech's log
+ *    (swaps before the log-move existed, or a locked log), which this tech's
+ *    sync can't see; filing here would pay it twice.
+ *  - force-completed without filing — an admin's explicit "don't pay
+ *    through a log", recorded before payrollExcluded existed.
+ */
+function needsAdminDecision(job: WorkOrder): boolean {
+  return (job.history || []).some(h => {
+    const type = (h?.type || '') as string;
+    const details = (h?.details || '').toString();
+    return type === 'tech_swap' || type === 'tech_swapped' || /^Reassigned from/i.test(details)
+      || (/^Force-completed/i.test(details) && !/filed to weekly log/i.test(details));
+  });
+}
+
 function withinAutoHealWindow(job: WorkOrder): boolean {
   const ts = jobDateTimeValue(job.scheduleDate, null);
   if (!ts) return false;
@@ -119,7 +137,7 @@ export function useHelperLogSync(techId: string | null) {
     const leadById = new Map<string, WorkOrder>();
     [...leadPoolJobs, ...leadAssignments].forEach(j => leadById.set(j.id, j));
     [...leadById.values()]
-      .filter(j => isLead(j) && withinAutoHealWindow(j) && needsFiling(j))
+      .filter(j => isLead(j) && withinAutoHealWindow(j) && !needsAdminDecision(j) && needsFiling(j))
       .forEach(async (j) => {
         filingRef.current.add(j.id);
         try {

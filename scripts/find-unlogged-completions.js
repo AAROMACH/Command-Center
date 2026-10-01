@@ -65,6 +65,9 @@ async function main() {
   asmtSnap.docs.forEach(d => jobs.set(d.id, { ...d.data(), id: d.id, _coll: 'assignments' }));
 
   const loggedByTech = new Map();
+  const reportedExtByTech = new Map();
+  const normExt = v => String(v == null ? '' : v).trim().replace(/\s+/g, '').replace(/^wo-/i, '').toLowerCase();
+  const jobExt = j => normExt(j.externalWorkOrderId || (j.source === 'Imported' ? (j.workOrderId || j.id) : ''));
   const firstTechForId = new Map();
   logSnap.docs.forEach(d => {
     const log = d.data();
@@ -76,6 +79,9 @@ async function main() {
     ].filter(Boolean);
     ids.forEach(id => { set.add(id); if (!firstTechForId.has(id)) firstTechForId.set(id, log.techId); });
     loggedByTech.set(log.techId, set);
+    const ext = reportedExtByTech.get(log.techId) || new Set();
+    (log.missingAssignmentReports || []).forEach(r => { const n = normExt(r.externalWorkOrderId); if (n) ext.add(n); });
+    reportedExtByTech.set(log.techId, ext);
   });
 
   const rows = [];
@@ -87,17 +93,19 @@ async function main() {
     const ids = [job.id, job.workOrderId].filter(Boolean);
     if (own && ids.some(id => own.has(id))) continue;
     const elsewhere = ids.map(id => firstTechForId.get(id)).find(Boolean);
-    rows.push({ job, techId, elsewhere });
+    const ext = jobExt(job);
+    const reported = ext && reportedExtByTech.get(techId) && reportedExtByTech.get(techId).has(ext) ? ext.toUpperCase() : '';
+    rows.push({ job, techId, elsewhere, reported });
   }
   rows.sort((a, b) => parseDate(b.job.scheduleDate) - parseDate(a.job.scheduleDate));
 
   const esc = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
-  const out = [['Assignment', 'Collection', 'Work Order', 'Title', 'Client', 'Technician', 'Schedule Date', 'Week Of', 'Pay', 'Likely Cause', 'Logged Under Other Tech'].map(esc).join(',')];
-  for (const { job, techId, elsewhere } of rows) {
+  const out = [['Assignment', 'Collection', 'Work Order', 'Title', 'Client', 'Technician', 'Schedule Date', 'Week Of', 'Pay', 'Likely Cause', 'Logged Under Other Tech', 'Missing-Job Report WO'].map(esc).join(',')];
+  for (const { job, techId, elsewhere, reported } of rows) {
     out.push([
       job.id, job._coll, job.externalWorkOrderId || job.workOrderId || job.id, job.title, job.clientName,
       names.get(techId) || techId, job.scheduleDate, weekOf(job.scheduleDate), Number(job.pay) || 0,
-      completionSource(job), elsewhere ? (names.get(elsewhere) || elsewhere) : '',
+      completionSource(job), elsewhere ? (names.get(elsewhere) || elsewhere) : '', reported,
     ].map(esc).join(','));
   }
   console.log(out.join('\n'));

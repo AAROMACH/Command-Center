@@ -1,5 +1,6 @@
 import type { WeeklyLog, WorkOrder } from './types';
 import { jobTechId, isArchivedJob, jobDateTimeValue } from './jobs';
+import { externalWorkOrderId, normalizeExternalId } from './work-order-identity';
 
 /**
  * Detection of completed jobs that never reached their tech's weekly log, for
@@ -14,6 +15,10 @@ export type UnloggedCompletion = {
   techId: string;
   /** Best guess at how the job got to completed without being filed. */
   source: string;
+  /** A hand-typed missing-job report on this tech's log carries the same
+   *  Field Nation number — it may already be paid that way (or it may be a
+   *  revisit sharing the number). The tech-side sync won't auto-file these. */
+  reportedMissingAs?: string;
   /** Set when the job IS on a log — just under a different tech's (e.g. it
    *  was reassigned after completion). Filing it again may double-pay. */
   loggedUnderTechId?: string;
@@ -42,6 +47,7 @@ export function completionSource(job: Pick<WorkOrder, 'history'>): string {
 
 export function findUnloggedCompletions(jobs: WorkOrder[], logs: WeeklyLog[]): UnloggedCompletion[] {
   const loggedByTech = new Map<string, Set<string>>();
+  const reportedExtByTech = new Map<string, Set<string>>();
   const firstTechForId = new Map<string, string>();
   for (const log of logs) {
     if (!log.techId) continue;
@@ -51,6 +57,12 @@ export function findUnloggedCompletions(jobs: WorkOrder[], logs: WeeklyLog[]): U
       if (!firstTechForId.has(id)) firstTechForId.set(id, log.techId);
     }
     loggedByTech.set(log.techId, set);
+    const ext = reportedExtByTech.get(log.techId) || new Set<string>();
+    (log.missingAssignmentReports || []).forEach(r => {
+      const n = normalizeExternalId(r.externalWorkOrderId);
+      if (n) ext.add(n);
+    });
+    reportedExtByTech.set(log.techId, ext);
   }
 
   const out: UnloggedCompletion[] = [];
@@ -62,7 +74,9 @@ export function findUnloggedCompletions(jobs: WorkOrder[], logs: WeeklyLog[]): U
     const ids = [job.id, job.workOrderId].filter(Boolean) as string[];
     if (own && ids.some(id => own.has(id))) continue;
     const elsewhere = ids.map(id => firstTechForId.get(id)).find(Boolean);
-    out.push({ job, techId, source: completionSource(job), loggedUnderTechId: elsewhere });
+    const ext = normalizeExternalId(externalWorkOrderId(job));
+    const reported = !!ext && !!reportedExtByTech.get(techId)?.has(ext);
+    out.push({ job, techId, source: completionSource(job), loggedUnderTechId: elsewhere, reportedMissingAs: reported ? ext.toUpperCase() : undefined });
   }
   return out.sort((a, b) => jobDateTimeValue(b.job.scheduleDate, b.job.scheduleTime) - jobDateTimeValue(a.job.scheduleDate, a.job.scheduleTime));
 }

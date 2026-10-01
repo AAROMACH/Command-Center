@@ -1,7 +1,8 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
+import { SearchField } from '@/components/search-field';
 
 const MapView = dynamic(() => import('../map/components/map-view'), {
     ssr: false,
@@ -19,7 +20,6 @@ import {
   CheckCircle2,
   Wrench,
   ArrowUpDown,
-  Search,
   ExternalLink,
   Navigation,
   Play,
@@ -90,6 +90,9 @@ export default function TechAssignmentsPage() {
     const [sortBy, setSortBy] = useState<string>('date');
     const [dateAsc, setDateAsc] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    // Filtering (and re-rendering every card) lags a keystroke behind so the
+    // search box itself never waits on it — see components/search-field.tsx.
+    const deferredSearch = useDeferredValue(searchQuery);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'active');
 
@@ -150,7 +153,7 @@ export default function TechAssignmentsPage() {
         if (!currentTechId) return [];
         return allWorkOrders
             .filter(wo => {
-                const q = searchQuery.toLowerCase();
+                const q = deferredSearch.toLowerCase();
                 const matchesSearch = (
                     wo.id.toLowerCase().includes(q) ||
                     (wo.title || '').toLowerCase().includes(q) ||
@@ -189,7 +192,7 @@ export default function TechAssignmentsPage() {
 
                 return matchesSearch && matchesDate;
             });
-    }, [allWorkOrders, currentTechId, searchQuery, dateRange]);
+    }, [allWorkOrders, currentTechId, deferredSearch, dateRange]);
 
     const activeAssignments = useMemo(() => 
         techWorkOrders.filter(wo => wo.status !== 'unassigned' && wo.status !== 'completed' && wo.status !== 'cancelled'),
@@ -409,15 +412,12 @@ export default function TechAssignmentsPage() {
                         <Car size={12} className="mr-1.5" />
                         Log Trip
                     </Button>
-                    <div className="search-wrap">
-                        <Search />
-                        <input
-                            className="search-input !w-full md:!w-[250px]"
-                            placeholder="Search assignments..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
+                    <SearchField
+                        value={searchQuery}
+                        onChange={setSearchQuery}
+                        placeholder="Search assignments..."
+                        className="basis-full md:basis-auto md:w-[260px]"
+                    />
                 </div>
             </header>
 

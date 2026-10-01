@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useDeferredValue } from 'react';
+import { SearchField } from '@/components/search-field';
 import { useRouter } from 'next/navigation';
 import { db } from "@/lib/firebase";
 import { collection, doc, updateDoc, onSnapshot, query, where, setDoc, deleteDoc } from 'firebase/firestore';
@@ -96,6 +97,8 @@ export default function AssignmentsHubPage() {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  // Filtering lags a keystroke behind so the search box never waits on it.
+  const deferredSearch = useDeferredValue(searchQuery);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -226,7 +229,7 @@ export default function AssignmentsHubPage() {
         const techId = jobTechId(wo);
         
         const tech = technicians.find(t => t.id === techId);
-        const queryStr = searchQuery.toLowerCase();
+        const queryStr = deferredSearch.toLowerCase();
         
         const matchesSearch = (
           (wo.id || '').toLowerCase().includes(queryStr) ||
@@ -286,7 +289,7 @@ export default function AssignmentsHubPage() {
           }
         }
       });
-  }, [workOrders, technicians, searchQuery, dateRange, sortBy, activePriorities, activeSources, dateAsc]);
+  }, [workOrders, technicians, deferredSearch, dateRange, sortBy, activePriorities, activeSources, dateAsc]);
 
   const activeWorkOrders = useMemo(() =>
     filteredWorkOrders.filter(wo => !isArchivedJob(wo) && !isCompletedJob(wo) && wo.status !== 'cancelled'),
@@ -491,7 +494,7 @@ export default function AssignmentsHubPage() {
           <h1 className="page-title text-left">Assignments</h1>
           <p className="page-subtitle text-left">Schedule and history and historical job audit.</p>
         </div>
-        <div className="flex items-center gap-3 text-left">
+        <div className="flex flex-wrap items-center gap-3 text-left">
             <div className="flex items-center rounded-md border border-border-main overflow-hidden h-10 bg-bg-secondary shrink-0">
               <button
                 onClick={() => setViewMode('list')}
@@ -513,15 +516,13 @@ export default function AssignmentsHubPage() {
                 <Map size={13} /> Map
               </button>
             </div>
-            <div className="search-wrap text-left">
-              <Search className="h-4 w-4" />
-              <input 
-                placeholder="Search Tech, ID, or Title..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="search-input !w-full md:!w-[300px] bg-bg-secondary border-border-main h-10"
-              />
-            </div>
+            <SearchField
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search Tech, ID, or Title..."
+              className="basis-full md:basis-auto md:w-[300px]"
+              inputClassName="sm:h-10"
+            />
             
             <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
                 <SelectTrigger className="w-[140px] h-10 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-widest">

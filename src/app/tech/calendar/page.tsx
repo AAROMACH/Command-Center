@@ -6,6 +6,8 @@ import dynamic from 'next/dynamic';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { isArchivedJob } from '@/lib/jobs';
+import { removeJobFromDraftLogs } from '@/lib/weekly-log';
+import { useCompletionFiling } from '@/hooks/use-completion-filing';
 import { db, auth } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -114,6 +116,7 @@ export default function TechCalendarPage() {
   const { toast } = useToast();
 
   const [currentTechId, setCurrentTechId] = useState<string | null>(null);
+  const { completeAndFile, weekDialog } = useCompletionFiling(currentTechId);
   const [loading, setLoading] = useState(true);
   const [rawAssignments, setRawAssignments] = useState<JobWithSrc[]>([]);
   const [rawWorkOrders, setRawWorkOrders] = useState<JobWithSrc[]>([]);
@@ -275,7 +278,7 @@ export default function TechCalendarPage() {
   const statusAction = async (wo: JobWithSrc, newStatus: string, label: string) => {
     const coll = wo._src === 'assignment' ? 'assignments' : 'workOrders';
     const loc = await getTacticalLocation();
-    await updateDoc(doc(db, coll, wo.id), {
+    const writeStatus = () => updateDoc(doc(db, coll, wo.id), {
       status: newStatus,
       history: arrayUnion({
         type: 'status_change',
@@ -284,6 +287,18 @@ export default function TechCalendarPage() {
         user: currentTechId || 'Field Operative',
       }),
     });
+    // Completing / re-opening here must touch the weekly log exactly like the
+    // dashboard and assignment screens do — this path used to skip it, so
+    // jobs completed from the calendar never reached a log.
+    if (newStatus === 'completed') {
+      const result = await completeAndFile(wo, writeStatus);
+      toast({ title: label, description: result === 'filed' ? 'Filed to your weekly log.' : 'Choose which weekly log should hold it.' });
+      return;
+    }
+    if (wo.status === 'completed' && currentTechId) {
+      await removeJobFromDraftLogs(currentTechId, wo.id);
+    }
+    await writeStatus();
     toast({ title: label });
   };
 
@@ -676,6 +691,7 @@ export default function TechCalendarPage() {
           )}
         </div>
       </div>
+      {weekDialog}
     </>
   );
 }

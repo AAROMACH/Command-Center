@@ -30,6 +30,7 @@ import { isPayAdmin } from '@/lib/permissions';
 import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
 import { toUnassignedWorkOrder } from '@/lib/jobs';
 import { createDocId } from '@/lib/generateId';
+import { syncWeeklyLogForAdminStatusEdit } from '@/lib/weekly-log';
 
 const AssignmentMap = dynamic(() => import('./assignment-map'), { ssr: false });
 
@@ -334,12 +335,14 @@ export default function AssignmentDetailPage() {
         });
         await setDoc(doc(db, 'assignments', assignmentId), assignmentData);
         await deleteDoc(doc(db, 'workOrders', editedOrder.id));
+        await syncWeeklyLogForAdminStatusEdit({ prevStatus: assignment.status, job: { ...(finalUpdate as WorkOrder), id: assignmentId }, techId: newTechId });
         toast({ title: 'Registry Updated', description: 'Job entry synchronized.' });
         router.push(`/admin/assignments/${assignmentId}`);
         return;
       }
 
       await updateDoc(doc(db, sourceCollection, editedOrder.id), sanitize(finalUpdate));
+      await syncWeeklyLogForAdminStatusEdit({ prevStatus: assignment.status, job: finalUpdate as WorkOrder, techId: newTechId });
       setAssignment(finalUpdate as WorkOrder);
       setIsEditOpen(false);
       setEditedOrder(null);

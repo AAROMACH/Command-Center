@@ -32,6 +32,8 @@ import { downloadPaystub } from '@/lib/paystub';
 import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
 import { PayrollReviewDialog } from '@/app/admin/financials/components/payroll-review-dialog';
+import { UnloggedCompletions } from './components/unlogged-completions';
+import { findUnloggedCompletions } from '@/lib/weekly-log-audit';
 
 // Within a group of duplicate weekly logs for the same tech+week, picks the
 // one considered the legitimate original: whichever left Draft first
@@ -87,6 +89,9 @@ export default function PayrollAuditPage() {
     const [assignments, setAssignments] = useState<WorkOrder[]>([]);
     const missions = useMemo(() => mergeJobs(workOrders, assignments), [workOrders, assignments]);
     const jobsById = useMemo(() => new Map(missions.map(m => [m.id, m])), [missions]);
+    // Completed jobs that never reached their tech's weekly log — the
+    // Unlogged tab. See lib/weekly-log-audit.ts.
+    const unloggedCompletions = useMemo(() => findUnloggedCompletions(missions, weeklyLogs), [missions, weeklyLogs]);
     // Memoized per-log settlement so every display/export site (row totals,
     // CSV, summary chips, Paystub History) reads the exact same number as
     // the review dialog's "Net Tech Settlement" — computed once per log
@@ -691,6 +696,7 @@ export default function PayrollAuditPage() {
                         { value: 'staff', label: 'Staff Pay', count: staffFilteredLogs.length },
                         { value: 'history', label: 'Paystub History', count: approvedLogsByTech.length },
                         { value: 'adjustments', label: 'Adjustments', count: adjustments.length + payrollDisputes.filter(d => d.status === 'open').length },
+                        { value: 'unlogged', label: 'Unlogged', count: unloggedCompletions.length },
                     ].map(t => (
                         <TabsTrigger key={t.value} value={t.value} className="px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all flex items-center gap-2">
                             {t.label}
@@ -903,6 +909,11 @@ export default function PayrollAuditPage() {
                             </TableBody>
                         </Table>
                     </div>
+                </TabsContent>
+
+                {/* ── Unlogged ── */}
+                <TabsContent value="unlogged" className="m-0">
+                    <UnloggedCompletions rows={unloggedCompletions} technicians={technicians} currentUser={currentUser} />
                 </TabsContent>
             </Tabs>
 

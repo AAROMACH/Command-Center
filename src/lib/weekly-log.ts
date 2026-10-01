@@ -1,7 +1,9 @@
 import { startOfWeek, format, isValid } from 'date-fns';
-import { collection, query, where, getDocs, doc, setDoc, runTransaction } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, updateDoc, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { WeeklyLogItem } from '@/lib/types';
+import { createDocId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
+import type { WeeklyLog, WeeklyLogItem, WorkOrder } from '@/lib/types';
 
 /**
  * The Monday-based `weekOf` key ('MM-dd-yyyy') for a work order's scheduled
@@ -246,4 +248,129 @@ export async function fileCompletedAssignment(opts: {
   // Scheduled week's log is closed — file in the reporting week, flagged.
   await fileInReportingWeek(techId, item, scheduledWeek, reportingWeek, makeLogId);
   return { weekOf: reportingWeek, placedIn: 'reporting_week_override' };
+}
+
+// ── Completed-job coverage ──────────────────────────────────────────────────
+//
+// A job only reaches a weekly log when something files it at completion time.
+// The helpers below let every completion path share one item shape, and let
+// the self-healing sync (use-helper-log-sync.ts) and the admin "Unlogged" audit
+// agree on what counts as "already in a log".
+
+/** Work-order ids a set of logs already accounts for: filed items, plus
+ *  missing-job reports the tech linked to a specific assignment (those are
+ *  pending payroll review and must not be double-filed). */
+export function loggedWorkOrderIds(logs: Pick<WeeklyLog, 'items' | 'missingAssignmentReports'>[]): Set<string> {
+  const ids = new Set<string>();
+  for (const log of logs) {
+    (log.items || []).forEach(i => { if (i.workOrderId) ids.add(i.workOrderId); });
+    (log.missingAssignmentReports || []).forEach(r => { if (r.assignmentId) ids.add(r.assignmentId); });
+  }
+  return ids;
+}
+
+/** Whether a job is accounted for by `ids` — matched by its doc id or, for
+ *  jobs that moved from workOrders → assignments, its original workOrderId. */
+export function isJobLogged(job: Pick<WorkOrder, 'id' | 'workOrderId'>, ids: Set<string>): boolean {
+  return ids.has(job.id) || (!!job.workOrderId && ids.has(job.workOrderId));
+}
+
+export async function buildCompletedJobItem(
+  job: Pick<WorkOrder, 'id' | 'pay' | 'scheduleDate'>,
+  filedVia: WeeklyLogItem['filedVia'],
+): Promise<WeeklyLogItem> {
+  return {
+    id: await createDocId(ID_PREFIXES.WEEKLY_LOG_ITEM),
+    workOrderId: job.id,
+    jobPay: job.pay,
+    outcomeCode: null,
+    isComplete: true,
+    isAdminReviewed: false,
+    workDate: job.scheduleDate,
+    filedVia,
+  };
+}
+
+/** Files a completed job for `techId` using auto placement (scheduled week if
+ *  its log is open, otherwise the reporting week, flagged). */
+export async function fileCompletedJob(opts: {
+  techId: string;
+  job: Pick<WorkOrder, 'id' | 'pay' | 'scheduleDate'>;
+  filedVia: WeeklyLogItem['filedVia'];
+}): Promise<FileCompletedResult> {
+  const item = await buildCompletedJobItem(opts.job, opts.filedVia);
+  return fileCompletedAssignment({
+    techId: opts.techId,
+    scheduleDate: opts.job.scheduleDate,
+    item,
+    makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
+  });
+}
+
+/**
+ * Jobs a tech is in the middle of completing — between the status write and
+ * the "which week?" answer. The self-healing sync skips these so it can't
+ * file a job out from under the tech's choice. Entries expire so a prompt the
+ * tech walked away from (closed tab, back button) doesn't block the sync
+ * forever.
+ */
+const COMPLETION_IN_FLIGHT_TTL_MS = 10 * 60 * 1000;
+/** Kept briefly after filing so a weekly-log snapshot that hasn't caught up
+ *  yet can't make the sync see the job as unlogged and file it twice. */
+const COMPLETION_SETTLE_MS = 60 * 1000;
+const completionsInFlight = new Map<string, number>(); // workOrderId → expiry
+
+export function beginCompletionFiling(workOrderId: string) {
+  completionsInFlight.set(workOrderId, Date.now() + COMPLETION_IN_FLIGHT_TTL_MS);
+}
+
+export function endCompletionFiling(workOrderId: string) {
+  completionsInFlight.set(workOrderId, Date.now() + COMPLETION_SETTLE_MS);
+}
+
+export function isCompletionFilingInFlight(workOrderId: string): boolean {
+  const expiresAt = completionsInFlight.get(workOrderId);
+  if (expiresAt === undefined) return false;
+  if (Date.now() > expiresAt) {
+    completionsInFlight.delete(workOrderId);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Removes a job's item from a tech's Draft logs — used when a job is
+ * re-opened (or re-completed, to avoid stacking). Submitted/Approved logs are
+ * left alone; those are payroll's to adjust.
+ */
+export async function removeJobFromDraftLogs(techId: string, workOrderId: string) {
+  const snap = await getDocs(query(
+    collection(db, 'weeklyLogs'),
+    where('techId', '==', techId),
+    where('status', '==', 'Draft'),
+  ));
+  for (const logDoc of snap.docs) {
+    const items = (logDoc.data().items || []) as WeeklyLogItem[];
+    const kept = items.filter(i => i.workOrderId !== workOrderId);
+    if (kept.length !== items.length) await updateDoc(logDoc.ref, { items: kept });
+  }
+}
+
+/**
+ * Keeps weekly logs in step when an admin edits a job's status directly
+ * (admin assignment edit dialogs). Moving a job INTO completed files it for
+ * its tech; moving it OUT of completed pulls it from their open Draft logs.
+ */
+export async function syncWeeklyLogForAdminStatusEdit(opts: {
+  prevStatus: WorkOrder['status'] | undefined;
+  job: Pick<WorkOrder, 'id' | 'pay' | 'scheduleDate' | 'status' | 'payrollExcluded'>;
+  techId: string | null | undefined;
+}) {
+  const { prevStatus, job, techId } = opts;
+  if (!techId || prevStatus === job.status) return;
+  if (job.status === 'completed' && !job.payrollExcluded) {
+    await fileCompletedJob({ techId, job, filedVia: 'admin_status_edit' });
+  } else if (prevStatus === 'completed') {
+    await removeJobFromDraftLogs(techId, job.id);
+  }
 }

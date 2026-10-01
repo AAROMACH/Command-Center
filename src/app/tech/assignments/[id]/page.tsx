@@ -8,7 +8,7 @@ import {
   doc, getDoc, collection, query, where, onSnapshot,
   updateDoc, arrayUnion, addDoc,
 } from 'firebase/firestore';
-import type { WorkOrder, Technician, WeeklyLog, WeeklyLogItem } from '@/lib/types';
+import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -22,12 +22,10 @@ import {
 import { format } from 'date-fns';
 import { cn, getTacticalLocation, getTacticalCoords, calculateDistance } from '@/lib/utils';
 import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete, reopenStatusFor } from '@/lib/trip-flow';
-import { createDocId } from '@/lib/generateId';
-import { ID_PREFIXES } from '@/lib/constants';
 import { externalWorkOrderId } from '@/lib/work-order-identity';
-import { fileCompletedAssignment, resolveCompletionPlacement, type CompletionPlacement } from '@/lib/weekly-log';
-import { CompletionWeekDialog } from '@/components/completion-week-dialog';
-import { getDocs, setDoc } from 'firebase/firestore';
+import { removeJobFromDraftLogs } from '@/lib/weekly-log';
+import { useCompletionFiling } from '@/hooks/use-completion-filing';
+import { setDoc } from 'firebase/firestore';
 import { startOfWeek } from 'date-fns';
 
 const AssignmentMap = dynamic(
@@ -122,6 +120,7 @@ export default function TechAssignmentDetailPage() {
   const assignmentId = params?.id as string;
 
   const [currentTechId, setCurrentTechId] = useState<string | null>(null);
+  const { completeAndFile, weekDialog } = useCompletionFiling(currentTechId);
   const [assignment, setAssignment] = useState<WorkOrder | null>(null);
   const [tech, setTech] = useState<Technician | null>(null);
   const [helperTechs, setHelperTechs] = useState<Technician[]>([]);
@@ -130,7 +129,6 @@ export default function TechAssignmentDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [detailView, setDetailView] = useState<'overview' | 'history'>('overview');
   const [historyTypeFilter, setHistoryTypeFilter] = useState('all');
-  const [weekPrompt, setWeekPrompt] = useState<(CompletionPlacement & { item: WeeklyLogItem; scheduleDate: string | undefined }) | null>(null);
 
   useEffect(() => {
     const uid = sessionStorage.getItem('currentUserId');
@@ -211,57 +209,7 @@ export default function TechAssignmentDetailPage() {
   // ── Weekly log helpers ────────────────────────────────────────────────────
   const removeFromWeeklyLogs = async (woId: string) => {
     if (!currentTechId) return;
-    const q = query(
-      collection(db, 'weeklyLogs'),
-      where('techId', '==', currentTechId),
-      where('status', '==', 'Draft')
-    );
-    const snap = await getDocs(q);
-    for (const logDoc of snap.docs) {
-      const data = logDoc.data() as WeeklyLog;
-      const updated = (data.items || []).filter(item => item.workOrderId !== woId);
-      if (updated.length !== (data.items || []).length)
-        await updateDoc(doc(db, 'weeklyLogs', logDoc.id), { items: updated });
-    }
-  };
-
-  const syncToWeeklyLog = async (woId: string) => {
-    if (!currentTechId || !assignment) return;
-    const itemId = await createDocId(ID_PREFIXES.WEEKLY_LOG_ITEM);
-    const newItem: WeeklyLogItem = {
-      id: itemId,
-      workOrderId: woId,
-      jobPay: assignment.pay,
-      outcomeCode: null,
-      isComplete: true,
-      isAdminReviewed: false,
-    };
-    // If the job is scheduled for a different week than we're completing in,
-    // ask which log should hold it; otherwise file it straight into its week.
-    const placement = await resolveCompletionPlacement({ techId: currentTechId, scheduleDate: assignment.scheduleDate });
-    if (placement.differentWeek) {
-      setWeekPrompt({ item: newItem, scheduleDate: assignment.scheduleDate, ...placement });
-      return;
-    }
-    await fileCompletedAssignment({
-      techId: currentTechId,
-      scheduleDate: assignment.scheduleDate,
-      item: newItem,
-      makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
-    });
-  };
-
-  const resolveWeekPrompt = async (choice: 'scheduled' | 'reporting') => {
-    if (!currentTechId || !weekPrompt) return;
-    await fileCompletedAssignment({
-      techId: currentTechId,
-      scheduleDate: weekPrompt.scheduleDate,
-      item: weekPrompt.item,
-      makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
-      placement: choice,
-    });
-    toast({ title: 'Filed to Weekly Log', description: choice === 'scheduled' ? `Added to the week of ${weekPrompt.scheduledWeek}.` : `Added to the current week (${weekPrompt.reportingWeek}).` });
-    setWeekPrompt(null);
+    await removeJobFromDraftLogs(currentTechId, woId);
   };
 
   // ── Status action handlers ────────────────────────────────────────────────
@@ -393,21 +341,24 @@ export default function TechAssignmentDetailPage() {
   });
 
   const handleMarkComplete = withLoading(async () => {
+    if (!assignment) return;
     const now = format(new Date(), 'h:mm a');
     const location = await getTacticalLocation();
     // If the tech completes without an explicit check-out, still close the trip.
     await finalizeOpenTrip(location);
-    await removeFromWeeklyLogs(assignmentId);
-    await updateDoc(doc(db, 'assignments', assignmentId), {
-      status: 'completed',
-      activeTripLogId: null,
-      history: arrayUnion({
-        type: 'note', date: format(new Date(), 'MM-dd-yyyy'),
-        details: `Mission finalized at ${now}. Status: CLOSED. Location: [${location}].`, user: techName,
-      }),
-    });
-    await syncToWeeklyLog(assignmentId);
-    toast({ title: 'Mission Finalized', description: 'Assignment moved to completed.' });
+    try {
+      const result = await completeAndFile(assignment, () => updateDoc(doc(db, 'assignments', assignmentId), {
+        status: 'completed',
+        activeTripLogId: null,
+        history: arrayUnion({
+          type: 'note', date: format(new Date(), 'MM-dd-yyyy'),
+          details: `Mission finalized at ${now}. Status: CLOSED. Location: [${location}].`, user: techName,
+        }),
+      }));
+      toast({ title: 'Mission Finalized', description: result === 'filed' ? 'Assignment moved to completed and filed to your weekly log.' : 'Choose which weekly log should hold it.' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Update Failed', description: e?.message || 'Please try again.' });
+    }
   });
 
   const handleReopen = withLoading(async () => {
@@ -881,15 +832,7 @@ export default function TechAssignmentDetailPage() {
         </div>
       )}
 
-      <CompletionWeekDialog
-        open={!!weekPrompt}
-        scheduledWeek={weekPrompt?.scheduledWeek || ''}
-        reportingWeek={weekPrompt?.reportingWeek || ''}
-        scheduledWeekEligible={!!weekPrompt?.scheduledWeekEligible}
-        onCorrectWeek={() => resolveWeekPrompt('scheduled')}
-        onCurrentWeek={() => resolveWeekPrompt('reporting')}
-        onCancel={() => setWeekPrompt(null)}
-      />
+      {weekDialog}
     </div>
   );
 }

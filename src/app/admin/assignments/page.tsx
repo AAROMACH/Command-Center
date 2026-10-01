@@ -3,6 +3,7 @@
 
 import { useState, useMemo, useEffect, useDeferredValue } from 'react';
 import { SearchField } from '@/components/search-field';
+import { SortControl, FiltersPopover, FilterSection, CheckboxFilter, DateRangeFilter, type SortOptionDef } from '@/components/list-toolbar';
 import { useRouter } from 'next/navigation';
 import { db } from "@/lib/firebase";
 import { collection, doc, updateDoc, onSnapshot, query, where, setDoc, deleteDoc } from 'firebase/firestore';
@@ -19,9 +20,7 @@ import {
   User,
   Briefcase,
   Activity,
-  X,
   ArrowUpDown,
-  SlidersHorizontal,
   Building2,
   ChevronRight,
   DollarSign,
@@ -73,7 +72,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -89,6 +87,14 @@ import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { WorkOrderId } from '@/components/work-order-id';
 import { jobTechId, isArchivedJob, isCompletedJob, jobDateTimeValue, archiveJobRecord, toUnassignedWorkOrder } from '@/lib/jobs';
 import { syncWeeklyLogForAdminStatusEdit, moveJobLogOnSwap, describeSwapLogMove } from '@/lib/weekly-log';
+
+const ADMIN_SORT_OPTIONS: SortOptionDef[] = [
+  { value: 'date', label: 'Date' },
+  { value: 'tech', label: 'Technician' },
+  { value: 'client', label: 'Client' },
+  { value: 'status', label: 'Status' },
+  { value: 'pay', label: 'Labor Rate' },
+];
 
 type SortOption = 'date' | 'client' | 'status' | 'pay' | 'tech';
 
@@ -481,7 +487,7 @@ export default function AssignmentsHubPage() {
     }
   };
 
-  const hasActiveFilters = !!dateRange?.from || activePriorities.length > 0 || activeSources.length > 0 || sortBy !== 'date';
+  const activeFilterCount = (dateRange?.from ? 1 : 0) + activePriorities.length + activeSources.length;
 
   return (
     <div className="space-y-6 text-left">
@@ -524,99 +530,29 @@ export default function AssignmentsHubPage() {
               inputClassName="sm:h-10"
             />
             
-            <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                <SelectTrigger className="w-[140px] h-10 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-widest">
-                    <div className="flex items-center gap-2 text-left">
-                        <ArrowUpDown size={14} className="text-text-muted" />
-                        <SelectValue placeholder="Sort" />
-                    </div>
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="date" className="text-[10px] uppercase font-bold">By Date</SelectItem>
-                    <SelectItem value="tech" className="text-[10px] uppercase font-bold">By Technician</SelectItem>
-                    <SelectItem value="client" className="text-[10px] uppercase font-bold">By Client</SelectItem>
-                    <SelectItem value="status" className="text-[10px] uppercase font-bold">By Status</SelectItem>
-                    <SelectItem value="pay" className="text-[10px] uppercase font-bold">By Labor Rate</SelectItem>
-                </SelectContent>
-            </Select>
-
-            <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn("h-10", hasActiveFilters && "border-brand-red text-brand-red")}>
-                    <SlidersHorizontal size={14} className="mr-2"/>
-                    Filters
-                    {hasActiveFilters && <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-[8px]">{(dateRange?.from ? 1 : 0) + activePriorities.length + activeSources.length}</Badge>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-                  <div className="p-4 border-b border-border-sub bg-bg-tertiary text-left">
-                    <div className="flex items-center justify-between text-left">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-text-primary text-left">Filters</p>
-                      {hasActiveFilters && (
-                        <button onClick={() => { setDateRange(undefined); setActivePriorities([]); setActiveSources([]); setSortBy('date'); }} className="text-[9px] font-bold text-brand-red hover:underline flex items-center gap-1">
-                          <X size={10} /> Reset
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="p-4 space-y-6 text-left">
-                    <div className="space-y-3 text-left">
-                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest text-left">Priority Audit</p>
-                      <div className="grid grid-cols-2 gap-2 text-left">
-                        {['critical', 'high', 'medium', 'low'].map(priority => (
-                          <div key={priority} className="flex items-center space-x-2 text-left">
-                            <Checkbox 
-                              id={`prio-${priority}`} 
-                              checked={activePriorities.includes(priority)}
-                              onCheckedChange={(checked) => {
-                                setActivePriorities(prev => checked ? [...prev, priority] : prev.filter(p => p !== priority));
-                              }}
-                            />
-                            <Label htmlFor={`prio-${priority}`} className="text-[10px] uppercase font-semibold cursor-pointer text-left">{priority}</Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 text-left">
-                      <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest text-left">Job Source</p>
-                      <div className="space-y-2 text-left">
-                        {['Imported', 'Manual', 'Client'].map(source => (
-                          <div key={source} className="flex items-center space-x-2 text-left">
-                            <Checkbox
-                              id={`source-${source}`}
-                              checked={activeSources.includes(source)}
-                              onCheckedChange={(checked) => {
-                                setActiveSources(prev => checked ? [...prev, source] : prev.filter(s => s !== source));
-                              }}
-                            />
-                            <Label htmlFor={`source-${source}`} className="text-[10px] uppercase font-semibold cursor-pointer text-left">{source}</Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 text-left">
-                      <div className="flex items-center justify-between">
-                        <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest text-left">Schedule Date</p>
-                        {dateRange?.from && (
-                          <button onClick={() => setDateRange(undefined)} className="text-[9px] font-bold text-brand-red hover:underline">Clear</button>
-                        )}
-                      </div>
-                      <p className="text-[10px] font-semibold text-text-primary text-left">
-                        {dateRange?.from
-                          ? (dateRange.to
-                              ? <>{format(dateRange.from, 'MM-dd-yyyy')} – {format(dateRange.to, 'MM-dd-yyyy')}</>
-                              : format(dateRange.from, 'MM-dd-yyyy'))
-                          : <span className="text-text-muted">All dates</span>}
-                      </p>
-                      <div className="rounded-md border border-border-sub overflow-hidden">
-                        <Calendar mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} />
-                      </div>
-                    </div>
-                  </div>
-                </PopoverContent>
-            </Popover>
+            <div className="flex w-full gap-2 sm:w-auto">
+              <SortControl
+                value={sortBy}
+                onChange={v => setSortBy(v as SortOption)}
+                options={ADMIN_SORT_OPTIONS}
+                dateAsc={dateAsc}
+                onToggleDirection={() => setDateAsc(prev => !prev)}
+                className="flex-1 sm:flex-none"
+              />
+              <FiltersPopover
+                activeCount={activeFilterCount}
+                onReset={() => { setDateRange(undefined); setActivePriorities([]); setActiveSources([]); }}
+                className="shrink-0"
+              >
+                <FilterSection title="Priority">
+                  <CheckboxFilter idPrefix="prio" options={['critical', 'high', 'medium', 'low']} selected={activePriorities} onChange={setActivePriorities} />
+                </FilterSection>
+                <FilterSection title="Job Source">
+                  <CheckboxFilter idPrefix="source" options={['Imported', 'Manual', 'Client']} selected={activeSources} onChange={setActiveSources} columns={1} />
+                </FilterSection>
+                <DateRangeFilter value={dateRange} onChange={setDateRange} />
+              </FiltersPopover>
+            </div>
         </div>
       </header>
 
@@ -688,18 +624,8 @@ export default function AssignmentsHubPage() {
 
         <div className="space-y-6 text-left">
             <TabsContent value="schedule" className="mt-0 space-y-6 text-left">
-                {/* Mobile: date-sort toggle + card list */}
+                {/* Mobile: card list (sort lives in the header toolbar) */}
                 <div className="md:hidden space-y-3">
-                    <button
-                        onClick={toggleDateSort}
-                        className="w-full flex items-center justify-between rounded-lg border border-border-sub bg-bg-secondary px-3 py-2.5"
-                    >
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Sort by Date</span>
-                        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-brand-red">
-                            {sortBy === 'date' ? (dateAsc ? 'Oldest First' : 'Latest First') : 'Latest First'}
-                            <ArrowUpDown size={12} />
-                        </span>
-                    </button>
                     {activeWorkOrders.map(wo => {
                         const techId = jobTechId(wo);
                         const tech = technicians.find(t => t.id === techId);
@@ -878,18 +804,8 @@ export default function AssignmentsHubPage() {
             </TabsContent>
 
             <TabsContent value="archive" className="mt-0 text-left">
-                {/* Mobile: date-sort toggle + card list */}
+                {/* Mobile: card list (sort lives in the header toolbar) */}
                 <div className="md:hidden space-y-3">
-                    <button
-                        onClick={toggleDateSort}
-                        className="w-full flex items-center justify-between rounded-lg border border-border-sub bg-bg-secondary px-3 py-2.5"
-                    >
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Sort by Date</span>
-                        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-brand-red">
-                            {sortBy === 'date' ? (dateAsc ? 'Oldest First' : 'Latest First') : 'Latest First'}
-                            <ArrowUpDown size={12} />
-                        </span>
-                    </button>
                     {archivedWorkOrders.map(wo => {
                         const techId = jobTechId(wo);
                         const tech = technicians.find(t => t.id === techId);

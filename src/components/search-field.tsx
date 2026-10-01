@@ -24,7 +24,9 @@ type Props = {
  *  - autocorrect / autocapitalize / spellcheck are off — they're what open
  *    compositions on every word;
  *  - 16px text on mobile so iOS doesn't zoom-and-relayout on focus;
- *  - explicit LTR, full width, 44px tall, with a clear button.
+ *  - explicit LTR, full width, 44px tall, with a clear button;
+ *  - native search styling disabled and text colour pinned — iOS otherwise
+ *    draws its own white field, making dark-theme text invisible.
  */
 export function SearchField({ value, onChange, placeholder = 'Search...', className, inputClassName }: Props) {
   const [text, setText] = useState(value);
@@ -63,8 +65,11 @@ export function SearchField({ value, onChange, placeholder = 'Search...', classN
           else commit(e.target.value);
         }}
         className={cn(
-          'h-11 w-full rounded-lg border border-border-main bg-bg-secondary pl-10 pr-11 text-base text-text-primary',
-          'placeholder:text-text-muted focus:border-brand-red focus:outline-none focus:ring-0',
+          'h-11 w-full rounded-lg border border-border-main bg-bg-secondary pl-10 pr-11 text-base text-text-primary caret-brand-red',
+          // iOS Safari paints type=search with its own (white) native styling,
+          // which hid light-on-dark text in portrait — opt out and pin colors.
+          'appearance-none [-webkit-appearance:none] [-webkit-text-fill-color:var(--text-primary)] opacity-100',
+          'placeholder:text-text-muted placeholder:[-webkit-text-fill-color:var(--text-muted)] focus:border-brand-red focus:outline-none focus:ring-0',
           'sm:h-9 sm:text-xs',
           // hide the browser's own clear "x" — we render a bigger one
           '[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none',

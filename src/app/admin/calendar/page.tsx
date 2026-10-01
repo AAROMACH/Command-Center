@@ -30,6 +30,7 @@ import {
   DragOverlay, PointerSensor, useSensor, useSensors,
 } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { describeSwapLogMove } from '@/lib/weekly-log';
 
 const AdminMapView = dynamic(() => import('@/app/admin/map/components/admin-map-view'), { ssr: false });
 
@@ -278,6 +279,10 @@ export default function AdminCalendarPage() {
           techId: editForm.assignedTechnicianId, techName: t?.name,
           previousTechId: prevTech, previousTechName: technicians.find(x => x.id === prevTech)?.name,
           actorName: 'Admin', extraFields: fieldUpdates,
+          onLogMove: r => {
+            const note = describeSwapLogMove(r, technicians.find(x => x.id === prevTech)?.name || 'the previous tech', t?.name || 'the new tech');
+            if (note) toast({ variant: note.warn ? 'destructive' : undefined, title: 'Weekly Log', description: note.text });
+          },
         });
         if (moved) setDrawerJob(null); // its doc id changed — close the stale drawer
       } else {
@@ -309,6 +314,10 @@ export default function AdminCalendarPage() {
         techId, techName: tech?.name,
         previousTechId: prevTech, previousTechName: technicians.find(t => t.id === prevTech)?.name,
         actorName: 'Admin',
+        onLogMove: r => {
+          const note = describeSwapLogMove(r, technicians.find(t => t.id === prevTech)?.name || 'the previous tech', tech?.name || 'the new tech');
+          if (note) toast({ variant: note.warn ? 'destructive' : undefined, title: 'Weekly Log', description: note.text });
+        },
       });
       setEditForm(f => ({ ...f, assignedTechnicianId: techId }));
       if (moved) setDrawerJob(null);

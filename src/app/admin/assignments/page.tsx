@@ -87,7 +87,7 @@ import { isAdmin, isPayAdmin } from "@/lib/permissions";
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { WorkOrderId } from '@/components/work-order-id';
 import { jobTechId, isArchivedJob, isCompletedJob, jobDateTimeValue, archiveJobRecord, toUnassignedWorkOrder } from '@/lib/jobs';
-import { syncWeeklyLogForAdminStatusEdit } from '@/lib/weekly-log';
+import { syncWeeklyLogForAdminStatusEdit, moveJobLogOnSwap, describeSwapLogMove } from '@/lib/weekly-log';
 
 type SortOption = 'date' | 'client' | 'status' | 'pay' | 'tech';
 
@@ -388,7 +388,15 @@ export default function AssignmentsHubPage() {
     } else {
       const docRef = doc(db, 'assignments', editedOrder.id);
       updateDoc(docRef, sanitize(finalUpdate))
-        .then(() => syncWeeklyLogForAdminStatusEdit({ prevStatus: selectedJob.status, job: finalUpdate as WorkOrder, techId: newTechId }))
+        .then(async () => {
+          if (newTechId !== prevTechId) {
+            const moved = await moveJobLogOnSwap({ job: finalUpdate as WorkOrder, fromTechIds: [prevTechId, selectedJob.assignedTechnicianId], toTechId: newTechId });
+            const note = describeSwapLogMove(moved, technicians.find(t => t.id === prevTechId)?.name || 'the previous tech', technicians.find(t => t.id === newTechId)?.name || 'the new tech');
+            if (note) toast({ variant: note.warn ? 'destructive' : undefined, title: 'Weekly Log', description: note.text });
+          } else {
+            await syncWeeklyLogForAdminStatusEdit({ prevStatus: selectedJob.status, job: finalUpdate as WorkOrder, techId: newTechId });
+          }
+        })
         .catch((error: any) => {
           console.error("Registry Update Error:", error);
           toast({ variant: "destructive", title: "Update Failed", description: error.message });

@@ -84,6 +84,7 @@ import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
 import { createDocId } from '@/lib/generateId';
 import { computeSla, slaStatusColor, formatSlaCountdown } from '@/lib/sla';
 import { auditFieldChange } from '@/lib/audit';
+import { moveJobLogOnSwap, describeSwapLogMove } from '@/lib/weekly-log';
 
 const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'TBD';
@@ -348,8 +349,13 @@ export const WorkOrdersTable = React.memo(({
     } else {
       const collectionName = mode === 'unassigned' ? 'workOrders' : 'assignments';
       const docRef = doc(db, collectionName, editedOrder.id);
-      updateDoc(docRef, sanitize({ ...finalUpdate })).then(() => {
+      updateDoc(docRef, sanitize({ ...finalUpdate })).then(async () => {
         runAudit(collectionName);
+        if (collectionName === 'assignments' && newTechId !== prevTechId) {
+          const moved = await moveJobLogOnSwap({ job: finalUpdate as WorkOrder, fromTechIds: [prevTechId, selectedOrder.assignedTechnicianId], toTechId: newTechId });
+          const note = describeSwapLogMove(moved, technicians.find(t => t.id === prevTechId)?.name || 'the previous tech', technicians.find(t => t.id === newTechId)?.name || 'the new tech');
+          if (note) toast({ variant: note.warn ? 'destructive' : undefined, title: 'Weekly Log', description: note.text });
+        }
       }).catch((e: any) => {
           console.error("Save Changes Error:", e);
           toast({ variant: "destructive", title: "Save Failed", description: e.message });

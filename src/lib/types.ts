@@ -527,7 +527,7 @@ export type WeeklyLogItem = {
   weekOverrideAt?: string;
   /** Which path filed this item — 'auto_sync' and 'admin_backfill' mark jobs
    *  that were completed without reaching a log and were picked up later. */
-  filedVia?: 'completion' | 'auto_sync' | 'admin_backfill' | 'admin_force_complete' | 'admin_status_edit';
+  filedVia?: 'completion' | 'auto_sync' | 'admin_backfill' | 'admin_force_complete' | 'admin_status_edit' | 'tech_swap';
 };
 
 export type MissingAssignmentReport = {

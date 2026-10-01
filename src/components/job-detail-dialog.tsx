@@ -34,7 +34,7 @@ import {
 } from 'firebase/firestore';
 import type { WorkOrder, WeeklyLog, AssignmentTimeLog, Technician } from '@/lib/types';
 import { displayWorkOrderNumber, isImported } from '@/lib/work-order-identity';
-import { fileCompletedJob } from '@/lib/weekly-log';
+import { fileCompletedJob, moveJobLogOnSwap, describeSwapLogMove } from '@/lib/weekly-log';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { assignmentTimeLogs } from '@/lib/data';
@@ -223,6 +223,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     try {
       await updateDoc(doc(db, 'assignments', mission.id), {
         assignedTechnicianId: swapTechId, techId: swapTechId,
+        technicianName: nt?.name || '',
         history: arrayUnion({ date: new Date().toISOString(), type: prevTechId ? 'tech_swapped' : 'tech_assigned',
           previousTechnicianId: prevTechId, previousTechnicianName: prevTech?.name || prevTechId,
           newTechnicianId: swapTechId, newTechnicianName: nt?.name || swapTechId,
@@ -234,6 +235,14 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     } catch (e) {
       setOptimisticTechId(null); // revert the optimistic display if the write failed
       throw e;
+    }
+    // The job has left the previous tech's views; move its weekly-log entry too.
+    try {
+      const moved = await moveJobLogOnSwap({ job: mission, fromTechIds: [mission.techId, mission.assignedTechnicianId], toTechId: swapTechId });
+      const note = describeSwapLogMove(moved, prevTech?.name || 'the previous tech', nt?.name || 'the new tech');
+      if (note) toast({ variant: note.warn ? 'destructive' : undefined, title: 'Weekly Log', description: note.text });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Swapped, but weekly log not moved', description: e?.message || 'Move it from Payroll Audit.' });
     }
   };
 

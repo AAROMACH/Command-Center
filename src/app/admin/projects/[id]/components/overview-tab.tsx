@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, collection, onSnapshot, query, where } from 'firebase/firestore';
+import { money } from '@/lib/financial-summary';
 
 type OverviewTabProps = {
     project: Project;
@@ -97,15 +98,15 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
 
         const materialCost = projectExpenses
             .filter(e => e.category === 'Materials')
-            .reduce((acc, e) => acc + e.amount, 0);
+            .reduce((acc, e) => acc + money(e.amount), 0);
 
         const otherExpenses = projectExpenses
             .filter(e => e.category !== 'Materials')
-            .reduce((acc, e) => acc + e.amount, 0);
+            .reduce((acc, e) => acc + money(e.amount), 0);
 
         const actualCost = laborCost + materialCost + otherExpenses;
         const revenue = projectInvoices.length > 0 
-            ? projectInvoices.reduce((acc, i) => acc + i.total, 0)
+            ? projectInvoices.reduce((acc, i) => acc + money(i.total), 0)
             : (project.projectBudget || 0);
             
         const profit = revenue - actualCost;

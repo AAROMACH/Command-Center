@@ -203,7 +203,10 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
       siteHazardNotes: [],
       actualBudget: 0,
       actualHours: 0,
-    };
+      // Link the client account too, so the client portal finds the project
+      // even if the company name is later edited on either side.
+      ...(selectedClient && isClient(selectedClient) ? { clientId: selectedClient.id } : {}),
+    } as Project;
 
     onSave(newProject);
     setIsOpen(false);

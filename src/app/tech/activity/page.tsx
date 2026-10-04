@@ -63,14 +63,16 @@ export default function TechActivityPage() {
   const disputed = allItems.filter(i => i.confirmationStatus === 'disputed').length;
 
   const jobCounts = useMemo(() => ({
-    completed: assignments.filter(a => a.status === 'completed' || a.status === 'checked-out').length,
-    inProgress: assignments.filter(a => a.status === 'in-progress' || a.status === 'on-my-way').length,
+    // Checked-out is still open (not completed/filed yet) — same as the admin
+    // side, which only counts 'completed' as done.
+    completed: assignments.filter(a => a.status === 'completed').length,
+    inProgress: assignments.filter(a => a.status === 'in-progress' || a.status === 'on-my-way' || a.status === 'checked-out').length,
     assigned: assignments.filter(a => a.status === 'assigned' || a.status === 'confirmed').length,
   }), [assignments]);
 
   const recentCompleted = useMemo(() =>
     assignments
-      .filter(a => a.status === 'completed' || a.status === 'checked-out')
+      .filter(a => a.status === 'completed')
       .sort((a, b) => jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime))
       .slice(0, 5),
     [assignments]
@@ -126,7 +128,7 @@ export default function TechActivityPage() {
   }, [weeklyLogs, rangeStart]);
 
   const avgJobsPerWeek = useMemo(() => {
-    const completed = filteredAssignments.filter(a => a.status === 'completed' || a.status === 'checked-out').length;
+    const completed = filteredAssignments.filter(a => a.status === 'completed').length;
     const weeks = dateRange === '4w' ? 4 : dateRange === '8w' ? 8 : dateRange === 'month' ? 4 : Math.max(1, Math.ceil(weeklyLogs.length / 1));
     return (completed / Math.max(1, weeks)).toFixed(1);
   }, [filteredAssignments, dateRange, weeklyLogs]);

@@ -189,7 +189,8 @@ service cloud.firestore {
           // so the job can surface on their own weekly work log.
           || (isTech() && resource.data.additionalTechnicianIds is list
               && request.auth.uid in resource.data.additionalTechnicianIds)
-          || (isClient() && resource.data.clientId == request.auth.uid)
+          || (isClient() && (resource.data.get('clientId', null) == request.auth.uid
+              || (myCompany() != '' && resource.data.get('clientName', null) == myCompany())))
       );
       allow create: if isAdmin();
       // Techs may update their own assignment (status, notes, check-in/out)
@@ -219,7 +220,8 @@ service cloud.firestore {
           isAdmin()
           || (isTech() && (resource.data.techId == request.auth.uid
               || resource.data.assignedTechnicianId == request.auth.uid))
-          || (isClient() && resource.data.clientId == request.auth.uid)
+          || (isClient() && (resource.data.get('clientId', null) == request.auth.uid
+              || (myCompany() != '' && resource.data.get('clientName', null) == myCompany())))
       );
       allow create: if isAdmin();
       // Same financial-field lockout as assignments (see comment above) —
@@ -321,6 +323,9 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
           isAdmin()
           || (isTech() && resource.data.techId == request.auth.uid)
+          // Client portal → Projects shows their own projects' daily logs.
+          || (isClient() && resource.data.get('projectId', null) != null
+              && isMyCompanyProject(resource.data.projectId))
       );
       allow create: if isAdmin()
           || (isTech() && request.resource.data.techId == request.auth.uid);
@@ -329,11 +334,21 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // A client's company, or '' when the account has none (never matches a
+    // real name, so a company-less client can't read company-scoped docs).
+    function myCompany() {
+      return userData().get('clientCompany', '');
+    }
+
     match /projects/{id} {
+      // Projects carry the client's company name in `client` (the new-project
+      // form never set clientId), so company match is the real link — the
+      // clientId-only rule left every client with zero projects.
       allow read: if isSignedIn() && (
           isAdmin()
           || isTech()
-          || (isClient() && resource.data.clientId == request.auth.uid)
+          || (isClient() && (resource.data.get('clientId', null) == request.auth.uid
+              || (myCompany() != '' && resource.data.get('client', null) == myCompany())))
       );
       allow create: if isAdmin();
       allow update: if isAdmin()
@@ -523,6 +538,15 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    function canReadMessage() {
+      return isAdmin()
+          || isTech()
+          || resource.data.senderId == request.auth.uid
+          || resource.data.get('receiverId', null) == request.auth.uid
+          || (isClient() && resource.data.get('projectId', null) != null
+              && isMyCompanyProject(resource.data.projectId));
+    }
+
     match /messages/{id} {
       // Staff (admin/tech) see the whole collection — matches the existing
       // company-wide-visibility model already used for `projects` (any tech
@@ -530,14 +554,7 @@ service cloud.firestore {
       // messages, plus group threads on projects that belong to their own
       // company — never another client's DMs or another company's project
       // chat.
-      allow read: if isSignedIn() && (
-          isAdmin()
-          || isTech()
-          || resource.data.senderId == request.auth.uid
-          || resource.data.get('receiverId', null) == request.auth.uid
-          || (isClient() && resource.data.get('projectId', null) != null
-              && isMyCompanyProject(resource.data.projectId))
-      );
+      allow read: if isSignedIn() && canReadMessage();
       // Sender must own the message, and (unless admin) must be permitted to
       // message that recipient per their messagingAllowedRoles + blocklist.
       // Project/group messages (no direct receiverId) skip the recipient check.
@@ -549,7 +566,19 @@ service cloud.firestore {
               || request.resource.data.receiverId == null
               || canMessage(request.resource.data.receiverId)
           );
-      allow update, delete: if isAdmin();
+      // Anyone who can see a message may add THEMSELVES to readBy (read
+      // receipts) and change nothing else. Admin-only before, so unread
+      // counts never cleared for techs and clients.
+      allow update: if isAdmin()
+          || (isSignedIn() && canReadMessage()
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy', 'read'])
+              && request.resource.data.get('read', true) == true
+              && request.resource.data.readBy is list
+              && request.resource.data.readBy.toSet()
+                  .difference(resource.data.get('readBy', []).toSet()).hasOnly([request.auth.uid])
+              && resource.data.get('readBy', []).toSet()
+                  .difference(request.resource.data.readBy.toSet()).size() == 0);
+      allow delete: if isAdmin();
     }
 
     // Service plans — the app reads/writes the `plans` collection (the rule

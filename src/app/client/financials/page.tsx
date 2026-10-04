@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
+import { useClientInvoices } from '@/hooks/use-client-invoices';
 import type { Invoice, Technician } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +26,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { money } from '@/lib/financial-summary';
 
 const PLAN_DETAILS: Record<string, { name: string; discount: string; priority: string; response: string; billing: string }> = {
     'on-call': { name: 'On-Call', discount: '0%', priority: 'Standard', response: '48h', billing: 'Monthly' },
@@ -34,34 +36,22 @@ const PLAN_DETAILS: Record<string, { name: string; discount: string; priority: s
 
 export default function ClientFinancialsPage() {
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
-    const [myInvoices, setMyInvoices] = useState<Invoice[]>([]);
     const [mounted, setMounted] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false);
     const { toast } = useToast();
 
+    // The nested invoice listener here used to leak (a new one per profile
+    // update), missed invoices linked by clientId, and showed drafts.
     useEffect(() => {
         setMounted(true);
         const userId = sessionStorage.getItem('currentUserId');
         if (!userId) return;
-
-        const unsubUser = onSnapshot(doc(db, 'users', userId), (d) => {
-            if (d.exists()) {
-                const userData = { ...d.data(), id: d.id } as Technician;
-                setCurrentUser(userData);
-                
-                const clientName = userData.clientCompany || userData.name;
-
-                const unsubInv = onSnapshot(query(collection(db, 'invoices'), where('clientName', '==', clientName)), (snap) => {
-                    setMyInvoices(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Invoice)));
-                });
-
-                return () => unsubInv();
-            }
+        return onSnapshot(doc(db, 'users', userId), (d) => {
+            if (d.exists()) setCurrentUser({ ...d.data(), id: d.id } as Technician);
         });
-
-        return () => unsubUser();
     }, []);
+    const myInvoices = useClientInvoices(currentUser);
 
     const filteredInvoices = useMemo(() => {
         return myInvoices
@@ -74,8 +64,8 @@ export default function ClientFinancialsPage() {
     }, [myInvoices, searchQuery]);
 
     const metrics = useMemo(() => {
-        const outstanding = filteredInvoices.filter(inv => inv.status !== 'paid' && inv.status !== 'void').reduce((acc, inv) => acc + inv.total, 0);
-        const paid = filteredInvoices.filter(inv => inv.status === 'paid').reduce((acc, inv) => acc + inv.total, 0);
+        const outstanding = filteredInvoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').reduce((acc, inv) => acc + money(inv.total), 0);
+        const paid = filteredInvoices.filter(inv => inv.status === 'paid').reduce((acc, inv) => acc + money(inv.total), 0);
         
         return { outstanding, paid };
     }, [filteredInvoices]);

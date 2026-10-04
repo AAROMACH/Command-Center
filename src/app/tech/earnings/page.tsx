@@ -45,6 +45,7 @@ import { mergeJobs, weekOfValue } from '@/lib/jobs';
 import { effectiveJobPay, computeWeeklyLogSettlement, netOfFieldNationFee } from '@/lib/payroll';
 import { downloadPaystub } from '@/lib/paystub';
 import { displayWorkOrderNumber } from '@/lib/work-order-identity';
+import { money } from '@/lib/financial-summary';
 
 type LogSortOption = 'date-desc' | 'date-asc' | 'payout-desc' | 'status';
 type ReimType = 'receipt' | 'mileage';
@@ -349,7 +350,7 @@ export default function TechEarningsPage() {
             .map(([weekOf, items]) => ({
                 weekOf,
                 items,
-                total: items.reduce((sum, i) => sum + i.amount, 0),
+                total: items.reduce((sum, i) => sum + money(i.amount), 0),
             }))
             .sort((a, b) => {
                 const [monthA, dayA, yearA] = a.weekOf.split('-').map(Number);

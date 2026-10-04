@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { db } from "@/lib/firebase";
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
+import { useClientProjects, useClientJobs } from '@/hooks/use-client-data';
 import type { Technician, WorkOrder, AssignmentTimeLog, Project, ProjectDocument } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -66,8 +67,6 @@ export default function SiteDetailPage() {
     const router = useRouter();
     const { toast } = useToast();
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
-    const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>([]);
-    const [allProjects, setAllProjects] = useState<Project[]>([]);
     const [allDocuments, setAllDocuments] = useState<ProjectDocument[]>([]);
     const [liveCheckIns, setLiveCheckIns] = useState<AssignmentTimeLog[]>([]);
     const [mounted, setMounted] = useState(false);
@@ -80,34 +79,16 @@ export default function SiteDetailPage() {
         setMounted(true);
         const userId = sessionStorage.getItem('currentUserId');
         if (!userId) return;
-
-        const unsubUser = onSnapshot(doc(db, 'users', userId), (d) => {
-            if (d.exists()) {
-                const userData = { ...d.data(), id: d.id } as Technician;
-                setCurrentUser(userData);
-                
-                const clientName = userData.clientCompany || userData.name;
-
-                const unsubWO = onSnapshot(query(collection(db, 'workOrders'), where('clientName', '==', clientName)), (snap) => {
-                    setAllWorkOrders(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder)));
-                });
-
-                const unsubProj = onSnapshot(query(collection(db, 'projects'), where('client', '==', clientName)), (snap) => {
-                    setAllProjects(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Project)));
-                });
-
-                return () => { unsubWO(); unsubProj(); };
-            }
+        return onSnapshot(doc(db, 'users', userId), (d) => {
+            if (d.exists()) setCurrentUser({ ...d.data(), id: d.id } as Technician);
         });
-
-        // Live check-ins usually aren't filtered by client at the collection level easily without complex indexes,
-        // but for this prototype we'll listen to all active logs.
-        const unsubLogs = onSnapshot(collection(db, 'assignments'), (snap) => {
-            // Placeholder logic for live checkins if using assignments subcollections
-        });
-
-        return () => unsubUser();
     }, []);
+
+    // Pool + dispatched jobs and projects for this client (the old listeners
+    // only read the pool, leaked per profile update, and an unfiltered
+    // assignments listener was rejected by the rules).
+    const allWorkOrders = useClientJobs(currentUser);
+    const allProjects = useClientProjects(currentUser);
 
     const id = params.id as string;
 

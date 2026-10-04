@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import Link from 'next/link';
 import { jobDateTimeValue } from '@/lib/jobs';
+import { money } from '@/lib/financial-summary';
 
 const ACCOUNT_STATUS_OPTIONS = [
     { value: 'lead', label: 'Lead' },
@@ -175,8 +176,8 @@ export default function ClientWorkspacePage() {
     const stats = useMemo(() => ({
         openWOs: clientWOs.filter(wo => wo.status !== 'completed').length,
         completedWOs: clientWOs.filter(wo => wo.status === 'completed').length,
-        outstandingBalance: clientInvoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').reduce((s, inv) => s + inv.total, 0),
-        totalRevenue: clientInvoices.filter(inv => inv.status === 'paid').reduce((s, inv) => s + inv.total, 0),
+        outstandingBalance: clientInvoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').reduce((s, inv) => s + money(inv.total), 0),
+        totalRevenue: clientInvoices.filter(inv => inv.status === 'paid').reduce((s, inv) => s + money(inv.total), 0),
         lastJobDate: clientWOs.filter(wo => wo.status === 'completed' && wo.scheduleDate).sort((a, b) => jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime))[0]?.scheduleDate || null,
     }), [clientWOs, clientInvoices]);
 

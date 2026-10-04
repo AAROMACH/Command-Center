@@ -5,6 +5,7 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, setDoc } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
+import { useClientJobs } from '@/hooks/use-client-data';
 import type { Technician, WorkOrder, SiteRequest, Site } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -37,7 +38,8 @@ import { ViewToggle, useViewMode } from '@/components/view-toggle';
 export default function ClientSitesPage() {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
-    const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+    // Pool + dispatched jobs (was the pool only, via a leaking nested listener).
+    const workOrders = useClientJobs(currentUser);
     const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
     const [firestoreSites, setFirestoreSites] = useState<Site[]>([]);
     const [mounted, setMounted] = useState(false);
@@ -65,18 +67,12 @@ export default function ClientSitesPage() {
                     const techData = { ...d.data(), id: d.id } as Technician;
                     setCurrentUser(techData);
 
-                    if (techData.clientCompany) {
-                        const unsubWO = onSnapshot(query(collection(db, 'workOrders'), where('clientName', '==', techData.clientCompany)), (snap) => {
-                            setWorkOrders(snap.docs.map(rd => ({ ...rd.data(), id: rd.id } as WorkOrder)));
-                        });
-                        const unsubReq = onSnapshot(query(collection(db, 'siteRequests'), where('clientId', '==', userId)), (snap) => {
-                            setSiteRequests(snap.docs.map(rd => ({ ...rd.data(), id: rd.id } as SiteRequest)));
-                        });
-                        return () => { unsubWO(); unsubReq(); };
-                    }
                 }
             });
-            return () => { unsubUser(); unsubSites(); };
+            const unsubReq = onSnapshot(query(collection(db, 'siteRequests'), where('clientId', '==', userId)), (snap) => {
+                setSiteRequests(snap.docs.map(rd => ({ ...rd.data(), id: rd.id } as SiteRequest)));
+            }, () => {});
+            return () => { unsubUser(); unsubSites(); unsubReq(); };
         }
     }, []);
 

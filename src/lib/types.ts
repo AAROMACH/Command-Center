@@ -273,6 +273,8 @@ export type Project = {
   id: string;
   name: string;
   client: string;
+  /** The client account, when the project was created from the client registry. */
+  clientId?: string;
   location: string;
   lat?: number;
   lng?: number;

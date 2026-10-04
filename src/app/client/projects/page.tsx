@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
+import { useClientProjects } from '@/hooks/use-client-data';
 import type { Project, ProjectDailyLog, Technician } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,7 +30,6 @@ import { ViewToggle, useViewMode, type ViewMode } from '@/components/view-toggle
 
 export default function ClientProjectsPage() {
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
-    const [allProjects, setAllProjects] = useState<Project[]>([]);
     const [allLogs, setAllLogs] = useState<ProjectDailyLog[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [mounted, setMounted] = useState(false);
@@ -40,32 +40,33 @@ export default function ClientProjectsPage() {
         setMounted(true);
         const userId = sessionStorage.getItem('currentUserId');
         if (!userId) return;
-
-        const unsubUser = onSnapshot(doc(db, 'users', userId), (d) => {
-            if (d.exists()) {
-                const userData = { ...d.data(), id: d.id } as Technician;
-                setCurrentUser(userData);
-                
-                const clientName = userData.clientCompany || userData.name;
-
-                const unsubProj = onSnapshot(query(collection(db, 'projects'), where('client', '==', clientName)), (snap) => {
-                    setAllProjects(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Project)));
-                });
-
-                const unsubLogs = onSnapshot(collection(db, 'projectDailyLogs'), (snap) => {
-                    setAllLogs(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as ProjectDailyLog)));
-                });
-
-                const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
-                    setTechnicians(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Technician)));
-                });
-
-                return () => { unsubProj(); unsubLogs(); unsubTech(); };
-            }
+        return onSnapshot(doc(db, 'users', userId), (d) => {
+            if (d.exists()) setCurrentUser({ ...d.data(), id: d.id } as Technician);
         });
-
-        return () => unsubUser();
     }, []);
+
+    const allProjects = useClientProjects(currentUser);
+
+    // Daily logs per project — a client may read only their own projects'
+    // logs, so an unfiltered collection read was rejected outright.
+    const projectIdsKey = allProjects.map(p => p.id).sort().join(',');
+    useEffect(() => {
+        const ids = projectIdsKey ? projectIdsKey.split(',') : [];
+        if (ids.length === 0) { setAllLogs([]); return; }
+        const parts = new Map<string, ProjectDailyLog[]>();
+        const unsubs = ids.map(pid => onSnapshot(
+            query(collection(db, 'projectDailyLogs'), where('projectId', '==', pid)),
+            snap => { parts.set(pid, snap.docs.map(d => ({ ...d.data(), id: d.id } as ProjectDailyLog))); setAllLogs([...parts.values()].flat()); },
+            () => {},
+        ));
+        return () => unsubs.forEach(u => u());
+    }, [projectIdsKey]);
+
+    // Staff profiles aren't readable from the client portal; the lead shows
+    // by role when their profile can't be loaded.
+    useEffect(() => onSnapshot(collection(db, 'users'),
+        snap => setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician))),
+        () => setTechnicians([])), []);
 
     const filteredProjects = useMemo(() => {
         return allProjects.filter(p => 
@@ -272,6 +273,8 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians
                                             </Avatar>
                                             <span className="text-[11px] font-bold text-text-primary uppercase tracking-tight text-left">{leadTech.name}</span>
                                         </div>
+                                    ) : leadMember ? (
+                                        <Badge variant="outline" className="text-[8px] uppercase tracking-widest bg-bg-tertiary">Assigned</Badge>
                                     ) : (
                                         <Badge variant="outline" className="text-[8px] uppercase tracking-widest bg-bg-tertiary">Unallocated</Badge>
                                     )}

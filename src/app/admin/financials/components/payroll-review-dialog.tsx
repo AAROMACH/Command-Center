@@ -67,6 +67,7 @@ import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
+import { money } from '@/lib/financial-summary';
 
 type PayrollReviewDialogProps = {
     isOpen: boolean;
@@ -878,7 +879,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                             const helperNames = getHelperNames(wo);
                                             const jobReimbursements = getJobReimbursements(wo?.id);
                                             const hasPendingReimb = jobReimbursements.some(r => r.status === 'pending');
-                                            const approvedReimbTotal = jobReimbursements.filter(r => r.status === 'approved').reduce((acc, r) => acc + r.amount, 0);
+                                            const approvedReimbTotal = jobReimbursements.filter(r => r.status === 'approved').reduce((acc, r) => acc + money(r.amount), 0);
 
                                             return (
                                                 <div key={item.id} className={cn(
@@ -1011,7 +1012,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                             const helperNames = getHelperNames(wo);
                                             const jobReimbursements = getJobReimbursements(wo?.id);
                                             const hasPendingReimb = jobReimbursements.some(r => r.status === 'pending');
-                                            const approvedReimbTotal = jobReimbursements.filter(r => r.status === 'approved').reduce((acc, r) => acc + r.amount, 0);
+                                            const approvedReimbTotal = jobReimbursements.filter(r => r.status === 'approved').reduce((acc, r) => acc + money(r.amount), 0);
 
                                             return (
                                                 <div key={item.id} className={cn(

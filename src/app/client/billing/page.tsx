@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/auth-context';
+import { useClientInvoices } from '@/hooks/use-client-invoices';
 import type { Invoice } from '@/lib/types';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -59,31 +60,9 @@ export default function ClientBillingPage() {
         setCurrentUserId(sessionStorage.getItem('currentUserId'));
     }, []);
 
-    // The signed-in client's real record and invoices (this page used to show
-    // the demo invoice list from lib/data). Invoices are matched by clientId
-    // or by company name — the two ways the invoice rules let a client read
-    // them — and drafts are hidden because they were never sent.
+    // The signed-in client's real invoices (this page used to show the demo list).
     const { user: currentUser } = useAuth();
-    const [liveInvoices, setLiveInvoices] = useState<Invoice[]>([]);
-    useEffect(() => {
-        if (!currentUser?.id) return;
-        let byId: Invoice[] = [];
-        let byCompany: Invoice[] = [];
-        const publish = () => {
-            const m = new Map<string, Invoice>();
-            [...byId, ...byCompany].forEach(i => m.set(i.id, i));
-            setLiveInvoices([...m.values()].filter(i => i.status !== 'draft'));
-        };
-        const unsubs = [
-            onSnapshot(query(collection(db, 'invoices'), where('clientId', '==', currentUser.id)),
-                snap => { byId = snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)); publish(); }, () => {}),
-        ];
-        if (currentUser.clientCompany) {
-            unsubs.push(onSnapshot(query(collection(db, 'invoices'), where('clientName', '==', currentUser.clientCompany)),
-                snap => { byCompany = snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)); publish(); }, () => {}));
-        }
-        return () => unsubs.forEach(u => u());
-    }, [currentUser?.id, currentUser?.clientCompany]);
+    const liveInvoices = useClientInvoices(currentUser);
 
     const myInvoices = useMemo(() => {
         return liveInvoices

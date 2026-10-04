@@ -14,6 +14,7 @@ import {
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { jobTechId, jobDateTimeValue, isArchivedJob } from '@/lib/jobs';
+import { completionEvent } from '@/lib/weekly-log-audit';
 
 /**
  * How far back the sync will auto-file a lead tech's own completed job that
@@ -54,7 +55,8 @@ function withinAutoHealWindow(job: WorkOrder): boolean {
  *
  *  - Helper jobs (additionalTechnicianIds): fanned into the helper's own log
  *    at $0 for payroll to price separately.
- *  - Lead jobs: a completed job that isn't in any of the tech's logs (the
+ *  - Lead jobs: a job the tech (or an admin) explicitly marked complete that
+ *    isn't in any of the tech's logs (the
  *    "which week?" prompt was abandoned, the filing write failed after the
  *    status write landed, an admin marked it completed) is filed with auto
  *    placement and tagged filedVia 'auto_sync'.
@@ -137,7 +139,7 @@ export function useHelperLogSync(techId: string | null) {
     const leadById = new Map<string, WorkOrder>();
     [...leadPoolJobs, ...leadAssignments].forEach(j => leadById.set(j.id, j));
     [...leadById.values()]
-      .filter(j => isLead(j) && withinAutoHealWindow(j) && !needsAdminDecision(j) && needsFiling(j))
+      .filter(j => isLead(j) && withinAutoHealWindow(j) && !!completionEvent(j) && !needsAdminDecision(j) && needsFiling(j))
       .forEach(async (j) => {
         filingRef.current.add(j.id);
         try {

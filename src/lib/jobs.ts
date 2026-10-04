@@ -1,5 +1,6 @@
 import type { WorkOrder } from './types';
 import { db } from './firebase';
+import { assignedTechOf } from './weekly-log-core';
 import { doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 
 // ── Unified job model ───────────────────────────────────────────────────────
@@ -24,11 +25,7 @@ export type JobWithSrc = WorkOrder & { _src?: JobSource };
  * then the legacy `techId`. Returns undefined when unassigned.
  */
 export function jobTechId(job: Partial<WorkOrder> | null | undefined): string | undefined {
-  if (!job) return undefined;
-  return job.assignedTechnicianId
-    || (job.assignedTechIds && job.assignedTechIds[0])
-    || (job as { techId?: string }).techId
-    || undefined;
+  return assignedTechOf(job);
 }
 
 /**

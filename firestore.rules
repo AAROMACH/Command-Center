@@ -244,53 +244,22 @@ service cloud.firestore {
           isAdmin()
           || (isTech() && resource.data.techId == request.auth.uid)
       );
-      // Admins create logs when filing on a tech's behalf (force-complete,
-      // status edits, Payroll Audit → Unlogged); techs only their own.
-      allow create: if isAdmin()
-          || (isTech() && request.resource.data.techId == request.auth.uid
-              && request.resource.data.status == 'Draft'
-              && request.resource.data.get('paid', false) != true
-              && request.resource.data.get('archived', false) != true);
-      // Techs edit their own Draft logs. They may also self-UNSUBMIT (flip a
-      // Submitted log back to Draft) when the log is still Submitted and not yet
-      // approved/paid/archived. tech.logs.unsubmit_own is granted by the tech
-      // subroles, so rules default it ON and only block techs with an explicit
-      // `false` override (revocation).
-      // A Draft may only stay Draft or be submitted — never self-approved —
-      // and the log can't be handed to another tech. On a non-Draft log a
-      // tech may only file an unsubmit request (Logs → Request Unsubmit).
-      allow update: if isAdmin()
-          || (isTech() && resource.data.techId == request.auth.uid
-              && resource.data.status == 'Draft'
-              && keepsField('techId')
-              && request.resource.data.status in ['Draft', 'Submitted']
-              && !request.resource.data.diff(resource.data).affectedKeys()
-                  .hasAny(['paid', 'paidAt', 'archived', 'archivedAt', 'approvedAt', 'approvedBy']))
-          || (isTech() && resource.data.techId == request.auth.uid
-              && resource.data.status != 'Draft'
-              && request.resource.data.diff(resource.data).affectedKeys()
-                  .hasOnly(['unsubmitRequested', 'unsubmitReason', 'unsubmitRequestedAt']))
-          || (isTech() && resource.data.techId == request.auth.uid
-              && keepsField('techId')
-              && resource.data.status == 'Submitted'
-              && request.resource.data.status == 'Draft'
-              && resource.data.get('paid', false) != true
-              && resource.data.get('archived', false) != true
-              && userData().get('permissionOverrides', {}).get('tech.logs.unsubmit_own', true) == true);
+      // Techs never write logs directly: rules can't validate what's inside
+      // the items/reimbursements arrays, so a tech could rewrite a job's pay
+      // or approve their own reimbursement in a Draft. Every tech change goes
+      // through /api/weekly-log (Admin SDK), which builds items from the job
+      // records and keeps new reimbursements pending. Admins (payroll) edit
+      // directly.
+      allow create, update: if isAdmin();
       allow delete: if isSuperAdmin();
     }
 
     // Internal bookkeeping only (never rendered) — one doc per tech per week
     // pointing at that week's open Draft weeklyLogs doc, so filing a
-    // completed job can atomically check-and-create inside a transaction
-    // instead of racing on a query. See src/lib/weekly-log.ts.
+    // completed job can atomically check-and-create inside a transaction.
+    // Written by /api/weekly-log (src/lib/server/weekly-log-server.ts).
     match /weeklyLogClaims/{id} {
-      allow read: if isSignedIn() && (isAdmin()
-          || (isTech() && (resource == null || resource.data.techId == request.auth.uid)));
-      allow create, update: if isAdmin()
-          || (isTech() && request.resource.data.techId == request.auth.uid
-              && (resource == null || resource.data.techId == request.auth.uid));
-      allow delete: if isAdmin();
+      allow read, write: if isAdmin();
     }
 
     match /weeklyLogItems/{id} {
@@ -298,10 +267,9 @@ service cloud.firestore {
           isAdmin()
           || (isTech() && resource.data.techId == request.auth.uid)
       );
-      allow create: if isAdmin()
-          || (isTech() && request.resource.data.techId == request.auth.uid);
-      allow update: if isAdmin()
-          || (isTech() && resource.data.techId == request.auth.uid && keepsField('techId'));
+      // Legacy collection (no app code reads or writes it) — admin-only so it
+      // can't carry tech-entered pay.
+      allow create, update: if isAdmin();
       allow delete: if isAdmin();
     }
 

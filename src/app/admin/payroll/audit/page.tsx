@@ -33,7 +33,8 @@ import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
 import { PayrollReviewDialog } from '@/app/admin/financials/components/payroll-review-dialog';
 import { UnloggedCompletions } from './components/unlogged-completions';
-import { findUnloggedCompletions } from '@/lib/weekly-log-audit';
+import { findUnloggedCompletions, findMismatchedLogEntries, findDesyncedAssignments } from '@/lib/weekly-log-audit';
+import { WrongTechEntries } from './components/wrong-tech-entries';
 
 // Within a group of duplicate weekly logs for the same tech+week, picks the
 // one considered the legitimate original: whichever left Draft first
@@ -92,6 +93,10 @@ export default function PayrollAuditPage() {
     // Completed jobs that never reached their tech's weekly log — the
     // Unlogged tab. See lib/weekly-log-audit.ts.
     const unloggedAudit = useMemo(() => findUnloggedCompletions(missions, weeklyLogs), [missions, weeklyLogs]);
+    // Log entries sitting on a tech other than the job's assignee, and jobs
+    // whose owner fields disagree — the Wrong Tech tab.
+    const wrongTechEntries = useMemo(() => findMismatchedLogEntries(missions, weeklyLogs), [missions, weeklyLogs]);
+    const desyncedAssignments = useMemo(() => findDesyncedAssignments(missions), [missions]);
     // Memoized per-log settlement so every display/export site (row totals,
     // CSV, summary chips, Paystub History) reads the exact same number as
     // the review dialog's "Net Tech Settlement" — computed once per log
@@ -697,6 +702,7 @@ export default function PayrollAuditPage() {
                         { value: 'history', label: 'Paystub History', count: approvedLogsByTech.length },
                         { value: 'adjustments', label: 'Adjustments', count: adjustments.length + payrollDisputes.filter(d => d.status === 'open').length },
                         { value: 'unlogged', label: 'Unlogged', count: unloggedAudit.rows.length },
+                        { value: 'wrong-tech', label: 'Wrong Tech', count: wrongTechEntries.length + desyncedAssignments.length },
                     ].map(t => (
                         <TabsTrigger key={t.value} value={t.value} className="px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all flex items-center gap-2">
                             {t.label}
@@ -914,6 +920,11 @@ export default function PayrollAuditPage() {
                 {/* ── Unlogged ── */}
                 <TabsContent value="unlogged" className="m-0">
                     <UnloggedCompletions rows={unloggedAudit.rows} excluded={unloggedAudit.excluded} technicians={technicians} currentUser={currentUser} />
+                </TabsContent>
+
+                {/* ── Wrong Tech ── */}
+                <TabsContent value="wrong-tech" className="m-0">
+                    <WrongTechEntries entries={wrongTechEntries} desynced={desyncedAssignments} technicians={technicians} currentUser={currentUser} />
                 </TabsContent>
             </Tabs>
 

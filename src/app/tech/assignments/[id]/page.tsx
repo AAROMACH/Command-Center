@@ -24,7 +24,7 @@ import { cn, getTacticalLocation, getTacticalCoords, calculateDistance } from '@
 import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete, reopenStatusFor } from '@/lib/trip-flow';
 import { externalWorkOrderId } from '@/lib/work-order-identity';
 import { removeJobFromDraftLogs } from '@/lib/weekly-log';
-import { useCompletionFiling } from '@/hooks/use-completion-filing';
+import { useCompletionFiling, completionToastText } from '@/hooks/use-completion-filing';
 import { setDoc } from 'firebase/firestore';
 import { startOfWeek } from 'date-fns';
 
@@ -355,7 +355,7 @@ export default function TechAssignmentDetailPage() {
           details: `Mission finalized at ${now}. Status: CLOSED. Location: [${location}].`, user: techName,
         }),
       }));
-      toast({ title: 'Mission Finalized', description: result === 'filed' ? 'Assignment moved to completed and filed to your weekly log.' : 'Choose which weekly log should hold it.' });
+      toast({ title: 'Mission Finalized', description: completionToastText(result) });
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Update Failed', description: e?.message || 'Please try again.' });
     }

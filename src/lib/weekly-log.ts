@@ -394,7 +394,7 @@ export type SwapLogMoveResult = {
   lockedWeeks: string[];
 };
 
-const isLockedLog = (log: WeeklyLog) => {
+export const isLockedLog = (log: WeeklyLog) => {
   const status = log.status as string;
   const flags = log as { paid?: boolean; archived?: boolean };
   return status === 'Approved' || status === 'Paid' || flags.paid === true || flags.archived === true;
@@ -423,8 +423,11 @@ export async function moveJobLogOnSwap(opts: {
    *  under either. Blanks and the new tech are ignored. */
   fromTechIds: (string | null | undefined)[];
   toTechId: string | null | undefined;
+  /** false = only pull the entry off the previous tech's logs (e.g. a stale
+   *  helper entry); nothing is filed on the new tech. Default true. */
+  fileToTarget?: boolean;
 }): Promise<SwapLogMoveResult> {
-  const { job, toTechId } = opts;
+  const { job, toTechId, fileToTarget = true } = opts;
   const result: SwapLogMoveResult = { removedFrom: [], lockedWeeks: [] };
   const fromTechIds = [...new Set(opts.fromTechIds.filter((t): t is string => !!t && t !== toTechId))];
   if (!toTechId || fromTechIds.length === 0) return result;
@@ -451,11 +454,15 @@ export async function moveJobLogOnSwap(opts: {
   }
 
   if (result.lockedWeeks.length > 0) return result;
-  if (job.status !== 'completed' || job.payrollExcluded) return result;
+  if (!fileToTarget || job.status !== 'completed' || job.payrollExcluded) return result;
+
+  const toLogs = await getDocs(query(collection(db, 'weeklyLogs'), where('techId', '==', toTechId)));
+  // The new tech already has a full entry for this job (any week, any status)
+  // — don't add a second one.
+  if (toLogs.docs.some(d => ((d.data() as WeeklyLog).items || []).some(i => matches(i) && !i.isHelper))) return result;
 
   // The new lead may have been a helper on this job — drop their $0 entry
   // from open logs so the lead entry replaces it instead of being deduped.
-  const toLogs = await getDocs(query(collection(db, 'weeklyLogs'), where('techId', '==', toTechId)));
   for (const logDoc of toLogs.docs) {
     const data = logDoc.data() as WeeklyLog;
     if (isLockedLog(data)) continue;

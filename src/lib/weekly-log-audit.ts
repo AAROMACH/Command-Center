@@ -1,5 +1,5 @@
 import type { WeeklyLog, WorkOrder } from './types';
-import { isArchivedJob, jobDateTimeValue } from './jobs';
+import { isArchivedJob, jobDateTimeValue, jobTechId } from './jobs';
 import { externalWorkOrderId, normalizeExternalId } from './work-order-identity';
 
 /**
@@ -100,7 +100,7 @@ export function findUnloggedCompletions(jobs: WorkOrder[], logs: WeeklyLog[]): U
     if (job.status !== 'completed' || isArchivedJob(job) || job.payrollExcluded) continue;
     const techIds = jobTechIds(job);
     if (techIds.length === 0) continue;
-    const techId = job.assignedTechnicianId || techIds[0];
+    const techId = jobTechId(job) || techIds[0];
     const ids = [job.id, job.workOrderId].filter(Boolean) as string[];
 
     // On one of this job's own techs' logs → logged, not listed anywhere.
@@ -123,4 +123,79 @@ export function findUnloggedCompletions(jobs: WorkOrder[], logs: WeeklyLog[]): U
   const byDateDesc = (a: { job: WorkOrder }, b: { job: WorkOrder }) =>
     jobDateTimeValue(b.job.scheduleDate, b.job.scheduleTime) - jobDateTimeValue(a.job.scheduleDate, a.job.scheduleTime);
   return { rows: rows.sort(byDateDesc), excluded: excluded.sort(byDateDesc) };
+}
+
+// ── Log entries on the wrong tech ───────────────────────────────────────────
+//
+// Rule: a job's entry may only sit on the weekly log of the tech it is
+// assigned to (jobTechId — what every admin screen shows), or, as a $0
+// helper entry, on the log of a tech listed in additionalTechnicianIds.
+
+export type MismatchKind =
+  /** Full entry on a tech who isn't the job's assigned tech. */
+  | 'not_assigned'
+  /** Helper entry on a tech who is no longer a helper (or assigned) on the job. */
+  | 'stale_helper';
+
+export type MismatchedLogEntry = {
+  log: WeeklyLog;
+  itemId: string;
+  job: WorkOrder;
+  kind: MismatchKind;
+  /** The tech whose log holds the entry. */
+  logTechId: string;
+  /** The tech the job is actually assigned to. */
+  assignedTechId: string;
+  /** Approved / Paid / archived log — settled pay, can't be moved here. */
+  locked: boolean;
+};
+
+const isSettledLog = (log: WeeklyLog) => {
+  const status = log.status as string;
+  const flags = log as { paid?: boolean; archived?: boolean };
+  return status === 'Approved' || status === 'Paid' || flags.paid === true || flags.archived === true;
+};
+
+export function findMismatchedLogEntries(jobs: WorkOrder[], logs: WeeklyLog[]): MismatchedLogEntry[] {
+  const jobByAnyId = new Map<string, WorkOrder>();
+  for (const j of jobs) {
+    jobByAnyId.set(j.id, j);
+    if (j.workOrderId && !jobByAnyId.has(j.workOrderId)) jobByAnyId.set(j.workOrderId, j);
+  }
+  const out: MismatchedLogEntry[] = [];
+  for (const log of logs) {
+    if (!log.techId) continue;
+    for (const item of log.items || []) {
+      // Project payouts and hand-added entries aren't tied to a job's assignee.
+      if (item.source === 'project_payout' || item.source === 'manual' || item.projectId) continue;
+      const job = jobByAnyId.get(item.workOrderId);
+      if (!job || isArchivedJob(job)) continue; // can't judge a job we can't see
+      const assigned = jobTechId(job);
+      if (!assigned || assigned === log.techId) continue;
+      const helpers = job.additionalTechnicianIds || [];
+      if (item.isHelper && helpers.includes(log.techId)) continue;
+      out.push({
+        log, itemId: item.id, job,
+        kind: item.isHelper ? 'stale_helper' : 'not_assigned',
+        logTechId: log.techId, assignedTechId: assigned,
+        locked: isSettledLog(log),
+      });
+    }
+  }
+  return out.sort((a, b) => (Number(a.locked) - Number(b.locked))
+    || jobDateTimeValue(b.job.scheduleDate, b.job.scheduleTime) - jobDateTimeValue(a.job.scheduleDate, a.job.scheduleTime));
+}
+
+/**
+ * Assignments whose two owner fields disagree: admin screens show
+ * `assignedTechnicianId`, but the tech portal (and Firestore rules) key on
+ * `techId` — so the job sits in the wrong tech's portal and, when they
+ * complete it, lands on the wrong log. Left by swaps made before both fields
+ * were kept in sync.
+ */
+export function findDesyncedAssignments(jobs: WorkOrder[]): WorkOrder[] {
+  return jobs.filter(j =>
+    (j as { _src?: string })._src !== 'workOrder'
+    && !isArchivedJob(j)
+    && !!j.assignedTechnicianId && !!j.techId && j.assignedTechnicianId !== j.techId);
 }

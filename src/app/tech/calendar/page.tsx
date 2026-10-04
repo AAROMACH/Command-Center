@@ -7,7 +7,7 @@ import type { WorkOrder, Technician } from '@/lib/types';
 import { displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { isArchivedJob } from '@/lib/jobs';
 import { removeJobFromDraftLogs } from '@/lib/weekly-log';
-import { useCompletionFiling } from '@/hooks/use-completion-filing';
+import { useCompletionFiling, completionToastText } from '@/hooks/use-completion-filing';
 import { db, auth } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -292,7 +292,7 @@ export default function TechCalendarPage() {
     // jobs completed from the calendar never reached a log.
     if (newStatus === 'completed') {
       const result = await completeAndFile(wo, writeStatus);
-      toast({ title: label, description: result === 'filed' ? 'Filed to your weekly log.' : 'Choose which weekly log should hold it.' });
+      toast({ title: label, description: completionToastText(result) });
       return;
     }
     if (wo.status === 'completed' && currentTechId) {

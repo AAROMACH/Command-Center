@@ -108,7 +108,9 @@ export function useHelperLogSync(techId: string | null) {
       !filingRef.current.has(j.id) &&
       !isCompletionFilingInFlight(j.id);
 
-    const isLead = (j: WorkOrder) => jobTechId(j) === techId || j.techId === techId;
+    // Lead = the tech the job is ASSIGNED to (what admin screens show). A job
+    // whose techId still points here after a desynced swap is not ours to file.
+    const isLead = (j: WorkOrder) => jobTechId(j) === techId;
 
     helperJobs.filter(j => !isLead(j) && needsFiling(j)).forEach(async (j) => {
       filingRef.current.add(j.id);

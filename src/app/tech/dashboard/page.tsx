@@ -44,7 +44,7 @@ import { TERMINOLOGY } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
 import { format, startOfWeek, parseISO } from 'date-fns';
 import { removeJobFromDraftLogs } from '@/lib/weekly-log';
-import { useCompletionFiling } from '@/hooks/use-completion-filing';
+import { useCompletionFiling, completionToastText, type CompletionResult } from '@/hooks/use-completion-filing';
 import { cn, getTacticalLocation, compareScheduleTime } from '@/lib/utils';
 import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete } from '@/lib/trip-flow';
 import { NotificationService } from '@/lib/notification-service';
@@ -196,7 +196,7 @@ export default function TechDashboardPage() {
 
             // File BEFORE notifying — a notification failure used to throw
             // after the job was already completed, skipping the weekly log.
-            let filed: 'filed' | 'prompted' | null = null;
+            let filed: CompletionResult | null = null;
             if (newStatus === 'completed' && targetWO) {
                 filed = await completeAndFile(targetWO, writeStatus);
             } else {
@@ -213,7 +213,7 @@ export default function TechDashboardPage() {
             }
 
             if (newStatus === 'completed') {
-                toast({ title: "Mission Finalized", description: filed === 'prompted' ? "Choose which weekly log should hold it." : "Mission moved to historical registry and weekly log." });
+                toast({ title: "Mission Finalized", description: filed ? completionToastText(filed) : "Mission moved to historical registry." });
             } else {
                 toast({ title: "Status Updated", description: `Mission transitioned to ${newStatus.replace(/-/g, ' ')}.` });
             }

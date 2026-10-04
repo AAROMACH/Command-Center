@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { WorkOrder, WeeklyLogItem } from '@/lib/types';
+import { jobTechId } from '@/lib/jobs';
 import {
   beginCompletionFiling,
   buildCompletedJobItem,
@@ -17,6 +18,15 @@ import { CompletionWeekDialog } from '@/components/completion-week-dialog';
 import { useToast } from '@/hooks/use-toast';
 
 type WeekPrompt = CompletionPlacement & { item: WeeklyLogItem; scheduleDate: string | undefined };
+
+export type CompletionResult = 'filed' | 'prompted' | 'not_owner';
+
+/** Toast text for a completion, by result. */
+export function completionToastText(result: CompletionResult): string {
+  if (result === 'filed') return 'Marked completed and filed to your weekly log.';
+  if (result === 'prompted') return 'Choose which weekly log should hold it.';
+  return 'Marked completed. This job is assigned to another tech, so it was not added to your weekly log — payroll will file it for the assigned tech.';
+}
 
 /**
  * One completion flow for every tech screen that can mark a job complete
@@ -37,10 +47,19 @@ export function useCompletionFiling(techId: string | null) {
   const { toast } = useToast();
 
   const completeAndFile = async (
-    job: Pick<WorkOrder, 'id' | 'pay' | 'scheduleDate'>,
+    job: Pick<WorkOrder, 'id' | 'pay' | 'scheduleDate' | 'assignedTechnicianId' | 'assignedTechIds' | 'techId'>,
     writeCompletedStatus: () => Promise<unknown>,
-  ): Promise<'filed' | 'prompted'> => {
+  ): Promise<CompletionResult> => {
     if (!techId) throw new Error('No technician session.');
+    // A job only goes on the log of the tech it's ASSIGNED to (what admin
+    // screens show). If its owner fields are out of sync it can sit in this
+    // tech's portal while being assigned to someone else — complete it, but
+    // don't file it here; it shows in Payroll Audit for the assigned tech.
+    const assigned = jobTechId(job);
+    if (assigned && assigned !== techId) {
+      await writeCompletedStatus();
+      return 'not_owner';
+    }
     beginCompletionFiling(job.id);
     try {
       // Re-completing a job must not stack a second entry in an open Draft.

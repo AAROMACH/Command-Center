@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { db } from "@/lib/firebase";
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { useClientInvoices } from '@/hooks/use-client-invoices';
@@ -62,6 +63,7 @@ export default function ClientFinancialsPage() {
             )
             .sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
     }, [myInvoices, searchQuery]);
+    const invoicePager = usePaged(filteredInvoices, PAGE_SIZES_LARGE, 'client-financials-invoices', []);
 
     const metrics = useMemo(() => {
         const outstanding = filteredInvoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').reduce((acc, inv) => acc + money(inv.total), 0);
@@ -190,7 +192,7 @@ export default function ClientFinancialsPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredInvoices.map(invoice => {
+                            {invoicePager.items.map(invoice => {
                                 const source = getInvoiceSource(invoice);
                                 const SourceIcon = source.icon;
                                 return (
@@ -237,6 +239,7 @@ export default function ClientFinancialsPage() {
                             )}
                         </TableBody>
                     </Table>
+                    <div className="px-4"><ListPager pager={invoicePager} noun="invoices" /></div>
                 </CardContent>
             </Card>
             {/* Plan Details Dialog */}

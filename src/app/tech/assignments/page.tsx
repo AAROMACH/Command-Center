@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
 import { SearchField } from '@/components/search-field';
 import { SortControl, FiltersPopover, FilterSection, CheckboxFilter, DateRangeButton, type SortOptionDef } from '@/components/list-toolbar';
@@ -217,6 +218,7 @@ export default function TechAssignmentsPage() {
             return dateAsc ? da - db : db - da;
         });
     }, [activeAssignments, sortBy, dateAsc]);
+    const activePager = usePaged(sortedActive, PAGE_SIZES_SMALL, 'tech-assignments-active', []);
 
     const completedAssignments = useMemo(() => {
         return techWorkOrders.filter(wo => wo.status === 'completed').sort((a, b) => {
@@ -225,6 +227,7 @@ export default function TechAssignmentsPage() {
             return dateAsc ? da - db : db - da;
         });
     }, [techWorkOrders, dateAsc]);
+    const historyPager = usePaged(completedAssignments, PAGE_SIZES_LARGE, 'tech-assignments-history', []);
 
     // Clicking a date column header sorts by date and toggles soonest/latest.
     const toggleDateSort = () => {
@@ -417,7 +420,7 @@ export default function TechAssignmentsPage() {
                 <TabsContent value="active" className="mt-0">
                     {/* Mobile: card view */}
                     <div className="md:hidden space-y-3">
-                        {sortedActive.map((wo) => (
+                        {activePager.items.map((wo) => (
                             <div
                                 key={wo.id}
                                 className="rounded-xl border border-border-sub bg-bg-secondary p-4 shadow-sm cursor-pointer active:bg-bg-tertiary transition-colors"
@@ -554,7 +557,7 @@ export default function TechAssignmentsPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {sortedActive.map((wo) => (
+                                {activePager.items.map((wo) => (
                                     <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors" onClick={() => handleOpenDetail(wo)}>
                                         <td>
                                             <div className="flex flex-col items-center justify-center">
@@ -696,12 +699,13 @@ export default function TechAssignmentsPage() {
                             </tbody>
                         </table>
                     </div>
+                    <ListPager pager={activePager} noun="jobs" />
                 </TabsContent>
 
                 <TabsContent value="history" className="mt-0">
                     {/* Mobile: card view */}
                     <div className="md:hidden space-y-3">
-                        {completedAssignments.map((wo) => (
+                        {historyPager.items.map((wo) => (
                             <div
                                 key={wo.id}
                                 className="rounded-xl border border-border-sub bg-bg-secondary p-4 shadow-sm cursor-pointer active:bg-bg-tertiary transition-colors"
@@ -773,7 +777,7 @@ export default function TechAssignmentsPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {completedAssignments.map((wo) => {
+                                {historyPager.items.map((wo) => {
                                     return (
                                         <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors" onClick={() => handleOpenDetail(wo)}>
                                             <td>
@@ -833,6 +837,7 @@ export default function TechAssignmentsPage() {
                             </tbody>
                         </table>
                     </div>
+                    <ListPager pager={historyPager} noun="jobs" />
                 </TabsContent>
             </Tabs>}
 

@@ -291,6 +291,9 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
           isAdmin()
           || (isTech() && resource.data.techId == request.auth.uid)
+          // The project page shows the whole crew's logs to techs on it.
+          || (isTech() && resource.data.get('projectId', null) != null
+              && isOnProject(resource.data.projectId))
           // Client portal → Projects shows their own projects' daily logs.
           || (isClient() && resource.data.get('projectId', null) != null
               && isMyCompanyProject(resource.data.projectId))
@@ -504,6 +507,12 @@ service cloud.firestore {
     match /systemConfig/{id} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
+    }
+
+    function isOnProject(projectId) {
+      let p = get(/databases/$(database)/documents/projects/$(projectId)).data;
+      return p.get('assignedTechnicianIds', []).hasAny([request.auth.uid])
+          || p.get('projectLeadId', null) == request.auth.uid;
     }
 
     function canReadMessage() {

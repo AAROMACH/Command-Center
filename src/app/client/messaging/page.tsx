@@ -6,6 +6,7 @@ import { collection, onSnapshot, addDoc, updateDoc, doc, arrayUnion, query, wher
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useClientProjects } from '@/hooks/use-client-data';
+import { useDirectory } from '@/hooks/use-directory';
 import type { Technician, Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,7 +44,9 @@ export default function ClientMessagingPage() {
   const { toast } = useToast();
   const [firebaseUid, setFirebaseUid] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<Technician | null>(null);
-  const [allUsers, setAllUsers] = useState<Technician[]>([]);
+  // Admins, colleagues and crew from the public directory (clients can't
+  // read `users`, so contacts used to be empty).
+  const allUsers = useDirectory();
   const [messages, setMessages] = useState<DmMessage[]>([]);
   const [selectedThread, setSelectedThread] = useState<ThreadKey | null>(null);
   const [body, setBody] = useState('');
@@ -65,11 +68,6 @@ export default function ClientMessagingPage() {
     });
   }, [firebaseUid]);
 
-  useEffect(() => {
-    return onSnapshot(collection(db, 'users'), (snap) => {
-      setAllUsers(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
-    });
-  }, []);
 
   // The client's own projects (by clientId or company), for group threads.
   const allProjects = useClientProjects(currentUser);

@@ -32,6 +32,7 @@ import {
   collection, query, where, getDocs, getDoc, onSnapshot,
   orderBy, limit, doc, updateDoc, arrayUnion,
 } from 'firebase/firestore';
+import { useDirectory } from '@/hooks/use-directory';
 import type { WorkOrder, WeeklyLog, WeeklyLogItem, AssignmentTimeLog, Technician, TripLog } from '@/lib/types';
 import { displayWorkOrderNumber, isImported } from '@/lib/work-order-identity';
 import { fileCompletedJob, moveJobLogOnSwap, describeSwapLogMove } from '@/lib/weekly-log';
@@ -143,7 +144,9 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }:
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
   const [adminData, setAdminData] = useState<{ weeklyLog: WeeklyLog | null; jobItem: WeeklyLogItem | null; sessionLogs: AssignmentTimeLog[] }>({ weeklyLog: null, jobItem: null, sessionLogs: [] });
   const [loadingAdmin, setLoadingAdmin] = useState(false);
-  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  // Full user records for admins; the public directory for techs (who can't
+  // read `users`, so names here used to be blank on the tech side).
+  const technicians = useDirectory();
   const [auditEvents, setAuditEvents] = useState<any[]>([]);
   const [swapOpen, setSwapOpen] = useState(false);
   const [helperOpen, setHelperOpen] = useState(false);
@@ -163,12 +166,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }:
   const [forcedDone, setForcedDone] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'users'), (snap) => {
-      setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
-    });
-    return () => unsub();
-  }, []);
 
   // Clear per-assignment UI state whenever a different assignment is shown.
   useEffect(() => {

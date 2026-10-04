@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { useClientProjects } from '@/hooks/use-client-data';
+import { useDirectory } from '@/hooks/use-directory';
 import type { Project, ProjectDailyLog, Technician } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +32,8 @@ import { ViewToggle, useViewMode, type ViewMode } from '@/components/view-toggle
 export default function ClientProjectsPage() {
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     const [allLogs, setAllLogs] = useState<ProjectDailyLog[]>([]);
-    const [technicians, setTechnicians] = useState<Technician[]>([]);
+    // Crew names/avatars from the public directory (clients can't read `users`).
+    const technicians = useDirectory();
     const [mounted, setMounted] = useState(false);
     const [viewMode, setViewMode] = useViewMode('client-projects');
     const [searchQuery, setSearchQuery] = useState("");
@@ -61,12 +63,6 @@ export default function ClientProjectsPage() {
         ));
         return () => unsubs.forEach(u => u());
     }, [projectIdsKey]);
-
-    // Staff profiles aren't readable from the client portal; the lead shows
-    // by role when their profile can't be loaded.
-    useEffect(() => onSnapshot(collection(db, 'users'),
-        snap => setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician))),
-        () => setTechnicians([])), []);
 
     const filteredProjects = useMemo(() => {
         return allProjects.filter(p => 

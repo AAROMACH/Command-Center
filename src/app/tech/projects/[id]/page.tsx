@@ -6,6 +6,7 @@ import { db } from "@/lib/firebase";
 import { doc, onSnapshot, collection, query, where, orderBy } from 'firebase/firestore';
 import { notFound, useParams } from 'next/navigation';
 import { ProjectDetailClient } from './components/project-detail-client';
+import { useDirectory } from '@/hooks/use-directory';
 import type { Project, Technician, ProjectDailyLog, ProjectDocument } from '@/lib/types';
 
 /**
@@ -16,7 +17,8 @@ export default function TechProjectDetailPage() {
   const id = params?.id as string;
   const [project, setProject] = useState<Project | null>(null);
   const [dailyLogs, setDailyLogs] = useState<ProjectDailyLog[]>([]);
-  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  // Crew names/avatars (techs can't read `users`; this used to be empty).
+  const technicians = useDirectory();
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,11 +39,6 @@ export default function TechProjectDetailPage() {
       setDailyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as ProjectDailyLog)));
     });
 
-    // 3. Personnel Registry Handshake
-    const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
-      setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
-    });
-
     // 4. Document Registry Handshake
     const docQ = query(collection(db, 'projectDocuments'), where('projectId', '==', id), orderBy('uploadDate', 'desc'));
     const unsubDocs = onSnapshot(docQ, (snap) => {
@@ -51,7 +48,6 @@ export default function TechProjectDetailPage() {
     return () => {
       unsubProject();
       unsubLogs();
-      unsubTech();
       unsubDocs();
     };
   }, [id]);

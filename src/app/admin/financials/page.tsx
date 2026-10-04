@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -254,11 +255,67 @@ export default function FinancialsPage() {
         const q = searchQuery.toLowerCase();
         return invoices.filter(inv => (inv.invoiceNumber || '').toLowerCase().includes(q) || (inv.clientName || '').toLowerCase().includes(q));
     }, [invoices, searchQuery]);
+    const invoicePager = usePaged(filteredInvoices, PAGE_SIZES_LARGE, 'financials-invoices', []);
+
 
     const filteredExpenses = useMemo(() => {
         const q = searchQuery.toLowerCase();
         return expenses.filter(exp => (exp.description || '').toLowerCase().includes(q) || (exp.submittedBy || '').toLowerCase().includes(q) || (exp.category || '').toLowerCase().includes(q));
     }, [expenses, searchQuery]);
+
+    // Reimbursements table rows (legacy expenses + new reimbursements), newest first.
+    const reimbRows = useMemo(() => {
+                                            // Normalize legacy expenses as receipt reimbursements
+                                            const legacyRows = filteredExpenses
+                                                .filter(e => reimTypeFilter !== 'mileage')
+                                                .filter(e => reimStatusFilter === 'all' || e.status.toLowerCase() === reimStatusFilter)
+                                                .map(e => ({
+                                                    id: e.id,
+                                                    source: 'expense' as const,
+                                                    date: e.date,
+                                                    techName: e.submittedBy,
+                                                    type: 'receipt' as const,
+                                                    status: e.status.toLowerCase() as 'pending' | 'approved' | 'rejected',
+                                                    amount: e.amount,
+                                                    details: e.description,
+                                                    sub: e.category,
+                                                    distanceMiles: undefined as number | undefined,
+                                                    mileageRate: undefined as number | undefined,
+                                                    receiptPhotoUrls: undefined as string[] | undefined,
+                                                    notes: undefined as string | undefined,
+                                                }));
+
+                                            // New reimbursements
+                                            const newRows = reimbursements
+                                                .filter(r => reimTypeFilter === 'all' || r.type === reimTypeFilter)
+                                                .filter(r => reimStatusFilter === 'all' || r.status === reimStatusFilter)
+                                                .map(r => ({
+                                                    id: r.id,
+                                                    source: 'reimbursement' as const,
+                                                    date: r.type === 'mileage' ? (r.dateDriven || r.submittedAt?.slice(0, 10) || '') : (r.purchaseDate || r.submittedAt?.slice(0, 10) || ''),
+                                                    techName: r.techName,
+                                                    type: r.type,
+                                                    status: r.status,
+                                                    amount: r.type === 'mileage'
+                                                        ? (r.distanceMiles || 0) * (r.mileageRate || mileageRate)
+                                                        : r.amount,
+                                                    details: r.type === 'mileage'
+                                                        ? `${r.fromLocation || ''} → ${r.toLocation || ''}`
+                                                        : (r.description || r.vendorName || ''),
+                                                    sub: r.type === 'mileage'
+                                                        ? `${r.distanceMiles?.toFixed(1) || '0'} mi × $${(r.mileageRate || mileageRate).toFixed(2)}`
+                                                        : (r.vendorName || ''),
+                                                    distanceMiles: r.distanceMiles,
+                                                    mileageRate: r.mileageRate,
+                                                    receiptPhotoUrls: r.receiptPhotoUrls,
+                                                    notes: r.notes,
+                                                }));
+
+                                            return [...legacyRows, ...newRows]
+                                                .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+    }, [filteredExpenses, reimbursements, reimTypeFilter, reimStatusFilter, mileageRate]);
+    const reimbPager = usePaged(reimbRows, PAGE_SIZES_LARGE, 'financials-reimbursements', [reimTypeFilter, reimStatusFilter]);
 
     return (
         <div className="text-left animate-in fade-in duration-700">
@@ -384,12 +441,12 @@ export default function FinancialsPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {filteredInvoices.map((invoice) => (
+                                        {invoicePager.items.map((invoice) => (
                                             <TableRow key={invoice.id} onClick={() => { setSelectedInvoice(invoice); setIsInvoiceEditorOpen(true); }} className="cursor-pointer border-border-sub hover:bg-bg-tertiary transition-colors text-left">
                                                 <TableCell className="font-mono font-bold text-brand-red text-xs pl-6">{invoice.invoiceNumber}</TableCell>
                                                 <TableCell className="text-sm font-semibold uppercase">{invoice.clientName}</TableCell>
                                                 <TableCell className="text-xs text-text-muted">{invoice.dueDate}</TableCell>
-                                                <TableCell className="font-mono text-sm font-bold text-text-primary tabular-nums">${invoice.total.toFixed(2)}</TableCell>
+                                                <TableCell className="font-mono text-sm font-bold text-text-primary tabular-nums">${(Number(invoice.total) || 0).toFixed(2)}</TableCell>
                                                 <TableCell>
                                                     <Badge variant={invoice.status === 'paid' ? 'active' : invoice.status === 'sent' ? 'onhold' : 'pending'} className="capitalize text-[8px] h-4">{invoice.status}</Badge>
                                                 </TableCell>
@@ -397,6 +454,7 @@ export default function FinancialsPage() {
                                         ))}
                                     </TableBody>
                                 </Table>
+                                <div className="px-4"><ListPager pager={invoicePager} noun="invoices" /></div>
                             </CardContent>
                         </Card>
                     </TabsContent>
@@ -452,65 +510,13 @@ export default function FinancialsPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {(() => {
-                                            // Normalize legacy expenses as receipt reimbursements
-                                            const legacyRows = filteredExpenses
-                                                .filter(e => reimTypeFilter !== 'mileage')
-                                                .filter(e => reimStatusFilter === 'all' || e.status.toLowerCase() === reimStatusFilter)
-                                                .map(e => ({
-                                                    id: e.id,
-                                                    source: 'expense' as const,
-                                                    date: e.date,
-                                                    techName: e.submittedBy,
-                                                    type: 'receipt' as const,
-                                                    status: e.status.toLowerCase() as 'pending' | 'approved' | 'rejected',
-                                                    amount: e.amount,
-                                                    details: e.description,
-                                                    sub: e.category,
-                                                    distanceMiles: undefined as number | undefined,
-                                                    mileageRate: undefined as number | undefined,
-                                                    receiptPhotoUrls: undefined as string[] | undefined,
-                                                    notes: undefined as string | undefined,
-                                                }));
-
-                                            // New reimbursements
-                                            const newRows = reimbursements
-                                                .filter(r => reimTypeFilter === 'all' || r.type === reimTypeFilter)
-                                                .filter(r => reimStatusFilter === 'all' || r.status === reimStatusFilter)
-                                                .map(r => ({
-                                                    id: r.id,
-                                                    source: 'reimbursement' as const,
-                                                    date: r.type === 'mileage' ? (r.dateDriven || r.submittedAt?.slice(0, 10) || '') : (r.purchaseDate || r.submittedAt?.slice(0, 10) || ''),
-                                                    techName: r.techName,
-                                                    type: r.type,
-                                                    status: r.status,
-                                                    amount: r.type === 'mileage'
-                                                        ? (r.distanceMiles || 0) * (r.mileageRate || mileageRate)
-                                                        : r.amount,
-                                                    details: r.type === 'mileage'
-                                                        ? `${r.fromLocation || ''} → ${r.toLocation || ''}`
-                                                        : (r.description || r.vendorName || ''),
-                                                    sub: r.type === 'mileage'
-                                                        ? `${r.distanceMiles?.toFixed(1) || '0'} mi × $${(r.mileageRate || mileageRate).toFixed(2)}`
-                                                        : (r.vendorName || ''),
-                                                    distanceMiles: r.distanceMiles,
-                                                    mileageRate: r.mileageRate,
-                                                    receiptPhotoUrls: r.receiptPhotoUrls,
-                                                    notes: r.notes,
-                                                }));
-
-                                            const allRows = [...legacyRows, ...newRows]
-                                                .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-
-                                            if (allRows.length === 0) return (
+                                        {reimbPager.total === 0 ? (
                                                 <TableRow>
                                                     <TableCell colSpan={7} className="text-center py-12 text-xs text-text-muted uppercase tracking-widest">
                                                         No reimbursements match the current filters.
                                                     </TableCell>
                                                 </TableRow>
-                                            );
-
-                                            return allRows.map(row => (
+                                        ) : reimbPager.items.map(row => (
                                                 <TableRow key={`${row.source}-${row.id}`} className="border-border-sub hover:bg-bg-tertiary transition-colors text-left">
                                                     <TableCell className="text-xs text-text-muted pl-6">{row.date}</TableCell>
                                                     <TableCell className="text-sm font-semibold uppercase">{row.techName}</TableCell>
@@ -577,10 +583,10 @@ export default function FinancialsPage() {
                                                         )}
                                                     </TableCell>
                                                 </TableRow>
-                                            ));
-                                        })()}
+                                        ))}
                                     </TableBody>
                                 </Table>
+                                <div className="px-4"><ListPager pager={reimbPager} noun="reimbursements" /></div>
                             </CardContent>
                         </Card>
                     </TabsContent>

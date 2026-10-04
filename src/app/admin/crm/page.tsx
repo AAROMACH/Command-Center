@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, updateDoc, doc, addDoc } from 'firebase/firestore';
@@ -222,6 +223,7 @@ export default function CRMPage() {
     });
     return sorted;
   }, [filteredLeads, listSort]);
+  const pager = usePaged(sortedListLeads, PAGE_SIZES_LARGE, 'crm-leads', []);
 
   function toggleSort(col: typeof listSort['col']) {
     setListSort(prev => prev.col === col ? { col, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' });
@@ -451,7 +453,7 @@ export default function CRMPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedListLeads.map(lead => {
+              {pager.items.map(lead => {
                 const stageInfo = STAGES.find(s => s.key === lead.stage);
                 return (
                   <TableRow key={lead.id} className="border-border-sub hover:bg-bg-secondary cursor-pointer" onClick={() => setSelectedLead(lead)}>
@@ -488,6 +490,7 @@ export default function CRMPage() {
               )}
             </TableBody>
           </Table>
+          <ListPager pager={pager} noun="leads" />
         </div>
       )}
 

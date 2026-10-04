@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useState } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import type { WorkOrder, Technician } from "@/lib/types";
 import { MapPin, Building2, Calendar, ExternalLink } from "lucide-react";
 import { PAY_TYPE_LABELS } from "@/lib/constants";
@@ -78,6 +79,8 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [mobileAssignOrder, setMobileAssignOrder] = useState<WorkOrder | null>(null);
   const clearMobileAssignOrder = useCallback(() => setMobileAssignOrder(null), []);
+  // The desktop table pages itself; the phone card list pages here.
+  const mobilePager = usePaged(workOrders, PAGE_SIZES_LARGE, 'dispatch-mobile-cards');
 
   const handleCardClick = (wo: WorkOrder) => {
     setSelectedJob(wo);
@@ -93,7 +96,7 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
 
       {/* Mobile view: Tactical Cards */}
       <div className="grid grid-cols-1 gap-4 md:hidden">
-        {workOrders.map((wo) => {
+        {mobilePager.items.map((wo) => {
           const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
           
           return (
@@ -179,6 +182,7 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
           </div>
         )}
       </div>
+      <div className="md:hidden"><ListPager pager={mobilePager} noun="jobs" /></div>
 
       <JobDetailDialog 
         isOpen={isDetailOpen} 

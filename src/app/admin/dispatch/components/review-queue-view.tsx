@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import type { WorkOrder, Technician } from "@/lib/types";
 import { Ban, XCircle, Send, Archive as ArchiveIcon, ClipboardList } from "lucide-react";
 import { Badge } from '@/components/ui/badge';
@@ -62,6 +63,7 @@ type ReviewQueueViewProps = {
 export function ReviewQueueView({ jobs, technicians, onSendToDispatch, onArchive, newIds }: ReviewQueueViewProps) {
   const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const pager = usePaged(jobs, PAGE_SIZES_SMALL, 'dispatch-review-queue');
 
   if (jobs.length === 0) {
     return (
@@ -77,7 +79,7 @@ export function ReviewQueueView({ jobs, technicians, onSendToDispatch, onArchive
   return (
     <>
       <div className="space-y-3">
-        {jobs.map(wo => {
+        {pager.items.map(wo => {
           const lastNote = [...(wo.history || [])].reverse()
             .find(h => h.details?.toLowerCase().includes('cancelled') || h.details?.toLowerCase().includes('did not do'));
           const techName = outcomeRecordedBy(wo, lastNote, technicians);
@@ -132,6 +134,7 @@ export function ReviewQueueView({ jobs, technicians, onSendToDispatch, onArchive
           );
         })}
       </div>
+      <ListPager pager={pager} noun="jobs" />
 
       <JobDetailDialog isOpen={isDetailOpen} setIsOpen={setIsDetailOpen} mission={selectedJob} />
     </>

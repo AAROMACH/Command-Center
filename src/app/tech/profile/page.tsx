@@ -1,10 +1,10 @@
 'use client';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import type { Technician, TimeOffRequest, ReliabilityEvent, PersonnelDocument } from '@/lib/types';
-import { penaltyEvents, timeOffRequests as initialTimeOffRequests } from '@/lib/data';
+import { usePenaltyEvents } from '@/hooks/use-penalty-events';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc, collection, addDoc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, collection, addDoc, setDoc, getDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { uploadAvatar, uploadFile } from '@/lib/upload';
@@ -110,7 +110,12 @@ export default function TechProfilePage() {
         const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
             if (!fbUser) return;
             setCurrentTechId(fbUser.uid);
-            setMyTimeOff(initialTimeOffRequests.filter(r => r.techId === fbUser.uid));
+            // The tech's real time-off requests (was the demo list).
+            const unsubTimeOff = onSnapshot(
+                query(collection(db, 'timeOffRequests'), where('techId', '==', fbUser.uid)),
+                snap => setMyTimeOff(snap.docs.map(d => ({ ...d.data(), id: d.id } as any))),
+                () => setMyTimeOff([]),
+            );
             const unsubUser = onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
                 if (snap.exists()) {
                     const data = snap.data();
@@ -142,15 +147,13 @@ export default function TechProfilePage() {
             const unsubNotes = onSnapshot(collection(db, 'users', fbUser.uid, 'techNotes'), snap => {
                 setTechNotes(snap.docs.map(d => ({ id: d.id, ...d.data() } as { id: string; text: string; createdAt: string; createdBy: string; authorName: string })));
             });
-            return () => { unsubUser(); unsubDocs(); unsubNotes(); };
+            return () => { unsubUser(); unsubDocs(); unsubNotes(); unsubTimeOff(); };
         });
         return () => unsubAuth();
     }, []);
 
-    const myReliabilityEvents = useMemo<ReliabilityEvent[]>(() => {
-        if (!currentTechId) return [];
-        return penaltyEvents.filter(e => e.techId === currentTechId);
-    }, [currentTechId]);
+    // The tech's real reliability events (was the empty demo list).
+    const myReliabilityEvents: ReliabilityEvent[] = usePenaltyEvents(currentTechId, !!currentTechId);
 
     const reliabilityScore = tech?.reliabilityScore ?? 100;
     const reliabilityTier = getReliabilityTier(reliabilityScore);
@@ -281,7 +284,7 @@ export default function TechProfilePage() {
             status: 'pending',
         };
         await setDoc(doc(db, 'timeOffRequests', id), { ...newRequest });
-        setMyTimeOff(prev => [newRequest, ...prev]);
+        // The live listener picks the new request up — no local prepend (it duplicated).
         toast({ title: 'Request Submitted', description: 'Your time-off request is pending review.' });
         setIsTimeOffDialogOpen(false);
         setTimeOffForm({ type: 'Vacation', startDate: '', endDate: '', reason: '' });

@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Plus, DollarSign, Check, Loader2, Banknote, Clock, Calculator, ChevronDown, ChevronUp, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { money } from '@/lib/financial-summary';
 
 const STATUS_STYLES: Record<ProjectPayout['status'], { label: string; variant: any }> = {
   pending: { label: 'Pending', variant: 'scheduled' },
@@ -262,8 +263,8 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
     }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [payouts, filterTech, filterStatus, filterSource]);
 
-  const totalOwed = payouts.filter(p => p.status !== 'paid').reduce((s, p) => s + p.amount, 0);
-  const totalPaid = payouts.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0);
+  const totalOwed = payouts.filter(p => p.status !== 'paid').reduce((s, p) => s + money(p.amount), 0);
+  const totalPaid = payouts.filter(p => p.status === 'paid').reduce((s, p) => s + money(p.amount), 0);
   const hasFilters = filterTech || filterStatus || filterSource;
 
   return (

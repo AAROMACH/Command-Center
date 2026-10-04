@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { createDocId } from '@/lib/generateId';
-import { ID_PREFIXES } from '@/lib/constants';
-import type { WeeklyLog, FinancialRecord } from '@/lib/types';
-import { workOrders } from '@/lib/data';
+import Link from 'next/link';
+import type { WeeklyLog, WorkOrder } from '@/lib/types';
+import { weeklyLogAction } from '@/lib/weekly-log-api';
+import { canSubmitWeek } from '@/lib/weekly-log-core';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Dialog, 
   DialogContent, 
@@ -15,8 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Check, Coins, ScrollText, Trash2, Plus, Info } from 'lucide-react';
+import { Check, Coins, ScrollText, Info } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { OUTCOME_CODE_LABELS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
@@ -26,46 +26,34 @@ type WeeklyLogDialogProps = {
     setIsOpen: (open: boolean) => void;
     log: WeeklyLog;
     onSubmitted: () => void;
+    /** The tech's live jobs, to show each log item's details (was demo data). */
+    jobs: WorkOrder[];
 };
 
-export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitted }: WeeklyLogDialogProps) {
-    const [log, setLog] = useState<WeeklyLog>(initialLog);
+export function WeeklyLogDialog({ isOpen, setIsOpen, log, onSubmitted, jobs }: WeeklyLogDialogProps) {
+    const { toast } = useToast();
+    const [submitting, setSubmitting] = useState(false);
+    // Past weeks any time; the current week Saturday/Sunday (business time).
+    const isWeekend = canSubmitWeek(log.weekOf);
 
-    const isWeekend = (() => {
-        const day = new Date().getDay();
-        return day === 0 || day === 6;
-    })();
+    const workOrderDetails = (woId: string) => jobs.find(wo => wo.id === woId || wo.workOrderId === woId);
 
-    const workOrderDetails = (woId: string) => workOrders.find(wo => wo.id === woId);
-
-    const handleAddReimbursement = async () => {
-        const newReimbursement: FinancialRecord = {
-            id: await createDocId(ID_PREFIXES.FINANCIAL_RECORD),
-            techId: log.techId,
-            date: new Date().toISOString().split('T')[0],
-            type: 'reimbursement',
-            amount: 0,
-            description: '',
-        };
-        setLog({ ...log, reimbursements: [...log.reimbursements, newReimbursement] });
-    }
-
-    const handleRemoveReimbursement = (index: number) => {
-        const newReimbursements = [...log.reimbursements];
-        newReimbursements.splice(index, 1);
-        setLog({ ...log, reimbursements: newReimbursements });
-    }
-
-    const handleReimbursementChange = (index: number, field: 'description' | 'amount', value: string) => {
-        const newReimbursements = [...log.reimbursements];
-        (newReimbursements[index] as any)[field] = field === 'amount' ? parseFloat(value) || 0 : value;
-        setLog({ ...log, reimbursements: newReimbursements });
-    }
-
-    const handleSubmit = () => {
-        if (!isWeekend) return;
-        onSubmitted();
-        setIsOpen(false);
+    // This used to only close the dialog — nothing was saved, and the
+    // reimbursement rows here were local-only. It now submits through the
+    // server; reimbursements are added per job on the Logs page.
+    const handleSubmit = async () => {
+        if (!isWeekend || submitting) return;
+        setSubmitting(true);
+        try {
+            await weeklyLogAction('submit', { logId: log.id });
+            toast({ title: 'Log Submitted', description: `Week of ${log.weekOf} sent to payroll.` });
+            onSubmitted();
+            setIsOpen(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Submission Failed', description: e.message });
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -85,7 +73,7 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitte
                     <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-start gap-3 mb-4">
                         <Info size={16} className="text-accent-gold shrink-0 mt-0.5" />
                         <p className="text-[10px] text-text-muted uppercase font-bold leading-relaxed text-left">
-                            Submission Lock: This manifest can be updated mid-week, but final submission is only authorized on <span className="text-brand-red">Saturday and Sunday</span>.
+                            Submission Lock: This week's manifest can be updated mid-week, but final submission is only authorized on <span className="text-brand-red">Saturday and Sunday</span>.
                         </p>
                     </div>
                 )}
@@ -138,33 +126,22 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitte
                              <h3 className="text-[10px] font-bold uppercase tracking-[0.15em] text-text-muted flex items-center gap-2">
                                 <Coins size={12}/> Reimbursements & Expenses
                              </h3>
-                             <Button variant="outline" size="sm" className="h-7 !text-[9px]" onClick={handleAddReimbursement}>
-                                <Plus size={12} className="mr-1"/> Add Item
-                             </Button>
+                             <Link href="/tech/logs" className="text-[9px] font-bold uppercase tracking-widest text-accent-gold hover:underline">
+                                Add on Logs page
+                             </Link>
                         </div>
                         
                         <div className="space-y-2">
-                            {log.reimbursements.map((item, index) => (
-                                <div key={item.id || `reimb-${index}`} className="flex gap-2 items-center p-2 rounded bg-bg-primary border border-border-sub">
-                                    <Input 
-                                        placeholder="Description (e.g., Parking, Materials)" 
-                                        value={item.description}
-                                        className="h-8 text-xs bg-bg-secondary border-border-sub"
-                                        onChange={(e) => handleReimbursementChange(index, 'description', e.target.value)}
-                                    />
-                                    <Input 
-                                        type="number" 
-                                        placeholder="0.00" 
-                                        value={item.amount || ''}
-                                        className="h-8 text-xs bg-bg-secondary border-border-sub w-24 font-mono"
-                                        onChange={(e) => handleReimbursementChange(index, 'amount', e.target.value)}
-                                    />
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-red" onClick={() => handleRemoveReimbursement(index)}>
-                                        <Trash2 size={14}/>
-                                    </Button>
+                            {(log.reimbursements || []).map((item, index) => (
+                                <div key={item.id || `reimb-${index}`} className="flex gap-2 items-center justify-between p-2 rounded bg-bg-primary border border-border-sub">
+                                    <span className="text-xs truncate text-left">{item.description || 'Reimbursement'}</span>
+                                    <span className="flex items-center gap-2 shrink-0">
+                                        <Badge variant="outline" className="text-[8px] uppercase h-4">{item.status || 'approved'}</Badge>
+                                        <span className="text-xs font-mono">${(Number(item.amount) || 0).toFixed(2)}</span>
+                                    </span>
                                 </div>
                             ))}
-                            {log.reimbursements.length === 0 && (
+                            {(log.reimbursements || []).length === 0 && (
                                 <div className="text-center py-6 border border-dashed border-border-sub rounded text-[10px] uppercase font-bold text-text-muted">No reimbursements logged</div>
                             )}
                         </div>
@@ -175,7 +152,7 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitte
                     <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
                     <Button 
                         onClick={handleSubmit} 
-                        disabled={!isWeekend}
+                        disabled={!isWeekend || submitting}
                         className={cn(
                             "font-bold uppercase text-[10px] tracking-widest h-10 px-8",
                             isWeekend ? "bg-brand-red hover:bg-brand-red-hover" : "bg-bg-tertiary text-text-muted border border-border-sub"

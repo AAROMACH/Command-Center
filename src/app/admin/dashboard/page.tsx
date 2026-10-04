@@ -44,7 +44,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn, compareScheduleTime, isInactiveTechnician } from '@/lib/utils';
 import type { WorkOrder, Technician, Project, WeeklyLog, SiteRequest, ServiceRequest, TimeOffRequest, Invoice } from '@/lib/types';
-import { isArchivedJob } from '@/lib/jobs';
+import { isArchivedJob, jobTechId, parseLocalDate, mergeJobs } from '@/lib/jobs';
+import { computeWeeklyLogSettlement } from '@/lib/payroll';
+import { money } from '@/lib/financial-summary';
 import { computeSla, slaStatusColor, SLA_DEFAULTS } from '@/lib/sla';
 import { Timer, AlertTriangle as SlaAlertIcon } from 'lucide-react';
 import { format, parseISO, isSameDay, startOfMonth } from 'date-fns';
@@ -157,10 +159,16 @@ export default function DashboardPage() {
         weeklyLogs.filter(l => l.status === 'Submitted' && !inactiveTechIds.has(l.techId)),
     [weeklyLogs, inactiveTechIds]);
 
+    const jobsById = useMemo(
+        () => new Map(mergeJobs(workOrders, assignments).map(j => [j.id, j as WorkOrder])),
+        [workOrders, assignments],
+    );
+
+    // Live settlement — same figure as Financials' Pending Payouts card and
+    // Payroll Audit (stored totalPayout goes stale after pay corrections).
     const pendingPay = useMemo(() =>
-        pendingLogs.reduce((acc, l) =>
-            acc + (l.totalPayout || l.items?.reduce((s, i) => s + (i.jobPay || 0), 0) || 0), 0),
-    [pendingLogs]);
+        pendingLogs.reduce((acc, l) => acc + computeWeeklyLogSettlement(l, jobsById), 0),
+    [pendingLogs, jobsById]);
 
     const workloadData = useMemo(() =>
         technicians
@@ -169,7 +177,7 @@ export default function DashboardPage() {
                 id: tech.id,
                 name: tech.name,
                 avatarUrl: tech.avatarUrl,
-                assigned: assignments.filter(wo => (wo.assignedTechnicianId === tech.id || wo.techId === tech.id) && wo.status !== 'completed' && wo.status !== 'cancelled').length
+                assigned: assignments.filter(wo => jobTechId(wo) === tech.id && wo.status !== 'completed' && wo.status !== 'cancelled' && !isArchivedJob(wo)).length
             }))
             .filter(t => t.assigned > 0)
             .sort((a, b) => b.assigned - a.assigned)
@@ -225,17 +233,15 @@ export default function DashboardPage() {
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         const mtdRevenue = invoices
             .filter(inv => {
-                try { return new Date(inv.issueDate) >= monthStart && inv.status === 'paid'; } catch { return false; }
+                const d = parseLocalDate(inv.issueDate); return !!d && d >= monthStart && inv.status === 'paid';
             })
-            .reduce((s, inv) => s + inv.total, 0);
+            .reduce((s, inv) => s + money(inv.total), 0);
+        // Matches Financials' Outstanding A/R: drafts were never sent, so they aren't receivable.
         const outstanding = invoices
-            .filter(inv => inv.status !== 'paid' && inv.status !== 'void')
-            .reduce((s, inv) => s + inv.total, 0);
-        const upcomingPayroll = weeklyLogs
-            .filter(l => l.status === 'Submitted' && !inactiveTechIds.has(l.techId))
-            .reduce((s, l) => s + (l.totalPayout || 0), 0);
-        return { mtdRevenue, outstanding, upcomingPayroll };
-    }, [invoices, weeklyLogs, inactiveTechIds]);
+            .filter(inv => inv.status === 'sent' || inv.status === 'overdue')
+            .reduce((s, inv) => s + money(inv.total), 0);
+        return { mtdRevenue, outstanding, upcomingPayroll: pendingPay };
+    }, [invoices, pendingPay]);
 
     const availablePortals = useMemo(() => getAvailablePortals(currentUser), [currentUser]);
     const techPortal = useMemo(() => availablePortals.find(p => p.id === 'tech'), [availablePortals]);
@@ -486,7 +492,7 @@ export default function DashboardPage() {
                             </CardHeader>
                             <CardContent className="space-y-2">
                                 {clientRequests.slice(0, 6).map(req => {
-                                    const submitted = req.submittedDate ? new Date(req.submittedDate) : null;
+                                    const submitted = parseLocalDate(req.submittedDate);
                                     const elapsedHours = submitted ? (Date.now() - submitted.getTime()) / 3600000 : 0;
                                     const target = SLA_DEFAULTS[req.priority]?.resolutionHours ?? 24;
                                     const remaining = target - elapsedHours;

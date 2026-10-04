@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { useDirectory } from '@/hooks/use-directory';
 import type { Project, Technician } from '@/lib/types';
 import { Briefcase, Search, LayoutList, LayoutGrid } from 'lucide-react';
 import { ProjectsClient } from './components/projects-client';
@@ -10,7 +11,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 export default function TechProjectsPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [allProjects, setAllProjects] = useState<Project[]>([]);
-    const [technicians, setTechnicians] = useState<Technician[]>([]);
+    // Crew names/avatars (techs can't read `users`; this used to be empty).
+    const technicians = useDirectory();
     const [searchQuery, setSearchQuery] = useState("");
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -26,11 +28,7 @@ export default function TechProjectsPage() {
                 setAllProjects(projects);
             });
 
-            const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
-                setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
-            });
-
-            return () => { unsubProj(); unsubTech(); };
+            return () => { unsubProj(); };
         }
     }, []);
 

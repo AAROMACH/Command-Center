@@ -6,6 +6,7 @@ import { db } from "@/lib/firebase";
 import { collection, doc, updateDoc, onSnapshot, query, where, setDoc, arrayUnion } from 'firebase/firestore';
 import { isArchivedJob, isAssignedTo } from '@/lib/jobs';
 import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
+import { computeWeeklyLogSettlement } from '@/lib/payroll';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -49,6 +50,7 @@ import { cn, getTacticalLocation, compareScheduleTime } from '@/lib/utils';
 import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete } from '@/lib/trip-flow';
 import { NotificationService } from '@/lib/notification-service';
 import { useHelperLogSync } from '@/hooks/use-helper-log-sync';
+import { techDisplayName } from '@/lib/utils';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -139,11 +141,13 @@ export default function TechDashboardPage() {
     }, [allWorkOrders]);
 
 
-    const expectedEarnings = useMemo(() => {
-        return unsubmittedLogs.reduce((sum, log) => {
-            return sum + (log.items || []).reduce((s, item) => s + (item.jobPay || 0), 0);
-        }, 0);
-    }, [unsubmittedLogs]);
+    const jobsById = useMemo(() => new Map(allWorkOrders.map(j => [j.id, j])), [allWorkOrders]);
+
+    // Live settlement: raw item.jobPay ignores the Field Nation fee/split and
+    // overstated FN jobs.
+    const expectedEarnings = useMemo(() =>
+        unsubmittedLogs.reduce((sum, log) => sum + computeWeeklyLogSettlement(log, jobsById), 0),
+    [unsubmittedLogs, jobsById]);
 
     const reliabilityTier = useMemo(() => {
         const score = tech?.reliabilityScore ?? 100;
@@ -182,7 +186,7 @@ export default function TechDashboardPage() {
                 type: 'status_change' as const, 
                 date: today, 
                 details: `Status update to ${newStatus.toUpperCase()} at ${nowTime}. Location: [${location}].`, 
-                user: tech?.name || 'Field Operative' 
+                user: techDisplayName(tech) 
             };
             
             if (newStatus === 'in-progress' || newStatus === 'checked-out') {
@@ -423,11 +427,11 @@ export default function TechDashboardPage() {
                 </div>
             </div>
 
-            <LogSelectionDialog isOpen={isLogSelectionOpen} setIsOpen={setIsLogSelectionOpen} logs={unsubmittedLogs} onSelect={setSelectedLog} />
+            <LogSelectionDialog isOpen={isLogSelectionOpen} setIsOpen={setIsLogSelectionOpen} logs={unsubmittedLogs} jobsById={jobsById} onSelect={setSelectedLog} />
             <ReceiptUploadDialog isOpen={isReceiptDialogOpen} setIsOpen={setIsReceiptDialogOpen} workOrders={allWorkOrders} projects={[]} techId={currentTechId || ''} techName={tech?.name || ''} />
             <CheckInDialog isOpen={isCheckInDialogOpen} setIsOpen={setIsCheckInDialogOpen} workOrders={allWorkOrders.filter(w => w.status === 'assigned')} projects={[]} />
             <JobDetailDialog isOpen={isDetailOpen} setIsOpen={setIsDetailOpen} mission={selectedJob} />
-            {selectedLog && <WeeklyLogDialog isOpen={!!selectedLog} setIsOpen={() => setSelectedLog(null)} log={selectedLog} onSubmitted={() => setSelectedLog(null)} />}
+            {selectedLog && <WeeklyLogDialog isOpen={!!selectedLog} setIsOpen={() => setSelectedLog(null)} log={selectedLog} onSubmitted={() => setSelectedLog(null)} jobs={allWorkOrders} />}
 
             {weekDialog}
         </div>

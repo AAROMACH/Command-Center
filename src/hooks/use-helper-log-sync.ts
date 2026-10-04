@@ -3,16 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { WeeklyLog, WorkOrder, WeeklyLogItem } from '@/lib/types';
+import type { WeeklyLog, WorkOrder } from '@/lib/types';
 import {
-  fileCompletedAssignment,
   fileCompletedJob,
   isCompletionFilingInFlight,
   isJobLogged,
   loggedWorkOrderIds,
 } from '@/lib/weekly-log';
-import { createDocId } from '@/lib/generateId';
-import { ID_PREFIXES } from '@/lib/constants';
 import { jobTechId, jobDateTimeValue, isArchivedJob } from '@/lib/jobs';
 import { completionEvent } from '@/lib/weekly-log-audit';
 
@@ -112,27 +109,12 @@ export function useHelperLogSync(techId: string | null) {
     // whose techId still points here after a desynced swap is not ours to file.
     const isLead = (j: WorkOrder) => jobTechId(j) === techId;
 
+    // The server files these as $0 helper entries (it checks the tech is on
+    // the job's additionalTechnicianIds and isn't the lead).
     helperJobs.filter(j => !isLead(j) && needsFiling(j)).forEach(async (j) => {
       filingRef.current.add(j.id);
       try {
-        const itemId = await createDocId(ID_PREFIXES.WEEKLY_LOG_ITEM);
-        const item: WeeklyLogItem = {
-          id: itemId,
-          workOrderId: j.id,
-          jobPay: 0,
-          outcomeCode: null,
-          isComplete: true,
-          isAdminReviewed: false,
-          isHelper: true,
-          helperLeadTechId: jobTechId(j) || '',
-          workDate: j.scheduleDate,
-        };
-        await fileCompletedAssignment({
-          techId,
-          scheduleDate: j.scheduleDate,
-          item,
-          makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
-        });
+        await fileCompletedJob({ techId, job: j, filedVia: 'auto_sync' });
       } catch {
         filingRef.current.delete(j.id); // allow a retry next snapshot
       }

@@ -9,6 +9,7 @@ import {
   updateDoc, arrayUnion, addDoc,
 } from 'firebase/firestore';
 import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
+import { effectiveJobPay } from '@/lib/payroll';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -27,7 +28,8 @@ import { removeJobFromDraftLogs } from '@/lib/weekly-log';
 import { useCompletionFiling, completionToastText } from '@/hooks/use-completion-filing';
 import { setDoc } from 'firebase/firestore';
 import { startOfWeek } from 'date-fns';
-import { isAssignedTo } from '@/lib/jobs';
+import { isAssignedTo, parseLocalDate } from '@/lib/jobs';
+import { techDisplayName } from '@/lib/utils';
 
 const AssignmentMap = dynamic(
   () => import('@/app/admin/assignments/[id]/assignment-map'),
@@ -219,7 +221,7 @@ export default function TechAssignmentDetailPage() {
     try { await fn(); } finally { setActionLoading(false); }
   };
 
-  const techName = tech?.name || 'Field Operative';
+  const techName = techDisplayName(tech);
 
   const handleConfirm = withLoading(async () => {
     const now = format(new Date(), 'h:mm a');
@@ -377,6 +379,13 @@ export default function TechAssignmentDetailPage() {
   });
 
   // ── Loading / not found ───────────────────────────────────────────────────
+  // This job's pay on a weekly log (FN fee/split applied) — not the whole
+  // week's total, which also went stale after pay corrections.
+  const jobPayIn = (log: WeeklyLog) => {
+    const item = log.items?.find(i => i.workOrderId === assignmentId);
+    return item ? effectiveJobPay(item, assignment ?? undefined) : 0;
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center py-24">
       <p className="text-xs font-bold uppercase text-text-muted tracking-widest animate-pulse">Loading assignment...</p>
@@ -754,8 +763,9 @@ export default function TechAssignmentDetailPage() {
               <div key={log.id} className="p-3 rounded-lg bg-bg-primary border border-border-sub">
                 <p className="text-[9px] font-bold uppercase text-text-primary">Week of {log.weekOf}</p>
                 <p className="text-sm font-mono font-bold mt-0.5" style={{ color: 'var(--text-green)' }}>
-                  ${(log.totalPayout || 0).toFixed(2)}
+                  ${jobPayIn(log).toFixed(2)}
                 </p>
+                <p className="text-[8px] text-text-muted uppercase">This job&apos;s pay</p>
                 <Badge variant="outline" className="h-4 text-[7px] mt-1 uppercase">{log.status}</Badge>
               </div>
             ))}
@@ -797,7 +807,7 @@ export default function TechAssignmentDetailPage() {
                 {filtered.map((ev, i) => {
                   const dotColor = HISTORY_COLORS[i % HISTORY_COLORS.length];
                   let evDate: Date | null = null;
-                  try { evDate = new Date(ev.date); } catch {}
+                  evDate = parseLocalDate(ev.date) ?? undefined as any;
                   const dateStr = evDate ? format(evDate, 'MM-dd-yyyy') : ev.date?.slice(0, 10) || '';
                   const timeStr = evDate ? format(evDate, 'h:mm a').toUpperCase() : '';
                   const typeLabel = (ev.type || 'event').replace(/_/g, ' ').toUpperCase();

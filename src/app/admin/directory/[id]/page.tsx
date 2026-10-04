@@ -27,6 +27,7 @@ import { getReliabilityTier, getTierBadgeVariant } from '@/lib/reliability';
 import { hasPermission, ALL_PERMISSIONS, PERMISSION_TREE, getPortalAccess, isTech as isTechRole, isClient as isClientRole, type Permission } from '@/lib/permissions';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import type { Technician, WorkOrder, PersonnelDocument, Project, ReliabilityEvent } from '@/lib/types';
+import { isAssignedTo, isArchivedJob } from '@/lib/jobs';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -112,7 +113,30 @@ export default function DirectoryPersonPage() {
           .sort((a, b) => b.createdAt?.localeCompare(a.createdAt || '') || 0)
       );
     });
-    return () => { unsubUser(); unsubDocs(); unsubPenalty(); unsubNotes(); };
+    // This person's jobs and projects — these were declared but never loaded,
+    // so every tech showed 0 active / 0 completed jobs and 0 projects.
+    // Jobs: the person is the job's assigned tech (jobTechId — what every
+    // admin screen shows); both owner fields are queried because a doc left
+    // out of sync by an old swap may only carry one of them.
+    let byTechId: WorkOrder[] = [];
+    let byAssigned: WorkOrder[] = [];
+    const publishJobs = () => {
+      const merged = new Map<string, WorkOrder>();
+      [...byTechId, ...byAssigned].forEach(j => merged.set(j.id, j));
+      setAssignments([...merged.values()].filter(j => isAssignedTo(j, id) && !isArchivedJob(j)));
+    };
+    const unsubJobsA = onSnapshot(query(collection(db, 'assignments'), where('techId', '==', id)), snap => {
+      byTechId = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder));
+      publishJobs();
+    });
+    const unsubJobsB = onSnapshot(query(collection(db, 'assignments'), where('assignedTechnicianId', '==', id)), snap => {
+      byAssigned = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder));
+      publishJobs();
+    });
+    const unsubProjects = onSnapshot(query(collection(db, 'projects'), where('assignedTechnicianIds', 'array-contains', id)), snap => {
+      setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
+    }, () => setProjects([]));
+    return () => { unsubUser(); unsubDocs(); unsubPenalty(); unsubNotes(); unsubJobsA(); unsubJobsB(); unsubProjects(); };
   }, [id]);
 
   useEffect(() => {
@@ -123,7 +147,7 @@ export default function DirectoryPersonPage() {
     return unsubClients;
   }, []);
 
-  const activeJobs = useMemo(() => assignments.filter(wo => wo.status !== 'completed'), [assignments]);
+  const activeJobs = useMemo(() => assignments.filter(wo => wo.status !== 'completed' && wo.status !== 'cancelled'), [assignments]);
   const completedJobs = useMemo(() => assignments.filter(wo => wo.status === 'completed'), [assignments]);
   const reliabilityScore = person?.reliabilityScore ?? 0;
   const tier = getReliabilityTier(reliabilityScore);

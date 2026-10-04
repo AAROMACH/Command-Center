@@ -18,8 +18,7 @@ import {
 import { 
     ChartContainer, 
     ChartTooltipContent, 
-    type ChartConfig 
-} from '@/components/ui/chart';
+    type ChartConfig, ChartLegendContent } from '@/components/ui/chart';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
     Select, 
@@ -49,6 +48,7 @@ import { cn, isInactiveTechnician } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import type { Technician, WorkOrder, WeeklyLog, ProjectDailyLog } from '@/lib/types';
 import { isTech } from '@/lib/permissions';
+import { computeWeeklyLogSettlement, effectiveJobPay } from '@/lib/payroll';
 
 type MetricType = 'completion' | 'payouts' | 'assignments' | 'hours';
 type GroupBy = 'tech' | 'client' | 'date';
@@ -150,12 +150,15 @@ export function IntelligenceTerminal({
             inRange(log.date)
         ) : [];
         const clientJobIds = new Set(filteredWO.map(wo => wo.id));
+        const jobsById = new Map(workOrders.map(j => [j.id, j]));
+        // Live settlement (same number Payroll Audit and Financials show); the
+        // stored totalPayout is 0 on drafts and stale after pay corrections.
         const logAmount = (log: WeeklyLog, status: WeeklyLog['status']) => {
             if (log.status !== status) return 0;
-            if (client === 'all') return log.totalPayout ?? (log.items || []).reduce((sum, item) => sum + (item.payoutAmount ?? item.jobPay ?? 0), 0);
+            if (client === 'all') return computeWeeklyLogSettlement(log, jobsById);
             return (log.items || [])
-                .filter(item => clientJobIds.has(item.workOrderId))
-                .reduce((sum, item) => sum + (item.payoutAmount ?? item.jobPay ?? 0), 0);
+                .filter(item => clientJobIds.has(item.workOrderId) && item.confirmationStatus !== 'disputed')
+                .reduce((sum, item) => sum + effectiveJobPay(item, jobsById.get(item.workOrderId)), 0);
         };
         const makeAssignmentDatum = (name: string, jobs: WorkOrder[]) => {
             const completed = jobs.filter(wo => wo.status === 'completed').length;
@@ -190,7 +193,7 @@ export function IntelligenceTerminal({
                 const ids = new Set(jobs.map(wo => wo.id));
                 const amount = (status: WeeklyLog['status']) => filteredWeekly.reduce((sum, log) => {
                     if (log.status !== status) return sum;
-                    return sum + (log.items || []).filter(item => ids.has(item.workOrderId)).reduce((itemSum, item) => itemSum + (item.payoutAmount ?? item.jobPay ?? 0), 0);
+                    return sum + (log.items || []).filter(item => ids.has(item.workOrderId) && item.confirmationStatus !== 'disputed').reduce((itemSum, item) => itemSum + effectiveJobPay(item, jobsById.get(item.workOrderId)), 0);
                 }, 0);
                 const approved = amount('Approved');
                 const pending = amount('Submitted');
@@ -403,7 +406,7 @@ export function IntelligenceTerminal({
                                         tickFormatter={(v) => metric === 'payouts' ? `$${v}` : metric === 'completion' ? `${v}%` : v}
                                     />
                                     <Tooltip content={<ChartTooltipContent indicator="line" />} />
-                                    {hasSecondarySeries && <Legend verticalAlign="top" height={36}/>}
+                                    {hasSecondarySeries && <Legend verticalAlign="top" height={36} content={<ChartLegendContent />} />}
                                     <Line
                                         type="monotone"
                                         dataKey="value"
@@ -440,7 +443,7 @@ export function IntelligenceTerminal({
                                         tickFormatter={(v) => metric === 'payouts' ? `$${v}` : metric === 'completion' ? `${v}%` : v}
                                     />
                                     <Tooltip content={<ChartTooltipContent />} />
-                                    {hasSecondarySeries && <Legend verticalAlign="top" height={36}/>}
+                                    {hasSecondarySeries && <Legend verticalAlign="top" height={36} content={<ChartLegendContent />} />}
                                     <Bar dataKey="value" stackId={hasSecondarySeries ? 'status' : undefined} fill="var(--color-value)" radius={[4, 4, 0, 0]}>
                                         {chartData.map((entry, index) => (
                                             <Cell

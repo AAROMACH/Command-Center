@@ -3,14 +3,13 @@
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
 import { SearchField } from '@/components/search-field';
-import { SortControl, FiltersPopover, FilterSection, CheckboxFilter, DateRangeFilter, type SortOptionDef } from '@/components/list-toolbar';
+import { SortControl, FiltersPopover, FilterSection, CheckboxFilter, DateRangeButton, type SortOptionDef } from '@/components/list-toolbar';
 
 const MapView = dynamic(() => import('../map/components/map-view'), {
     ssr: false,
     loading: () => <div className="flex items-center justify-center h-full bg-bg-secondary text-text-muted text-[10px] uppercase tracking-widest">Loading map...</div>,
 });
 import type { WorkOrder, Technician } from '@/lib/types';
-import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -50,6 +49,7 @@ import { jobDateTimeValue, isArchivedJob, isAssignedTo } from '@/lib/jobs';
 import { Car, MoreVertical, Ban, XCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { LogTripDialog } from './components/log-trip-dialog';
+import { techDisplayName } from '@/lib/utils';
 
 const formatDateStr = (dateStr: string) => {
     if (!dateStr) return 'TBD';
@@ -89,7 +89,7 @@ export default function TechAssignmentsPage() {
     const deferredSearch = useDeferredValue(searchQuery);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
     const [activePriorities, setActivePriorities] = useState<string[]>([]);
-    const activeFilterCount = (dateRange?.from ? 1 : 0) + activePriorities.length;
+    const activeFilterCount = activePriorities.length; // date has its own button
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'active');
 
     const [isTripDialogOpen, setIsTripDialogOpen] = useState(false);
@@ -141,9 +141,16 @@ export default function TechAssignmentsPage() {
         if (tab) setActiveTab(tab);
     }, [searchParams]);
 
-    const currentTech = useMemo(() => 
-        currentTechId ? technicians.find(t => t.id === currentTechId) : null
-    , [currentTechId]);
+    // The signed-in tech's real user record — this used to look the tech up in
+    // the built-in demo list (lib/data), which never contains real techs, so
+    // every action from this page was credited to "Field Operative".
+    const [currentTech, setCurrentTech] = useState<Technician | null>(null);
+    useEffect(() => {
+        if (!currentTechId) return;
+        return onSnapshot(doc(db, 'users', currentTechId), snap => {
+            setCurrentTech(snap.exists() ? ({ ...snap.data(), id: snap.id } as Technician) : null);
+        });
+    }, [currentTechId]);
 
     const techWorkOrders = useMemo(() => {
         if (!currentTechId) return [];
@@ -251,7 +258,7 @@ export default function TechAssignmentsPage() {
             isAcknowledged: true,
             history: [
                 ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Assignment confirmed at ${now}. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
+                { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Assignment confirmed at ${now}. Location: [${location}].`, user: techDisplayName(currentTech) }
             ]
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
@@ -264,7 +271,7 @@ export default function TechAssignmentsPage() {
             status: 'on-my-way',
             history: [
                 ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Trip initiated at ${now}. Status: EN ROUTE. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
+                { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Trip initiated at ${now}. Status: EN ROUTE. Location: [${location}].`, user: techDisplayName(currentTech) }
             ]
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
@@ -278,7 +285,7 @@ export default function TechAssignmentsPage() {
             status: 'in-progress',
             history: [
                 ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Arrival verified at ${now}. Status: ON SITE. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
+                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Arrival verified at ${now}. Status: ON SITE. Location: [${location}].`, user: techDisplayName(currentTech) }
             ]
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
@@ -291,7 +298,7 @@ export default function TechAssignmentsPage() {
             status: 'checked-out',
             history: [
                 ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Session paused at ${now}. Status: CHECKED OUT. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
+                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Session paused at ${now}. Status: CHECKED OUT. Location: [${location}].`, user: techDisplayName(currentTech) }
             ]
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
@@ -308,7 +315,7 @@ export default function TechAssignmentsPage() {
                 status: 'completed',
                 history: [
                     ...(wo.history || []),
-                    { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission finalized at ${now}. Status: CLOSED. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
+                    { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission finalized at ${now}. Status: CLOSED. Location: [${location}].`, user: techDisplayName(currentTech) }
                 ]
             }));
             toast({ title: "Mission Finalized", description: completionToastText(result) });
@@ -328,7 +335,7 @@ export default function TechAssignmentsPage() {
                 status: reopenStatusFor(allWorkOrders.find(wo => wo.id === woId)),
                 history: [
                     ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                    { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission re-opened at ${now} for correction. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
+                    { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission re-opened at ${now} for correction. Location: [${location}].`, user: techDisplayName(currentTech) }
                 ]
             });
             setActiveTab('active');
@@ -348,9 +355,13 @@ export default function TechAssignmentsPage() {
             await updateDoc(doc(db, 'assignments', woId), {
                 status: 'cancelled',
                 techOutcome: outcome,
+                // Who sent it to the review queue — the queue shows this name.
+                techOutcomeBy: currentTechId,
+                techOutcomeByName: techDisplayName(currentTech),
+                techOutcomeAt: new Date().toISOString(),
                 history: [
                     ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                    { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Tech marked job as ${label} at ${now}.`, user: currentTech?.name || 'Field Operative' }
+                    { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Tech marked job as ${label} at ${now}.`, user: techDisplayName(currentTech) }
                 ]
             });
             toast({ title: `Marked as ${label}`, description: "Removed from your active board and flagged for admin review." });
@@ -427,14 +438,14 @@ export default function TechAssignmentsPage() {
                         />
                         <FiltersPopover
                             activeCount={activeFilterCount}
-                            onReset={() => { setDateRange(undefined); setActivePriorities([]); }}
+                            onReset={() => setActivePriorities([])}
                             className="shrink-0"
                         >
                             <FilterSection title="Priority">
                                 <CheckboxFilter idPrefix="prio" options={['critical', 'high', 'medium', 'low']} selected={activePriorities} onChange={setActivePriorities} />
                             </FilterSection>
-                            <DateRangeFilter value={dateRange} onChange={setDateRange} />
                         </FiltersPopover>
+                        <DateRangeButton value={dateRange} onChange={setDateRange} />
                     </div>
                 </div>
             </header>
@@ -614,7 +625,7 @@ export default function TechAssignmentsPage() {
                                             Schedule Window
                                             <ArrowUpDown size={11} className={cn("shrink-0", sortBy === 'date' ? "text-brand-red" : "text-text-muted opacity-50")} />
                                             {sortBy === 'date' && (
-                                                <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Soonest' : 'Latest'}</span>
+                                                <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Earliest' : 'Latest'}</span>
                                             )}
                                         </button>
                                     </th>
@@ -834,7 +845,7 @@ export default function TechAssignmentsPage() {
                                         >
                                             Date Completed
                                             <ArrowUpDown size={11} className="shrink-0 text-brand-red" />
-                                            <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Soonest' : 'Latest'}</span>
+                                            <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Earliest' : 'Latest'}</span>
                                         </button>
                                     </th>
                                     <th className="text-center">Action</th>

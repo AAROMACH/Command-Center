@@ -5,11 +5,12 @@ import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Tech
 import { externalWorkOrderId, displayWorkOrderNumber, fieldNationUrl, isImported } from '@/lib/work-order-identity';
 import { hasPermission } from '@/lib/permissions';
 import { computeWeeklyLogSettlement, effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
-import { mergeJobs } from '@/lib/jobs';
+import { mergeJobs, weekOfValue } from '@/lib/jobs';
 import { useHelperLogSync } from '@/hooks/use-helper-log-sync';
 import { createDraftWeeklyLog } from '@/lib/weekly-log';
+import { weeklyLogAction } from '@/lib/weekly-log-api';
+import { canSubmitWeek } from '@/lib/weekly-log-core';
 import { uploadFile } from '@/lib/upload';
-import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -80,6 +81,7 @@ import { collection, onSnapshot, query, where, doc, updateDoc, setDoc, getDocs }
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { NotificationService } from '@/lib/notification-service';
+import { techDisplayName } from '@/lib/utils';
 
 const DISPUTE_REASONS = [
     "Hours logged are incorrect",
@@ -245,31 +247,12 @@ export default function TechWeeklyLogPage() {
      * Current week: only Saturday (6) and Sunday (0).
      * Past weeks: always allowed (catch-up submissions).
      */
-    const canSubmitActiveLog = useMemo(() => {
-        if (!activeLog?.weekOf) return false;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const dow = today.getDay();
-        const daysToMonday = dow === 0 ? 6 : dow - 1;
-        const thisWeekMonday = new Date(today);
-        thisWeekMonday.setDate(today.getDate() - daysToMonday);
-
-        // Parse weekOf as MM-DD-YYYY
-        const parts = activeLog.weekOf.split('-').map(Number);
-        let logMonday: Date;
-        if (parts[2] > 1000) {
-            logMonday = new Date(parts[2], parts[0] - 1, parts[1]);
-        } else {
-            logMonday = new Date(activeLog.weekOf);
-        }
-        logMonday.setHours(0, 0, 0, 0);
-
-        const isPastWeek = logMonday.getTime() < thisWeekMonday.getTime();
-        const isCurrentWeek = logMonday.getTime() === thisWeekMonday.getTime();
-        const isWeekend = dow === 0 || dow === 6;
-
-        return isPastWeek || (isCurrentWeek && isWeekend);
-    }, [activeLog?.weekOf]);
+    // Same rule the server enforces on submit (business time zone): past
+    // weeks any time, the current week Saturday/Sunday, future weeks never.
+    const canSubmitActiveLog = useMemo(
+        () => !!activeLog?.weekOf && canSubmitWeek(activeLog.weekOf),
+        [activeLog?.weekOf],
+    );
 
     // Reimbursements can be added any time the log is still in Draft — no
     // day/time-of-week window (previously Friday 6PM ET through the weekend).
@@ -306,8 +289,8 @@ export default function TechWeeklyLogPage() {
         }
 
         return [...filtered].sort((a, b) => {
-            if (sortBy === 'newest') return (b.weekOf || '').localeCompare(a.weekOf || '');
-            if (sortBy === 'oldest') return (a.weekOf || '').localeCompare(b.weekOf || '');
+            if (sortBy === 'newest') return weekOfValue(b.weekOf) - weekOfValue(a.weekOf);
+            if (sortBy === 'oldest') return weekOfValue(a.weekOf) - weekOfValue(b.weekOf);
             if (sortBy === 'status') return (a.status || '').localeCompare(b.status || '');
             if (sortBy === 'billing') return settlementOf(b) - settlementOf(a);
             return 0;
@@ -328,11 +311,7 @@ export default function TechWeeklyLogPage() {
         }
 
         try {
-            const result = await createDraftWeeklyLog({
-                techId: currentTechId,
-                weekOf,
-                makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
-            });
+            const result = await createDraftWeeklyLog({ weekOf });
             if (result === 'exists') {
                 toast({ variant: 'destructive', title: 'Registry Error', description: `A log for the week of ${weekOf} already exists.` });
                 return;
@@ -344,23 +323,13 @@ export default function TechWeeklyLogPage() {
         }
     };
 
+    // Every log edit goes through the server (/api/weekly-log): it changes
+    // only what a tech may change — pay comes from the job records and new
+    // reimbursements are always pending payroll review.
     const handleConfirm = async (itemId: string) => {
         if (!activeLog || isLocked) return;
-        
-        const updatedItems = (activeLog.items || []).map(item => 
-            item.id === itemId 
-                ? { 
-                    ...item, 
-                    confirmationStatus: 'confirmed' as const, 
-                    outcomeCode: 'worked_completed' as const, 
-                    disputeReason: null, 
-                    disputeNotes: null 
-                  } 
-                : item
-        );
-
         try {
-            await updateDoc(doc(db, 'weeklyLogs', activeLog.id), { items: updatedItems });
+            await weeklyLogAction('confirmItem', { logId: activeLog.id, itemId });
             toast({ title: "Assignment Verified", description: "Confirmation committed to cloud manifest." });
         } catch (e: any) {
             toast({ variant: "destructive", title: "Handshake Failed", description: e.message });
@@ -369,21 +338,8 @@ export default function TechWeeklyLogPage() {
 
     const handleDispute = async (itemId: string, reason: string, notes?: string) => {
         if (!activeLog || isLocked) return;
-        
-        const updatedItems = (activeLog.items || []).map(item => 
-            item.id === itemId 
-                ? { 
-                    ...item, 
-                    confirmationStatus: 'disputed' as const, 
-                    outcomeCode: 'worked_revisit' as const, 
-                    disputeReason: reason, 
-                    disputeNotes: notes || null 
-                  } 
-                : item
-        );
-
         try {
-            await updateDoc(doc(db, 'weeklyLogs', activeLog.id), { items: updatedItems });
+            await weeklyLogAction('disputeItem', { logId: activeLog.id, itemId, reason, notes: notes || null });
             toast({ title: "Discrepancy Logged", description: "Dispute parameters committed to audit folder." });
         } catch (e: any) {
             toast({ variant: "destructive", title: "Logging Failed", description: e.message });
@@ -395,24 +351,11 @@ export default function TechWeeklyLogPage() {
         data: { amount: number; description: string; note?: string; receiptUrl?: string },
     ) => {
         if (!activeLog || isLocked) return;
-        const job = workOrders.find(wo => wo.id === item.workOrderId);
-        const record: FinancialRecord = {
-            id: `reimb-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            techId: activeLog.techId,
-            date: new Date().toISOString().split('T')[0],
-            type: 'reimbursement',
-            amount: data.amount,
-            description: data.note ? `${data.description} — ${data.note}` : data.description,
-            workOrderId: item.workOrderId,
-            assignmentId: (job as any)?.assignmentId || item.workOrderId,
-            externalWorkOrderId: job ? externalWorkOrderId(job) : undefined,
-            status: 'pending',
-            receiptUrl: data.receiptUrl,
-            createdAt: new Date().toISOString(),
-        };
-        const updated = [...(activeLog.reimbursements || []), sanitize(record)];
         try {
-            await updateDoc(doc(db, 'weeklyLogs', activeLog.id), { reimbursements: updated });
+            await weeklyLogAction('addReimbursement', {
+                logId: activeLog.id, itemId: item.id,
+                amount: data.amount, description: data.description, note: data.note, receiptUrl: data.receiptUrl,
+            });
             toast({ title: 'Reimbursement Added', description: 'Pending payroll review — it will appear in the pay calculator.' });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Failed', description: e.message });
@@ -421,9 +364,8 @@ export default function TechWeeklyLogPage() {
 
     const handleDeleteReimbursement = async (reimbId: string) => {
         if (!activeLog || isLocked) return;
-        const updated = (activeLog.reimbursements || []).filter(r => r.id !== reimbId);
         try {
-            await updateDoc(doc(db, 'weeklyLogs', activeLog.id), { reimbursements: updated });
+            await weeklyLogAction('deleteReimbursement', { logId: activeLog.id, reimbId });
             toast({ title: 'Reimbursement Removed' });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Failed', description: e.message });
@@ -431,11 +373,9 @@ export default function TechWeeklyLogPage() {
     };
 
     const handleReportMissing = async (report: MissingAssignmentReport) => {
-        if (!activeLog) return;
+        if (!activeLog || isLocked) return;
         try {
-            // Strip undefined fields — Firestore rejects them inside array values.
-            const updatedReports = [...(activeLog.missingAssignmentReports || []), sanitize(report)];
-            await updateDoc(doc(db, 'weeklyLogs', activeLog.id), { missingAssignmentReports: updatedReports });
+            await weeklyLogAction('addMissingReport', { logId: activeLog.id, report });
             toast({ title: "Discrepancy Transmitted", description: "Inquiry folder initialized for audit." });
         } catch (e: any) {
             toast({ variant: "destructive", title: "Report Failed", description: e.message });
@@ -454,7 +394,7 @@ export default function TechWeeklyLogPage() {
             await setDoc(doc(db, 'payrollDisputes', id), {
                 id,
                 techId: currentTechId,
-                techName: currentUser?.name || 'Field Operative',
+                techName: techDisplayName(currentUser),
                 weeklyLogId: activeLog.id,
                 weekOf: activeLog.weekOf,
                 workOrderId: payrollDisputeWorkOrderId || null,
@@ -493,17 +433,11 @@ export default function TechWeeklyLogPage() {
             return;
         }
         
-        // The tech's true settlement — Imported jobs net of the FN fee/split,
-        // disputed items excluded — same formula as payroll audit uses.
-        const total = computeWeeklyLogSettlement(activeLog, jobsById);
-
+        // The server stamps the true settlement (job pay from the job records,
+        // FN fee/split applied, disputed items excluded) and re-checks the
+        // submit window.
         try {
-            await updateDoc(doc(db, 'weeklyLogs', activeLog.id), {
-                status: 'Submitted',
-                submittedAt: new Date().toISOString(),
-                submittedBy: technicians.find(t => t.id === currentTechId)?.name || currentTechId || 'Tech',
-                totalPayout: total
-            });
+            await weeklyLogAction('submit', { logId: activeLog.id });
             toast({
                 title: "Log Submitted",
                 description: "Weekly assignments manifest has been transmitted for audit.",
@@ -530,12 +464,6 @@ export default function TechWeeklyLogPage() {
         [weeklyLogs, currentTechId, activeLog?.id]
     );
 
-    // Log total = the true settlement (FN fee/split, disputed items excluded)
-    // for job pay + counted (approved / legacy) reimbursements; mirrors the
-    // payroll settlement so both logs stay correct after a move.
-    const logTotal = (log: WeeklyLog, items: WeeklyLogItem[], reimbs: FinancialRecord[]) =>
-        computeWeeklyLogSettlement({ ...log, items, reimbursements: reimbs }, jobsById);
-
     // Move one assignment (weekly-log item) + its reimbursements from the active
     // log into another active log, updating both logs' totals. The item exists in
     // exactly one log at a time — no duplication. Notes/time logs/mileage/photos
@@ -549,22 +477,8 @@ export default function TechWeeklyLogPage() {
             toast({ variant: 'destructive', title: 'Already In That Log', description: 'This assignment already exists in the destination log.' });
             return;
         }
-        const woId = moveItem.workOrderId;
-        const srcItems = (activeLog.items || []).filter(i => i.id !== moveItem.id);
-        const destItems = [...(dest.items || []), moveItem];
-        const movingReimbs = (activeLog.reimbursements || []).filter(r => r.workOrderId === woId);
-        const srcReimbs = (activeLog.reimbursements || []).filter(r => r.workOrderId !== woId);
-        const destReimbs = [...(dest.reimbursements || []), ...movingReimbs];
-        const stamp = (from: string, to: string) => ({ type: 'item_moved', workOrderId: woId, fromWeek: from, toWeek: to, by: currentTechId || '', at: new Date().toISOString() });
         try {
-            await updateDoc(doc(db, 'weeklyLogs', activeLog.id), {
-                items: srcItems, reimbursements: srcReimbs, totalPayout: logTotal(activeLog, srcItems, srcReimbs),
-                history: [...((activeLog as any).history || []), stamp(activeLog.weekOf, dest.weekOf)],
-            });
-            await updateDoc(doc(db, 'weeklyLogs', dest.id), {
-                items: destItems, reimbursements: destReimbs, totalPayout: logTotal(dest, destItems, destReimbs),
-                history: [...((dest as any).history || []), stamp(activeLog.weekOf, dest.weekOf)],
-            });
+            await weeklyLogAction('moveItem', { fromLogId: activeLog.id, toLogId: dest.id, itemId: moveItem.id });
             toast({ title: 'Assignment Moved', description: `Moved to the week of ${dest.weekOf}.` });
             setMoveItem(null);
         } catch (e: any) {
@@ -575,21 +489,7 @@ export default function TechWeeklyLogPage() {
     const handleDirectUnsubmit = async () => {
         if (!activeLog || !canUnsubmitOwnLog || !isUnsubmitEligible) return;
         try {
-            const historyEntry = {
-                type: 'unsubmit',
-                by: currentUser?.name || currentTechId || 'Technician',
-                byId: currentTechId || '',
-                previousStatus: activeLog.status,
-                newStatus: 'Draft',
-                at: new Date().toISOString(),
-            };
-            await updateDoc(doc(db, 'weeklyLogs', activeLog.id), {
-                status: 'Draft',
-                unsubmitRequested: false,
-                unsubmitReason: null,
-                unsubmitRequestedAt: null,
-                history: [...((activeLog as any).history || []), historyEntry],
-            });
+            await weeklyLogAction('unsubmit', { logId: activeLog.id });
             toast({ title: 'Log Unsubmitted', description: 'Returned to Draft — assignments and entries are editable again.' });
             setIsDirectUnsubmitOpen(false);
         } catch (e: any) {
@@ -600,11 +500,7 @@ export default function TechWeeklyLogPage() {
     const handleRequestUnsubmit = async () => {
         if (!activeLog || !unsubmitReason.trim()) return;
         try {
-            await updateDoc(doc(db, 'weeklyLogs', activeLog.id), {
-                unsubmitRequested: true,
-                unsubmitReason: unsubmitReason.trim(),
-                unsubmitRequestedAt: new Date().toISOString()
-            });
+            await weeklyLogAction('requestUnsubmit', { logId: activeLog.id, reason: unsubmitReason.trim() });
             toast({
                 title: "Unsubmit Requested",
                 description: "Amendment request transmitted for administrative authorization.",
@@ -705,7 +601,7 @@ export default function TechWeeklyLogPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="newest" className="text-[10px] uppercase font-bold">Newest First</SelectItem>
-                                <SelectItem value="oldest" className="text-[10px] uppercase font-bold">Oldest First</SelectItem>
+                                <SelectItem value="oldest" className="text-[10px] uppercase font-bold">Earliest First</SelectItem>
                                 <SelectItem value="status" className="text-[10px] uppercase font-bold">By Status</SelectItem>
                                 <SelectItem value="billing" className="text-[10px] uppercase font-bold">By Settlement</SelectItem>
                             </SelectContent>

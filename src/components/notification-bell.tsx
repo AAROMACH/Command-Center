@@ -11,7 +11,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePathname } from 'next/navigation';
-import { adminMessages as initialMessages } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isAfter } from 'date-fns';
 import type { AdminMessage } from '@/lib/types';
@@ -75,7 +74,8 @@ export function NotificationBell() {
     } catch (e) {}
 
     // Merge localStorage broadcasts with Firestore broadcasts (deduplicate by id)
-    const allMessages = [...firestoreBroadcasts, ...storedMessages, ...initialMessages];
+    // (Demo messages from lib/data used to be mixed in here — real ones only now.)
+    const allMessages = [...firestoreBroadcasts, ...storedMessages];
 
     // Filter by Portal AND verify not cleared AND not revoked AND not expired
     const filtered = allMessages.filter(m => {

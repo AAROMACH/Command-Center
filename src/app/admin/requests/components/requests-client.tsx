@@ -3,7 +3,6 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import type { ServiceRequest, Technician, WorkOrder } from '@/lib/types';
-import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
@@ -77,6 +76,7 @@ import { isSuperAdmin, isDispatchAdmin } from '@/lib/permissions';
 import { format, parseISO } from 'date-fns';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
+import { useAuth } from '@/contexts/auth-context';
 
 type RequestsClientProps = {
     requests: ServiceRequest[];
@@ -110,13 +110,9 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
 
-    useEffect(() => {
-        const userId = sessionStorage.getItem('currentUserId');
-        if (userId) {
-            const user = technicians.find(t => t.id === userId);
-            setCurrentUser(user || null);
-        }
-    }, []);
+    // Signed-in admin's real record (was looked up in the demo list).
+    const { user: authUser } = useAuth();
+    useEffect(() => { setCurrentUser(authUser || null); }, [authUser]);
 
     useEffect(() => {
         setCurrentPage(1);

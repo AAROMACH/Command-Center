@@ -1,5 +1,3 @@
-'use client';
-
 import type { AppRole, Technician } from './types';
 import { TERMINOLOGY } from './constants';
 

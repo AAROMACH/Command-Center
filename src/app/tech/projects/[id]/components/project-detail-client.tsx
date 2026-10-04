@@ -70,6 +70,7 @@ import { db } from '@/lib/firebase';
 import { doc, updateDoc, collection, setDoc } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
+import { formatClock } from '@/lib/time-on-site';
 
 // --- UTILITIES ---
 
@@ -99,17 +100,8 @@ function formatDateDisplay(dateStr: string) {
     }
 }
 
-const displayTime = (timeStr?: string) => {
-    if (!timeStr) return 'TBD';
-    try {
-        const [h, m] = timeStr.split(':');
-        const d = new Date();
-        d.setHours(parseInt(h), parseInt(m), 0);
-        return format(d, 'h:mm a');
-    } catch (e) {
-        return timeStr;
-    }
-};
+// AM/PM-aware (the old split-on-":" version showed afternoon times as morning).
+const displayTime = (timeStr?: string) => formatClock(timeStr);
 
 const ProximityDisplay = ({ lat, lng, project, label, size = 'default' }: { lat?: number, lng?: number, project: Project, label: string, size?: 'default' | 'large' }) => {
     const [cityName, setCityName] = useState<string>("");

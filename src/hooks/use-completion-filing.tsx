@@ -1,23 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import type { WorkOrder, WeeklyLogItem } from '@/lib/types';
+import type { WorkOrder } from '@/lib/types';
 import { jobTechId } from '@/lib/jobs';
 import {
   beginCompletionFiling,
-  buildCompletedJobItem,
   endCompletionFiling,
-  fileCompletedAssignment,
+  fileCompletedJob,
   removeJobFromDraftLogs,
   resolveCompletionPlacement,
   type CompletionPlacement,
 } from '@/lib/weekly-log';
-import { createDocId } from '@/lib/generateId';
-import { ID_PREFIXES } from '@/lib/constants';
 import { CompletionWeekDialog } from '@/components/completion-week-dialog';
 import { useToast } from '@/hooks/use-toast';
 
-type WeekPrompt = CompletionPlacement & { item: WeeklyLogItem; scheduleDate: string | undefined };
+type WeekPrompt = CompletionPlacement & { jobId: string };
 
 export type CompletionResult = 'filed' | 'prompted' | 'not_owner';
 
@@ -65,18 +62,13 @@ export function useCompletionFiling(techId: string | null) {
       // Re-completing a job must not stack a second entry in an open Draft.
       await removeJobFromDraftLogs(techId, job.id);
       await writeCompletedStatus();
-      const item = await buildCompletedJobItem(job, 'completion');
       const placement = await resolveCompletionPlacement({ techId, scheduleDate: job.scheduleDate });
       if (placement.differentWeek) {
-        setWeekPrompt({ item, scheduleDate: job.scheduleDate, ...placement });
+        setWeekPrompt({ jobId: job.id, ...placement });
         return 'prompted'; // in-flight is cleared once the tech picks a week
       }
-      await fileCompletedAssignment({
-        techId,
-        scheduleDate: job.scheduleDate,
-        item,
-        makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
-      });
+      // The server builds the entry from the job record (pay included).
+      await fileCompletedJob({ techId, job, filedVia: 'completion' });
       endCompletionFiling(job.id);
       return 'filed';
     } catch (e) {
@@ -90,15 +82,9 @@ export function useCompletionFiling(techId: string | null) {
     if (!techId || !weekPrompt || busy) return;
     setBusy(true);
     try {
-      await fileCompletedAssignment({
-        techId,
-        scheduleDate: weekPrompt.scheduleDate,
-        item: weekPrompt.item,
-        makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
-        placement: choice,
-      });
+      await fileCompletedJob({ techId, job: { id: weekPrompt.jobId }, filedVia: 'completion', placement: choice });
       toast({ title: 'Filed to Weekly Log', description: choice === 'scheduled' ? `Added to the week of ${weekPrompt.scheduledWeek}.` : `Added to the current week (${weekPrompt.reportingWeek}).` });
-      endCompletionFiling(weekPrompt.item.workOrderId);
+      endCompletionFiling(weekPrompt.jobId);
       setWeekPrompt(null);
     } catch (e: any) {
       // Keep the prompt open so the tech can retry; the job is still in-flight.

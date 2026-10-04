@@ -23,12 +23,12 @@ import {
 } from '@/components/ui/select';
 import { Building2, MapPin, Calendar, Briefcase, Check, Phone, User, SearchCode, X, Search, Users, Navigation } from 'lucide-react';
 import type { Project, Technician } from '@/lib/types';
-import { technicians } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { ID_PREFIXES } from '@/lib/constants';
 import { createDocId } from '@/lib/generateId';
+import { useLiveUsers } from '@/hooks/use-live-users';
 
 declare global {
   interface Window {
@@ -46,6 +46,8 @@ type NewProjectDialogProps = {
 };
 
 export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialogProps) {
+  // Live user records (was the demo list in lib/data).
+  const technicians = useLiveUsers();
   const [formData, setFormData] = useState<Partial<Project>>({
     name: '',
     client: '',
@@ -150,7 +152,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
     return technicians.filter(t => 
         isClient(t) || t.clientCompany
     );
-  }, []);
+  }, [technicians]);
 
   const selectedClient = useMemo(() => {
     return clients.find(c => (c.clientCompany || c.name) === formData.client);
@@ -201,7 +203,10 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
       siteHazardNotes: [],
       actualBudget: 0,
       actualHours: 0,
-    };
+      // Link the client account too, so the client portal finds the project
+      // even if the company name is later edited on either side.
+      ...(selectedClient && isClient(selectedClient) ? { clientId: selectedClient.id } : {}),
+    } as Project;
 
     onSave(newProject);
     setIsOpen(false);

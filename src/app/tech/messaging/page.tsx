@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { db, auth } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, doc, updateDoc, arrayUnion, query } from 'firebase/firestore';
 import { uploadFile } from '@/lib/upload';
+import { useDirectory } from '@/hooks/use-directory';
 import type { Technician, Project, AdminMessage } from '@/lib/types';
 import { isAdmin as isAdminRole, isTech as isTechRole, isClient as isClientRole } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
@@ -36,7 +37,8 @@ type DirectMessage = {
 export default function TechMessagingPage() {
   const [activeTab, setActiveTab] = useState<Tab>('Messages');
   const [currentUser, setCurrentUser] = useState<Technician | null>(null);
-  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  // Contacts and sender names from the public directory.
+  const technicians = useDirectory();
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [selectedContactId, setSelectedContactId] = useState<string>('admin');
   // On phones the DM list and thread are shown one at a time; this tracks
@@ -61,15 +63,14 @@ export default function TechMessagingPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
-      const users = snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician));
-      setTechnicians(users);
-      const userId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('currentUserId') : null;
-      if (userId) {
-        const me = users.find(t => t.id === userId);
-        if (me) setCurrentUser(me);
-      }
-    });
+    // Techs can read only their own `users` doc — the old whole-collection
+    // listener was denied, so currentUser (and every contact) never loaded.
+    const userId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('currentUserId') : null;
+    const unsubUsers = userId
+      ? onSnapshot(doc(db, 'users', userId), (snap) => {
+          if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id } as Technician);
+        }, () => {})
+      : () => {};
 
     const unsubMsgs = onSnapshot(collection(db, 'messages'), (snap) => {
       setMessages(snap.docs.map(d => ({ ...d.data(), id: d.id } as DirectMessage)));

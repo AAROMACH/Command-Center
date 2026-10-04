@@ -8,6 +8,7 @@ import { RoutesView } from "./routes-view";
 import type { WorkOrder, Technician, Route } from "@/lib/types";
 import { useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { NewArrivalPing } from '@/components/new-arrival-ping';
 
 type DispatchTabsProps = {
   workOrders: WorkOrder[];
@@ -22,6 +23,10 @@ type DispatchTabsProps = {
   dateAsc?: boolean;
   isDateSortActive?: boolean;
   onToggleDateSort?: () => void;
+  /** Reports the active sub-tab so the parent can clear "new" indicators. */
+  onActiveTabChange?: (tab: string) => void;
+  newCounts?: { unassigned: number; review: number };
+  newIds?: { unassigned: Set<string>; review: Set<string> };
 };
 
 export function DispatchTabs({
@@ -37,6 +42,9 @@ export function DispatchTabs({
   dateAsc,
   isDateSortActive,
   onToggleDateSort,
+  onActiveTabChange,
+  newCounts,
+  newIds,
 }: DispatchTabsProps) {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get('subtab') || 'unassigned');
@@ -48,6 +56,8 @@ export function DispatchTabs({
     }
   }, [searchParams]);
 
+  useEffect(() => { onActiveTabChange?.(activeTab); }, [activeTab, onActiveTabChange]);
+
   const unassignedWorkOrders = workOrders.filter(wo => wo.status === 'unassigned' || !wo.assignedTechnicianId);
 
   return (
@@ -55,12 +65,14 @@ export function DispatchTabs({
       <TabsList className="tabs">
         <TabsTrigger value="unassigned" className="tab">
           Unassigned <span className="tab-count">({unassignedWorkOrders.length})</span>
+          <NewArrivalPing count={newCounts?.unassigned ?? 0} className="ml-1.5" />
         </TabsTrigger>
         <TabsTrigger value="routes" className="tab">
           Routes <span className="tab-count">({routes.length})</span>
         </TabsTrigger>
         <TabsTrigger value="review" className="tab">
           Review Queue <span className="tab-count">({reviewQueueJobs.length})</span>
+          <NewArrivalPing count={newCounts?.review ?? 0} className="ml-1.5" />
         </TabsTrigger>
       </TabsList>
 
@@ -90,6 +102,7 @@ export function DispatchTabs({
       <TabsContent value="review" className="mt-0">
           <ReviewQueueView
             jobs={reviewQueueJobs}
+            newIds={newIds?.review}
             technicians={technicians}
             onSendToDispatch={onReviewSendToDispatch}
             onArchive={onReviewArchive}

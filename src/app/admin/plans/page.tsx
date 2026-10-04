@@ -23,7 +23,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { technicians } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { ViewToggle, useViewMode } from '@/components/view-toggle';
@@ -32,6 +31,7 @@ import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import type { PlanTier, Technician } from '@/lib/types';
 import { differenceInMinutes, addHours } from 'date-fns';
+import { useLiveUsers } from '@/hooks/use-live-users';
 
 const SLA_HOURS: Record<string, number> = { 'std-1': 48, 'std-2': 24, 'std-3': 8 };
 const DEFAULT_SLA_HOURS = 48;
@@ -150,7 +150,11 @@ export default function ServicePlansPage() {
     const [viewMode, setViewMode] = useViewMode('plans');
     const [selectedPlan, setSelectedPlan] = useState<Partial<PlanTier>>({});
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
-    const [localTechs, setLocalTechs] = useState<Technician[]>(technicians);
+    // Live user records (was seeded from the demo list). Local edits below are
+    // layered on top until the next snapshot.
+    const liveUsers = useLiveUsers();
+    const [localTechs, setLocalTechs] = useState<Technician[]>([]);
+    useEffect(() => { setLocalTechs(liveUsers); }, [liveUsers]);
 
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [planToDelete, setPlanToDelete] = useState<PlanTier | null>(null);
@@ -318,14 +322,29 @@ export default function ServicePlansPage() {
         setPlanToDelete(null);
     };
 
-    const handleDiscardRequest = (clientId: string) => {
-        setLocalTechs(prev => prev.map(t => t.id === clientId ? { ...t, subscriptionStatus: 'none' } : t));
-        toast({ variant: 'destructive', title: 'Request Discarded', description: 'The pending service agreement request has been removed from the funnel.' });
+    // These two used to change only the on-screen list (and say so in a toast)
+    // without saving — the request came back on reload. They now persist.
+    const handleDiscardRequest = async (clientId: string) => {
+        try {
+            await updateDoc(doc(db, 'users', clientId), { subscriptionStatus: 'none' });
+            setLocalTechs(prev => prev.map(t => t.id === clientId ? { ...t, subscriptionStatus: 'none' } : t));
+            toast({ variant: 'destructive', title: 'Request Discarded', description: 'The pending service agreement request has been removed from the funnel.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not discard', description: e.message });
+        }
     };
 
-    const handleInitializeQuote = (clientId: string) => {
-        setLocalTechs(prev => prev.map(t => t.id === clientId ? { ...t, subscriptionStatus: 'active', planId: 'std-1' } : t));
-        toast({ title: 'Quote Initialized', description: 'The client has been transitioned to active status.' });
+    const handleInitializeQuote = async (clientId: string) => {
+        const client = localTechs.find(t => t.id === clientId);
+        // Keep the plan the client requested; fall back to the standard tier.
+        const planId = client?.planId || 'std-1';
+        try {
+            await updateDoc(doc(db, 'users', clientId), { subscriptionStatus: 'active', planId });
+            setLocalTechs(prev => prev.map(t => t.id === clientId ? { ...t, subscriptionStatus: 'active', planId } : t));
+            toast({ title: 'Quote Initialized', description: 'The client has been transitioned to active status.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not activate', description: e.message });
+        }
     };
 
     const handleSaveRates = async () => {

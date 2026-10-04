@@ -5,6 +5,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { db } from "@/lib/firebase";
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
+import { useClientInvoices } from '@/hooks/use-client-invoices';
+import { useClientProjects, useClientJobs } from '@/hooks/use-client-data';
 import type { Project, ServiceRequest, Technician, Invoice, WorkOrder } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +29,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { NotificationBell } from '@/components/notification-bell';
 import { cn } from '@/lib/utils';
+import { jobDateTimeValue, parseLocalDate } from '@/lib/jobs';
 
 const SLA_HOURS: Record<string, number> = {
     'on-call': 48,
@@ -36,10 +39,7 @@ const SLA_HOURS: Record<string, number> = {
 
 export default function ClientDashboardPage() {
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
-    const [myProjects, setMyProjects] = useState<Project[]>([]);
     const [myRequests, setMyRequests] = useState<ServiceRequest[]>([]);
-    const [myWorkOrders, setMyWorkOrders] = useState<WorkOrder[]>([]);
-    const [myInvoices, setMyInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
@@ -63,40 +63,32 @@ export default function ClientDashboardPage() {
         return () => unsubUser();
     }, [router]);
 
-    // Effect 2: Set up data listeners once user is known — properly cleaned up on unmount
+    // Projects, jobs (pool + dispatched) and sent invoices, via the shared
+    // client hooks — each query is filtered the way the rules allow, so none
+    // is rejected outright.
+    const myProjects = useClientProjects(currentUser);
+    const myWorkOrders = useClientJobs(currentUser);
+    const myInvoices = useClientInvoices(currentUser);
+
     useEffect(() => {
-        if (!currentUser) return;
-
-        const clientName = currentUser.clientCompany || currentUser.name;
-        if (!clientName) return;
-
-        const unsubProj = onSnapshot(
-            query(collection(db, 'projects'), where('client', '==', clientName)),
-            (snap) => setMyProjects(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Project)))
-        );
-
-        const unsubReq = onSnapshot(
-            query(collection(db, 'clientRequests'), where('clientName', '==', clientName)),
-            (snap) => setMyRequests(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as ServiceRequest)))
-        );
-
-        const unsubWO = onSnapshot(
-            query(collection(db, 'workOrders'), where('clientName', '==', clientName)),
-            (snap) => setMyWorkOrders(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder)))
-        );
-
-        const unsubInv = onSnapshot(
-            query(collection(db, 'invoices'), where('clientName', '==', clientName)),
-            (snap) => setMyInvoices(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Invoice)))
-        );
-
-        return () => {
-            unsubProj();
-            unsubReq();
-            unsubWO();
-            unsubInv();
+        if (!currentUser?.id) return;
+        let byId: ServiceRequest[] = [];
+        let byCompany: ServiceRequest[] = [];
+        const publish = () => {
+            const m = new Map<string, ServiceRequest>();
+            [...byId, ...byCompany].forEach(r => m.set(r.id, r));
+            setMyRequests([...m.values()]);
         };
-    }, [currentUser?.id, currentUser?.clientCompany, currentUser?.name]);
+        const unsubs = [onSnapshot(
+            query(collection(db, 'clientRequests'), where('clientId', '==', currentUser.id)),
+            snap => { byId = snap.docs.map(d => ({ ...d.data(), id: d.id } as ServiceRequest)); publish(); }, () => {},
+        )];
+        if (currentUser.clientCompany) unsubs.push(onSnapshot(
+            query(collection(db, 'clientRequests'), where('clientName', '==', currentUser.clientCompany)),
+            snap => { byCompany = snap.docs.map(d => ({ ...d.data(), id: d.id } as ServiceRequest)); publish(); }, () => {},
+        ));
+        return () => unsubs.forEach(u => u());
+    }, [currentUser?.id, currentUser?.clientCompany]);
 
     const slaData = useMemo(() => {
         if (!currentUser) return [];
@@ -105,7 +97,7 @@ export default function ClientDashboardPage() {
             .filter(r => r.status === 'new' || r.status === 'reviewed')
             .map(r => {
                 try {
-                    const submitted = new Date(r.submittedDate);
+                    const submitted = parseLocalDate(r.submittedDate) ?? new Date(NaN);
                     const now = new Date();
                     const hoursElapsed = (now.getTime() - submitted.getTime()) / (1000 * 60 * 60);
                     const hoursRemaining = Math.max(0, slaLimit - hoursElapsed);
@@ -126,7 +118,7 @@ export default function ClientDashboardPage() {
 
     const recentActivity = useMemo(() => {
         return [...myWorkOrders]
-            .sort((a, b) => (b.scheduleDate || '').localeCompare(a.scheduleDate || ''))
+            .sort((a, b) => jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime))
             .slice(0, 5);
     }, [myWorkOrders]);
 
@@ -144,7 +136,7 @@ export default function ClientDashboardPage() {
 
     const invoicePie = useMemo(() => {
         const paid = myInvoices.filter(i => i.status === 'paid').length;
-        const pending = myInvoices.filter(i => i.status === 'sent' || i.status === 'draft').length;
+        const pending = myInvoices.filter(i => i.status === 'sent').length;
         const overdue = myInvoices.filter(i => i.status === 'overdue').length;
         return [
             { name: 'Paid', value: paid, color: 'var(--text-green)' },

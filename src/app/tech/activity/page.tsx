@@ -11,7 +11,8 @@ import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierColor } from '@/lib/reliability';
 import { format, parseISO, subWeeks, startOfMonth, endOfMonth } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { isAssignedTo } from '@/lib/jobs';
+import { isAssignedTo, jobDateTimeValue, weekOfValue, parseLocalDate } from '@/lib/jobs';
+import { computeWeeklyLogSettlement } from '@/lib/payroll';
 
 export default function TechActivityPage() {
   const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -62,15 +63,17 @@ export default function TechActivityPage() {
   const disputed = allItems.filter(i => i.confirmationStatus === 'disputed').length;
 
   const jobCounts = useMemo(() => ({
-    completed: assignments.filter(a => a.status === 'completed' || a.status === 'checked-out').length,
-    inProgress: assignments.filter(a => a.status === 'in-progress' || a.status === 'on-my-way').length,
+    // Checked-out is still open (not completed/filed yet) — same as the admin
+    // side, which only counts 'completed' as done.
+    completed: assignments.filter(a => a.status === 'completed').length,
+    inProgress: assignments.filter(a => a.status === 'in-progress' || a.status === 'on-my-way' || a.status === 'checked-out').length,
     assigned: assignments.filter(a => a.status === 'assigned' || a.status === 'confirmed').length,
   }), [assignments]);
 
   const recentCompleted = useMemo(() =>
     assignments
-      .filter(a => a.status === 'completed' || a.status === 'checked-out')
-      .sort((a, b) => (b.scheduleDate || '').localeCompare(a.scheduleDate || ''))
+      .filter(a => a.status === 'completed')
+      .sort((a, b) => jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime))
       .slice(0, 5),
     [assignments]
   );
@@ -82,17 +85,22 @@ export default function TechActivityPage() {
       const week = l.weekOf.slice(0, 10);
       if (l.status === 'Submitted' || l.status === 'Approved') grouped[week] = (grouped[week] || 0) + 1;
     });
-    return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).slice(-8)
-      .map(([week, count]) => ({ week: week.slice(5), count }));
+    // weekOf is MM-dd-yyyy: sort chronologically (a string sort breaks across
+    // years) and label "MM-dd".
+    return Object.entries(grouped).sort(([a], [b]) => weekOfValue(a) - weekOfValue(b)).slice(-8)
+      .map(([week, count]) => ({ week: week.slice(0, 5), count }));
   }, [weeklyLogs]);
+
+  const jobsById = useMemo(() => new Map(assignments.map(a => [a.id, a])), [assignments]);
 
   const earningsTrend = useMemo(() =>
     weeklyLogs
       .filter(l => l.status === 'Approved')
-      .sort((a, b) => (a.weekOf || '').localeCompare(b.weekOf || ''))
+      .sort((a, b) => weekOfValue(a.weekOf) - weekOfValue(b.weekOf))
       .slice(-8)
-      .map(l => ({ week: (l.weekOf || '').slice(5, 10), pay: l.totalPayout || 0 })),
-    [weeklyLogs]
+      // weekOf is MM-dd-yyyy → label "MM-dd"; pay at live settlement.
+      .map(l => ({ week: (l.weekOf || '').slice(0, 5), pay: computeWeeklyLogSettlement(l, jobsById) })),
+    [weeklyLogs, jobsById]
   );
 
   const rangeStart = useMemo(() => {
@@ -107,7 +115,7 @@ export default function TechActivityPage() {
     if (!rangeStart) return assignments;
     return assignments.filter(a => {
       if (!a.scheduleDate) return false;
-      try { return new Date(a.scheduleDate) >= rangeStart; } catch { return false; }
+      const d = parseLocalDate(a.scheduleDate); return !!d && d >= rangeStart;
     });
   }, [assignments, rangeStart]);
 
@@ -120,7 +128,7 @@ export default function TechActivityPage() {
   }, [weeklyLogs, rangeStart]);
 
   const avgJobsPerWeek = useMemo(() => {
-    const completed = filteredAssignments.filter(a => a.status === 'completed' || a.status === 'checked-out').length;
+    const completed = filteredAssignments.filter(a => a.status === 'completed').length;
     const weeks = dateRange === '4w' ? 4 : dateRange === '8w' ? 8 : dateRange === 'month' ? 4 : Math.max(1, Math.ceil(weeklyLogs.length / 1));
     return (completed / Math.max(1, weeks)).toFixed(1);
   }, [filteredAssignments, dateRange, weeklyLogs]);
@@ -130,7 +138,7 @@ export default function TechActivityPage() {
     const end = endOfMonth(new Date());
     return assignments.filter(a => {
       if (!a.scheduleDate) return false;
-      try { const d = new Date(a.scheduleDate); return d >= start && d <= end; } catch { return false; }
+      const d = parseLocalDate(a.scheduleDate); return !!d && d >= start && d <= end;
     }).length;
   }, [assignments]);
 

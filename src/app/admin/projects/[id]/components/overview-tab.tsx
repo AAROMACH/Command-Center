@@ -24,10 +24,10 @@ import { Badge } from '@/components/ui/badge';
 import { ManageTeamDialog } from './manage-team-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { expenses, invoices } from '@/lib/data';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, onSnapshot, query, where } from 'firebase/firestore';
+import { money } from '@/lib/financial-summary';
 
 type OverviewTabProps = {
     project: Project;
@@ -36,6 +36,18 @@ type OverviewTabProps = {
 };
 
 export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabProps) {
+    // Project economics from the real expenses / invoices linked to this
+    // project (was the demo lists in lib/data).
+    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [invoices, setInvoices] = useState<Invoice[]>([]);
+    useEffect(() => {
+        if (!project?.id) return;
+        const unsubE = onSnapshot(query(collection(db, 'expenses'), where('projectId', '==', project.id)),
+            snap => setExpenses(snap.docs.map(d => ({ ...d.data(), id: d.id } as Expense))), () => setExpenses([]));
+        const unsubI = onSnapshot(query(collection(db, 'invoices'), where('projectId', '==', project.id)),
+            snap => setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice))), () => setInvoices([]));
+        return () => { unsubE(); unsubI(); };
+    }, [project?.id]);
     const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
     const [isAddingNote, setIsAddingNote] = useState(false);
     const [newNoteText, setNewNoteText] = useState("");
@@ -86,15 +98,15 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
 
         const materialCost = projectExpenses
             .filter(e => e.category === 'Materials')
-            .reduce((acc, e) => acc + e.amount, 0);
+            .reduce((acc, e) => acc + money(e.amount), 0);
 
         const otherExpenses = projectExpenses
             .filter(e => e.category !== 'Materials')
-            .reduce((acc, e) => acc + e.amount, 0);
+            .reduce((acc, e) => acc + money(e.amount), 0);
 
         const actualCost = laborCost + materialCost + otherExpenses;
         const revenue = projectInvoices.length > 0 
-            ? projectInvoices.reduce((acc, i) => acc + i.total, 0)
+            ? projectInvoices.reduce((acc, i) => acc + money(i.total), 0)
             : (project.projectBudget || 0);
             
         const profit = revenue - actualCost;
@@ -121,7 +133,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
             budgetStatus,
             revenue
         };
-    }, [project, dailyLogs, allTechnicians]);
+    }, [project, dailyLogs, allTechnicians, expenses, invoices]);
 
     const getTechnician = (id: string) => allTechnicians.find(t => t.id === id);
 

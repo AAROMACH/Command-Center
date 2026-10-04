@@ -90,9 +90,8 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
-import { penaltyEvents } from '@/lib/data';
 import { cn, formatCityState } from '@/lib/utils';
-import { isArchivedJob, archiveJobRecord } from '@/lib/jobs';
+import { isArchivedJob, archiveJobRecord, jobTechId, weekOfValue, parseLocalDate, mergeJobs } from '@/lib/jobs';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { IntelligenceTerminal } from './components/intelligence-terminal';
 import type { Technician, WorkOrder, WeeklyLog, TimeOffRequest, AdminMessage, Invoice, Project } from '@/lib/types';
@@ -101,6 +100,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 import { isAdmin, isSuperAdmin, isClient } from '@/lib/permissions';
+import { usePenaltyEvents, penaltyPoints } from '@/hooks/use-penalty-events';
+import { computeWeeklyLogSettlement } from '@/lib/payroll';
 
 const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'TBD';
@@ -156,6 +157,8 @@ type ArchiveItem = {
 };
 
 export default function ActivityAuditPage() {
+    // Real penalty events (was the empty demo list → always 0 points).
+    const allPenalties = usePenaltyEvents();
     const router = useRouter();
     const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState("");
@@ -494,12 +497,17 @@ export default function ActivityAuditPage() {
 
     const activeTech = useMemo(() => technicians.find(t => t.id === selectedTechId), [selectedTechId, technicians]);
 
+    const jobsById = useMemo(
+        () => new Map(mergeJobs(workOrders, assignments).map(j => [j.id, j as WorkOrder])),
+        [workOrders, assignments],
+    );
+
     const techStats = useMemo(() => {
         if (!selectedTechId) return null;
-        const myJobs = assignments.filter(wo => wo.assignedTechnicianId === selectedTechId || wo.techId === selectedTechId);
+        const myJobs = assignments.filter(wo => jobTechId(wo) === selectedTechId);
         const completed = myJobs.filter(wo => wo.status === 'completed').length;
-        const penalties = penaltyEvents.filter(pe => pe.techId === selectedTechId);
-        const points = penalties.reduce((acc, curr) => acc + Math.abs(curr.scoreChange), 0);
+        const penalties = allPenalties.filter(pe => pe.techId === selectedTechId);
+        const points = penaltyPoints(allPenalties, selectedTechId);
         const reliability = Math.max(0, 100 - (points * 5));
         
         const myLogs = weeklyLogs.filter(log => log.techId === selectedTechId)
@@ -508,9 +516,11 @@ export default function ActivityAuditPage() {
                 const [bm, bd, by] = b.weekOf.split('-');
                 return new Date(parseInt(by), parseInt(bm)-1, parseInt(bd)).getTime() - 
                        new Date(parseInt(ay), parseInt(am)-1, parseInt(ad)).getTime();
-            });
+            })
+            // Live settlement — the stored totalPayout is 0 on drafts and stale after pay edits.
+            .map(log => ({ ...log, amount: computeWeeklyLogSettlement(log, jobsById) }));
 
-        const totalEarnings = myLogs.filter(l => l.status === 'Approved').reduce((acc, log) => acc + (log.totalPayout || 0), 0);
+        const totalEarnings = myLogs.filter(l => l.status === 'Approved').reduce((acc, log) => acc + log.amount, 0);
 
         return { 
             total: myJobs.length, 
@@ -522,7 +532,7 @@ export default function ActivityAuditPage() {
             myJobs,
             myLogs
         };
-    }, [selectedTechId, assignments, weeklyLogs]);
+    }, [selectedTechId, assignments, weeklyLogs, allPenalties, jobsById]);
 
     const siteList = useMemo(() => {
         const uniqueSites = new Map();
@@ -545,7 +555,7 @@ export default function ActivityAuditPage() {
             results = results.filter(wo => {
                 const parts = (wo.scheduleDate || '').split(/[-/]/);
                 let woDate;
-                if (parts[0] && parts[0].length === 4) { woDate = startOfDay(new Date(wo.scheduleDate)); }
+                if (parts[0] && parts[0].length === 4) { woDate = startOfDay(parseLocalDate(wo.scheduleDate) ?? new Date(NaN)); }
                 else { woDate = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]))); }
                 return isAfter(woDate, cutoff) || isSameDay(woDate, cutoff);
             });
@@ -554,7 +564,7 @@ export default function ActivityAuditPage() {
             results = results.filter(wo => {
                 const parts = (wo.scheduleDate || '').split(/[-/]/);
                 let woDate;
-                if (parts[0] && parts[0].length === 4) { woDate = startOfDay(new Date(wo.scheduleDate)); }
+                if (parts[0] && parts[0].length === 4) { woDate = startOfDay(parseLocalDate(wo.scheduleDate) ?? new Date(NaN)); }
                 else { woDate = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]))); }
                 return isAfter(woDate, cutoff) || isSameDay(woDate, cutoff);
             });
@@ -562,7 +572,7 @@ export default function ActivityAuditPage() {
             results = results.filter(wo => {
                 const parts = (wo.scheduleDate || '').split(/[-/]/);
                 let woDate;
-                if (parts[0] && parts[0].length === 4) { woDate = startOfDay(new Date(wo.scheduleDate)); }
+                if (parts[0] && parts[0].length === 4) { woDate = startOfDay(parseLocalDate(wo.scheduleDate) ?? new Date(NaN)); }
                 else { woDate = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]))); }
                 const start = startOfDay(customVisitRange.from!);
                 const end = customVisitRange.to ? startOfDay(customVisitRange.to) : start;
@@ -840,7 +850,7 @@ export default function ActivityAuditPage() {
                 </Button>
             </div>
             {technicians.filter(t => !isClient(t)).map(t => {
-                const pts = penaltyEvents.filter(p => p.techId === t.id).reduce((s, p) => s + Math.abs(p.scoreChange), 0);
+                const pts = penaltyPoints(allPenalties, t.id);
                 const isReliable = pts <= 2;
                 return (
                     <div key={t.id} onClick={() => setSelectedTechId(t.id)} className="flex items-center justify-between p-2.5 rounded-lg bg-bg-secondary border border-border-main hover:border-brand-red transition-all cursor-pointer group text-left">
@@ -1074,7 +1084,7 @@ export default function ActivityAuditPage() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="desc" className="text-[10px] uppercase font-bold">Newest First</SelectItem>
-                        <SelectItem value="asc" className="text-[10px] uppercase font-bold">Oldest First</SelectItem>
+                        <SelectItem value="asc" className="text-[10px] uppercase font-bold">Earliest First</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -1398,7 +1408,7 @@ export default function ActivityAuditPage() {
                                                                                     {log.status}
                                                                                 </Badge>
                                                                             </TableCell>
-                                                                            <TableCell className="text-right pr-6 font-mono font-bold text-text-primary">${(log.totalPayout || 0).toFixed(2)}</TableCell>
+                                                                            <TableCell className="text-right pr-6 font-mono font-bold text-text-primary">${log.amount.toFixed(2)}</TableCell>
                                                                         </TableRow>
                                                                     ))}
                                                                 </TableBody>
@@ -1576,7 +1586,7 @@ export default function ActivityAuditPage() {
                             <TabsContent value="weekly_logs" className="m-0 text-left">
                                 <div className="space-y-4">
                                     {(() => {
-                                        const submittedLogs = weeklyLogs.filter(l => l.status === 'Submitted' || l.status === 'Approved').sort((a, b) => b.weekOf.localeCompare(a.weekOf));
+                                        const submittedLogs = weeklyLogs.filter(l => l.status === 'Submitted' || l.status === 'Approved').sort((a, b) => weekOfValue(b.weekOf) - weekOfValue(a.weekOf));
                                         return (
                                             <>
                                                 <div className="flex items-center justify-between">
@@ -1668,7 +1678,7 @@ export default function ActivityAuditPage() {
                                                 className="flex items-center gap-1.5 h-9 rounded-md border border-border-main bg-bg-primary px-3 text-[10px] font-bold uppercase tracking-widest text-text-muted hover:text-text-primary transition-colors"
                                             >
                                                 <ArrowUpDown size={12} />
-                                                {archiveSortDir === 'desc' ? 'Latest First' : 'Oldest First'}
+                                                {archiveSortDir === 'desc' ? 'Latest First' : 'Earliest First'}
                                             </button>
                                         </div>
                                     </div>

@@ -1,5 +1,6 @@
 import type { WorkOrder } from './types';
 import { db } from './firebase';
+import { assignedTechOf } from './weekly-log-core';
 import { doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 
 // ── Unified job model ───────────────────────────────────────────────────────
@@ -24,11 +25,7 @@ export type JobWithSrc = WorkOrder & { _src?: JobSource };
  * then the legacy `techId`. Returns undefined when unassigned.
  */
 export function jobTechId(job: Partial<WorkOrder> | null | undefined): string | undefined {
-  if (!job) return undefined;
-  return job.assignedTechnicianId
-    || (job.assignedTechIds && job.assignedTechIds[0])
-    || (job as { techId?: string }).techId
-    || undefined;
+  return assignedTechOf(job);
 }
 
 /**
@@ -40,6 +37,25 @@ export function jobTechId(job: Partial<WorkOrder> | null | undefined): string | 
  */
 export function isAssignedTo(job: Partial<WorkOrder> | null | undefined, techId: string | null | undefined): boolean {
   return !!techId && jobTechId(job) === techId;
+}
+
+/** Job statuses in workflow order, with display labels — for sorting by
+ *  status (pipeline order, not alphabetical) and status filter checkboxes. */
+export const JOB_STATUS_OPTIONS: { value: WorkOrder['status']; label: string }[] = [
+  { value: 'unassigned', label: 'Unassigned' },
+  { value: 'assigned', label: 'Assigned' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'on-my-way', label: 'On My Way' },
+  { value: 'in-progress', label: 'In Progress' },
+  { value: 'checked-out', label: 'Checked Out' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'archived', label: 'Archived' },
+];
+const STATUS_RANK = new Map(JOB_STATUS_OPTIONS.map((o, i) => [o.value as string, i]));
+/** Compare two jobs by workflow status order (unknown statuses last). */
+export function compareJobStatus(a: Partial<WorkOrder>, b: Partial<WorkOrder>): number {
+  return (STATUS_RANK.get(a.status || '') ?? 99) - (STATUS_RANK.get(b.status || '') ?? 99);
 }
 
 /** Whether a job has a technician assigned. */
@@ -89,6 +105,36 @@ export function jobDateTimeValue(dateStr?: string | null, timeStr?: string | nul
     }
   }
   return d.getTime();
+}
+
+/**
+ * Parse any date string the app stores into a LOCAL Date:
+ *   'yyyy-MM-dd'  → local midnight (new Date('2026-08-18') is UTC midnight,
+ *                   i.e. the evening of the 17th in Michigan — dates showed
+ *                   and filtered a day early);
+ *   'MM-dd-yyyy' / 'M/D/YYYY' → local midnight (Safari/iOS returns Invalid
+ *                   Date for 'MM-dd-yyyy' strings);
+ *   full ISO datetimes and anything else Date understands → as-is.
+ * Null when it isn't a date.
+ */
+export function parseLocalDate(s?: string | null): Date | null {
+  if (!s) return null;
+  const str = String(s).trim();
+  let m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+  m = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (m) return new Date(+m[3], +m[1] - 1, +m[2]);
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * A weekly log's `weekOf` ('MM-dd-yyyy', tolerates 'yyyy-MM-dd') as a
+ * comparable timestamp, 0 when unparseable. Use this — never a string
+ * compare: 'MM-dd-yyyy' strings sort by month before year.
+ */
+export function weekOfValue(weekOf?: string | null): number {
+  return jobDateTimeValue(weekOf, null);
 }
 
 /**

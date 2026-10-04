@@ -32,12 +32,15 @@ import {
   collection, query, where, getDocs, getDoc, onSnapshot,
   orderBy, limit, doc, updateDoc, arrayUnion,
 } from 'firebase/firestore';
-import type { WorkOrder, WeeklyLog, AssignmentTimeLog, Technician } from '@/lib/types';
+import { useDirectory } from '@/hooks/use-directory';
+import type { WorkOrder, WeeklyLog, WeeklyLogItem, AssignmentTimeLog, Technician, TripLog } from '@/lib/types';
 import { displayWorkOrderNumber, isImported } from '@/lib/work-order-identity';
 import { fileCompletedJob, moveJobLogOnSwap, describeSwapLogMove } from '@/lib/weekly-log';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
-import { assignmentTimeLogs } from '@/lib/data';
+import { onSiteSessions, formatClock } from '@/lib/time-on-site';
+import { effectiveJobPay } from '@/lib/payroll';
+import { parseLocalDate } from '@/lib/jobs';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -60,15 +63,9 @@ function getAvatarColor(name: string): string {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
-const displayTime = (t?: string) => {
-  if (!t) return 'TBD';
-  try {
-    const [h, m] = t.split(':');
-    const d = new Date();
-    d.setHours(parseInt(h), parseInt(m), 0);
-    return format(d, 'h:mm a');
-  } catch { return t; }
-};
+// Handles "14:30", "2:30 PM" and ISO datetimes. (The old version split on
+// ":" and dropped AM/PM, so every afternoon time displayed as morning.)
+const displayTime = (t?: string) => formatClock(t);
 
 // Format a history entry's timestamp for the timeline. A full ISO datetime
 // (recorded events) shows date + time-of-day; a plain date shows just the date.
@@ -139,13 +136,17 @@ type JobDetailDialogProps = {
   mission: WorkOrder | null;
   onEdit?: (mission: WorkOrder) => void;
   onUpdate?: (woId: string, updates: Partial<WorkOrder>) => void;
+  /** Mask pay amounts (for viewers who aren't super / payroll admins). */
+  hidePay?: boolean;
 };
 
-export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogProps) {
+export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }: JobDetailDialogProps) {
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
-  const [adminData, setAdminData] = useState<{ weeklyLog: WeeklyLog | null; sessionLogs: AssignmentTimeLog[] }>({ weeklyLog: null, sessionLogs: [] });
+  const [adminData, setAdminData] = useState<{ weeklyLog: WeeklyLog | null; jobItem: WeeklyLogItem | null; sessionLogs: AssignmentTimeLog[] }>({ weeklyLog: null, jobItem: null, sessionLogs: [] });
   const [loadingAdmin, setLoadingAdmin] = useState(false);
-  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  // Full user records for admins; the public directory for techs (who can't
+  // read `users`, so names here used to be blank on the tech side).
+  const technicians = useDirectory();
   const [auditEvents, setAuditEvents] = useState<any[]>([]);
   const [swapOpen, setSwapOpen] = useState(false);
   const [helperOpen, setHelperOpen] = useState(false);
@@ -165,19 +166,13 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   const [forcedDone, setForcedDone] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'users'), (snap) => {
-      setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
-    });
-    return () => unsub();
-  }, []);
 
   // Clear per-assignment UI state whenever a different assignment is shown.
   useEffect(() => {
     setOptimisticTechId(null);
     setOptimisticHelperIds([]);
     setForceOpen(false);
-    setForceFilePayroll(false);
+    setForceFilePayroll(true); // filing to the weekly log is the default
     setForcedDone(false);
   }, [mission?.id]);
 
@@ -185,13 +180,22 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     if (!isOpen || !mission || activeTab !== 'Admin Review') return;
     setLoadingAdmin(true);
     const woId = mission.id;
+    // The weekly log holding this job: an array-contains on { workOrderId }
+    // never matched (log items carry many more fields), so this always came
+    // back empty. Read the assigned tech's logs and find the item instead.
+    const ownerId = mission.assignedTechnicianId || mission.techId || '';
     Promise.all([
-      getDocs(query(collection(db, 'weeklyLogs'), where('items', 'array-contains', { workOrderId: woId }))),
+      ownerId ? getDocs(query(collection(db, 'weeklyLogs'), where('techId', '==', ownerId))) : Promise.resolve(null),
       getDocs(query(collection(db, 'auditLog', woId, 'events'), orderBy('changedAt', 'desc'), limit(50))),
-    ]).then(([logSnap, auditSnap]) => {
+      // Real on-site sessions from the trip records (was demo data).
+      getDocs(query(collection(db, 'tripLogs'), where('assignmentId', '==', woId))).catch(() => null),
+    ]).then(([logSnap, auditSnap, tripSnap]) => {
+      const logDoc = logSnap?.docs.find(d => ((d.data().items || []) as { workOrderId: string }[]).some(i => i.workOrderId === woId));
+      const weeklyLog = logDoc ? ({ ...logDoc.data(), id: logDoc.id } as WeeklyLog) : null;
       setAdminData({
-        weeklyLog: !logSnap.empty ? { ...logSnap.docs[0].data(), id: logSnap.docs[0].id } as WeeklyLog : null,
-        sessionLogs: assignmentTimeLogs.filter(l => l.workOrderId === woId),
+        weeklyLog,
+        jobItem: weeklyLog?.items?.find(i => i.workOrderId === woId) || null,
+        sessionLogs: tripSnap ? onSiteSessions(tripSnap.docs.map(d => ({ ...d.data(), id: d.id } as TripLog))) : [],
       });
       setAuditEvents(auditSnap.docs.map(d => d.data()));
     }).catch(console.error).finally(() => setLoadingAdmin(false));
@@ -203,7 +207,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     if (!entries.some(e => e.details.toLowerCase().includes('created'))) {
       entries.push({ type: 'note', date: mission.scheduleDate || 'TBD', details: 'Assignment Created — Job initialized in system.', user: mission.source === 'Imported' ? 'Field Nation System' : 'Command Center' } as any);
     }
-    return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return entries.sort((a, b) => (parseLocalDate(b.date)?.getTime() ?? 0) - (parseLocalDate(a.date)?.getTime() ?? 0));
   }, [mission]);
 
   const handleSwapTech = async () => {
@@ -341,12 +345,12 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     return map[mission.status] || mission.status;
   })();
 
-  const originalPayDisplay = mission.payType === 'blended'
+  const originalPayDisplay = hidePay ? 'Restricted' : mission.payType === 'blended'
     ? `$${(mission.blendedFixedPay ?? mission.pay ?? 0).toFixed(2)} + $${(mission.blendedHourlyRate ?? 0).toFixed(2)}/hr`
     : mission.payType === 'hourly'
       ? `$${(mission.pay ?? 0).toFixed(2)}/hr`
       : `$${(mission.pay ?? 0).toFixed(2)}`;
-  const finalPayDisplay = mission.finalPay != null ? `$${mission.finalPay.toFixed(2)}` : 'Pending Audit';
+  const finalPayDisplay = hidePay ? 'Restricted' : mission.finalPay != null ? `$${mission.finalPay.toFixed(2)}` : 'Pending Audit';
 
   const riskLabel = mission.slaStatus === 'breached' ? 'Breached' : mission.slaStatus === 'at-risk' ? 'At Risk' : mission.slaStatus === 'met' ? 'Met' : mission.slaStatus === 'on-track' ? 'On Track' : 'Normal';
   const riskColor = mission.slaStatus === 'breached' ? 'text-priority-critical' : mission.slaStatus === 'at-risk' ? 'text-accent-gold' : (mission.slaStatus === 'met' || mission.slaStatus === 'on-track') ? 'text-text-green' : 'text-text-muted';
@@ -365,7 +369,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   })();
 
   const lastUpdated = mission.history?.length
-    ? [...mission.history].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date
+    ? [...mission.history].sort((a, b) => (parseLocalDate(b.date)?.getTime() ?? 0) - (parseLocalDate(a.date)?.getTime() ?? 0))[0].date
     : mission.scheduleDate || '';
 
   const handleVerify = async () => {
@@ -739,10 +743,10 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                       <Card className="bg-bg-secondary border-border-sub overflow-hidden shadow-inner">
                         <div className="p-4 flex items-center justify-between border-b border-border-sub bg-bg-tertiary/20">
                           <div>
-                            <p className="text-[8px] font-black text-text-muted uppercase mb-1">Final Disbursement</p>
-                            <p className="text-2xl font-mono font-bold text-text-green">${(adminData.weeklyLog.totalPayout || 0).toFixed(2)}</p>
+                            <p className="text-[8px] font-black text-text-muted uppercase mb-1">This Job&apos;s Settlement</p>
+                            <p className="text-2xl font-mono font-bold text-text-green">{hidePay ? 'Restricted' : adminData.jobItem ? `$${effectiveJobPay(adminData.jobItem, mission).toFixed(2)}` : '—'}</p>
                           </div>
-                          <Badge variant="active" className="h-6 px-4 uppercase text-[9px] tracking-widest font-black">Audit Verified</Badge>
+                          <Badge variant={adminData.weeklyLog.status === 'Approved' ? 'active' : adminData.weeklyLog.status === 'Submitted' ? 'scheduled' : 'onhold'} className="h-6 px-4 uppercase text-[9px] tracking-widest font-black">Log {adminData.weeklyLog.status}</Badge>
                         </div>
                         <div className="p-4">
                           <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Linked Weeklog: <span className="text-text-primary">WK-{adminData.weeklyLog.weekOf}</span></p>

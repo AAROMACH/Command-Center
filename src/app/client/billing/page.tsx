@@ -1,7 +1,11 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { technicians, invoices } from "@/lib/data";
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@/contexts/auth-context';
+import { useClientInvoices } from '@/hooks/use-client-invoices';
+import type { Invoice } from '@/lib/types';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -56,19 +60,17 @@ export default function ClientBillingPage() {
         setCurrentUserId(sessionStorage.getItem('currentUserId'));
     }, []);
 
-    const currentUser = useMemo(() => 
-        currentUserId ? technicians.find(t => t.id === currentUserId) : null
-    , [currentUserId]);
+    // The signed-in client's real invoices (this page used to show the demo list).
+    const { user: currentUser } = useAuth();
+    const liveInvoices = useClientInvoices(currentUser);
 
     const myInvoices = useMemo(() => {
-        if (!currentUser?.clientCompany) return [];
-        return invoices
-            .filter(inv => inv.clientName === currentUser.clientCompany)
+        return liveInvoices
             .filter(inv => 
                 inv.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 inv.status.toLowerCase().includes(searchQuery.toLowerCase())
             );
-    }, [currentUser, searchQuery]);
+    }, [liveInvoices, searchQuery]);
 
     const handleUpdatePlan = () => {
         toast({

@@ -8,17 +8,12 @@ import { DispatchTabs } from "./dispatch-tabs";
 import { RequestsTabs } from "../../requests/components/requests-tabs";
 import { WorkOrdersClient } from "./work-orders-client";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { 
-  SlidersHorizontal, 
   Plus, 
   Search, 
   Import as ImportIcon, 
   Layers, 
   ClipboardList, 
-  X, 
-  ArrowUpDown, 
-  Calendar as CalendarIcon, 
   History as HistoryIcon, 
   Wrench,
   Activity
@@ -26,31 +21,22 @@ import {
 import { NewAssignmentDialog } from "./new-assignment-dialog";
 import { ImportJobsDialog, type ExistingRef as ImportExistingRef } from "./import-jobs-dialog";
 import { normalizeExternalId, isImported } from "@/lib/work-order-identity";
-import { jobTechId, isArchivedJob, jobDateTimeValue, toUnassignedWorkOrder, archiveJobRecord } from "@/lib/jobs";
+import { jobTechId, isArchivedJob, jobDateTimeValue, toUnassignedWorkOrder, archiveJobRecord, JOB_STATUS_OPTIONS, compareJobStatus } from "@/lib/jobs";
 import { NewRequestDialog } from "../../requests/components/new-request-dialog";
 import type { WorkOrder, ServiceRequest, Technician, Route } from "@/lib/types";
 import { isServiceTicketDoc, toDateSafe } from '@/lib/request-intake';
 import { makeAssignmentId } from '@/lib/doc-ids';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
-import { format, isSameDay, parseISO, startOfDay } from 'date-fns';
+import { format, isSameDay, startOfDay } from 'date-fns';
 import { useSearchParams } from 'next/navigation';
 import { NotificationService } from '@/lib/notification-service';
+import { useNewArrivals, ARRIVAL_KEYS, unassignedArrivalIds, reviewArrivalIds, recentAssignmentArrivalIds } from '@/hooks/use-new-arrivals';
+import { NewArrivalPing } from '@/components/new-arrival-ping';
+import { SearchField } from '@/components/search-field';
+import { SortControl, FiltersPopover, FilterSection, CheckboxFilter, DateRangeButton, type SortOptionDef } from '@/components/list-toolbar';
+import { parseLocalDate } from '@/lib/jobs';
 
 const SERVICE_CATEGORIES = [
     'Installation',
@@ -68,6 +54,17 @@ const ASSIGNMENT_SOURCES = [
 ];
 
 type SortOption = 'priority' | 'date' | 'client' | 'status' | 'pay' | 'tech' | 'type' | 'assigned';
+
+const DISPATCH_SORT_OPTIONS: SortOptionDef[] = [
+  { value: 'date', label: 'Date' },
+  { value: 'priority', label: 'Priority' },
+  { value: 'client', label: 'Client' },
+  { value: 'status', label: 'Job Status' },
+  { value: 'tech', label: 'Technician' },
+  { value: 'type', label: 'Type' },
+  { value: 'pay', label: 'Labor Rate' },
+  { value: 'assigned', label: 'Recently Assigned' },
+];
 
 export function DispatchPageClient() {
   const searchParams = useSearchParams();
@@ -101,6 +98,8 @@ export function DispatchPageClient() {
   const [activePriorities, setActivePriorities] = useState<string[]>([]);
   const [activeTypes, setActiveTypes] = useState<string[]>([]);
   const [activeSources, setActiveSources] = useState<string[]>([]);
+  // Job status checkboxes — apply to jobs (unassigned pool + assignments), not service requests.
+  const [activeStatuses, setActiveStatuses] = useState<string[]>([]);
 
   const { toast } = useToast();
 
@@ -126,9 +125,11 @@ export function DispatchPageClient() {
   useEffect(() => {
     const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
       setAllWorkOrders(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder)));
+      setLoaded(l => l.wo ? l : { ...l, wo: true });
     });
     const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
       setAllAssignments(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder)));
+      setLoaded(l => l.asmt ? l : { ...l, asmt: true });
     });
     const unsubTech = onSnapshot(
       collection(db, 'users'),
@@ -149,6 +150,7 @@ export function DispatchPageClient() {
             return { ...data, submittedDate, id: doc.id } as ServiceRequest;
           })
       );
+      setLoaded(l => l.req ? l : { ...l, req: true });
     });
     // Archived deletions — so re-importing a work order number that was deleted
     // and archived is still flagged as a duplicate.
@@ -262,16 +264,6 @@ export function DispatchPageClient() {
     }
   };
 
-  const resetFilters = () => {
-    setSearchQuery("");
-    setDateRange(undefined);
-    setActivePriorities([]);
-    setActiveTypes([]);
-    setActiveSources([]);
-    setSortBy('date');
-    toast({ title: "Filters Cleared", description: "Operational registry constraints removed." });
-  };
-
   const filterAndSort = (items: WorkOrder[]) => {
     let results = items.filter(order => {
       // Soft-archived records live on in Firestore for restore/dedup but must
@@ -312,7 +304,8 @@ export function DispatchPageClient() {
           } catch (e) { return false; }
       })());
 
-      return matchesSearch && matchesPriority && matchesType && matchesSource && matchesDate;
+      const matchesStatus = activeStatuses.length === 0 || activeStatuses.includes(order.status);
+      return matchesSearch && matchesPriority && matchesType && matchesSource && matchesDate && matchesStatus;
     });
 
     return results.sort((a, b) => {
@@ -321,7 +314,7 @@ export function DispatchPageClient() {
                 const prio = { critical: 0, high: 1, medium: 2, low: 3 };
                 return prio[a.priority as keyof typeof prio] - prio[b.priority as keyof typeof prio];
             case 'client': return (a.clientName || '').localeCompare(b.clientName || '');
-            case 'status': return (a.status || '').localeCompare(b.status || '');
+            case 'status': return compareJobStatus(a, b);
             case 'pay': return (b.pay || 0) - (a.pay || 0);
             case 'type': return (a.projectType || '').localeCompare(b.projectType || '');
             case 'tech':
@@ -358,8 +351,8 @@ export function DispatchPageClient() {
     }
   };
 
-  const filteredOrders = useMemo(() => filterAndSort(allWorkOrders), [allWorkOrders, searchQuery, dateRange, activePriorities, activeTypes, activeSources, sortBy, dateAsc, technicians]);
-  const filteredAssignments = useMemo(() => filterAndSort(allAssignments), [allAssignments, searchQuery, dateRange, activePriorities, activeTypes, activeSources, sortBy, dateAsc, technicians]);
+  const filteredOrders = useMemo(() => filterAndSort(allWorkOrders), [allWorkOrders, searchQuery, dateRange, activePriorities, activeTypes, activeSources, activeStatuses, sortBy, dateAsc, technicians]);
+  const filteredAssignments = useMemo(() => filterAndSort(allAssignments), [allAssignments, searchQuery, dateRange, activePriorities, activeTypes, activeSources, activeStatuses, sortBy, dateAsc, technicians]);
 
   const filteredRequests = useMemo(() => {
     let results = allRequests.filter(req => {
@@ -377,7 +370,7 @@ export function DispatchPageClient() {
           try {
               const parts = (req.submittedDate || '').split(/[-/]/);
               let reqDate;
-              if (parts[0] && parts[0].length === 4) { reqDate = startOfDay(new Date(req.submittedDate)); } 
+              if (parts[0] && parts[0].length === 4) { reqDate = startOfDay(parseLocalDate(req.submittedDate) ?? new Date(NaN)); } 
               else { 
                 const [m, d, y] = parts;
                 if (y && m && d) {
@@ -413,7 +406,8 @@ export function DispatchPageClient() {
     });
   }, [allRequests, searchQuery, dateRange, activePriorities, activeTypes, sortBy, dateAsc]);
 
-  const hasActiveFilters = searchQuery !== "" || !!dateRange?.from || activePriorities.length > 0 || activeTypes.length > 0 || activeSources.length > 0 || sortBy !== 'date';
+  // Filters badge counts checkbox filters only (search and date have their own controls).
+  const activeFilterCount = activePriorities.length + activeTypes.length + activeSources.length + activeStatuses.length;
 
   // Jobs a tech marked Cancelled / Did Not Do sit in the Dispatch Hub's Review
   // Queue until an admin explicitly resolves them — never left ambiguous in
@@ -421,6 +415,20 @@ export function DispatchPageClient() {
   const reviewQueueJobs = useMemo(() =>
     allAssignments.filter(wo => wo.status === 'cancelled'),
   [allAssignments]);
+
+  // "New item just landed" indicators (bouncing "!") per list — cleared when
+  // the admin opens that tab. Same keys as the sidebar's Dispatch Hub badge.
+  const [loaded, setLoaded] = useState({ wo: false, asmt: false, req: false });
+  const [dispatchSubtab, setDispatchSubtab] = useState('unassigned');
+  const onDispatch = activeMasterTab === 'dispatch';
+  const newUnassigned = useNewArrivals(ARRIVAL_KEYS.unassigned, useMemo(() => unassignedArrivalIds(allWorkOrders), [allWorkOrders]),
+    { ready: loaded.wo, viewing: onDispatch && dispatchSubtab === 'unassigned' });
+  const newReview = useNewArrivals(ARRIVAL_KEYS.review, useMemo(() => reviewArrivalIds(allAssignments), [allAssignments]),
+    { ready: loaded.asmt, viewing: onDispatch && dispatchSubtab === 'review' });
+  const newRequests = useNewArrivals(ARRIVAL_KEYS.requests, useMemo(() => allRequests.map(r => r.id), [allRequests]),
+    { ready: loaded.req, viewing: activeMasterTab === 'requests' });
+  const newAssignmentsArrivals = useNewArrivals(ARRIVAL_KEYS.assignments, useMemo(() => recentAssignmentArrivalIds(allAssignments), [allAssignments]),
+    { ready: loaded.asmt, viewing: activeMasterTab === 'assignments' });
 
   const currentAdminName = () =>
     technicians.find(t => t.id === (typeof window !== 'undefined' ? sessionStorage.getItem('currentUserId') : null))?.name || 'Admin';
@@ -486,148 +494,49 @@ export function DispatchPageClient() {
       <Tabs value={activeMasterTab} onValueChange={(val: any) => setActiveMasterTab(val)} className="w-full">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub shadow-sm">
             <TabsList className="tabs !mb-0">
-              <TabsTrigger value="dispatch" className="tab">DISPATCH HUB</TabsTrigger>
-              <TabsTrigger value="requests" className="tab">SERVICE REQUESTS</TabsTrigger>
-              <TabsTrigger value="assignments" className="tab">ASSIGNMENTS</TabsTrigger>
+              <TabsTrigger value="dispatch" className="tab flex items-center gap-1.5">DISPATCH HUB <NewArrivalPing count={newUnassigned.newCount + newReview.newCount} /></TabsTrigger>
+              <TabsTrigger value="requests" className="tab flex items-center gap-1.5">SERVICE REQUESTS <NewArrivalPing count={newRequests.newCount} /></TabsTrigger>
+              <TabsTrigger value="assignments" className="tab flex items-center gap-1.5">ASSIGNMENTS <NewArrivalPing count={newAssignmentsArrivals.newCount} /></TabsTrigger>
             </TabsList>
 
+            {/* Same search / sort / filter / date controls as the Assignments pages. */}
             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-              <div className="search-wrap flex-1 min-w-[150px] !mb-0 text-left">
-                <Search className="h-4 w-4 text-text-muted" />
-                <input
-                  className="search-input !h-9 !text-xs font-bold uppercase !w-full md:!w-[240px] bg-bg-primary text-left"
-                  placeholder={`Search registry...`}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+              <SearchField
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search registry..."
+                className="basis-full md:basis-auto md:w-[260px]"
+              />
+              <div className="flex w-full gap-2 sm:w-auto">
+                <SortControl
+                  value={sortBy}
+                  onChange={v => setSortBy(v as SortOption)}
+                  options={DISPATCH_SORT_OPTIONS}
+                  dateAsc={dateAsc}
+                  onToggleDirection={() => setDateAsc(prev => !prev)}
+                  className="flex-1 sm:flex-none"
                 />
+                <FiltersPopover
+                  activeCount={activeFilterCount}
+                  onReset={() => { setActivePriorities([]); setActiveTypes([]); setActiveSources([]); setActiveStatuses([]); }}
+                  className="shrink-0"
+                >
+                  <FilterSection title="Job Status">
+                    <CheckboxFilter idPrefix="status" options={JOB_STATUS_OPTIONS} selected={activeStatuses} onChange={setActiveStatuses} />
+                  </FilterSection>
+                  <FilterSection title="Priority">
+                    <CheckboxFilter idPrefix="prio" options={['critical', 'high', 'medium', 'low']} selected={activePriorities} onChange={setActivePriorities} />
+                  </FilterSection>
+                  <FilterSection title="Service Category">
+                    <CheckboxFilter idPrefix="type" options={SERVICE_CATEGORIES} selected={activeTypes} onChange={setActiveTypes} columns={1} maxHeight={140} />
+                  </FilterSection>
+                  <FilterSection title="Job Source">
+                    <CheckboxFilter idPrefix="src" options={ASSIGNMENT_SOURCES} selected={activeSources} onChange={setActiveSources} columns={1} />
+                  </FilterSection>
+                </FiltersPopover>
+                <DateRangeButton value={dateRange} onChange={setDateRange} />
               </div>
-
-              <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                  <SelectTrigger className="w-[130px] md:w-[140px] shrink-0 h-9 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
-                      <div className="flex items-center gap-2 text-left">
-                          <ArrowUpDown size={14} className="text-text-muted" />
-                          <SelectValue placeholder="Sort Registry" />
-                      </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                      <SelectItem value="priority" className="text-[10px] uppercase font-bold">Priority</SelectItem>
-                      <SelectItem value="date" className="text-[10px] uppercase font-bold">Date</SelectItem>
-                      <SelectItem value="client" className="text-[10px] uppercase font-bold">Client</SelectItem>
-                      <SelectItem value="status" className="text-[10px] uppercase font-bold">Status</SelectItem>
-                      <SelectItem value="pay" className="text-[10px] uppercase font-bold">Labor Rate</SelectItem>
-                      <SelectItem value="tech" className="text-[10px] uppercase font-bold">Technician</SelectItem>
-                      <SelectItem value="type" className="text-[10px] uppercase font-bold">Type</SelectItem>
-                      <SelectItem value="assigned" className="text-[10px] uppercase font-bold">Recently Assigned</SelectItem>
-                  </SelectContent>
-              </Select>
-
-              <Popover>
-                  <PopoverTrigger asChild>
-                    <div className={cn(
-                        "flex items-center h-9 shrink-0 rounded-md border border-border-main bg-bg-primary px-2 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-7",
-                        dateRange?.from && "border-brand-red ring-1 ring-brand-red"
-                    )}>
-                        <CalendarIcon size={12} className={cn("mr-1.5", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
-                        <span className={cn(
-                            "text-[10px] font-bold uppercase tracking-widest whitespace-nowrap",
-                            dateRange?.from ? "text-text-primary" : "text-text-muted"
-                        )}>
-                            {dateRange?.from ? (
-                                dateRange.to ? <>{format(dateRange.from, "MM-dd-yyyy")} – {format(dateRange.to, "MM-dd-yyyy")}</> : format(dateRange.from, "MM-dd-yyyy")
-                            ) : "Date Filter"}
-                        </span>
-                        {dateRange?.from && (
-                            <button 
-                                className="absolute right-1.5 p-0.5 rounded-full hover:bg-brand-red/20 text-text-muted hover:text-brand-red transition-colors"
-                                onClick={(e) => { e.stopPropagation(); setDateRange(undefined); }}
-                            >
-                                <X size={10} />
-                            </button>
-                        )}
-                    </div>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl z-[1000]" align="end">
-                    <Calendar initialFocus mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} />
-                  </PopoverContent>
-              </Popover>
-
-              <Popover>
-                  <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className={cn("h-9 text-[10px]", hasActiveFilters && "border-brand-red text-brand-red")}>
-                          <SlidersHorizontal size={14} className="mr-2"/>
-                          Filters
-                          {hasActiveFilters && (
-                            <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-[8px]">
-                              {(searchQuery !== "" ? 1 : 0) + (dateRange?.from ? 1 : 0) + activePriorities.length + activeTypes.length + activeSources.length}
-                            </Badge>
-                          )}
-                      </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-                      <div className="p-4 border-b border-border-sub bg-bg-tertiary text-left">
-                          <div className="flex items-center justify-between text-left">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Filters</p>
-                              {hasActiveFilters && (
-                                  <button onClick={resetFilters} className="text-[9px] font-bold text-brand-red hover:underline flex items-center gap-1">
-                                      <X size={10} /> Reset
-                                  </button>
-                              )}
-                          </div>
-                      </div>
-                      <div className="p-4 space-y-6 text-left">
-                          <div className="space-y-3 text-left">
-                              <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Priority Audit</p>
-                              <div className="grid grid-cols-2 gap-2 text-left">
-                                  {['critical', 'high', 'medium', 'low'].map(priority => (
-                                      <div key={priority} className="flex items-center space-x-2 text-left">
-                                          <Checkbox 
-                                              id={`prio-${priority}`} 
-                                              checked={activePriorities.includes(priority)}
-                                              onCheckedChange={() => togglePriority(priority)}
-                                          />
-                                          <Label htmlFor={`prio-${priority}`} className="text-[10px] uppercase font-semibold cursor-pointer">{priority}</Label>
-                                      </div>
-                                  ))}
-                              </div>
-                          </div>
-
-                          <div className="space-y-3 text-left">
-                              <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Technical Category</p>
-                              <ScrollArea className="h-[120px] text-left">
-                                <div className="space-y-2 pr-4 text-left">
-                                    {SERVICE_CATEGORIES.map(type => (
-                                        <div key={type} className="flex items-center space-x-2 text-left">
-                                            <Checkbox 
-                                                id={`type-${type}`} 
-                                                checked={activeTypes.includes(type)}
-                                                onCheckedChange={() => toggleType(type)}
-                                            />
-                                            <Label htmlFor={`type-${type}`} className="text-[10px] uppercase font-semibold cursor-pointer">{type}</Label>
-                                        </div>
-                                    ))}
-                                </div>
-                              </ScrollArea>
-                          </div>
-
-                          <div className="space-y-3 text-left">
-                              <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Source Registry</p>
-                              <div className="space-y-2 text-left">
-                                  {ASSIGNMENT_SOURCES.map(source => (
-                                      <div key={source} className="flex items-center space-x-2 text-left">
-                                          <Checkbox 
-                                              id={`src-${source}`} 
-                                              checked={activeSources.includes(source)}
-                                              onCheckedChange={() => toggleSource(source)}
-                                          />
-                                          <Label htmlFor={`src-${source}`} className="text-[10px] uppercase font-semibold cursor-pointer">{source}</Label>
-                                      </div>
-                                  ))}
-                              </div>
-                          </div>
-                      </div>
-                  </PopoverContent>
-              </Popover>
-          </div>
+            </div>
         </div>
 
         <TabsContent value="requests" className="mt-0">
@@ -680,6 +589,9 @@ export function DispatchPageClient() {
                 }
               }}
               reviewQueueJobs={reviewQueueJobs}
+              onActiveTabChange={setDispatchSubtab}
+              newCounts={{ unassigned: newUnassigned.newCount, review: newReview.newCount }}
+              newIds={{ unassigned: newUnassigned.newIds, review: newReview.newIds }}
               onReviewSendToDispatch={handleReviewSendToDispatch}
               onReviewArchive={handleReviewArchive}
               routes={routes}
@@ -748,14 +660,4 @@ export function DispatchPageClient() {
       <NewRequestDialog isOpen={isNewRequestOpen} setIsOpen={setIsNewRequestOpen} onSave={handleAddNewRequest} />
     </div>
   );
-
-  function togglePriority(priority: string) {
-    setActivePriorities(prev => prev.includes(priority) ? prev.filter(p => p !== priority) : [...prev, priority]);
-  }
-  function toggleType(type: string) {
-    setActiveTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
-  }
-  function toggleSource(source: string) {
-    setActiveSources(prev => prev.includes(source) ? prev.filter(s => s !== source) : [...prev, source]);
-  }
 }

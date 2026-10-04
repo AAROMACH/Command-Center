@@ -79,6 +79,10 @@ export type WorkOrder = {
   status: 'unassigned' | 'assigned' | 'confirmed' | 'on-my-way' | 'in-progress' | 'checked-out' | 'completed' | 'archived' | 'cancelled';
   /** Tech-reported terminal outcome when a job won't be completed. */
   techOutcome?: 'cancelled' | 'did_not_do';
+  /** Tech who recorded techOutcome (user id / display name / ISO time). */
+  techOutcomeBy?: string;
+  techOutcomeByName?: string;
+  techOutcomeAt?: string;
   assignedTechnicianId?: string | null;
   assignedTechIds?: string[];
   additionalTechnicianIds?: string[];
@@ -269,6 +273,8 @@ export type Project = {
   id: string;
   name: string;
   client: string;
+  /** The client account, when the project was created from the client registry. */
+  clientId?: string;
   location: string;
   lat?: number;
   lng?: number;

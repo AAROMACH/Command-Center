@@ -23,11 +23,11 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Wrench, MapPin, Building2, Check, Search, Users, Navigation, DollarSign, Type, FileText, SearchCode } from 'lucide-react';
 import type { WorkOrder, Technician } from '@/lib/types';
-import { technicians } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
 import { createDocId } from '@/lib/generateId';
+import { useLiveUsers } from '@/hooks/use-live-users';
 
 declare global {
   interface Window {
@@ -45,6 +45,8 @@ type NewAssignmentDialogProps = {
 };
 
 export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignmentDialogProps) {
+  // Live user records (was the demo list in lib/data).
+  const technicians = useLiveUsers();
   const [formData, setFormData] = useState<Partial<WorkOrder>>({
     title: '',
     description: '',
@@ -161,7 +163,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
         t.role.toLowerCase().includes('client') || 
         t.clientCompany
     );
-  }, []);
+  }, [technicians]);
 
   const selectedClient = useMemo(() => {
     return clients.find(c => (c.clientCompany || c.name) === formData.clientName);

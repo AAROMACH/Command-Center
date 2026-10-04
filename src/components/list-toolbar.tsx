@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { format } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
-import { ArrowDownWideNarrow, ArrowUpNarrowWide, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowDownWideNarrow, ArrowUpNarrowWide, CalendarDays, SlidersHorizontal, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -125,29 +125,85 @@ export function FilterSection({ title, action, children }: { title: string; acti
   );
 }
 
-/** Checkbox grid for a multi-select filter (priority, source, …). */
+export type FilterOption = string | { value: string; label: string };
+
+/** Checkbox grid for a multi-select filter (priority, source, job status, …). */
 export function CheckboxFilter({
-  idPrefix, options, selected, onChange, columns = 2,
+  idPrefix, options, selected, onChange, columns = 2, maxHeight,
 }: {
   idPrefix: string;
-  options: string[];
+  options: FilterOption[];
   selected: string[];
   onChange: (next: string[]) => void;
   columns?: 1 | 2;
+  /** Scroll long lists (e.g. service categories) inside this height, in px. */
+  maxHeight?: number;
 }) {
   return (
-    <div className={cn('grid gap-2', columns === 2 ? 'grid-cols-2' : 'grid-cols-1')}>
-      {options.map(opt => (
-        <div key={opt} className="flex items-center space-x-2">
-          <Checkbox
-            id={`${idPrefix}-${opt}`}
-            checked={selected.includes(opt)}
-            onCheckedChange={checked => onChange(checked ? [...selected, opt] : selected.filter(s => s !== opt))}
-          />
-          <Label htmlFor={`${idPrefix}-${opt}`} className="cursor-pointer text-[10px] font-semibold uppercase">{opt}</Label>
-        </div>
-      ))}
+    <div
+      className={cn('grid gap-2', columns === 2 ? 'grid-cols-2' : 'grid-cols-1', maxHeight && 'overflow-y-auto pr-2')}
+      style={maxHeight ? { maxHeight } : undefined}
+    >
+      {options.map(o => {
+        const value = typeof o === 'string' ? o : o.value;
+        const label = typeof o === 'string' ? o : o.label;
+        return (
+          <div key={value} className="flex items-center space-x-2">
+            <Checkbox
+              id={`${idPrefix}-${value}`}
+              checked={selected.includes(value)}
+              onCheckedChange={checked => onChange(checked ? [...selected, value] : selected.filter(s => s !== value))}
+            />
+            <Label htmlFor={`${idPrefix}-${value}`} className="cursor-pointer text-[10px] font-semibold uppercase">{label}</Label>
+          </div>
+        );
+      })}
     </div>
+  );
+}
+
+/**
+ * Schedule-date range as its own toolbar button (outside Filters), showing the
+ * chosen range with a one-tap clear.
+ */
+export function DateRangeButton({
+  value, onChange, className,
+}: {
+  value: DateRange | undefined;
+  onChange: (r: DateRange | undefined) => void;
+  className?: string;
+}) {
+  const label = value?.from
+    ? (value.to ? `${format(value.from, 'MM/dd/yy')} – ${format(value.to, 'MM/dd/yy')}` : format(value.from, 'MM/dd/yy'))
+    : 'Date';
+  return (
+    <Popover>
+      <div className={cn('relative flex shrink-0', className)}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label={value?.from ? `Date range ${label}` : 'Filter by date'}
+            className={cn(controlBase, 'flex w-full items-center justify-center gap-2 px-3 hover:bg-bg-tertiary', value?.from && 'border-brand-red text-brand-red pr-8')}
+          >
+            <CalendarDays size={14} />
+            <span className="whitespace-nowrap">{label}</span>
+          </button>
+        </PopoverTrigger>
+        {value?.from && (
+          <button
+            type="button"
+            aria-label="Clear date range"
+            onClick={() => onChange(undefined)}
+            className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full p-1 text-brand-red hover:bg-brand-red/15"
+          >
+            <X size={12} />
+          </button>
+        )}
+      </div>
+      <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
+        <Calendar initialFocus mode="range" selected={value} onSelect={onChange} numberOfMonths={1} />
+      </PopoverContent>
+    </Popover>
   );
 }
 

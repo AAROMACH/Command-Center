@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { isTech } from '@/lib/permissions';
@@ -62,7 +63,7 @@ export default function FieldIntelligencePage() {
     const [timelineTechFilter, setTimelineTechFilter] = useState('all');
     const [timelineTypeFilter, setTimelineTypeFilter] = useState('all');
     const [timelineDateRange, setTimelineDateRange] = useState<DateRange | undefined>(undefined);
-    const [timelinePageSize, setTimelinePageSize] = useState<10 | 25 | 50>(25);
+    const [timelinePageSize, setTimelinePageSize] = useState<25 | 50 | 100>(25);
     const [timelinePage, setTimelinePage] = useState(0);
 
     useEffect(() => {
@@ -264,6 +265,15 @@ export default function FieldIntelligencePage() {
     }, [timelineEvents, timelineTechFilter, timelineTypeFilter, timelineDateRange]);
     // Back to page 1 whenever the filters or page size change.
     useEffect(() => { setTimelinePage(0); }, [timelineTechFilter, timelineTypeFilter, timelineDateRange, timelinePageSize]);
+    // Paged lists (components/list-pager.tsx).
+    const techJobsPager = usePaged(techStats?.myJobs || [], PAGE_SIZES_LARGE, 'intel-tech-jobs', [selectedTechId]);
+    const techLogsPager = usePaged(techStats?.myLogs || [], PAGE_SIZES_LARGE, 'intel-tech-logs', [selectedTechId]);
+    const anomalyRows = useMemo(() => [
+        ...workOrders.filter(wo => wo.status === 'unassigned').map(wo => ({ kind: 'job' as const, id: wo.id, wo })),
+        ...activeWeeklyLogs.filter(wl => wl.status === 'Draft').map(wl => ({ kind: 'log' as const, id: wl.id, wl })),
+    ], [workOrders, activeWeeklyLogs]);
+    const anomalyPager = usePaged(anomalyRows, PAGE_SIZES_SMALL, 'intel-anomalies');
+    const underpaidPager = usePaged(underpaidWarnings, PAGE_SIZES_SMALL, 'intel-underpaid');
     const timelinePageCount = Math.max(1, Math.ceil(filteredTimelineEvents.length / timelinePageSize));
     const timelinePageEvents = filteredTimelineEvents.slice(timelinePage * timelinePageSize, (timelinePage + 1) * timelinePageSize);
 
@@ -415,27 +425,27 @@ export default function FieldIntelligencePage() {
                                 </div>
                             ) : (
                                 <div className="space-y-2 text-left">
-                                    {workOrders.filter(wo => wo.status === 'unassigned').map(wo => (
-                                        <div key={wo.id} className="p-2.5 rounded-lg border border-border-alert bg-brand-red-dim/5 flex gap-3 text-left items-start">
+                                    {anomalyPager.items.map(row => row.kind === 'job' ? (
+                                        <div key={row.id} className="p-2.5 rounded-lg border border-border-alert bg-brand-red-dim/5 flex gap-3 text-left items-start">
                                             <AlertTriangle size={14} className="text-text-red mt-0.5 shrink-0" />
                                             <div className="space-y-0.5 text-left min-w-0">
-                                                <p className="text-[11px] font-bold text-text-red uppercase tracking-wide truncate">{wo.title || wo.id}</p>
+                                                <p className="text-[11px] font-bold text-text-red uppercase tracking-wide truncate">{row.wo.title || row.wo.id}</p>
                                                 <p className="text-[10px] text-text-muted uppercase tracking-widest">Unassigned — no technician allocated</p>
                                             </div>
                                         </div>
-                                    ))}
-                                    {activeWeeklyLogs.filter(wl => wl.status === 'Draft').map(wl => {
-                                        const tech = technicians.find(t => t.id === wl.techId);
+                                    ) : (() => {
+                                        const tech = technicians.find(t => t.id === row.wl.techId);
                                         return (
-                                            <div key={wl.id} className="p-2.5 rounded-lg border border-border-warn bg-brand-amber-dim/5 flex gap-3 text-left items-start">
+                                            <div key={row.id} className="p-2.5 rounded-lg border border-border-warn bg-brand-amber-dim/5 flex gap-3 text-left items-start">
                                                 <Clock size={14} className="text-text-amber mt-0.5 shrink-0" />
                                                 <div className="space-y-0.5 text-left min-w-0">
-                                                    <p className="text-[11px] font-bold text-text-amber uppercase tracking-wide">Week of {wl.weekOf}{tech ? ` — ${tech.name}` : ''}</p>
+                                                    <p className="text-[11px] font-bold text-text-amber uppercase tracking-wide">Week of {row.wl.weekOf}{tech ? ` — ${tech.name}` : ''}</p>
                                                     <p className="text-[10px] text-text-muted uppercase tracking-widest">Draft log not submitted</p>
                                                 </div>
                                             </div>
                                         );
-                                    })}
+                                    })())}
+                                    <ListPager pager={anomalyPager} noun="flags" />
                                 </div>
                             )}
                         </div>
@@ -505,7 +515,7 @@ export default function FieldIntelligencePage() {
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
-                                                        {techStats.myJobs.map(wo => (
+                                                        {techJobsPager.items.map(wo => (
                                                             <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary cursor-pointer" onClick={() => setManagedJob(wo)}>
                                                                 <TableCell className="pl-4 py-3">
                                                                     <p className="text-xs font-bold text-text-primary uppercase">{wo.title || wo.description}</p>
@@ -527,11 +537,12 @@ export default function FieldIntelligencePage() {
                                                         )}
                                                     </TableBody>
                                                 </Table>
+                                                <div className="px-3"><ListPager pager={techJobsPager} noun="jobs" /></div>
                                             </div>
                                         </InnerTabsContent>
                                         <InnerTabsContent value="weeklogs" className="m-0">
                                             <div className="space-y-2">
-                                                {techStats.myLogs.map(log => (
+                                                {techLogsPager.items.map(log => (
                                                     <div key={log.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary flex items-center justify-between">
                                                         <div>
                                                             <p className="text-[10px] font-bold text-text-primary uppercase">Week of {log.weekOf}</p>
@@ -547,6 +558,7 @@ export default function FieldIntelligencePage() {
                                                 {techStats.myLogs.length === 0 && (
                                                     <p className="text-center text-text-muted text-[10px] uppercase py-8">No weekly logs found</p>
                                                 )}
+                                                <ListPager pager={techLogsPager} noun="logs" />
                                             </div>
                                         </InnerTabsContent>
                                     </InnerTabs>
@@ -675,7 +687,7 @@ export default function FieldIntelligencePage() {
                             </h3>
                             {underpaidWarnings.length === 0 ? (
                                 <p className="text-[10px] text-text-muted uppercase py-3">No underpaid jobs detected</p>
-                            ) : underpaidWarnings.map(wo => (
+                            ) : underpaidPager.items.map(wo => (
                                 <div key={wo.id} className="flex items-center justify-between p-2 rounded-lg border border-border-warn bg-brand-amber-dim/5">
                                     <div>
                                         <p className="text-[11px] font-bold text-text-amber uppercase">{wo.title || wo.id}</p>
@@ -687,6 +699,7 @@ export default function FieldIntelligencePage() {
                                     </div>
                                 </div>
                             ))}
+                            <ListPager pager={underpaidPager} noun="jobs" />
                         </div>
 
                         {/* Top 10 Clients */}
@@ -855,7 +868,7 @@ export default function FieldIntelligencePage() {
                                 <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
                                     <div className="flex items-center gap-2">
                                         <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">Show</span>
-                                        {([10, 25, 50] as const).map(n => (
+                                        {([25, 50, 100] as const).map(n => (
                                             <button
                                                 key={n}
                                                 type="button"

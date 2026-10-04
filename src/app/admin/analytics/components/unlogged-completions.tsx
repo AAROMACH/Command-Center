@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_SMALL, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { AlertTriangle, CheckCircle, Download, Loader2, Search } from 'lucide-react';
@@ -60,6 +61,7 @@ export function UnloggedCompletions({ rows, excluded, technicians, currentUser }
             techName(r.techId), r.job.id, displayWorkOrderNumber(r.job), externalWorkOrderId(r.job), r.job.title, r.job.clientName,
         ].some(v => (v || '').toString().toLowerCase().includes(q)));
     }, [rows, search, techById]);
+    const pager = usePaged(visible, PAGE_SIZES_LARGE, 'intel-unlogged', [search]);
 
     const bulkRows = visible;
     const [showExcluded, setShowExcluded] = useState(false);
@@ -195,7 +197,7 @@ export function UnloggedCompletions({ rows, excluded, technicians, currentUser }
                 </div>
             ) : (
                 <div className="rounded-xl border border-border-sub bg-bg-secondary divide-y divide-border-sub overflow-hidden">
-                    {visible.map(r => {
+                    {pager.items.map(r => {
                         const tech = techById.get(r.techId);
                         const busy = busyIds.has(r.job.id);
                         return (
@@ -225,6 +227,7 @@ export function UnloggedCompletions({ rows, excluded, technicians, currentUser }
                     })}
                 </div>
             )}
+            <ListPager pager={pager} noun="jobs" />
 
             {excluded.length > 0 && (
                 <div className="rounded-xl border border-border-sub bg-bg-secondary/40 text-left">

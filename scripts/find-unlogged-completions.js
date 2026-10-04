@@ -7,11 +7,15 @@
 //
 //   node scripts/find-unlogged-completions.js > unlogged.csv
 //
-// Needs serviceAccountKey.json in the repo root (gitignored), same as import.js.
+// Credentials (read-only service account recommended — Cloud Datastore Viewer):
+//   - FIREBASE_SERVICE_ACCOUNT_B64 env var: the key JSON, base64-encoded, or
+//   - serviceAccountKey.json in the repo root (gitignored), same as import.js.
 // Writes nothing to Firestore.
 
 const admin = require('firebase-admin');
-const serviceAccount = require('../serviceAccountKey.json');
+const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_B64
+  ? JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_B64, 'base64').toString('utf8'))
+  : require('../serviceAccountKey.json');
 
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 const db = admin.firestore();

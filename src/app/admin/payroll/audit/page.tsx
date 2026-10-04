@@ -21,7 +21,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Receipt, Search, ChevronDown, ChevronRight, DollarSign, CheckCircle, Clock, X, Download, Plus, SlidersHorizontal, MergeIcon, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Receipt, Search, ChevronDown, ChevronRight, DollarSign, CheckCircle, Clock, X, Download, Plus, SlidersHorizontal, MergeIcon, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isWithinInterval } from 'date-fns';
 import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder, PayrollDispute, FinancialRecord } from '@/lib/types';
@@ -34,6 +34,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PayrollReviewDialog } from '@/app/admin/financials/components/payroll-review-dialog';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { displayWorkOrderNumber } from '@/lib/work-order-identity';
+import { useRouter } from 'next/navigation';
 
 // Within a group of duplicate weekly logs for the same tech+week, picks the
 // one considered the legitimate original: whichever left Draft first
@@ -87,6 +88,7 @@ function duplicateGroupSignature(group: WeeklyLog[]): string {
 }
 
 export default function PayrollAuditPage() {
+    const router = useRouter();
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -517,6 +519,16 @@ export default function PayrollAuditPage() {
 
     return (
         <div className="space-y-5">
+            {/* Back to wherever the admin came from (Financials, Dashboard, an
+                alert); straight to Financials when opened directly. */}
+            <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 -ml-2 text-[10px] uppercase font-bold text-text-muted"
+                onClick={() => (window.history.length > 1 ? router.back() : router.push('/admin/financials'))}
+            >
+                <ArrowLeft size={13} className="mr-1.5" /> Back
+            </Button>
             <header className="page-header">
                 <div className="text-left">
                     <p className="page-eyebrow flex items-center gap-2">

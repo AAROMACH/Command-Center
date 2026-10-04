@@ -13,6 +13,9 @@ import { cn } from '@/lib/utils';
 import type { Expense, Invoice, WeeklyLog, Technician, WorkOrder, Reimbursement } from '@/lib/types';
 import { InvoiceEditor } from './components/invoice-editor';
 import { RevenueChart } from './components/revenue-chart';
+import { MetricBreakdownSheet, type MetricKey } from './components/metric-breakdown-sheet';
+import { computeFinancialSummary, monthBreakdown } from '@/lib/financial-summary';
+import { mergeJobs } from '@/lib/jobs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -108,98 +111,35 @@ export default function FinancialsPage() {
         };
     }, []);
 
-    // 2. Tactical Intelligence Calculation
+    // 2. Summary cards + cash-flow chart — one shared calculation
+    // (lib/financial-summary.ts) so each card, its drill-down and the chart
+    // always agree. Weekly logs are valued at their live settlement, the same
+    // figure Payroll Audit shows; A/R counts only sent/overdue invoices.
+    const jobsById = useMemo(() => new Map(mergeJobs(workOrders, assignments).map(j => [j.id, j as WorkOrder])), [workOrders, assignments]);
+    const summary = useMemo(
+        () => computeFinancialSummary({ invoices, expenses, weeklyLogs, jobsById }),
+        [invoices, expenses, weeklyLogs, jobsById],
+    );
+    const [openMetric, setOpenMetric] = useState<MetricKey | null>(null);
+
     const stats = useMemo(() => {
-        const now = new Date();
-        const start = startOfMonth(now);
-        const end = endOfMonth(now);
-
-        // Protocol Update: Revenue only includes PAID invoices
-        const mtdRevenue = invoices
-            .filter(inv => {
-                try {
-                    const d = new Date(inv.issueDate);
-                    return isWithinInterval(d, { start, end }) && inv.status === 'paid';
-                } catch(e) { return false; }
-            })
-            .reduce((acc, inv) => acc + inv.total, 0);
-
-        const pendingPayouts = weeklyLogs
-            .filter(log => log.status === 'Submitted')
-            .reduce((acc, log) => acc + (log.totalPayout || 0), 0);
-
-        const outstandingAR = invoices
-            .filter(inv => inv.status !== 'paid' && inv.status !== 'void')
-            .reduce((acc, inv) => acc + inv.total, 0);
-
-        const mtdCosts = expenses
-            .filter(e => {
-                try {
-                    const d = new Date(e.date);
-                    return isWithinInterval(d, { start, end }) && e.status === 'Approved';
-                } catch(e) { return false; }
-            })
-            .reduce((acc, e) => acc + e.amount, 0) + 
-            weeklyLogs
-            .filter(l => {
-                try {
-                    const parts = l.weekOf.split('-');
-                    const d = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
-                    return isWithinInterval(d, { start, end }) && l.status === 'Approved';
-                } catch(e) { return false; }
-            })
-            .reduce((acc, l) => acc + (l.totalPayout || 0), 0);
-
-        const margin = mtdRevenue > 0 ? ((mtdRevenue - mtdCosts) / mtdRevenue) * 100 : 0;
-
+        const usd0 = (n: number) => `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
         return [
-            { title: "TOTAL REVENUE (MTD)", value: `$${mtdRevenue.toLocaleString()}`, trend: "SETTLED FUNDS ONLY", trendType: "positive" as const, TrendIcon: ArrowUpRight },
-            { title: "PENDING PAYOUTS", value: `$${pendingPayouts.toLocaleString()}`, trend: "AWAITING AUDIT", trendType: "warning" as const, TrendIcon: Minus },
-            { title: "OUTSTANDING A/R", value: `$${outstandingAR.toLocaleString()}`, trend: "FUNDING PIPELINE", trendType: "positive" as const, TrendIcon: Activity },
-            { title: "SERVICE MARGIN", value: `${margin.toFixed(1)}%`, trend: "PAID REVENUE VS COSTS", trendType: margin >= 25 ? "positive" as const : "negative" as const, TrendIcon: TrendingUp },
+            { key: 'revenue' as const, title: "TOTAL REVENUE (MTD)", value: usd0(summary.month.revenue), trend: "PAID INVOICES ISSUED THIS MONTH", trendType: "positive" as const, TrendIcon: ArrowUpRight },
+            { key: 'pending' as const, title: "PENDING PAYOUTS", value: usd0(summary.pendingTotal), trend: `${summary.pending.length} SUBMITTED LOG${summary.pending.length !== 1 ? 'S' : ''} AWAITING APPROVAL`, trendType: "warning" as const, TrendIcon: Minus },
+            { key: 'ar' as const, title: "OUTSTANDING A/R", value: usd0(summary.receivableTotal), trend: `${summary.receivables.length} SENT / OVERDUE INVOICE${summary.receivables.length !== 1 ? 'S' : ''}`, trendType: "positive" as const, TrendIcon: Activity },
+            { key: 'margin' as const, title: "SERVICE MARGIN", value: `${summary.margin.toFixed(1)}%`, trend: "PAID REVENUE VS COSTS (MTD)", trendType: summary.margin >= 25 ? "positive" as const : "negative" as const, TrendIcon: TrendingUp },
         ];
-    }, [invoices, weeklyLogs, expenses]);
+    }, [summary]);
 
     const chartData = useMemo(() => {
-        const data = [];
         const now = new Date();
-        for (let i = 5; i >= 0; i--) {
+        return [5, 4, 3, 2, 1, 0].map(i => {
             const date = subMonths(now, i);
-            const start = startOfMonth(date);
-            const end = endOfMonth(date);
-            const label = format(date, 'MMM yy').toUpperCase();
-
-            const rev = invoices
-                .filter(inv => {
-                    try {
-                        const d = new Date(inv.issueDate);
-                        return isWithinInterval(d, { start, end }) && inv.status === 'paid';
-                    } catch(e) { return false; }
-                })
-                .reduce((acc, inv) => acc + inv.total, 0);
-
-            const exp = expenses
-                .filter(e => {
-                    try {
-                        const d = new Date(e.date);
-                        return isWithinInterval(d, { start, end }) && e.status === 'Approved';
-                    } catch(e) { return false; }
-                })
-                .reduce((acc, e) => acc + e.amount, 0) +
-                weeklyLogs
-                .filter(l => {
-                    try {
-                        const parts = l.weekOf.split('-');
-                        const d = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
-                        return isWithinInterval(d, { start, end }) && l.status === 'Approved';
-                    } catch(e) { return false; }
-                })
-                .reduce((acc, l) => acc + (l.totalPayout || 0), 0);
-
-            data.push({ month: label, revenue: rev, expenses: exp });
-        }
-        return data;
-    }, [invoices, expenses, weeklyLogs]);
+            const m = monthBreakdown(date, { invoices, expenses, weeklyLogs, jobsById });
+            return { month: format(date, 'MMM yy').toUpperCase(), revenue: m.revenue, expenses: m.costs };
+        });
+    }, [invoices, expenses, weeklyLogs, jobsById]);
 
     const userIsSuperAdmin = isSuperAdmin(currentUser);
     const allMissions = useMemo(() => [...workOrders, ...assignments], [workOrders, assignments]);
@@ -361,7 +301,15 @@ export default function FinancialsPage() {
                     <TabsContent value="summary" className="m-0 space-y-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             {stats.map((metric, index) => (
-                                <Card key={index} className="bg-bg-tertiary border-border-subtle shadow-sm hover:border-text-muted transition-colors">
+                                <Card
+                                    key={index}
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => setOpenMetric(metric.key)}
+                                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenMetric(metric.key); } }}
+                                    title="Show how this is calculated"
+                                    className="bg-bg-tertiary border-border-subtle shadow-sm hover:border-text-muted transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
+                                >
                                     <CardHeader className="pb-4">
                                         <div className="flex justify-between items-start">
                                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">{metric.title}</span>
@@ -385,10 +333,18 @@ export default function FinancialsPage() {
                                         )}>
                                             {metric.trend}
                                         </p>
+                                        <p className="text-[8px] font-bold uppercase tracking-widest text-text-muted mt-2">View breakdown →</p>
                                     </CardContent>
                                 </Card>
                             ))}
                         </div>
+                        <MetricBreakdownSheet
+                            metric={openMetric}
+                            onClose={() => setOpenMetric(null)}
+                            summary={summary}
+                            technicians={technicians}
+                            allInvoices={invoices}
+                        />
 
                         <Card className="bg-bg-secondary border-border-main shadow-xl overflow-hidden">
                             <CardHeader className="border-b border-border-sub bg-bg-tertiary/20">

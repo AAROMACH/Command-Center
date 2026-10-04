@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { usePaged, ListPager, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { useRouter } from 'next/navigation';
 import type { Project, Technician } from '@/lib/types';
 import { isClient } from '@/lib/permissions';
@@ -92,6 +93,9 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
         return [...regGroups, ...unregGroups];
     }, [projects, sortBy, technicians]);
 
+    // Grid view pages too (it used to render every project).
+    const gridPager = usePaged(projects, PAGE_SIZES_SMALL, 'admin-projects-grid', [sortBy]);
+
     const totalPages = Math.ceil(projects.length / itemsPerPage);
     const paginatedProjects = useMemo(() => {
         const start = (currentPage - 1) * itemsPerPage;
@@ -127,9 +131,10 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
     if (viewMode === 'grid' && sortBy !== 'client') {
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {projects.map(project => (
+                {gridPager.items.map(project => (
                     <ProjectCard key={project.id} project={project} technicians={technicians} />
                 ))}
+                <div className="col-span-full"><ListPager pager={gridPager} noun="projects" /></div>
             </div>
         );
     }

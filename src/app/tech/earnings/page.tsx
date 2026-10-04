@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import type { WeeklyLog, Expense, Technician, ProjectPayout, Reimbursement, WorkOrder, PayrollDispute } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -181,6 +182,7 @@ export default function TechEarningsPage() {
             return 0;
         });
     }, [weeklyLogs, logSearchQuery, logSortBy, dateRange, jobsById]);
+    const logsPager = usePaged(filteredLogs, PAGE_SIZES_LARGE, 'tech-earnings-logs', []);
 
     // Reimbursements added from job verification during weekly log review —
     // these live in an embedded array on each weeklyLogs doc, separate from
@@ -488,7 +490,7 @@ export default function TechEarningsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredLogs.map(log => {
+                                    {logsPager.items.map(log => {
                                         // The formal paystub document (view/download) only makes
                                         // sense once payroll has actually settled the log — a
                                         // Draft/Submitted/Rejected log's numbers aren't final yet.
@@ -595,6 +597,7 @@ export default function TechEarningsPage() {
                                     )}
                                 </TableBody>
                             </Table>
+                            <div className="px-4"><ListPager pager={logsPager} noun="logs" /></div>
                         </CardContent>
                     </Card>
                 </TabsContent>

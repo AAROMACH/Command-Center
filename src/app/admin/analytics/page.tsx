@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { isTech } from '@/lib/permissions';
@@ -8,6 +9,7 @@ import { BarChart2, ShieldAlert, Users, AlertTriangle, Clock, ChevronRight, Mail
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -61,7 +63,7 @@ export default function FieldIntelligencePage() {
     const [timelineTechFilter, setTimelineTechFilter] = useState('all');
     const [timelineTypeFilter, setTimelineTypeFilter] = useState('all');
     const [timelineDateRange, setTimelineDateRange] = useState<DateRange | undefined>(undefined);
-    const [timelinePageSize, setTimelinePageSize] = useState<10 | 25 | 50>(25);
+    const [timelinePageSize, setTimelinePageSize] = useState<25 | 50 | 100>(25);
     const [timelinePage, setTimelinePage] = useState(0);
 
     useEffect(() => {
@@ -129,6 +131,7 @@ export default function FieldIntelligencePage() {
     const wrongTechCount = wrongTechEntries.length + desyncedAssignments.length;
 
     // Density map follows the Intel filters (time window, personnel, client).
+    const [densityOpen, setDensityOpen] = useState(false);
     const densityJobs = useMemo(() => {
         const days = timeWindow === '7d' ? 7 : timeWindow === '30d' ? 30 : timeWindow === '90d' ? 90 : timeWindow === '1y' ? 365 : null;
         const cutoff = days ? Date.now() - days * 864e5 : null;
@@ -262,6 +265,15 @@ export default function FieldIntelligencePage() {
     }, [timelineEvents, timelineTechFilter, timelineTypeFilter, timelineDateRange]);
     // Back to page 1 whenever the filters or page size change.
     useEffect(() => { setTimelinePage(0); }, [timelineTechFilter, timelineTypeFilter, timelineDateRange, timelinePageSize]);
+    // Paged lists (components/list-pager.tsx).
+    const techJobsPager = usePaged(techStats?.myJobs || [], PAGE_SIZES_LARGE, 'intel-tech-jobs', [selectedTechId]);
+    const techLogsPager = usePaged(techStats?.myLogs || [], PAGE_SIZES_LARGE, 'intel-tech-logs', [selectedTechId]);
+    const anomalyRows = useMemo(() => [
+        ...workOrders.filter(wo => wo.status === 'unassigned').map(wo => ({ kind: 'job' as const, id: wo.id, wo })),
+        ...activeWeeklyLogs.filter(wl => wl.status === 'Draft').map(wl => ({ kind: 'log' as const, id: wl.id, wl })),
+    ], [workOrders, activeWeeklyLogs]);
+    const anomalyPager = usePaged(anomalyRows, PAGE_SIZES_SMALL, 'intel-anomalies');
+    const underpaidPager = usePaged(underpaidWarnings, PAGE_SIZES_SMALL, 'intel-underpaid');
     const timelinePageCount = Math.max(1, Math.ceil(filteredTimelineEvents.length / timelinePageSize));
     const timelinePageEvents = filteredTimelineEvents.slice(timelinePage * timelinePageSize, (timelinePage + 1) * timelinePageSize);
 
@@ -360,17 +372,28 @@ export default function FieldIntelligencePage() {
                             {intelClient !== 'all' && <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border border-amber-400/30 bg-amber-400/10 text-amber-400">{intelClient}</span>}
                         </div>
                     </div>
+                    {/* Compact card; the map itself opens in a dialog instead of
+                        taking the full width of the page. */}
                     <Card className="bg-bg-secondary border-border-main mb-5">
-                        <CardContent className="p-4 space-y-3">
-                            <div className="flex flex-wrap items-baseline justify-between gap-2">
-                                <div>
-                                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-text-primary">Job Density — Michigan &amp; Ohio</p>
-                                    <p className="text-[10px] text-text-muted">Darker squares = more jobs in that area for the selected filters. Hover a square for the count and top cities.</p>
-                                </div>
+                        <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
+                            <div className="min-w-0">
+                                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-text-primary">Job Density — Michigan &amp; Ohio</p>
+                                <p className="text-[10px] text-text-muted">{densityJobs.length.toLocaleString()} job{densityJobs.length === 1 ? '' : 's'} for the selected filters</p>
                             </div>
-                            <JobDensityMap jobs={densityJobs} />
+                            <Button size="sm" variant="outline" className="h-8 text-[9px] font-black uppercase tracking-widest" onClick={() => setDensityOpen(true)}>
+                                Open Map
+                            </Button>
                         </CardContent>
                     </Card>
+                    <Dialog open={densityOpen} onOpenChange={setDensityOpen}>
+                        <DialogContent className="sm:max-w-4xl bg-bg-elevated border-border-default">
+                            <DialogHeader>
+                                <DialogTitle className="text-sm font-black uppercase tracking-widest">Job Density — Michigan &amp; Ohio</DialogTitle>
+                                <DialogDescription className="text-[10px]">Darker squares = more jobs in that area for the selected filters. Hover a square for the count and top cities.</DialogDescription>
+                            </DialogHeader>
+                            {densityOpen && <JobDensityMap jobs={densityJobs} />}
+                        </DialogContent>
+                    </Dialog>
                     <IntelligenceTerminal
                         timeWindow={timeWindow}
                         personnel={intelPersonnel}
@@ -402,27 +425,27 @@ export default function FieldIntelligencePage() {
                                 </div>
                             ) : (
                                 <div className="space-y-2 text-left">
-                                    {workOrders.filter(wo => wo.status === 'unassigned').map(wo => (
-                                        <div key={wo.id} className="p-2.5 rounded-lg border border-border-alert bg-brand-red-dim/5 flex gap-3 text-left items-start">
+                                    {anomalyPager.items.map(row => row.kind === 'job' ? (
+                                        <div key={row.id} className="p-2.5 rounded-lg border border-border-alert bg-brand-red-dim/5 flex gap-3 text-left items-start">
                                             <AlertTriangle size={14} className="text-text-red mt-0.5 shrink-0" />
                                             <div className="space-y-0.5 text-left min-w-0">
-                                                <p className="text-[11px] font-bold text-text-red uppercase tracking-wide truncate">{wo.title || wo.id}</p>
+                                                <p className="text-[11px] font-bold text-text-red uppercase tracking-wide truncate">{row.wo.title || row.wo.id}</p>
                                                 <p className="text-[10px] text-text-muted uppercase tracking-widest">Unassigned — no technician allocated</p>
                                             </div>
                                         </div>
-                                    ))}
-                                    {activeWeeklyLogs.filter(wl => wl.status === 'Draft').map(wl => {
-                                        const tech = technicians.find(t => t.id === wl.techId);
+                                    ) : (() => {
+                                        const tech = technicians.find(t => t.id === row.wl.techId);
                                         return (
-                                            <div key={wl.id} className="p-2.5 rounded-lg border border-border-warn bg-brand-amber-dim/5 flex gap-3 text-left items-start">
+                                            <div key={row.id} className="p-2.5 rounded-lg border border-border-warn bg-brand-amber-dim/5 flex gap-3 text-left items-start">
                                                 <Clock size={14} className="text-text-amber mt-0.5 shrink-0" />
                                                 <div className="space-y-0.5 text-left min-w-0">
-                                                    <p className="text-[11px] font-bold text-text-amber uppercase tracking-wide">Week of {wl.weekOf}{tech ? ` — ${tech.name}` : ''}</p>
+                                                    <p className="text-[11px] font-bold text-text-amber uppercase tracking-wide">Week of {row.wl.weekOf}{tech ? ` — ${tech.name}` : ''}</p>
                                                     <p className="text-[10px] text-text-muted uppercase tracking-widest">Draft log not submitted</p>
                                                 </div>
                                             </div>
                                         );
-                                    })}
+                                    })())}
+                                    <ListPager pager={anomalyPager} noun="flags" />
                                 </div>
                             )}
                         </div>
@@ -492,7 +515,7 @@ export default function FieldIntelligencePage() {
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
-                                                        {techStats.myJobs.map(wo => (
+                                                        {techJobsPager.items.map(wo => (
                                                             <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary cursor-pointer" onClick={() => setManagedJob(wo)}>
                                                                 <TableCell className="pl-4 py-3">
                                                                     <p className="text-xs font-bold text-text-primary uppercase">{wo.title || wo.description}</p>
@@ -514,11 +537,12 @@ export default function FieldIntelligencePage() {
                                                         )}
                                                     </TableBody>
                                                 </Table>
+                                                <div className="px-3"><ListPager pager={techJobsPager} noun="jobs" /></div>
                                             </div>
                                         </InnerTabsContent>
                                         <InnerTabsContent value="weeklogs" className="m-0">
                                             <div className="space-y-2">
-                                                {techStats.myLogs.map(log => (
+                                                {techLogsPager.items.map(log => (
                                                     <div key={log.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary flex items-center justify-between">
                                                         <div>
                                                             <p className="text-[10px] font-bold text-text-primary uppercase">Week of {log.weekOf}</p>
@@ -534,6 +558,7 @@ export default function FieldIntelligencePage() {
                                                 {techStats.myLogs.length === 0 && (
                                                     <p className="text-center text-text-muted text-[10px] uppercase py-8">No weekly logs found</p>
                                                 )}
+                                                <ListPager pager={techLogsPager} noun="logs" />
                                             </div>
                                         </InnerTabsContent>
                                     </InnerTabs>
@@ -662,7 +687,7 @@ export default function FieldIntelligencePage() {
                             </h3>
                             {underpaidWarnings.length === 0 ? (
                                 <p className="text-[10px] text-text-muted uppercase py-3">No underpaid jobs detected</p>
-                            ) : underpaidWarnings.map(wo => (
+                            ) : underpaidPager.items.map(wo => (
                                 <div key={wo.id} className="flex items-center justify-between p-2 rounded-lg border border-border-warn bg-brand-amber-dim/5">
                                     <div>
                                         <p className="text-[11px] font-bold text-text-amber uppercase">{wo.title || wo.id}</p>
@@ -674,6 +699,7 @@ export default function FieldIntelligencePage() {
                                     </div>
                                 </div>
                             ))}
+                            <ListPager pager={underpaidPager} noun="jobs" />
                         </div>
 
                         {/* Top 10 Clients */}
@@ -681,8 +707,8 @@ export default function FieldIntelligencePage() {
                             <div className="border-b border-border-sub pb-2">
                                 <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Top 10 Clients</h3>
                                 <p className="text-[9px] text-text-muted mt-1 leading-relaxed">
-                                    Ranked by job volume. Revenue = Field Nation jobs at pay net of the 15.85% FN fee, plus paid invoices (pre-tax) for direct work.
-                                    Labor = what techs are paid for the completed jobs (weekly-log settlement, or the same formula on job pay when not logged yet).
+                                    Ranked by job volume. Same model as Financials: revenue = what each completed job pays into the app (its pay, or its paid invoice before tax) plus paid invoices not tied to a job;
+                                    labor = the tech portion; gross profit = the Aaromach portion (revenue − labor − the 15.85% Field Nation fee on FN jobs).
                                 </p>
                             </div>
                             {topClientRows.length === 0 ? (
@@ -842,7 +868,7 @@ export default function FieldIntelligencePage() {
                                 <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
                                     <div className="flex items-center gap-2">
                                         <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">Show</span>
-                                        {([10, 25, 50] as const).map(n => (
+                                        {([25, 50, 100] as const).map(n => (
                                             <button
                                                 key={n}
                                                 type="button"

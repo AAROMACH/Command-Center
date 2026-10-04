@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_SMALL, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog, PayrollDispute } from '@/lib/types';
 import { externalWorkOrderId, displayWorkOrderNumber, fieldNationUrl, isImported } from '@/lib/work-order-identity';
 import { hasPermission } from '@/lib/permissions';
@@ -296,6 +297,10 @@ export default function TechWeeklyLogPage() {
             return 0;
         });
     }, [weeklyLogs, searchQuery, sortBy, statusFilter, dateRange, jobsById]);
+
+    // Past (non-Draft) logs pile up week after week — page them; open Drafts always show.
+    const pastLogsAll = useMemo(() => filteredAndSortedLogs.filter(l => l.status !== 'Draft'), [filteredAndSortedLogs]);
+    const pastLogsPager = usePaged(pastLogsAll, PAGE_SIZES_SMALL, 'tech-past-logs', [searchQuery, sortBy, statusFilter, dateRange]);
 
     const isLocked = useMemo(() => activeLog?.status !== 'Draft', [activeLog?.status]);
 
@@ -612,8 +617,8 @@ export default function TechWeeklyLogPage() {
                 <div className="grid grid-cols-1 gap-3 max-w-6xl mx-auto">
                     {(() => {
                         const draftLogs = filteredAndSortedLogs.filter(l => l.status === 'Draft');
-                        const pastLogs = filteredAndSortedLogs.filter(l => l.status !== 'Draft');
-                        const showDivider = statusFilter === 'all' && draftLogs.length > 0 && pastLogs.length > 0;
+                        const pastLogs = pastLogsPager.items;
+                        const showDivider = statusFilter === 'all' && draftLogs.length > 0 && pastLogsPager.total > 0;
                         const renderCard = (log: WeeklyLog, logIdx: number) => (
                             <Card
                                 key={log.id || `log-list-${logIdx}`}
@@ -671,6 +676,7 @@ export default function TechWeeklyLogPage() {
                                     </div>
                                 )}
                                 {pastLogs.map((log, i) => renderCard(log, draftLogs.length + i))}
+                                <ListPager pager={pastLogsPager} noun="past logs" />
                             </>
                         );
                     })()}

@@ -42,6 +42,9 @@ export function JobDensityMap({ jobs }: { jobs: WorkOrder[] }) {
             mapRef.current = map;
             layerRef.current = leaflet.layerGroup().addTo(map);
             drawCells(leaflet);
+            // Opened inside an animating dialog, the container's size isn't
+            // final yet — re-measure once it has settled.
+            setTimeout(() => { if (mapRef.current === map) { map.invalidateSize(); map.fitBounds(MI_OH_BOUNDS); } }, 250);
         });
         return () => {
             cancelled = true;
@@ -76,7 +79,7 @@ export function JobDensityMap({ jobs }: { jobs: WorkOrder[] }) {
 
     return (
         <div className="space-y-2">
-            <div className="relative h-[520px] rounded-lg overflow-hidden border border-border-main isolate">
+            <div className="relative h-[60vh] min-h-[320px] max-h-[560px] rounded-lg overflow-hidden border border-border-main isolate">
                 <div ref={containerRef} className="absolute inset-0" aria-label="Job density map of Michigan and Ohio" role="img" />
                 {breaks.length > 0 && (
                     <div className="absolute bottom-3 left-3 z-[400] rounded-md border border-border-main bg-bg-elevated/95 px-3 py-2 shadow-lg">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { db } from '@/lib/firebase';
 import { getDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
 import {
@@ -212,6 +213,7 @@ export default function ServicePlansPage() {
     const clientsList = useMemo(() => localTechs.filter(t => isClient(t)), [localTechs]);
     const activeSubscriptions = useMemo(() => clientsList.filter(c => c.planId && c.subscriptionStatus === 'active'), [clientsList]);
     const pendingSubscriptions = useMemo(() => clientsList.filter(c => c.subscriptionStatus === 'pending'), [clientsList]);
+    const subPager = usePaged(activeSubscriptions, PAGE_SIZES_SMALL, 'plans-subscriptions', []);
 
     const filteredPlans = useMemo(() => {
         if (!searchQuery) return plans;
@@ -514,7 +516,7 @@ export default function ServicePlansPage() {
                 {/* Active Subscriptions */}
                 <TabsContent value="subscriptions" className="m-0">
                     <div className="grid grid-cols-1 gap-3 max-w-5xl">
-                        {activeSubscriptions.map(client => {
+                        {subPager.items.map(client => {
                             const plan = plans.find(p => p.id === client.planId);
                             const startDate = (client as any).subscriptionStartDate;
                             const expiryDate = (client as any).subscriptionExpiryDate;
@@ -567,6 +569,7 @@ export default function ServicePlansPage() {
                             </div>
                         )}
                     </div>
+                    <ListPager pager={subPager} noun="subscriptions" />
                 </TabsContent>
 
                 {/* Pending */}

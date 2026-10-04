@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { useParams, useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, onSnapshot, addDoc, updateDoc, setDoc } from 'firebase/firestore';
@@ -172,6 +173,7 @@ export default function ClientWorkspacePage() {
         if (jobsStatusFilter === 'completed') return clientWOs.filter(wo => wo.status === 'completed');
         return clientWOs.filter(wo => wo.status === jobsStatusFilter);
     }, [clientWOs, jobsStatusFilter]);
+    const jobsPager = usePaged(filteredJobs, PAGE_SIZES_LARGE, 'client-jobs', []);
 
     const stats = useMemo(() => ({
         openWOs: clientWOs.filter(wo => wo.status !== 'completed').length,
@@ -585,7 +587,7 @@ export default function ClientWorkspacePage() {
                     {filteredJobs.length === 0
                         ? <p className="text-[10px] text-text-muted uppercase py-8 text-center">No jobs match filter</p>
                         : <div className="space-y-2">
-                            {filteredJobs.map(wo => (
+                            {jobsPager.items.map(wo => (
                                 <Link key={wo.id} href={`/admin/assignments/${wo.id}`} className="flex items-center justify-between p-3.5 rounded-xl border border-border-sub bg-bg-secondary hover:border-brand-red/30 transition-colors group">
                                     <div className="min-w-0">
                                         <p className="text-[12px] font-bold text-text-primary uppercase group-hover:text-brand-red transition-colors truncate">{wo.title || wo.description}</p>
@@ -598,6 +600,7 @@ export default function ClientWorkspacePage() {
                                     </div>
                                 </Link>
                             ))}
+                            <ListPager pager={jobsPager} noun="jobs" />
                         </div>}
                 </TabsContent>
 

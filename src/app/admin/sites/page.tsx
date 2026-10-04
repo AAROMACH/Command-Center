@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc } from 'firebase/firestore';
@@ -131,6 +132,7 @@ export default function AdminClientsPage() {
             return 0;
         });
     }, [enrichedClients, search, sortBy, statusFilter]);
+    const pager = usePaged(filtered, PAGE_SIZES_SMALL, 'admin-sites', []);
 
     const stats = useMemo(() => ({
         total: clients.length,
@@ -289,7 +291,7 @@ export default function AdminClientsPage() {
                 </div>
             ) : viewMode === 'grid' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filtered.map(({ client, company, siteCount, openJobs, activeQuotes, openInvoices, lastJob }) => {
+                    {pager.items.map(({ client, company, siteCount, openJobs, activeQuotes, openInvoices, lastJob }) => {
                         const status = client.accountStatus || 'active';
                         return (
                             <div
@@ -364,7 +366,7 @@ export default function AdminClientsPage() {
                             <p key={h} className="text-[9px] font-black uppercase tracking-widest text-text-muted">{h}</p>
                         ))}
                     </div>
-                    {filtered.map(({ client, company, siteCount, openJobs, activeQuotes, openInvoices }) => {
+                    {pager.items.map(({ client, company, siteCount, openJobs, activeQuotes, openInvoices }) => {
                         const status = client.accountStatus || 'active';
                         return (
                             <div
@@ -391,6 +393,8 @@ export default function AdminClientsPage() {
                     })}
                 </div>
             )}
+
+            <ListPager pager={pager} noun="clients" />
 
             {/* Add Client Dialog */}
             <Dialog open={isNewOpen} onOpenChange={setIsNewOpen}>

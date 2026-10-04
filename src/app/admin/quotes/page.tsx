@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import { db, auth } from '@/lib/firebase';
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc } from 'firebase/firestore';
@@ -809,21 +810,8 @@ export default function AdminQuotesPage() {
     );
   }
 
-  const grid = (items: Quote[]) => (
-    items.length === 0 ? (
-      <div className="py-16 text-center text-text-muted">
-        <FileSearch size={28} className="mx-auto mb-3 opacity-20" />
-        <p className="text-[11px]">No quotes in this section</p>
-      </div>
-    ) : viewMode === 'grid' ? (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {items.map(q => <QuoteCard key={q.id} quote={q} onClick={() => setSelectedQuote(q)} />)}
-      </div>
-    ) : (
-      <div className="space-y-1">
-        {items.map(q => <QuoteRow key={q.id} quote={q} onClick={() => setSelectedQuote(q)} />)}
-      </div>
-    )
+  const grid = (items: Quote[], key: string) => (
+    <QuoteList items={items} viewMode={viewMode} onSelect={setSelectedQuote} storageKey={`quotes-${key}`} />
   );
 
   return (
@@ -853,10 +841,10 @@ export default function AdminQuotesPage() {
           <TabsTrigger value="rejected" className="tab">Rejected / Expired<TabCount n={rejected.length} /></TabsTrigger>
         </TabsList>
 
-        <TabsContent value="draft" className="mt-0">{grid(draft)}</TabsContent>
-        <TabsContent value="sent" className="mt-0">{grid(sent)}</TabsContent>
-        <TabsContent value="approved" className="mt-0">{grid(approved)}</TabsContent>
-        <TabsContent value="rejected" className="mt-0">{grid(rejected)}</TabsContent>
+        <TabsContent value="draft" className="mt-0">{grid(draft, '0')}</TabsContent>
+        <TabsContent value="sent" className="mt-0">{grid(sent, '1')}</TabsContent>
+        <TabsContent value="approved" className="mt-0">{grid(approved, '2')}</TabsContent>
+        <TabsContent value="rejected" className="mt-0">{grid(rejected, '3')}</TabsContent>
       </Tabs>
 
       <NewQuoteDialog
@@ -872,5 +860,37 @@ export default function AdminQuotesPage() {
         onUpdated={() => setSelectedQuote(null)}
       />
     </div>
+  );
+}
+
+/** One section of quotes, paged (25/50/100) so a busy pipeline doesn't render every quote. */
+function QuoteList({ items, viewMode, onSelect, storageKey }: {
+  items: Quote[];
+  viewMode: string;
+  onSelect: (q: Quote) => void;
+  storageKey: string;
+}) {
+  const pager = usePaged(items, PAGE_SIZES_LARGE, storageKey);
+  if (items.length === 0) {
+    return (
+      <div className="py-16 text-center text-text-muted">
+        <FileSearch size={28} className="mx-auto mb-3 opacity-20" />
+        <p className="text-[11px]">No quotes in this section</p>
+      </div>
+    );
+  }
+  return (
+    <>
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {pager.items.map(q => <QuoteCard key={q.id} quote={q} onClick={() => onSelect(q)} />)}
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {pager.items.map(q => <QuoteRow key={q.id} quote={q} onClick={() => onSelect(q)} />)}
+        </div>
+      )}
+      <ListPager pager={pager} noun="quotes" />
+    </>
   );
 }

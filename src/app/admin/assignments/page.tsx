@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useDeferredValue } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { SearchField } from '@/components/search-field';
 import { SortControl, FiltersPopover, FilterSection, CheckboxFilter, DateRangeButton, type SortOptionDef } from '@/components/list-toolbar';
 import { useRouter } from 'next/navigation';
@@ -76,7 +77,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { isAdmin, isPayAdmin } from "@/lib/permissions";
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { WorkOrderId } from '@/components/work-order-id';
-import { jobTechId, isArchivedJob, isCompletedJob, jobDateTimeValue, archiveJobRecord, toUnassignedWorkOrder, JOB_STATUS_OPTIONS, compareJobStatus } from '@/lib/jobs';
+import { jobTechId, isArchivedJob, isCompletedJob, jobDateTimeValue, archiveJobRecord, toUnassignedWorkOrder, JOB_STATUS_OPTIONS, compareJobStatus, jobMatchesSearch } from '@/lib/jobs';
 import { syncWeeklyLogForAdminStatusEdit, moveJobLogOnSwap, describeSwapLogMove } from '@/lib/weekly-log';
 
 const ADMIN_SORT_OPTIONS: SortOptionDef[] = [
@@ -224,21 +225,13 @@ export default function AssignmentsHubPage() {
       ? { label: 'Verified', cls: 'bg-text-green/10 text-text-green border-text-green/30' }
       : { label: 'Not Logged', cls: 'bg-bg-tertiary text-text-muted border-border-sub' });
 
+  const techById = useMemo(() => new Map(technicians.map(t => [t.id, t])), [technicians]);
+
   const filteredWorkOrders = useMemo(() => {
     return workOrders
       .filter(wo => {
-        const techId = jobTechId(wo);
-        
-        const tech = technicians.find(t => t.id === techId);
-        const queryStr = deferredSearch.toLowerCase();
-        
-        const matchesSearch = (
-          (wo.id || '').toLowerCase().includes(queryStr) ||
-          (wo.title || '').toLowerCase().includes(queryStr) ||
-          (wo.description || '').toLowerCase().includes(queryStr) ||
-          (wo.clientName || '').toLowerCase().includes(queryStr) ||
-          (tech && (tech.name || '').toLowerCase().includes(queryStr))
-        );
+        // Job fields plus lead/helper tech names (incl. preferred names).
+        const matchesSearch = jobMatchesSearch(wo, deferredSearch, techById);
 
         const matchesDate = !dateRange?.from || (() => {
             const woDate = parseTacticalDate(wo.scheduleDate);
@@ -298,10 +291,12 @@ export default function AssignmentsHubPage() {
   const activeWorkOrders = useMemo(() =>
     filteredWorkOrders.filter(wo => !isArchivedJob(wo) && !isCompletedJob(wo) && wo.status !== 'cancelled'),
   [filteredWorkOrders]);
+  const activePager = usePaged(activeWorkOrders, PAGE_SIZES_LARGE, 'admin-assignments-active', [deferredSearch, dateRange, sortBy, activePriorities, activeSources, activeStatuses, dateAsc]);
 
   const archivedWorkOrders = useMemo(() =>
     filteredWorkOrders.filter(wo => isArchivedJob(wo) || isCompletedJob(wo)),
   [filteredWorkOrders]);
+  const historyPager = usePaged(archivedWorkOrders, PAGE_SIZES_LARGE, 'admin-assignments-history', [deferredSearch, dateRange, sortBy, activePriorities, activeSources, activeStatuses, dateAsc]);
 
   const formatDateDisplay = (dateStr: string) => {
     const woDate = parseTacticalDate(dateStr);
@@ -555,7 +550,7 @@ export default function AssignmentsHubPage() {
             <TabsContent value="schedule" className="mt-0 space-y-6 text-left">
                 {/* Mobile: card list (sort lives in the header toolbar) */}
                 <div className="md:hidden space-y-3">
-                    {activeWorkOrders.map(wo => {
+                    {activePager.items.map(wo => {
                         const techId = jobTechId(wo);
                         const tech = technicians.find(t => t.id === techId);
                         return (
@@ -641,7 +636,7 @@ export default function AssignmentsHubPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {activeWorkOrders.map(wo => {
+                            {activePager.items.map(wo => {
                                 const techId = jobTechId(wo);
                                 const tech = technicians.find(t => t.id === techId);
                                 return (
@@ -724,6 +719,7 @@ export default function AssignmentsHubPage() {
                     </table>
                 </div>
 
+                <ListPager pager={activePager} noun="jobs" />
                 {activeWorkOrders.length === 0 && (
                     <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30 text-left hidden md:block">
                         <Activity size={32} className="mx-auto text-text-muted mb-4 opacity-20" />
@@ -735,7 +731,7 @@ export default function AssignmentsHubPage() {
             <TabsContent value="archive" className="mt-0 text-left">
                 {/* Mobile: card list (sort lives in the header toolbar) */}
                 <div className="md:hidden space-y-3">
-                    {archivedWorkOrders.map(wo => {
+                    {historyPager.items.map(wo => {
                         const techId = jobTechId(wo);
                         const tech = technicians.find(t => t.id === techId);
                         const audit = getAuditStatus(wo);
@@ -814,7 +810,7 @@ export default function AssignmentsHubPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {archivedWorkOrders.map(wo => {
+                            {historyPager.items.map(wo => {
                                 const techId = jobTechId(wo);
                                 const tech = technicians.find(t => t.id === techId);
                                 const audit = getAuditStatus(wo);
@@ -872,6 +868,7 @@ export default function AssignmentsHubPage() {
                         </tbody>
                     </table>
                 </div>
+                <ListPager pager={historyPager} noun="jobs" />
             </TabsContent>
         </div>
 

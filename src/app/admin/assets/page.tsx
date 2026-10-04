@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, doc } from 'firebase/firestore';
 import type { Asset, AssetCategory, Material, AssetAssignment, Technician } from '@/lib/types';
@@ -181,6 +182,7 @@ export default function AssetsAndMaterialsPage() {
             return true;
         });
     }, [assets, assetCatFilter, statusFilter, conditionFilter, search]);
+    const assetPager = usePaged(filteredAssets, PAGE_SIZES_LARGE, 'assets', []);
 
     const filteredMaterials = useMemo(() => {
         const q = search.toLowerCase();
@@ -196,6 +198,7 @@ export default function AssetsAndMaterialsPage() {
             return true;
         });
     }, [materials, matCatFilter, matStatusFilter, search]);
+    const materialPager = usePaged(filteredMaterials, PAGE_SIZES_LARGE, 'materials', []);
 
     // ── Summary stats ──────────────────────────────────────────────────────
 
@@ -603,7 +606,7 @@ export default function AssetsAndMaterialsPage() {
                         </div>
                     ) : viewMode === 'list' ? (
                         <div className="space-y-1">
-                            {filteredAssets.map(asset => {
+                            {assetPager.items.map(asset => {
                                 const CatIcon = ASSET_CATS.find(c => c.value === asset.category)?.icon || Package;
                                 const needsMaint = maintenanceDue(asset);
                                 const assignedTech = technicians.find(t => t.id === asset.assignedUserId);
@@ -634,7 +637,7 @@ export default function AssetsAndMaterialsPage() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {filteredAssets.map(asset => {
+                            {assetPager.items.map(asset => {
                                 const CatIcon = ASSET_CATS.find(c => c.value === asset.category)?.icon || Package;
                                 const needsMaint = maintenanceDue(asset);
                                 const assignedTech = technicians.find(t => t.id === asset.assignedUserId);
@@ -691,6 +694,7 @@ export default function AssetsAndMaterialsPage() {
                             })}
                         </div>
                     )}
+                    <ListPager pager={assetPager} noun="assets" />
                 </TabsContent>
 
                 {/* ── Materials Tab ──────────────────────────────────────── */}
@@ -749,7 +753,7 @@ export default function AssetsAndMaterialsPage() {
                         </div>
                     ) : viewMode === 'grid' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {filteredMaterials.map(m => (
+                            {materialPager.items.map(m => (
                                 <div key={m.id} onClick={() => setSelectedMaterial(m)}
                                     className="rounded-xl border border-border-sub bg-bg-secondary hover:border-brand-red hover:bg-bg-tertiary transition-all cursor-pointer p-4 space-y-2.5">
                                     <div className="flex items-start justify-between gap-2">
@@ -788,7 +792,7 @@ export default function AssetsAndMaterialsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredMaterials.map(m => (
+                                    {materialPager.items.map(m => (
                                         <TableRow
                                             key={m.id}
                                             className="border-border-sub hover:bg-bg-secondary cursor-pointer transition-colors"
@@ -817,6 +821,7 @@ export default function AssetsAndMaterialsPage() {
                             </Table>
                         </div>
                     )}
+                    <ListPager pager={materialPager} noun="materials" />
                 </TabsContent>
             </Tabs>
 

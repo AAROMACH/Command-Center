@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_SMALL, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { AlertTriangle, CheckCircle, Loader2, Lock } from 'lucide-react';
@@ -46,6 +47,8 @@ export function WrongTechEntries({ entries, desynced, technicians, currentUser }
     const { toast } = useToast();
     const [busy, setBusy] = useState<Set<string>>(new Set());
     const [confirmAll, setConfirmAll] = useState(false);
+    const entryPager = usePaged(entries, PAGE_SIZES_SMALL, 'intel-wrong-tech');
+    const desyncPager = usePaged(desynced, PAGE_SIZES_SMALL, 'intel-desynced');
     const [fixingAll, setFixingAll] = useState(false);
 
     const techById = useMemo(() => new Map(technicians.map(t => [t.id, t])), [technicians]);
@@ -174,7 +177,7 @@ export function WrongTechEntries({ entries, desynced, technicians, currentUser }
                                 </Button>
                             </div>
                             <div className="rounded-xl border border-border-sub bg-bg-secondary divide-y divide-border-sub overflow-hidden">
-                                {entries.map(e => {
+                                {entryPager.items.map(e => {
                                     const isBusy = busy.has(rowKey(e)) || fixingAll;
                                     return (
                                         <div key={rowKey(e)} className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 py-3">
@@ -202,6 +205,7 @@ export function WrongTechEntries({ entries, desynced, technicians, currentUser }
                                     );
                                 })}
                             </div>
+                            <ListPager pager={entryPager} noun="entries" />
                         </div>
                     )}
 
@@ -216,7 +220,7 @@ export function WrongTechEntries({ entries, desynced, technicians, currentUser }
                                 </Button>
                             </div>
                             <div className="rounded-xl border border-border-sub bg-bg-secondary divide-y divide-border-sub overflow-hidden">
-                                {desynced.map(job => (
+                                {desyncPager.items.map(job => (
                                     <div key={job.id} className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 py-3">
                                         <div className="min-w-0 space-y-0.5">
                                             <div className="flex flex-wrap items-center gap-2">
@@ -233,6 +237,7 @@ export function WrongTechEntries({ entries, desynced, technicians, currentUser }
                                     </div>
                                 ))}
                             </div>
+                            <ListPager pager={desyncPager} noun="jobs" />
                         </div>
                     )}
                 </>

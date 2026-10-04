@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/auth-context';
@@ -71,6 +72,7 @@ export default function ClientBillingPage() {
                 inv.status.toLowerCase().includes(searchQuery.toLowerCase())
             );
     }, [liveInvoices, searchQuery]);
+    const invoicePager = usePaged(myInvoices, PAGE_SIZES_LARGE, 'client-billing-invoices', []);
 
     const handleUpdatePlan = () => {
         toast({
@@ -125,7 +127,7 @@ export default function ClientBillingPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {myInvoices.map((inv) => (
+                                    {invoicePager.items.map((inv) => (
                                         <TableRow key={inv.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
                                             <TableCell className="font-mono text-xs text-text-primary pl-6">INV-{inv.invoiceNumber}</TableCell>
                                             <TableCell className="text-sm">{inv.issueDate}</TableCell>
@@ -147,6 +149,7 @@ export default function ClientBillingPage() {
                                     )}
                                 </TableBody>
                             </Table>
+                            <div className="px-4"><ListPager pager={invoicePager} noun="invoices" /></div>
                         </CardContent>
                     </Card>
                 </div>

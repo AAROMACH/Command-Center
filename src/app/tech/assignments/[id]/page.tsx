@@ -25,7 +25,9 @@ import { cn, getTacticalLocation, getTacticalCoords, calculateDistance } from '@
 import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete, reopenStatusFor } from '@/lib/trip-flow';
 import { externalWorkOrderId } from '@/lib/work-order-identity';
 import { removeJobFromDraftLogs } from '@/lib/weekly-log';
-import { useCompletionFiling, completionToastText } from '@/hooks/use-completion-filing';
+import { useAuth } from '@/contexts/auth-context';
+import { useTechJobActions } from '@/hooks/use-tech-job-actions';
+import type { TechJobAction } from '@/lib/tech-job-actions';
 import { setDoc } from 'firebase/firestore';
 import { startOfWeek } from 'date-fns';
 import { isAssignedTo, parseLocalDate } from '@/lib/jobs';
@@ -123,7 +125,9 @@ export default function TechAssignmentDetailPage() {
   const assignmentId = params?.id as string;
 
   const [currentTechId, setCurrentTechId] = useState<string | null>(null);
-  const { completeAndFile, weekDialog } = useCompletionFiling(currentTechId);
+  // History entries name the signed-in tech (a helper acting on the job, not the lead).
+  const { user: me } = useAuth();
+  const { run: runAction, weekDialog } = useTechJobActions(currentTechId, techDisplayName(me));
   const [assignment, setAssignment] = useState<WorkOrder | null>(null);
   const [tech, setTech] = useState<Technician | null>(null);
   const [helperTechs, setHelperTechs] = useState<Technician[]>([]);
@@ -209,174 +213,22 @@ export default function TechAssignmentDetailPage() {
     if (!isTheirs) router.push('/tech/assignments');
   }, [assignment, currentTechId, loading, router]);
 
-  // ── Weekly log helpers ────────────────────────────────────────────────────
-  const removeFromWeeklyLogs = async (woId: string) => {
-    if (!currentTechId) return;
-    await removeJobFromDraftLogs(currentTechId, woId);
-  };
-
   // ── Status action handlers ────────────────────────────────────────────────
+  // Same shared workflow as the dashboard, calendar and assignments list
+  // (lib/tech-job-actions.ts): trip records, history, weekly-log filing.
   const withLoading = (fn: () => Promise<void>) => async () => {
     setActionLoading(true);
     try { await fn(); } finally { setActionLoading(false); }
   };
 
   const techName = techDisplayName(tech);
-
-  const handleConfirm = withLoading(async () => {
-    const now = format(new Date(), 'h:mm a');
-    const location = await getTacticalLocation();
-    await updateDoc(doc(db, 'assignments', assignmentId), {
-      status: 'confirmed', isAcknowledged: true,
-      history: arrayUnion({
-        type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'),
-        details: `Assignment confirmed at ${now}. Location: [${location}].`, user: techName,
-      }),
-    });
-    toast({ title: 'Assignment Confirmed' });
-  });
-
-  // ── Trip tracking ─────────────────────────────────────────────────────────
-  // Start Trip creates a trip record and stores its id on the assignment;
-  // Check-In updates that same record (never duplicates); Check-Out writes the
-  // end + mileage to it. Keying off the assignment's activeTripLogId means one
-  // job's trip can never overwrite another's.
-  const finalizeOpenTrip = async (endLocation: string) => {
-    const tripId = (assignment as any)?.activeTripLogId as string | undefined;
-    if (!tripId) return;
-    try {
-      const coords = await getTacticalCoords();
-      const trip = assignment ? (await getDoc(doc(db, 'tripLogs', tripId))).data() as any : null;
-      const patch: any = {
-        endTime: format(new Date(), 'h:mm a'),
-        endLocation,
-        updatedAt: new Date().toISOString(),
-      };
-      if (coords) patch.endLat = coords.lat, patch.endLng = coords.lng;
-      if (trip?.startLat != null && trip?.startLng != null && coords) {
-        const miles = calculateDistance(trip.startLat, trip.startLng, coords.lat, coords.lng);
-        patch.calculatedMiles = Math.round(miles * 10) / 10;
-        patch.miles = patch.calculatedMiles;
-      }
-      await updateDoc(doc(db, 'tripLogs', tripId), patch);
-    } catch (e) { console.error('finalizeOpenTrip failed', e); }
-  };
-
-  const handleStartTrip = withLoading(async () => {
-    const now = format(new Date(), 'h:mm a');
-    const location = await getTacticalLocation();
-    const coords = await getTacticalCoords();
-    // Create the trip record first so the drive is captured even if the tech
-    // never checks out; surface any failure rather than failing silently.
-    let tripLogId: string | null = null;
-    try {
-      const nowIso = new Date().toISOString();
-      const tripRef = await addDoc(collection(db, 'tripLogs'), {
-        technicianId: currentTechId || assignment?.techId || '',
-        technicianName: techName,
-        assignmentId,
-        workOrderId: assignment?.workOrderId || assignmentId,
-        externalWorkOrderId: assignment ? externalWorkOrderId(assignment) : '',
-        jobTitle: assignment?.title || assignment?.description || '',
-        date: format(new Date(), 'yyyy-MM-dd'),
-        startLocation: location,
-        endLocation: '',
-        startLat: coords?.lat ?? null,
-        startLng: coords?.lng ?? null,
-        miles: 0,
-        purpose: 'Drive to job site',
-        reimbursable: true,
-        status: 'pending',
-        source: 'start_trip',
-        startTime: now,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-      });
-      tripLogId = tripRef.id;
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Trip log failed', description: e?.message || 'Could not create trip record.' });
-    }
-    await updateDoc(doc(db, 'assignments', assignmentId), {
-      status: 'on-my-way',
-      ...(tripLogId ? { activeTripLogId: tripLogId } : {}),
-      history: arrayUnion({
-        type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'),
-        details: `Trip initiated at ${now}. Status: EN ROUTE. Location: [${location}].`, user: techName,
-      }),
-    });
-    toast({ title: 'Trip Started', description: 'Status updated to En Route. Trip logged.' });
-  });
-
-  const handleCheckIn = withLoading(async () => {
-    const now = format(new Date(), 'h:mm a');
-    const location = await getTacticalLocation();
-    // Check-in marks arrival on the SAME trip record (does not erase/duplicate it).
-    const tripId = (assignment as any)?.activeTripLogId as string | undefined;
-    if (tripId) {
-      try {
-        await updateDoc(doc(db, 'tripLogs', tripId), { arrivedAt: now, arrivalLocation: location, updatedAt: new Date().toISOString() });
-      } catch (e) { console.error('check-in trip update failed', e); }
-    }
-    await updateDoc(doc(db, 'assignments', assignmentId), {
-      status: 'in-progress',
-      history: arrayUnion({
-        type: 'note', date: format(new Date(), 'MM-dd-yyyy'),
-        details: `Arrival verified at ${now}. Status: ON SITE. Location: [${location}].`, user: techName,
-      }),
-    });
-    toast({ title: 'Checked In', description: 'Status updated to In Progress.' });
-  });
-
-  const handleCheckOut = withLoading(async () => {
-    const now = format(new Date(), 'h:mm a');
-    const location = await getTacticalLocation();
-    // Save end time, end location, and mileage to the same trip record.
-    await finalizeOpenTrip(location);
-    await updateDoc(doc(db, 'assignments', assignmentId), {
-      status: 'checked-out',
-      activeTripLogId: null,
-      history: arrayUnion({
-        type: 'note', date: format(new Date(), 'MM-dd-yyyy'),
-        details: `Session paused at ${now}. Status: CHECKED OUT. Location: [${location}].`, user: techName,
-      }),
-    });
-    toast({ title: 'Checked Out', description: 'Trip mileage recorded.' });
-  });
-
-  const handleMarkComplete = withLoading(async () => {
-    if (!assignment) return;
-    const now = format(new Date(), 'h:mm a');
-    const location = await getTacticalLocation();
-    // If the tech completes without an explicit check-out, still close the trip.
-    await finalizeOpenTrip(location);
-    try {
-      const result = await completeAndFile(assignment, () => updateDoc(doc(db, 'assignments', assignmentId), {
-        status: 'completed',
-        activeTripLogId: null,
-        history: arrayUnion({
-          type: 'note', date: format(new Date(), 'MM-dd-yyyy'),
-          details: `Mission finalized at ${now}. Status: CLOSED. Location: [${location}].`, user: techName,
-        }),
-      }));
-      toast({ title: 'Mission Finalized', description: completionToastText(result) });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Update Failed', description: e?.message || 'Please try again.' });
-    }
-  });
-
-  const handleReopen = withLoading(async () => {
-    const now = format(new Date(), 'h:mm a');
-    const location = await getTacticalLocation();
-    await removeFromWeeklyLogs(assignmentId);
-    await updateDoc(doc(db, 'assignments', assignmentId), {
-      status: reopenStatusFor(assignment),
-      history: arrayUnion({
-        type: 'note', date: format(new Date(), 'MM-dd-yyyy'),
-        details: `Mission re-opened at ${now} for correction. Location: [${location}].`, user: techName,
-      }),
-    });
-    toast({ title: 'Mission Re-opened', description: 'Assignment moved back to active.' });
-  });
+  const act = (action: TechJobAction) => withLoading(async () => { if (assignment) await runAction(assignment, action); });
+  const handleConfirm = act('confirm');
+  const handleStartTrip = act('startTrip');
+  const handleCheckIn = act('checkIn');
+  const handleCheckOut = act('checkOut');
+  const handleMarkComplete = act('complete');
+  const handleReopen = act('reopen');
 
   // ── Loading / not found ───────────────────────────────────────────────────
   // This job's pay on a weekly log (FN fee/split applied) — not the whole

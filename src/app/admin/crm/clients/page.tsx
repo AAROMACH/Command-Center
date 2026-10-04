@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, doc, updateDoc } from 'firebase/firestore';
 import type { Technician, SiteRequest, Project } from '@/lib/types';
@@ -60,6 +61,7 @@ export default function ClientsPage() {
     ),
     [clients, searchQuery]
   );
+  const pager = usePaged(filteredClients, PAGE_SIZES_SMALL, 'crm-clients', []);
 
   const pendingSiteReqs = useMemo(() =>
     siteRequests.filter(r => r.status === 'pending').length,
@@ -203,7 +205,7 @@ export default function ClientsPage() {
         </div>
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filteredClients.map(client => {
+          {pager.items.map(client => {
             const clientSiteReqs = siteRequests.filter(r => r.clientId === client.id || r.clientName === client.clientCompany);
             return (
               <div key={client.id} onClick={() => setSelectedClient(client)} className="rounded-xl border border-border-sub bg-bg-secondary hover:bg-bg-tertiary hover:border-brand-red transition-all p-4 space-y-3 cursor-pointer">
@@ -244,7 +246,7 @@ export default function ClientsPage() {
         </div>
       ) : (
         <div className="space-y-1">
-          {filteredClients.map(client => {
+          {pager.items.map(client => {
             const clientSiteReqs = siteRequests.filter(r => r.clientId === client.id || r.clientName === client.clientCompany);
             return (
               <div key={client.id} onClick={() => setSelectedClient(client)}
@@ -276,6 +278,7 @@ export default function ClientsPage() {
           })}
         </div>
       )}
+      <ListPager pager={pager} noun="clients" />
 
       {/* Client Detail Popup */}
       <Dialog open={!!selectedClient} onOpenChange={open => !open && setSelectedClient(null)}>

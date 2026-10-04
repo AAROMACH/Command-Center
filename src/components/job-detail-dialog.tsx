@@ -15,7 +15,7 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn, formatCityState, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
+import { cn, formatCityState, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment, techDisplayName } from '@/lib/utils';
 import {
   MapPin, Calendar, Clock, DollarSign,
   Check, AlertTriangle, ShieldCheck,
@@ -33,6 +33,9 @@ import {
   orderBy, limit, doc, updateDoc, arrayUnion,
 } from 'firebase/firestore';
 import { useDirectory } from '@/hooks/use-directory';
+import { useAuth } from '@/contexts/auth-context';
+import { useTechJobActions } from '@/hooks/use-tech-job-actions';
+import { canConfirm } from '@/lib/trip-flow';
 import type { WorkOrder, WeeklyLog, WeeklyLogItem, AssignmentTimeLog, Technician, TripLog } from '@/lib/types';
 import { displayWorkOrderNumber, isImported } from '@/lib/work-order-identity';
 import { fileCompletedJob, moveJobLogOnSwap, describeSwapLogMove } from '@/lib/weekly-log';
@@ -147,6 +150,8 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }:
   // Full user records for admins; the public directory for techs (who can't
   // read `users`, so names here used to be blank on the tech side).
   const technicians = useDirectory();
+  const { user: authUser, isAdmin: isAdminUser } = useAuth();
+  const { run: runTechAction } = useTechJobActions(authUser?.id || null, techDisplayName(authUser));
   const [auditEvents, setAuditEvents] = useState<any[]>([]);
   const [swapOpen, setSwapOpen] = useState(false);
   const [helperOpen, setHelperOpen] = useState(false);
@@ -372,9 +377,21 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }:
     ? [...mission.history].sort((a, b) => (parseLocalDate(b.date)?.getTime() ?? 0) - (parseLocalDate(a.date)?.getTime() ?? 0))[0].date
     : mission.scheduleDate || '';
 
+  // Techs confirm through the shared workflow (same as every tech screen);
+  // admins mark it confirmed on whichever collection the job lives in — this
+  // used to always write to workOrders, so it did nothing for dispatched jobs.
   const handleVerify = async () => {
-    try { await updateDoc(doc(db, 'workOrders', mission.id), { status: 'confirmed' }); }
-    catch (e) { console.error('Verify failed:', e); }
+    if (!isAdminUser) {
+      await runTechAction(mission, 'confirm');
+      return;
+    }
+    try {
+      const coll = (await getDoc(doc(db, 'assignments', mission.id))).exists() ? 'assignments' : 'workOrders';
+      await updateDoc(doc(db, coll, mission.id), { status: 'confirmed', isAcknowledged: true });
+      toast({ title: 'Assignment Confirmed' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Verify failed', description: e?.message });
+    }
   };
 
   const logicGrid = [
@@ -392,9 +409,12 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }:
     { icon: Navigation,  label: 'Directions',        onClick: () => window.open(`https://maps.google.com/?q=${encodeURIComponent(mission.location || '')}`, '_blank') },
     { icon: Phone,       label: 'Call Client',       onClick: () => {} },
     { icon: MessageSquare, label: 'Message Client',  onClick: () => {} },
-    { icon: ShieldCheck, label: 'Verify Assignment', onClick: handleVerify },
-    { icon: hasAssignedTech ? RotateCcw : UserPlus, label: hasAssignedTech ? 'Swap Tech' : 'Assign Tech', onClick: () => { setSwapTechId(''); setSwapOpen(true); } },
-    { icon: UserPlus,    label: 'Add Helper',        onClick: () => { setHelperTechId(''); setHelperOpen(true); } },
+    ...(isAdminUser || canConfirm(mission) ? [{ icon: ShieldCheck, label: isAdminUser ? 'Verify Assignment' : 'Confirm', onClick: handleVerify }] : []),
+    // Reassigning is admin-only (the rules reject it for techs).
+    ...(isAdminUser ? [
+      { icon: hasAssignedTech ? RotateCcw : UserPlus, label: hasAssignedTech ? 'Swap Tech' : 'Assign Tech', onClick: () => { setSwapTechId(''); setSwapOpen(true); } },
+      { icon: UserPlus,    label: 'Add Helper',        onClick: () => { setHelperTechId(''); setHelperOpen(true); } },
+    ] : []),
   ];
 
   const footerItems = [

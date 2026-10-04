@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, setDoc, addDoc, arrayUnion } from 'firebase/firestore';
 import { makeMessageId } from '@/lib/doc-ids';
@@ -91,7 +92,7 @@ import { Separator } from '@/components/ui/separator';
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { cn, formatCityState } from '@/lib/utils';
-import { isArchivedJob, archiveJobRecord, jobTechId, weekOfValue, parseLocalDate, mergeJobs } from '@/lib/jobs';
+import { isArchivedJob, archiveJobRecord, jobTechId, weekOfValue, parseLocalDate, mergeJobs, jobDateTimeValue } from '@/lib/jobs';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { IntelligenceTerminal } from './components/intelligence-terminal';
 import type { Technician, WorkOrder, WeeklyLog, TimeOffRequest, AdminMessage, Invoice, Project } from '@/lib/types';
@@ -779,6 +780,20 @@ export default function ActivityAuditPage() {
         });
     }, [timelineEvents, archivedEventIds, timelineTechFilter, timelineTypeFilter, timelineClientFilter]);
 
+    // Paged lists (components/list-pager.tsx).
+    const timelinePager = usePaged(filteredTimelineEvents, PAGE_SIZES_LARGE, 'reports-timeline', [timelineTechFilter, timelineTypeFilter, timelineClientFilter]);
+    const visitsPager = usePaged(sortedTechVisits, PAGE_SIZES_LARGE, 'reports-tech-visits', [selectedTechId]);
+    const archivePager = usePaged(archiveItems, PAGE_SIZES_LARGE, 'reports-archive');
+    // Completed work (archived jobs live in the Archive tab), newest first by
+    // scheduled date — a string sort mixed date formats.
+    const reportsCompletedJobs = useMemo(() => mergeJobs(workOrders, assignments)
+        .filter(wo => wo.status === 'completed' && !isArchivedJob(wo))
+        .sort((a, b) => jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime)),
+        [workOrders, assignments]);
+    const completedJobsPager = usePaged(reportsCompletedJobs, PAGE_SIZES_LARGE, 'reports-completed-jobs');
+    const reportsCompletedProjects = useMemo(() => projects.filter(p => p.status === 'completed'), [projects]);
+    const completedProjectsPager = usePaged(reportsCompletedProjects, PAGE_SIZES_SMALL, 'reports-completed-projects');
+
     const searchResults = useMemo(() => {
         if (!searchQuery) return [];
         const q = searchQuery.toLowerCase();
@@ -1182,7 +1197,7 @@ export default function ActivityAuditPage() {
                                         </div>
                                     ) : (
                                         <div className="space-y-1">
-                                            {filteredTimelineEvents.slice(0, 100).map(event => {
+                                            {timelinePager.items.map(event => {
                                                 let tsDisplay = '';
                                                 try {
                                                     const d = new Date(event.timestamp);
@@ -1227,11 +1242,7 @@ export default function ActivityAuditPage() {
                                                     </div>
                                                 );
                                             })}
-                                            {filteredTimelineEvents.length > 100 && (
-                                                <p className="text-center text-[9px] text-text-muted font-bold uppercase py-4">
-                                                    Showing 100 of {filteredTimelineEvents.length} events. Use filters to narrow results.
-                                                </p>
-                                            )}
+                                            <ListPager pager={timelinePager} noun="events" />
                                         </div>
                                     )}
                                 </div>
@@ -1326,7 +1337,7 @@ export default function ActivityAuditPage() {
                                                                     </TableRow>
                                                                 </TableHeader>
                                                                 <TableBody>
-                                                                    {sortedTechVisits.map(wo => {
+                                                                    {visitsPager.items.map(wo => {
                                                                         const linkedLog = weeklyLogs.find(log => (log.items || []).some(item => item.workOrderId === wo.id));
                                                                         return (
                                                                             <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group text-left" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
@@ -1385,6 +1396,7 @@ export default function ActivityAuditPage() {
                                                                     })}
                                                                 </TableBody>
                                                             </Table>
+                                                            <ListPager pager={visitsPager} noun="visits" />
                                                         </div>
                                                     </TabsContent>
 
@@ -1453,9 +1465,7 @@ export default function ActivityAuditPage() {
                                     {(() => {
                                         // Archived jobs live in the Archive tab, not here — this is
                                         // purely a record of work that was actually completed.
-                                        const completedJobs = [...workOrders, ...assignments]
-                                            .filter(wo => wo.status === 'completed' && !isArchivedJob(wo))
-                                            .sort((a, b) => ((b.archivedAt || b.scheduleDate) || '').localeCompare((a.archivedAt || a.scheduleDate) || ''));
+                                        const completedJobs = reportsCompletedJobs;
                                         // A job the tech disputed still shows "completed" on the log
                                         // item itself — but once that log is Approved, the assignment
                                         // record should read Disputed here, not Completed, so a
@@ -1497,7 +1507,7 @@ export default function ActivityAuditPage() {
                                                             </TableRow>
                                                         </TableHeader>
                                                         <TableBody>
-                                                            {completedJobs.map(wo => {
+                                                            {completedJobsPager.items.map(wo => {
                                                                 const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || wo.techId));
                                                                 return (
                                                                     <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary cursor-pointer" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
@@ -1523,6 +1533,7 @@ export default function ActivityAuditPage() {
                                                             )}
                                                         </TableBody>
                                                     </Table>
+                                                    <ListPager pager={completedJobsPager} noun="jobs" />
                                                 </div>
                                             </>
                                         );
@@ -1533,7 +1544,7 @@ export default function ActivityAuditPage() {
                             <TabsContent value="project_history" className="m-0 text-left">
                                 <div className="space-y-4">
                                     {(() => {
-                                        const completedProjects = projects.filter(p => p.status === 'completed');
+                                        const completedProjects = reportsCompletedProjects;
                                         return (
                                             <>
                                                 <div className="flex items-center justify-between">
@@ -1560,7 +1571,7 @@ export default function ActivityAuditPage() {
                                                             </TableRow>
                                                         </TableHeader>
                                                         <TableBody>
-                                                            {completedProjects.map(p => (
+                                                            {completedProjectsPager.items.map(p => (
                                                                 <TableRow key={p.id} className="border-border-sub hover:bg-bg-tertiary">
                                                                     <TableCell className="py-3 pl-6">
                                                                         <p className="text-xs font-bold text-text-primary uppercase">{p.name}</p>
@@ -1576,6 +1587,7 @@ export default function ActivityAuditPage() {
                                                             )}
                                                         </TableBody>
                                                     </Table>
+                                                    <ListPager pager={completedProjectsPager} noun="projects" />
                                                 </div>
                                             </>
                                         );
@@ -1706,7 +1718,7 @@ export default function ActivityAuditPage() {
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
-                                                        {archiveItems.map(item => {
+                                                        {archivePager.items.map(item => {
                                                             const archivedDate = new Date(item.archivedAt);
                                                             const archivedDisplay = isNaN(archivedDate.getTime()) ? item.archivedAt || '—' : format(archivedDate, 'MMM d, yyyy');
                                                             return (
@@ -1741,6 +1753,7 @@ export default function ActivityAuditPage() {
                                                         })}
                                                     </TableBody>
                                                 </Table>
+                                                <ListPager pager={archivePager} noun="records" />
                                             </div>
                                         )}
                                     </div>

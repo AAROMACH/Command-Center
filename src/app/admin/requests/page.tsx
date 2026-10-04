@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import Link from 'next/link';
 import { db, auth } from '@/lib/firebase';
 import { collection, onSnapshot, doc, updateDoc, setDoc } from 'firebase/firestore';
@@ -181,6 +182,7 @@ export default function RequestsPage() {
     }
     return items;
   }, [allRequests, activeTab, sourceFilter, categoryFilter, statusFilter, priorityFilter, searchQuery]);
+  const pager = usePaged(filtered, PAGE_SIZES_SMALL, 'admin-requests', []);
 
   // ── Actions ──────────────────────────────────────────────────────────────
 
@@ -354,7 +356,7 @@ export default function RequestsPage() {
         </div>
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map(req => (
+          {pager.items.map(req => (
             <button key={req.id} type="button" onClick={() => setSelected(req)}
               className="rounded-xl border border-border-sub bg-bg-secondary p-4 space-y-2.5 text-left hover:border-border-main transition-colors flex flex-col">
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -391,7 +393,7 @@ export default function RequestsPage() {
         </div>
       ) : (
         <div className="space-y-1">
-          {filtered.map(req => (
+          {pager.items.map(req => (
             <button key={req.id} type="button" onClick={() => setSelected(req)}
               className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border-sub bg-bg-secondary hover:border-border-main transition-colors text-left">
               <div className="flex-1 min-w-0">
@@ -411,6 +413,8 @@ export default function RequestsPage() {
           ))}
         </div>
       )}
+
+      <ListPager pager={pager} noun="requests" />
 
       {/* Detail panel */}
       <Sheet open={!!selected} onOpenChange={v => !v && setSelected(null)}>

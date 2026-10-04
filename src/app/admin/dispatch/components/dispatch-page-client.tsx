@@ -36,7 +36,7 @@ import { useNewArrivals, ARRIVAL_KEYS, unassignedArrivalIds, reviewArrivalIds, r
 import { NewArrivalPing } from '@/components/new-arrival-ping';
 import { SearchField } from '@/components/search-field';
 import { SortControl, FiltersPopover, FilterSection, CheckboxFilter, DateRangeButton, type SortOptionDef } from '@/components/list-toolbar';
-import { parseLocalDate } from '@/lib/jobs';
+import { parseLocalDate, jobMatchesSearch } from '@/lib/jobs';
 
 const SERVICE_CATEGORIES = [
     'Installation',
@@ -264,17 +264,15 @@ export function DispatchPageClient() {
     }
   };
 
+  const techById = useMemo(() => new Map(technicians.map(t => [t.id, t])), [technicians]);
+
   const filterAndSort = (items: WorkOrder[]) => {
     let results = items.filter(order => {
       // Soft-archived records live on in Firestore for restore/dedup but must
       // never appear in the active Dispatch Hub.
       if (isArchivedJob(order)) return false;
-      const q = searchQuery.toLowerCase();
-      const matchesSearch = 
-        (order.id || '').toLowerCase().includes(q) ||
-        (order.title || '').toLowerCase().includes(q) ||
-        (order.description || '').toLowerCase().includes(q) ||
-        (order.clientName || '').toLowerCase().includes(q);
+      // Job fields plus lead/helper tech names (incl. preferred names).
+      const matchesSearch = jobMatchesSearch(order, searchQuery, techById);
       
       const matchesPriority = activePriorities.length === 0 || activePriorities.includes(order.priority);
       const matchesType = activeTypes.length === 0 || activeTypes.includes(order.projectType);
@@ -504,7 +502,7 @@ export function DispatchPageClient() {
               <SearchField
                 value={searchQuery}
                 onChange={setSearchQuery}
-                placeholder="Search registry..."
+                placeholder="Search job, client, or tech..."
                 className="basis-full md:basis-auto md:w-[260px]"
               />
               <div className="flex w-full gap-2 sm:w-auto">

@@ -235,3 +235,25 @@ export function mergeJobs(workOrders: WorkOrder[], assignments: WorkOrder[]): Jo
   }
   return out;
 }
+
+/**
+ * One search rule for job lists (Assignments, Dispatch Hub): matches the job
+ * id / FN number, title, description, client, location, and the name or
+ * preferred name of the lead tech and any helper techs.
+ */
+export function jobMatchesSearch(
+  job: Partial<WorkOrder> & { id: string },
+  query: string,
+  techById: Map<string, { name?: string; preferredName?: string }>,
+): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const techIds = [jobTechId(job), ...(job.assignedTechIds || []), ...(job.additionalTechnicianIds || [])]
+    .filter((t): t is string => !!t);
+  const fields = [
+    job.id, job.workOrderId, (job as { externalWorkOrderId?: string }).externalWorkOrderId,
+    job.title, job.description, job.clientName, job.location,
+    ...techIds.flatMap(t => [techById.get(t)?.name, techById.get(t)?.preferredName]),
+  ];
+  return fields.some(f => typeof f === 'string' && f.toLowerCase().includes(q));
+}

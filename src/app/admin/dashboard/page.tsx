@@ -46,7 +46,7 @@ import { cn, compareScheduleTime, isInactiveTechnician } from '@/lib/utils';
 import type { WorkOrder, Technician, Project, WeeklyLog, SiteRequest, ServiceRequest, TimeOffRequest, Invoice } from '@/lib/types';
 import { isArchivedJob, jobTechId, parseLocalDate, mergeJobs } from '@/lib/jobs';
 import { computeWeeklyLogSettlement } from '@/lib/payroll';
-import { money } from '@/lib/financial-summary';
+import { money, computeFinancialSummary } from '@/lib/financial-summary';
 import { computeSla, slaStatusColor, SLA_DEFAULTS } from '@/lib/sla';
 import { Timer, AlertTriangle as SlaAlertIcon } from 'lucide-react';
 import { format, parseISO, isSameDay, startOfMonth } from 'date-fns';
@@ -57,6 +57,7 @@ export default function DashboardPage() {
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
+    const [completedJobs, setCompletedJobs] = useState<WorkOrder[]>([]);
     const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
     const [clientRequests, setClientRequests] = useState<ServiceRequest[]>([]);
     const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
@@ -126,8 +127,15 @@ export default function DashboardPage() {
             setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
         });
 
+        // Completed jobs feed MTD revenue / profit (same model as Financials).
+        const unsubDone = onSnapshot(
+            query(collection(db, 'assignments'), where('status', '==', 'completed')),
+            (snap) => setCompletedJobs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder))),
+            () => setCompletedJobs([]),
+        );
+
         return () => {
-            unsubUser(); unsubWO(); unsubAsmt(); unsubTech(); unsubProj();
+            unsubUser(); unsubWO(); unsubAsmt(); unsubTech(); unsubProj(); unsubDone();
             unsubLogs(); unsubSite(); unsubClientReq(); unsubTOR(); unsubInv();
         };
     }, []);
@@ -228,20 +236,19 @@ export default function DashboardPage() {
         }).sort((a, b) => compareScheduleTime(a.scheduleTime, b.scheduleTime));
     }, [workOrders, assignments]);
 
+    // Same calculation as the Financials cards (lib/financial-summary.ts):
+    // revenue = pay on jobs completed this month (or their paid invoice) +
+    // paid invoices not tied to a job; profit = Aaromach portion.
     const financialKpis = useMemo(() => {
-        const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const mtdRevenue = invoices
-            .filter(inv => {
-                const d = parseLocalDate(inv.issueDate); return !!d && d >= monthStart && inv.status === 'paid';
-            })
-            .reduce((s, inv) => s + money(inv.total), 0);
-        // Matches Financials' Outstanding A/R: drafts were never sent, so they aren't receivable.
-        const outstanding = invoices
-            .filter(inv => inv.status === 'sent' || inv.status === 'overdue')
-            .reduce((s, inv) => s + money(inv.total), 0);
-        return { mtdRevenue, outstanding, upcomingPayroll: pendingPay };
-    }, [invoices, pendingPay]);
+        const allJobs = new Map(mergeJobs(workOrders, [...assignments, ...completedJobs]).map(j => [j.id, j as WorkOrder]));
+        const summary = computeFinancialSummary({ invoices, expenses: [], weeklyLogs, jobsById: allJobs });
+        return {
+            mtdRevenue: Math.round(summary.month.revenue),
+            mtdProfit: Math.round(summary.month.profit),
+            outstanding: Math.round(summary.receivableTotal),
+            upcomingPayroll: Math.round(pendingPay),
+        };
+    }, [invoices, weeklyLogs, workOrders, assignments, completedJobs, pendingPay]);
 
     const availablePortals = useMemo(() => getAvailablePortals(currentUser), [currentUser]);
     const techPortal = useMemo(() => availablePortals.find(p => p.id === 'tech'), [availablePortals]);
@@ -290,6 +297,13 @@ export default function DashboardPage() {
                     <div>
                         <p className="text-[7px] font-black uppercase tracking-widest text-text-muted">MTD Revenue</p>
                         <p className="text-[12px] font-bold font-mono text-text-green">${financialKpis.mtdRevenue.toLocaleString()}</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary">
+                    <TrendingUp size={11} className="text-text-green shrink-0" />
+                    <div>
+                        <p className="text-[7px] font-black uppercase tracking-widest text-text-muted">MTD Aaromach Profit</p>
+                        <p className={cn('text-[12px] font-bold font-mono', financialKpis.mtdProfit >= 0 ? 'text-text-green' : 'text-text-red')}>${financialKpis.mtdProfit.toLocaleString()}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary">

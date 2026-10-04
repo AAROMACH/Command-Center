@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { db, auth } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, where, runTransaction } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
@@ -407,6 +408,16 @@ export default function PayrollAuditPage() {
 
     const statusVariant = (s: string): any => s === 'Approved' ? 'active' : s === 'Submitted' ? 'scheduled' : s === 'Rejected' ? 'destructive' : 'onhold';
 
+    // Paged lists (see components/list-pager.tsx).
+    const logsPager = usePaged(filteredLogs, PAGE_SIZES_LARGE, 'payroll-audit-logs');
+    const stubTechPager = usePaged(approvedLogsByTech, PAGE_SIZES_SMALL, 'payroll-stub-techs');
+    const [allStubsFor, setAllStubsFor] = useState<Set<string>>(new Set());
+    const sortedDisputes = useMemo(() => [...payrollDisputes].sort((a, b) => (a.status === b.status ? (b.createdAt || '').localeCompare(a.createdAt || '') : a.status === 'open' ? -1 : 1)), [payrollDisputes]);
+    const disputePager = usePaged(sortedDisputes, PAGE_SIZES_SMALL, 'payroll-disputes');
+    // Copy before sorting — sorting the state array in render mutated it.
+    const sortedAdjustments = useMemo(() => [...adjustments].sort((a, b) => (b.date || '').localeCompare(a.date || '')), [adjustments]);
+    const adjPager = usePaged(sortedAdjustments, PAGE_SIZES_LARGE, 'payroll-adjustments');
+
     const renderLogList = (logs: WeeklyLog[]) => (
         logs.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
@@ -788,7 +799,8 @@ export default function PayrollAuditPage() {
                             {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[9px] text-brand-red font-black uppercase hover:underline">Clear</button>}
                         </div>
                     </div>
-                    {renderLogList(filteredLogs)}
+                    {renderLogList(logsPager.items)}
+                    <ListPager pager={logsPager} noun="logs" />
                 </TabsContent>
 
 
@@ -799,7 +811,7 @@ export default function PayrollAuditPage() {
                             <Receipt size={28} className="text-text-muted mx-auto mb-3" />
                             <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">No approved logs yet</p>
                         </div>
-                    ) : approvedLogsByTech.map(([techId, { tech, logs }]) => (
+                    ) : stubTechPager.items.map(([techId, { tech, logs }]) => (
                         <div key={techId} className="rounded-xl border border-border-sub bg-bg-secondary overflow-hidden">
                             <div className="flex items-center justify-between px-4 py-3 bg-bg-tertiary/30 border-b border-border-sub">
                                 <div>
@@ -809,7 +821,7 @@ export default function PayrollAuditPage() {
                                 <Badge variant="active" className="text-[7px] uppercase h-4">{logs.length} stubs</Badge>
                             </div>
                             <div className="divide-y divide-border-sub">
-                                {logs.slice(0, 12).map(log => (
+                                {(allStubsFor.has(techId) ? logs : logs.slice(0, 12)).map(log => (
                                     <div key={log.id} className="flex items-center justify-between px-4 py-2.5">
                                         <div>
                                             <p className="text-[10px] font-bold text-text-primary font-mono">Week of {log.weekOf}</p>
@@ -824,8 +836,17 @@ export default function PayrollAuditPage() {
                                     </div>
                                 ))}
                             </div>
+                            {logs.length > 12 && (
+                                <button
+                                    className="w-full px-4 py-2 text-[9px] font-black uppercase tracking-widest text-text-muted hover:text-text-primary border-t border-border-sub"
+                                    onClick={() => setAllStubsFor(prev => { const n = new Set(prev); n.has(techId) ? n.delete(techId) : n.add(techId); return n; })}
+                                >
+                                    {allStubsFor.has(techId) ? 'Show latest 12' : `Show all ${logs.length} stubs`}
+                                </button>
+                            )}
                         </div>
                     ))}
+                    <ListPager pager={stubTechPager} noun="techs" />
                 </TabsContent>
 
                 {/* ── Adjustments ── */}
@@ -841,7 +862,7 @@ export default function PayrollAuditPage() {
                                 Payroll Disputes ({payrollDisputes.filter(d => d.status === 'open').length} open)
                             </p>
                             <div className="space-y-2">
-                                {[...payrollDisputes].sort((a, b) => (a.status === b.status ? b.createdAt.localeCompare(a.createdAt) : a.status === 'open' ? -1 : 1)).map(dispute => {
+                                {disputePager.items.map(dispute => {
                                     const isOpenDispute = dispute.status === 'open';
                                     const reasonLabel = dispute.reason === 'incorrect_pay' ? 'Incorrect Pay'
                                         : dispute.reason === 'missing_reimbursement' ? 'Missing Reimbursement'
@@ -892,6 +913,7 @@ export default function PayrollAuditPage() {
                                     );
                                 })}
                             </div>
+                            <ListPager pager={disputePager} noun="disputes" />
                         </div>
                     )}
 
@@ -913,7 +935,7 @@ export default function PayrollAuditPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {adjustments.sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(adj => {
+                                {adjPager.items.map(adj => {
                                     const tech = technicians.find(t => t.id === adj.techId);
                                     const amount = parseFloat(adj.amount || 0);
                                     return (
@@ -936,6 +958,7 @@ export default function PayrollAuditPage() {
                             </TableBody>
                         </Table>
                     </div>
+                    <ListPager pager={adjPager} noun="adjustments" />
                 </TabsContent>
 
             </Tabs>

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { createAuthUser } from '../actions';
 import { auth } from '@/lib/firebase';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import { isTech, isClient } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import {
@@ -212,7 +212,14 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
             toast({ variant: "destructive", title: "Not signed in", description: "Please sign in again and retry." });
             return;
         }
-        const { uid, error } = await createAuthUser(formData.email!, idToken);
+        const res = await fetch('/api/admin/create-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+            body: JSON.stringify({ email: formData.email }),
+        });
+        const created = await res.json().catch(() => ({}));
+        const uid: string | null = res.ok ? created.uid : null;
+        const error: string | null = res.ok ? null : (created.error || `Account creation failed (${res.status}).`);
 
         if (error || !uid) {
             const isAlreadyExists = error?.toLowerCase().includes('already exists') || error?.toLowerCase().includes('already in use');
@@ -238,9 +245,20 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         };
         onSave(newPerson);
 
+        // The server only creates the account; this actually emails the
+        // person a link to set their password (it used to claim an email was
+        // sent when none was).
+        let emailed = true;
+        try {
+            await sendPasswordResetEmail(auth, formData.email!);
+        } catch {
+            emailed = false;
+        }
         toast({
             title: "Operative Enrolled",
-            description: `Auth account created. Password setup email sent to ${formData.email}.`
+            description: emailed
+                ? `Auth account created. Password setup email sent to ${formData.email}.`
+                : `Auth account created, but the password email couldn't be sent. Use "Forgot password" on the login page for ${formData.email}.`,
         });
 
         handleReset();

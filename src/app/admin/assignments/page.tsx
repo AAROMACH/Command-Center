@@ -76,7 +76,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { isAdmin, isPayAdmin } from "@/lib/permissions";
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { WorkOrderId } from '@/components/work-order-id';
-import { jobTechId, isArchivedJob, isCompletedJob, jobDateTimeValue, archiveJobRecord, toUnassignedWorkOrder, JOB_STATUS_OPTIONS, compareJobStatus } from '@/lib/jobs';
+import { jobTechId, isArchivedJob, isCompletedJob, jobDateTimeValue, archiveJobRecord, toUnassignedWorkOrder, JOB_STATUS_OPTIONS, compareJobStatus, jobMatchesSearch } from '@/lib/jobs';
 import { syncWeeklyLogForAdminStatusEdit, moveJobLogOnSwap, describeSwapLogMove } from '@/lib/weekly-log';
 
 const ADMIN_SORT_OPTIONS: SortOptionDef[] = [
@@ -224,21 +224,13 @@ export default function AssignmentsHubPage() {
       ? { label: 'Verified', cls: 'bg-text-green/10 text-text-green border-text-green/30' }
       : { label: 'Not Logged', cls: 'bg-bg-tertiary text-text-muted border-border-sub' });
 
+  const techById = useMemo(() => new Map(technicians.map(t => [t.id, t])), [technicians]);
+
   const filteredWorkOrders = useMemo(() => {
     return workOrders
       .filter(wo => {
-        const techId = jobTechId(wo);
-        
-        const tech = technicians.find(t => t.id === techId);
-        const queryStr = deferredSearch.toLowerCase();
-        
-        const matchesSearch = (
-          (wo.id || '').toLowerCase().includes(queryStr) ||
-          (wo.title || '').toLowerCase().includes(queryStr) ||
-          (wo.description || '').toLowerCase().includes(queryStr) ||
-          (wo.clientName || '').toLowerCase().includes(queryStr) ||
-          (tech && (tech.name || '').toLowerCase().includes(queryStr))
-        );
+        // Job fields plus lead/helper tech names (incl. preferred names).
+        const matchesSearch = jobMatchesSearch(wo, deferredSearch, techById);
 
         const matchesDate = !dateRange?.from || (() => {
             const woDate = parseTacticalDate(wo.scheduleDate);

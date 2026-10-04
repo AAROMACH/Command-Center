@@ -1,7 +1,10 @@
 import { startOfWeek, format, isValid } from 'date-fns';
-import { collection, query, where, getDocs, doc, setDoc, runTransaction } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, updateDoc, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { WeeklyLogItem } from '@/lib/types';
+import { createDocId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
+import type { WeeklyLog, WeeklyLogItem, WorkOrder } from '@/lib/types';
+import { externalWorkOrderId, normalizeExternalId } from '@/lib/work-order-identity';
 
 /**
  * The Monday-based `weekOf` key ('MM-dd-yyyy') for a work order's scheduled
@@ -246,4 +249,248 @@ export async function fileCompletedAssignment(opts: {
   // Scheduled week's log is closed — file in the reporting week, flagged.
   await fileInReportingWeek(techId, item, scheduledWeek, reportingWeek, makeLogId);
   return { weekOf: reportingWeek, placedIn: 'reporting_week_override' };
+}
+
+// ── Completed-job coverage ──────────────────────────────────────────────────
+//
+// A job only reaches a weekly log when something files it at completion time.
+// The helpers below let every completion path share one item shape, and let
+// the self-healing sync (use-helper-log-sync.ts) and the admin "Unlogged" audit
+// agree on what counts as "already in a log".
+
+/** Work-order ids a set of logs already accounts for: filed items, plus
+ *  missing-job reports (pending or settled through payroll, so they must not
+ *  be double-filed) — matched by linked assignment id, or by Field Nation
+ *  number for reports the tech typed in by hand (stored as `ext:<number>`). */
+export function loggedWorkOrderIds(logs: Pick<WeeklyLog, 'items' | 'missingAssignmentReports'>[]): Set<string> {
+  const ids = new Set<string>();
+  for (const log of logs) {
+    (log.items || []).forEach(i => { if (i.workOrderId) ids.add(i.workOrderId); });
+    (log.missingAssignmentReports || []).forEach(r => {
+      if (r.assignmentId) ids.add(r.assignmentId);
+      const ext = normalizeExternalId(r.externalWorkOrderId);
+      if (ext) ids.add(`ext:${ext}`);
+    });
+  }
+  return ids;
+}
+
+/** Whether a job is accounted for by `ids` — matched by its doc id or, for
+ *  jobs that moved from workOrders → assignments, its original workOrderId. */
+export function isJobLogged(job: Pick<WorkOrder, 'id' | 'workOrderId'>, ids: Set<string>): boolean {
+  if (ids.has(job.id) || (!!job.workOrderId && ids.has(job.workOrderId))) return true;
+  const ext = normalizeExternalId(externalWorkOrderId(job as Partial<WorkOrder>));
+  return !!ext && ids.has(`ext:${ext}`);
+}
+
+export async function buildCompletedJobItem(
+  job: Pick<WorkOrder, 'id' | 'pay' | 'scheduleDate'>,
+  filedVia: WeeklyLogItem['filedVia'],
+): Promise<WeeklyLogItem> {
+  return {
+    id: await createDocId(ID_PREFIXES.WEEKLY_LOG_ITEM),
+    workOrderId: job.id,
+    jobPay: job.pay,
+    outcomeCode: null,
+    isComplete: true,
+    isAdminReviewed: false,
+    workDate: job.scheduleDate,
+    filedVia,
+  };
+}
+
+/** Files a completed job for `techId` using auto placement (scheduled week if
+ *  its log is open, otherwise the reporting week, flagged). */
+export async function fileCompletedJob(opts: {
+  techId: string;
+  job: Pick<WorkOrder, 'id' | 'pay' | 'scheduleDate'>;
+  filedVia: WeeklyLogItem['filedVia'];
+}): Promise<FileCompletedResult> {
+  const item = await buildCompletedJobItem(opts.job, opts.filedVia);
+  return fileCompletedAssignment({
+    techId: opts.techId,
+    scheduleDate: opts.job.scheduleDate,
+    item,
+    makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
+  });
+}
+
+/**
+ * Jobs a tech is in the middle of completing — between the status write and
+ * the "which week?" answer. The self-healing sync skips these so it can't
+ * file a job out from under the tech's choice. Entries expire so a prompt the
+ * tech walked away from (closed tab, back button) doesn't block the sync
+ * forever.
+ */
+const COMPLETION_IN_FLIGHT_TTL_MS = 10 * 60 * 1000;
+/** Kept briefly after filing so a weekly-log snapshot that hasn't caught up
+ *  yet can't make the sync see the job as unlogged and file it twice. */
+const COMPLETION_SETTLE_MS = 60 * 1000;
+const completionsInFlight = new Map<string, number>(); // workOrderId → expiry
+
+export function beginCompletionFiling(workOrderId: string) {
+  completionsInFlight.set(workOrderId, Date.now() + COMPLETION_IN_FLIGHT_TTL_MS);
+}
+
+export function endCompletionFiling(workOrderId: string) {
+  completionsInFlight.set(workOrderId, Date.now() + COMPLETION_SETTLE_MS);
+}
+
+export function isCompletionFilingInFlight(workOrderId: string): boolean {
+  const expiresAt = completionsInFlight.get(workOrderId);
+  if (expiresAt === undefined) return false;
+  if (Date.now() > expiresAt) {
+    completionsInFlight.delete(workOrderId);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Removes a job's item from a tech's Draft logs — used when a job is
+ * re-opened (or re-completed, to avoid stacking). Submitted/Approved logs are
+ * left alone; those are payroll's to adjust.
+ */
+export async function removeJobFromDraftLogs(techId: string, workOrderId: string) {
+  const snap = await getDocs(query(
+    collection(db, 'weeklyLogs'),
+    where('techId', '==', techId),
+    where('status', '==', 'Draft'),
+  ));
+  for (const logDoc of snap.docs) {
+    const items = (logDoc.data().items || []) as WeeklyLogItem[];
+    const kept = items.filter(i => i.workOrderId !== workOrderId);
+    if (kept.length !== items.length) await updateDoc(logDoc.ref, { items: kept });
+  }
+}
+
+/**
+ * Keeps weekly logs in step when an admin edits a job's status directly
+ * (admin assignment edit dialogs). Moving a job INTO completed files it for
+ * its tech; moving it OUT of completed pulls it from their open Draft logs.
+ */
+export async function syncWeeklyLogForAdminStatusEdit(opts: {
+  prevStatus: WorkOrder['status'] | undefined;
+  job: Pick<WorkOrder, 'id' | 'pay' | 'scheduleDate' | 'status' | 'payrollExcluded'>;
+  techId: string | null | undefined;
+}) {
+  const { prevStatus, job, techId } = opts;
+  if (!techId || prevStatus === job.status) return;
+  if (job.status === 'completed' && !job.payrollExcluded) {
+    await fileCompletedJob({ techId, job, filedVia: 'admin_status_edit' });
+  } else if (prevStatus === 'completed') {
+    await removeJobFromDraftLogs(techId, job.id);
+  }
+}
+
+export type SwapLogMoveResult = {
+  /** Open logs (Draft/Submitted/Rejected) on the previous tech the job was pulled from. */
+  removedFrom: string[];
+  /** Week the job was filed into on the new tech, when it was completed. */
+  filedWeekOf?: string;
+  /** Approved/Paid logs on the previous tech that still hold the job — left
+   *  untouched (settled pay), and the job was NOT filed to the new tech so it
+   *  can't be paid twice. Payroll has to adjust these by hand. */
+  lockedWeeks: string[];
+};
+
+const isLockedLog = (log: WeeklyLog) => {
+  const status = log.status as string;
+  const flags = log as { paid?: boolean; archived?: boolean };
+  return status === 'Approved' || status === 'Paid' || flags.paid === true || flags.archived === true;
+};
+
+/**
+ * Moves a job's weekly-log entry when its lead tech is swapped, so it leaves
+ * the previous tech's log and lands on the new tech's — mirroring how the job
+ * itself leaves the previous tech's views (techId changes) and appears in
+ * the new tech's.
+ *
+ *  - Pulled from every OPEN log of the previous tech. Their reimbursements
+ *    for the job stay with them — that's money they spent.
+ *  - If the job is completed (and payable) it's filed on the new tech with
+ *    auto placement, carrying over payroll-entered figures (jobPay,
+ *    payoutAmount, payNotes, outcomeCode) but with confirmation/review reset
+ *    since the new tech hasn't confirmed it. Any $0 helper entry the new tech
+ *    had for the job is replaced.
+ *  - If the previous tech's entry sits on an Approved/Paid log, nothing is
+ *    moved (see SwapLogMoveResult.lockedWeeks).
+ */
+export async function moveJobLogOnSwap(opts: {
+  job: Pick<WorkOrder, 'id' | 'workOrderId' | 'pay' | 'scheduleDate' | 'status' | 'payrollExcluded'>;
+  /** Previous tech id(s). Pass both the raw `techId` and
+   *  `assignedTechnicianId` — a doc desynced by an old swap may have filed
+   *  under either. Blanks and the new tech are ignored. */
+  fromTechIds: (string | null | undefined)[];
+  toTechId: string | null | undefined;
+}): Promise<SwapLogMoveResult> {
+  const { job, toTechId } = opts;
+  const result: SwapLogMoveResult = { removedFrom: [], lockedWeeks: [] };
+  const fromTechIds = [...new Set(opts.fromTechIds.filter((t): t is string => !!t && t !== toTechId))];
+  if (!toTechId || fromTechIds.length === 0) return result;
+  const jobIds = new Set([job.id, job.workOrderId].filter(Boolean) as string[]);
+  const matches = (i: WeeklyLogItem) => jobIds.has(i.workOrderId);
+
+  const fromLogDocs = (await Promise.all(fromTechIds.map(t =>
+    getDocs(query(collection(db, 'weeklyLogs'), where('techId', '==', t)))))).flatMap(snap => snap.docs);
+  let carried: WeeklyLogItem | null = null;
+  for (const logDoc of fromLogDocs) {
+    const data = logDoc.data() as WeeklyLog;
+    const hit = (data.items || []).find(matches);
+    if (!hit) continue;
+    if (isLockedLog(data)) { result.lockedWeeks.push(data.weekOf); continue; }
+    await runTransaction(db, async tx => {
+      const fresh = await tx.get(logDoc.ref);
+      if (!fresh.exists()) return;
+      const items = (fresh.data().items || []) as WeeklyLogItem[];
+      const kept = items.filter(i => !matches(i));
+      if (kept.length !== items.length) tx.update(logDoc.ref, { items: kept });
+    });
+    carried = carried || hit;
+    result.removedFrom.push(data.weekOf);
+  }
+
+  if (result.lockedWeeks.length > 0) return result;
+  if (job.status !== 'completed' || job.payrollExcluded) return result;
+
+  // The new lead may have been a helper on this job — drop their $0 entry
+  // from open logs so the lead entry replaces it instead of being deduped.
+  const toLogs = await getDocs(query(collection(db, 'weeklyLogs'), where('techId', '==', toTechId)));
+  for (const logDoc of toLogs.docs) {
+    const data = logDoc.data() as WeeklyLog;
+    if (isLockedLog(data)) continue;
+    const items = data.items || [];
+    if (!items.some(i => matches(i) && i.isHelper)) continue;
+    await updateDoc(logDoc.ref, { items: items.filter(i => !(matches(i) && i.isHelper)) });
+  }
+
+  const base = await buildCompletedJobItem(job, 'tech_swap');
+  const item: WeeklyLogItem = carried && !carried.isHelper
+    ? {
+        ...base,
+        jobPay: carried.jobPay ?? base.jobPay,
+        ...(carried.payoutAmount !== undefined ? { payoutAmount: carried.payoutAmount } : {}),
+        ...(carried.payNotes ? { payNotes: carried.payNotes } : {}),
+        outcomeCode: carried.outcomeCode ?? null,
+        workDate: carried.workDate || base.workDate,
+      }
+    : base;
+  const filed = await fileCompletedAssignment({
+    techId: toTechId,
+    scheduleDate: job.scheduleDate,
+    item,
+    makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
+  });
+  result.filedWeekOf = filed.weekOf;
+  return result;
+}
+
+/** One-line toast text for a swap's log move. */
+export function describeSwapLogMove(r: SwapLogMoveResult, fromName: string, toName: string): { text: string; warn: boolean } | null {
+  if (r.lockedWeeks.length) {
+    return { warn: true, text: `Already on ${fromName}'s approved log (week of ${r.lockedWeeks.join(', ')}) — not moved. Adjust in Payroll Audit.` };
+  }
+  if (r.filedWeekOf) return { warn: false, text: `Weekly log entry moved to ${toName} (week of ${r.filedWeekOf}).` };
+  if (r.removedFrom.length) return { warn: false, text: `Removed from ${fromName}'s weekly log.` };
+  return null;
 }

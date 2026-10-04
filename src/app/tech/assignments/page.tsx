@@ -1,13 +1,15 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
+import { SearchField } from '@/components/search-field';
+import { SortControl, FiltersPopover, FilterSection, CheckboxFilter, DateRangeFilter, type SortOptionDef } from '@/components/list-toolbar';
 
 const MapView = dynamic(() => import('../map/components/map-view'), {
     ssr: false,
     loading: () => <div className="flex items-center justify-center h-full bg-bg-secondary text-text-muted text-[10px] uppercase tracking-widest">Loading map...</div>,
 });
-import type { WorkOrder, Technician, WeeklyLog, WeeklyLogItem } from '@/lib/types';
+import type { WorkOrder, Technician } from '@/lib/types';
 import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,7 +21,6 @@ import {
   CheckCircle2,
   Wrench,
   ArrowUpDown,
-  Search,
   ExternalLink,
   Navigation,
   Play,
@@ -27,7 +28,6 @@ import {
   LogOut,
   FileCheck,
   RotateCcw,
-  X,
   History,
   AlertCircle,
   Lock,
@@ -35,32 +35,18 @@ import {
   Map as MapIcon,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { format, isSameDay, parseISO, startOfDay, startOfWeek } from 'date-fns';
 import { cn, formatCityState, getTacticalLocation } from '@/lib/utils';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, setDoc, arrayUnion } from 'firebase/firestore';
-import { createDocId } from '@/lib/generateId';
-import { ID_PREFIXES } from '@/lib/constants';
+import { collection, onSnapshot, query, where, doc, updateDoc, setDoc, arrayUnion } from 'firebase/firestore';
 import { fieldNationUrl, displayWorkOrderNumber } from '@/lib/work-order-identity';
-import { fileCompletedAssignment, resolveCompletionPlacement, type CompletionPlacement } from '@/lib/weekly-log';
+import { removeJobFromDraftLogs } from '@/lib/weekly-log';
+import { useCompletionFiling } from '@/hooks/use-completion-filing';
 import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete, reopenStatusFor } from '@/lib/trip-flow';
 import { jobDateTimeValue, isArchivedJob } from '@/lib/jobs';
-import { CompletionWeekDialog } from '@/components/completion-week-dialog';
 import { Car, MoreVertical, Ban, XCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { LogTripDialog } from './components/log-trip-dialog';
@@ -83,6 +69,12 @@ const formatDateStr = (dateStr: string) => {
     }
 };
 
+const TECH_SORT_OPTIONS: SortOptionDef[] = [
+    { value: 'date', label: 'Date' },
+    { value: 'priority', label: 'Priority' },
+    { value: 'pay', label: 'Pay' },
+];
+
 export default function TechAssignmentsPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -92,16 +84,22 @@ export default function TechAssignmentsPage() {
     const [sortBy, setSortBy] = useState<string>('date');
     const [dateAsc, setDateAsc] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    // Filtering (and re-rendering every card) lags a keystroke behind so the
+    // search box itself never waits on it — see components/search-field.tsx.
+    const deferredSearch = useDeferredValue(searchQuery);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+    const [activePriorities, setActivePriorities] = useState<string[]>([]);
+    const activeFilterCount = (dateRange?.from ? 1 : 0) + activePriorities.length;
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'active');
 
     const [isTripDialogOpen, setIsTripDialogOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
     const [mapSelectedJob, setMapSelectedJob] = useState<WorkOrder | null>(null);
-    const [weekPrompt, setWeekPrompt] = useState<(CompletionPlacement & { item: WeeklyLogItem; scheduleDate: string | undefined }) | null>(null);
     const [newSinceLastVisit, setNewSinceLastVisit] = useState(0);
 
     const { toast } = useToast();
+
+    const { completeAndFile, weekDialog } = useCompletionFiling(currentTechId);
 
     useEffect(() => {
         setMounted(true);
@@ -151,7 +149,7 @@ export default function TechAssignmentsPage() {
         if (!currentTechId) return [];
         return allWorkOrders
             .filter(wo => {
-                const q = searchQuery.toLowerCase();
+                const q = deferredSearch.toLowerCase();
                 const matchesSearch = (
                     wo.id.toLowerCase().includes(q) ||
                     (wo.title || '').toLowerCase().includes(q) ||
@@ -188,9 +186,11 @@ export default function TechAssignmentsPage() {
                 // Soft-archived jobs never appear in a tech's active board.
                 if (wo.archived || wo.status === 'archived') return false;
 
-                return matchesSearch && matchesDate;
+                const matchesPriority = activePriorities.length === 0 || activePriorities.includes(wo.priority);
+
+                return matchesSearch && matchesDate && matchesPriority;
             });
-    }, [allWorkOrders, currentTechId, searchQuery, dateRange]);
+    }, [allWorkOrders, currentTechId, deferredSearch, dateRange, activePriorities]);
 
     const activeAssignments = useMemo(() => 
         techWorkOrders.filter(wo => wo.status !== 'unassigned' && wo.status !== 'completed' && wo.status !== 'cancelled'),
@@ -239,60 +239,7 @@ export default function TechAssignmentsPage() {
 
     const removeFromWeeklyLogs = async (woId: string) => {
         if (!currentTechId) return;
-        const logQuery = query(
-            collection(db, 'weeklyLogs'),
-            where('techId', '==', currentTechId),
-            where('status', '==', 'Draft')
-        );
-        const snap = await getDocs(logQuery);
-        for (const logDoc of snap.docs) {
-            const data = logDoc.data() as WeeklyLog;
-            const updatedItems = (data.items || []).filter(item => item.workOrderId !== woId);
-            if (updatedItems.length !== (data.items || []).length) {
-                await updateDoc(doc(db, 'weeklyLogs', logDoc.id), { items: updatedItems });
-            }
-        }
-    };
-
-    const syncToWeeklyLog = async (woId: string) => {
-        if (!currentTechId) return;
-
-        const wo = allWorkOrders.find(w => w.id === woId);
-        if (!wo) return;
-
-        const itemId = await createDocId(ID_PREFIXES.WEEKLY_LOG_ITEM);
-        const newItem: WeeklyLogItem = {
-            id: itemId,
-            workOrderId: woId,
-            jobPay: wo.pay,
-            outcomeCode: null,
-            isComplete: true,
-            isAdminReviewed: false
-        };
-        const placement = await resolveCompletionPlacement({ techId: currentTechId, scheduleDate: wo.scheduleDate });
-        if (placement.differentWeek) {
-            setWeekPrompt({ item: newItem, scheduleDate: wo.scheduleDate, ...placement });
-            return;
-        }
-        await fileCompletedAssignment({
-            techId: currentTechId,
-            scheduleDate: wo.scheduleDate,
-            item: newItem,
-            makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
-        });
-    };
-
-    const resolveWeekPrompt = async (choice: 'scheduled' | 'reporting') => {
-        if (!currentTechId || !weekPrompt) return;
-        await fileCompletedAssignment({
-            techId: currentTechId,
-            scheduleDate: weekPrompt.scheduleDate,
-            item: weekPrompt.item,
-            makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
-            placement: choice,
-        });
-        toast({ title: 'Filed to Weekly Log', description: choice === 'scheduled' ? `Added to the week of ${weekPrompt.scheduledWeek}.` : `Added to the current week (${weekPrompt.reportingWeek}).` });
-        setWeekPrompt(null);
+        await removeJobFromDraftLogs(currentTechId, woId);
     };
 
     const handleConfirm = async (woId: string) => {
@@ -353,18 +300,18 @@ export default function TechAssignmentsPage() {
         const now = format(new Date(), 'h:mm a');
         const location = await getTacticalLocation();
         const docRef = doc(db, 'assignments', woId);
-        
+        const wo = allWorkOrders.find(w => w.id === woId);
+        if (!wo) return;
+
         try {
-            await removeFromWeeklyLogs(woId);
-            await updateDoc(docRef, {
+            const result = await completeAndFile(wo, () => updateDoc(docRef, {
                 status: 'completed',
                 history: [
-                    ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
+                    ...(wo.history || []),
                     { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission finalized at ${now}. Status: CLOSED. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
                 ]
-            });
-            await syncToWeeklyLog(woId);
-            toast({ title: "Mission Finalized", description: "Mission moved to historical registry and current weekly log." });
+            }));
+            toast({ title: "Mission Finalized", description: result === 'filed' ? "Mission moved to historical registry and weekly log." : "Choose which weekly log should hold it." });
         } catch (e: any) {
             toast({ variant: "destructive", title: "Update Failed", description: e.message });
         }
@@ -463,14 +410,31 @@ export default function TechAssignmentsPage() {
                         <Car size={12} className="mr-1.5" />
                         Log Trip
                     </Button>
-                    <div className="search-wrap">
-                        <Search />
-                        <input
-                            className="search-input !w-full md:!w-[250px]"
-                            placeholder="Search assignments..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                    <SearchField
+                        value={searchQuery}
+                        onChange={setSearchQuery}
+                        placeholder="Search assignments..."
+                        className="basis-full md:basis-auto md:w-[260px]"
+                    />
+                    <div className="flex w-full gap-2 sm:w-auto">
+                        <SortControl
+                            value={sortBy}
+                            onChange={setSortBy}
+                            options={TECH_SORT_OPTIONS}
+                            dateAsc={dateAsc}
+                            onToggleDirection={() => setDateAsc(prev => !prev)}
+                            className="flex-1 sm:flex-none"
                         />
+                        <FiltersPopover
+                            activeCount={activeFilterCount}
+                            onReset={() => { setDateRange(undefined); setActivePriorities([]); }}
+                            className="shrink-0"
+                        >
+                            <FilterSection title="Priority">
+                                <CheckboxFilter idPrefix="prio" options={['critical', 'high', 'medium', 'low']} selected={activePriorities} onChange={setActivePriorities} />
+                            </FilterSection>
+                            <DateRangeFilter value={dateRange} onChange={setDateRange} />
+                        </FiltersPopover>
                     </div>
                 </div>
             </header>
@@ -507,7 +471,7 @@ export default function TechAssignmentsPage() {
             )}
 
             {viewMode === 'list' && <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub shadow-sm">
+                <div className="flex items-center justify-between gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-lg border border-border-sub shadow-sm">
                     <TabsList className="tabs !mb-0">
                         <TabsTrigger value="active" className="tab">
                             Active Assignments <span className="tab-count">({activeAssignments.length})</span>
@@ -516,67 +480,11 @@ export default function TechAssignmentsPage() {
                             Assignment History <span className="tab-count">({completedAssignments.length})</span>
                         </TabsTrigger>
                     </TabsList>
-
-                    <div className="flex items-center gap-3 w-full md:w-auto">
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <div className={cn(
-                                    "flex items-center h-9 rounded-md border border-border-main bg-bg-primary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-8",
-                                    dateRange?.from && "border-brand-red ring-1 ring-brand-red"
-                                )}>
-                                    <CalendarIcon size={12} className={cn("mr-2", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
-                                    <span className={cn(
-                                        "text-[10px] font-bold uppercase tracking-widest whitespace-nowrap",
-                                        dateRange?.from ? "text-text-primary" : "text-text-muted"
-                                    )}>
-                                        {dateRange?.from ? (
-                                            dateRange.to ? <>{format(dateRange.from, "MM-dd-yyyy")} – {format(dateRange.to, "MM-dd-yyyy")}</> : format(dateRange.from, "MM-dd-yyyy")
-                                        ) : "Filter Window"}
-                                    </span>
-                                    {dateRange?.from && (
-                                        <button 
-                                            className="absolute right-2 p-0.5 rounded-full hover:bg-brand-red/20 text-text-muted hover:text-brand-red transition-colors"
-                                            onClick={(e) => { e.stopPropagation(); setDateRange(undefined); }}
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    )}
-                                </div>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-                                <Calendar initialFocus mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} />
-                            </PopoverContent>
-                        </Popover>
-
-                        <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                            <SelectTrigger className="w-[160px] h-9 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
-                                <div className="flex items-center gap-2">
-                                    <ArrowUpDown size={14} className="text-text-muted" />
-                                    <SelectValue placeholder="Sort Registry" />
-                                </div>
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="date" className="text-[10px] uppercase font-bold">By Window</SelectItem>
-                                <SelectItem value="priority" className="text-[10px] uppercase font-bold">By Priority</SelectItem>
-                                <SelectItem value="pay" className="text-[10px] uppercase font-bold">By Pay</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
                 </div>
                 
                 <TabsContent value="active" className="mt-0">
                     {/* Mobile: card view */}
                     <div className="md:hidden space-y-3">
-                        <button
-                            onClick={toggleDateSort}
-                            className="w-full flex items-center justify-between rounded-lg border border-border-sub bg-bg-secondary px-3 py-2.5"
-                        >
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Sort by Date</span>
-                            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-brand-red">
-                                {sortBy === 'date' ? (dateAsc ? 'Soonest First' : 'Latest First') : 'Latest First'}
-                                <ArrowUpDown size={12} />
-                            </span>
-                        </button>
                         {sortedActive.map((wo) => (
                             <div
                                 key={wo.id}
@@ -861,16 +769,6 @@ export default function TechAssignmentsPage() {
                 <TabsContent value="history" className="mt-0">
                     {/* Mobile: card view */}
                     <div className="md:hidden space-y-3">
-                        <button
-                            onClick={toggleDateSort}
-                            className="w-full flex items-center justify-between rounded-lg border border-border-sub bg-bg-secondary px-3 py-2.5"
-                        >
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Sort by Date</span>
-                            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-brand-red">
-                                {dateAsc ? 'Soonest First' : 'Latest First'}
-                                <ArrowUpDown size={12} />
-                            </span>
-                        </button>
                         {completedAssignments.map((wo) => (
                             <div
                                 key={wo.id}
@@ -1006,15 +904,7 @@ export default function TechAssignmentsPage() {
                 </TabsContent>
             </Tabs>}
 
-            <CompletionWeekDialog
-                open={!!weekPrompt}
-                scheduledWeek={weekPrompt?.scheduledWeek || ''}
-                reportingWeek={weekPrompt?.reportingWeek || ''}
-                scheduledWeekEligible={!!weekPrompt?.scheduledWeekEligible}
-                onCorrectWeek={() => resolveWeekPrompt('scheduled')}
-                onCurrentWeek={() => resolveWeekPrompt('reporting')}
-                onCancel={() => setWeekPrompt(null)}
-            />
+            {weekDialog}
         </div>
     );
 }

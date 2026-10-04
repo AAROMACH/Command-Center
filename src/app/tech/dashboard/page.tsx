@@ -3,10 +3,9 @@
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, doc, updateDoc, onSnapshot, query, where, getDocs, setDoc, arrayUnion } from 'firebase/firestore';
-import { makeWeeklyLogItemId, makeWeeklyLogId } from '@/lib/doc-ids';
+import { collection, doc, updateDoc, onSnapshot, query, where, setDoc, arrayUnion } from 'firebase/firestore';
 import { isArchivedJob } from '@/lib/jobs';
-import type { WorkOrder, Technician, WeeklyLog, WeeklyLogItem } from '@/lib/types';
+import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -44,8 +43,8 @@ import { NotificationBell } from '@/components/notification-bell';
 import { TERMINOLOGY } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
 import { format, startOfWeek, parseISO } from 'date-fns';
-import { fileCompletedAssignment, resolveCompletionPlacement, type CompletionPlacement } from '@/lib/weekly-log';
-import { CompletionWeekDialog } from '@/components/completion-week-dialog';
+import { removeJobFromDraftLogs } from '@/lib/weekly-log';
+import { useCompletionFiling } from '@/hooks/use-completion-filing';
 import { cn, getTacticalLocation, compareScheduleTime } from '@/lib/utils';
 import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete } from '@/lib/trip-flow';
 import { NotificationService } from '@/lib/notification-service';
@@ -66,10 +65,10 @@ export default function TechDashboardPage() {
     const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
     const [isCheckInDialogOpen, setIsCheckInDialogOpen] = useState(false);
     const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
-    const [weekPrompt, setWeekPrompt] = useState<(CompletionPlacement & { item: WeeklyLogItem; scheduleDate: string | undefined }) | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     
     const { toast } = useToast();
+    const { completeAndFile, weekDialog } = useCompletionFiling(currentTechId);
     const router = useRouter();
 
     useEffect(() => {
@@ -168,60 +167,7 @@ export default function TechDashboardPage() {
 
     const removeFromWeeklyLogs = async (woId: string) => {
         if (!currentTechId) return;
-        const logQuery = query(
-            collection(db, 'weeklyLogs'),
-            where('techId', '==', currentTechId),
-            where('status', '==', 'Draft')
-        );
-        const snap = await getDocs(logQuery);
-        for (const logDoc of snap.docs) {
-            const data = logDoc.data() as WeeklyLog;
-            const updatedItems = (data.items || []).filter(item => item.workOrderId !== woId);
-            if (updatedItems.length !== (data.items || []).length) {
-                await updateDoc(doc(db, 'weeklyLogs', logDoc.id), { items: updatedItems });
-            }
-        }
-    };
-
-    const syncToWeeklyLog = async (woId: string) => {
-        if (!currentTechId) return;
-
-        const wo = allWorkOrders.find(w => w.id === woId);
-        if (!wo) return;
-
-        const itemId = await makeWeeklyLogItemId();
-        const newItem: WeeklyLogItem = {
-            id: itemId,
-            workOrderId: woId,
-            jobPay: wo.pay,
-            outcomeCode: null,
-            isComplete: true,
-            isAdminReviewed: false
-        };
-        const placement = await resolveCompletionPlacement({ techId: currentTechId, scheduleDate: wo.scheduleDate });
-        if (placement.differentWeek) {
-            setWeekPrompt({ item: newItem, scheduleDate: wo.scheduleDate, ...placement });
-            return;
-        }
-        await fileCompletedAssignment({
-            techId: currentTechId,
-            scheduleDate: wo.scheduleDate,
-            item: newItem,
-            makeLogId: makeWeeklyLogId,
-        });
-    };
-
-    const resolveWeekPrompt = async (choice: 'scheduled' | 'reporting') => {
-        if (!currentTechId || !weekPrompt) return;
-        await fileCompletedAssignment({
-            techId: currentTechId,
-            scheduleDate: weekPrompt.scheduleDate,
-            item: weekPrompt.item,
-            makeLogId: makeWeeklyLogId,
-            placement: choice,
-        });
-        toast({ title: 'Filed to Weekly Log', description: choice === 'scheduled' ? `Added to the week of ${weekPrompt.scheduledWeek}.` : `Added to the current week (${weekPrompt.reportingWeek}).` });
-        setWeekPrompt(null);
+        await removeJobFromDraftLogs(currentTechId, woId);
     };
 
     const handleStatusTransition = async (woId: string, newStatus: WorkOrder['status']) => {
@@ -243,24 +189,31 @@ export default function TechDashboardPage() {
                 await removeFromWeeklyLogs(woId);
             }
 
-            await updateDoc(docRef, { 
+            const writeStatus = () => updateDoc(docRef, {
                 status: newStatus,
                 history: [...(targetWO?.history || []), historyEntry]
             });
-            
+
+            // File BEFORE notifying — a notification failure used to throw
+            // after the job was already completed, skipping the weekly log.
+            let filed: 'filed' | 'prompted' | null = null;
+            if (newStatus === 'completed' && targetWO) {
+                filed = await completeAndFile(targetWO, writeStatus);
+            } else {
+                await writeStatus();
+            }
+
             if (newStatus === 'in-progress' || newStatus === 'completed') {
                 // Notify via server-side notification service (admin IDs resolved server-side)
-                await NotificationService.notifyAdmins(
+                NotificationService.notifyAdmins(
                     `Status Alert: ${newStatus.toUpperCase()}`,
                     `Technician ${tech?.name} has transitioned to ${newStatus} for mission ${woId.toUpperCase()} at ${location}.`,
                     { id: woId, type: 'assignment' }
-                );
+                ).catch(err => console.error('Admin notification failed', err));
             }
 
             if (newStatus === 'completed') {
-                await removeFromWeeklyLogs(woId);
-                await syncToWeeklyLog(woId);
-                toast({ title: "Mission Finalized", description: "Mission moved to historical registry and current weekly log." });
+                toast({ title: "Mission Finalized", description: filed === 'prompted' ? "Choose which weekly log should hold it." : "Mission moved to historical registry and weekly log." });
             } else {
                 toast({ title: "Status Updated", description: `Mission transitioned to ${newStatus.replace(/-/g, ' ')}.` });
             }
@@ -476,15 +429,7 @@ export default function TechDashboardPage() {
             <JobDetailDialog isOpen={isDetailOpen} setIsOpen={setIsDetailOpen} mission={selectedJob} />
             {selectedLog && <WeeklyLogDialog isOpen={!!selectedLog} setIsOpen={() => setSelectedLog(null)} log={selectedLog} onSubmitted={() => setSelectedLog(null)} />}
 
-            <CompletionWeekDialog
-                open={!!weekPrompt}
-                scheduledWeek={weekPrompt?.scheduledWeek || ''}
-                reportingWeek={weekPrompt?.reportingWeek || ''}
-                scheduledWeekEligible={!!weekPrompt?.scheduledWeekEligible}
-                onCorrectWeek={() => resolveWeekPrompt('scheduled')}
-                onCurrentWeek={() => resolveWeekPrompt('reporting')}
-                onCancel={() => setWeekPrompt(null)}
-            />
+            {weekDialog}
         </div>
     );
 }

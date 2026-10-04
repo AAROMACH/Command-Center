@@ -130,6 +130,10 @@ export type WorkOrder = {
   archivedBy?: string;
   archiveReason?: string;
   previousStatus?: string;
+  /** Admin decided this completed job is not paid through a weekly log (e.g.
+   *  force-completed without filing, or settled outside the app). The
+   *  self-healing sync and the Unlogged audit skip it. */
+  payrollExcluded?: boolean;
 };
 
 export type Assignment = {
@@ -521,6 +525,9 @@ export type WeeklyLogItem = {
   wasMovedBetweenWeeks?: boolean;
   weekOverrideReason?: string;
   weekOverrideAt?: string;
+  /** Which path filed this item — 'auto_sync' and 'admin_backfill' mark jobs
+   *  that were completed without reaching a log and were picked up later. */
+  filedVia?: 'completion' | 'auto_sync' | 'admin_backfill' | 'admin_force_complete' | 'admin_status_edit' | 'tech_swap';
 };
 
 export type MissingAssignmentReport = {

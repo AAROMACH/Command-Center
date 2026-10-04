@@ -12,16 +12,6 @@ import {
   DialogFooter,
   DialogDescription
 } from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { 
     AlertTriangle, 
@@ -49,6 +39,7 @@ import {
     RotateCcw,
     Lock,
     Unlock,
+    Loader2,
     Receipt,
     MoreVertical,
     Archive as ArchiveIcon,
@@ -333,22 +324,25 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     // gate it the same as reopening a closed assignment.
     const canOverrideDispute = hasPermission('admin.logs.reopen');
 
-    // An Approved log's pay figures are locked by default — reopening them
-    // requires the same authority as overriding a dispute (super admin /
-    // payroll admin / an explicit permission override) plus an explicit
-    // confirm, and resets every time the dialog is reopened.
-    const [isReopenedForEdit, setIsReopenedForEdit] = useState(false);
-    const [reopenConfirmOpen, setReopenConfirmOpen] = useState(false);
+    // An Approved log's pay figures are locked. "Reopen to Edit" (same
+    // authority as overriding a dispute) moves it back to Submitted — every
+    // item, pay figure, reimbursement and totalPayout is left exactly as
+    // entered — so payroll can correct it and approve it again through the
+    // normal flow. The confirm is inline in the banner rather than a stacked
+    // AlertDialog: Radix treats a click in a second modal as an outside click
+    // on this Dialog, which closed it and silently discarded the reopen.
+    const [reopenConfirming, setReopenConfirming] = useState(false);
+    const [reopening, setReopening] = useState(false);
 
     useEffect(() => {
         if (isOpen && initialLog) {
             setLocalLog(JSON.parse(JSON.stringify(initialLog)));
-            setIsReopenedForEdit(false);
+            setReopenConfirming(false);
         }
     }, [isOpen, initialLog]);
 
     const isLogApproved = localLog?.status === 'Approved' || (localLog as any)?.status === 'Paid';
-    const isLogLockedForEdit = isLogApproved && !isReopenedForEdit;
+    const isLogLockedForEdit = isLogApproved;
 
     // Post-approval disputes a tech filed against this log after it left
     // Draft — a separate ticket collection, since the log itself is locked
@@ -463,6 +457,38 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             } catch (e: any) {
                 toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
             }
+        }
+    };
+
+    const handleReopenToSubmitted = async () => {
+        if (!localLog || reopening) return;
+        if (!canOverrideDispute) {
+            toast({ variant: 'destructive', title: 'Not permitted', description: 'You do not have permission to reopen approved weekly logs.' });
+            return;
+        }
+        setReopening(true);
+        const previousStatus = localLog.status;
+        try {
+            // Status only — items, reimbursements and totalPayout stay as-is.
+            await updateDoc(doc(db, 'weeklyLogs', localLog.id), { status: 'Submitted' });
+            setLocalLog({ ...localLog, status: 'Submitted' });
+            onStatusChange(localLog.id, 'Submitted', localLog.totalPayout ?? calculatedTotalPayout);
+            setReopenConfirming(false);
+            const adminId = auth.currentUser?.uid ?? '';
+            const adminName = auth.currentUser?.displayName ?? 'Admin';
+            await auditEvent(
+                'weeklyLogs',
+                localLog.id,
+                adminId,
+                adminName,
+                'payroll_reopened',
+                `${adminName} reopened ${technician?.name ?? localLog.techId}'s weekly log for week of ${localLog.weekOf} (${previousStatus} → Submitted) for editing. Entered figures unchanged.`
+            ).catch(() => {});
+            toast({ title: 'Log Reopened', description: 'Moved back to Submitted with all entered figures kept. Re-approve when corrections are done.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Reopen Failed', description: e.message });
+        } finally {
+            setReopening(false);
         }
     };
 
@@ -751,26 +777,32 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                     </DialogHeader>
 
                     {isLogApproved && (
-                        <div className={cn(
-                            "flex items-center justify-between gap-3 px-3 sm:px-4 py-2 border-b border-border-sub shrink-0 text-[10px] font-bold uppercase tracking-widest",
-                            isReopenedForEdit ? "bg-accent-gold/10 text-accent-gold" : "bg-bg-tertiary/50 text-text-muted"
-                        )}>
+                        <div className="flex flex-wrap items-center justify-between gap-3 px-3 sm:px-4 py-2 border-b border-border-sub shrink-0 text-[10px] font-bold uppercase tracking-widest bg-bg-tertiary/50 text-text-muted">
                             <span className="flex items-center gap-1.5">
-                                {isReopenedForEdit ? <Unlock size={12} /> : <Lock size={12} />}
-                                {isReopenedForEdit
-                                    ? "Reopened — pay changes on this settled log are being logged to activity."
+                                <Lock size={12} />
+                                {reopenConfirming
+                                    ? "Move this log back to Submitted? Entered figures are kept; re-approve after editing."
                                     : "This log is approved and locked from editing."}
                             </span>
-                            {canOverrideDispute && !isReopenedForEdit && (
+                            {canOverrideDispute && (reopenConfirming ? (
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <Button variant="outline" size="sm" className="h-7 text-[9px] font-bold uppercase tracking-widest" disabled={reopening} onClick={() => setReopenConfirming(false)}>
+                                        Cancel
+                                    </Button>
+                                    <Button size="sm" className="h-7 text-[9px] font-bold uppercase tracking-widest bg-brand-red hover:bg-brand-red/90 text-white" disabled={reopening} onClick={handleReopenToSubmitted}>
+                                        {reopening ? <Loader2 size={11} className="mr-1.5 animate-spin" /> : <Unlock size={11} className="mr-1.5" />} Confirm Reopen
+                                    </Button>
+                                </div>
+                            ) : (
                                 <Button
                                     variant="outline"
                                     size="sm"
                                     className="h-7 shrink-0 text-[9px] font-bold uppercase tracking-widest"
-                                    onClick={() => setReopenConfirmOpen(true)}
+                                    onClick={() => setReopenConfirming(true)}
                                 >
                                     <Unlock size={11} className="mr-1.5" /> Reopen to Edit
                                 </Button>
-                            )}
+                            ))}
                         </div>
                     )}
 
@@ -1325,25 +1357,6 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                 mission={selectedJobForDetail}
             />
 
-            <AlertDialog open={reopenConfirmOpen} onOpenChange={setReopenConfirmOpen}>
-                <AlertDialogContent className="bg-bg-elevated border-border-main">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-text-primary uppercase font-black tracking-wide text-sm">Reopen This Approved Log?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-text-muted text-[11px]">
-                            {technician?.name}'s log for week of {localLog?.weekOf} has already been approved and settled. Reopening it unlocks pay, reimbursement, and overhead for editing, and every change you commit will be recorded to the activity log under this technician. Only do this to correct a genuine payroll error.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel className="text-[10px] uppercase font-bold">Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] uppercase font-bold"
-                            onClick={() => { setIsReopenedForEdit(true); setReopenConfirmOpen(false); }}
-                        >
-                            <Unlock size={12} className="mr-1.5" />Reopen to Edit
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </>
     );
 }

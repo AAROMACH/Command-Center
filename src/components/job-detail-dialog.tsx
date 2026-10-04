@@ -32,11 +32,10 @@ import {
   collection, query, where, getDocs, getDoc, onSnapshot,
   orderBy, limit, doc, updateDoc, arrayUnion,
 } from 'firebase/firestore';
-import type { WorkOrder, WeeklyLog, WeeklyLogItem, AssignmentTimeLog, Technician } from '@/lib/types';
+import type { WorkOrder, WeeklyLog, AssignmentTimeLog, Technician } from '@/lib/types';
 import { displayWorkOrderNumber, isImported } from '@/lib/work-order-identity';
-import { fileCompletedAssignment } from '@/lib/weekly-log';
-import { createDocId } from '@/lib/generateId';
-import { ID_PREFIXES, PAY_TYPE_LABELS } from '@/lib/constants';
+import { fileCompletedJob, moveJobLogOnSwap, describeSwapLogMove } from '@/lib/weekly-log';
+import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { assignmentTimeLogs } from '@/lib/data';
 
@@ -158,7 +157,10 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
   const [optimisticHelperIds, setOptimisticHelperIds] = useState<string[]>([]);
   // Admin force-complete (close out a job on behalf of a tech who can't).
   const [forceOpen, setForceOpen] = useState(false);
-  const [forceFilePayroll, setForceFilePayroll] = useState(false);
+  // Defaults ON: a completed job that isn't filed never reaches payroll. An
+  // admin who unchecks it marks the job payrollExcluded so the Unlogged audit
+  // and the tech-side sync leave it alone.
+  const [forceFilePayroll, setForceFilePayroll] = useState(true);
   const [forcing, setForcing] = useState(false);
   const [forcedDone, setForcedDone] = useState(false);
   const { toast } = useToast();
@@ -221,6 +223,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     try {
       await updateDoc(doc(db, 'assignments', mission.id), {
         assignedTechnicianId: swapTechId, techId: swapTechId,
+        technicianName: nt?.name || '',
         history: arrayUnion({ date: new Date().toISOString(), type: prevTechId ? 'tech_swapped' : 'tech_assigned',
           previousTechnicianId: prevTechId, previousTechnicianName: prevTech?.name || prevTechId,
           newTechnicianId: swapTechId, newTechnicianName: nt?.name || swapTechId,
@@ -232,6 +235,14 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     } catch (e) {
       setOptimisticTechId(null); // revert the optimistic display if the write failed
       throw e;
+    }
+    // The job has left the previous tech's views; move its weekly-log entry too.
+    try {
+      const moved = await moveJobLogOnSwap({ job: mission, fromTechIds: [mission.techId, mission.assignedTechnicianId], toTechId: swapTechId });
+      const note = describeSwapLogMove(moved, prevTech?.name || 'the previous tech', nt?.name || 'the new tech');
+      if (note) toast({ variant: note.warn ? 'destructive' : undefined, title: 'Weekly Log', description: note.text });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Swapped, but weekly log not moved', description: e?.message || 'Move it from Payroll Audit.' });
     }
   };
 
@@ -279,31 +290,31 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
       const asmtRef = doc(db, 'assignments', mission.id);
       const ref = (await getDoc(asmtRef)).exists() ? asmtRef : doc(db, 'workOrders', mission.id);
       const adminName = auth.currentUser?.displayName || 'Admin';
+      const filing = forceFilePayroll && !!jobTechId;
       await updateDoc(ref, {
         status: 'completed',
         activeTripLogId: null,
+        payrollExcluded: !filing,
         history: arrayUnion({
           type: 'status_change',
           date: format(new Date(), 'MM-dd-yyyy'),
-          details: `Force-completed by ${adminName}${forceFilePayroll ? ' · filed to weekly log' : ''}.`,
+          details: `Force-completed by ${adminName}${filing ? ' · filed to weekly log' : ' · not filed to payroll'}.`,
           user: adminName,
         }),
       });
-      if (forceFilePayroll && jobTechId) {
-        const item: WeeklyLogItem = {
-          id: await createDocId(ID_PREFIXES.WEEKLY_LOG_ITEM),
-          workOrderId: mission.id,
-          jobPay: mission.pay,
-          outcomeCode: null,
-          isComplete: true,
-          isAdminReviewed: false,
-        };
-        await fileCompletedAssignment({
-          techId: jobTechId,
-          scheduleDate: mission.scheduleDate,
-          item,
-          makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
-        });
+      if (filing) {
+        try {
+          await fileCompletedJob({ techId: jobTechId, job: mission, filedVia: 'admin_force_complete' });
+        } catch (fileErr) {
+          // The status write already landed — say so plainly instead of the
+          // generic "could not complete", so payroll knows to file it from
+          // Payroll Audit → Unlogged.
+          console.error('Force complete: weekly-log filing failed', fileErr);
+          setForcedDone(true);
+          setForceOpen(false);
+          toast({ variant: 'destructive', title: 'Completed, but not filed', description: 'The job is marked completed but could not be added to the weekly log. File it from Payroll Audit → Unlogged.' });
+          return;
+        }
       }
       setForcedDone(true);
       setForceOpen(false);
@@ -715,7 +726,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                           <Button variant="default" disabled={forcing} onClick={handleForceComplete}>
                             {forcing ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Confirm Complete
                           </Button>
-                          <Button variant="outline" disabled={forcing} onClick={() => { setForceOpen(false); setForceFilePayroll(false); }}>
+                          <Button variant="outline" disabled={forcing} onClick={() => { setForceOpen(false); setForceFilePayroll(true); }}>
                             Cancel
                           </Button>
                         </div>

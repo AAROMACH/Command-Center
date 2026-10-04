@@ -30,6 +30,7 @@ import { isPayAdmin } from '@/lib/permissions';
 import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
 import { toUnassignedWorkOrder } from '@/lib/jobs';
 import { createDocId } from '@/lib/generateId';
+import { syncWeeklyLogForAdminStatusEdit, moveJobLogOnSwap, describeSwapLogMove } from '@/lib/weekly-log';
 
 const AssignmentMap = dynamic(() => import('./assignment-map'), { ssr: false });
 
@@ -212,7 +213,9 @@ export default function AssignmentDetailPage() {
       });
       setAssignment(p => p ? { ...p, assignedTechnicianId: swapTechId, techId: swapTechId } : p);
       setSwapOpen(false); setSwapTechId('');
-      toast({ title: 'Technician Swapped', description: `Now assigned to ${nt?.name}` });
+      const moved = await moveJobLogOnSwap({ job: assignment, fromTechIds: [(assignment as any).techId, assignment.assignedTechnicianId], toTechId: swapTechId });
+      const note = describeSwapLogMove(moved, prevTech?.name || 'the previous tech', nt?.name || 'the new tech');
+      toast({ variant: note?.warn ? 'destructive' : undefined, title: 'Technician Swapped', description: `Now assigned to ${nt?.name}.${note ? ' ' + note.text : ''}` });
     } catch (e: any) { toast({ variant: 'destructive', title: 'Swap Failed', description: e.message }); }
   };
 
@@ -334,12 +337,20 @@ export default function AssignmentDetailPage() {
         });
         await setDoc(doc(db, 'assignments', assignmentId), assignmentData);
         await deleteDoc(doc(db, 'workOrders', editedOrder.id));
+        await syncWeeklyLogForAdminStatusEdit({ prevStatus: assignment.status, job: { ...(finalUpdate as WorkOrder), id: assignmentId }, techId: newTechId });
         toast({ title: 'Registry Updated', description: 'Job entry synchronized.' });
         router.push(`/admin/assignments/${assignmentId}`);
         return;
       }
 
       await updateDoc(doc(db, sourceCollection, editedOrder.id), sanitize(finalUpdate));
+      if (newTechId !== prevTechId) {
+        const moved = await moveJobLogOnSwap({ job: finalUpdate as WorkOrder, fromTechIds: [prevTechId, assignment.assignedTechnicianId], toTechId: newTechId });
+        const note = describeSwapLogMove(moved, allTechs.find(t => t.id === prevTechId)?.name || 'the previous tech', allTechs.find(t => t.id === newTechId)?.name || 'the new tech');
+        if (note) toast({ variant: note.warn ? 'destructive' : undefined, title: 'Weekly Log', description: note.text });
+      } else {
+        await syncWeeklyLogForAdminStatusEdit({ prevStatus: assignment.status, job: finalUpdate as WorkOrder, techId: newTechId });
+      }
       setAssignment(finalUpdate as WorkOrder);
       setIsEditOpen(false);
       setEditedOrder(null);

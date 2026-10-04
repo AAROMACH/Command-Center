@@ -2,6 +2,7 @@ import { db } from './firebase';
 import { doc, setDoc, updateDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
 import { makeAssignmentId } from './doc-ids';
 import type { WorkOrder } from './types';
+import { moveJobLogOnSwap, type SwapLogMoveResult } from './weekly-log';
 
 // Mutations that must behave identically no matter which admin view triggers
 // them (Dispatch, Schedule, Assignments) so a change made in one reflects
@@ -31,6 +32,8 @@ export type AssignJobOptions = {
   actorName?: string;
   /** Extra field edits (e.g. schedule date/time/notes) to apply in the same write. */
   extraFields?: Record<string, unknown>;
+  /** Called with how the job's weekly-log entry moved on a reassignment. */
+  onLogMove?: (result: SwapLogMoveResult) => void;
 };
 
 /**
@@ -43,7 +46,7 @@ export type AssignJobOptions = {
  * Returns the assignment doc id (unchanged for in-place, new for a move).
  */
 export async function assignJobToTechnician(opts: AssignJobOptions): Promise<string> {
-  const { job, source, techId, techName, previousTechId, previousTechName, actorName, extraFields } = opts;
+  const { job, source, techId, techName, previousTechId, previousTechName, actorName, extraFields, onLogMove } = opts;
   const now = new Date().toISOString();
   const historyEntry = {
     type: previousTechId ? 'tech_swap' : 'tech_add',
@@ -62,7 +65,9 @@ export async function assignJobToTechnician(opts: AssignJobOptions): Promise<str
     assignedTechnicianId: techId,
     techId,
     technicianName: techName || '',
-    status: 'assigned' as const,
+    // A completed job keeps its status when reassigned (e.g. correcting who
+    // did the work) — resetting it to 'assigned' would pull it off payroll.
+    status: job.status === 'completed' ? 'completed' as const : 'assigned' as const,
     updatedAt: now,
   };
 
@@ -73,6 +78,14 @@ export async function assignJobToTechnician(opts: AssignJobOptions): Promise<str
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       history: arrayUnion(historyEntry as any),
     });
+    // The job leaves the previous tech's views via techId; move its
+    // weekly-log entry with it.
+    const moved = await moveJobLogOnSwap({
+      job: { ...job, status: techFields.status },
+      fromTechIds: [previousTechId, (job as { techId?: string }).techId, job.assignedTechnicianId],
+      toTechId: techId,
+    });
+    onLogMove?.(moved);
     return job.id;
   }
 

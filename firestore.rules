@@ -142,7 +142,7 @@ service cloud.firestore {
               && !request.resource.data.diff(resource.data).affectedKeys()
                   .hasAny(['pay', 'payType', 'blendedFixedPay', 'blendedIncludedHours', 'blendedHourlyRate',
                             'finalPay', 'auditReimbursement', 'auditOverhead', 'isAudited', 'auditedAt', 'auditedBy',
-                            'source']));
+                            'source', 'payrollExcluded']));
       allow delete: if isAdmin();
     }
 
@@ -167,7 +167,7 @@ service cloud.firestore {
               && !request.resource.data.diff(resource.data).affectedKeys()
                   .hasAny(['pay', 'payType', 'blendedFixedPay', 'blendedIncludedHours', 'blendedHourlyRate',
                             'finalPay', 'auditReimbursement', 'auditOverhead', 'isAudited', 'auditedAt', 'auditedBy',
-                            'source']));
+                            'source', 'payrollExcluded']));
       allow delete: if isAdmin();
     }
 
@@ -176,7 +176,10 @@ service cloud.firestore {
           isAdmin()
           || (isTech() && resource.data.techId == request.auth.uid)
       );
-      allow create: if isTech();
+      // Admins create logs when filing on a tech's behalf (force-complete,
+      // status edits, Payroll Audit → Unlogged); techs only their own.
+      allow create: if isAdmin()
+          || (isTech() && request.resource.data.techId == request.auth.uid);
       // Techs edit their own Draft logs. They may also self-UNSUBMIT (flip a
       // Submitted log back to Draft) when the log is still Submitted and not yet
       // approved/paid/archived. tech.logs.unsubmit_own is granted by the tech

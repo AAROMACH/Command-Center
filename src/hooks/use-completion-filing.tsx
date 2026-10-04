@@ -1,0 +1,105 @@
+'use client';
+
+import { useState } from 'react';
+import type { WorkOrder, WeeklyLogItem } from '@/lib/types';
+import {
+  beginCompletionFiling,
+  buildCompletedJobItem,
+  endCompletionFiling,
+  fileCompletedAssignment,
+  removeJobFromDraftLogs,
+  resolveCompletionPlacement,
+  type CompletionPlacement,
+} from '@/lib/weekly-log';
+import { createDocId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
+import { CompletionWeekDialog } from '@/components/completion-week-dialog';
+import { useToast } from '@/hooks/use-toast';
+
+type WeekPrompt = CompletionPlacement & { item: WeeklyLogItem; scheduleDate: string | undefined };
+
+/**
+ * One completion flow for every tech screen that can mark a job complete
+ * (dashboard, assignments list, assignment detail, calendar). Previously each
+ * page carried its own copy, and the calendar had none — so completing from
+ * the calendar never reached a weekly log.
+ *
+ *   await completeAndFile(job, () => updateDoc(...status: 'completed'...));
+ *   ...
+ *   {weekDialog}
+ *
+ * The job is marked in-flight before the status write so the self-healing
+ * sync (useHelperLogSync) can't file it while the "which week?" prompt is up.
+ */
+export function useCompletionFiling(techId: string | null) {
+  const [weekPrompt, setWeekPrompt] = useState<WeekPrompt | null>(null);
+  const [busy, setBusy] = useState(false);
+  const { toast } = useToast();
+
+  const completeAndFile = async (
+    job: Pick<WorkOrder, 'id' | 'pay' | 'scheduleDate'>,
+    writeCompletedStatus: () => Promise<unknown>,
+  ): Promise<'filed' | 'prompted'> => {
+    if (!techId) throw new Error('No technician session.');
+    beginCompletionFiling(job.id);
+    try {
+      // Re-completing a job must not stack a second entry in an open Draft.
+      await removeJobFromDraftLogs(techId, job.id);
+      await writeCompletedStatus();
+      const item = await buildCompletedJobItem(job, 'completion');
+      const placement = await resolveCompletionPlacement({ techId, scheduleDate: job.scheduleDate });
+      if (placement.differentWeek) {
+        setWeekPrompt({ item, scheduleDate: job.scheduleDate, ...placement });
+        return 'prompted'; // in-flight is cleared once the tech picks a week
+      }
+      await fileCompletedAssignment({
+        techId,
+        scheduleDate: job.scheduleDate,
+        item,
+        makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
+      });
+      endCompletionFiling(job.id);
+      return 'filed';
+    } catch (e) {
+      // Let the self-healing sync pick it up if the status write landed.
+      endCompletionFiling(job.id);
+      throw e;
+    }
+  };
+
+  const resolveWeekPrompt = async (choice: 'scheduled' | 'reporting') => {
+    if (!techId || !weekPrompt || busy) return;
+    setBusy(true);
+    try {
+      await fileCompletedAssignment({
+        techId,
+        scheduleDate: weekPrompt.scheduleDate,
+        item: weekPrompt.item,
+        makeLogId: () => createDocId(ID_PREFIXES.WEEKLY_LOG),
+        placement: choice,
+      });
+      toast({ title: 'Filed to Weekly Log', description: choice === 'scheduled' ? `Added to the week of ${weekPrompt.scheduledWeek}.` : `Added to the current week (${weekPrompt.reportingWeek}).` });
+      endCompletionFiling(weekPrompt.item.workOrderId);
+      setWeekPrompt(null);
+    } catch (e: any) {
+      // Keep the prompt open so the tech can retry; the job is still in-flight.
+      toast({ variant: 'destructive', title: 'Could not file to weekly log', description: e?.message || 'Please try again.' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const weekDialog = (
+    <CompletionWeekDialog
+      open={!!weekPrompt}
+      scheduledWeek={weekPrompt?.scheduledWeek || ''}
+      reportingWeek={weekPrompt?.reportingWeek || ''}
+      scheduledWeekEligible={!!weekPrompt?.scheduledWeekEligible}
+      onCorrectWeek={() => resolveWeekPrompt('scheduled')}
+      onCurrentWeek={() => resolveWeekPrompt('reporting')}
+      busy={busy}
+    />
+  );
+
+  return { completeAndFile, weekDialog };
+}

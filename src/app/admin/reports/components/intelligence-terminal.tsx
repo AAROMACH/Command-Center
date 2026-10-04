@@ -18,8 +18,7 @@ import {
 import { 
     ChartContainer, 
     ChartTooltipContent, 
-    type ChartConfig 
-} from '@/components/ui/chart';
+    type ChartConfig, ChartLegendContent } from '@/components/ui/chart';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
     Select, 
@@ -403,7 +402,7 @@ export function IntelligenceTerminal({
                                         tickFormatter={(v) => metric === 'payouts' ? `$${v}` : metric === 'completion' ? `${v}%` : v}
                                     />
                                     <Tooltip content={<ChartTooltipContent indicator="line" />} />
-                                    {hasSecondarySeries && <Legend verticalAlign="top" height={36}/>}
+                                    {hasSecondarySeries && <Legend verticalAlign="top" height={36} content={<ChartLegendContent />} />}
                                     <Line
                                         type="monotone"
                                         dataKey="value"
@@ -440,7 +439,7 @@ export function IntelligenceTerminal({
                                         tickFormatter={(v) => metric === 'payouts' ? `$${v}` : metric === 'completion' ? `${v}%` : v}
                                     />
                                     <Tooltip content={<ChartTooltipContent />} />
-                                    {hasSecondarySeries && <Legend verticalAlign="top" height={36}/>}
+                                    {hasSecondarySeries && <Legend verticalAlign="top" height={36} content={<ChartLegendContent />} />}
                                     <Bar dataKey="value" stackId={hasSecondarySeries ? 'status' : undefined} fill="var(--color-value)" radius={[4, 4, 0, 0]}>
                                         {chartData.map((entry, index) => (
                                             <Cell

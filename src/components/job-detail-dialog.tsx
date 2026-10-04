@@ -139,9 +139,11 @@ type JobDetailDialogProps = {
   mission: WorkOrder | null;
   onEdit?: (mission: WorkOrder) => void;
   onUpdate?: (woId: string, updates: Partial<WorkOrder>) => void;
+  /** Mask pay amounts (for viewers who aren't super / payroll admins). */
+  hidePay?: boolean;
 };
 
-export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogProps) {
+export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }: JobDetailDialogProps) {
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
   const [adminData, setAdminData] = useState<{ weeklyLog: WeeklyLog | null; sessionLogs: AssignmentTimeLog[] }>({ weeklyLog: null, sessionLogs: [] });
   const [loadingAdmin, setLoadingAdmin] = useState(false);
@@ -177,7 +179,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     setOptimisticTechId(null);
     setOptimisticHelperIds([]);
     setForceOpen(false);
-    setForceFilePayroll(false);
+    setForceFilePayroll(true); // filing to the weekly log is the default
     setForcedDone(false);
   }, [mission?.id]);
 
@@ -341,12 +343,12 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
     return map[mission.status] || mission.status;
   })();
 
-  const originalPayDisplay = mission.payType === 'blended'
+  const originalPayDisplay = hidePay ? 'Restricted' : mission.payType === 'blended'
     ? `$${(mission.blendedFixedPay ?? mission.pay ?? 0).toFixed(2)} + $${(mission.blendedHourlyRate ?? 0).toFixed(2)}/hr`
     : mission.payType === 'hourly'
       ? `$${(mission.pay ?? 0).toFixed(2)}/hr`
       : `$${(mission.pay ?? 0).toFixed(2)}`;
-  const finalPayDisplay = mission.finalPay != null ? `$${mission.finalPay.toFixed(2)}` : 'Pending Audit';
+  const finalPayDisplay = hidePay ? 'Restricted' : mission.finalPay != null ? `$${mission.finalPay.toFixed(2)}` : 'Pending Audit';
 
   const riskLabel = mission.slaStatus === 'breached' ? 'Breached' : mission.slaStatus === 'at-risk' ? 'At Risk' : mission.slaStatus === 'met' ? 'Met' : mission.slaStatus === 'on-track' ? 'On Track' : 'Normal';
   const riskColor = mission.slaStatus === 'breached' ? 'text-priority-critical' : mission.slaStatus === 'at-risk' ? 'text-accent-gold' : (mission.slaStatus === 'met' || mission.slaStatus === 'on-track') ? 'text-text-green' : 'text-text-muted';
@@ -740,7 +742,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
                         <div className="p-4 flex items-center justify-between border-b border-border-sub bg-bg-tertiary/20">
                           <div>
                             <p className="text-[8px] font-black text-text-muted uppercase mb-1">Final Disbursement</p>
-                            <p className="text-2xl font-mono font-bold text-text-green">${(adminData.weeklyLog.totalPayout || 0).toFixed(2)}</p>
+                            <p className="text-2xl font-mono font-bold text-text-green">{hidePay ? 'Restricted' : `$${(adminData.weeklyLog.totalPayout || 0).toFixed(2)}`}</p>
                           </div>
                           <Badge variant="active" className="h-6 px-4 uppercase text-[9px] tracking-widest font-black">Audit Verified</Badge>
                         </div>

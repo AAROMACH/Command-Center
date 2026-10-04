@@ -20,8 +20,21 @@ import { getReliabilityTier } from '@/lib/reliability';
 import { effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
 import { Tabs as InnerTabs, TabsList as InnerTabsList, TabsTrigger as InnerTabsTrigger, TabsContent as InnerTabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { format, parseISO } from 'date-fns';
-import { mergeJobs } from '@/lib/jobs';
+import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
+import type { DateRange } from 'react-day-picker';
+import { DateRangeButton } from '@/components/list-toolbar';
+import { mergeJobs, jobTechId, jobDateTimeValue, JOB_STATUS_OPTIONS } from '@/lib/jobs';
+import { isSuperAdmin, isPayAdmin } from '@/lib/permissions';
+import { computeWeeklyLogSettlement } from '@/lib/payroll';
+import { JobDetailDialog } from '@/components/job-detail-dialog';
+import { topClients, topCities } from '@/lib/intel-insights';
+import dynamic from 'next/dynamic';
+
+// Leaflet touches window — load the density map in the browser only.
+const JobDensityMap = dynamic(() => import('./components/job-density-map').then(m => m.JobDensityMap), {
+    ssr: false,
+    loading: () => <div className="h-[520px] rounded-lg border border-border-main bg-bg-tertiary/30 flex items-center justify-center text-[10px] font-bold uppercase tracking-widest text-text-muted">Loading map…</div>,
+});
 import { findUnloggedCompletions, findMismatchedLogEntries, findDesyncedAssignments } from '@/lib/weekly-log-audit';
 import { UnloggedCompletions } from './components/unlogged-completions';
 import { WrongTechEntries } from './components/wrong-tech-entries';
@@ -45,7 +58,9 @@ export default function FieldIntelligencePage() {
     // App Activity tab state
     const [timelineTechFilter, setTimelineTechFilter] = useState('all');
     const [timelineTypeFilter, setTimelineTypeFilter] = useState('all');
-    const [timelineClientFilter, setTimelineClientFilter] = useState('');
+    const [timelineDateRange, setTimelineDateRange] = useState<DateRange | undefined>(undefined);
+    const [timelinePageSize, setTimelinePageSize] = useState<10 | 25 | 50>(25);
+    const [timelinePage, setTimelinePage] = useState(0);
 
     useEffect(() => {
         const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
@@ -110,11 +125,30 @@ export default function FieldIntelligencePage() {
     const wrongTechEntries = useMemo(() => findMismatchedLogEntries(missions, weeklyLogs), [missions, weeklyLogs]);
     const desyncedAssignments = useMemo(() => findDesyncedAssignments(missions), [missions]);
     const wrongTechCount = wrongTechEntries.length + desyncedAssignments.length;
+
+    // Density map follows the Intel filters (time window, personnel, client).
+    const densityJobs = useMemo(() => {
+        const days = timeWindow === '7d' ? 7 : timeWindow === '30d' ? 30 : timeWindow === '90d' ? 90 : timeWindow === '1y' ? 365 : null;
+        const cutoff = days ? Date.now() - days * 864e5 : null;
+        return missions.filter(j => {
+            if (intelClient !== 'all' && j.clientName !== intelClient) return false;
+            if (intelPersonnel !== 'all' && jobTechId(j) !== intelPersonnel) return false;
+            if (cutoff !== null) {
+                const t = jobDateTimeValue(j.scheduleDate, null);
+                if (!t || t < cutoff) return false;
+            }
+            return true;
+        });
+    }, [missions, timeWindow, intelClient, intelPersonnel]);
     const flagsTotal = anomalyCounts + unloggedAudit.rows.length + wrongTechCount;
     const [flagsView, setFlagsView] = useState<'anomalies' | 'unlogged' | 'wrong-tech'>('anomalies');
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    // Techs tab: pay figures only for super admins and payroll/financial admins.
+    const [managedJob, setManagedJob] = useState<WorkOrder | null>(null);
+    const jobsById = useMemo(() => new Map(missions.map(m => [m.id, m as WorkOrder])), [missions]);
     useEffect(() => { try { setCurrentUserId(sessionStorage.getItem('currentUserId')); } catch { /* private mode */ } }, []);
     const currentUser = technicians.find(t => t.id === currentUserId) || null;
+    const canSeePay = isSuperAdmin(currentUser) || isPayAdmin(currentUser);
 
     const activeTech = useMemo(
         () => staffTechs.find(t => t.id === selectedTechId),
@@ -123,7 +157,7 @@ export default function FieldIntelligencePage() {
 
     const techStats = useMemo(() => {
         if (!selectedTechId) return null;
-        const myJobs = assignments.filter(wo => wo.assignedTechnicianId === selectedTechId || wo.techId === selectedTechId);
+        const myJobs = assignments.filter(wo => jobTechId(wo) === selectedTechId);
         const completed = myJobs.filter(wo => wo.status === 'completed').length;
         const penalties = penaltyEvents.filter(pe => pe.techId === selectedTechId);
         const points = penalties.reduce((acc, curr) => acc + Math.abs(curr.scoreChange), 0);
@@ -167,77 +201,12 @@ export default function FieldIntelligencePage() {
         [workOrders]
     );
 
-    const missingDocAlerts = useMemo(() => {
-        return assignments
-            .filter(wo => wo.status === 'completed')
-            .filter(wo => activeTechIds.has(wo.assignedTechnicianId || wo.techId || ''))
-            .filter(wo => !weeklyLogs.some(log =>
-                log.techId === (wo.assignedTechnicianId || wo.techId) &&
-                log.items?.some(item => item.workOrderId === wo.id)
-            ))
-            .slice(0, 20);
-    }, [assignments, weeklyLogs, activeTechIds]);
-
-    const profitabilityByClient = useMemo(() => {
-        const map = new Map<string, { revenue: number; outstanding: number; laborCost: number; jobCount: number }>();
-        const rowFor = (clientName?: string) => {
-            const name = clientName || 'Unknown';
-            const row = map.get(name) || { revenue: 0, outstanding: 0, laborCost: 0, jobCount: 0 };
-            map.set(name, row);
-            return row;
-        };
-
-        invoices.forEach(invoice => {
-            const row = rowFor(invoice.clientName);
-            const revenueBeforeTax = invoice.subtotal ?? invoice.total ?? 0;
-            if (invoice.status === 'paid') row.revenue += revenueBeforeTax;
-            if (invoice.status === 'sent' || invoice.status === 'overdue') row.outstanding += revenueBeforeTax;
-        });
-
-        const jobLookup = new Map<string, WorkOrder>();
-        const countedCompletedJobs = new Set<string>();
-        [...workOrders, ...assignments, ...archivedJobs].forEach(job => {
-            jobLookup.set(job.id, job);
-            const sourceId = (job as any).workOrderId;
-            const externalId = (job as any).externalWorkOrderId;
-            if (sourceId) jobLookup.set(sourceId, job);
-            if (externalId) jobLookup.set(externalId, job);
-            if (!countedCompletedJobs.has(job.id) && (job.status === 'completed' || (job as any).previousStatus === 'completed')) {
-                rowFor(job.clientName).jobCount += 1;
-                countedCompletedJobs.add(job.id);
-            }
-        });
-
-        weeklyLogs.filter(log => log.status === 'Approved').forEach(log => {
-            (log.items || []).forEach(item => {
-                if (item.confirmationStatus === 'disputed') return;
-                const job = jobLookup.get(item.workOrderId);
-                if (!job) return;
-                rowFor(job.clientName).laborCost += effectiveJobPay(item, job);
-            });
-            (log.reimbursements || []).forEach(reimbursement => {
-                if (reimbursement.status === 'pending' || reimbursement.status === 'rejected') return;
-                const job = jobLookup.get(reimbursement.workOrderId || reimbursement.assignmentId || '');
-                if (job) rowFor(job.clientName).laborCost += netOfFieldNationFee(reimbursement.amount || 0);
-            });
-            (log.missingAssignmentReports || []).forEach(report => {
-                if (!report.clientName) return;
-                const reportCost = report.jobType === 'Imported'
-                    ? (report.finalPay || 0) + netOfFieldNationFee(report.auditReimbursement || 0)
-                    : report.pay || 0;
-                rowFor(report.clientName).laborCost += reportCost;
-            });
-        });
-
-        return Array.from(map.entries())
-            .map(([client, data]) => {
-                const grossProfit = data.revenue - data.laborCost;
-                return { client, ...data, grossProfit, margin: data.revenue > 0 ? (grossProfit / data.revenue) * 100 : null };
-            })
-            .filter(row => row.revenue || row.outstanding || row.laborCost || row.jobCount)
-            .sort((a, b) => b.grossProfit - a.grossProfit)
-            .slice(0, 10);
-    }, [workOrders, assignments, archivedJobs, weeklyLogs, invoices]);
+    // Insights: top clients (with gross profit) and top cities — lib/intel-insights.ts.
+    const topClientRows = useMemo(
+        () => topClients(mergeJobs(workOrders, assignments), weeklyLogs, invoices, 10),
+        [workOrders, assignments, weeklyLogs, invoices],
+    );
+    const topCityRows = useMemo(() => topCities(mergeJobs(workOrders, assignments), 10), [workOrders, assignments]);
 
     const failurePatterns = useMemo(() => {
         const revisitWOs = workOrders.filter(wo =>
@@ -278,12 +247,23 @@ export default function FieldIntelligencePage() {
         return events.filter(e => !!e.timestamp).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
     }, [assignments, workOrders, weeklyLogs, invoices, technicians]);
 
-    const filteredTimelineEvents = useMemo(() => timelineEvents.filter(e => {
-        if (timelineTechFilter !== 'all' && e.techId !== timelineTechFilter) return false;
-        if (timelineTypeFilter !== 'all' && e.type !== timelineTypeFilter) return false;
-        if (timelineClientFilter && !(e.clientName || '').toLowerCase().includes(timelineClientFilter.toLowerCase())) return false;
-        return true;
-    }), [timelineEvents, timelineTechFilter, timelineTypeFilter, timelineClientFilter]);
+    const filteredTimelineEvents = useMemo(() => {
+        const from = timelineDateRange?.from ? startOfDay(timelineDateRange.from).getTime() : null;
+        const to = timelineDateRange?.from ? endOfDay(timelineDateRange.to || timelineDateRange.from).getTime() : null;
+        return timelineEvents.filter(e => {
+            if (timelineTechFilter !== 'all' && e.techId !== timelineTechFilter) return false;
+            if (timelineTypeFilter !== 'all' && e.type !== timelineTypeFilter) return false;
+            if (from !== null && to !== null) {
+                const t = new Date(e.timestamp).getTime();
+                if (isNaN(t) || t < from || t > to) return false;
+            }
+            return true;
+        });
+    }, [timelineEvents, timelineTechFilter, timelineTypeFilter, timelineDateRange]);
+    // Back to page 1 whenever the filters or page size change.
+    useEffect(() => { setTimelinePage(0); }, [timelineTechFilter, timelineTypeFilter, timelineDateRange, timelinePageSize]);
+    const timelinePageCount = Math.max(1, Math.ceil(filteredTimelineEvents.length / timelinePageSize));
+    const timelinePageEvents = filteredTimelineEvents.slice(timelinePage * timelinePageSize, (timelinePage + 1) * timelinePageSize);
 
     const formatDateDisplay = (dateStr: string) => {
         if (!dateStr) return 'TBD';
@@ -380,6 +360,17 @@ export default function FieldIntelligencePage() {
                             {intelClient !== 'all' && <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border border-amber-400/30 bg-amber-400/10 text-amber-400">{intelClient}</span>}
                         </div>
                     </div>
+                    <Card className="bg-bg-secondary border-border-main mb-5">
+                        <CardContent className="p-4 space-y-3">
+                            <div className="flex flex-wrap items-baseline justify-between gap-2">
+                                <div>
+                                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-text-primary">Job Density — Michigan &amp; Ohio</p>
+                                    <p className="text-[10px] text-text-muted">Darker squares = more jobs in that area for the selected filters. Hover a square for the count and top cities.</p>
+                                </div>
+                            </div>
+                            <JobDensityMap jobs={densityJobs} />
+                        </CardContent>
+                    </Card>
                     <IntelligenceTerminal
                         timeWindow={timeWindow}
                         personnel={intelPersonnel}
@@ -497,23 +488,29 @@ export default function FieldIntelligencePage() {
                                                             <TableHead className="text-[9px] uppercase font-black tracking-widest pl-4">Mission</TableHead>
                                                             <TableHead className="text-[9px] uppercase font-black tracking-widest">Date</TableHead>
                                                             <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
+                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest text-right pr-4">Admin</TableHead>
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
                                                         {techStats.myJobs.map(wo => (
-                                                            <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary">
+                                                            <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary cursor-pointer" onClick={() => setManagedJob(wo)}>
                                                                 <TableCell className="pl-4 py-3">
                                                                     <p className="text-xs font-bold text-text-primary uppercase">{wo.title || wo.description}</p>
                                                                     <p className="text-[9px] text-text-muted font-mono">{wo.id.toUpperCase()}</p>
                                                                 </TableCell>
                                                                 <TableCell className="text-[10px] font-mono text-text-secondary uppercase">{formatDateDisplay(wo.scheduleDate)}</TableCell>
                                                                 <TableCell className="text-center">
-                                                                    <Badge variant={wo.status === 'completed' ? 'active' : 'onhold'} className="h-4 text-[7px] uppercase tracking-widest">{wo.status}</Badge>
+                                                                    <Badge variant={wo.status === 'completed' ? 'active' : 'onhold'} className="h-4 text-[7px] uppercase tracking-widest">{JOB_STATUS_OPTIONS.find(o => o.value === wo.status)?.label || wo.status}</Badge>
+                                                                </TableCell>
+                                                                <TableCell className="text-right pr-4">
+                                                                    <Button variant="outline" size="sm" className="h-7 text-[9px] uppercase font-bold" onClick={e => { e.stopPropagation(); setManagedJob(wo); }}>
+                                                                        Manage
+                                                                    </Button>
                                                                 </TableCell>
                                                             </TableRow>
                                                         ))}
                                                         {techStats.myJobs.length === 0 && (
-                                                            <TableRow><TableCell colSpan={3} className="text-center text-text-muted text-[10px] uppercase py-8">No assignments found</TableCell></TableRow>
+                                                            <TableRow><TableCell colSpan={4} className="text-center text-text-muted text-[10px] uppercase py-8">No assignments found</TableCell></TableRow>
                                                         )}
                                                     </TableBody>
                                                 </Table>
@@ -525,7 +522,11 @@ export default function FieldIntelligencePage() {
                                                     <div key={log.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary flex items-center justify-between">
                                                         <div>
                                                             <p className="text-[10px] font-bold text-text-primary uppercase">Week of {log.weekOf}</p>
-                                                            <p className="text-[9px] text-text-muted uppercase">Payout: ${(log.totalPayout || 0).toFixed(2)}</p>
+                                                            {canSeePay ? (
+                                                                <p className="text-[9px] text-text-muted uppercase">Payout: ${computeWeeklyLogSettlement(log, jobsById).toFixed(2)}</p>
+                                                            ) : (
+                                                                <p className="text-[9px] text-text-muted uppercase">{log.items?.length || 0} job{(log.items?.length || 0) !== 1 ? 's' : ''}</p>
+                                                            )}
                                                         </div>
                                                         <Badge variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'scheduled' : 'onhold'} className="h-4 text-[7px] uppercase">{log.status}</Badge>
                                                     </div>
@@ -675,58 +676,75 @@ export default function FieldIntelligencePage() {
                             ))}
                         </div>
 
-                        {/* Missing Documentation Alerts */}
-                        <div className="space-y-2">
-                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
-                                Missing Docs (48h+)
-                                {missingDocAlerts.length > 0 && <Badge variant="destructive" className="h-4 px-1.5 text-[7px]">{missingDocAlerts.length}</Badge>}
-                            </h3>
-                            {missingDocAlerts.length === 0 ? (
-                                <div className="flex items-center gap-2 py-3 text-text-green">
-                                    <ShieldAlert size={14} />
-                                    <p className="text-[10px] font-bold uppercase">All completed jobs have logs</p>
+                        {/* Top 10 Clients */}
+                        <div className="lg:col-span-2 space-y-2">
+                            <div className="border-b border-border-sub pb-2">
+                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Top 10 Clients</h3>
+                                <p className="text-[9px] text-text-muted mt-1 leading-relaxed">
+                                    Ranked by job volume. Revenue = Field Nation jobs at pay net of the 15.85% FN fee, plus paid invoices (pre-tax) for direct work.
+                                    Labor = what techs are paid for the completed jobs (weekly-log settlement, or the same formula on job pay when not logged yet).
+                                </p>
+                            </div>
+                            {topClientRows.length === 0 ? (
+                                <p className="text-[10px] text-text-muted uppercase py-3">No client jobs yet</p>
+                            ) : (
+                                <div className="rounded-lg border border-border-sub overflow-hidden">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="text-[9px] uppercase">#</TableHead>
+                                                <TableHead className="text-[9px] uppercase">Client</TableHead>
+                                                <TableHead className="text-[9px] uppercase text-right">Jobs</TableHead>
+                                                <TableHead className="text-[9px] uppercase text-right">Completed</TableHead>
+                                                <TableHead className="text-[9px] uppercase text-right">Revenue</TableHead>
+                                                <TableHead className="text-[9px] uppercase text-right">Labor</TableHead>
+                                                <TableHead className="text-[9px] uppercase text-right">Gross Profit</TableHead>
+                                                <TableHead className="text-[9px] uppercase text-right">Margin</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {topClientRows.map((r, i) => (
+                                                <TableRow key={r.client}>
+                                                    <TableCell className="text-[10px] text-text-muted">{i + 1}</TableCell>
+                                                    <TableCell className="text-[10px] font-bold uppercase">{r.client}</TableCell>
+                                                    <TableCell className="text-[10px] font-mono text-right">{r.jobs}</TableCell>
+                                                    <TableCell className="text-[10px] font-mono text-right">{r.completed}</TableCell>
+                                                    <TableCell className="text-[10px] font-mono text-right">${r.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</TableCell>
+                                                    <TableCell className="text-[10px] font-mono text-right">${r.labor.toLocaleString(undefined, { maximumFractionDigits: 0 })}</TableCell>
+                                                    <TableCell className={cn('text-[10px] font-mono font-bold text-right', r.grossProfit >= 0 ? 'text-text-green' : 'text-text-red')}>
+                                                        ${r.grossProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                                    </TableCell>
+                                                    <TableCell className="text-[10px] font-mono text-right">{r.margin == null ? '—' : `${r.margin.toFixed(1)}%`}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
                                 </div>
-                            ) : missingDocAlerts.map(wo => {
-                                const tech = staffTechs.find(t => t.id === (wo.assignedTechnicianId || wo.techId));
-                                return (
-                                    <div key={wo.id} className="flex items-center justify-between p-2 rounded-lg border border-border-alert bg-brand-red-dim/5">
-                                        <div>
-                                            <p className="text-[11px] font-bold text-text-red uppercase">{wo.title || wo.id}</p>
-                                            <p className="text-[9px] text-text-muted uppercase">{tech?.name || 'Unknown tech'} — completed, no log</p>
-                                        </div>
-                                        <Badge variant="destructive" className="h-4 text-[7px] uppercase shrink-0">No Log</Badge>
-                                    </div>
-                                );
-                            })}
+                            )}
                         </div>
 
-                        {/* Profitability by Client */}
-                        <div className="space-y-2">
+                        {/* Top 10 Cities */}
+                        <div className="lg:col-span-2 space-y-2">
                             <div className="border-b border-border-sub pb-2">
-                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Profitability by Client</h3>
-                                <p className="text-[8px] text-text-muted uppercase tracking-widest mt-1">Paid invoice subtotals less approved technician settlements and reimbursements</p>
+                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Top 10 Cities</h3>
+                                <p className="text-[9px] text-text-muted mt-1">Where we work most, by job count (cancelled and archived jobs excluded).</p>
                             </div>
-                            {profitabilityByClient.length === 0 ? (
-                                <p className="text-[10px] text-text-muted uppercase py-3">No paid invoice or approved payroll data</p>
-                            ) : profitabilityByClient.map(({ client, revenue, outstanding, laborCost, grossProfit, margin, jobCount }) => (
-                                <div key={client} className="p-3 rounded-lg border border-border-sub bg-bg-secondary">
-                                    <div className="flex items-start justify-between gap-3">
-                                      <div className="min-w-0">
-                                        <p className="text-[11px] font-bold text-text-primary uppercase">{client}</p>
-                                        <p className="text-[9px] text-text-muted uppercase">{jobCount} completed job{jobCount !== 1 ? 's' : ''}</p>
-                                      </div>
-                                      <div className="text-right shrink-0">
-                                        <p className={cn("text-sm font-black", grossProfit >= 0 ? "text-text-green" : "text-text-red")}>${grossProfit.toFixed(0)} gross profit</p>
-                                        <p className="text-[9px] text-text-muted">{margin == null ? 'No paid revenue' : `${margin.toFixed(1)}% margin`}</p>
-                                      </div>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-2 mt-3 pt-2 border-t border-border-sub">
-                                      <div><p className="text-[7px] font-black uppercase tracking-widest text-text-muted">Paid revenue</p><p className="text-[10px] font-bold text-text-primary">${revenue.toFixed(0)}</p></div>
-                                      <div><p className="text-[7px] font-black uppercase tracking-widest text-text-muted">Labor cost</p><p className="text-[10px] font-bold text-text-primary">${laborCost.toFixed(0)}</p></div>
-                                      <div><p className="text-[7px] font-black uppercase tracking-widest text-text-muted">Outstanding</p><p className="text-[10px] font-bold text-text-amber">${outstanding.toFixed(0)}</p></div>
-                                    </div>
+                            {topCityRows.length === 0 ? (
+                                <p className="text-[10px] text-text-muted uppercase py-3">No job addresses with a city yet</p>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+                                    {topCityRows.map((c, i) => (
+                                        <div key={c.city} className="flex items-center gap-3">
+                                            <span className="w-5 text-right text-[10px] font-mono text-text-muted">{i + 1}</span>
+                                            <span className="w-40 shrink-0 truncate text-[11px] font-bold text-text-primary">{c.city}</span>
+                                            <div className="relative h-4 flex-1 rounded-sm bg-bg-tertiary/40">
+                                                <div className="absolute inset-y-0 left-0 rounded-sm" style={{ width: `${(c.jobs / topCityRows[0].jobs) * 100}%`, background: 'var(--brand-blue)' }} />
+                                            </div>
+                                            <span className="w-24 shrink-0 text-right text-[10px] font-mono text-text-secondary">{c.jobs} job{c.jobs !== 1 ? 's' : ''} · {c.completed} done</span>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
+                            )}
                         </div>
 
                         {/* Common Failure Patterns */}
@@ -780,15 +798,10 @@ export default function FieldIntelligencePage() {
                                     <SelectItem value="invoice" className="text-[10px] uppercase font-bold">Invoices</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <Input
-                                placeholder="Filter by client..."
-                                value={timelineClientFilter}
-                                onChange={e => setTimelineClientFilter(e.target.value)}
-                                className="h-8 w-[180px] text-[10px] bg-bg-primary border-border-main"
-                            />
-                            {(timelineTechFilter !== 'all' || timelineTypeFilter !== 'all' || timelineClientFilter) && (
+                            <DateRangeButton value={timelineDateRange} onChange={setTimelineDateRange} />
+                            {(timelineTechFilter !== 'all' || timelineTypeFilter !== 'all' || timelineDateRange?.from) && (
                                 <Button variant="ghost" size="sm" className="h-8 text-[9px] uppercase font-bold text-text-muted"
-                                    onClick={() => { setTimelineTechFilter('all'); setTimelineTypeFilter('all'); setTimelineClientFilter(''); }}>
+                                    onClick={() => { setTimelineTechFilter('all'); setTimelineTypeFilter('all'); setTimelineDateRange(undefined); }}>
                                     <X size={11} className="mr-1" /> Clear
                                 </Button>
                             )}
@@ -804,7 +817,7 @@ export default function FieldIntelligencePage() {
                             </div>
                         ) : (
                             <div className="space-y-1">
-                                {filteredTimelineEvents.slice(0, 100).map(event => {
+                                {timelinePageEvents.map(event => {
                                     let tsDisplay = '';
                                     try { const d = new Date(event.timestamp); tsDisplay = isNaN(d.getTime()) ? event.timestamp : format(d, 'MMM d, h:mm a'); } catch { tsDisplay = event.timestamp; }
                                     const typeColors: Record<string, string> = { assignment: 'border-l-accent-gold', work_order: 'border-l-border-main', log: 'border-l-brand-red', invoice: 'border-l-text-green' };
@@ -826,17 +839,41 @@ export default function FieldIntelligencePage() {
                                         </div>
                                     );
                                 })}
-                                {filteredTimelineEvents.length > 100 && (
-                                    <p className="text-center text-[9px] text-text-muted font-bold uppercase py-4">
-                                        Showing 100 of {filteredTimelineEvents.length} events. Use filters to narrow results.
-                                    </p>
-                                )}
+                                <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">Show</span>
+                                        {([10, 25, 50] as const).map(n => (
+                                            <button
+                                                key={n}
+                                                type="button"
+                                                onClick={() => setTimelinePageSize(n)}
+                                                className={cn('h-8 w-10 rounded-md border text-[10px] font-bold', timelinePageSize === n ? 'border-brand-red bg-brand-red text-white' : 'border-border-main text-text-muted hover:text-text-primary')}
+                                            >
+                                                {n}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">
+                                            {timelinePage * timelinePageSize + 1}–{Math.min((timelinePage + 1) * timelinePageSize, filteredTimelineEvents.length)} of {filteredTimelineEvents.length}
+                                        </span>
+                                        <Button variant="outline" size="sm" className="h-8 text-[9px] uppercase font-bold" disabled={timelinePage === 0} onClick={() => setTimelinePage(p => Math.max(0, p - 1))}>
+                                            Previous
+                                        </Button>
+                                        <Button variant="outline" size="sm" className="h-8 text-[9px] uppercase font-bold" disabled={timelinePage >= timelinePageCount - 1} onClick={() => setTimelinePage(p => Math.min(timelinePageCount - 1, p + 1))}>
+                                            Next
+                                        </Button>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>
                 </TabsContent>
 
             </Tabs>
+
+            {/* Admin job controls from the Techs tab (force complete, swap tech, helpers, …). */}
+            <JobDetailDialog isOpen={!!managedJob} setIsOpen={open => { if (!open) setManagedJob(null); }} mission={managedJob ? (missions.find(m => m.id === managedJob.id) as WorkOrder) || managedJob : null} hidePay={!canSeePay} />
 
             <style jsx global>{`
                 .tab-trigger-activity {

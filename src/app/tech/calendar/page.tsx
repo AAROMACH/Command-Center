@@ -7,7 +7,8 @@ import type { WorkOrder, Technician } from '@/lib/types';
 import { displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { isArchivedJob, isAssignedTo } from '@/lib/jobs';
 import { removeJobFromDraftLogs } from '@/lib/weekly-log';
-import { useCompletionFiling, completionToastText } from '@/hooks/use-completion-filing';
+import { useTechJobActions } from '@/hooks/use-tech-job-actions';
+import { ACTION_FOR_STATUS, type TechJobAction } from '@/lib/tech-job-actions';
 import { db, auth } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -116,7 +117,6 @@ export default function TechCalendarPage() {
   const { toast } = useToast();
 
   const [currentTechId, setCurrentTechId] = useState<string | null>(null);
-  const { completeAndFile, weekDialog } = useCompletionFiling(currentTechId);
   const [loading, setLoading] = useState(true);
   const [rawAssignments, setRawAssignments] = useState<JobWithSrc[]>([]);
   const [rawWorkOrders, setRawWorkOrders] = useState<JobWithSrc[]>([]);
@@ -130,6 +130,7 @@ export default function TechCalendarPage() {
   const [isMapExpanded, setIsMapExpanded] = useState(false);
 
   const [currentTech, setCurrentTech] = useState<Technician | null>(null);
+  const { run: runAction, weekDialog } = useTechJobActions(currentTechId, techDisplayName(currentTech));
   const [homeCoords, setHomeCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [routeMileage, setRouteMileage] = useState<number | null>(null);
   const [mileageLoading, setMileageLoading] = useState(false);
@@ -275,31 +276,13 @@ export default function TechCalendarPage() {
     } finally { setActionLoading(false); }
   };
 
-  const statusAction = async (wo: JobWithSrc, newStatus: string, label: string) => {
-    const coll = wo._src === 'assignment' ? 'assignments' : 'workOrders';
-    const loc = await getTacticalLocation();
-    const writeStatus = () => updateDoc(doc(db, coll, wo.id), {
-      status: newStatus,
-      history: arrayUnion({
-        type: 'status_change',
-        date: format(new Date(), 'MM-dd-yyyy'),
-        details: `${label} at ${format(new Date(), 'h:mm a')}. Location: [${loc}].`,
-        user: techDisplayName(currentTech),
-      }),
-    });
-    // Completing / re-opening here must touch the weekly log exactly like the
-    // dashboard and assignment screens do — this path used to skip it, so
-    // jobs completed from the calendar never reached a log.
-    if (newStatus === 'completed') {
-      const result = await completeAndFile(wo, writeStatus);
-      toast({ title: label, description: completionToastText(result) });
-      return;
-    }
-    if (wo.status === 'completed' && currentTechId) {
-      await removeJobFromDraftLogs(currentTechId, wo.id);
-    }
-    await writeStatus();
-    toast({ title: label });
+  // Same shared workflow as the dashboard, assignments list and detail page
+  // (lib/tech-job-actions.ts): trip records, history, weekly-log filing.
+  // Re-open returns the job to the step before completion, like everywhere else.
+  const statusAction = async (wo: JobWithSrc, newStatus: string, _label: string) => {
+    const action: TechJobAction | undefined =
+      newStatus === 'assigned' ? 'reopen' : ACTION_FOR_STATUS[newStatus as WorkOrder['status']];
+    if (action) await runAction(wo, action);
   };
 
   const techActions = (wo: JobWithSrc) => [

@@ -43,7 +43,8 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, updateDoc, setDoc, arrayUnion } from 'firebase/firestore';
 import { fieldNationUrl, displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { removeJobFromDraftLogs } from '@/lib/weekly-log';
-import { useCompletionFiling, completionToastText } from '@/hooks/use-completion-filing';
+import { useTechJobActions } from '@/hooks/use-tech-job-actions';
+import type { TechJobAction } from '@/lib/tech-job-actions';
 import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete, reopenStatusFor } from '@/lib/trip-flow';
 import { jobDateTimeValue, isArchivedJob, isAssignedTo } from '@/lib/jobs';
 import { Car, MoreVertical, Ban, XCircle } from 'lucide-react';
@@ -99,7 +100,7 @@ export default function TechAssignmentsPage() {
 
     const { toast } = useToast();
 
-    const { completeAndFile, weekDialog } = useCompletionFiling(currentTechId);
+
 
     useEffect(() => {
         setMounted(true);
@@ -145,6 +146,7 @@ export default function TechAssignmentsPage() {
     // the built-in demo list (lib/data), which never contains real techs, so
     // every action from this page was credited to "Field Operative".
     const [currentTech, setCurrentTech] = useState<Technician | null>(null);
+    const { run: runAction, weekDialog } = useTechJobActions(currentTechId, techDisplayName(currentTech));
     useEffect(() => {
         if (!currentTechId) return;
         return onSnapshot(doc(db, 'users', currentTechId), snap => {
@@ -249,101 +251,20 @@ export default function TechAssignmentsPage() {
         await removeJobFromDraftLogs(currentTechId, woId);
     };
 
-    const handleConfirm = async (woId: string) => {
-        const now = format(new Date(), 'h:mm a');
-        const location = await getTacticalLocation();
-        const docRef = doc(db, 'assignments', woId);
-        updateDoc(docRef, {
-            status: 'confirmed',
-            isAcknowledged: true,
-            history: [
-                ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Assignment confirmed at ${now}. Location: [${location}].`, user: techDisplayName(currentTech) }
-            ]
-        }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
-    };
-
-    const handleStartTrip = async (woId: string) => {
-        const now = format(new Date(), 'h:mm a');
-        const location = await getTacticalLocation();
-        const docRef = doc(db, 'assignments', woId);
-        updateDoc(docRef, {
-            status: 'on-my-way',
-            history: [
-                ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Trip initiated at ${now}. Status: EN ROUTE. Location: [${location}].`, user: techDisplayName(currentTech) }
-            ]
-        }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
-    };
-
-    const handleCheckIn = async (woId: string) => {
-        if (hasActiveSession) return;
-        const now = format(new Date(), 'h:mm a');
-        const location = await getTacticalLocation();
-        const docRef = doc(db, 'assignments', woId);
-        updateDoc(docRef, {
-            status: 'in-progress',
-            history: [
-                ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Arrival verified at ${now}. Status: ON SITE. Location: [${location}].`, user: techDisplayName(currentTech) }
-            ]
-        }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
-    };
-
-    const handleCheckOut = async (woId: string) => {
-        const now = format(new Date(), 'h:mm a');
-        const location = await getTacticalLocation();
-        const docRef = doc(db, 'assignments', woId);
-        updateDoc(docRef, {
-            status: 'checked-out',
-            history: [
-                ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Session paused at ${now}. Status: CHECKED OUT. Location: [${location}].`, user: techDisplayName(currentTech) }
-            ]
-        }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
-    };
-
-    const handleMarkComplete = async (woId: string) => {
-        const now = format(new Date(), 'h:mm a');
-        const location = await getTacticalLocation();
-        const docRef = doc(db, 'assignments', woId);
+    // Same shared workflow as the dashboard, calendar and detail page
+    // (lib/tech-job-actions.ts): trip records, history, weekly-log filing.
+    const act = (action: TechJobAction) => async (woId: string) => {
         const wo = allWorkOrders.find(w => w.id === woId);
         if (!wo) return;
-
-        try {
-            const result = await completeAndFile(wo, () => updateDoc(docRef, {
-                status: 'completed',
-                history: [
-                    ...(wo.history || []),
-                    { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission finalized at ${now}. Status: CLOSED. Location: [${location}].`, user: techDisplayName(currentTech) }
-                ]
-            }));
-            toast({ title: "Mission Finalized", description: completionToastText(result) });
-        } catch (e: any) {
-            toast({ variant: "destructive", title: "Update Failed", description: e.message });
-        }
+        const ok = await runAction(wo, action);
+        if (ok && action === 'reopen') setActiveTab('active');
     };
-
-    const handleReopen = async (woId: string) => {
-        const now = format(new Date(), 'h:mm a');
-        const location = await getTacticalLocation();
-        const docRef = doc(db, 'assignments', woId);
-        
-        try {
-            await removeFromWeeklyLogs(woId);
-            await updateDoc(docRef, {
-                status: reopenStatusFor(allWorkOrders.find(wo => wo.id === woId)),
-                history: [
-                    ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                    { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission re-opened at ${now} for correction. Location: [${location}].`, user: techDisplayName(currentTech) }
-                ]
-            });
-            setActiveTab('active');
-            toast({ title: "Mission Re-opened", description: "Assignment moved back to active terminal and removed from weekly log." });
-        } catch (e: any) {
-            toast({ variant: "destructive", title: "Update Failed", description: e.message });
-        }
-    };
+    const handleConfirm = act('confirm');
+    const handleStartTrip = act('startTrip');
+    const handleCheckIn = act('checkIn');
+    const handleCheckOut = act('checkOut');
+    const handleMarkComplete = act('complete');
+    const handleReopen = act('reopen');
 
     // Tech reports a terminal non-completion outcome (job cancelled, or the tech
     // did not perform it). Moves the job off the active board and flags it for

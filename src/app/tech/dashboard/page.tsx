@@ -45,7 +45,8 @@ import { TERMINOLOGY } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
 import { format, startOfWeek, parseISO } from 'date-fns';
 import { removeJobFromDraftLogs } from '@/lib/weekly-log';
-import { useCompletionFiling, completionToastText, type CompletionResult } from '@/hooks/use-completion-filing';
+import { useTechJobActions } from '@/hooks/use-tech-job-actions';
+import { ACTION_FOR_STATUS } from '@/lib/tech-job-actions';
 import { cn, getTacticalLocation, compareScheduleTime } from '@/lib/utils';
 import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete } from '@/lib/trip-flow';
 import { NotificationService } from '@/lib/notification-service';
@@ -70,7 +71,7 @@ export default function TechDashboardPage() {
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     
     const { toast } = useToast();
-    const { completeAndFile, weekDialog } = useCompletionFiling(currentTechId);
+    const { run: runAction, weekDialog } = useTechJobActions(currentTechId, techDisplayName(tech));
     const router = useRouter();
 
     useEffect(() => {
@@ -169,61 +170,14 @@ export default function TechDashboardPage() {
     }, [allWorkOrders]);
 
 
-    const removeFromWeeklyLogs = async (woId: string) => {
-        if (!currentTechId) return;
-        await removeJobFromDraftLogs(currentTechId, woId);
-    };
-
+    // Same shared workflow as the calendar, assignments list and detail page
+    // (lib/tech-job-actions.ts): trip records, history, weekly-log filing,
+    // admin alerts. The schedule box routes through here too.
     const handleStatusTransition = async (woId: string, newStatus: WorkOrder['status']) => {
-        const today = format(new Date(), 'MM-dd-yyyy');
-        const nowTime = format(new Date(), 'h:mm a');
-        const location = await getTacticalLocation();
-        
-        try {
-            const docRef = doc(db, 'assignments', woId);
-            const targetWO = allWorkOrders.find(wo => wo.id === woId);
-            const historyEntry = { 
-                type: 'status_change' as const, 
-                date: today, 
-                details: `Status update to ${newStatus.toUpperCase()} at ${nowTime}. Location: [${location}].`, 
-                user: techDisplayName(tech) 
-            };
-            
-            if (newStatus === 'in-progress' || newStatus === 'checked-out') {
-                await removeFromWeeklyLogs(woId);
-            }
-
-            const writeStatus = () => updateDoc(docRef, {
-                status: newStatus,
-                history: [...(targetWO?.history || []), historyEntry]
-            });
-
-            // File BEFORE notifying — a notification failure used to throw
-            // after the job was already completed, skipping the weekly log.
-            let filed: CompletionResult | null = null;
-            if (newStatus === 'completed' && targetWO) {
-                filed = await completeAndFile(targetWO, writeStatus);
-            } else {
-                await writeStatus();
-            }
-
-            if (newStatus === 'in-progress' || newStatus === 'completed') {
-                // Notify via server-side notification service (admin IDs resolved server-side)
-                NotificationService.notifyAdmins(
-                    `Status Alert: ${newStatus.toUpperCase()}`,
-                    `Technician ${tech?.name} has transitioned to ${newStatus} for mission ${woId.toUpperCase()} at ${location}.`,
-                    { id: woId, type: 'assignment' }
-                ).catch(err => console.error('Admin notification failed', err));
-            }
-
-            if (newStatus === 'completed') {
-                toast({ title: "Mission Finalized", description: filed ? completionToastText(filed) : "Mission moved to historical registry." });
-            } else {
-                toast({ title: "Status Updated", description: `Mission transitioned to ${newStatus.replace(/-/g, ' ')}.` });
-            }
-        } catch (e: any) {
-            toast({ variant: "destructive", title: "Update Failed", description: e.message });
-        }
+        const targetWO = allWorkOrders.find(wo => wo.id === woId);
+        const action = ACTION_FOR_STATUS[newStatus];
+        if (!targetWO || !action) return;
+        await runAction(targetWO, action);
     };
 
     if (!currentTechId || !tech) {

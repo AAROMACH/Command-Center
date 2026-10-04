@@ -27,7 +27,7 @@ import { removeJobFromDraftLogs } from '@/lib/weekly-log';
 import { useCompletionFiling, completionToastText } from '@/hooks/use-completion-filing';
 import { setDoc } from 'firebase/firestore';
 import { startOfWeek } from 'date-fns';
-import { isAssignedTo } from '@/lib/jobs';
+import { isAssignedTo, parseLocalDate } from '@/lib/jobs';
 import { techDisplayName } from '@/lib/utils';
 
 const AssignmentMap = dynamic(
@@ -798,7 +798,7 @@ export default function TechAssignmentDetailPage() {
                 {filtered.map((ev, i) => {
                   const dotColor = HISTORY_COLORS[i % HISTORY_COLORS.length];
                   let evDate: Date | null = null;
-                  try { evDate = new Date(ev.date); } catch {}
+                  evDate = parseLocalDate(ev.date) ?? undefined as any;
                   const dateStr = evDate ? format(evDate, 'MM-dd-yyyy') : ev.date?.slice(0, 10) || '';
                   const timeStr = evDate ? format(evDate, 'h:mm a').toUpperCase() : '';
                   const typeLabel = (ev.type || 'event').replace(/_/g, ' ').toUpperCase();

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { parseLocalDate } from '@/lib/jobs';
 
 type Goal = { id: string; title: string; owner?: string; dueDate?: string; status: string };
 type Milestone = { id: string; title: string; owner?: string; targetDate?: string; quarter: string; status: string };
@@ -133,7 +134,7 @@ export default function CompanyPlanningPage() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3 shrink-0">
-                                        {g.dueDate && <p className="text-[9px] text-text-muted">{new Date(g.dueDate).toLocaleDateString()}</p>}
+                                        {g.dueDate && <p className="text-[9px] text-text-muted">{parseLocalDate(g.dueDate)?.toLocaleDateString() ?? g.dueDate}</p>}
                                         <Select value={g.status} onValueChange={v => handleUpdateGoalStatus(g.id, v)}>
                                             <SelectTrigger className={cn('h-6 text-[8px] font-black uppercase border px-2 rounded w-auto gap-1', statusColor)}>
                                                 <SelectValue />

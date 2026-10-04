@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierColor } from '@/lib/reliability';
 import { format, parseISO, subWeeks, startOfMonth, endOfMonth } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { isAssignedTo } from '@/lib/jobs';
+import { isAssignedTo, jobDateTimeValue, weekOfValue, parseLocalDate } from '@/lib/jobs';
 
 export default function TechActivityPage() {
   const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -70,7 +70,7 @@ export default function TechActivityPage() {
   const recentCompleted = useMemo(() =>
     assignments
       .filter(a => a.status === 'completed' || a.status === 'checked-out')
-      .sort((a, b) => (b.scheduleDate || '').localeCompare(a.scheduleDate || ''))
+      .sort((a, b) => jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime))
       .slice(0, 5),
     [assignments]
   );
@@ -89,7 +89,7 @@ export default function TechActivityPage() {
   const earningsTrend = useMemo(() =>
     weeklyLogs
       .filter(l => l.status === 'Approved')
-      .sort((a, b) => (a.weekOf || '').localeCompare(b.weekOf || ''))
+      .sort((a, b) => weekOfValue(a.weekOf) - weekOfValue(b.weekOf))
       .slice(-8)
       .map(l => ({ week: (l.weekOf || '').slice(5, 10), pay: l.totalPayout || 0 })),
     [weeklyLogs]
@@ -107,7 +107,7 @@ export default function TechActivityPage() {
     if (!rangeStart) return assignments;
     return assignments.filter(a => {
       if (!a.scheduleDate) return false;
-      try { return new Date(a.scheduleDate) >= rangeStart; } catch { return false; }
+      const d = parseLocalDate(a.scheduleDate); return !!d && d >= rangeStart;
     });
   }, [assignments, rangeStart]);
 
@@ -130,7 +130,7 @@ export default function TechActivityPage() {
     const end = endOfMonth(new Date());
     return assignments.filter(a => {
       if (!a.scheduleDate) return false;
-      try { const d = new Date(a.scheduleDate); return d >= start && d <= end; } catch { return false; }
+      const d = parseLocalDate(a.scheduleDate); return !!d && d >= start && d <= end;
     }).length;
   }, [assignments]);
 

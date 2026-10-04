@@ -91,7 +91,7 @@ import { Separator } from '@/components/ui/separator';
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { cn, formatCityState } from '@/lib/utils';
-import { isArchivedJob, archiveJobRecord } from '@/lib/jobs';
+import { isArchivedJob, archiveJobRecord, jobTechId, weekOfValue, parseLocalDate } from '@/lib/jobs';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { IntelligenceTerminal } from './components/intelligence-terminal';
 import type { Technician, WorkOrder, WeeklyLog, TimeOffRequest, AdminMessage, Invoice, Project } from '@/lib/types';
@@ -498,7 +498,7 @@ export default function ActivityAuditPage() {
 
     const techStats = useMemo(() => {
         if (!selectedTechId) return null;
-        const myJobs = assignments.filter(wo => wo.assignedTechnicianId === selectedTechId || wo.techId === selectedTechId);
+        const myJobs = assignments.filter(wo => jobTechId(wo) === selectedTechId);
         const completed = myJobs.filter(wo => wo.status === 'completed').length;
         const penalties = allPenalties.filter(pe => pe.techId === selectedTechId);
         const points = penaltyPoints(allPenalties, selectedTechId);
@@ -547,7 +547,7 @@ export default function ActivityAuditPage() {
             results = results.filter(wo => {
                 const parts = (wo.scheduleDate || '').split(/[-/]/);
                 let woDate;
-                if (parts[0] && parts[0].length === 4) { woDate = startOfDay(new Date(wo.scheduleDate)); }
+                if (parts[0] && parts[0].length === 4) { woDate = startOfDay(parseLocalDate(wo.scheduleDate) ?? new Date(NaN)); }
                 else { woDate = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]))); }
                 return isAfter(woDate, cutoff) || isSameDay(woDate, cutoff);
             });
@@ -556,7 +556,7 @@ export default function ActivityAuditPage() {
             results = results.filter(wo => {
                 const parts = (wo.scheduleDate || '').split(/[-/]/);
                 let woDate;
-                if (parts[0] && parts[0].length === 4) { woDate = startOfDay(new Date(wo.scheduleDate)); }
+                if (parts[0] && parts[0].length === 4) { woDate = startOfDay(parseLocalDate(wo.scheduleDate) ?? new Date(NaN)); }
                 else { woDate = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]))); }
                 return isAfter(woDate, cutoff) || isSameDay(woDate, cutoff);
             });
@@ -564,7 +564,7 @@ export default function ActivityAuditPage() {
             results = results.filter(wo => {
                 const parts = (wo.scheduleDate || '').split(/[-/]/);
                 let woDate;
-                if (parts[0] && parts[0].length === 4) { woDate = startOfDay(new Date(wo.scheduleDate)); }
+                if (parts[0] && parts[0].length === 4) { woDate = startOfDay(parseLocalDate(wo.scheduleDate) ?? new Date(NaN)); }
                 else { woDate = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]))); }
                 const start = startOfDay(customVisitRange.from!);
                 const end = customVisitRange.to ? startOfDay(customVisitRange.to) : start;
@@ -1578,7 +1578,7 @@ export default function ActivityAuditPage() {
                             <TabsContent value="weekly_logs" className="m-0 text-left">
                                 <div className="space-y-4">
                                     {(() => {
-                                        const submittedLogs = weeklyLogs.filter(l => l.status === 'Submitted' || l.status === 'Approved').sort((a, b) => b.weekOf.localeCompare(a.weekOf));
+                                        const submittedLogs = weeklyLogs.filter(l => l.status === 'Submitted' || l.status === 'Approved').sort((a, b) => weekOfValue(b.weekOf) - weekOfValue(a.weekOf));
                                         return (
                                             <>
                                                 <div className="flex items-center justify-between">

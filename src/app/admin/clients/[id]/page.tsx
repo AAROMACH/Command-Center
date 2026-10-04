@@ -23,6 +23,7 @@ import {
 import { cn } from '@/lib/utils';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import Link from 'next/link';
+import { jobDateTimeValue } from '@/lib/jobs';
 
 const ACCOUNT_STATUS_OPTIONS = [
     { value: 'lead', label: 'Lead' },
@@ -176,7 +177,7 @@ export default function ClientWorkspacePage() {
         completedWOs: clientWOs.filter(wo => wo.status === 'completed').length,
         outstandingBalance: clientInvoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').reduce((s, inv) => s + inv.total, 0),
         totalRevenue: clientInvoices.filter(inv => inv.status === 'paid').reduce((s, inv) => s + inv.total, 0),
-        lastJobDate: clientWOs.filter(wo => wo.status === 'completed' && wo.scheduleDate).sort((a, b) => b.scheduleDate.localeCompare(a.scheduleDate))[0]?.scheduleDate || null,
+        lastJobDate: clientWOs.filter(wo => wo.status === 'completed' && wo.scheduleDate).sort((a, b) => jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime))[0]?.scheduleDate || null,
     }), [clientWOs, clientInvoices]);
 
     const handleAddNote = async () => {
@@ -472,7 +473,7 @@ export default function ClientWorkspacePage() {
                             {clientSites.map(s => {
                                 const siteJobs = clientWOs.filter(wo => wo.location === s.location || wo.location === s.name);
                                 const openSiteJobs = siteJobs.filter(wo => wo.status !== 'completed').length;
-                                const lastService = siteJobs.filter(wo => wo.status === 'completed').sort((a, b) => b.scheduleDate.localeCompare(a.scheduleDate))[0]?.scheduleDate;
+                                const lastService = siteJobs.filter(wo => wo.status === 'completed').sort((a, b) => jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime))[0]?.scheduleDate;
                                 return (
                                     <Link key={s.id} href={`/admin/clients/${id}/sites/${s.id}`} className="p-4 rounded-xl border border-border-sub bg-bg-secondary hover:border-brand-red transition-colors group flex flex-col gap-3">
                                         <div className="flex items-start justify-between gap-2">

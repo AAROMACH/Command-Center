@@ -39,6 +39,7 @@ import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { onSiteSessions, formatClock } from '@/lib/time-on-site';
 import { effectiveJobPay } from '@/lib/payroll';
+import { parseLocalDate } from '@/lib/jobs';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -209,7 +210,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }:
     if (!entries.some(e => e.details.toLowerCase().includes('created'))) {
       entries.push({ type: 'note', date: mission.scheduleDate || 'TBD', details: 'Assignment Created — Job initialized in system.', user: mission.source === 'Imported' ? 'Field Nation System' : 'Command Center' } as any);
     }
-    return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return entries.sort((a, b) => (parseLocalDate(b.date)?.getTime() ?? 0) - (parseLocalDate(a.date)?.getTime() ?? 0));
   }, [mission]);
 
   const handleSwapTech = async () => {
@@ -371,7 +372,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }:
   })();
 
   const lastUpdated = mission.history?.length
-    ? [...mission.history].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date
+    ? [...mission.history].sort((a, b) => (parseLocalDate(b.date)?.getTime() ?? 0) - (parseLocalDate(a.date)?.getTime() ?? 0))[0].date
     : mission.scheduleDate || '';
 
   const handleVerify = async () => {

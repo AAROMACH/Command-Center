@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { jobDateTimeValue } from '@/lib/jobs';
 
 const ACCOUNT_STATUS_OPTIONS = [
     { value: 'lead', label: 'Lead' },
@@ -107,7 +108,7 @@ export default function AdminClientsPage() {
             const openInvoices = invoices.filter(inv => inv.clientName === company || inv.clientId === client.id).filter(inv => inv.status !== 'paid' && inv.status !== 'void').length;
             const lastJob = clientWOs
                 .filter(wo => wo.status === 'completed' && wo.scheduleDate)
-                .sort((a, b) => b.scheduleDate.localeCompare(a.scheduleDate))[0]?.scheduleDate || null;
+                .sort((a, b) => jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime))[0]?.scheduleDate || null;
             return { client, company, siteCount: clientSites.length, openJobs, activeQuotes, openInvoices, lastJob };
         });
     }, [clients, sites, workOrders, quotes, invoices]);

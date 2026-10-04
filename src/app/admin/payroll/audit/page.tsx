@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils';
 import { format, parseISO, isWithinInterval } from 'date-fns';
 import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder, PayrollDispute, FinancialRecord } from '@/lib/types';
 import { isClient, isSuperAdmin } from '@/lib/permissions';
-import { mergeJobs } from '@/lib/jobs';
+import { mergeJobs, parseLocalDate } from '@/lib/jobs';
 import { effectiveJobPay, computeWeeklyLogSettlement } from '@/lib/payroll';
 import { downloadPaystub } from '@/lib/paystub';
 import { auditEvent } from '@/lib/audit';
@@ -919,7 +919,7 @@ export default function PayrollAuditPage() {
                                     return (
                                         <TableRow key={adj.id} className="border-border-sub hover:bg-bg-secondary">
                                             <TableCell className="font-bold text-[11px] uppercase text-text-primary">{tech?.name || adj.techId}</TableCell>
-                                            <TableCell className="text-[10px] text-text-muted">{adj.date ? new Date(adj.date).toLocaleDateString() : '—'}</TableCell>
+                                            <TableCell className="text-[10px] text-text-muted">{parseLocalDate(adj.date)?.toLocaleDateString() ?? '—'}</TableCell>
                                             <TableCell className={cn('text-[11px] font-black font-mono', amount >= 0 ? 'text-text-green' : 'text-text-red')}>
                                                 {amount >= 0 ? '+' : ''}${amount.toFixed(2)}
                                             </TableCell>

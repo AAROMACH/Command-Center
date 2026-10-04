@@ -5,7 +5,7 @@ import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Tech
 import { externalWorkOrderId, displayWorkOrderNumber, fieldNationUrl, isImported } from '@/lib/work-order-identity';
 import { hasPermission } from '@/lib/permissions';
 import { computeWeeklyLogSettlement, effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
-import { mergeJobs } from '@/lib/jobs';
+import { mergeJobs, weekOfValue } from '@/lib/jobs';
 import { useHelperLogSync } from '@/hooks/use-helper-log-sync';
 import { createDraftWeeklyLog } from '@/lib/weekly-log';
 import { uploadFile } from '@/lib/upload';
@@ -306,8 +306,8 @@ export default function TechWeeklyLogPage() {
         }
 
         return [...filtered].sort((a, b) => {
-            if (sortBy === 'newest') return (b.weekOf || '').localeCompare(a.weekOf || '');
-            if (sortBy === 'oldest') return (a.weekOf || '').localeCompare(b.weekOf || '');
+            if (sortBy === 'newest') return weekOfValue(b.weekOf) - weekOfValue(a.weekOf);
+            if (sortBy === 'oldest') return weekOfValue(a.weekOf) - weekOfValue(b.weekOf);
             if (sortBy === 'status') return (a.status || '').localeCompare(b.status || '');
             if (sortBy === 'billing') return settlementOf(b) - settlementOf(a);
             return 0;

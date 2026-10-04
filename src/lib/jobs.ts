@@ -111,6 +111,36 @@ export function jobDateTimeValue(dateStr?: string | null, timeStr?: string | nul
 }
 
 /**
+ * Parse any date string the app stores into a LOCAL Date:
+ *   'yyyy-MM-dd'  → local midnight (new Date('2026-08-18') is UTC midnight,
+ *                   i.e. the evening of the 17th in Michigan — dates showed
+ *                   and filtered a day early);
+ *   'MM-dd-yyyy' / 'M/D/YYYY' → local midnight (Safari/iOS returns Invalid
+ *                   Date for 'MM-dd-yyyy' strings);
+ *   full ISO datetimes and anything else Date understands → as-is.
+ * Null when it isn't a date.
+ */
+export function parseLocalDate(s?: string | null): Date | null {
+  if (!s) return null;
+  const str = String(s).trim();
+  let m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+  m = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (m) return new Date(+m[3], +m[1] - 1, +m[2]);
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * A weekly log's `weekOf` ('MM-dd-yyyy', tolerates 'yyyy-MM-dd') as a
+ * comparable timestamp, 0 when unparseable. Use this — never a string
+ * compare: 'MM-dd-yyyy' strings sort by month before year.
+ */
+export function weekOfValue(weekOf?: string | null): number {
+  return jobDateTimeValue(weekOf, null);
+}
+
+/**
  * Reverses the workOrders→assignments transition: given an assignment doc
  * whose technician is being cleared, returns the doc to write back into the
  * `workOrders` collection (unassigned pool) — original id restored via

@@ -22,7 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import { DateRangeButton } from '@/components/list-toolbar';
-import { mergeJobs, jobTechId, jobDateTimeValue, JOB_STATUS_OPTIONS } from '@/lib/jobs';
+import { mergeJobs, jobTechId, jobDateTimeValue, JOB_STATUS_OPTIONS, isArchivedJob } from '@/lib/jobs';
 import { isSuperAdmin, isPayAdmin } from '@/lib/permissions';
 import { computeWeeklyLogSettlement } from '@/lib/payroll';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
@@ -177,9 +177,7 @@ export default function FieldIntelligencePage() {
     // Insights tab computed values
     const techReliability = useMemo(() => {
         return staffTechs.map(tech => {
-            const techJobs = assignments.filter(wo =>
-                wo.assignedTechnicianId === tech.id || wo.techId === tech.id
-            );
+            const techJobs = assignments.filter(wo => jobTechId(wo) === tech.id && !isArchivedJob(wo));
             const completed = techJobs.filter(wo => wo.status === 'completed').length;
             const total = techJobs.length;
             const revisits = techJobs.filter(wo =>

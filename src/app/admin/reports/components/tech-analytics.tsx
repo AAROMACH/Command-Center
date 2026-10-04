@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import type { Technician, WorkOrder, WeeklyLog } from '@/lib/types';
 import { isClient } from '@/lib/permissions';
 import { ShieldCheck, BarChart3, Coins, TrendingUp } from 'lucide-react';
+import { jobTechId } from '@/lib/jobs';
 
 type TechAnalyticsProps = {
     technicians: Technician[];
@@ -38,7 +39,7 @@ export function TechAnalytics({ technicians, workOrders, weeklyLogs }: TechAnaly
 
     const chartData = useMemo(() => {
         return activeTechs.map(tech => {
-            const myJobs = workOrders.filter(wo => wo.assignedTechnicianId === tech.id);
+            const myJobs = workOrders.filter(wo => jobTechId(wo) === tech.id);
             const completed = myJobs.filter(wo => wo.status === 'completed').length;
             const myLogs = weeklyLogs.filter(log => log.techId === tech.id);
             const totalEarnings = myLogs.reduce((acc, log) => acc + (log.totalPayout || 0), 0);

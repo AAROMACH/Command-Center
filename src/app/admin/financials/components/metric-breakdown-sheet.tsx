@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Invoice, Technician } from '@/lib/types';
 import { AGING_ORDER, money, type FinancialSummary } from '@/lib/financial-summary';
+import { parseLocalDate } from '@/lib/jobs';
 
 export type MetricKey = 'revenue' | 'pending' | 'ar' | 'margin';
 
@@ -107,7 +108,7 @@ export function MetricBreakdownSheet({
         if (!metric) return null;
         if (metric === 'revenue') {
             const unpaidThisMonth = allInvoices.filter(i => i.status !== 'paid' && i.status !== 'void' && month.revenueInvoices.every(r => r.id !== i.id)
-                && (() => { const d = new Date(i.issueDate); return !isNaN(d.getTime()) && format(d, 'yyyy-MM') === format(new Date(), 'yyyy-MM'); })());
+                && (() => { const d = parseLocalDate(i.issueDate); return !!d && format(d, 'yyyy-MM') === format(new Date(), 'yyyy-MM'); })());
             return {
                 title: 'Total Revenue (MTD)',
                 value: usd(month.revenue),

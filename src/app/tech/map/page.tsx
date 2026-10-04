@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import type { WorkOrder } from '@/lib/types';
-import { isArchivedJob, isAssignedTo } from '@/lib/jobs';
+import { isArchivedJob, isAssignedTo, parseLocalDate } from '@/lib/jobs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -107,8 +107,8 @@ export default function TechMapPage() {
         return d >= today;
       })
       .sort((a, b) => {
-        const da = a.scheduleDate ? new Date(a.scheduleDate).getTime() : Infinity;
-        const db_ = b.scheduleDate ? new Date(b.scheduleDate).getTime() : Infinity;
+        const da = parseLocalDate(a.scheduleDate)?.getTime() ?? Infinity;
+        const db_ = parseLocalDate(b.scheduleDate)?.getTime() ?? Infinity;
         return da - db_;
       });
   }, [assignments]);

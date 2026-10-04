@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { format, isSameDay, parseISO, startOfDay } from 'date-fns';
+import { parseLocalDate } from '@/lib/jobs';
 
 type SortOption = 'name' | 'date' | 'progress' | 'client';
 
@@ -120,7 +121,7 @@ export default function ProjectsPage() {
                 const parts = p.startDate.split('-');
                 let pDate;
                 if (parts[0].length === 4) {
-                    pDate = startOfDay(new Date(p.startDate));
+                    pDate = startOfDay(parseLocalDate(p.startDate) ?? new Date(NaN));
                 } else {
                     const [m, d, y] = parts;
                     pDate = startOfDay(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));

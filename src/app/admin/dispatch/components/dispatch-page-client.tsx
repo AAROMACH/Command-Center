@@ -36,6 +36,7 @@ import { useNewArrivals, ARRIVAL_KEYS, unassignedArrivalIds, reviewArrivalIds, r
 import { NewArrivalPing } from '@/components/new-arrival-ping';
 import { SearchField } from '@/components/search-field';
 import { SortControl, FiltersPopover, FilterSection, CheckboxFilter, DateRangeButton, type SortOptionDef } from '@/components/list-toolbar';
+import { parseLocalDate } from '@/lib/jobs';
 
 const SERVICE_CATEGORIES = [
     'Installation',
@@ -369,7 +370,7 @@ export function DispatchPageClient() {
           try {
               const parts = (req.submittedDate || '').split(/[-/]/);
               let reqDate;
-              if (parts[0] && parts[0].length === 4) { reqDate = startOfDay(new Date(req.submittedDate)); } 
+              if (parts[0] && parts[0].length === 4) { reqDate = startOfDay(parseLocalDate(req.submittedDate) ?? new Date(NaN)); } 
               else { 
                 const [m, d, y] = parts;
                 if (y && m && d) {

@@ -28,7 +28,7 @@ import { format } from 'date-fns';
 import { cn, sanitize, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
 import { isPayAdmin } from '@/lib/permissions';
 import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
-import { toUnassignedWorkOrder } from '@/lib/jobs';
+import { toUnassignedWorkOrder, parseLocalDate } from '@/lib/jobs';
 import { createDocId } from '@/lib/generateId';
 import { syncWeeklyLogForAdminStatusEdit, moveJobLogOnSwap, describeSwapLogMove } from '@/lib/weekly-log';
 
@@ -792,7 +792,7 @@ export default function AssignmentDetailPage() {
                 {filtered.map((ev, i) => {
                   const dotColor = HISTORY_COLORS[i % HISTORY_COLORS.length];
                   let evDate: Date | null = null;
-                  try { evDate = new Date(ev.date); } catch {}
+                  evDate = parseLocalDate(ev.date) ?? undefined as any;
                   const dateStr = evDate ? format(evDate, 'MM-dd-yyyy') : ev.date?.slice(0, 10) || '';
                   const timeStr = evDate ? format(evDate, 'h:mm a').toUpperCase() : '';
                   const typeLabel = (ev.type || 'event').replace(/_/g, ' ').toUpperCase();

@@ -27,6 +27,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { NotificationBell } from '@/components/notification-bell';
 import { cn } from '@/lib/utils';
+import { jobDateTimeValue, parseLocalDate } from '@/lib/jobs';
 
 const SLA_HOURS: Record<string, number> = {
     'on-call': 48,
@@ -105,7 +106,7 @@ export default function ClientDashboardPage() {
             .filter(r => r.status === 'new' || r.status === 'reviewed')
             .map(r => {
                 try {
-                    const submitted = new Date(r.submittedDate);
+                    const submitted = parseLocalDate(r.submittedDate) ?? new Date(NaN);
                     const now = new Date();
                     const hoursElapsed = (now.getTime() - submitted.getTime()) / (1000 * 60 * 60);
                     const hoursRemaining = Math.max(0, slaLimit - hoursElapsed);
@@ -126,7 +127,7 @@ export default function ClientDashboardPage() {
 
     const recentActivity = useMemo(() => {
         return [...myWorkOrders]
-            .sort((a, b) => (b.scheduleDate || '').localeCompare(a.scheduleDate || ''))
+            .sort((a, b) => jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime))
             .slice(0, 5);
     }, [myWorkOrders]);
 

@@ -41,7 +41,7 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, addDoc, getDoc } from 'firebase/firestore';
 import { uploadFile } from '@/lib/upload';
 import { useToast } from '@/hooks/use-toast';
-import { mergeJobs } from '@/lib/jobs';
+import { mergeJobs, weekOfValue } from '@/lib/jobs';
 import { effectiveJobPay, computeWeeklyLogSettlement, netOfFieldNationFee } from '@/lib/payroll';
 import { downloadPaystub } from '@/lib/paystub';
 import { displayWorkOrderNumber } from '@/lib/work-order-identity';
@@ -174,8 +174,8 @@ export default function TechEarningsPage() {
             });
         }
         return results.sort((a, b) => {
-            if (logSortBy === 'date-desc') return (b.weekOf || '').localeCompare(a.weekOf || '');
-            if (logSortBy === 'date-asc') return (a.weekOf || '').localeCompare(b.weekOf || '');
+            if (logSortBy === 'date-desc') return weekOfValue(b.weekOf) - weekOfValue(a.weekOf);
+            if (logSortBy === 'date-asc') return weekOfValue(a.weekOf) - weekOfValue(b.weekOf);
             if (logSortBy === 'payout-desc') return settlementOf(b) - settlementOf(a);
             return 0;
         });

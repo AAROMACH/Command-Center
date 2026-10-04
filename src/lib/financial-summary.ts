@@ -1,6 +1,7 @@
 import { startOfMonth, endOfMonth, isWithinInterval, differenceInCalendarDays, startOfDay } from 'date-fns';
 import type { Expense, Invoice, WeeklyLog, WorkOrder } from './types';
 import { computeWeeklyLogSettlement } from './payroll';
+import { parseLocalDate } from './jobs';
 
 /**
  * The Financials summary cards, computed in one place so the card values,
@@ -21,11 +22,9 @@ import { computeWeeklyLogSettlement } from './payroll';
 
 export const money = (n: unknown) => Number(n) || 0;
 
-const parseDate = (s: string | undefined): Date | null => {
-    if (!s) return null;
-    const d = new Date(s);
-    return isNaN(d.getTime()) ? null : d;
-};
+// Local-date parse: 'yyyy-MM-dd' via new Date() is UTC midnight, which put
+// invoices issued on the 1st into the previous month in US time zones.
+const parseDate = (s: string | undefined): Date | null => parseLocalDate(s);
 
 /** weekOf 'MM-dd-yyyy' (or 'yyyy-MM-dd') → Date of that Monday. */
 export const weekOfDate = (weekOf: string | undefined): Date | null => {

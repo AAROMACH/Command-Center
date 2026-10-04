@@ -104,24 +104,39 @@ export function WrongTechEntries({ entries, desynced, technicians, currentUser }
         });
     };
 
+    const syncJob = async (job: WorkOrder) => {
+        const to = job.assignedTechnicianId!;
+        await updateDoc(doc(db, 'assignments', job.id), {
+            techId: to,
+            technicianName: techName(to),
+            history: arrayUnion({
+                type: 'note',
+                date: format(new Date(), 'MM-dd-yyyy'),
+                details: `Tech portal ownership synced from ${techName(job.techId)} to ${techName(to)} by ${adminName} (Payroll Audit → Wrong Tech).`,
+                user: adminName,
+            }),
+        });
+        await auditEvent('assignments', job.id, adminId, adminName, 'synced_tech_fields',
+            `Synced ${displayWorkOrderNumber(job)} portal owner ${techName(job.techId)} → ${techName(to)}.`).catch(() => {});
+    };
+
+    const [syncingAll, setSyncingAll] = useState(false);
+    const handleSyncAll = async () => {
+        setSyncingAll(true);
+        let ok = 0;
+        for (const job of desynced) {
+            try { await syncJob(job); ok++; } catch { /* reported below */ }
+        }
+        setSyncingAll(false);
+        toast({ variant: ok < desynced.length ? 'destructive' : undefined, title: `Synced ${ok} of ${desynced.length}`, description: 'Each job now shows only in its assigned tech’s portal.' });
+    };
+
     const handleSync = async (job: WorkOrder) => {
         const key = `sync:${job.id}`;
         mark(key, true);
         try {
-            const to = job.assignedTechnicianId!;
-            await updateDoc(doc(db, 'assignments', job.id), {
-                techId: to,
-                technicianName: techName(to),
-                history: arrayUnion({
-                    type: 'note',
-                    date: format(new Date(), 'MM-dd-yyyy'),
-                    details: `Tech portal ownership synced from ${techName(job.techId)} to ${techName(to)} by ${adminName} (Payroll Audit → Wrong Tech).`,
-                    user: adminName,
-                }),
-            });
-            await auditEvent('assignments', job.id, adminId, adminName, 'synced_tech_fields',
-                `Synced ${displayWorkOrderNumber(job)} portal owner ${techName(job.techId)} → ${techName(to)}.`).catch(() => {});
-            toast({ title: 'Tech Fields Synced', description: `${displayWorkOrderNumber(job)} now shows only in ${techName(to)}'s portal.` });
+            await syncJob(job);
+            toast({ title: 'Tech Fields Synced', description: `${displayWorkOrderNumber(job)} now shows only in ${techName(job.assignedTechnicianId)}'s portal.` });
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Could not sync', description: err?.message || 'Please try again.' });
         } finally {
@@ -192,9 +207,14 @@ export function WrongTechEntries({ entries, desynced, technicians, currentUser }
 
                     {desynced.length > 0 && (
                         <div className="space-y-2">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                                Showing in the wrong tech&apos;s portal · {desynced.length}
-                            </p>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                                    Out of sync (hidden from the old tech&apos;s portal, but not yet synced) · {desynced.length}
+                                </p>
+                                <Button size="sm" variant="outline" className="h-8 text-[9px] uppercase font-black tracking-widest" disabled={syncingAll} onClick={handleSyncAll}>
+                                    {syncingAll ? <Loader2 size={11} className="mr-1 animate-spin" /> : null} Sync All ({desynced.length})
+                                </Button>
+                            </div>
                             <div className="rounded-xl border border-border-sub bg-bg-secondary divide-y divide-border-sub overflow-hidden">
                                 {desynced.map(job => (
                                     <div key={job.id} className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 py-3">
@@ -204,7 +224,7 @@ export function WrongTechEntries({ entries, desynced, technicians, currentUser }
                                                 <span className="text-[10px] font-mono text-text-muted">WO {displayWorkOrderNumber(job)}</span>
                                             </div>
                                             <p className="text-[10px] text-text-secondary">
-                                                Assigned to <span className="font-bold text-text-primary">{techName(job.assignedTechnicianId)}</span>, but shows in <span className="font-bold">{techName(job.techId)}</span>&apos;s portal
+                                                Assigned to <span className="font-bold text-text-primary">{techName(job.assignedTechnicianId)}</span>; old owner field still points at <span className="font-bold">{techName(job.techId)}</span>
                                             </p>
                                         </div>
                                         <Button size="sm" variant="outline" className="h-8 shrink-0 text-[9px] uppercase font-black tracking-widest" disabled={busy.has(`sync:${job.id}`)} onClick={() => handleSync(job)}>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { displayWorkOrderNumber } from '@/lib/work-order-identity';
-import { isArchivedJob } from '@/lib/jobs';
+import { isArchivedJob, isAssignedTo } from '@/lib/jobs';
 import { removeJobFromDraftLogs } from '@/lib/weekly-log';
 import { useCompletionFiling, completionToastText } from '@/hooks/use-completion-filing';
 import { db, auth } from '@/lib/firebase';
@@ -145,13 +145,13 @@ export default function TechCalendarPage() {
     const u1 = onSnapshot(q1, snap => {
       // Archived is a first line of defense before deletion — never let an
       // archived job resurface here as live/scheduled.
-      setRawAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id, _src: 'assignment' } as JobWithSrc)).filter(wo => !isArchivedJob(wo)));
+      setRawAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id, _src: 'assignment' } as JobWithSrc)).filter(wo => !isArchivedJob(wo) && isAssignedTo(wo, currentTechId)));
       setLoading(false);
     }, () => setLoading(false));
 
     const q2 = query(collection(db, 'workOrders'), where('assignedTechnicianId', '==', currentTechId));
     const u2 = onSnapshot(q2, snap => {
-      setRawWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id, _src: 'workOrder' } as JobWithSrc)).filter(wo => !isArchivedJob(wo)));
+      setRawWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id, _src: 'workOrder' } as JobWithSrc)).filter(wo => !isArchivedJob(wo) && isAssignedTo(wo, currentTechId)));
     });
 
     const u3 = onSnapshot(doc(db, 'users', currentTechId), snap => {

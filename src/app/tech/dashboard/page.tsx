@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, doc, updateDoc, onSnapshot, query, where, setDoc, arrayUnion } from 'firebase/firestore';
-import { isArchivedJob } from '@/lib/jobs';
+import { isArchivedJob, isAssignedTo } from '@/lib/jobs';
 import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -92,7 +92,7 @@ export default function TechDashboardPage() {
             // Archived is a first line of defense before deletion — a job
             // that's been archived (or somehow left behind with a stale
             // 'archived' flag) must never resurface as live/upcoming here.
-            setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)).filter(wo => !isArchivedJob(wo)));
+            setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)).filter(wo => !isArchivedJob(wo) && isAssignedTo(wo, userId)));
         });
 
         const logQ = query(collection(db, 'weeklyLogs'), where('techId', '==', userId), where('status', '==', 'Draft'));

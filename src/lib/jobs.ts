@@ -31,6 +31,17 @@ export function jobTechId(job: Partial<WorkOrder> | null | undefined): string | 
     || undefined;
 }
 
+/**
+ * Whether a job is assigned to this tech — the single rule for what a tech
+ * sees and can act on in their portal. Uses jobTechId (what every admin
+ * screen shows), so a job whose legacy `techId` still points at a previous
+ * tech after an out-of-sync swap is NOT theirs, even though the portal's
+ * `techId` query returns it.
+ */
+export function isAssignedTo(job: Partial<WorkOrder> | null | undefined, techId: string | null | undefined): boolean {
+  return !!techId && jobTechId(job) === techId;
+}
+
 /** Whether a job has a technician assigned. */
 export function isAssigned(job: Partial<WorkOrder> | null | undefined): boolean {
   return !!jobTechId(job);

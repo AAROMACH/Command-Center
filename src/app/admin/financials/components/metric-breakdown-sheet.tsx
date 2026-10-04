@@ -7,10 +7,12 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Invoice, Technician } from '@/lib/types';
-import { AGING_ORDER, money, type FinancialSummary } from '@/lib/financial-summary';
+import { jobTechId } from '@/lib/jobs';
+import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
+import { AGING_ORDER, money, type FinancialSummary, type JobLine } from '@/lib/financial-summary';
 import { parseLocalDate } from '@/lib/jobs';
 
-export type MetricKey = 'revenue' | 'pending' | 'ar' | 'margin';
+export type MetricKey = 'revenue' | 'tech' | 'profit' | 'pending' | 'ar';
 
 const usd = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const usdShort = (n: number) => `$${Math.round(n).toLocaleString()}`;
@@ -91,6 +93,45 @@ function InvoiceTable({ rows, extra }: { rows: Invoice[]; extra?: (inv: Invoice)
     );
 }
 
+/** Per-job revenue / tech portion / FN fee / Aaromach portion, paged. */
+function JobLinesTable({ rows, techName }: { rows: JobLine[]; techName: (id: string) => string }) {
+    const sorted = useMemo(() => [...rows].sort((a, b) => b.revenue - a.revenue), [rows]);
+    const pager = usePaged(sorted, PAGE_SIZES_LARGE, 'financials-job-lines');
+    if (rows.length === 0) return <p className="text-[10px] text-text-muted">None.</p>;
+    return (
+        <div className="rounded-lg border border-border-sub overflow-hidden">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead className="text-[9px] uppercase">Job</TableHead>
+                        <TableHead className="text-[9px] uppercase">Tech</TableHead>
+                        <TableHead className="text-[9px] uppercase text-right">Revenue</TableHead>
+                        <TableHead className="text-[9px] uppercase text-right">Tech</TableHead>
+                        <TableHead className="text-[9px] uppercase text-right">FN fee</TableHead>
+                        <TableHead className="text-[9px] uppercase text-right">Aaromach</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {pager.items.map(l => (
+                        <TableRow key={l.job.id}>
+                            <TableCell className="text-[10px]">
+                                <a href={`/admin/assignments/${l.job.id}`} className="font-mono text-blue-400 hover:underline">{l.job.id.toUpperCase()}</a>
+                                <span className="block text-text-muted truncate max-w-[160px]">{l.job.clientName || '—'}{l.invoice ? ` · inv ${l.invoice.invoiceNumber || l.invoice.id}` : l.imported ? ' · FN' : ''}</span>
+                            </TableCell>
+                            <TableCell className="text-[10px]">{techName(jobTechId(l.job) || '') || '—'}</TableCell>
+                            <TableCell className="text-[10px] font-mono text-right">{usd(l.revenue)}</TableCell>
+                            <TableCell className="text-[10px] font-mono text-right">{usd(l.techPortion)}</TableCell>
+                            <TableCell className="text-[10px] font-mono text-right">{l.fnFee ? usd(l.fnFee) : '—'}</TableCell>
+                            <TableCell className={`text-[10px] font-mono text-right font-bold ${l.profit < 0 ? 'text-text-red' : 'text-text-green'}`}>{usd(l.profit)}</TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+            <div className="px-3"><ListPager pager={pager} noun="jobs" /></div>
+        </div>
+    );
+}
+
 export function MetricBreakdownSheet({
     metric, onClose, summary, technicians, allInvoices,
 }: {
@@ -107,25 +148,43 @@ export function MetricBreakdownSheet({
     const content = useMemo(() => {
         if (!metric) return null;
         if (metric === 'revenue') {
-            const unpaidThisMonth = allInvoices.filter(i => i.status !== 'paid' && i.status !== 'void' && month.revenueInvoices.every(r => r.id !== i.id)
-                && (() => { const d = parseLocalDate(i.issueDate); return !!d && format(d, 'yyyy-MM') === format(new Date(), 'yyyy-MM'); })());
+            const byClient = sumBy<{ c: string; v: number }>([
+                ...month.jobs.map(j => ({ c: j.job.clientName || 'Unknown client', v: j.revenue })),
+                ...month.revenueInvoices.map(i => ({ c: i.clientName || 'Unknown client', v: money(i.subtotal ?? i.total) })),
+            ], r => r.c, r => r.v);
             return {
-                title: 'Total Revenue (MTD)',
+                title: 'Revenue (MTD)',
                 value: usd(month.revenue),
-                how: `Sum of invoices marked PAID that were issued in ${monthLabel}. Invoices don't record a payment date, so a paid invoice counts in the month it was issued.`,
+                how: `Everything paid into the app in ${monthLabel}: the pay on each job completed this month (by scheduled date) — or, when a paid client invoice is linked to the job, that invoice before tax — ${usd(month.jobRevenue)}; plus paid invoices issued this month that aren't tied to a job (projects / direct billing), ${usd(month.invoiceRevenue)}.`,
                 body: (
                     <>
                         <Section title="Revenue by client">
-                            <BreakdownBars data={topGroups(sumBy(month.revenueInvoices, i => i.clientName || 'Unknown client', i => money(i.total)))} emptyText="No paid invoices issued this month" />
+                            <BreakdownBars data={topGroups(byClient)} emptyText="No revenue recorded this month" />
                         </Section>
-                        <Section title={`Paid invoices counted (${month.revenueInvoices.length})`}>
+                        <Section title={`Completed jobs counted (${month.jobs.length})`}>
+                            <JobLinesTable rows={month.jobs} techName={techName} />
+                        </Section>
+                        <Section title={`Paid invoices not tied to a job (${month.revenueInvoices.length})`}>
                             <InvoiceTable rows={month.revenueInvoices} />
                         </Section>
-                        {unpaidThisMonth.length > 0 && (
-                            <Section title={`Not counted — issued this month but not paid yet (${unpaidThisMonth.length}, ${usd(unpaidThisMonth.reduce((s, i) => s + money(i.total), 0))})`}>
-                                <InvoiceTable rows={unpaidThisMonth} />
-                            </Section>
-                        )}
+                    </>
+                ),
+            };
+        }
+        if (metric === 'tech') {
+            const byTech = sumBy(month.jobs, j => techName(jobTechId(j.job) || '') || 'Unassigned', j => j.techPortion);
+            return {
+                title: 'Tech Pay (MTD)',
+                value: usd(month.techPortion),
+                how: `What the techs are paid for the jobs completed in ${monthLabel} — their weekly-log settlement (Field Nation jobs: half of the pay after the 15.85% FN fee; manual jobs: the logged pay), or the same formula on the job's pay if it isn't on a log yet. Helpers' entries count too. This is the expense side.`,
+                body: (
+                    <>
+                        <Section title="Tech pay by technician (lead tech on the job)">
+                            <BreakdownBars data={topGroups(byTech)} emptyText="No completed jobs this month" />
+                        </Section>
+                        <Section title={`Jobs counted (${month.jobs.length})`}>
+                            <JobLinesTable rows={month.jobs} techName={techName} />
+                        </Section>
                     </>
                 ),
             };
@@ -198,46 +257,31 @@ export function MetricBreakdownSheet({
                 ),
             };
         }
-        // margin
+        // profit
         const bars = [
-            { name: 'Revenue (paid)', value: month.revenue },
+            { name: 'Revenue', value: month.revenue },
+            { name: 'Tech pay', value: month.techPortion },
+            { name: 'Field Nation fees', value: month.fnFees },
+            { name: 'Aaromach portion', value: Math.max(0, month.profit) },
             { name: 'Approved expenses', value: month.expenseTotal },
-            { name: 'Approved payroll', value: month.payrollTotal },
         ];
+        const byClient = sumBy(month.jobs, j => j.job.clientName || 'Unknown client', j => j.profit);
         return {
-            title: 'Service Margin',
-            value: `${summary.margin.toFixed(1)}%`,
-            how: `(Revenue − Costs) ÷ Revenue for ${monthLabel}. Revenue = ${usd(month.revenue)}. Costs = approved expenses dated this month (${usd(month.expenseTotal)}) + approved weekly logs for weeks starting this month (${usd(month.payrollTotal)}) = ${usd(month.costs)}.${month.revenue === 0 ? ' With no paid revenue this month the margin shows 0%.' : ''}`,
+            title: 'Aaromach Profit (MTD)',
+            value: usd(month.profit),
+            how: `Revenue − tech pay − Field Nation fees for ${monthLabel}: ${usd(month.revenue)} − ${usd(month.techPortion)} − ${usd(month.fnFees)} = ${usd(month.profit)} (${summary.margin.toFixed(1)}% of revenue). After approved company expenses dated this month (${usd(month.expenseTotal)}), net is ${usd(month.netProfit)}.`,
             body: (
                 <>
-                    <Section title="Revenue vs costs this month">
+                    <Section title="Where the money went">
                         <BreakdownBars data={bars} emptyText="No revenue or costs recorded this month" />
                     </Section>
-                    <Section title={`Approved payroll counted (${month.payroll.length})`}>
-                        {month.payroll.length === 0 ? <p className="text-[10px] text-text-muted">None.</p> : (
-                            <div className="rounded-lg border border-border-sub overflow-hidden">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="text-[9px] uppercase">Technician</TableHead>
-                                            <TableHead className="text-[9px] uppercase">Week of</TableHead>
-                                            <TableHead className="text-[9px] uppercase text-right">Settlement</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {month.payroll.map(p => (
-                                            <TableRow key={p.log.id}>
-                                                <TableCell className="text-[10px]">{techName(p.log.techId)}</TableCell>
-                                                <TableCell className="text-[10px] font-mono">{p.log.weekOf}</TableCell>
-                                                <TableCell className="text-[10px] font-mono text-right">{usd(p.amount)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        )}
+                    <Section title="Aaromach portion by client">
+                        <BreakdownBars data={topGroups(byClient)} emptyText="No completed jobs this month" />
                     </Section>
-                    <Section title={`Approved expenses counted (${month.expenses.length})`}>
+                    <Section title={`Jobs counted (${month.jobs.length})`}>
+                        <JobLinesTable rows={month.jobs} techName={techName} />
+                    </Section>
+                    <Section title={`Approved expenses (${month.expenses.length})`}>
                         {month.expenses.length === 0 ? <p className="text-[10px] text-text-muted">None.</p> : (
                             <div className="rounded-lg border border-border-sub overflow-hidden">
                                 <Table>
@@ -262,9 +306,6 @@ export function MetricBreakdownSheet({
                                 </Table>
                             </div>
                         )}
-                    </Section>
-                    <Section title={`Paid invoices counted (${month.revenueInvoices.length})`}>
-                        <InvoiceTable rows={month.revenueInvoices} />
                     </Section>
                 </>
             ),

@@ -707,8 +707,8 @@ export default function FieldIntelligencePage() {
                             <div className="border-b border-border-sub pb-2">
                                 <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Top 10 Clients</h3>
                                 <p className="text-[9px] text-text-muted mt-1 leading-relaxed">
-                                    Ranked by job volume. Revenue = Field Nation jobs at pay net of the 15.85% FN fee, plus paid invoices (pre-tax) for direct work.
-                                    Labor = what techs are paid for the completed jobs (weekly-log settlement, or the same formula on job pay when not logged yet).
+                                    Ranked by job volume. Same model as Financials: revenue = what each completed job pays into the app (its pay, or its paid invoice before tax) plus paid invoices not tied to a job;
+                                    labor = the tech portion; gross profit = the Aaromach portion (revenue − labor − the 15.85% Field Nation fee on FN jobs).
                                 </p>
                             </div>
                             {topClientRows.length === 0 ? (

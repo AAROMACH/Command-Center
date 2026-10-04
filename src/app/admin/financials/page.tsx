@@ -127,10 +127,11 @@ export default function FinancialsPage() {
     const stats = useMemo(() => {
         const usd0 = (n: number) => `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
         return [
-            { key: 'revenue' as const, title: "TOTAL REVENUE (MTD)", value: usd0(summary.month.revenue), trend: "PAID INVOICES ISSUED THIS MONTH", trendType: "positive" as const, TrendIcon: ArrowUpRight },
+            { key: 'revenue' as const, title: "REVENUE (MTD)", value: usd0(summary.month.revenue), trend: `${summary.month.jobs.length} COMPLETED JOB${summary.month.jobs.length !== 1 ? 'S' : ''} + PAID INVOICES`, trendType: "positive" as const, TrendIcon: ArrowUpRight },
+            { key: 'tech' as const, title: "TECH PAY (MTD)", value: usd0(summary.month.techPortion), trend: "TECH PORTION · EXPENSE", trendType: "warning" as const, TrendIcon: Minus },
+            { key: 'profit' as const, title: "AAROMACH PROFIT (MTD)", value: usd0(summary.month.profit), trend: `${summary.margin.toFixed(1)}% OF REVENUE · AFTER FN FEES`, trendType: summary.month.profit >= 0 ? "positive" as const : "negative" as const, TrendIcon: TrendingUp },
             { key: 'pending' as const, title: "PENDING PAYOUTS", value: usd0(summary.pendingTotal), trend: `${summary.pending.length} SUBMITTED LOG${summary.pending.length !== 1 ? 'S' : ''} AWAITING APPROVAL`, trendType: "warning" as const, TrendIcon: Minus },
             { key: 'ar' as const, title: "OUTSTANDING A/R", value: usd0(summary.receivableTotal), trend: `${summary.receivables.length} SENT / OVERDUE INVOICE${summary.receivables.length !== 1 ? 'S' : ''}`, trendType: "positive" as const, TrendIcon: Activity },
-            { key: 'margin' as const, title: "SERVICE MARGIN", value: `${summary.margin.toFixed(1)}%`, trend: "PAID REVENUE VS COSTS (MTD)", trendType: summary.margin >= 25 ? "positive" as const : "negative" as const, TrendIcon: TrendingUp },
         ];
     }, [summary]);
 
@@ -357,7 +358,7 @@ export default function FinancialsPage() {
                 
                 <div className="mt-6 text-left">
                     <TabsContent value="summary" className="m-0 space-y-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                             {stats.map((metric, index) => (
                                 <Card
                                     key={index}

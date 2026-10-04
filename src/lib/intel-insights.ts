@@ -1,3 +1,4 @@
+import { jobEconomics, techPayByJob } from './financial-summary';
 import type { Invoice, WeeklyLog, WorkOrder } from './types';
 import { effectiveJobPay, netOfFieldNationFee, FIELD_NATION_FEE_RATE } from './payroll';
 import { formatCityState } from './utils';
@@ -42,24 +43,24 @@ export type ClientRow = {
     client: string;
     jobs: number;
     completed: number;
-    /** Field Nation net + paid direct invoices (pre-tax). */
+    /** Job pay (or the job's paid invoice) + paid invoices not tied to a job. */
     revenue: number;
-    /** Tech settlement for this client's completed jobs. */
+    /** Tech portion for this client's completed jobs. */
     labor: number;
+    /** Field Nation's 15.85% on this client's FN jobs. */
+    fnFees: number;
+    /** Aaromach portion = revenue − labor − FN fees. */
     grossProfit: number;
     margin: number | null;
 };
 
 /**
- * Top clients by job volume, with gross profit:
- *  - Revenue: completed Field Nation (Imported) jobs bring in their pay net of
- *    the 15.85% FN fee; direct/manual work brings in paid invoices (subtotal,
- *    pre-tax) for that client. (Revenue used to come from invoices only, so
- *    clients paid through Field Nation always showed $0.)
- *  - Labor: what the techs are paid for that client's completed jobs — the
- *    weekly-log settlement (FN split / logged pay, approved reimbursements)
- *    when the job is on a log, otherwise the same formula on the job's pay.
- *    Disputed and rejected entries don't count.
+ * Top clients by job volume, on the same money model as the Financials cards
+ * (lib/financial-summary.ts jobEconomics): revenue is what each completed job
+ * pays into the app (its pay, or its paid invoice pre-tax), plus paid
+ * invoices not tied to a job; labor is the tech portion (weekly-log
+ * settlement, or the same formula on the job's pay); Field Nation keeps
+ * 15.85% of FN jobs; gross profit is the Aaromach portion.
  */
 export function topClients(
     jobs: WorkOrder[],
@@ -67,62 +68,39 @@ export function topClients(
     invoices: Invoice[],
     limit = 10,
 ): ClientRow[] {
-    // Tech pay + approved reimbursements per job id, from every weekly log
-    // except rejected ones (all techs — helpers included).
-    const itemsByJob = new Map<string, { pay: number; reimb: number }>();
-    const jobById = new Map<string, WorkOrder>();
-    for (const j of jobs) { jobById.set(j.id, j); if (j.workOrderId && !jobById.has(j.workOrderId)) jobById.set(j.workOrderId, j); }
-
-    for (const log of logs) {
-        if ((log.status as string) === 'Rejected') continue;
-        for (const item of log.items || []) {
-            if (item.confirmationStatus === 'disputed') continue;
-            const job = jobById.get(item.workOrderId);
-            if (!job) continue;
-            const e = itemsByJob.get(job.id) || { pay: 0, reimb: 0 };
-            e.pay += item.payoutAmount !== undefined ? Number(item.payoutAmount) || 0 : effectiveJobPay(item, job);
-            itemsByJob.set(job.id, e);
-        }
-        for (const r of log.reimbursements || []) {
-            if (r.status === 'pending' || r.status === 'rejected') continue;
-            const job = jobById.get(r.workOrderId || (r as { assignmentId?: string }).assignmentId || '');
-            if (!job) continue;
-            const e = itemsByJob.get(job.id) || { pay: 0, reimb: 0 };
-            e.reimb += netOfFieldNationFee(r.amount || 0);
-            itemsByJob.set(job.id, e);
-        }
-    }
+    const jobsById = new Map<string, WorkOrder>();
+    for (const j of jobs) if (!jobsById.has(j.id)) jobsById.set(j.id, j);
+    const logged = techPayByJob(logs, jobsById);
+    const paidByJob = new Map<string, Invoice>();
+    for (const inv of invoices) if (inv.status === 'paid' && inv.workOrderId) paidByJob.set(inv.workOrderId, inv);
 
     const rows = new Map<string, ClientRow>();
     const rowFor = (name?: string) => {
         const client = (name || '').trim() || 'Unknown client';
-        const r = rows.get(client) || { client, jobs: 0, completed: 0, revenue: 0, labor: 0, grossProfit: 0, margin: null };
+        const r = rows.get(client) || { client, jobs: 0, completed: 0, revenue: 0, labor: 0, fnFees: 0, grossProfit: 0, margin: null };
         rows.set(client, r);
         return r;
     };
 
-    const seen = new Set<string>();
-    for (const j of jobs) {
-        if (seen.has(j.id) || isArchivedJob(j) || j.status === 'cancelled') continue;
-        seen.add(j.id);
+    for (const j of jobsById.values()) {
+        if (isArchivedJob(j) || j.status === 'cancelled') continue;
         const r = rowFor(j.clientName);
         r.jobs += 1;
         if (j.status !== 'completed') continue;
         r.completed += 1;
-        if (j.source === 'Imported') r.revenue += (Number(j.pay) || 0) * (1 - FIELD_NATION_FEE_RATE);
-        const logged = itemsByJob.get(j.id);
-        r.labor += logged
-            ? logged.pay + logged.reimb
-            : effectiveJobPay({ id: '', workOrderId: j.id, jobPay: Number(j.pay) || 0, isComplete: true, isAdminReviewed: false, outcomeCode: null }, j);
+        const e = jobEconomics(j, logged, paidByJob.get(j.id) || (j.workOrderId ? paidByJob.get(j.workOrderId) : undefined));
+        r.revenue += e.revenue;
+        r.labor += e.techPortion;
+        r.fnFees += e.fnFee;
     }
     for (const inv of invoices) {
-        if (inv.status !== 'paid') continue;
+        if (inv.status !== 'paid' || inv.workOrderId) continue; // job-linked invoices counted with their job
         rowFor(inv.clientName).revenue += Number(inv.subtotal ?? inv.total) || 0;
     }
 
     return [...rows.values()]
         .map(r => {
-            const grossProfit = r.revenue - r.labor;
+            const grossProfit = r.revenue - r.labor - r.fnFees;
             return { ...r, grossProfit, margin: r.revenue > 0 ? (grossProfit / r.revenue) * 100 : null };
         })
         .filter(r => r.jobs > 0 || r.revenue > 0)

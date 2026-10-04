@@ -21,6 +21,10 @@ import { effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
 import { Tabs as InnerTabs, TabsList as InnerTabsList, TabsTrigger as InnerTabsTrigger, TabsContent as InnerTabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format, parseISO } from 'date-fns';
+import { mergeJobs } from '@/lib/jobs';
+import { findUnloggedCompletions, findMismatchedLogEntries, findDesyncedAssignments } from '@/lib/weekly-log-audit';
+import { UnloggedCompletions } from './components/unlogged-completions';
+import { WrongTechEntries } from './components/wrong-tech-entries';
 
 export default function FieldIntelligencePage() {
     const [activeTab, setActiveTabRaw] = useState(() => { try { return localStorage.getItem('cc:intel:tab') || 'intelligence'; } catch { return 'intelligence'; } });
@@ -97,6 +101,20 @@ export default function FieldIntelligencePage() {
         activeWeeklyLogs.filter(wl => wl.status === 'Draft').length,
         [workOrders, activeWeeklyLogs]
     );
+
+    // Payroll integrity flags (moved here from Payroll Audit): completed jobs
+    // that never reached a weekly log, and log entries sitting on a tech other
+    // than the job's assignee. See lib/weekly-log-audit.ts.
+    const missions = useMemo(() => mergeJobs(workOrders, assignments), [workOrders, assignments]);
+    const unloggedAudit = useMemo(() => findUnloggedCompletions(missions, weeklyLogs), [missions, weeklyLogs]);
+    const wrongTechEntries = useMemo(() => findMismatchedLogEntries(missions, weeklyLogs), [missions, weeklyLogs]);
+    const desyncedAssignments = useMemo(() => findDesyncedAssignments(missions), [missions]);
+    const wrongTechCount = wrongTechEntries.length + desyncedAssignments.length;
+    const flagsTotal = anomalyCounts + unloggedAudit.rows.length + wrongTechCount;
+    const [flagsView, setFlagsView] = useState<'anomalies' | 'unlogged' | 'wrong-tech'>('anomalies');
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    useEffect(() => { try { setCurrentUserId(sessionStorage.getItem('currentUserId')); } catch { /* private mode */ } }, []);
+    const currentUser = technicians.find(t => t.id === currentUserId) || null;
 
     const activeTech = useMemo(
         () => staffTechs.find(t => t.id === selectedTechId),
@@ -301,8 +319,8 @@ export default function FieldIntelligencePage() {
                         <TabsTrigger value="insights" className="tab-trigger-activity">Insights</TabsTrigger>
                         <TabsTrigger value="flags" className="tab-trigger-activity flex items-center gap-3">
                             Flags
-                            {anomalyCounts > 0 && (
-                                <Badge variant="destructive" className="h-5 px-1.5 text-[9px] min-w-[20px] flex items-center justify-center font-black">{anomalyCounts}</Badge>
+                            {flagsTotal > 0 && (
+                                <Badge variant="destructive" className="h-5 px-1.5 text-[9px] min-w-[20px] flex items-center justify-center font-black">{flagsTotal}</Badge>
                             )}
                         </TabsTrigger>
                     </TabsList>
@@ -370,40 +388,61 @@ export default function FieldIntelligencePage() {
                 </TabsContent>
 
                 <TabsContent value="flags" className="m-0">
-                    <div className="space-y-4 text-left">
-                        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Anomaly Registry</h3>
-                        {anomalyCounts === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
-                                <ShieldAlert size={28} className="text-text-green" />
-                                <p className="text-[11px] font-bold text-text-green uppercase tracking-wide">All Clear — No Anomalies Detected</p>
-                                <p className="text-[10px] text-text-muted uppercase tracking-widest">All work orders assigned. All weekly logs submitted.</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-2 text-left">
-                                {workOrders.filter(wo => wo.status === 'unassigned').map(wo => (
-                                    <div key={wo.id} className="p-2.5 rounded-lg border border-border-alert bg-brand-red-dim/5 flex gap-3 text-left items-start">
-                                        <AlertTriangle size={14} className="text-text-red mt-0.5 shrink-0" />
-                                        <div className="space-y-0.5 text-left min-w-0">
-                                            <p className="text-[11px] font-bold text-text-red uppercase tracking-wide truncate">{wo.title || wo.id}</p>
-                                            <p className="text-[10px] text-text-muted uppercase tracking-widest">Unassigned — no technician allocated</p>
-                                        </div>
-                                    </div>
-                                ))}
-                                {activeWeeklyLogs.filter(wl => wl.status === 'Draft').map(wl => {
-                                    const tech = technicians.find(t => t.id === wl.techId);
-                                    return (
-                                        <div key={wl.id} className="p-2.5 rounded-lg border border-border-warn bg-brand-amber-dim/5 flex gap-3 text-left items-start">
-                                            <Clock size={14} className="text-text-amber mt-0.5 shrink-0" />
+                    <InnerTabs value={flagsView} onValueChange={(v: any) => setFlagsView(v)} className="w-full">
+                        <InnerTabsList className="tabs mb-4">
+                            {([
+                                { value: 'anomalies', label: 'Anomalies', count: anomalyCounts },
+                                { value: 'unlogged', label: 'Unlogged Jobs', count: unloggedAudit.rows.length },
+                                { value: 'wrong-tech', label: 'Wrong Tech', count: wrongTechCount },
+                            ] as const).map(t => (
+                                <InnerTabsTrigger key={t.value} value={t.value} className="tab">
+                                    {t.label}{t.count > 0 && <span className="tab-count">({t.count})</span>}
+                                </InnerTabsTrigger>
+                            ))}
+                        </InnerTabsList>
+                        <InnerTabsContent value="anomalies" className="m-0">
+                        <div className="space-y-4 text-left">
+                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Anomaly Registry</h3>
+                            {anomalyCounts === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+                                    <ShieldAlert size={28} className="text-text-green" />
+                                    <p className="text-[11px] font-bold text-text-green uppercase tracking-wide">All Clear — No Anomalies Detected</p>
+                                    <p className="text-[10px] text-text-muted uppercase tracking-widest">All work orders assigned. All weekly logs submitted.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2 text-left">
+                                    {workOrders.filter(wo => wo.status === 'unassigned').map(wo => (
+                                        <div key={wo.id} className="p-2.5 rounded-lg border border-border-alert bg-brand-red-dim/5 flex gap-3 text-left items-start">
+                                            <AlertTriangle size={14} className="text-text-red mt-0.5 shrink-0" />
                                             <div className="space-y-0.5 text-left min-w-0">
-                                                <p className="text-[11px] font-bold text-text-amber uppercase tracking-wide">Week of {wl.weekOf}{tech ? ` — ${tech.name}` : ''}</p>
-                                                <p className="text-[10px] text-text-muted uppercase tracking-widest">Draft log not submitted</p>
+                                                <p className="text-[11px] font-bold text-text-red uppercase tracking-wide truncate">{wo.title || wo.id}</p>
+                                                <p className="text-[10px] text-text-muted uppercase tracking-widest">Unassigned — no technician allocated</p>
                                             </div>
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
+                                    ))}
+                                    {activeWeeklyLogs.filter(wl => wl.status === 'Draft').map(wl => {
+                                        const tech = technicians.find(t => t.id === wl.techId);
+                                        return (
+                                            <div key={wl.id} className="p-2.5 rounded-lg border border-border-warn bg-brand-amber-dim/5 flex gap-3 text-left items-start">
+                                                <Clock size={14} className="text-text-amber mt-0.5 shrink-0" />
+                                                <div className="space-y-0.5 text-left min-w-0">
+                                                    <p className="text-[11px] font-bold text-text-amber uppercase tracking-wide">Week of {wl.weekOf}{tech ? ` — ${tech.name}` : ''}</p>
+                                                    <p className="text-[10px] text-text-muted uppercase tracking-widest">Draft log not submitted</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                        </InnerTabsContent>
+                        <InnerTabsContent value="unlogged" className="m-0">
+                            <UnloggedCompletions rows={unloggedAudit.rows} excluded={unloggedAudit.excluded} technicians={technicians} currentUser={currentUser} />
+                        </InnerTabsContent>
+                        <InnerTabsContent value="wrong-tech" className="m-0">
+                            <WrongTechEntries entries={wrongTechEntries} desynced={desyncedAssignments} technicians={technicians} currentUser={currentUser} />
+                        </InnerTabsContent>
+                    </InnerTabs>
                 </TabsContent>
 
                 <TabsContent value="techs" className="m-0">

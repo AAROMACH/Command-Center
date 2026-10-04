@@ -19,14 +19,14 @@ import { completionEvent } from '@/lib/weekly-log-audit';
 /**
  * How far back the sync will auto-file a lead tech's own completed job that
  * never reached a log. Older gaps are left to payroll's Unlogged audit
- * (Payroll Audit → Unlogged), where an admin files them deliberately — an old
+ * (Intel → Flags → Unlogged Jobs), where an admin files them deliberately — an old
  * job may have been settled outside the app, and silently dropping it into
  * this week's log invites a double payment.
  */
 export const AUTO_HEAL_LOOKBACK_DAYS = 30;
 
 /**
- * Jobs the sync must leave to an admin (Payroll Audit → Unlogged) even inside
+ * Jobs the sync must leave to an admin (Intel → Flags → Unlogged Jobs) even inside
  * the window, because the tech's own logs can't tell the whole story:
  *  - reassigned jobs — the entry may still sit on the previous tech's log
  *    (swaps before the log-move existed, or a locked log), which this tech's

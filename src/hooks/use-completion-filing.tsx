@@ -54,7 +54,7 @@ export function useCompletionFiling(techId: string | null) {
     // A job only goes on the log of the tech it's ASSIGNED to (what admin
     // screens show). If its owner fields are out of sync it can sit in this
     // tech's portal while being assigned to someone else — complete it, but
-    // don't file it here; it shows in Payroll Audit for the assigned tech.
+    // don't file it here; it shows in Intel → Flags for the assigned tech.
     const assigned = jobTechId(job);
     if (assigned && assigned !== techId) {
       await writeCompletedStatus();

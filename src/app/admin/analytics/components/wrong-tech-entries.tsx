@@ -31,7 +31,7 @@ type Props = {
 };
 
 /**
- * Payroll Audit → Wrong Tech. Enforces: a job's weekly-log entry belongs only
+ * Intel → Flags → Wrong Tech. Enforces: a job's weekly-log entry belongs only
  * to the tech the job is assigned to (or, at $0, to a tech listed as a helper).
  *
  *  - Entries on another tech's log: "Move" pulls the entry off that tech's open
@@ -112,7 +112,7 @@ export function WrongTechEntries({ entries, desynced, technicians, currentUser }
             history: arrayUnion({
                 type: 'note',
                 date: format(new Date(), 'MM-dd-yyyy'),
-                details: `Tech portal ownership synced from ${techName(job.techId)} to ${techName(to)} by ${adminName} (Payroll Audit → Wrong Tech).`,
+                details: `Tech portal ownership synced from ${techName(job.techId)} to ${techName(to)} by ${adminName} (Intel → Flags → Wrong Tech).`,
                 user: adminName,
             }),
         });

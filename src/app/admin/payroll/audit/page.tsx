@@ -25,16 +25,15 @@ import { Receipt, Search, ChevronDown, ChevronRight, DollarSign, CheckCircle, Cl
 import { cn } from '@/lib/utils';
 import { format, parseISO, isWithinInterval } from 'date-fns';
 import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder, PayrollDispute, FinancialRecord } from '@/lib/types';
-import { isClient, isTech, isSuperAdmin } from '@/lib/permissions';
+import { isClient, isSuperAdmin } from '@/lib/permissions';
 import { mergeJobs } from '@/lib/jobs';
 import { effectiveJobPay, computeWeeklyLogSettlement } from '@/lib/payroll';
 import { downloadPaystub } from '@/lib/paystub';
 import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
 import { PayrollReviewDialog } from '@/app/admin/financials/components/payroll-review-dialog';
-import { UnloggedCompletions } from './components/unlogged-completions';
-import { findUnloggedCompletions, findMismatchedLogEntries, findDesyncedAssignments } from '@/lib/weekly-log-audit';
-import { WrongTechEntries } from './components/wrong-tech-entries';
+import { JobDetailDialog } from '@/components/job-detail-dialog';
+import { displayWorkOrderNumber } from '@/lib/work-order-identity';
 
 // Within a group of duplicate weekly logs for the same tech+week, picks the
 // one considered the legitimate original: whichever left Draft first
@@ -43,6 +42,28 @@ import { WrongTechEntries } from './components/wrong-tech-entries';
 // item count (the copy that kept receiving completions is the real one).
 // This is the log Merge keeps and the only one the per-log Delete button
 // refuses to remove.
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** weekOf ('MM-dd-yyyy', also tolerates 'yyyy-MM-dd') → local-midnight ms, or null. */
+function weekOfTime(weekOf: string | undefined): number | null {
+    const parts = (weekOf || '').split(/[-/]/).map(Number);
+    if (parts.length !== 3 || parts.some(n => !n)) return null;
+    const [a, b, c] = parts;
+    const d = String(a).length === 4 ? new Date(a, b - 1, c) : new Date(c, a - 1, b);
+    return isNaN(d.getTime()) ? null : d.getTime();
+}
+
+/** <input type="date"> value ('yyyy-MM-dd') → local-midnight ms. */
+function inputDateTime(v: string): number {
+    const [y, m, d] = v.split('-').map(Number);
+    return new Date(y, m - 1, d).getTime();
+}
+
+/** Newest week first — by real date, not the 'MM-dd-yyyy' string (which sorts by month before year). */
+function byWeekDesc(a: WeeklyLog, b: WeeklyLog): number {
+    return (weekOfTime(b.weekOf) ?? 0) - (weekOfTime(a.weekOf) ?? 0);
+}
+
 function pickPrimaryLog(group: WeeklyLog[]): WeeklyLog {
     const statusRank: Record<string, number> = { Approved: 3, Rejected: 3, Submitted: 2, Draft: 1 };
     return [...group].sort((a, b) => {
@@ -90,13 +111,6 @@ export default function PayrollAuditPage() {
     const [assignments, setAssignments] = useState<WorkOrder[]>([]);
     const missions = useMemo(() => mergeJobs(workOrders, assignments), [workOrders, assignments]);
     const jobsById = useMemo(() => new Map(missions.map(m => [m.id, m])), [missions]);
-    // Completed jobs that never reached their tech's weekly log — the
-    // Unlogged tab. See lib/weekly-log-audit.ts.
-    const unloggedAudit = useMemo(() => findUnloggedCompletions(missions, weeklyLogs), [missions, weeklyLogs]);
-    // Log entries sitting on a tech other than the job's assignee, and jobs
-    // whose owner fields disagree — the Wrong Tech tab.
-    const wrongTechEntries = useMemo(() => findMismatchedLogEntries(missions, weeklyLogs), [missions, weeklyLogs]);
-    const desyncedAssignments = useMemo(() => findDesyncedAssignments(missions), [missions]);
     // Memoized per-log settlement so every display/export site (row totals,
     // CSV, summary chips, Paystub History) reads the exact same number as
     // the review dialog's "Net Tech Settlement" — computed once per log
@@ -168,28 +182,24 @@ export default function PayrollAuditPage() {
 
     const openReview = (log: WeeklyLog) => { setReviewLog(log); setReviewOpen(true); };
 
+    // Clicking a job inside an expanded log opens the shared job side panel.
+    const [panelJob, setPanelJob] = useState<WorkOrder | null>(null);
+    const [panelOpen, setPanelOpen] = useState(false);
+    const openJobPanel = (item: WeeklyLogItem) => {
+        const job = jobsById.get(item.workOrderId);
+        if (!job) {
+            toast({ variant: 'destructive', title: 'Job not found', description: `${item.workOrderId?.toUpperCase() || 'This entry'} has no matching job record (it may have been archived or deleted).` });
+            return;
+        }
+        setPanelJob(job);
+        setPanelOpen(true);
+    };
+
     const staffTechs = useMemo(
         () => technicians.filter(t => !isClient(t)),
         [technicians]
     );
 
-    const staffUserIds = useMemo(
-        () => new Set(staffTechs.filter(t => !isTech(t)).map(t => t.id)),
-        [staffTechs]
-    );
-
-    const staffFilteredLogs = useMemo(() => {
-        return weeklyLogs
-            .filter(log => {
-                if (!staffUserIds.has(log.techId)) return false;
-                const tech = technicians.find(t => t.id === log.techId);
-                const techName = (tech?.name || '').toLowerCase();
-                if (searchQuery && !techName.includes(searchQuery.toLowerCase())) return false;
-                if (statusFilter !== 'all' && log.status !== statusFilter) return false;
-                return true;
-            })
-            .sort((a, b) => b.weekOf.localeCompare(a.weekOf));
-    }, [weeklyLogs, technicians, staffUserIds, searchQuery, statusFilter]);
 
     const approvedLogsByTech = useMemo(() => {
         const approved = weeklyLogs.filter(l => l.status === 'Approved');
@@ -200,7 +210,7 @@ export default function PayrollAuditPage() {
             }
             byTech[log.techId].logs.push(log);
         });
-        Object.values(byTech).forEach(entry => entry.logs.sort((a, b) => b.weekOf.localeCompare(a.weekOf)));
+        Object.values(byTech).forEach(entry => entry.logs.sort(byWeekDesc));
         return Object.entries(byTech).sort(([, a], [, b]) => (a.tech?.name || '').localeCompare(b.tech?.name || ''));
     }, [weeklyLogs, technicians]);
 
@@ -211,11 +221,19 @@ export default function PayrollAuditPage() {
                 const techName = (tech?.name || '').toLowerCase();
                 if (searchQuery && !techName.includes(searchQuery.toLowerCase())) return false;
                 if (statusFilter !== 'all' && log.status !== statusFilter) return false;
-                if (dateFrom && log.weekOf < dateFrom) return false;
-                if (dateTo && log.weekOf > dateTo) return false;
+                // weekOf is 'MM-dd-yyyy' (the week's Monday) but the date
+                // inputs give 'yyyy-MM-dd' — compare real dates, and keep any
+                // week that overlaps the chosen range.
+                const weekStart = weekOfTime(log.weekOf);
+                if (dateFrom || dateTo) {
+                    if (weekStart === null) return false;
+                    const weekEnd = weekStart + 6 * DAY_MS;
+                    if (dateFrom && weekEnd < inputDateTime(dateFrom)) return false;
+                    if (dateTo && weekStart > inputDateTime(dateTo)) return false;
+                }
                 return true;
             })
-            .sort((a, b) => b.weekOf.localeCompare(a.weekOf));
+            .sort(byWeekDesc);
     }, [weeklyLogs, technicians, searchQuery, statusFilter, dateFrom, dateTo]);
 
     const totals = useMemo(() => ({
@@ -419,8 +437,13 @@ export default function PayrollAuditPage() {
                                         </p>
                                         <p className="text-[8px] text-text-muted uppercase">{log.items?.length || 0} items</p>
                                     </div>
-                                    <div className="text-right text-[9px] text-text-muted uppercase">
-                                        {log.submittedAt ? format(parseISO(log.submittedAt), 'MM/dd/yy') : '—'}
+                                    <div
+                                        className="text-right text-[9px] text-text-muted uppercase leading-tight"
+                                        title={log.submittedAt ? `Submitted ${format(parseISO(log.submittedAt), 'MM/dd/yyyy h:mm a')}` : 'Not submitted yet'}
+                                    >
+                                        {log.submittedAt ? (
+                                            <><span className="block text-[8px] tracking-widest">Submitted</span>{format(parseISO(log.submittedAt), 'MM/dd/yy')}</>
+                                        ) : 'Not submitted'}
                                     </div>
                                 </button>
                                 <Button
@@ -439,10 +462,21 @@ export default function PayrollAuditPage() {
                                 <div className="border-t border-border-sub divide-y divide-border-sub">
                                     {log.items.map((item: WeeklyLogItem) => {
                                         const disputed = item.confirmationStatus === 'disputed';
+                                        const job = jobsById.get(item.workOrderId);
                                         return (
-                                        <div key={item.id} className="flex items-center justify-between px-5 py-2.5 bg-bg-primary">
-                                            <div>
-                                                <p className="text-[10px] font-bold text-text-primary uppercase font-mono">{item.workOrderId?.toUpperCase() || item.id}</p>
+                                        <button
+                                            type="button"
+                                            key={item.id}
+                                            onClick={() => openJobPanel(item)}
+                                            className="w-full flex items-center justify-between gap-3 px-5 py-2.5 bg-bg-primary hover:bg-bg-tertiary transition-colors text-left"
+                                            title={job ? 'Open job details' : 'Job record not found'}
+                                        >
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] font-bold text-text-primary uppercase font-mono">
+                                                    {item.workOrderId?.toUpperCase() || item.id}
+                                                    {job && <span className="ml-2 text-text-muted">WO {displayWorkOrderNumber(job)}</span>}
+                                                </p>
+                                                {job && <p className="text-[10px] text-text-secondary truncate">{job.title || job.description}</p>}
                                                 {item.outcomeCode && <p className="text-[9px] text-text-muted uppercase">{item.outcomeCode.replace(/_/g, ' ')}</p>}
                                             </div>
                                             <div className="flex items-center gap-3">
@@ -458,7 +492,7 @@ export default function PayrollAuditPage() {
                                                     ${effectiveJobPay(item, jobsById.get(item.workOrderId)).toFixed(2)}
                                                 </p>
                                             </div>
-                                        </div>
+                                        </button>
                                         );
                                     })}
                                     {log.reimbursements && log.reimbursements.length > 0 && (
@@ -698,11 +732,8 @@ export default function PayrollAuditPage() {
                 <TabsList className="border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-start mb-4">
                     {[
                         { value: 'weekly', label: 'Weekly', count: filteredLogs.length },
-                        { value: 'staff', label: 'Staff Pay', count: staffFilteredLogs.length },
                         { value: 'history', label: 'Paystub History', count: approvedLogsByTech.length },
                         { value: 'adjustments', label: 'Adjustments', count: adjustments.length + payrollDisputes.filter(d => d.status === 'open').length },
-                        { value: 'unlogged', label: 'Unlogged', count: unloggedAudit.rows.length },
-                        { value: 'wrong-tech', label: 'Wrong Tech', count: wrongTechEntries.length + desyncedAssignments.length },
                     ].map(t => (
                         <TabsTrigger key={t.value} value={t.value} className="px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all flex items-center gap-2">
                             {t.label}
@@ -748,28 +779,6 @@ export default function PayrollAuditPage() {
                     {renderLogList(filteredLogs)}
                 </TabsContent>
 
-                {/* ── Staff Pay ── */}
-                <TabsContent value="staff" className="m-0 space-y-4">
-                    <div className="flex flex-wrap gap-3 p-3 bg-bg-secondary/60 border border-border-sub rounded-xl">
-                        <div className="relative flex-1 min-w-[180px]">
-                            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                            <input
-                                className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-main bg-bg-primary text-[11px] font-bold uppercase tracking-wide text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-red transition-colors"
-                                placeholder="Search staff name..."
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                            />
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {(['all', 'Draft', 'Submitted', 'Approved', 'Rejected'] as const).map(s => (
-                                <button key={s} onClick={() => setStatusFilter(s)} className={cn('h-9 px-3 text-[9px] font-black uppercase tracking-widest rounded-lg border transition-colors', statusFilter === s ? 'bg-brand-red text-white border-brand-red' : 'border-border-main text-text-muted hover:text-text-primary bg-bg-primary')}>
-                                    {s === 'all' ? 'All' : s}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    {renderLogList(staffFilteredLogs)}
-                </TabsContent>
 
                 {/* ── Paystub History ── */}
                 <TabsContent value="history" className="m-0 space-y-3">
@@ -917,15 +926,6 @@ export default function PayrollAuditPage() {
                     </div>
                 </TabsContent>
 
-                {/* ── Unlogged ── */}
-                <TabsContent value="unlogged" className="m-0">
-                    <UnloggedCompletions rows={unloggedAudit.rows} excluded={unloggedAudit.excluded} technicians={technicians} currentUser={currentUser} />
-                </TabsContent>
-
-                {/* ── Wrong Tech ── */}
-                <TabsContent value="wrong-tech" className="m-0">
-                    <WrongTechEntries entries={wrongTechEntries} desynced={desyncedAssignments} technicians={technicians} currentUser={currentUser} />
-                </TabsContent>
             </Tabs>
 
             {/* Add Adjustment Dialog */}
@@ -980,6 +980,8 @@ export default function PayrollAuditPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <JobDetailDialog isOpen={panelOpen} setIsOpen={setPanelOpen} mission={panelJob} />
 
             {reviewLog && (
                 <PayrollReviewDialog

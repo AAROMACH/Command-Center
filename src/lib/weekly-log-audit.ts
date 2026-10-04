@@ -3,7 +3,7 @@ import { isArchivedJob, jobDateTimeValue, jobTechId } from './jobs';
 import { externalWorkOrderId, normalizeExternalId } from './work-order-identity';
 
 /**
- * Payroll Audit → Unlogged. Pure over the jobs/logs it's handed (no reads or
+ * Intel → Flags → Unlogged Jobs. Pure over the jobs/logs it's handed (no reads or
  * writes).
  *
  * A job is listed ONLY when all of these hold:

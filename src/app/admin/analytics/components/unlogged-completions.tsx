@@ -36,7 +36,7 @@ type Props = {
 };
 
 /**
- * Payroll Audit → Unlogged: completed jobs that are not on their tech's
+ * Intel → Flags → Unlogged Jobs: completed jobs that are not on their tech's
  * weekly log, so they can't reach payroll. "File to Log" uses the same auto
  * placement as a tech completion (scheduled week if its log is still Draft,
  * otherwise the current week flagged as a cross-week entry), so nothing is
@@ -106,7 +106,7 @@ export function UnloggedCompletions({ rows, excluded, technicians, currentUser }
                 history: arrayUnion({
                     type: 'note',
                     date: format(new Date(), 'MM-dd-yyyy'),
-                    details: `Marked not payable through weekly logs by ${adminName} (Payroll Audit → Unlogged).`,
+                    details: `Marked not payable through weekly logs by ${adminName} (Intel → Flags → Unlogged Jobs).`,
                     user: adminName,
                 }),
             });

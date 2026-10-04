@@ -30,6 +30,15 @@ export function isAssignableTechnician(t: { roles?: string[]; role?: string }): 
  * state on the option/button, and should also reject the id defensively in
  * the actual assign/swap handler.
  */
+/**
+ * A person's display name for audit/history entries — the user doc's `name`,
+ * falling back to `fullName`, then email. "Field Operative" only when the
+ * record truly isn't loaded.
+ */
+export function techDisplayName(t: { name?: string; fullName?: string; email?: string } | null | undefined): string {
+  return t?.name || t?.fullName || t?.email || 'Field Operative';
+}
+
 export function isInactiveTechnician(t: { accountStatus?: string }): boolean {
   return t.accountStatus === 'inactive';
 }

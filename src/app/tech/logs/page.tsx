@@ -80,6 +80,7 @@ import { collection, onSnapshot, query, where, doc, updateDoc, setDoc, getDocs }
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { NotificationService } from '@/lib/notification-service';
+import { techDisplayName } from '@/lib/utils';
 
 const DISPUTE_REASONS = [
     "Hours logged are incorrect",
@@ -454,7 +455,7 @@ export default function TechWeeklyLogPage() {
             await setDoc(doc(db, 'payrollDisputes', id), {
                 id,
                 techId: currentTechId,
-                techName: currentUser?.name || 'Field Operative',
+                techName: techDisplayName(currentUser),
                 weeklyLogId: activeLog.id,
                 weekOf: activeLog.weekOf,
                 workOrderId: payrollDisputeWorkOrderId || null,

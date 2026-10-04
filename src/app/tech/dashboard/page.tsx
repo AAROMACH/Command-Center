@@ -49,6 +49,7 @@ import { cn, getTacticalLocation, compareScheduleTime } from '@/lib/utils';
 import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete } from '@/lib/trip-flow';
 import { NotificationService } from '@/lib/notification-service';
 import { useHelperLogSync } from '@/hooks/use-helper-log-sync';
+import { techDisplayName } from '@/lib/utils';
 
 export default function TechDashboardPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -182,7 +183,7 @@ export default function TechDashboardPage() {
                 type: 'status_change' as const, 
                 date: today, 
                 details: `Status update to ${newStatus.toUpperCase()} at ${nowTime}. Location: [${location}].`, 
-                user: tech?.name || 'Field Operative' 
+                user: techDisplayName(tech) 
             };
             
             if (newStatus === 'in-progress' || newStatus === 'checked-out') {

@@ -11,6 +11,9 @@ import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
 import { hasPermission, type Permission } from "@/lib/permissions";
 import { technicians as fallbackTechs } from "@/lib/data";
 import type { Technician } from "@/lib/types";
+import { isServiceTicketDoc } from "@/lib/request-intake";
+import { useNewArrivals, ARRIVAL_KEYS, unassignedArrivalIds, reviewArrivalIds, recentAssignmentArrivalIds, recentAssignmentCutoff } from "@/hooks/use-new-arrivals";
+import { NewArrivalPing } from "@/components/new-arrival-ping";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { UserNav } from "@/components/user-nav";
 import { PortalSwitcher } from "@/components/portal-switcher";
@@ -241,6 +244,43 @@ export function AppSidebar() {
 
   const isTechPortal = pathname.startsWith("/tech");
   const isClientPortal = pathname.startsWith("/client");
+  const isAdminPortal = !isTechPortal && !isClientPortal;
+
+  // Admin "new item just landed" pings (bouncing "!") on Dispatch Hub and
+  // Assignments — same keys/lists as the Dispatch page (hooks/use-new-arrivals).
+  const canDispatch = mounted && hasPermission(currentUser, "admin.dispatch.view");
+  const canAssignments = mounted && hasPermission(currentUser, "admin.assignments.view");
+  const [arrivalData, setArrivalData] = useState<{
+    unassigned: string[] | null; review: string[] | null; requests: string[] | null; assignments: string[] | null;
+  }>({ unassigned: null, review: null, requests: null, assignments: null });
+  useEffect(() => {
+    if (!isAdminPortal || !firebaseUid || (!canDispatch && !canAssignments)) return;
+    const set = (k: keyof typeof arrivalData) => (ids: string[]) => setArrivalData(d => ({ ...d, [k]: ids }));
+    const ignore = () => { /* rule/permission denied — no ping */ };
+    const unsubs: (() => void)[] = [];
+    if (canDispatch) {
+      unsubs.push(onSnapshot(query(collection(db, "workOrders"), where("status", "==", "unassigned")),
+        snap => set("unassigned")(unassignedArrivalIds(snap.docs.map(d => ({ ...d.data(), id: d.id })))), ignore));
+      unsubs.push(onSnapshot(query(collection(db, "assignments"), where("status", "==", "cancelled")),
+        snap => set("review")(reviewArrivalIds(snap.docs.map(d => ({ ...d.data(), id: d.id })))), ignore));
+      unsubs.push(onSnapshot(collection(db, "clientRequests"),
+        snap => set("requests")(snap.docs.filter(d => isServiceTicketDoc(d.data())).map(d => d.id)), ignore));
+    }
+    if (canAssignments) {
+      unsubs.push(onSnapshot(query(collection(db, "assignments"), where("assignedAt", ">=", recentAssignmentCutoff())),
+        snap => set("assignments")(recentAssignmentArrivalIds(snap.docs.map(d => ({ ...d.data(), id: d.id })))), ignore));
+    }
+    return () => unsubs.forEach(u => u());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdminPortal, firebaseUid, canDispatch, canAssignments]);
+  const EMPTY: string[] = useMemo(() => [], []);
+  const onAdminAssignments = pathname.startsWith("/admin/assignments");
+  const pingUnassigned = useNewArrivals(ARRIVAL_KEYS.unassigned, arrivalData.unassigned ?? EMPTY, { ready: arrivalData.unassigned !== null, viewing: false });
+  const pingReview = useNewArrivals(ARRIVAL_KEYS.review, arrivalData.review ?? EMPTY, { ready: arrivalData.review !== null, viewing: false });
+  const pingRequests = useNewArrivals(ARRIVAL_KEYS.requests, arrivalData.requests ?? EMPTY, { ready: arrivalData.requests !== null, viewing: false });
+  const pingAssignments = useNewArrivals(ARRIVAL_KEYS.assignments, arrivalData.assignments ?? EMPTY, { ready: arrivalData.assignments !== null, viewing: onAdminAssignments });
+  const dispatchPing = isAdminPortal ? pingUnassigned.newCount + pingReview.newCount + pingRequests.newCount : 0;
+  const assignmentsPing = isAdminPortal ? pingAssignments.newCount : 0;
   const portalLabel = isTechPortal ? "Field Terminal" : isClientPortal ? "Client Portal" : "Command Center";
   const dashboardHref = isTechPortal ? "/tech/dashboard" : isClientPortal ? "/client/dashboard" : "/admin/dashboard";
 
@@ -324,6 +364,8 @@ export function AppSidebar() {
                         <Link href={item.href}>
                           <item.icon className="h-4 w-4 shrink-0" />
                           <span className="flex-1">{item.label}</span>
+                          {isAdminPortal && item.href === "/admin/dispatch" && <NewArrivalPing count={dispatchPing} className="group-data-[collapsible=icon]:hidden" />}
+                          {isAdminPortal && item.href === "/admin/assignments" && <NewArrivalPing count={assignmentsPing} className="group-data-[collapsible=icon]:hidden" />}
                           {badge > 0 && (
                             <span className="ml-auto text-[8px] font-black bg-brand-red text-white rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 group-data-[collapsible=icon]:hidden">
                               {badge > 99 ? "99+" : badge}

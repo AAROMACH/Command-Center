@@ -21,7 +21,7 @@ import {
   format, addMonths, subMonths, startOfMonth, endOfMonth,
   eachDayOfInterval, getDay, isSameDay, isToday, parseISO,
 } from 'date-fns';
-import { cn, getTacticalLocation, geocodeAddress, sumRouteMileage, compareScheduleTime, calculateDistance, formatDistance } from '@/lib/utils';
+import { cn, techDisplayName, getTacticalLocation, geocodeAddress, sumRouteMileage, compareScheduleTime, calculateDistance, formatDistance } from '@/lib/utils';
 import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete } from '@/lib/trip-flow';
 import { Button } from '@/components/ui/button';
 
@@ -284,7 +284,7 @@ export default function TechCalendarPage() {
         type: 'status_change',
         date: format(new Date(), 'MM-dd-yyyy'),
         details: `${label} at ${format(new Date(), 'h:mm a')}. Location: [${loc}].`,
-        user: currentTechId || 'Field Operative',
+        user: techDisplayName(currentTech),
       }),
     });
     // Completing / re-opening here must touch the weekly log exactly like the

@@ -10,7 +10,6 @@ const MapView = dynamic(() => import('../map/components/map-view'), {
     loading: () => <div className="flex items-center justify-center h-full bg-bg-secondary text-text-muted text-[10px] uppercase tracking-widest">Loading map...</div>,
 });
 import type { WorkOrder, Technician } from '@/lib/types';
-import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -50,6 +49,7 @@ import { jobDateTimeValue, isArchivedJob, isAssignedTo } from '@/lib/jobs';
 import { Car, MoreVertical, Ban, XCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { LogTripDialog } from './components/log-trip-dialog';
+import { techDisplayName } from '@/lib/utils';
 
 const formatDateStr = (dateStr: string) => {
     if (!dateStr) return 'TBD';
@@ -141,9 +141,16 @@ export default function TechAssignmentsPage() {
         if (tab) setActiveTab(tab);
     }, [searchParams]);
 
-    const currentTech = useMemo(() => 
-        currentTechId ? technicians.find(t => t.id === currentTechId) : null
-    , [currentTechId]);
+    // The signed-in tech's real user record — this used to look the tech up in
+    // the built-in demo list (lib/data), which never contains real techs, so
+    // every action from this page was credited to "Field Operative".
+    const [currentTech, setCurrentTech] = useState<Technician | null>(null);
+    useEffect(() => {
+        if (!currentTechId) return;
+        return onSnapshot(doc(db, 'users', currentTechId), snap => {
+            setCurrentTech(snap.exists() ? ({ ...snap.data(), id: snap.id } as Technician) : null);
+        });
+    }, [currentTechId]);
 
     const techWorkOrders = useMemo(() => {
         if (!currentTechId) return [];
@@ -251,7 +258,7 @@ export default function TechAssignmentsPage() {
             isAcknowledged: true,
             history: [
                 ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Assignment confirmed at ${now}. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
+                { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Assignment confirmed at ${now}. Location: [${location}].`, user: techDisplayName(currentTech) }
             ]
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
@@ -264,7 +271,7 @@ export default function TechAssignmentsPage() {
             status: 'on-my-way',
             history: [
                 ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Trip initiated at ${now}. Status: EN ROUTE. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
+                { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Trip initiated at ${now}. Status: EN ROUTE. Location: [${location}].`, user: techDisplayName(currentTech) }
             ]
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
@@ -278,7 +285,7 @@ export default function TechAssignmentsPage() {
             status: 'in-progress',
             history: [
                 ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Arrival verified at ${now}. Status: ON SITE. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
+                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Arrival verified at ${now}. Status: ON SITE. Location: [${location}].`, user: techDisplayName(currentTech) }
             ]
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
@@ -291,7 +298,7 @@ export default function TechAssignmentsPage() {
             status: 'checked-out',
             history: [
                 ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Session paused at ${now}. Status: CHECKED OUT. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
+                { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Session paused at ${now}. Status: CHECKED OUT. Location: [${location}].`, user: techDisplayName(currentTech) }
             ]
         }).catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
     };
@@ -308,7 +315,7 @@ export default function TechAssignmentsPage() {
                 status: 'completed',
                 history: [
                     ...(wo.history || []),
-                    { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission finalized at ${now}. Status: CLOSED. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
+                    { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission finalized at ${now}. Status: CLOSED. Location: [${location}].`, user: techDisplayName(currentTech) }
                 ]
             }));
             toast({ title: "Mission Finalized", description: completionToastText(result) });
@@ -328,7 +335,7 @@ export default function TechAssignmentsPage() {
                 status: reopenStatusFor(allWorkOrders.find(wo => wo.id === woId)),
                 history: [
                     ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                    { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission re-opened at ${now} for correction. Location: [${location}].`, user: currentTech?.name || 'Field Operative' }
+                    { type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: `Mission re-opened at ${now} for correction. Location: [${location}].`, user: techDisplayName(currentTech) }
                 ]
             });
             setActiveTab('active');
@@ -348,9 +355,13 @@ export default function TechAssignmentsPage() {
             await updateDoc(doc(db, 'assignments', woId), {
                 status: 'cancelled',
                 techOutcome: outcome,
+                // Who sent it to the review queue — the queue shows this name.
+                techOutcomeBy: currentTechId,
+                techOutcomeByName: techDisplayName(currentTech),
+                techOutcomeAt: new Date().toISOString(),
                 history: [
                     ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                    { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Tech marked job as ${label} at ${now}.`, user: currentTech?.name || 'Field Operative' }
+                    { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Tech marked job as ${label} at ${now}.`, user: techDisplayName(currentTech) }
                 ]
             });
             toast({ title: `Marked as ${label}`, description: "Removed from your active board and flagged for admin review." });

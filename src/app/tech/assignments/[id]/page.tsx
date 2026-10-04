@@ -28,6 +28,7 @@ import { useCompletionFiling, completionToastText } from '@/hooks/use-completion
 import { setDoc } from 'firebase/firestore';
 import { startOfWeek } from 'date-fns';
 import { isAssignedTo } from '@/lib/jobs';
+import { techDisplayName } from '@/lib/utils';
 
 const AssignmentMap = dynamic(
   () => import('@/app/admin/assignments/[id]/assignment-map'),
@@ -219,7 +220,7 @@ export default function TechAssignmentDetailPage() {
     try { await fn(); } finally { setActionLoading(false); }
   };
 
-  const techName = tech?.name || 'Field Operative';
+  const techName = techDisplayName(tech);
 
   const handleConfirm = withLoading(async () => {
     const now = format(new Date(), 'h:mm a');

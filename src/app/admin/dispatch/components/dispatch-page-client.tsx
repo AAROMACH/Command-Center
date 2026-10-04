@@ -51,6 +51,8 @@ import { DateRange } from "react-day-picker";
 import { format, isSameDay, parseISO, startOfDay } from 'date-fns';
 import { useSearchParams } from 'next/navigation';
 import { NotificationService } from '@/lib/notification-service';
+import { useNewArrivals, ARRIVAL_KEYS, unassignedArrivalIds, reviewArrivalIds, recentAssignmentArrivalIds } from '@/hooks/use-new-arrivals';
+import { NewArrivalPing } from '@/components/new-arrival-ping';
 
 const SERVICE_CATEGORIES = [
     'Installation',
@@ -126,9 +128,11 @@ export function DispatchPageClient() {
   useEffect(() => {
     const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
       setAllWorkOrders(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder)));
+      setLoaded(l => l.wo ? l : { ...l, wo: true });
     });
     const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
       setAllAssignments(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder)));
+      setLoaded(l => l.asmt ? l : { ...l, asmt: true });
     });
     const unsubTech = onSnapshot(
       collection(db, 'users'),
@@ -149,6 +153,7 @@ export function DispatchPageClient() {
             return { ...data, submittedDate, id: doc.id } as ServiceRequest;
           })
       );
+      setLoaded(l => l.req ? l : { ...l, req: true });
     });
     // Archived deletions — so re-importing a work order number that was deleted
     // and archived is still flagged as a duplicate.
@@ -422,6 +427,20 @@ export function DispatchPageClient() {
     allAssignments.filter(wo => wo.status === 'cancelled'),
   [allAssignments]);
 
+  // "New item just landed" indicators (bouncing "!") per list — cleared when
+  // the admin opens that tab. Same keys as the sidebar's Dispatch Hub badge.
+  const [loaded, setLoaded] = useState({ wo: false, asmt: false, req: false });
+  const [dispatchSubtab, setDispatchSubtab] = useState('unassigned');
+  const onDispatch = activeMasterTab === 'dispatch';
+  const newUnassigned = useNewArrivals(ARRIVAL_KEYS.unassigned, useMemo(() => unassignedArrivalIds(allWorkOrders), [allWorkOrders]),
+    { ready: loaded.wo, viewing: onDispatch && dispatchSubtab === 'unassigned' });
+  const newReview = useNewArrivals(ARRIVAL_KEYS.review, useMemo(() => reviewArrivalIds(allAssignments), [allAssignments]),
+    { ready: loaded.asmt, viewing: onDispatch && dispatchSubtab === 'review' });
+  const newRequests = useNewArrivals(ARRIVAL_KEYS.requests, useMemo(() => allRequests.map(r => r.id), [allRequests]),
+    { ready: loaded.req, viewing: activeMasterTab === 'requests' });
+  const newAssignmentsArrivals = useNewArrivals(ARRIVAL_KEYS.assignments, useMemo(() => recentAssignmentArrivalIds(allAssignments), [allAssignments]),
+    { ready: loaded.asmt, viewing: activeMasterTab === 'assignments' });
+
   const currentAdminName = () =>
     technicians.find(t => t.id === (typeof window !== 'undefined' ? sessionStorage.getItem('currentUserId') : null))?.name || 'Admin';
 
@@ -486,9 +505,9 @@ export function DispatchPageClient() {
       <Tabs value={activeMasterTab} onValueChange={(val: any) => setActiveMasterTab(val)} className="w-full">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub shadow-sm">
             <TabsList className="tabs !mb-0">
-              <TabsTrigger value="dispatch" className="tab">DISPATCH HUB</TabsTrigger>
-              <TabsTrigger value="requests" className="tab">SERVICE REQUESTS</TabsTrigger>
-              <TabsTrigger value="assignments" className="tab">ASSIGNMENTS</TabsTrigger>
+              <TabsTrigger value="dispatch" className="tab flex items-center gap-1.5">DISPATCH HUB <NewArrivalPing count={newUnassigned.newCount + newReview.newCount} /></TabsTrigger>
+              <TabsTrigger value="requests" className="tab flex items-center gap-1.5">SERVICE REQUESTS <NewArrivalPing count={newRequests.newCount} /></TabsTrigger>
+              <TabsTrigger value="assignments" className="tab flex items-center gap-1.5">ASSIGNMENTS <NewArrivalPing count={newAssignmentsArrivals.newCount} /></TabsTrigger>
             </TabsList>
 
             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
@@ -680,6 +699,9 @@ export function DispatchPageClient() {
                 }
               }}
               reviewQueueJobs={reviewQueueJobs}
+              onActiveTabChange={setDispatchSubtab}
+              newCounts={{ unassigned: newUnassigned.newCount, review: newReview.newCount }}
+              newIds={{ unassigned: newUnassigned.newIds, review: newReview.newIds }}
               onReviewSendToDispatch={handleReviewSendToDispatch}
               onReviewArchive={handleReviewArchive}
               routes={routes}

@@ -9,7 +9,7 @@ import type { Technician } from '@/lib/types';
 import type { JobWithSrc } from '@/lib/jobs';
 import { displayWorkOrderNumber, externalWorkOrderId } from '@/lib/work-order-identity';
 import { fileCompletedJob, weekOfForScheduleDate } from '@/lib/weekly-log';
-import type { UnloggedCompletion } from '@/lib/weekly-log-audit';
+import type { UnloggedCompletion, ExcludedCompletion, ExcludedReason } from '@/lib/weekly-log-audit';
 import { auditEvent } from '@/lib/audit';
 import { isInactiveTechnician } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -28,19 +28,22 @@ import {
 
 type Props = {
     rows: UnloggedCompletion[];
+    /** Completed jobs deliberately NOT listed, with why — shown read-only so
+     *  the tab's number can be explained. */
+    excluded: ExcludedCompletion[];
     technicians: Technician[];
     currentUser: Technician | null;
 };
 
 /**
- * Payroll Audit → Unlogged: completed jobs that are not on their tech's
+ * Intel → Flags → Unlogged Jobs: completed jobs that are not on their tech's
  * weekly log, so they can't reach payroll. "File to Log" uses the same auto
  * placement as a tech completion (scheduled week if its log is still Draft,
  * otherwise the current week flagged as a cross-week entry), so nothing is
  * paid until the log goes through normal review. "Not Payable" marks the job
  * payrollExcluded so it drops off this list and the tech-side sync ignores it.
  */
-export function UnloggedCompletions({ rows, technicians, currentUser }: Props) {
+export function UnloggedCompletions({ rows, excluded, technicians, currentUser }: Props) {
     const { toast } = useToast();
     const [search, setSearch] = useState('');
     const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
@@ -58,10 +61,13 @@ export function UnloggedCompletions({ rows, technicians, currentUser }: Props) {
         ].some(v => (v || '').toString().toLowerCase().includes(q)));
     }, [rows, search, techById]);
 
-    // Rows already on another tech's log, or matching a hand-typed missing-job
-    // report, are left out of File All — those need a human decision, not a
-    // second payout.
-    const bulkRows = visible.filter(r => !r.loggedUnderTechId && !r.reportedMissingAs);
+    const bulkRows = visible;
+    const [showExcluded, setShowExcluded] = useState(false);
+    const excludedCounts = excluded.reduce((acc, e) => { acc[e.reason] = (acc[e.reason] || 0) + 1; return acc; }, {} as Partial<Record<ExcludedReason, number>>);
+    const reasonLabel = (e: ExcludedCompletion) =>
+        e.reason === 'no_completion_record' ? 'Status is completed, but no one marked it complete in the app (test/seed data, import, or old record)'
+        : e.reason === 'on_other_tech_log' ? `Already on ${techName(e.detail)}'s weekly log`
+        : `Matches missing-job report for WO ${e.detail}`;
     const totalPay = visible.reduce((s, r) => s + (Number(r.job.pay) || 0), 0);
 
     const adminName = auth.currentUser?.displayName || currentUser?.name || 'Admin';
@@ -100,7 +106,7 @@ export function UnloggedCompletions({ rows, technicians, currentUser }: Props) {
                 history: arrayUnion({
                     type: 'note',
                     date: format(new Date(), 'MM-dd-yyyy'),
-                    details: `Marked not payable through weekly logs by ${adminName} (Payroll Audit → Unlogged).`,
+                    details: `Marked not payable through weekly logs by ${adminName} (Intel → Flags → Unlogged Jobs).`,
                     user: adminName,
                 }),
             });
@@ -136,11 +142,10 @@ export function UnloggedCompletions({ rows, technicians, currentUser }: Props) {
 
     const exportCsv = () => {
         const esc = (v: unknown) => `"${(v ?? '').toString().replace(/"/g, '""')}"`;
-        const header = ['Assignment', 'Work Order', 'Title', 'Client', 'Technician', 'Schedule Date', 'Week Of', 'Pay', 'Likely Cause', 'Logged Under Other Tech', 'Missing-Job Report WO'];
+        const header = ['Assignment', 'Work Order', 'Title', 'Client', 'Technician', 'Schedule Date', 'Week Of', 'Pay', 'Marked Complete By'];
         const lines = visible.map(r => [
             r.job.id, displayWorkOrderNumber(r.job), r.job.title, r.job.clientName, techName(r.techId),
             r.job.scheduleDate, weekOfForScheduleDate(r.job.scheduleDate), Number(r.job.pay) || 0, r.source,
-            r.loggedUnderTechId ? techName(r.loggedUnderTechId) : '', r.reportedMissingAs || '',
         ].map(esc).join(','));
         const blob = new Blob([[header.map(esc).join(','), ...lines].join('\n')], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
@@ -156,7 +161,7 @@ export function UnloggedCompletions({ rows, technicians, currentUser }: Props) {
             <div className="flex items-start gap-3 p-3 rounded-xl border border-accent-gold/30 bg-accent-gold/5 text-left">
                 <AlertTriangle size={14} className="text-accent-gold shrink-0 mt-0.5" />
                 <p className="text-[10px] text-text-secondary leading-relaxed">
-                    Completed jobs that are <span className="font-bold text-text-primary">not on their technician&apos;s weekly log</span>, so they can&apos;t reach payroll.
+                    Jobs a tech or admin <span className="font-bold text-text-primary">marked complete in the app</span> that never reached a weekly log, so they can&apos;t reach payroll.
                     Filing adds the job to its scheduled week&apos;s log if that log is still Draft; otherwise to the current week, flagged as a cross-week entry.
                     Nothing is paid until the log is submitted and approved. Check for a payment made outside the app before filing older jobs.
                 </p>
@@ -186,7 +191,7 @@ export function UnloggedCompletions({ rows, technicians, currentUser }: Props) {
             {visible.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
                     <CheckCircle size={28} className="text-text-green mx-auto mb-3" />
-                    <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">Every completed job is on a weekly log</p>
+                    <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">Every job marked complete is on a weekly log</p>
                 </div>
             ) : (
                 <div className="rounded-xl border border-border-sub bg-bg-secondary divide-y divide-border-sub overflow-hidden">
@@ -200,8 +205,6 @@ export function UnloggedCompletions({ rows, technicians, currentUser }: Props) {
                                         <a href={`/admin/assignments/${r.job.id}`} className="text-[11px] font-bold font-mono text-blue-400 hover:underline">{r.job.id.toUpperCase()}</a>
                                         <span className="text-[10px] font-mono text-text-muted">WO {displayWorkOrderNumber(r.job)}</span>
                                         {tech && isInactiveTechnician(tech) && <Badge variant="destructive" className="text-[7px] h-4 uppercase">Inactive tech</Badge>}
-                                        {r.loggedUnderTechId && <Badge variant="pending" className="text-[7px] h-4 uppercase">On {techName(r.loggedUnderTechId)}&apos;s log</Badge>}
-                                        {r.reportedMissingAs && <Badge variant="pending" className="text-[7px] h-4 uppercase">Missing-job report has WO {r.reportedMissingAs}</Badge>}
                                     </div>
                                     <p className="text-[11px] font-bold text-text-primary truncate">{r.job.title || r.job.description || '—'}</p>
                                     <p className="text-[9px] text-text-muted uppercase tracking-widest font-bold">
@@ -223,13 +226,42 @@ export function UnloggedCompletions({ rows, technicians, currentUser }: Props) {
                 </div>
             )}
 
+            {excluded.length > 0 && (
+                <div className="rounded-xl border border-border-sub bg-bg-secondary/40 text-left">
+                    <button type="button" onClick={() => setShowExcluded(v => !v)} className="w-full flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                            {excluded.length} other completed job{excluded.length !== 1 ? 's' : ''} not listed
+                        </span>
+                        <span className="text-[9px] text-text-muted">
+                            {[
+                                excludedCounts.no_completion_record && `${excludedCounts.no_completion_record} never marked complete in app`,
+                                excludedCounts.on_other_tech_log && `${excludedCounts.on_other_tech_log} on another tech's log`,
+                                excludedCounts.missing_job_report && `${excludedCounts.missing_job_report} match a missing-job report`,
+                            ].filter(Boolean).join(' · ')} · {showExcluded ? 'Hide' : 'Show'}
+                        </span>
+                    </button>
+                    {showExcluded && (
+                        <div className="divide-y divide-border-sub border-t border-border-sub">
+                            {excluded.map(e => (
+                                <div key={e.job.id} className="px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                                    <a href={`/admin/assignments/${e.job.id}`} className="text-[10px] font-mono font-bold text-blue-400 hover:underline">{e.job.id.toUpperCase()}</a>
+                                    <span className="text-[10px] font-mono text-text-muted">WO {displayWorkOrderNumber(e.job)}</span>
+                                    <span className="text-[10px] text-text-secondary">{techName(e.techId)} · {e.job.scheduleDate || 'No date'}</span>
+                                    <span className="text-[9px] text-text-muted basis-full">{reasonLabel(e)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
             <AlertDialog open={confirmFileAll} onOpenChange={setConfirmFileAll}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>File {bulkRows.length} jobs to weekly logs?</AlertDialogTitle>
                         <AlertDialogDescription>
                             Each job goes to its technician&apos;s log for its scheduled week, or the current week (flagged) if that week is closed.
-                            Jobs already on another technician&apos;s log or matching a missing-job report are skipped. Logs still need normal submission and approval before anything is paid.
+                            Logs still need normal submission and approval before anything is paid.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

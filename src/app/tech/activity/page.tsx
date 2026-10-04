@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierColor } from '@/lib/reliability';
 import { format, parseISO, subWeeks, startOfMonth, endOfMonth } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { isAssignedTo } from '@/lib/jobs';
 
 export default function TechActivityPage() {
   const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -34,7 +35,7 @@ export default function TechActivityPage() {
 
     const unsubAssignments = onSnapshot(
       query(collection(db, 'assignments'), where('techId', '==', userId)),
-      (snap) => setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)))
+      (snap) => setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)).filter(wo => isAssignedTo(wo, userId)))
     );
 
     const unsubUser = onSnapshot(doc(db, 'users', userId), (snap) => {

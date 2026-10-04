@@ -47,6 +47,7 @@ import {
   Inbox,
   FileSearch,
 } from "lucide-react";
+import { isAssignedTo } from '@/lib/jobs';
 
 type NavItem = {
   href: string;
@@ -230,6 +231,7 @@ export function AppSidebar() {
     return onSnapshot(q, (snap) => {
       const count = snap.docs.filter(d => {
         const data = d.data();
+        if (!isAssignedTo(data as any, firebaseUid)) return false;
         const updated = data.updatedAt || data.createdAt || "";
         return updated > lastSeen;
       }).length;

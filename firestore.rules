@@ -137,8 +137,13 @@ service cloud.firestore {
       // Techs may update their own assignment (status, notes, check-in/out)
       // but never the financial fields — those are admin/payroll-audit-only,
       // since effectiveJobPay() reads job.pay live off this doc.
+      // ...and only while they are the job's ASSIGNED tech: a stale techId left
+      // by an out-of-sync swap (assignedTechnicianId now someone else) can't
+      // be used to change status / complete the job.
       allow update: if isAdmin()
           || (isTech() && resource.data.techId == request.auth.uid
+              && (resource.data.get('assignedTechnicianId', null) == null
+                  || resource.data.assignedTechnicianId == request.auth.uid)
               && !request.resource.data.diff(resource.data).affectedKeys()
                   .hasAny(['pay', 'payType', 'blendedFixedPay', 'blendedIncludedHours', 'blendedHourlyRate',
                             'finalPay', 'auditReimbursement', 'auditOverhead', 'isAudited', 'auditedAt', 'auditedBy',
@@ -162,8 +167,9 @@ service cloud.firestore {
       // workOrders and assignments are the same doc shape, just pre/post
       // dispatch.
       allow update: if isAdmin()
-          || (isTech() && (resource.data.techId == request.auth.uid
-              || resource.data.assignedTechnicianId == request.auth.uid)
+          || (isTech() && (resource.data.get('assignedTechnicianId', null) == request.auth.uid
+              || (resource.data.techId == request.auth.uid
+                  && resource.data.get('assignedTechnicianId', null) == null))
               && !request.resource.data.diff(resource.data).affectedKeys()
                   .hasAny(['pay', 'payType', 'blendedFixedPay', 'blendedIncludedHours', 'blendedHourlyRate',
                             'finalPay', 'auditReimbursement', 'auditOverhead', 'isAudited', 'auditedAt', 'auditedBy',

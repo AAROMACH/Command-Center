@@ -242,7 +242,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
       const note = describeSwapLogMove(moved, prevTech?.name || 'the previous tech', nt?.name || 'the new tech');
       if (note) toast({ variant: note.warn ? 'destructive' : undefined, title: 'Weekly Log', description: note.text });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Swapped, but weekly log not moved', description: e?.message || 'Move it from Payroll Audit.' });
+      toast({ variant: 'destructive', title: 'Swapped, but weekly log not moved', description: e?.message || 'Fix it from Intel → Flags → Wrong Tech.' });
     }
   };
 
@@ -308,11 +308,11 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission }: JobDetailDialogP
         } catch (fileErr) {
           // The status write already landed — say so plainly instead of the
           // generic "could not complete", so payroll knows to file it from
-          // Payroll Audit → Unlogged.
+          // Intel → Flags → Unlogged Jobs.
           console.error('Force complete: weekly-log filing failed', fileErr);
           setForcedDone(true);
           setForceOpen(false);
-          toast({ variant: 'destructive', title: 'Completed, but not filed', description: 'The job is marked completed but could not be added to the weekly log. File it from Payroll Audit → Unlogged.' });
+          toast({ variant: 'destructive', title: 'Completed, but not filed', description: 'The job is marked completed but could not be added to the weekly log. File it from Intel → Flags → Unlogged Jobs.' });
           return;
         }
       }

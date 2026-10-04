@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, doc, updateDoc, onSnapshot, query, where, setDoc, arrayUnion } from 'firebase/firestore';
-import { isArchivedJob } from '@/lib/jobs';
+import { isArchivedJob, isAssignedTo } from '@/lib/jobs';
 import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -44,7 +44,7 @@ import { TERMINOLOGY } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
 import { format, startOfWeek, parseISO } from 'date-fns';
 import { removeJobFromDraftLogs } from '@/lib/weekly-log';
-import { useCompletionFiling } from '@/hooks/use-completion-filing';
+import { useCompletionFiling, completionToastText, type CompletionResult } from '@/hooks/use-completion-filing';
 import { cn, getTacticalLocation, compareScheduleTime } from '@/lib/utils';
 import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete } from '@/lib/trip-flow';
 import { NotificationService } from '@/lib/notification-service';
@@ -92,7 +92,7 @@ export default function TechDashboardPage() {
             // Archived is a first line of defense before deletion — a job
             // that's been archived (or somehow left behind with a stale
             // 'archived' flag) must never resurface as live/upcoming here.
-            setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)).filter(wo => !isArchivedJob(wo)));
+            setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)).filter(wo => !isArchivedJob(wo) && isAssignedTo(wo, userId)));
         });
 
         const logQ = query(collection(db, 'weeklyLogs'), where('techId', '==', userId), where('status', '==', 'Draft'));
@@ -196,7 +196,7 @@ export default function TechDashboardPage() {
 
             // File BEFORE notifying — a notification failure used to throw
             // after the job was already completed, skipping the weekly log.
-            let filed: 'filed' | 'prompted' | null = null;
+            let filed: CompletionResult | null = null;
             if (newStatus === 'completed' && targetWO) {
                 filed = await completeAndFile(targetWO, writeStatus);
             } else {
@@ -213,7 +213,7 @@ export default function TechDashboardPage() {
             }
 
             if (newStatus === 'completed') {
-                toast({ title: "Mission Finalized", description: filed === 'prompted' ? "Choose which weekly log should hold it." : "Mission moved to historical registry and weekly log." });
+                toast({ title: "Mission Finalized", description: filed ? completionToastText(filed) : "Mission moved to historical registry." });
             } else {
                 toast({ title: "Status Updated", description: `Mission transitioned to ${newStatus.replace(/-/g, ' ')}.` });
             }

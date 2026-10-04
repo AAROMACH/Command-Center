@@ -407,7 +407,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         }
     }, [technician]);
 
-    // Shared with the Payroll Audit Weekly/Staff Pay tabs, CSV export, and
+    // Shared with the Payroll Audit Weekly tab, CSV export, and
     // Paystub History via computeWeeklyLogSettlement() so this dialog's "Net
     // Tech Settlement" can never drift from what those screens show.
     const calculatedTotalPayout = useMemo(

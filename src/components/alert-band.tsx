@@ -32,6 +32,7 @@ import { Button } from '@/components/ui/button';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
 import type { WorkOrder, Project, ServiceRequest, WeeklyLog, TimeOffRequest, SiteRequest, Invoice, PayrollDispute, Technician } from '@/lib/types';
+import { isAssignedTo } from '@/lib/jobs';
 
 type AlertType = 'critical' | 'warning' | 'info' | 'success';
 
@@ -88,7 +89,7 @@ export function AlertBand() {
       // Tech: only own assignments and only draft logs
       unsubs.push(onSnapshot(
         query(collection(db, 'assignments'), where('techId', '==', currentUser.id)),
-        (snap) => setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)))
+        (snap) => setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)).filter(wo => isAssignedTo(wo, currentUser.id)))
       ));
       unsubs.push(onSnapshot(
         query(collection(db, 'weeklyLogs'),

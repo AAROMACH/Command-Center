@@ -7,16 +7,19 @@
 //
 //   node scripts/find-unlogged-completions.js > unlogged.csv
 //
-// Needs serviceAccountKey.json in the repo root (gitignored), same as import.js.
+// Credentials (read-only service account recommended — Cloud Datastore Viewer):
+//   - FIREBASE_SERVICE_ACCOUNT_B64 env var: the key JSON, base64-encoded, or
+//   - serviceAccountKey.json in the repo root (gitignored), same as import.js.
 // Writes nothing to Firestore.
 
 const admin = require('firebase-admin');
-const serviceAccount = require('../serviceAccountKey.json');
+const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_B64
+  ? JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_B64, 'base64').toString('utf8'))
+  : require('../serviceAccountKey.json');
 
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 const db = admin.firestore();
 
-const jobTechId = j => j.assignedTechnicianId || (j.assignedTechIds && j.assignedTechIds[0]) || j.techId || '';
 const isArchived = j => !!j.archived || j.status === 'archived';
 
 function completionSource(job) {
@@ -27,9 +30,8 @@ function completionSource(job) {
     if (/^Mark Complete at/i.test(d)) return 'Tech calendar "Mark Complete"';
     if (/Mission finalized/i.test(d)) return 'Tech completion - week prompt dismissed or filing failed';
     if (/Status update to COMPLETED/i.test(d)) return 'Tech dashboard completion - filing skipped';
-    if (/Registry parameters adjusted/i.test(d)) return 'Admin edit (status set to Completed)';
   }
-  return 'Unknown - no completion entry in history';
+  return null; // never explicitly marked complete in the app
 }
 
 function parseDate(s) {
@@ -84,37 +86,53 @@ async function main() {
     reportedExtByTech.set(log.techId, ext);
   });
 
+  // Same rule as Payroll Audit -> Unlogged (src/lib/weekly-log-audit.ts).
+  // Every completed job not on its own tech's log is printed, with Listed =
+  // YES only for the ones the tab shows; the rest carry the reason they're not.
+  const techIdsOf = j => [...new Set([j.techId, j.assignedTechnicianId, ...(j.assignedTechIds || [])].filter(Boolean))];
   const rows = [];
   for (const job of jobs.values()) {
     if (job.status !== 'completed' || isArchived(job) || job.payrollExcluded) continue;
-    const techId = jobTechId(job);
-    if (!techId) continue;
-    const own = loggedByTech.get(techId);
+    const techIds = techIdsOf(job);
+    if (techIds.length === 0) continue;
+    const techId = job.assignedTechnicianId || techIds[0];
     const ids = [job.id, job.workOrderId].filter(Boolean);
-    if (own && ids.some(id => own.has(id))) continue;
+    if (techIds.some(t => ids.some(id => loggedByTech.get(t) && loggedByTech.get(t).has(id)))) continue;
     const elsewhere = ids.map(id => firstTechForId.get(id)).find(Boolean);
     const ext = jobExt(job);
-    const reported = ext && reportedExtByTech.get(techId) && reportedExtByTech.get(techId).has(ext) ? ext.toUpperCase() : '';
-    rows.push({ job, techId, elsewhere, reported });
+    const source = completionSource(job);
+    let reason = '', reasonKey = '';
+    if (elsewhere) { reason = `Already on ${names.get(elsewhere) || elsewhere}'s log`; reasonKey = "On another tech's log"; }
+    else if (ext && techIds.some(t => reportedExtByTech.get(t) && reportedExtByTech.get(t).has(ext))) { reason = `Matches missing-job report WO ${ext.toUpperCase()}`; reasonKey = 'Matches a missing-job report'; }
+    else if (!source) { reason = 'Never marked complete in app (test/seed data, import, or old record)'; reasonKey = 'Never marked complete in app'; }
+    rows.push({ job, techId, source, reason, reasonKey, listed: !reason });
   }
-  rows.sort((a, b) => parseDate(b.job.scheduleDate) - parseDate(a.job.scheduleDate));
+  rows.sort((a, b) => (b.listed - a.listed) || (parseDate(b.job.scheduleDate) - parseDate(a.job.scheduleDate)));
 
   const esc = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
-  const out = [['Assignment', 'Collection', 'Work Order', 'Title', 'Client', 'Technician', 'Schedule Date', 'Week Of', 'Pay', 'Likely Cause', 'Logged Under Other Tech', 'Missing-Job Report WO'].map(esc).join(',')];
-  for (const { job, techId, elsewhere, reported } of rows) {
+  const out = [['Listed', 'Assignment', 'Collection', 'Work Order', 'Title', 'Client', 'Technician', 'Schedule Date', 'Week Of', 'Pay', 'Marked Complete By', 'Not Listed Because'].map(esc).join(',')];
+  for (const { job, techId, source, reason, listed } of rows) {
     out.push([
-      job.id, job._coll, job.externalWorkOrderId || job.workOrderId || job.id, job.title, job.clientName,
+      listed ? 'YES' : 'no', job.id, job._coll, job.externalWorkOrderId || job.workOrderId || job.id, job.title, job.clientName,
       names.get(techId) || techId, job.scheduleDate, weekOf(job.scheduleDate), Number(job.pay) || 0,
-      completionSource(job), elsewhere ? (names.get(elsewhere) || elsewhere) : '', reported,
+      source || '', reason,
     ].map(esc).join(','));
   }
   console.log(out.join('\n'));
 
-  const total = rows.reduce((s, r) => s + (Number(r.job.pay) || 0), 0);
-  console.error(`\n${rows.length} completed job(s) not on their tech's weekly log · $${total.toFixed(2)} listed pay`);
+  const listed = rows.filter(r => r.listed);
+  const total = listed.reduce((s, r) => s + (Number(r.job.pay) || 0), 0);
+  console.error(`\n${listed.length} job(s) marked complete but on no weekly log · $${total.toFixed(2)} listed pay`);
   const byTech = new Map();
-  rows.forEach(r => byTech.set(r.techId, (byTech.get(r.techId) || 0) + 1));
+  listed.forEach(r => byTech.set(r.techId, (byTech.get(r.techId) || 0) + 1));
   [...byTech.entries()].sort((a, b) => b[1] - a[1]).forEach(([t, n]) => console.error(`  ${names.get(t) || t}: ${n}`));
+  const notListed = rows.filter(r => !r.listed);
+  if (notListed.length) {
+    console.error(`\n${notListed.length} other completed job(s) not listed:`);
+    const byReason = new Map();
+    notListed.forEach(r => byReason.set(r.reasonKey, (byReason.get(r.reasonKey) || 0) + 1));
+    [...byReason.entries()].forEach(([k, n]) => console.error(`  ${n}  ${k}`));
+  }
 }
 
 main().catch(err => { console.error(err); process.exit(1); });

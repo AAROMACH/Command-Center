@@ -24,9 +24,10 @@ import { cn, getTacticalLocation, getTacticalCoords, calculateDistance } from '@
 import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete, reopenStatusFor } from '@/lib/trip-flow';
 import { externalWorkOrderId } from '@/lib/work-order-identity';
 import { removeJobFromDraftLogs } from '@/lib/weekly-log';
-import { useCompletionFiling } from '@/hooks/use-completion-filing';
+import { useCompletionFiling, completionToastText } from '@/hooks/use-completion-filing';
 import { setDoc } from 'firebase/firestore';
 import { startOfWeek } from 'date-fns';
+import { isAssignedTo } from '@/lib/jobs';
 
 const AssignmentMap = dynamic(
   () => import('@/app/admin/assignments/[id]/assignment-map'),
@@ -198,10 +199,10 @@ export default function TechAssignmentDetailPage() {
   // Security: redirect if this assignment isn't theirs
   useEffect(() => {
     if (!assignment || !currentTechId || loading) return;
+    // Assigned tech (what admin screens show) or a listed helper only — a stale
+    // techId from an out-of-sync swap doesn't make the job theirs.
     const isTheirs =
-      assignment.techId === currentTechId ||
-      assignment.assignedTechnicianId === currentTechId ||
-      assignment.assignedTechIds?.includes(currentTechId) ||
+      isAssignedTo(assignment, currentTechId) ||
       assignment.additionalTechnicianIds?.includes(currentTechId);
     if (!isTheirs) router.push('/tech/assignments');
   }, [assignment, currentTechId, loading, router]);
@@ -355,7 +356,7 @@ export default function TechAssignmentDetailPage() {
           details: `Mission finalized at ${now}. Status: CLOSED. Location: [${location}].`, user: techName,
         }),
       }));
-      toast({ title: 'Mission Finalized', description: result === 'filed' ? 'Assignment moved to completed and filed to your weekly log.' : 'Choose which weekly log should hold it.' });
+      toast({ title: 'Mission Finalized', description: completionToastText(result) });
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Update Failed', description: e?.message || 'Please try again.' });
     }
@@ -487,7 +488,9 @@ export default function TechAssignmentDetailPage() {
       handler: handleReopen,
       cls: '',
     },
-  ].filter(a => a.show);
+  // Status actions belong to the assigned tech only — a helper can view the
+  // job but not move it through confirm / trip / complete.
+  ].filter(a => a.show && isAssignedTo(assignment, currentTechId));
 
   return (
     <div className="space-y-5 text-left pb-24">

@@ -14,18 +14,19 @@ import {
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { jobTechId, jobDateTimeValue, isArchivedJob } from '@/lib/jobs';
+import { completionEvent } from '@/lib/weekly-log-audit';
 
 /**
  * How far back the sync will auto-file a lead tech's own completed job that
  * never reached a log. Older gaps are left to payroll's Unlogged audit
- * (Payroll Audit → Unlogged), where an admin files them deliberately — an old
+ * (Intel → Flags → Unlogged Jobs), where an admin files them deliberately — an old
  * job may have been settled outside the app, and silently dropping it into
  * this week's log invites a double payment.
  */
 export const AUTO_HEAL_LOOKBACK_DAYS = 30;
 
 /**
- * Jobs the sync must leave to an admin (Payroll Audit → Unlogged) even inside
+ * Jobs the sync must leave to an admin (Intel → Flags → Unlogged Jobs) even inside
  * the window, because the tech's own logs can't tell the whole story:
  *  - reassigned jobs — the entry may still sit on the previous tech's log
  *    (swaps before the log-move existed, or a locked log), which this tech's
@@ -54,7 +55,8 @@ function withinAutoHealWindow(job: WorkOrder): boolean {
  *
  *  - Helper jobs (additionalTechnicianIds): fanned into the helper's own log
  *    at $0 for payroll to price separately.
- *  - Lead jobs: a completed job that isn't in any of the tech's logs (the
+ *  - Lead jobs: a job the tech (or an admin) explicitly marked complete that
+ *    isn't in any of the tech's logs (the
  *    "which week?" prompt was abandoned, the filing write failed after the
  *    status write landed, an admin marked it completed) is filed with auto
  *    placement and tagged filedVia 'auto_sync'.
@@ -106,7 +108,9 @@ export function useHelperLogSync(techId: string | null) {
       !filingRef.current.has(j.id) &&
       !isCompletionFilingInFlight(j.id);
 
-    const isLead = (j: WorkOrder) => jobTechId(j) === techId || j.techId === techId;
+    // Lead = the tech the job is ASSIGNED to (what admin screens show). A job
+    // whose techId still points here after a desynced swap is not ours to file.
+    const isLead = (j: WorkOrder) => jobTechId(j) === techId;
 
     helperJobs.filter(j => !isLead(j) && needsFiling(j)).forEach(async (j) => {
       filingRef.current.add(j.id);
@@ -137,7 +141,7 @@ export function useHelperLogSync(techId: string | null) {
     const leadById = new Map<string, WorkOrder>();
     [...leadPoolJobs, ...leadAssignments].forEach(j => leadById.set(j.id, j));
     [...leadById.values()]
-      .filter(j => isLead(j) && withinAutoHealWindow(j) && !needsAdminDecision(j) && needsFiling(j))
+      .filter(j => isLead(j) && withinAutoHealWindow(j) && !!completionEvent(j) && !needsAdminDecision(j) && needsFiling(j))
       .forEach(async (j) => {
         filingRef.current.add(j.id);
         try {

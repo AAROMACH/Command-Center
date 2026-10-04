@@ -8,6 +8,7 @@ import { BarChart2, ShieldAlert, Users, AlertTriangle, Clock, ChevronRight, Mail
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -129,6 +130,7 @@ export default function FieldIntelligencePage() {
     const wrongTechCount = wrongTechEntries.length + desyncedAssignments.length;
 
     // Density map follows the Intel filters (time window, personnel, client).
+    const [densityOpen, setDensityOpen] = useState(false);
     const densityJobs = useMemo(() => {
         const days = timeWindow === '7d' ? 7 : timeWindow === '30d' ? 30 : timeWindow === '90d' ? 90 : timeWindow === '1y' ? 365 : null;
         const cutoff = days ? Date.now() - days * 864e5 : null;
@@ -360,17 +362,28 @@ export default function FieldIntelligencePage() {
                             {intelClient !== 'all' && <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border border-amber-400/30 bg-amber-400/10 text-amber-400">{intelClient}</span>}
                         </div>
                     </div>
+                    {/* Compact card; the map itself opens in a dialog instead of
+                        taking the full width of the page. */}
                     <Card className="bg-bg-secondary border-border-main mb-5">
-                        <CardContent className="p-4 space-y-3">
-                            <div className="flex flex-wrap items-baseline justify-between gap-2">
-                                <div>
-                                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-text-primary">Job Density — Michigan &amp; Ohio</p>
-                                    <p className="text-[10px] text-text-muted">Darker squares = more jobs in that area for the selected filters. Hover a square for the count and top cities.</p>
-                                </div>
+                        <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
+                            <div className="min-w-0">
+                                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-text-primary">Job Density — Michigan &amp; Ohio</p>
+                                <p className="text-[10px] text-text-muted">{densityJobs.length.toLocaleString()} job{densityJobs.length === 1 ? '' : 's'} for the selected filters</p>
                             </div>
-                            <JobDensityMap jobs={densityJobs} />
+                            <Button size="sm" variant="outline" className="h-8 text-[9px] font-black uppercase tracking-widest" onClick={() => setDensityOpen(true)}>
+                                Open Map
+                            </Button>
                         </CardContent>
                     </Card>
+                    <Dialog open={densityOpen} onOpenChange={setDensityOpen}>
+                        <DialogContent className="sm:max-w-4xl bg-bg-elevated border-border-default">
+                            <DialogHeader>
+                                <DialogTitle className="text-sm font-black uppercase tracking-widest">Job Density — Michigan &amp; Ohio</DialogTitle>
+                                <DialogDescription className="text-[10px]">Darker squares = more jobs in that area for the selected filters. Hover a square for the count and top cities.</DialogDescription>
+                            </DialogHeader>
+                            {densityOpen && <JobDensityMap jobs={densityJobs} />}
+                        </DialogContent>
+                    </Dialog>
                     <IntelligenceTerminal
                         timeWindow={timeWindow}
                         personnel={intelPersonnel}

@@ -6,6 +6,7 @@ import { db } from "@/lib/firebase";
 import { collection, doc, updateDoc, onSnapshot, query, where, setDoc, arrayUnion } from 'firebase/firestore';
 import { isArchivedJob, isAssignedTo } from '@/lib/jobs';
 import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
+import { computeWeeklyLogSettlement } from '@/lib/payroll';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -140,11 +141,13 @@ export default function TechDashboardPage() {
     }, [allWorkOrders]);
 
 
-    const expectedEarnings = useMemo(() => {
-        return unsubmittedLogs.reduce((sum, log) => {
-            return sum + (log.items || []).reduce((s, item) => s + (item.jobPay || 0), 0);
-        }, 0);
-    }, [unsubmittedLogs]);
+    const jobsById = useMemo(() => new Map(allWorkOrders.map(j => [j.id, j])), [allWorkOrders]);
+
+    // Live settlement: raw item.jobPay ignores the Field Nation fee/split and
+    // overstated FN jobs.
+    const expectedEarnings = useMemo(() =>
+        unsubmittedLogs.reduce((sum, log) => sum + computeWeeklyLogSettlement(log, jobsById), 0),
+    [unsubmittedLogs, jobsById]);
 
     const reliabilityTier = useMemo(() => {
         const score = tech?.reliabilityScore ?? 100;
@@ -424,7 +427,7 @@ export default function TechDashboardPage() {
                 </div>
             </div>
 
-            <LogSelectionDialog isOpen={isLogSelectionOpen} setIsOpen={setIsLogSelectionOpen} logs={unsubmittedLogs} onSelect={setSelectedLog} />
+            <LogSelectionDialog isOpen={isLogSelectionOpen} setIsOpen={setIsLogSelectionOpen} logs={unsubmittedLogs} jobsById={jobsById} onSelect={setSelectedLog} />
             <ReceiptUploadDialog isOpen={isReceiptDialogOpen} setIsOpen={setIsReceiptDialogOpen} workOrders={allWorkOrders} projects={[]} techId={currentTechId || ''} techName={tech?.name || ''} />
             <CheckInDialog isOpen={isCheckInDialogOpen} setIsOpen={setIsCheckInDialogOpen} workOrders={allWorkOrders.filter(w => w.status === 'assigned')} projects={[]} />
             <JobDetailDialog isOpen={isDetailOpen} setIsOpen={setIsDetailOpen} mission={selectedJob} />

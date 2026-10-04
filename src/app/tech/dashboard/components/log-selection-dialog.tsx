@@ -1,6 +1,7 @@
 'use client';
 
-import type { WeeklyLog } from '@/lib/types';
+import type { WeeklyLog, WorkOrder } from '@/lib/types';
+import { computeWeeklyLogSettlement } from '@/lib/payroll';
 import { 
   Dialog, 
   DialogContent, 
@@ -20,10 +21,11 @@ type LogSelectionDialogProps = {
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
     logs: WeeklyLog[];
+    jobsById?: Map<string, WorkOrder>;
     onSelect: (log: WeeklyLog) => void;
 };
 
-export function LogSelectionDialog({ isOpen, setIsOpen, logs, onSelect }: LogSelectionDialogProps) {
+export function LogSelectionDialog({ isOpen, setIsOpen, logs, jobsById, onSelect }: LogSelectionDialogProps) {
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogContent className="sm:max-w-[450px] bg-bg-elevated border-border-default flex flex-col p-0">
@@ -51,9 +53,9 @@ export function LogSelectionDialog({ isOpen, setIsOpen, logs, onSelect }: LogSel
                                         <div className="text-left">
                                             <p className="text-xs font-bold text-text-primary uppercase tracking-wide">Week of {log.weekOf}</p>
                                             <div className="flex items-center gap-2 mt-1">
-                                                <p className="text-[9px] text-text-muted uppercase tracking-widest">{log.items.length} Assignments</p>
+                                                <p className="text-[9px] text-text-muted uppercase tracking-widest">{(log.items || []).length} Assignments</p>
                                                 <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
-                                                <p className="text-[9px] text-text-green font-mono font-bold">${(log.totalPayout || 0).toFixed(2)}</p>
+                                                <p className="text-[9px] text-text-green font-mono font-bold">${computeWeeklyLogSettlement(log, jobsById).toFixed(2)}</p>
                                             </div>
                                         </div>
                                     </div>

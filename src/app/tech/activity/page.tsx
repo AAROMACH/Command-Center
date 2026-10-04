@@ -12,6 +12,7 @@ import { getReliabilityTier, getTierColor } from '@/lib/reliability';
 import { format, parseISO, subWeeks, startOfMonth, endOfMonth } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { isAssignedTo, jobDateTimeValue, weekOfValue, parseLocalDate } from '@/lib/jobs';
+import { computeWeeklyLogSettlement } from '@/lib/payroll';
 
 export default function TechActivityPage() {
   const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -82,17 +83,22 @@ export default function TechActivityPage() {
       const week = l.weekOf.slice(0, 10);
       if (l.status === 'Submitted' || l.status === 'Approved') grouped[week] = (grouped[week] || 0) + 1;
     });
-    return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).slice(-8)
-      .map(([week, count]) => ({ week: week.slice(5), count }));
+    // weekOf is MM-dd-yyyy: sort chronologically (a string sort breaks across
+    // years) and label "MM-dd".
+    return Object.entries(grouped).sort(([a], [b]) => weekOfValue(a) - weekOfValue(b)).slice(-8)
+      .map(([week, count]) => ({ week: week.slice(0, 5), count }));
   }, [weeklyLogs]);
+
+  const jobsById = useMemo(() => new Map(assignments.map(a => [a.id, a])), [assignments]);
 
   const earningsTrend = useMemo(() =>
     weeklyLogs
       .filter(l => l.status === 'Approved')
       .sort((a, b) => weekOfValue(a.weekOf) - weekOfValue(b.weekOf))
       .slice(-8)
-      .map(l => ({ week: (l.weekOf || '').slice(5, 10), pay: l.totalPayout || 0 })),
-    [weeklyLogs]
+      // weekOf is MM-dd-yyyy → label "MM-dd"; pay at live settlement.
+      .map(l => ({ week: (l.weekOf || '').slice(0, 5), pay: computeWeeklyLogSettlement(l, jobsById) })),
+    [weeklyLogs, jobsById]
   );
 
   const rangeStart = useMemo(() => {

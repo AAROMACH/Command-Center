@@ -9,6 +9,7 @@ import {
   updateDoc, arrayUnion, arrayRemove, setDoc, deleteDoc,
 } from 'firebase/firestore';
 import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
+import { effectiveJobPay } from '@/lib/payroll';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -28,7 +29,7 @@ import { format } from 'date-fns';
 import { cn, sanitize, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
 import { isPayAdmin } from '@/lib/permissions';
 import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
-import { toUnassignedWorkOrder, parseLocalDate } from '@/lib/jobs';
+import { toUnassignedWorkOrder, parseLocalDate, jobTechId } from '@/lib/jobs';
 import { createDocId } from '@/lib/generateId';
 import { syncWeeklyLogForAdminStatusEdit, moveJobLogOnSwap, describeSwapLogMove } from '@/lib/weekly-log';
 
@@ -178,7 +179,8 @@ export default function AssignmentDetailPage() {
   // Weekly logs
   useEffect(() => {
     if (!assignment) return;
-    const tid = assignment.techId || assignment.assignedTechnicianId || '';
+    // The assigned tech (same rule as everywhere else) owns the log.
+    const tid = jobTechId(assignment);
     if (!tid) return;
     return onSnapshot(
       query(collection(db, 'weeklyLogs'), where('techId', '==', tid)),
@@ -372,6 +374,13 @@ export default function AssignmentDetailPage() {
   };
 
   // ── Loading / not found ───────────────────────────────────────────────────
+  // This job's pay on a weekly log (FN fee/split applied) — not the whole
+  // week's total, which also went stale after pay corrections.
+  const jobPayIn = (log: WeeklyLog) => {
+    const item = log.items?.find(i => i.workOrderId === assignmentId);
+    return item ? effectiveJobPay(item, assignment ?? undefined) : 0;
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center py-24">
       <p className="text-xs font-bold uppercase text-text-muted tracking-widest animate-pulse">Loading assignment...</p>
@@ -749,8 +758,9 @@ export default function AssignmentDetailPage() {
               <div key={log.id} className="p-3 rounded-lg bg-bg-primary border border-border-sub">
                 <p className="text-[9px] font-bold uppercase text-text-primary">Week of {log.weekOf}</p>
                 <p className="text-sm font-mono font-bold mt-0.5" style={{ color: 'var(--text-green)' }}>
-                  ${(log.totalPayout || 0).toFixed(2)}
+                  ${jobPayIn(log).toFixed(2)}
                 </p>
+                <p className="text-[8px] text-text-muted uppercase">This job&apos;s pay</p>
                 <Badge variant="outline" className="h-4 text-[7px] mt-1 uppercase">{log.status}</Badge>
               </div>
             ))}

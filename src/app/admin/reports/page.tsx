@@ -91,7 +91,7 @@ import { Separator } from '@/components/ui/separator';
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { cn, formatCityState } from '@/lib/utils';
-import { isArchivedJob, archiveJobRecord, jobTechId, weekOfValue, parseLocalDate } from '@/lib/jobs';
+import { isArchivedJob, archiveJobRecord, jobTechId, weekOfValue, parseLocalDate, mergeJobs } from '@/lib/jobs';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { IntelligenceTerminal } from './components/intelligence-terminal';
 import type { Technician, WorkOrder, WeeklyLog, TimeOffRequest, AdminMessage, Invoice, Project } from '@/lib/types';
@@ -101,6 +101,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 import { isAdmin, isSuperAdmin, isClient } from '@/lib/permissions';
 import { usePenaltyEvents, penaltyPoints } from '@/hooks/use-penalty-events';
+import { computeWeeklyLogSettlement } from '@/lib/payroll';
 
 const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'TBD';
@@ -496,6 +497,11 @@ export default function ActivityAuditPage() {
 
     const activeTech = useMemo(() => technicians.find(t => t.id === selectedTechId), [selectedTechId, technicians]);
 
+    const jobsById = useMemo(
+        () => new Map(mergeJobs(workOrders, assignments).map(j => [j.id, j as WorkOrder])),
+        [workOrders, assignments],
+    );
+
     const techStats = useMemo(() => {
         if (!selectedTechId) return null;
         const myJobs = assignments.filter(wo => jobTechId(wo) === selectedTechId);
@@ -510,9 +516,11 @@ export default function ActivityAuditPage() {
                 const [bm, bd, by] = b.weekOf.split('-');
                 return new Date(parseInt(by), parseInt(bm)-1, parseInt(bd)).getTime() - 
                        new Date(parseInt(ay), parseInt(am)-1, parseInt(ad)).getTime();
-            });
+            })
+            // Live settlement — the stored totalPayout is 0 on drafts and stale after pay edits.
+            .map(log => ({ ...log, amount: computeWeeklyLogSettlement(log, jobsById) }));
 
-        const totalEarnings = myLogs.filter(l => l.status === 'Approved').reduce((acc, log) => acc + (log.totalPayout || 0), 0);
+        const totalEarnings = myLogs.filter(l => l.status === 'Approved').reduce((acc, log) => acc + log.amount, 0);
 
         return { 
             total: myJobs.length, 
@@ -524,7 +532,7 @@ export default function ActivityAuditPage() {
             myJobs,
             myLogs
         };
-    }, [selectedTechId, assignments, weeklyLogs, allPenalties]);
+    }, [selectedTechId, assignments, weeklyLogs, allPenalties, jobsById]);
 
     const siteList = useMemo(() => {
         const uniqueSites = new Map();
@@ -1400,7 +1408,7 @@ export default function ActivityAuditPage() {
                                                                                     {log.status}
                                                                                 </Badge>
                                                                             </TableCell>
-                                                                            <TableCell className="text-right pr-6 font-mono font-bold text-text-primary">${(log.totalPayout || 0).toFixed(2)}</TableCell>
+                                                                            <TableCell className="text-right pr-6 font-mono font-bold text-text-primary">${log.amount.toFixed(2)}</TableCell>
                                                                         </TableRow>
                                                                     ))}
                                                                 </TableBody>

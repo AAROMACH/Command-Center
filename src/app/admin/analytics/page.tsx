@@ -170,9 +170,9 @@ export default function FieldIntelligencePage() {
                 return new Date(parseInt(by), parseInt(bm)-1, parseInt(bd)).getTime() -
                        new Date(parseInt(ay), parseInt(am)-1, parseInt(ad)).getTime();
             });
-        const totalEarnings = myLogs.filter(l => l.status === 'Approved').reduce((acc, log) => acc + (log.totalPayout || 0), 0);
+        const totalEarnings = myLogs.filter(l => l.status === 'Approved').reduce((acc, log) => acc + computeWeeklyLogSettlement(log, jobsById), 0);
         return { total: myJobs.length, completed, points, penalties, totalEarnings, myJobs, myLogs };
-    }, [selectedTechId, assignments, weeklyLogs, allPenalties]);
+    }, [selectedTechId, assignments, weeklyLogs, allPenalties, jobsById]);
 
     // Insights tab computed values
     const techReliability = useMemo(() => {

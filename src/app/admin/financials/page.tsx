@@ -15,6 +15,7 @@ import { InvoiceEditor } from './components/invoice-editor';
 import { RevenueChart } from './components/revenue-chart';
 import { MetricBreakdownSheet, type MetricKey } from './components/metric-breakdown-sheet';
 import { computeFinancialSummary, monthBreakdown } from '@/lib/financial-summary';
+import { computeWeeklyLogSettlement } from '@/lib/payroll';
 import { mergeJobs } from '@/lib/jobs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -222,7 +223,7 @@ export default function FinancialsPage() {
                     const parts = log.weekOf.split('-');
                     const d = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1])));
                     if (isWithinInterval(d, { start, end })) {
-                        rows.push(['PAY', log.id, log.weekOf, getTechnicianName(log.techId), 'Weekly Log Payout', (log.totalPayout || 0).toString(), log.status]);
+                        rows.push(['PAY', log.id, log.weekOf, getTechnicianName(log.techId), 'Weekly Log Payout', computeWeeklyLogSettlement(log, jobsById).toFixed(2), log.status]);
                     }
                 } catch(e) {}
             });

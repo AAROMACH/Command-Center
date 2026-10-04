@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 import { adminApp } from '@/lib/firebase-admin';
 
 // The public quote-approval page (src/app/public/quote/[token]) talks to
@@ -13,7 +14,36 @@ import { adminApp } from '@/lib/firebase-admin';
 // rules), closes that gap without needing to restructure how quotes are
 // stored.
 
+// A customer can only answer a quote that was actually sent to them — not a
+// draft that still carries a token from an earlier send, and not one that's
+// been superseded or converted since.
+const ANSWERABLE = new Set(['sent', 'viewed', 'changes_requested']);
+const VISIBLE = new Set(['sent', 'viewed', 'changes_requested', 'approved', 'rejected', 'expired']);
+
+/**
+ * The customer only picks options — they never get to rewrite them. Take the
+ * stored groups and copy across just the `selected` flag for option ids the
+ * caller sent, so prices/labels can't be edited from the browser.
+ */
+function sanitizeChoices(stored: any[], submitted: unknown): any[] {
+  const picked = new Map<string, boolean>();
+  if (Array.isArray(submitted)) {
+    for (const g of submitted) {
+      for (const o of (g && Array.isArray(g.options) ? g.options : [])) {
+        if (o && typeof o.id === 'string') picked.set(`${g.id}::${o.id}`, o.selected === true);
+      }
+    }
+  }
+  return (stored || []).map(g => ({
+    ...g,
+    options: (g.options || []).map((o: any) => ({ ...o, selected: picked.get(`${g.id}::${o.id}`) ?? o.selected ?? false })),
+  }));
+}
+
+const str = (v: unknown, max = 500) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+
 async function findByToken(token: string) {
+  if (typeof token !== 'string' || token.length < 16 || token.length > 128) return null;
   const snap = await getFirestore(adminApp)
     .collection('quotes')
     .where('publicToken', '==', token)
@@ -30,6 +60,7 @@ export async function GET(req: NextRequest) {
   if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const data = doc.data();
+  if (!VISIBLE.has(data.status)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (data.status === 'sent') {
     await doc.ref.update({ status: 'viewed', viewedAt: new Date().toISOString() });
     data.status = 'viewed';
@@ -48,48 +79,68 @@ type RespondPayload = {
 };
 
 export async function POST(req: NextRequest) {
-  let payload: RespondPayload;
+  let payload: RespondPayload & { quoteId?: string };
   try {
     payload = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { token, action } = payload;
-  if (!token || (action !== 'approve' && action !== 'reject')) {
+  const { token, quoteId, action } = payload;
+  if ((!token && !quoteId) || (action !== 'approve' && action !== 'reject')) {
     return NextResponse.json({ error: 'Missing token or invalid action' }, { status: 400 });
   }
 
-  const doc = await findByToken(token);
+  // Two ways in: the emailed link's token (external customers), or a signed-in
+  // client portal user answering a quote addressed to their own account.
+  let doc;
+  if (token) {
+    doc = await findByToken(token);
+  } else {
+    const authHeader = req.headers.get('authorization') || '';
+    const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!idToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    let uid: string;
+    try {
+      uid = (await getAuth(adminApp).verifyIdToken(idToken)).uid;
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const snap = typeof quoteId === 'string' ? await getFirestore(adminApp).collection('quotes').doc(quoteId).get() : null;
+    doc = snap?.exists && snap.data()?.clientId === uid ? snap : null;
+  }
   if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const data = doc.data();
-  if (data.status === 'approved' || data.status === 'rejected') {
-    return NextResponse.json({ error: 'Quote already decided' }, { status: 409 });
+  const data = doc.data()!;
+  if (!ANSWERABLE.has(data.status)) {
+    return NextResponse.json({ error: 'This quote can no longer be answered' }, { status: 409 });
   }
 
   const now = new Date().toISOString();
   if (action === 'approve') {
-    if (!payload.approverName || !payload.approverEmail) {
+    const approverName = str(payload.approverName, 120);
+    const approverEmail = str(payload.approverEmail, 200);
+    if (!approverName || !approverEmail) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
     }
     await doc.ref.update({
       status: 'approved',
       approvedAt: now,
-      approvedByName: payload.approverName,
-      approvedByEmail: payload.approverEmail,
-      approvalNote: payload.approvalNote || null,
-      optionalChoices: payload.optionalChoices ?? data.optionalChoices ?? [],
+      approvedByName: approverName,
+      approvedByEmail: approverEmail,
+      approvalNote: str(payload.approvalNote, 2000) || null,
+      optionalChoices: sanitizeChoices(data.optionalChoices, payload.optionalChoices),
       updatedAt: now,
     });
   } else {
-    if (!payload.rejectReason) {
+    const rejectReason = str(payload.rejectReason, 2000);
+    if (!rejectReason) {
       return NextResponse.json({ error: 'A reason is required' }, { status: 400 });
     }
     await doc.ref.update({
       status: 'rejected',
       rejectedAt: now,
-      rejectionReason: payload.rejectReason,
+      rejectionReason: rejectReason,
       updatedAt: now,
     });
   }

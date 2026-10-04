@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { db, auth } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import type { Quote, QuoteOptionalGroup } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -82,15 +82,27 @@ export default function ClientQuotesPage() {
         setIsDeclineDialogOpen(true);
     };
 
+    // Answers go through /api/public-quote: client accounts can't write quotes
+    // directly (rules), and the server keeps option prices from being edited.
+    const respond = async (body: Record<string, unknown>) => {
+        const idToken = await auth.currentUser?.getIdToken();
+        const res = await fetch('/api/public-quote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}) },
+            body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Request failed (${res.status})`);
+    };
+
     const handleApprove = async () => {
         if (!selectedQuote || !approverName.trim() || !approverEmail.trim()) return;
         setSaving(true);
         try {
-            await updateDoc(doc(db, 'quotes', selectedQuote.id), {
-                status: 'approved',
-                approvedAt: new Date().toISOString(),
-                approvedByName: approverName.trim(),
-                approvedByEmail: approverEmail.trim(),
+            await respond({
+                quoteId: selectedQuote.id,
+                action: 'approve',
+                approverName: approverName.trim(),
+                approverEmail: approverEmail.trim(),
                 approvalNote: approvalNote.trim() || null,
                 optionalChoices,
             });
@@ -107,11 +119,7 @@ export default function ClientQuotesPage() {
         if (!selectedQuote || !declineReason.trim()) return;
         setSaving(true);
         try {
-            await updateDoc(doc(db, 'quotes', selectedQuote.id), {
-                status: 'rejected',
-                rejectedAt: new Date().toISOString(),
-                rejectionReason: declineReason.trim(),
-            });
+            await respond({ quoteId: selectedQuote.id, action: 'reject', rejectReason: declineReason.trim() });
             toast({ title: 'Quote Declined', description: 'Your response has been recorded.' });
             setIsDeclineDialogOpen(false);
         } catch (e: any) {

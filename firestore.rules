@@ -39,6 +39,57 @@ service cloud.firestore {
       return d.get('roles', []).hasAny(['client']) || d.get('role', '') == 'client';
     }
 
+    // A tech's own record must stay theirs on update (no handing a log,
+    // trip or expense to another tech).
+    function keepsField(field) {
+      return request.resource.data.get(field, null) == resource.data.get(field, null);
+    }
+
+    // systemConfig/idCounters: exactly one known counter (ID_PREFIXES in
+    // src/lib/constants.ts), bumped by exactly 1. Rules can't index into a
+    // set, so each prefix is checked; a prefix missing here just makes
+    // non-admins fall back to a timestamp id (see lib/generateId.ts).
+    function counterStep(k) {
+      return request.resource.data.get(k, 0) == resource.data.get(k, 0)
+          || request.resource.data.get(k, 0) == resource.data.get(k, 0) + 1;
+    }
+    function isCounterBump() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return changed.size() == 1
+          && changed.hasOnly(['asmt', 'cli', 'creq', 'fnr', 'batch', 'inv', 'lead', 'lact', 'msg', 'msr', 'noti', 'pdis', 'pen', 'plan', 'prj', 'plog', 'pdoc', 'ppay', 'reimb', 'route', 'site', 'sreq', 'svc', 'cint', 'pto', 'tlog', 'uID', 'wlog', 'wli', 'qt', 'wo'])
+          && counterStep('asmt')
+          && counterStep('cli')
+          && counterStep('creq')
+          && counterStep('fnr')
+          && counterStep('batch')
+          && counterStep('inv')
+          && counterStep('lead')
+          && counterStep('lact')
+          && counterStep('msg')
+          && counterStep('msr')
+          && counterStep('noti')
+          && counterStep('pdis')
+          && counterStep('pen')
+          && counterStep('plan')
+          && counterStep('prj')
+          && counterStep('plog')
+          && counterStep('pdoc')
+          && counterStep('ppay')
+          && counterStep('reimb')
+          && counterStep('route')
+          && counterStep('site')
+          && counterStep('sreq')
+          && counterStep('svc')
+          && counterStep('cint')
+          && counterStep('pto')
+          && counterStep('tlog')
+          && counterStep('uID')
+          && counterStep('wlog')
+          && counterStep('wli')
+          && counterStep('qt')
+          && counterStep('wo');
+    }
+
     function isSales() {
       let d = userData();
       return d.get('roles', []).hasAny(['sales']) || d.get('role', '') == 'sales';
@@ -84,7 +135,9 @@ service cloud.firestore {
           || (request.auth != null
               && request.auth.uid == userId
               && request.resource.data.approvalStatus == 'pending'
-              && !request.resource.data.keys().hasAny(['role'])
+              && !request.resource.data.keys().hasAny(['role', 'clientCompany', 'clientId', 'companyId',
+                    'portalAccess', 'primaryPortal', 'permissionOverrides',
+                    'messagingAllowedRoles', 'messagingBlockedClientIds', 'hourlyRate', 'payRate'])
               && (!request.resource.data.keys().hasAny(['roles'])
                   || request.resource.data.roles.size() == 0));
       allow update: if isAdmin()
@@ -94,7 +147,12 @@ service cloud.firestore {
                             'payoutPreferences', 'hourlyRate', 'adminNotes', 'updatedBy',
                             'approvalStatus', 'approvedAt', 'approvedBy', 'deniedAt', 'deniedBy', 'denialReason',
                             'portalAccess', 'primaryPortal', 'permissionOverrides',
-                            'jobTitle', 'department', 'certifications', 'serviceArea']));
+                            'jobTitle', 'department', 'certifications', 'serviceArea',
+                            // clientCompany scopes a client's invoices, requests and
+                            // project threads; the messaging fields are admin-set limits.
+                            'clientCompany', 'clientId', 'companyId',
+                            'messagingAllowedRoles', 'messagingBlockedClientIds',
+                            'payRate', 'payType', 'currentWorkload']));
       allow delete: if isSuperAdmin();
 
       // Client-workspace subcollections (notes, documents, contacts, access
@@ -145,7 +203,8 @@ service cloud.firestore {
               && (resource.data.get('assignedTechnicianId', null) == null
                   || resource.data.assignedTechnicianId == request.auth.uid)
               && !request.resource.data.diff(resource.data).affectedKeys()
-                  .hasAny(['pay', 'payType', 'blendedFixedPay', 'blendedIncludedHours', 'blendedHourlyRate',
+                  .hasAny(['techId', 'assignedTechnicianId', 'assignedTechIds', 'additionalTechnicianIds',
+                            'clientId', 'clientName', 'pay', 'payType', 'blendedFixedPay', 'blendedIncludedHours', 'blendedHourlyRate',
                             'finalPay', 'auditReimbursement', 'auditOverhead', 'isAudited', 'auditedAt', 'auditedBy',
                             'source', 'payrollExcluded']));
       allow delete: if isAdmin();
@@ -171,7 +230,8 @@ service cloud.firestore {
               || (resource.data.techId == request.auth.uid
                   && resource.data.get('assignedTechnicianId', null) == null))
               && !request.resource.data.diff(resource.data).affectedKeys()
-                  .hasAny(['pay', 'payType', 'blendedFixedPay', 'blendedIncludedHours', 'blendedHourlyRate',
+                  .hasAny(['techId', 'assignedTechnicianId', 'assignedTechIds', 'additionalTechnicianIds',
+                            'clientId', 'clientName', 'pay', 'payType', 'blendedFixedPay', 'blendedIncludedHours', 'blendedHourlyRate',
                             'finalPay', 'auditReimbursement', 'auditOverhead', 'isAudited', 'auditedAt', 'auditedBy',
                             'source', 'payrollExcluded']));
       allow delete: if isAdmin();
@@ -185,16 +245,31 @@ service cloud.firestore {
       // Admins create logs when filing on a tech's behalf (force-complete,
       // status edits, Payroll Audit → Unlogged); techs only their own.
       allow create: if isAdmin()
-          || (isTech() && request.resource.data.techId == request.auth.uid);
+          || (isTech() && request.resource.data.techId == request.auth.uid
+              && request.resource.data.status == 'Draft'
+              && request.resource.data.get('paid', false) != true
+              && request.resource.data.get('archived', false) != true);
       // Techs edit their own Draft logs. They may also self-UNSUBMIT (flip a
       // Submitted log back to Draft) when the log is still Submitted and not yet
       // approved/paid/archived. tech.logs.unsubmit_own is granted by the tech
       // subroles, so rules default it ON and only block techs with an explicit
       // `false` override (revocation).
+      // A Draft may only stay Draft or be submitted — never self-approved —
+      // and the log can't be handed to another tech. On a non-Draft log a
+      // tech may only file an unsubmit request (Logs → Request Unsubmit).
       allow update: if isAdmin()
           || (isTech() && resource.data.techId == request.auth.uid
-              && resource.data.status == 'Draft')
+              && resource.data.status == 'Draft'
+              && keepsField('techId')
+              && request.resource.data.status in ['Draft', 'Submitted']
+              && !request.resource.data.diff(resource.data).affectedKeys()
+                  .hasAny(['paid', 'paidAt', 'archived', 'archivedAt', 'approvedAt', 'approvedBy']))
           || (isTech() && resource.data.techId == request.auth.uid
+              && resource.data.status != 'Draft'
+              && request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['unsubmitRequested', 'unsubmitReason', 'unsubmitRequestedAt']))
+          || (isTech() && resource.data.techId == request.auth.uid
+              && keepsField('techId')
               && resource.data.status == 'Submitted'
               && request.resource.data.status == 'Draft'
               && resource.data.get('paid', false) != true
@@ -208,7 +283,8 @@ service cloud.firestore {
     // completed job can atomically check-and-create inside a transaction
     // instead of racing on a query. See src/lib/weekly-log.ts.
     match /weeklyLogClaims/{id} {
-      allow read: if isSignedIn() && (isAdmin() || isTech());
+      allow read: if isSignedIn() && (isAdmin()
+          || (isTech() && (resource == null || resource.data.techId == request.auth.uid)));
       allow create, update: if isAdmin()
           || (isTech() && request.resource.data.techId == request.auth.uid
               && (resource == null || resource.data.techId == request.auth.uid));
@@ -223,7 +299,7 @@ service cloud.firestore {
       allow create: if isAdmin()
           || (isTech() && request.resource.data.techId == request.auth.uid);
       allow update: if isAdmin()
-          || (isTech() && resource.data.techId == request.auth.uid);
+          || (isTech() && resource.data.techId == request.auth.uid && keepsField('techId'));
       allow delete: if isAdmin();
     }
 
@@ -249,7 +325,7 @@ service cloud.firestore {
       allow create: if isAdmin()
           || (isTech() && request.resource.data.techId == request.auth.uid);
       allow update: if isAdmin()
-          || (isTech() && resource.data.techId == request.auth.uid);
+          || (isTech() && resource.data.techId == request.auth.uid && keepsField('techId'));
       allow delete: if isAdmin();
     }
 
@@ -383,7 +459,8 @@ service cloud.firestore {
           || (isTech() && resource.data.techId == request.auth.uid)
       );
       allow create: if isAdmin()
-          || (isTech() && request.resource.data.techId == request.auth.uid);
+          || (isTech() && request.resource.data.techId == request.auth.uid
+              && request.resource.data.status == 'pending');
       allow update: if isPayrollAdmin();
       allow delete: if isSuperAdmin();
     }
@@ -414,8 +491,10 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Written server-side by /api/notify (Admin SDK); clients no longer
+    // create these, so an open create only invited forged records.
     match /notifications/{id} {
-      allow create: if isSignedIn();
+      allow create: if isAdmin();
       allow read, update, delete: if isAdmin();
     }
 
@@ -429,8 +508,14 @@ service cloud.firestore {
     // Without this, non-admins can't touch systemConfig/idCounters, the
     // transaction in lib/generateId.ts throws, and every non-admin write
     // falls back to the ugly `${prefix}-${Date.now().toString(36)}` id.
+    // Any signed-in user may only bump a single counter by one — a reset
+    // would re-issue existing ids (wlog-001 ...) and collide with real docs.
     match /systemConfig/idCounters {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.size() == 1
+          && request.resource.data.values()[0] == 1;
+      allow update: if isAdmin() || (isSignedIn() && isCounterBump());
+      allow delete: if isSuperAdmin();
     }
 
     match /systemConfig/{id} {
@@ -494,12 +579,14 @@ service cloud.firestore {
           || (isTech() && resource.data.techId == request.auth.uid)
       );
       allow create: if isAdmin()
-          || (isTech() && request.resource.data.techId == request.auth.uid);
+          || (isTech() && request.resource.data.techId == request.auth.uid
+              && request.resource.data.get('status', 'Pending') == 'Pending');
       // Once payroll has acted on an expense (status left 'pending'), the
       // tech can no longer edit it — only re-submit/withdraw while pending.
       allow update: if isPayrollAdmin()
           || (isTech() && resource.data.techId == request.auth.uid
-              && resource.data.status == 'Pending');
+              && resource.data.status == 'Pending'
+              && keepsField('techId') && keepsField('status'));
       allow delete: if isPayrollAdmin();
     }
 
@@ -585,7 +672,8 @@ service cloud.firestore {
           || (isTech() && request.resource.data.technicianId == request.auth.uid);
       // Techs update their own trips (check-in arrival, check-out mileage).
       allow update: if isAdmin()
-          || (isTech() && resource.data.technicianId == request.auth.uid);
+          || (isTech() && resource.data.technicianId == request.auth.uid
+              && keepsField('technicianId'));
       allow delete: if isAdmin();
     }
 

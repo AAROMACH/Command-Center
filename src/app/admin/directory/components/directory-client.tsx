@@ -64,7 +64,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO } from 'date-fns';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 import { useSearchParams } from 'next/navigation';
-import { assignmentTimeLogs } from '@/lib/data';
 import { db, auth } from "@/lib/firebase";
 import { doc, updateDoc, setDoc, deleteDoc, addDoc, collection } from 'firebase/firestore';
 import { auditFieldChange } from '@/lib/audit';
@@ -368,12 +367,11 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
 
     const pendingRequestsTotalCount = personnelRequestsCount + clientRequestsCount + pendingUsers.length;
 
-    const isTechOnSite = (location: string) => {
-        return assignmentTimeLogs.some(log => 
-            !log.checkOutTime && 
-            workOrders.some(wo => wo.id === log.workOrderId && wo.location === location)
-        );
-    };
+    // A tech is on site when a job at that address is checked in (in
+    // progress). This used to read the demo time logs, so "live" markers
+    // never reflected real activity.
+    const isTechOnSite = (location: string) =>
+        [...assignments, ...workOrders].some(wo => wo.location === location && wo.status === 'in-progress');
 
     const mapLocations = useMemo(() => {
         const locations: { id: string; name: string; location: string; type: 'tech' | 'site'; isLive?: boolean }[] = [];

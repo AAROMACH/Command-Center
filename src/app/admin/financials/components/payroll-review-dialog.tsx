@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import type { WeeklyLog, Technician, WorkOrder, WeeklyLogItem, FinancialRecord, PayrollDispute } from '@/lib/types';
-import { assignmentTimeLogs } from '@/lib/data';
+import type { WeeklyLog, Technician, WorkOrder, WeeklyLogItem, FinancialRecord, PayrollDispute, TripLog } from '@/lib/types';
+import { onSiteSessions } from '@/lib/time-on-site';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -391,21 +391,25 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         return (localLog?.reimbursements || []).filter(r => r.workOrderId === woId);
     }, [localLog]);
 
+    // Hours on site from the tech's real trip records (check-in → check-out);
+    // this used to read the demo time logs in lib/data. Multiple visits to the
+    // same job add up.
+    const [techSessions, setTechSessions] = useState<ReturnType<typeof onSiteSessions>>([]);
+    useEffect(() => {
+        if (!isOpen || !technician?.id) { setTechSessions([]); return; }
+        return onSnapshot(
+            query(collection(db, 'tripLogs'), where('technicianId', '==', technician.id)),
+            snap => setTechSessions(onSiteSessions(snap.docs.map(d => ({ ...d.data(), id: d.id } as TripLog)))),
+            () => setTechSessions([]),
+        );
+    }, [isOpen, technician?.id]);
     const getHoursOnsite = useCallback((woId: string) => {
-        if (!technician) return 'TBD';
-        const log = assignmentTimeLogs.find(l => l.workOrderId === woId && l.techId === technician.id);
-        if (!log) return 'TBD';
-        if (!log.checkOutTime) return 'ACTIVE';
-        
-        try {
-            const start = parseISO(log.checkInTime);
-            const end = parseISO(log.checkOutTime);
-            const mins = differenceInMinutes(end, start);
-            return (mins / 60).toFixed(1) + 'h';
-        } catch (e) {
-            return 'TBD';
-        }
-    }, [technician]);
+        const sessions = techSessions.filter(s => s.workOrderId === woId);
+        if (sessions.length === 0) return 'TBD';
+        if (sessions.some(s => !s.checkOutTime)) return 'ACTIVE';
+        const mins = sessions.reduce((sum, s) => sum + (s.minutesWorked || 0), 0);
+        return (mins / 60).toFixed(1) + 'h';
+    }, [techSessions]);
 
     // Shared with the Payroll Audit Weekly tab, CSV export, and
     // Paystub History via computeWeeklyLogSettlement() so this dialog's "Net

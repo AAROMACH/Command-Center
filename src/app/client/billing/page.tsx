@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { technicians, invoices } from "@/lib/data";
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@/contexts/auth-context';
+import type { Invoice } from '@/lib/types';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -56,19 +59,39 @@ export default function ClientBillingPage() {
         setCurrentUserId(sessionStorage.getItem('currentUserId'));
     }, []);
 
-    const currentUser = useMemo(() => 
-        currentUserId ? technicians.find(t => t.id === currentUserId) : null
-    , [currentUserId]);
+    // The signed-in client's real record and invoices (this page used to show
+    // the demo invoice list from lib/data). Invoices are matched by clientId
+    // or by company name — the two ways the invoice rules let a client read
+    // them — and drafts are hidden because they were never sent.
+    const { user: currentUser } = useAuth();
+    const [liveInvoices, setLiveInvoices] = useState<Invoice[]>([]);
+    useEffect(() => {
+        if (!currentUser?.id) return;
+        let byId: Invoice[] = [];
+        let byCompany: Invoice[] = [];
+        const publish = () => {
+            const m = new Map<string, Invoice>();
+            [...byId, ...byCompany].forEach(i => m.set(i.id, i));
+            setLiveInvoices([...m.values()].filter(i => i.status !== 'draft'));
+        };
+        const unsubs = [
+            onSnapshot(query(collection(db, 'invoices'), where('clientId', '==', currentUser.id)),
+                snap => { byId = snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)); publish(); }, () => {}),
+        ];
+        if (currentUser.clientCompany) {
+            unsubs.push(onSnapshot(query(collection(db, 'invoices'), where('clientName', '==', currentUser.clientCompany)),
+                snap => { byCompany = snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)); publish(); }, () => {}));
+        }
+        return () => unsubs.forEach(u => u());
+    }, [currentUser?.id, currentUser?.clientCompany]);
 
     const myInvoices = useMemo(() => {
-        if (!currentUser?.clientCompany) return [];
-        return invoices
-            .filter(inv => inv.clientName === currentUser.clientCompany)
+        return liveInvoices
             .filter(inv => 
                 inv.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 inv.status.toLowerCase().includes(searchQuery.toLowerCase())
             );
-    }, [currentUser, searchQuery]);
+    }, [liveInvoices, searchQuery]);
 
     const handleUpdatePlan = () => {
         toast({

@@ -15,7 +15,6 @@ import { Input } from '@/components/ui/input';
 import { cn, isInactiveTechnician } from '@/lib/utils';
 import type { WorkOrder, Technician, WeeklyLog, Invoice } from '@/lib/types';
 import { IntelligenceTerminal } from '../reports/components/intelligence-terminal';
-import { penaltyEvents } from '@/lib/data';
 import { getReliabilityTier } from '@/lib/reliability';
 import { effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
 import { Tabs as InnerTabs, TabsList as InnerTabsList, TabsTrigger as InnerTabsTrigger, TabsContent as InnerTabsContent } from '@/components/ui/tabs';
@@ -38,8 +37,11 @@ const JobDensityMap = dynamic(() => import('./components/job-density-map').then(
 import { findUnloggedCompletions, findMismatchedLogEntries, findDesyncedAssignments } from '@/lib/weekly-log-audit';
 import { UnloggedCompletions } from './components/unlogged-completions';
 import { WrongTechEntries } from './components/wrong-tech-entries';
+import { usePenaltyEvents, penaltyPoints } from '@/hooks/use-penalty-events';
 
 export default function FieldIntelligencePage() {
+    // Real penalty events (was the empty demo list → always 0 points).
+    const allPenalties = usePenaltyEvents();
     const [activeTab, setActiveTabRaw] = useState(() => { try { return localStorage.getItem('cc:intel:tab') || 'intelligence'; } catch { return 'intelligence'; } });
     const setActiveTab = (v: string) => { setActiveTabRaw(v); try { localStorage.setItem('cc:intel:tab', v); } catch {} };
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
@@ -159,8 +161,8 @@ export default function FieldIntelligencePage() {
         if (!selectedTechId) return null;
         const myJobs = assignments.filter(wo => jobTechId(wo) === selectedTechId);
         const completed = myJobs.filter(wo => wo.status === 'completed').length;
-        const penalties = penaltyEvents.filter(pe => pe.techId === selectedTechId);
-        const points = penalties.reduce((acc, curr) => acc + Math.abs(curr.scoreChange), 0);
+        const penalties = allPenalties.filter(pe => pe.techId === selectedTechId);
+        const points = penaltyPoints(allPenalties, selectedTechId);
         const myLogs = weeklyLogs.filter(log => log.techId === selectedTechId)
             .sort((a, b) => {
                 const [am, ad, ay] = a.weekOf.split('-');
@@ -170,7 +172,7 @@ export default function FieldIntelligencePage() {
             });
         const totalEarnings = myLogs.filter(l => l.status === 'Approved').reduce((acc, log) => acc + (log.totalPayout || 0), 0);
         return { total: myJobs.length, completed, points, penalties, totalEarnings, myJobs, myLogs };
-    }, [selectedTechId, assignments, weeklyLogs]);
+    }, [selectedTechId, assignments, weeklyLogs, allPenalties]);
 
     // Insights tab computed values
     const techReliability = useMemo(() => {
@@ -549,7 +551,7 @@ export default function FieldIntelligencePage() {
                                 </Button>
                             </div>
                             {staffTechs.map(t => {
-                                const pts = penaltyEvents.filter(p => p.techId === t.id).reduce((s, p) => s + Math.abs(p.scoreChange), 0);
+                                const pts = penaltyPoints(allPenalties, t.id);
                                 const isReliable = pts <= 2;
                                 return (
                                     <div key={t.id} onClick={() => setSelectedTechId(t.id)}

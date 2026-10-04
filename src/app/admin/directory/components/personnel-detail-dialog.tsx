@@ -48,7 +48,6 @@ import {
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { penaltyEvents, assignmentTimeLogs } from '@/lib/data';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor, getManualEventOptions } from '@/lib/reliability';
@@ -66,6 +65,8 @@ import { uploadFile } from '@/lib/upload';
 import { Switch } from '@/components/ui/switch';
 import type { Permission } from '@/lib/permissions';
 import { PermissionEditorDialog } from './permission-editor-dialog';
+import { usePenaltyEvents } from '@/hooks/use-penalty-events';
+import { jobTechId, jobDateTimeValue } from '@/lib/jobs';
 
 // Documents are canonically stored in users/{id}/documents (also used by
 // directory/[id]/page.tsx and the tech's own profile page). This view also
@@ -217,11 +218,8 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, a
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-  const reliabilityEvents = useMemo(() => {
-    if (!person) return [];
-    return penaltyEvents.filter(e => e.techId === person.id)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [person]);
+  // Real penalty events for this person (was the empty demo list).
+  const reliabilityEvents = usePenaltyEvents(person?.id, !!person?.id);
 
   const tierData = useMemo(() => {
     if (!person) return { tier: 'Reliable' as const, color: '', variant: 'active' as const };
@@ -239,13 +237,14 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, a
   const personWorkOrders = useMemo(() => {
     if (!person) return [];
 
+    // Assigned tech (jobTechId, same rule as everywhere else) or a helper.
     const isPersons = (wo: WorkOrder) =>
-      wo.assignedTechnicianId === person.id ||
+      jobTechId(wo) === person.id ||
       (wo.additionalTechnicianIds || []).includes(person.id);
 
     return [...assignments, ...workOrders]
       .filter(isPersons)
-      .sort((a, b) => (b.scheduleDate || '').localeCompare(a.scheduleDate || ''));
+      .sort((a, b) => jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime));
   }, [person, workOrders, assignments]);
 
   const handleUploadClick = () => {

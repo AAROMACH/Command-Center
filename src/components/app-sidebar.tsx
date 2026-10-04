@@ -9,7 +9,6 @@ import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
 import { hasPermission, type Permission } from "@/lib/permissions";
-import { technicians as fallbackTechs } from "@/lib/data";
 import type { Technician } from "@/lib/types";
 import { isServiceTicketDoc } from "@/lib/request-intake";
 import { useNewArrivals, ARRIVAL_KEYS, unassignedArrivalIds, reviewArrivalIds, recentAssignmentArrivalIds, recentAssignmentCutoff } from "@/hooks/use-new-arrivals";
@@ -193,19 +192,14 @@ export function AppSidebar() {
           if (snap.exists()) {
             setCurrentUser({ ...snap.data(), id: snap.id } as Technician);
           } else {
-            const storedId = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("currentUserId") : null;
-            const registryUser = fallbackTechs.find(t => t.id === fbUser.uid || t.id === storedId);
-            setCurrentUser(registryUser);
+            // No profile yet — no demo-user fallback (it drove nav permissions).
+            setCurrentUser(undefined);
           }
         });
         return () => unsubUser();
       } else {
         setFirebaseUid(null);
-        const storedId = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("currentUserId") : null;
-        if (storedId) {
-          const registryUser = fallbackTechs.find(t => t.id === storedId);
-          setCurrentUser(registryUser);
-        }
+        setCurrentUser(undefined);
       }
     });
     return () => unsubAuth();

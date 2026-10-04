@@ -90,7 +90,6 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
-import { penaltyEvents } from '@/lib/data';
 import { cn, formatCityState } from '@/lib/utils';
 import { isArchivedJob, archiveJobRecord } from '@/lib/jobs';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
@@ -101,6 +100,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 import { isAdmin, isSuperAdmin, isClient } from '@/lib/permissions';
+import { usePenaltyEvents, penaltyPoints } from '@/hooks/use-penalty-events';
 
 const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'TBD';
@@ -156,6 +156,8 @@ type ArchiveItem = {
 };
 
 export default function ActivityAuditPage() {
+    // Real penalty events (was the empty demo list → always 0 points).
+    const allPenalties = usePenaltyEvents();
     const router = useRouter();
     const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState("");
@@ -498,8 +500,8 @@ export default function ActivityAuditPage() {
         if (!selectedTechId) return null;
         const myJobs = assignments.filter(wo => wo.assignedTechnicianId === selectedTechId || wo.techId === selectedTechId);
         const completed = myJobs.filter(wo => wo.status === 'completed').length;
-        const penalties = penaltyEvents.filter(pe => pe.techId === selectedTechId);
-        const points = penalties.reduce((acc, curr) => acc + Math.abs(curr.scoreChange), 0);
+        const penalties = allPenalties.filter(pe => pe.techId === selectedTechId);
+        const points = penaltyPoints(allPenalties, selectedTechId);
         const reliability = Math.max(0, 100 - (points * 5));
         
         const myLogs = weeklyLogs.filter(log => log.techId === selectedTechId)
@@ -522,7 +524,7 @@ export default function ActivityAuditPage() {
             myJobs,
             myLogs
         };
-    }, [selectedTechId, assignments, weeklyLogs]);
+    }, [selectedTechId, assignments, weeklyLogs, allPenalties]);
 
     const siteList = useMemo(() => {
         const uniqueSites = new Map();
@@ -840,7 +842,7 @@ export default function ActivityAuditPage() {
                 </Button>
             </div>
             {technicians.filter(t => !isClient(t)).map(t => {
-                const pts = penaltyEvents.filter(p => p.techId === t.id).reduce((s, p) => s + Math.abs(p.scoreChange), 0);
+                const pts = penaltyPoints(allPenalties, t.id);
                 const isReliable = pts <= 2;
                 return (
                     <div key={t.id} onClick={() => setSelectedTechId(t.id)} className="flex items-center justify-between p-2.5 rounded-lg bg-bg-secondary border border-border-main hover:border-brand-red transition-all cursor-pointer group text-left">

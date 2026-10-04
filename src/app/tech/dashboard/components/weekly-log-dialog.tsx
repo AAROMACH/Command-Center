@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
-import type { WeeklyLog, FinancialRecord } from '@/lib/types';
-import { workOrders } from '@/lib/data';
+import type { WeeklyLog, FinancialRecord, WorkOrder } from '@/lib/types';
 import { 
   Dialog, 
   DialogContent, 
@@ -26,9 +25,11 @@ type WeeklyLogDialogProps = {
     setIsOpen: (open: boolean) => void;
     log: WeeklyLog;
     onSubmitted: () => void;
+    /** The tech's live jobs, to show each log item's details (was demo data). */
+    jobs: WorkOrder[];
 };
 
-export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitted }: WeeklyLogDialogProps) {
+export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitted, jobs }: WeeklyLogDialogProps) {
     const [log, setLog] = useState<WeeklyLog>(initialLog);
 
     const isWeekend = (() => {
@@ -36,7 +37,7 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log: initialLog, onSubmitte
         return day === 0 || day === 6;
     })();
 
-    const workOrderDetails = (woId: string) => workOrders.find(wo => wo.id === woId);
+    const workOrderDetails = (woId: string) => jobs.find(wo => wo.id === woId || wo.workOrderId === woId);
 
     const handleAddReimbursement = async () => {
         const newReimbursement: FinancialRecord = {

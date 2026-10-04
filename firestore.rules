@@ -389,8 +389,12 @@ service cloud.firestore {
     }
 
     match /timeOffRequests/{id} {
-      allow read: if isAdmin();
-      allow create: if isTech();
+      // A tech reads (Profile) and files requests for themselves only.
+      allow read: if isAdmin()
+          || (isTech() && resource.data.techId == request.auth.uid);
+      allow create: if isAdmin()
+          || (isTech() && request.resource.data.techId == request.auth.uid
+              && request.resource.data.status == 'pending');
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
@@ -474,8 +478,14 @@ service cloud.firestore {
       allow read, write: if isPayrollAdmin();
     }
 
+    // Admins see and record reliability events (Directory, Intel, Archives
+    // and the job panel all show them); a tech may read their own (Profile).
+    // Previously payroll-admin-only, so those screens showed 0 for everyone
+    // else.
     match /penaltyEvents/{id} {
-      allow read, write: if isPayrollAdmin();
+      allow read: if isAdmin()
+          || (isTech() && resource.data.techId == request.auth.uid);
+      allow create, update, delete: if isAdmin();
     }
 
     match /expenses/{id} {

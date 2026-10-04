@@ -9,7 +9,6 @@ import { mergeJobs } from '@/lib/jobs';
 import { useHelperLogSync } from '@/hooks/use-helper-log-sync';
 import { createDraftWeeklyLog } from '@/lib/weekly-log';
 import { uploadFile } from '@/lib/upload';
-import { technicians } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -502,7 +501,7 @@ export default function TechWeeklyLogPage() {
             await updateDoc(doc(db, 'weeklyLogs', activeLog.id), {
                 status: 'Submitted',
                 submittedAt: new Date().toISOString(),
-                submittedBy: technicians.find(t => t.id === currentTechId)?.name || currentTechId || 'Tech',
+                submittedBy: techDisplayName(currentUser),
                 totalPayout: total
             });
             toast({

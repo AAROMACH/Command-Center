@@ -32,12 +32,13 @@ import {
   collection, query, where, getDocs, getDoc, onSnapshot,
   orderBy, limit, doc, updateDoc, arrayUnion,
 } from 'firebase/firestore';
-import type { WorkOrder, WeeklyLog, AssignmentTimeLog, Technician } from '@/lib/types';
+import type { WorkOrder, WeeklyLog, WeeklyLogItem, AssignmentTimeLog, Technician, TripLog } from '@/lib/types';
 import { displayWorkOrderNumber, isImported } from '@/lib/work-order-identity';
 import { fileCompletedJob, moveJobLogOnSwap, describeSwapLogMove } from '@/lib/weekly-log';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
-import { assignmentTimeLogs } from '@/lib/data';
+import { onSiteSessions, formatClock } from '@/lib/time-on-site';
+import { effectiveJobPay } from '@/lib/payroll';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -60,15 +61,9 @@ function getAvatarColor(name: string): string {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
-const displayTime = (t?: string) => {
-  if (!t) return 'TBD';
-  try {
-    const [h, m] = t.split(':');
-    const d = new Date();
-    d.setHours(parseInt(h), parseInt(m), 0);
-    return format(d, 'h:mm a');
-  } catch { return t; }
-};
+// Handles "14:30", "2:30 PM" and ISO datetimes. (The old version split on
+// ":" and dropped AM/PM, so every afternoon time displayed as morning.)
+const displayTime = (t?: string) => formatClock(t);
 
 // Format a history entry's timestamp for the timeline. A full ISO datetime
 // (recorded events) shows date + time-of-day; a plain date shows just the date.
@@ -145,7 +140,7 @@ type JobDetailDialogProps = {
 
 export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }: JobDetailDialogProps) {
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
-  const [adminData, setAdminData] = useState<{ weeklyLog: WeeklyLog | null; sessionLogs: AssignmentTimeLog[] }>({ weeklyLog: null, sessionLogs: [] });
+  const [adminData, setAdminData] = useState<{ weeklyLog: WeeklyLog | null; jobItem: WeeklyLogItem | null; sessionLogs: AssignmentTimeLog[] }>({ weeklyLog: null, jobItem: null, sessionLogs: [] });
   const [loadingAdmin, setLoadingAdmin] = useState(false);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [auditEvents, setAuditEvents] = useState<any[]>([]);
@@ -187,13 +182,22 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }:
     if (!isOpen || !mission || activeTab !== 'Admin Review') return;
     setLoadingAdmin(true);
     const woId = mission.id;
+    // The weekly log holding this job: an array-contains on { workOrderId }
+    // never matched (log items carry many more fields), so this always came
+    // back empty. Read the assigned tech's logs and find the item instead.
+    const ownerId = mission.assignedTechnicianId || mission.techId || '';
     Promise.all([
-      getDocs(query(collection(db, 'weeklyLogs'), where('items', 'array-contains', { workOrderId: woId }))),
+      ownerId ? getDocs(query(collection(db, 'weeklyLogs'), where('techId', '==', ownerId))) : Promise.resolve(null),
       getDocs(query(collection(db, 'auditLog', woId, 'events'), orderBy('changedAt', 'desc'), limit(50))),
-    ]).then(([logSnap, auditSnap]) => {
+      // Real on-site sessions from the trip records (was demo data).
+      getDocs(query(collection(db, 'tripLogs'), where('assignmentId', '==', woId))).catch(() => null),
+    ]).then(([logSnap, auditSnap, tripSnap]) => {
+      const logDoc = logSnap?.docs.find(d => ((d.data().items || []) as { workOrderId: string }[]).some(i => i.workOrderId === woId));
+      const weeklyLog = logDoc ? ({ ...logDoc.data(), id: logDoc.id } as WeeklyLog) : null;
       setAdminData({
-        weeklyLog: !logSnap.empty ? { ...logSnap.docs[0].data(), id: logSnap.docs[0].id } as WeeklyLog : null,
-        sessionLogs: assignmentTimeLogs.filter(l => l.workOrderId === woId),
+        weeklyLog,
+        jobItem: weeklyLog?.items?.find(i => i.workOrderId === woId) || null,
+        sessionLogs: tripSnap ? onSiteSessions(tripSnap.docs.map(d => ({ ...d.data(), id: d.id } as TripLog))) : [],
       });
       setAuditEvents(auditSnap.docs.map(d => d.data()));
     }).catch(console.error).finally(() => setLoadingAdmin(false));
@@ -741,10 +745,10 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }:
                       <Card className="bg-bg-secondary border-border-sub overflow-hidden shadow-inner">
                         <div className="p-4 flex items-center justify-between border-b border-border-sub bg-bg-tertiary/20">
                           <div>
-                            <p className="text-[8px] font-black text-text-muted uppercase mb-1">Final Disbursement</p>
-                            <p className="text-2xl font-mono font-bold text-text-green">{hidePay ? 'Restricted' : `$${(adminData.weeklyLog.totalPayout || 0).toFixed(2)}`}</p>
+                            <p className="text-[8px] font-black text-text-muted uppercase mb-1">This Job&apos;s Settlement</p>
+                            <p className="text-2xl font-mono font-bold text-text-green">{hidePay ? 'Restricted' : adminData.jobItem ? `$${effectiveJobPay(adminData.jobItem, mission).toFixed(2)}` : '—'}</p>
                           </div>
-                          <Badge variant="active" className="h-6 px-4 uppercase text-[9px] tracking-widest font-black">Audit Verified</Badge>
+                          <Badge variant={adminData.weeklyLog.status === 'Approved' ? 'active' : adminData.weeklyLog.status === 'Submitted' ? 'scheduled' : 'onhold'} className="h-6 px-4 uppercase text-[9px] tracking-widest font-black">Log {adminData.weeklyLog.status}</Badge>
                         </div>
                         <div className="p-4">
                           <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Linked Weeklog: <span className="text-text-primary">WK-{adminData.weeklyLog.weekOf}</span></p>

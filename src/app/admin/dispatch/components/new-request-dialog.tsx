@@ -24,11 +24,11 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { ClipboardList, MapPin, Check, X, Camera, FileText, Plus, Trash2, SquarePlus, Building2, Navigation, Upload, Search, Users, SearchCode } from 'lucide-react';
 import type { ServiceRequest, Technician } from '@/lib/types';
-import { technicians } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
+import { useLiveUsers } from '@/hooks/use-live-users';
 
 declare global {
   interface Window {
@@ -46,6 +46,8 @@ type NewRequestDialogProps = {
 };
 
 export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialogProps) {
+  // Live user records (was the demo list in lib/data).
+  const technicians = useLiveUsers();
   const [formData, setFormData] = useState<Partial<ServiceRequest>>({
     priority: 'medium',
     requestType: 'Installation',
@@ -148,7 +150,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
     return technicians.filter(t => 
         isClient(t) || t.clientCompany
     );
-  }, []);
+  }, [technicians]);
 
   const selectedClient = useMemo(() => {
     return clients.find(c => (c.clientCompany || c.name) === formData.clientName);

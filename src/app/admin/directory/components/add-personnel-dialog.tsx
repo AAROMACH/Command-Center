@@ -34,7 +34,6 @@ import {
   DollarSign
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { technicians } from '@/lib/data';
 import {
   Select,
   SelectContent,
@@ -42,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useLiveUsers } from '@/hooks/use-live-users';
 
 declare global {
   interface Window {
@@ -59,6 +59,8 @@ type AddPersonnelDialogProps = {
 };
 
 export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDialogProps) {
+  // Live user records (was the demo list in lib/data).
+  const technicians = useLiveUsers();
   const [formData, setFormData] = useState<Partial<Technician>>({
     name: '',
     email: '',
@@ -169,7 +171,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         if (t.clientCompany) companies.add(t.clientCompany);
     });
     return Array.from(companies).sort();
-  }, []);
+  }, [technicians]);
 
   const handleSave = async () => {
     if (!formData.name || !formData.email || (formData.roles || []).length === 0) {

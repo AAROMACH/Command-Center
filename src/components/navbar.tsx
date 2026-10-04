@@ -25,7 +25,6 @@ import { UserNav } from '@/components/user-nav';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useState, useEffect, useMemo } from 'react';
 import type { Technician } from '@/lib/types';
-import { technicians } from '@/lib/data';
 import { hasPermission, type Permission } from '@/lib/permissions';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -78,18 +77,13 @@ export function Navbar() {
           if (snap.exists()) {
             setCurrentUser({ ...snap.data(), id: snap.id } as Technician);
           } else {
-            const storedId = sessionStorage.getItem('currentUserId');
-            const registryUser = technicians.find(t => t.id === fbUser.uid || t.id === storedId);
-            setCurrentUser(registryUser);
+            // No profile yet — show nothing rather than a demo user.
+            setCurrentUser(undefined);
           }
         });
         return () => unsubUser();
       } else {
-        const storedId = sessionStorage.getItem('currentUserId');
-        if (storedId) {
-            const registryUser = technicians.find(t => t.id === storedId);
-            setCurrentUser(registryUser);
-        }
+        setCurrentUser(undefined);
       }
     });
     return () => unsubAuth();

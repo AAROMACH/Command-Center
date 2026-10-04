@@ -26,7 +26,6 @@ import {
   ChevronDown,
 } from "lucide-react"
 import type { Technician } from '@/lib/types';
-import { technicians } from '@/lib/data';
 import { isAdmin, isTech, isClient } from '@/lib/permissions';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
@@ -50,22 +49,15 @@ export function UserNav() {
           if (snap.exists()) {
             setCurrentUser({ ...snap.data(), id: snap.id } as Technician);
           } else {
-            // Fallback to registry match by email if Firestore doc doesn't exist yet
-            const registryUser = technicians.find(t => 
-              t.email.toLowerCase() === user.email?.toLowerCase()
-            );
-            setCurrentUser(registryUser);
+            // No profile yet. (This used to fall back to a demo user matched
+            // by email — a sign-in with a demo address got that user's
+            // name/roles in the menu.)
+            setCurrentUser(undefined);
           }
         });
         return () => unsubDoc();
       } else {
-        const storedId = sessionStorage.getItem('currentUserId');
-        if (storedId) {
-            const registryUser = technicians.find(t => t.id === storedId);
-            setCurrentUser(registryUser);
-        } else {
-            setCurrentUser(undefined);
-        }
+        setCurrentUser(undefined);
       }
     });
 

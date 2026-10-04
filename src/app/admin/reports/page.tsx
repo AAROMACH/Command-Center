@@ -1074,7 +1074,7 @@ export default function ActivityAuditPage() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="desc" className="text-[10px] uppercase font-bold">Newest First</SelectItem>
-                        <SelectItem value="asc" className="text-[10px] uppercase font-bold">Oldest First</SelectItem>
+                        <SelectItem value="asc" className="text-[10px] uppercase font-bold">Earliest First</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -1668,7 +1668,7 @@ export default function ActivityAuditPage() {
                                                 className="flex items-center gap-1.5 h-9 rounded-md border border-border-main bg-bg-primary px-3 text-[10px] font-bold uppercase tracking-widest text-text-muted hover:text-text-primary transition-colors"
                                             >
                                                 <ArrowUpDown size={12} />
-                                                {archiveSortDir === 'desc' ? 'Latest First' : 'Oldest First'}
+                                                {archiveSortDir === 'desc' ? 'Latest First' : 'Earliest First'}
                                             </button>
                                         </div>
                                     </div>

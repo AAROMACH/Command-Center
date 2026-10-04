@@ -437,7 +437,7 @@ export const WorkOrdersTable = React.memo(({
                     Schedule
                     <ArrowUpDown size={11} className={cn("shrink-0", isDateSortActive ? "text-brand-red" : "text-text-muted opacity-50")} />
                     {isDateSortActive && (
-                      <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Soonest' : 'Latest'}</span>
+                      <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Earliest' : 'Latest'}</span>
                     )}
                   </button>
                 ) : 'Schedule'}

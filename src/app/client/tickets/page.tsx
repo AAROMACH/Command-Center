@@ -315,7 +315,7 @@ export default function ClientTicketsPage() {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="newest" className="text-[10px] uppercase font-bold">Newest First</SelectItem>
-                            <SelectItem value="oldest" className="text-[10px] uppercase font-bold">Oldest First</SelectItem>
+                            <SelectItem value="oldest" className="text-[10px] uppercase font-bold">Earliest First</SelectItem>
                             <SelectItem value="priority" className="text-[10px] uppercase font-bold">Priority Level</SelectItem>
                             <SelectItem value="type" className="text-[10px] uppercase font-bold">Job Category</SelectItem>
                         </SelectContent>

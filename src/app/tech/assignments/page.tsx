@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
 import { SearchField } from '@/components/search-field';
-import { SortControl, FiltersPopover, FilterSection, CheckboxFilter, DateRangeFilter, type SortOptionDef } from '@/components/list-toolbar';
+import { SortControl, FiltersPopover, FilterSection, CheckboxFilter, DateRangeButton, type SortOptionDef } from '@/components/list-toolbar';
 
 const MapView = dynamic(() => import('../map/components/map-view'), {
     ssr: false,
@@ -89,7 +89,7 @@ export default function TechAssignmentsPage() {
     const deferredSearch = useDeferredValue(searchQuery);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
     const [activePriorities, setActivePriorities] = useState<string[]>([]);
-    const activeFilterCount = (dateRange?.from ? 1 : 0) + activePriorities.length;
+    const activeFilterCount = activePriorities.length; // date has its own button
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'active');
 
     const [isTripDialogOpen, setIsTripDialogOpen] = useState(false);
@@ -438,14 +438,14 @@ export default function TechAssignmentsPage() {
                         />
                         <FiltersPopover
                             activeCount={activeFilterCount}
-                            onReset={() => { setDateRange(undefined); setActivePriorities([]); }}
+                            onReset={() => setActivePriorities([])}
                             className="shrink-0"
                         >
                             <FilterSection title="Priority">
                                 <CheckboxFilter idPrefix="prio" options={['critical', 'high', 'medium', 'low']} selected={activePriorities} onChange={setActivePriorities} />
                             </FilterSection>
-                            <DateRangeFilter value={dateRange} onChange={setDateRange} />
                         </FiltersPopover>
+                        <DateRangeButton value={dateRange} onChange={setDateRange} />
                     </div>
                 </div>
             </header>
@@ -625,7 +625,7 @@ export default function TechAssignmentsPage() {
                                             Schedule Window
                                             <ArrowUpDown size={11} className={cn("shrink-0", sortBy === 'date' ? "text-brand-red" : "text-text-muted opacity-50")} />
                                             {sortBy === 'date' && (
-                                                <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Soonest' : 'Latest'}</span>
+                                                <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Earliest' : 'Latest'}</span>
                                             )}
                                         </button>
                                     </th>
@@ -845,7 +845,7 @@ export default function TechAssignmentsPage() {
                                         >
                                             Date Completed
                                             <ArrowUpDown size={11} className="shrink-0 text-brand-red" />
-                                            <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Soonest' : 'Latest'}</span>
+                                            <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Earliest' : 'Latest'}</span>
                                         </button>
                                     </th>
                                     <th className="text-center">Action</th>

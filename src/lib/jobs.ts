@@ -42,6 +42,25 @@ export function isAssignedTo(job: Partial<WorkOrder> | null | undefined, techId:
   return !!techId && jobTechId(job) === techId;
 }
 
+/** Job statuses in workflow order, with display labels — for sorting by
+ *  status (pipeline order, not alphabetical) and status filter checkboxes. */
+export const JOB_STATUS_OPTIONS: { value: WorkOrder['status']; label: string }[] = [
+  { value: 'unassigned', label: 'Unassigned' },
+  { value: 'assigned', label: 'Assigned' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'on-my-way', label: 'On My Way' },
+  { value: 'in-progress', label: 'In Progress' },
+  { value: 'checked-out', label: 'Checked Out' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'archived', label: 'Archived' },
+];
+const STATUS_RANK = new Map(JOB_STATUS_OPTIONS.map((o, i) => [o.value as string, i]));
+/** Compare two jobs by workflow status order (unknown statuses last). */
+export function compareJobStatus(a: Partial<WorkOrder>, b: Partial<WorkOrder>): number {
+  return (STATUS_RANK.get(a.status || '') ?? 99) - (STATUS_RANK.get(b.status || '') ?? 99);
+}
+
 /** Whether a job has a technician assigned. */
 export function isAssigned(job: Partial<WorkOrder> | null | undefined): boolean {
   return !!jobTechId(job);

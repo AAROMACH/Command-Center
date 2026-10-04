@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect, useDeferredValue } from 'react';
 import { SearchField } from '@/components/search-field';
-import { SortControl, FiltersPopover, FilterSection, CheckboxFilter, DateRangeFilter, type SortOptionDef } from '@/components/list-toolbar';
+import { SortControl, FiltersPopover, FilterSection, CheckboxFilter, DateRangeButton, type SortOptionDef } from '@/components/list-toolbar';
 import { useRouter } from 'next/navigation';
 import { db } from "@/lib/firebase";
 import { collection, doc, updateDoc, onSnapshot, query, where, setDoc, deleteDoc } from 'firebase/firestore';
@@ -34,13 +34,10 @@ import {
   FileText,
   Trash2,
   Check,
-  List,
-  Map
 } from "lucide-react";
-import AdminMapView from '@/app/admin/map/components/admin-map-view';
 import type { WorkOrder, Technician, WeeklyLog } from "@/lib/types";
 import { externalWorkOrderId, isImported } from "@/lib/work-order-identity";
-import { format, isSameDay, startOfDay, isValid } from 'date-fns';
+import { format, startOfDay } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import {
   Dialog,
@@ -67,11 +64,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -79,24 +71,29 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { cn, formatCityState, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
-import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { isAdmin, isPayAdmin } from "@/lib/permissions";
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { WorkOrderId } from '@/components/work-order-id';
-import { jobTechId, isArchivedJob, isCompletedJob, jobDateTimeValue, archiveJobRecord, toUnassignedWorkOrder } from '@/lib/jobs';
+import { jobTechId, isArchivedJob, isCompletedJob, jobDateTimeValue, archiveJobRecord, toUnassignedWorkOrder, JOB_STATUS_OPTIONS, compareJobStatus } from '@/lib/jobs';
 import { syncWeeklyLogForAdminStatusEdit, moveJobLogOnSwap, describeSwapLogMove } from '@/lib/weekly-log';
 
 const ADMIN_SORT_OPTIONS: SortOptionDef[] = [
   { value: 'date', label: 'Date' },
   { value: 'tech', label: 'Technician' },
   { value: 'client', label: 'Client' },
-  { value: 'status', label: 'Status' },
+  { value: 'status', label: 'Job Status' },
+  { value: 'audit', label: 'Audit Status' },
   { value: 'pay', label: 'Labor Rate' },
 ];
 
-type SortOption = 'date' | 'client' | 'status' | 'pay' | 'tech';
+/** Audit status in payroll-pipeline order, for the Audit Status sort. */
+const AUDIT_RANK: Record<string, number> = {
+  'Not Logged': 0, 'In Draft Log': 1, 'Submitted': 2, 'Rejected': 3, 'Approved': 4, 'Verified': 5, 'Paid Out': 6,
+};
+
+type SortOption = 'date' | 'client' | 'status' | 'audit' | 'pay' | 'tech';
 
 export default function AssignmentsHubPage() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
@@ -114,14 +111,12 @@ export default function AssignmentsHubPage() {
   const [dateAsc, setDateAsc] = useState(false);
   const [activePriorities, setActivePriorities] = useState<string[]>([]);
   const [activeSources, setActiveSources] = useState<string[]>([]);
+  const [activeStatuses, setActiveStatuses] = useState<string[]>([]);
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
 
   const [currentUser, setCurrentUser] = useState<Technician | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
-  const [mapDate, setMapDate] = useState<Date | undefined>(new Date());
-  const [isMapDateOpen, setIsMapDateOpen] = useState(false);
   const [orderToArchive, setOrderToArchive] = useState<WorkOrder | null>(null);
   const [isArchiving, setIsArchiving] = useState(false);
 
@@ -190,7 +185,7 @@ export default function AssignmentsHubPage() {
       }
     });
 
-    // Weekly logs let the Job Archive show each closed job's payroll stage
+    // Weekly logs let Job History show each closed job's payroll stage
     // (logged → submitted → paid) without a per-row lookup.
     const logUnsub = onSnapshot(collection(db, 'weeklyLogs'), (snapshot) => {
       setWeeklyLogs(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
@@ -204,7 +199,7 @@ export default function AssignmentsHubPage() {
   }, []);
 
   // Map every work-order id to the payroll stage of the weekly log that carries
-  // it, so the archive's Audit Status column reflects submitted / paid at a
+  // it, so Job History's Audit Status column reflects submitted / paid at a
   // glance. Verification itself happens during pay review, not here.
   const auditStatusByWo = useMemo(() => {
     const byWo: Record<string, { label: string; cls: string }> = {};
@@ -255,8 +250,9 @@ export default function AssignmentsHubPage() {
 
         const matchesPriority = activePriorities.length === 0 || activePriorities.includes(wo.priority);
         const matchesSource = activeSources.length === 0 || (wo.source && activeSources.includes(wo.source));
+        const matchesStatus = activeStatuses.length === 0 || activeStatuses.includes(wo.status);
 
-        return matchesSearch && matchesDate && matchesPriority && matchesSource;
+        return matchesSearch && matchesDate && matchesPriority && matchesSource && matchesStatus;
       })
       .sort((a, b) => {
         const safeA = { 
@@ -276,7 +272,9 @@ export default function AssignmentsHubPage() {
 
         switch (sortBy) {
           case 'client': return safeA.client.localeCompare(safeB.client);
-          case 'status': return safeA.status.localeCompare(safeB.status);
+          case 'status': return compareJobStatus(a, b) || jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime);
+          case 'audit': return ((AUDIT_RANK[getAuditStatus(a).label] ?? 99) - (AUDIT_RANK[getAuditStatus(b).label] ?? 99))
+            || jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime);
           case 'pay': return (b.pay || 0) - (a.pay || 0);
           case 'tech': 
             const idA = jobTechId(a);
@@ -295,7 +293,7 @@ export default function AssignmentsHubPage() {
           }
         }
       });
-  }, [workOrders, technicians, deferredSearch, dateRange, sortBy, activePriorities, activeSources, dateAsc]);
+  }, [workOrders, technicians, deferredSearch, dateRange, sortBy, activePriorities, activeSources, activeStatuses, dateAsc, auditStatusByWo]);
 
   const activeWorkOrders = useMemo(() =>
     filteredWorkOrders.filter(wo => !isArchivedJob(wo) && !isCompletedJob(wo) && wo.status !== 'cancelled'),
@@ -310,7 +308,7 @@ export default function AssignmentsHubPage() {
     return woDate ? format(woDate, 'MM-dd-yyyy') : dateStr;
   };
 
-  // Clicking a date column header sorts by date and toggles earliest/oldest.
+  // Clicking a date column header sorts by date and toggles latest/earliest.
   const toggleDateSort = () => {
     if (sortBy !== 'date') {
       setSortBy('date');
@@ -487,7 +485,8 @@ export default function AssignmentsHubPage() {
     }
   };
 
-  const activeFilterCount = (dateRange?.from ? 1 : 0) + activePriorities.length + activeSources.length;
+  // Date lives in its own button now, so it isn't counted on Filters.
+  const activeFilterCount = activePriorities.length + activeSources.length + activeStatuses.length;
 
   return (
     <div className="space-y-6 text-left">
@@ -501,27 +500,6 @@ export default function AssignmentsHubPage() {
           <p className="page-subtitle text-left">Schedule and history and historical job audit.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-left">
-            <div className="flex items-center rounded-md border border-border-main overflow-hidden h-10 bg-bg-secondary shrink-0">
-              <button
-                onClick={() => setViewMode('list')}
-                className={cn(
-                  "px-3 h-full flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors",
-                  viewMode === 'list' ? "bg-bg-tertiary text-text-primary" : "text-text-muted hover:text-text-primary"
-                )}
-              >
-                <List size={13} /> List
-              </button>
-              <div className="w-px h-full bg-border-main" />
-              <button
-                onClick={() => setViewMode('map')}
-                className={cn(
-                  "px-3 h-full flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors",
-                  viewMode === 'map' ? "bg-bg-tertiary text-text-primary" : "text-text-muted hover:text-text-primary"
-                )}
-              >
-                <Map size={13} /> Map
-              </button>
-            </div>
             <SearchField
               value={searchQuery}
               onChange={setSearchQuery}
@@ -541,81 +519,32 @@ export default function AssignmentsHubPage() {
               />
               <FiltersPopover
                 activeCount={activeFilterCount}
-                onReset={() => { setDateRange(undefined); setActivePriorities([]); setActiveSources([]); }}
+                onReset={() => { setActivePriorities([]); setActiveSources([]); setActiveStatuses([]); }}
                 className="shrink-0"
               >
+                <FilterSection title="Job Status">
+                  <CheckboxFilter idPrefix="status" options={JOB_STATUS_OPTIONS} selected={activeStatuses} onChange={setActiveStatuses} />
+                </FilterSection>
                 <FilterSection title="Priority">
                   <CheckboxFilter idPrefix="prio" options={['critical', 'high', 'medium', 'low']} selected={activePriorities} onChange={setActivePriorities} />
                 </FilterSection>
                 <FilterSection title="Job Source">
                   <CheckboxFilter idPrefix="source" options={['Imported', 'Manual', 'Client']} selected={activeSources} onChange={setActiveSources} columns={1} />
                 </FilterSection>
-                <DateRangeFilter value={dateRange} onChange={setDateRange} />
               </FiltersPopover>
+              <DateRangeButton value={dateRange} onChange={setDateRange} />
             </div>
         </div>
       </header>
 
-      {viewMode === 'map' && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 bg-bg-secondary p-3 rounded-xl border border-border-sub">
-            <CalendarIcon size={13} className="text-text-muted shrink-0" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Map Date</span>
-            <Popover open={isMapDateOpen} onOpenChange={setIsMapDateOpen}>
-              <PopoverTrigger asChild>
-                <button className={cn(
-                  "flex items-center h-8 rounded-md border border-border-main bg-bg-primary px-3 text-[10px] font-bold uppercase tracking-widest hover:bg-bg-tertiary transition-colors",
-                  mapDate ? "text-text-primary" : "text-text-muted"
-                )}>
-                  {mapDate && isValid(mapDate) ? format(mapDate, 'MM-dd-yyyy') : 'All Dates'}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="start">
-                <Calendar
-                  mode="single"
-                  selected={mapDate}
-                  onSelect={(d) => { setMapDate(d); setIsMapDateOpen(false); }}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-            {mapDate && (
-              <button
-                onClick={() => setMapDate(undefined)}
-                className="text-[10px] font-bold uppercase tracking-widest text-text-muted hover:text-text-primary transition-colors"
-              >
-                Clear
-              </button>
-            )}
-            <span className="ml-auto text-[10px] text-text-muted uppercase tracking-widest">
-              {mapDate
-                ? `${filteredWorkOrders.filter(wo => { try { const p = parseTacticalDate(wo.scheduleDate); return p && isSameDay(p, mapDate); } catch { return false; } }).length} jobs`
-                : `${filteredWorkOrders.length} jobs`}
-            </span>
-          </div>
-          <div className="h-[65vh] rounded-lg overflow-hidden border border-border-main">
-            <AdminMapView
-              jobs={mapDate
-                ? filteredWorkOrders.filter(wo => {
-                    try { const p = parseTacticalDate(wo.scheduleDate); return p ? isSameDay(p, mapDate) : false; }
-                    catch { return false; }
-                  })
-                : filteredWorkOrders}
-              selectedJob={selectedJob}
-              onSelectJob={(job) => { setSelectedJob(job); setIsDetailOpen(true); }}
-            />
-          </div>
-        </div>
-      )}
-
-      {viewMode === 'list' && <Tabs defaultValue="schedule" className="w-full text-left">
+      <Tabs defaultValue="schedule" className="w-full text-left">
         <div className="flex items-center justify-between gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-lg border border-border-sub text-left shadow-sm">
           <TabsList className="tabs !mb-0 text-left">
             <TabsTrigger value="schedule" className="tab">
               Active Assignments <span className="tab-count">({activeWorkOrders.length})</span>
             </TabsTrigger>
             <TabsTrigger value="archive" className="tab">
-              Job Archive <span className="tab-count">({archivedWorkOrders.length})</span>
+              Job History <span className="tab-count">({archivedWorkOrders.length})</span>
             </TabsTrigger>
           </TabsList>
           {/* Date filtering now lives in the always-visible header "Filters"
@@ -704,7 +633,7 @@ export default function AssignmentsHubPage() {
                                         Schedule Date
                                         <ArrowUpDown size={11} className={cn("shrink-0", sortBy === 'date' ? "text-brand-red" : "text-text-muted opacity-50")} />
                                         {sortBy === 'date' && (
-                                            <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Oldest' : 'Latest'}</span>
+                                            <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Earliest' : 'Latest'}</span>
                                         )}
                                     </button>
                                 </th>
@@ -877,7 +806,7 @@ export default function AssignmentsHubPage() {
                                         Original Date &amp; Time
                                         <ArrowUpDown size={11} className={cn("shrink-0", sortBy === 'date' ? "text-brand-red" : "text-text-muted opacity-50")} />
                                         {sortBy === 'date' && (
-                                            <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Oldest' : 'Latest'}</span>
+                                            <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Earliest' : 'Latest'}</span>
                                         )}
                                     </button>
                                 </th>
@@ -1146,7 +1075,7 @@ export default function AssignmentsHubPage() {
               </DialogFooter>
           </DialogContent>
         </Dialog>
-      </Tabs>}
+      </Tabs>
 
       <AlertDialog open={!!orderToArchive} onOpenChange={(open) => { if (!open && !isArchiving) setOrderToArchive(null); }}>
         <AlertDialogContent>

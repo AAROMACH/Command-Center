@@ -706,7 +706,7 @@ export default function TechWeeklyLogPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="newest" className="text-[10px] uppercase font-bold">Newest First</SelectItem>
-                                <SelectItem value="oldest" className="text-[10px] uppercase font-bold">Oldest First</SelectItem>
+                                <SelectItem value="oldest" className="text-[10px] uppercase font-bold">Earliest First</SelectItem>
                                 <SelectItem value="status" className="text-[10px] uppercase font-bold">By Status</SelectItem>
                                 <SelectItem value="billing" className="text-[10px] uppercase font-bold">By Settlement</SelectItem>
                             </SelectContent>

@@ -5,7 +5,7 @@ import { ID_PREFIXES } from './constants';
 import { buildProjectFromLead } from './crm-handoff';
 import { makeLeadActivityId } from './doc-ids';
 import { STAGE_LABELS, type Stage } from './crm';
-import type { Lead, LeadActivity, Quote } from './types';
+import type { Lead, LeadActivity, Quote, SiteSurvey } from './types';
 
 /** Writes an activity and bumps the lead's last-touch timestamps. */
 export async function logLeadActivity(
@@ -72,13 +72,13 @@ export async function syncLeadOnQuoteCreated(lead: Lead, quoteId: string, total:
 }
 
 /** Creates the ops project for a won deal and links it back. Returns the project id. */
-export async function handOffToOps(lead: Lead, quotes: Quote[], userId: string): Promise<string> {
+export async function handOffToOps(lead: Lead, quotes: Quote[], userId: string, surveys: SiteSurvey[] = []): Promise<string> {
   if (lead.projectId) return lead.projectId;
   const quote = quotes
     .filter(q => (q.leadId === lead.id || (lead.quoteIds || []).includes(q.id)) && (q.status === 'approved' || q.status.startsWith('converted')))
     .sort((a, b) => (b.approvedAt || b.updatedAt || '').localeCompare(a.approvedAt || a.updatedAt || ''))[0];
   const projectId = await createDocId(ID_PREFIXES.PROJECT);
-  await setDoc(doc(db, 'projects', projectId), { ...buildProjectFromLead(lead, { quote, createdBy: userId }), id: projectId });
+  await setDoc(doc(db, 'projects', projectId), { ...buildProjectFromLead(lead, { quote, surveys: surveys.filter(s => s.leadId === lead.id), createdBy: userId }), id: projectId });
   await updateDoc(doc(db, 'leads', lead.id), { projectId, updatedAt: new Date().toISOString() });
   await logLeadActivity(lead.id, { type: 'note', description: `Handed off to ops — project ${projectId} created (on hold)`, createdBy: userId }, false);
   return projectId;

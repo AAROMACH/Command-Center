@@ -1,4 +1,5 @@
-import type { Lead, Phase, Quote } from './types';
+import type { Lead, Phase, Quote, SiteSurvey } from './types';
+import { surveySummary } from './crm-survey';
 
 /**
  * Won deal → project for ops. Pure (no Firestore) so the browser and the
@@ -27,13 +28,14 @@ export function buildProjectPhases(serviceLines: string[] = []): Phase[] {
   return names.map((name, i) => ({ id: `ph-${i + 1}`, phaseNumber: i + 1, name, tasks: [] }));
 }
 
-export function buildProjectFromLead(lead: Lead, opts: { quote?: Pick<Quote, 'id' | 'title' | 'scopeSummary' | 'description' | 'total'> | null; createdBy: string; now?: string }) {
+export function buildProjectFromLead(lead: Lead, opts: { quote?: Pick<Quote, 'id' | 'title' | 'scopeSummary' | 'description' | 'total'> | null; surveys?: SiteSurvey[]; createdBy: string; now?: string }) {
   const now = opts.now || new Date().toISOString();
   const quote = opts.quote || null;
   const services = lead.serviceLines || [];
   const scope = [
     quote?.scopeSummary || quote?.description,
     services.length ? `Services: ${services.join(', ')}` : '',
+    ...(opts.surveys || []).map(s => `SITE SURVEY — ${surveySummary(s)}`),
     lead.notes ? `Sales notes: ${lead.notes}` : '',
     quote ? `From quote ${quote.id}` : '',
   ].filter(Boolean).join('\n\n');
@@ -51,7 +53,9 @@ export function buildProjectFromLead(lead: Lead, opts: { quote?: Pick<Quote, 'id
     scope,
     onsiteContactName: lead.contactName || '',
     onsiteContactPhone: lead.contactPhone || '',
-    siteHazardNotes: [],
+    siteHazardNotes: (opts.surveys || []).filter(s => s.site.hazardNotes).map((s, i) => ({ id: `survey-${i}`, text: s.site.hazardNotes, type: 'danger' as const })),
+    siteAccessInstructions: (opts.surveys || []).map(s => s.site.accessNotes).filter(Boolean).join('\n'),
+    sourceSurveyIds: (opts.surveys || []).map(s => s.id),
     projectBudget: quote?.total || lead.estimatedValue || 0,
     actualBudget: 0,
     actualHours: 0,

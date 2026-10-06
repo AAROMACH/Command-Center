@@ -299,6 +299,7 @@ export type Project = {
   sourceQuoteId?: string | null;
   soldBy?: string;
   handoffAt?: string;
+  sourceSurveyIds?: string[];
 };
 
 export type Phase = {
@@ -865,6 +866,40 @@ export type Lead = {
   contactId?: string;
   /** Project ops runs once the deal is won. */
   projectId?: string;
+};
+
+export type SurveyPhoto = { url: string; storagePath: string; caption?: string; uploadedAt: string };
+export type SurveyCloset = { name: string; location: string; rackNeeded: boolean; powerAvailable: boolean; grounded: boolean; notes: string };
+
+/** Pre-sale site walk for a deal — drives the quote and the ops project. */
+export type SiteSurvey = {
+  id: string;
+  leadId: string;
+  companyId?: string;
+  title: string;
+  status: 'draft' | 'complete';
+  surveyDate: string;
+  surveyedBy: string;
+  site: {
+    condition: string; squareFeet: number; floors: number; ceilingType: string; ceilingHeightFt: number;
+    afterHoursOnly: boolean; liftNeeded: boolean; permitRequired: boolean; unionSite: boolean;
+    accessNotes: string; hazardNotes: string;
+  };
+  cabling: {
+    dataDrops: number; voiceDrops: number; wapDrops: number; cameraDrops: number; otherDrops: number;
+    cableType: string; plenum: boolean; avgRunFt: number; pathways: string[]; removeExisting: boolean; notes: string;
+  };
+  closets: SurveyCloset[];
+  cameras: { indoor: number; outdoor: number; ptz: number; nvrLocation: string; retentionDays: number; existingSystem: string; notes: string };
+  access: { doors: number; readers: number; rex: number; existingSystem: string; notes: string };
+  wireless: { aps: number; existingSystem: string; coverageNotes: string };
+  av: { rooms: number; displays: number; notes: string };
+  fiber: { runs: number; strands: number; notes: string };
+  photos: SurveyPhoto[];
+  notes: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 /** A CRM account — one company can have many contacts and many deals. */

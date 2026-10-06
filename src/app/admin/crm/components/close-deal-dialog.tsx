@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { Lead, Quote } from '@/lib/types';
+import type { Lead, Quote, SiteSurvey } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -18,6 +18,7 @@ type Props = {
   outcome: 'won' | 'lost' | null;
   currentUserId: string;
   quotes?: Quote[];
+  surveys?: SiteSurvey[];
   onClose: () => void;
 };
 
@@ -25,7 +26,7 @@ type Props = {
  * Closing a deal captures the data the win/loss report depends on:
  * the final contract value on a win, a categorized reason on a loss.
  */
-export function CloseDealDialog({ lead, outcome, currentUserId, quotes = [], onClose }: Props) {
+export function CloseDealDialog({ lead, outcome, currentUserId, quotes = [], surveys = [], onClose }: Props) {
   const { toast } = useToast();
   const [category, setCategory] = useState('');
   const [detail, setDetail] = useState('');
@@ -57,7 +58,7 @@ export function CloseDealDialog({ lead, outcome, currentUserId, quotes = [], onC
       if (won && handoff && !lead!.projectId) {
         try {
           const finalValue = Number(value) || 0;
-          const projectId = await handOffToOps({ ...lead!, stage: 'won', estimatedValue: finalValue }, quotes, currentUserId);
+          const projectId = await handOffToOps({ ...lead!, stage: 'won', estimatedValue: finalValue }, quotes, currentUserId, surveys);
           toast({ title: 'Deal won 🎉', description: `Project ${projectId} created for ops (on hold).` });
         } catch {
           toast({ variant: 'destructive', title: 'Deal won, but the project was not created', description: 'Use "Hand off to Ops" on the deal to retry.' });

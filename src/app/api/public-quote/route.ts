@@ -184,10 +184,11 @@ async function syncLeadWithQuoteAnswer(leadId: string, quoteId: string, approved
     if (!ld.projectId) {
       const projectId = await nextProjectId(fs);
       const lead = { ...ld, id: leadId, estimatedValue: total || ld.estimatedValue } as any;
+      const surveys = (await fs.collection('siteSurveys').where('leadId', '==', leadId).get()).docs.map(d => ({ ...d.data(), id: d.id } as any));
       await fs.collection('projects').doc(projectId).set({
         ...buildProjectFromLead(lead, {
           quote: { id: quoteId, title: quote.title, scopeSummary: quote.scopeSummary, description: quote.description, total },
-          createdBy: 'system', now,
+          surveys, createdBy: 'system', now,
         }),
         id: projectId,
       });

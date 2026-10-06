@@ -636,6 +636,11 @@ service cloud.firestore {
     match /crmContacts/{id} {
       allow read, write: if isAdmin() || isSales();
     }
+    // Pre-sale site surveys — techs read them once the job hands off.
+    match /siteSurveys/{id} {
+      allow read: if isAdmin() || isSales() || isTech();
+      allow write: if isAdmin() || isSales();
+    }
 
     // Assets & materials (admin portal only)
     match /materials/{id} {

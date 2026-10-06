@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
-import type { CrmContact, Lead, LeadActivity, Quote } from '@/lib/types';
+import type { CrmContact, Lead, LeadActivity, Quote, SiteSurvey } from '@/lib/types';
+import { SiteSurveyDialog } from './site-survey-dialog';
+import { totalDrops } from '@/lib/crm-survey';
 import { contactRoleLabel } from '@/lib/crm-accounts';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -44,6 +46,7 @@ type Props = {
   activities: LeadActivity[];
   quotes: Quote[];
   contacts?: CrmContact[];
+  surveys?: SiteSurvey[];
   currentUserId: string;
   currentUserName?: string;
   onClose: () => void;
@@ -59,7 +62,7 @@ function safeFormat(iso: string | undefined, fmt: string) {
   try { return format(parseISO(iso), fmt); } catch { return iso; }
 }
 
-export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], currentUserId, currentUserName, onClose, onEdit, onCloseDeal, onConvert }: Props) {
+export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surveys = [], currentUserId, currentUserName, onClose, onEdit, onCloseDeal, onConvert }: Props) {
   const { toast } = useToast();
   const router = useRouter();
   const [activityType, setActivityType] = useState<LeadActivity['type']>('call');
@@ -70,6 +73,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], curr
   const [isFullDetailOpen, setIsFullDetailOpen] = useState(false);
   const [taskText, setTaskText] = useState('');
   const [taskDue, setTaskDue] = useState('');
+  const [surveyOpen, setSurveyOpen] = useState<SiteSurvey | 'new' | null>(null);
 
   if (!lead) return null;
 
@@ -161,7 +165,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], curr
   async function handOff() {
     setMovingStage(true);
     try {
-      const id = await handOffToOps(lead!, quotes, currentUserId);
+      const id = await handOffToOps(lead!, quotes, currentUserId, surveys);
       toast({ title: 'Handed off to ops', description: `Project ${id} created (on hold).` });
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Hand-off failed', description: e?.code === 'permission-denied' ? 'Deploy the latest Firestore rules, or ask an admin.' : e?.message });
@@ -411,6 +415,32 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], curr
             )}
           </div>
 
+          {/* Site surveys */}
+          {(() => {
+            const leadSurveys = surveys.filter(s => s.leadId === lead.id).sort((a, b) => (b.surveyDate || '').localeCompare(a.surveyDate || ''));
+            return (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className={sectionLabel}>Site Surveys ({leadSurveys.length})</p>
+                  <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase tracking-wider" onClick={() => setSurveyOpen('new')}>
+                    <Footprints size={10} className="mr-1.5" /> New Survey
+                  </Button>
+                </div>
+                {leadSurveys.map(s => (
+                  <button key={s.id} onClick={() => setSurveyOpen(s)}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border-sub bg-bg-primary hover:border-border-main text-left">
+                    <Footprints size={12} className="text-brand-red shrink-0" />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[11px] font-bold text-text-primary truncate">{s.title}</span>
+                      <span className="block text-[9px] text-text-muted">{[s.surveyDate, s.surveyedBy, `${totalDrops(s)} drops`, `${s.photos.length} photos`].filter(Boolean).join(' · ')}</span>
+                    </span>
+                    <Badge className={cn('text-[8px] h-5 uppercase border', s.status === 'complete' ? 'bg-text-green/10 text-text-green border-text-green/20' : 'bg-amber-400/10 text-amber-400 border-amber-400/20')}>{s.status}</Badge>
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
+
           {/* Quotes */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -544,6 +574,15 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], curr
             )}
           </div>
         </div>
+
+        <SiteSurveyDialog
+          open={!!surveyOpen}
+          lead={lead}
+          survey={surveyOpen === 'new' ? null : surveyOpen}
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
+          onClose={() => setSurveyOpen(null)}
+        />
 
         {/* Full Detail dialog — every field plus the original uploaded files
             so sales can recover anything the import extraction missed. */}

@@ -5,7 +5,7 @@ import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, updateDoc, doc, addDoc } from 'firebase/firestore';
-import type { CrmCompany, CrmContact, Lead, LeadActivity, Quote } from '@/lib/types';
+import type { CrmCompany, CrmContact, Lead, LeadActivity, Quote, SiteSurvey } from '@/lib/types';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -199,6 +199,7 @@ export default function CRMPage() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [companies, setCompanies] = useState<CrmCompany[]>([]);
   const [contacts, setContacts] = useState<CrmContact[]>([]);
+  const [surveys, setSurveys] = useState<SiteSurvey[]>([]);
   const [presetCompany, setPresetCompany] = useState<CrmCompany | null>(null);
   const [pendingLeadId, setPendingLeadId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -244,13 +245,17 @@ export default function CRMPage() {
       setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id } as CrmContact)));
     }, () => {});
 
+    const unsubSurveys = onSnapshot(collection(db, 'siteSurveys'), (snap) => {
+      setSurveys(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteSurvey)));
+    }, () => {});
+
     // Deep links from the Accounts page: ?lead=<id> opens a deal, ?newDealFor=<companyId> starts one.
     const params = new URLSearchParams(window.location.search);
     if (params.get('lead')) setPendingLeadId(params.get('lead'));
     if (params.get('newDealFor')) setPendingLeadId(`company:${params.get('newDealFor')}`);
     if (params.toString()) window.history.replaceState(null, '', '/admin/crm');
 
-    return () => { unsubLeads(); unsubActivities(); unsubQuotes(); unsubCompanies(); unsubContacts(); };
+    return () => { unsubLeads(); unsubActivities(); unsubQuotes(); unsubCompanies(); unsubContacts(); unsubSurveys(); };
   }, []);
 
   useEffect(() => {
@@ -951,6 +956,7 @@ export default function CRMPage() {
         activities={activities}
         quotes={quotes}
         contacts={contacts}
+        surveys={surveys}
         currentUserId={currentUserId}
         currentUserName={currentUserName}
         onClose={() => setSelectedLead(null)}
@@ -959,7 +965,7 @@ export default function CRMPage() {
         onConvert={setConvertLead}
       />
 
-      <CloseDealDialog lead={closing?.lead ?? null} outcome={closing?.outcome ?? null} currentUserId={currentUserId} quotes={quotes} onClose={() => setClosing(null)} />
+      <CloseDealDialog lead={closing?.lead ?? null} outcome={closing?.outcome ?? null} currentUserId={currentUserId} quotes={quotes} surveys={surveys} onClose={() => setClosing(null)} />
 
       <Dialog open={!!convertLead} onOpenChange={v => !v && setConvertLead(null)}>
         <DialogContent className="bg-bg-elevated border-border-main max-w-sm">

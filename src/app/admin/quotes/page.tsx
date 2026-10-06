@@ -4,11 +4,12 @@ import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import { db, auth } from '@/lib/firebase';
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
-import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { surveySummary } from '@/lib/crm-survey';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { syncLeadOnQuoteCreated } from '@/lib/crm-actions';
-import type { Lead, Quote, QuoteLineItem, QuoteOptionalGroup, QuoteOptionItem, QuoteStatus, Technician } from '@/lib/types';
+import type { Lead, SiteSurvey, Quote, QuoteLineItem, QuoteOptionalGroup, QuoteOptionItem, QuoteStatus, Technician } from '@/lib/types';
 import { isClient } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -136,6 +137,13 @@ function NewQuoteDialog({
     setCustomerPhone(prefillLead.contactPhone || '');
     setTitle(prev => prev || [prefillLead.companyName, (prefillLead.serviceLines || []).join(' / ')].filter(Boolean).join(' — '));
     setScopeSummary(prev => prev || [prefillLead.address, prefillLead.nextStep].filter(Boolean).join('\n'));
+    // Pull the site survey takeoff into the scope so pricing starts from real counts.
+    getDocs(query(collection(db, 'siteSurveys'), where('leadId', '==', prefillLead.id)))
+      .then(snap => {
+        const text = snap.docs.map(d => surveySummary({ ...d.data(), id: d.id } as SiteSurvey)).join('\n\n');
+        if (text) setScopeSummary(prev => prev.includes('Cabling:') || prev.includes('Site:') ? prev : [prev, text].filter(Boolean).join('\n\n'));
+      })
+      .catch(() => {});
   }, [open, prefillLead?.id]);
 
   const updateLineItem = (idx: number, field: keyof QuoteLineItem, value: any) => {

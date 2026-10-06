@@ -468,6 +468,15 @@ export default function CRMPage() {
         </div>
       </header>
 
+      {/* KPI summary — always visible */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <Stat icon={DollarSign} label="Open Pipeline" value={formatMoney(totalValue, true)} sub={`${openLeads.length} deals`} />
+        <Stat icon={Percent} label="Weighted Forecast" value={formatMoney(weightedTotal, true)} sub="value × win %" />
+        <Stat icon={Trophy} label="Win Rate" value={`${insights.winRate}%`} sub={`${insights.wonCount} of ${insights.closedCount} closed`} tone="text-text-green" />
+        <Stat icon={CheckCircle2} label="Avg Deal Size" value={formatMoney(insights.avgDeal, true)} sub="won deals" />
+        <Stat icon={Clock} label="Avg Sales Cycle" value={`${insights.avgCycle}d`} sub="created → won" />
+      </div>
+
       {/* Search / filter bar */}
       <div className="bg-bg-secondary p-3 rounded-xl border border-border-sub flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[180px]">
@@ -763,13 +772,6 @@ export default function CRMPage() {
 
         {/* ── Insights ── */}
         <TabsContent value="insights" className="m-0 pt-3 space-y-4">
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-            <Stat icon={DollarSign} label="Open Pipeline" value={formatMoney(totalValue, true)} sub={`${openLeads.length} deals`} />
-            <Stat icon={Percent} label="Weighted Forecast" value={formatMoney(weightedTotal, true)} sub="value × win %" />
-            <Stat icon={Trophy} label="Win Rate" value={`${insights.winRate}%`} sub={`${insights.wonCount} of ${insights.closedCount} closed`} tone="text-text-green" />
-            <Stat icon={CheckCircle2} label="Avg Deal Size" value={formatMoney(insights.avgDeal, true)} sub="won deals" />
-            <Stat icon={Clock} label="Avg Sales Cycle" value={`${insights.avgCycle}d`} sub="created → won" />
-          </div>
           <div className="grid lg:grid-cols-2 gap-4">
             {([
               ['Forecast by Expected Close (weighted)', insights.forecast],

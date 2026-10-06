@@ -820,7 +820,7 @@ export type Lead = {
   contactName: string;
   contactEmail: string;
   contactPhone: string;
-  source: 'referral' | 'website' | 'cold_call' | 'field_nation' | 'other';
+  source: 'referral' | 'website' | 'cold_call' | 'field_nation' | 'existing_client' | 'partner' | 'trade_show' | 'linkedin' | 'other';
   stage: 'new' | 'contacted' | 'qualified' | 'proposal_sent' | 'negotiating' | 'won' | 'lost';
   estimatedValue: number;
   assignedTo: string;
@@ -835,16 +835,37 @@ export type Lead = {
   attachments?: LeadAttachment[];
   /** File name of the import source, when created by the lead importer. */
   importedFrom?: string;
+  // ── Sales detail (all optional — older leads predate these) ──
+  contactTitle?: string;
+  website?: string;
+  address?: string;
+  industry?: string;
+  /** Aaromach service lines in scope — see SERVICE_LINES in lib/crm. */
+  serviceLines?: string[];
+  /** Win probability 0–100. Falls back to the stage default when unset. */
+  probability?: number;
+  expectedCloseDate?: string;
+  nextStep?: string;
+  assignedToName?: string;
+  lostReasonCategory?: string;
+  /** Set whenever the stage changes — drives "days in stage". */
+  stageChangedAt?: string;
+  lastActivityAt?: string;
+  convertedToClient?: boolean;
 };
 
 export type LeadActivity = {
   id: string;
   leadId: string;
-  type: 'note' | 'call' | 'email' | 'meeting' | 'proposal' | 'follow_up';
+  type: 'note' | 'call' | 'email' | 'meeting' | 'proposal' | 'follow_up' | 'site_walk' | 'task';
   description: string;
   createdBy: string;
   createdAt: string;
   scheduledAt?: string;
+  /** Tasks only — when the task was checked off. */
+  completedAt?: string;
+  /** Calls only — connected / voicemail / no answer / etc. */
+  outcome?: string;
 };
 
 export type ProjectPayout = {

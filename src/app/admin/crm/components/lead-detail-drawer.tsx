@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
-import type { Lead, LeadActivity } from '@/lib/types';
+import type { Lead, LeadActivity, Quote } from '@/lib/types';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +41,7 @@ const ACTIVITY_ICONS: Record<LeadActivity['type'], React.ElementType> = {
 type Props = {
   lead: Lead | null;
   activities: LeadActivity[];
+  quotes: Quote[];
   currentUserId: string;
   currentUserName?: string;
   onClose: () => void;
@@ -55,8 +57,9 @@ function safeFormat(iso: string | undefined, fmt: string) {
   try { return format(parseISO(iso), fmt); } catch { return iso; }
 }
 
-export function LeadDetailDrawer({ lead, activities, currentUserId, currentUserName, onClose, onEdit, onCloseDeal, onConvert }: Props) {
+export function LeadDetailDrawer({ lead, activities, quotes, currentUserId, currentUserName, onClose, onEdit, onCloseDeal, onConvert }: Props) {
   const { toast } = useToast();
+  const router = useRouter();
   const [activityType, setActivityType] = useState<LeadActivity['type']>('call');
   const [callOutcome, setCallOutcome] = useState('');
   const [activityNote, setActivityNote] = useState('');
@@ -74,6 +77,10 @@ export function LeadDetailDrawer({ lead, activities, currentUserId, currentUserN
   const tasks = activities
     .filter(a => a.leadId === lead.id && a.type === 'task')
     .sort((a, b) => Number(!!a.completedAt) - Number(!!b.completedAt) || (a.scheduledAt || '9').localeCompare(b.scheduledAt || '9'));
+
+  const leadQuotes = quotes
+    .filter(q => q.leadId === lead.id || (lead.quoteIds || []).includes(q.id))
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
   const open = OPEN_STAGES.includes(lead.stage);
   const today = todayKey();
@@ -355,6 +362,34 @@ export function LeadDetailDrawer({ lead, activities, currentUserId, currentUserN
             {lead.stage === 'lost' && (lead.lostReasonCategory || lead.lostReason) && (
               <p className="text-[10px] text-text-red">Lost: {[lead.lostReasonCategory, lead.lostReason].filter(Boolean).join(' — ')}</p>
             )}
+          </div>
+
+          {/* Quotes */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className={sectionLabel}>Quotes ({leadQuotes.length})</p>
+              <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase tracking-wider"
+                onClick={() => router.push(`/admin/quotes?leadId=${encodeURIComponent(lead.id)}`)}>
+                <FileText size={10} className="mr-1.5" /> Create Quote
+              </Button>
+            </div>
+            {leadQuotes.map(q => (
+              <button key={q.id} onClick={() => router.push('/admin/quotes')}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border-sub bg-bg-primary hover:border-border-main text-left">
+                <FileText size={12} className="text-brand-red shrink-0" />
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[11px] font-bold text-text-primary truncate">{q.title}</span>
+                  <span className="block text-[9px] text-text-muted font-mono">{q.quoteNumber}</span>
+                </span>
+                <span className="text-[11px] font-black text-text-green tabular-nums">{formatMoney(q.total || 0)}</span>
+                <Badge className={cn('text-[8px] h-5 uppercase border',
+                  q.status === 'approved' || q.status.startsWith('converted') ? 'bg-text-green/10 text-text-green border-text-green/20'
+                  : q.status === 'rejected' || q.status === 'expired' ? 'bg-text-red/10 text-text-red border-text-red/20'
+                  : 'bg-amber-400/10 text-amber-400 border-amber-400/20')}>
+                  {q.status.replace(/_/g, ' ')}
+                </Badge>
+              </button>
+            ))}
           </div>
 
           {/* Tasks */}

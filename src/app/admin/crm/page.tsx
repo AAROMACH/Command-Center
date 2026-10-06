@@ -915,6 +915,7 @@ export default function CRMPage() {
       <LeadDetailDrawer
         lead={selectedLead}
         activities={activities}
+        quotes={quotes}
         currentUserId={currentUserId}
         currentUserName={currentUserName}
         onClose={() => setSelectedLead(null)}

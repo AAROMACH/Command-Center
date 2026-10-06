@@ -852,6 +852,8 @@ export type Lead = {
   stageChangedAt?: string;
   lastActivityAt?: string;
   convertedToClient?: boolean;
+  /** Quotes written for this lead. */
+  quoteIds?: string[];
 };
 
 export type LeadActivity = {
@@ -963,6 +965,8 @@ export type Quote = {
   convertedToWorkOrderId: string | null;
   convertedToProjectId: string | null;
   convertedToInvoiceId: string | null;
+  /** CRM lead this quote was written for — approval marks that lead Won. */
+  leadId?: string | null;
 };
 
 export type AssetCategory = 'vehicle' | 'tool' | 'electronic' | 'inventory' | 'safety';

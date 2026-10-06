@@ -420,10 +420,13 @@ service cloud.firestore {
       // caller's specific token" (rules can't see query filter values), so
       // `resource.data.publicToken != null` ended up granting anonymous
       // read of every sent quote in the collection. Closed.
-      allow read: if isAdmin()
+      allow read: if isAdmin() || isSales()
           || (isSignedIn() && isClient() && resource.data.clientId == request.auth.uid);
-      allow create: if isAdmin();
-      allow update: if isAdmin();
+      // Sales quotes (role grants create/edit/send_quote). Approval itself
+      // only happens server-side through /api/public-quote.
+      allow create: if isAdmin() || isSales();
+      allow update: if isAdmin()
+          || (isSales() && request.resource.data.status != 'approved');
       allow delete: if isSuperAdmin();
     }
 

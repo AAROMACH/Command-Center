@@ -145,5 +145,43 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  if (typeof data.leadId === 'string' && data.leadId) {
+    // Best effort — the customer's answer is already saved; a CRM sync
+    // failure must not turn their approval into an error.
+    try {
+      await syncLeadWithQuoteAnswer(data.leadId, doc.id, action === 'approve', Number(data.total) || 0, now);
+    } catch (e) {
+      console.error('public-quote: lead sync failed', e);
+    }
+  }
+
   return NextResponse.json({ status: 'ok' });
+}
+
+/** Approved quote → lead Won at the quoted total. Rejected → timeline note only; sales decides what's next. */
+async function syncLeadWithQuoteAnswer(leadId: string, quoteId: string, approved: boolean, total: number, now: string) {
+  const fs = getFirestore(adminApp);
+  const leadRef = fs.collection('leads').doc(leadId);
+  const lead = await leadRef.get();
+  if (!lead.exists) return;
+  const ld = lead.data()!;
+  const activities = fs.collection('leadActivities');
+  const note = (description: string, type = 'note') => {
+    const ref = activities.doc();
+    return ref.set({ id: ref.id, leadId, type, description, createdBy: 'system', createdAt: now });
+  };
+  if (approved) {
+    if (ld.stage !== 'won') {
+      await leadRef.update({
+        stage: 'won', probability: 100, closedAt: now, stageChangedAt: now, updatedAt: now, lastActivityAt: now,
+        ...(total > 0 ? { estimatedValue: total } : {}),
+      });
+      await note(`Quote ${quoteId} approved by customer — deal marked Won`);
+    } else {
+      await note(`Quote ${quoteId} approved by customer`);
+    }
+  } else {
+    await leadRef.update({ updatedAt: now, lastActivityAt: now, followUpDate: now.slice(0, 10) });
+    await note(`Quote ${quoteId} rejected by customer — follow up`);
+  }
 }

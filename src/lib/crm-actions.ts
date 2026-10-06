@@ -47,3 +47,23 @@ export async function changeLeadStage(
   }
   await logLeadActivity(lead.id, { type: 'note', description, createdBy: userId }, false);
 }
+
+/**
+ * A quote written for a lead: link it, carry the quote total onto the deal,
+ * and move early-stage leads to Proposal Sent.
+ */
+export async function syncLeadOnQuoteCreated(lead: Lead, quoteId: string, total: number, userId: string): Promise<void> {
+  const early: Stage[] = ['new', 'contacted', 'qualified'];
+  const extra: Partial<Lead> = { quoteIds: [...(lead.quoteIds || []), quoteId] };
+  if (total > 0) extra.estimatedValue = total;
+  if (early.includes(lead.stage)) {
+    await changeLeadStage(lead, 'proposal_sent', userId, extra);
+  } else {
+    await updateDoc(doc(db, 'leads', lead.id), { ...extra, updatedAt: new Date().toISOString() });
+  }
+  await logLeadActivity(lead.id, {
+    type: 'proposal',
+    description: `Quote ${quoteId} created${total > 0 ? ` — $${Math.round(total).toLocaleString()}` : ''}`,
+    createdBy: userId,
+  });
+}

@@ -94,6 +94,7 @@ const adminNavGroups: NavGroup[] = [
     label: "Sales & Clients",
     items: [
       { href: "/admin/crm",    label: "CRM",           icon: Target,     permission: "admin.crm.view" },
+      { href: "/admin/crm/accounts", label: "Accounts", icon: Users,   permission: "admin.crm.view" },
       { href: "/admin/plans",  label: "Service Plans", icon: BookOpen,   permission: "admin.reports.view" },
       { href: "/admin/sites",  label: "Clients",       icon: Building2,  permission: "admin.clients.view" },
       { href: "/admin/quotes", label: "Quotes",        icon: FileSearch, permission: "admin.crm.view" },
@@ -293,6 +294,7 @@ export function AppSidebar() {
 
   const isActive = (href: string) => {
     if (href.endsWith("/dashboard")) return pathname === href;
+    if (href === "/admin/crm" && pathname.startsWith("/admin/crm/accounts")) return false;
     return pathname.startsWith(href);
   };
 

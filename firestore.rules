@@ -623,6 +623,12 @@ service cloud.firestore {
     match /leadActivities/{id} {
       allow read, write: if isAdmin() || isSales();
     }
+    match /crmCompanies/{id} {
+      allow read, write: if isAdmin() || isSales();
+    }
+    match /crmContacts/{id} {
+      allow read, write: if isAdmin() || isSales();
+    }
 
     // Assets & materials (admin portal only)
     match /materials/{id} {

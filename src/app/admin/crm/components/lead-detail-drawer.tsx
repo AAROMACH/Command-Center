@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
-import type { Lead, LeadActivity, Quote } from '@/lib/types';
+import type { CrmContact, Lead, LeadActivity, Quote } from '@/lib/types';
+import { contactRoleLabel } from '@/lib/crm-accounts';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +43,7 @@ type Props = {
   lead: Lead | null;
   activities: LeadActivity[];
   quotes: Quote[];
+  contacts?: CrmContact[];
   currentUserId: string;
   currentUserName?: string;
   onClose: () => void;
@@ -57,7 +59,7 @@ function safeFormat(iso: string | undefined, fmt: string) {
   try { return format(parseISO(iso), fmt); } catch { return iso; }
 }
 
-export function LeadDetailDrawer({ lead, activities, quotes, currentUserId, currentUserName, onClose, onEdit, onCloseDeal, onConvert }: Props) {
+export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], currentUserId, currentUserName, onClose, onEdit, onCloseDeal, onConvert }: Props) {
   const { toast } = useToast();
   const router = useRouter();
   const [activityType, setActivityType] = useState<LeadActivity['type']>('call');
@@ -295,6 +297,30 @@ export function LeadDetailDrawer({ lead, activities, quotes, currentUserId, curr
               </div>
             )}
           </div>
+
+          {/* Other people at this account */}
+          {lead.companyId && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className={sectionLabel}>People at {lead.companyName}</p>
+                <Button size="sm" variant="ghost" className="h-6 px-2 text-[9px] font-bold uppercase" onClick={() => router.push('/admin/crm/accounts')}>
+                  Account →
+                </Button>
+              </div>
+              {contacts.filter(c => c.companyId === lead.companyId && c.id !== lead.contactId).length === 0 ? (
+                <p className="text-[10px] text-text-muted uppercase tracking-wider">No other contacts — add the IT lead, facilities, or AP on the account.</p>
+              ) : contacts.filter(c => c.companyId === lead.companyId && c.id !== lead.contactId).map(c => (
+                <div key={c.id} className="flex items-center gap-2 text-[10px]">
+                  <span className="font-bold text-text-primary">{c.name}</span>
+                  <span className="text-text-muted truncate">{[c.title, contactRoleLabel(c.role)].filter(Boolean).join(' · ')}</span>
+                  <span className="ml-auto flex gap-2 shrink-0">
+                    {c.phone && <a href={`tel:${c.phone}`} className="text-text-muted hover:text-text-primary"><Phone size={10} /></a>}
+                    {c.email && <a href={`mailto:${c.email}`} className="text-text-muted hover:text-text-primary"><Mail size={10} /></a>}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Next step + follow-up */}
           {open && (

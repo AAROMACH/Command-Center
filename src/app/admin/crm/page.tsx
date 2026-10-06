@@ -5,7 +5,7 @@ import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, updateDoc, doc, addDoc } from 'firebase/firestore';
-import type { Lead, LeadActivity, Quote } from '@/lib/types';
+import type { CrmCompany, CrmContact, Lead, LeadActivity, Quote } from '@/lib/types';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 import {
   Target, Plus, Search, DollarSign, Phone, Mail, User, TrendingUp, CheckCircle2, XCircle,
   ChevronRight, LayoutGrid, List, ArrowUpDown, UserCheck, Building2, Upload, Download,
-  AlertTriangle, Calendar, ListTodo, Trophy, Percent, Clock,
+  AlertTriangle, Calendar, ListTodo, Trophy, Percent, Clock, Users,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -197,6 +197,10 @@ export default function CRMPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [activities, setActivities] = useState<LeadActivity[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [companies, setCompanies] = useState<CrmCompany[]>([]);
+  const [contacts, setContacts] = useState<CrmContact[]>([]);
+  const [presetCompany, setPresetCompany] = useState<CrmCompany | null>(null);
+  const [pendingLeadId, setPendingLeadId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [crmTab, setCrmTab] = useState('pipeline');
@@ -233,8 +237,32 @@ export default function CRMPage() {
     const unsubQuotes = onSnapshot(collection(db, 'quotes'), (snap) => {
       setQuotes(snap.docs.map(d => ({ ...d.data(), id: d.id } as Quote)));
     });
-    return () => { unsubLeads(); unsubActivities(); unsubQuotes(); };
+    const unsubCompanies = onSnapshot(collection(db, 'crmCompanies'), (snap) => {
+      setCompanies(snap.docs.map(d => ({ ...d.data(), id: d.id } as CrmCompany)));
+    }, () => {});
+    const unsubContacts = onSnapshot(collection(db, 'crmContacts'), (snap) => {
+      setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id } as CrmContact)));
+    }, () => {});
+
+    // Deep links from the Accounts page: ?lead=<id> opens a deal, ?newDealFor=<companyId> starts one.
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('lead')) setPendingLeadId(params.get('lead'));
+    if (params.get('newDealFor')) setPendingLeadId(`company:${params.get('newDealFor')}`);
+    if (params.toString()) window.history.replaceState(null, '', '/admin/crm');
+
+    return () => { unsubLeads(); unsubActivities(); unsubQuotes(); unsubCompanies(); unsubContacts(); };
   }, []);
+
+  useEffect(() => {
+    if (!pendingLeadId) return;
+    if (pendingLeadId.startsWith('company:')) {
+      const co = companies.find(c => c.id === pendingLeadId.slice(8));
+      if (co) { setPresetCompany(co); setIsNewLeadOpen(true); setPendingLeadId(null); }
+    } else {
+      const l = leads.find(x => x.id === pendingLeadId);
+      if (l) { setSelectedLead(l); setPendingLeadId(null); }
+    }
+  }, [pendingLeadId, leads, companies]);
 
   // Keep the open drawer in sync with live Firestore data.
   useEffect(() => {
@@ -462,6 +490,9 @@ export default function CRMPage() {
               <Upload size={12} className="mr-1.5" /> Import Leads
             </Button>
           )}
+          <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold uppercase tracking-wider border-border-main" onClick={() => router.push('/admin/crm/accounts')}>
+            <Users size={12} className="mr-1.5" /> Accounts
+          </Button>
           <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold uppercase tracking-wider border-border-main" onClick={() => router.push('/admin/crm/clients')}>
             <Building2 size={12} className="mr-1.5" /> Go To Clients
           </Button>
@@ -905,7 +936,10 @@ export default function CRMPage() {
         open={isNewLeadOpen || !!editLead}
         lead={editLead}
         leads={leads}
-        onClose={() => { setIsNewLeadOpen(false); setEditLead(null); }}
+        companies={companies}
+        contacts={contacts}
+        presetCompany={presetCompany}
+        onClose={() => { setIsNewLeadOpen(false); setEditLead(null); setPresetCompany(null); }}
         currentUserId={currentUserId}
         currentUserName={currentUserName}
       />
@@ -916,6 +950,7 @@ export default function CRMPage() {
         lead={selectedLead}
         activities={activities}
         quotes={quotes}
+        contacts={contacts}
         currentUserId={currentUserId}
         currentUserName={currentUserName}
         onClose={() => setSelectedLead(null)}

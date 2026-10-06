@@ -854,6 +854,43 @@ export type Lead = {
   convertedToClient?: boolean;
   /** Quotes written for this lead. */
   quoteIds?: string[];
+  /** Account this deal belongs to (crmCompanies). */
+  companyId?: string;
+  /** Primary contact for this deal (crmContacts). */
+  contactId?: string;
+};
+
+/** A CRM account — one company can have many contacts and many deals. */
+export type CrmCompany = {
+  id: string;
+  name: string;
+  industry?: string;
+  website?: string;
+  address?: string;
+  phone?: string;
+  notes?: string;
+  ownerId?: string;
+  ownerName?: string;
+  /** Set once the account becomes a client in the app. */
+  clientUserId?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CrmContactRole = 'decision_maker' | 'influencer' | 'technical' | 'billing' | 'site_contact' | 'other';
+
+export type CrmContact = {
+  id: string;
+  companyId: string;
+  name: string;
+  title?: string;
+  email?: string;
+  phone?: string;
+  role?: CrmContactRole;
+  isPrimary?: boolean;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type LeadActivity = {

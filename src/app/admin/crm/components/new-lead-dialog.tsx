@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { makeLeadId } from '@/lib/doc-ids';
-import type { Lead } from '@/lib/types';
+import type { CrmCompany, CrmContact, Lead } from '@/lib/types';
+import { findCompany, resolveLeadAccount } from '@/lib/crm-accounts';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,10 @@ type Props = {
   lead?: Lead | null;
   /** All leads — used to warn about duplicates. */
   leads?: Lead[];
+  companies?: CrmCompany[];
+  contacts?: CrmContact[];
+  /** Prefill company for "New deal" from an account. */
+  presetCompany?: CrmCompany | null;
 };
 
 type Form = {
@@ -57,15 +62,49 @@ function fromLead(l: Lead): Form {
 const labelCls = 'text-[10px] font-bold uppercase tracking-widest text-text-muted';
 const inputCls = 'h-9 text-xs bg-bg-tertiary border-border-main';
 
-export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, lead, leads = [] }: Props) {
+export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, lead, leads = [], companies = [], contacts = [], presetCompany }: Props) {
   const { toast } = useToast();
   const editing = !!lead;
   const [form, setForm] = useState<Form>(EMPTY);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (open) setForm(lead ? fromLead(lead) : EMPTY);
-  }, [open, lead?.id]);
+    if (!open) return;
+    if (lead) setForm(fromLead(lead));
+    else if (presetCompany) {
+      const primary = contacts.find(c => c.companyId === presetCompany.id && c.isPrimary) || contacts.find(c => c.companyId === presetCompany.id);
+      setForm({
+        ...EMPTY, companyName: presetCompany.name, industry: presetCompany.industry || '', website: presetCompany.website || '',
+        address: presetCompany.address || '', contactName: primary?.name || '', contactTitle: primary?.title || '',
+        contactEmail: primary?.email || '', contactPhone: primary?.phone || '', source: 'existing_client',
+      });
+    } else setForm(EMPTY);
+  }, [open, lead?.id, presetCompany?.id]);
+
+  const matchedCompany = useMemo(() => findCompany(companies, form.companyName), [companies, form.companyName]);
+  const companyContacts = useMemo(
+    () => (matchedCompany ? contacts.filter(c => c.companyId === matchedCompany.id) : []),
+    [contacts, matchedCompany?.id],
+  );
+
+  // Picking a known account fills blanks from it.
+  function onCompanyChange(name: string) {
+    const co = findCompany(companies, name);
+    setForm(f => ({
+      ...f, companyName: name,
+      ...(co && !editing ? {
+        industry: f.industry || co.industry || '', website: f.website || co.website || '', address: f.address || co.address || '',
+      } : {}),
+    }));
+  }
+
+  function onContactChange(name: string) {
+    const ct = companyContacts.find(c => c.name.toLowerCase() === name.trim().toLowerCase());
+    setForm(f => ({
+      ...f, contactName: name,
+      ...(ct ? { contactTitle: ct.title || f.contactTitle, contactEmail: ct.email || f.contactEmail, contactPhone: ct.phone || f.contactPhone } : {}),
+    }));
+  }
 
   const dupes = useMemo(
     () => findDuplicates(leads, form, lead?.id),
@@ -108,6 +147,16 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
     };
     setSaving(true);
     try {
+      let account: { companyId?: string; contactId?: string } = {};
+      try {
+        account = await resolveLeadAccount(
+          { ...fields, companyId: editing && lead!.companyName === fields.companyName ? lead!.companyId : undefined },
+          companies, contacts, { id: currentUserId, name: currentUserName },
+        );
+      } catch {
+        // Account linking is additive — never block saving the deal on it.
+      }
+      Object.assign(fields, account);
       if (editing) {
         // Firestore rejects undefined — clear a removed override with null instead.
         await updateDoc(doc(db, 'leads', lead!.id), { ...fields, probability: prob });
@@ -168,7 +217,15 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">Company</p>
               <div className="space-y-1.5">
                 <Label className={labelCls}>Company Name *</Label>
-                <Input placeholder="Acme Corp" value={form.companyName} onChange={e => set('companyName', e.target.value)} className={inputCls} />
+                <Input placeholder="Acme Corp" list="crm-company-options" value={form.companyName} onChange={e => onCompanyChange(e.target.value)} className={inputCls} />
+                <datalist id="crm-company-options">
+                  {companies.map(c => <option key={c.id} value={c.name} />)}
+                </datalist>
+                {matchedCompany && (
+                  <p className="text-[9px] uppercase font-bold tracking-wider text-text-green">
+                    Existing account · {companyContacts.length} contact{companyContacts.length === 1 ? '' : 's'} · {leads.filter(l => l.companyId === matchedCompany.id && l.id !== lead?.id).length} other deals
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -197,7 +254,10 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className={labelCls}>Name</Label>
-                  <Input placeholder="John Smith" value={form.contactName} onChange={e => set('contactName', e.target.value)} className={inputCls} />
+                  <Input placeholder="John Smith" list="crm-contact-options" value={form.contactName} onChange={e => onContactChange(e.target.value)} className={inputCls} />
+                  <datalist id="crm-contact-options">
+                    {companyContacts.map(c => <option key={c.id} value={c.name}>{c.title || ''}</option>)}
+                  </datalist>
                 </div>
                 <div className="space-y-1.5">
                   <Label className={labelCls}>Title</Label>

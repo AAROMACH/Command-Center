@@ -956,7 +956,15 @@ export default function CRMPage() {
         currentUserName={currentUserName}
       />
 
-      <ImportLeadsDialog open={isImportOpen} onClose={() => setIsImportOpen(false)} currentUserId={currentUserId} />
+      <ImportLeadsDialog
+        open={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        currentUserId={currentUserId}
+        currentUserName={currentUserName}
+        leads={leads}
+        companies={companies}
+        contacts={contacts}
+      />
 
       <LeadDetailDrawer
         lead={selectedLead}

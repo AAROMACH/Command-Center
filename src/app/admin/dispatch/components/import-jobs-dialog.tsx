@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { readJobBlock, JOB_PASTE_FIELDS, JOB_PASTE_TEMPLATE, JOB_PASTE_EXAMPLE } from '@/lib/job-paste';
+import { readJobBlock, JOB_PASTE_LINES, JOB_PASTE_TEMPLATE } from '@/lib/job-paste';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -93,7 +93,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
       const blocks = text.split(/\n\s*\n/).filter(b => b.trim());
 
       return (blocks.map((block, blockIdx): Omit<ParsedRow, 'rowStatus' | 'match'> | null => {
-        // Field Nation paste (by line order) or the labeled manual template.
+        // One value per line, Field Nation order (see lib/job-paste).
         const read = readJobBlock(block);
         if (!read) return null;
         const { rawId, title, location, company } = read;
@@ -309,26 +309,25 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
                   </Button>
                 </div>
                 <Textarea
-                  placeholder={`Paste Field Nation jobs here, or click Insert Template to type one in.\nSeparate jobs with a blank line.\n\n${JOB_PASTE_EXAMPLE}`}
+                  placeholder={JOB_PASTE_TEMPLATE}
                   className="h-full min-h-[350px] bg-bg-primary border-border-sub font-mono text-xs leading-relaxed"
                   value={pastedText}
                   onChange={(e) => setPastedText(e.target.value)}
                 />
               </div>
-              {/* What goes on each line — same order Field Nation pastes in. */}
+              {/* What goes on each line — Field Nation's paste order. */}
               <div className="p-3 rounded bg-bg-secondary/50 border border-border-sub space-y-2">
-                <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">One job per block · one value per line · blank line between jobs</p>
+                <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">One value per line · blank line between jobs</p>
                 <div className="grid grid-cols-[auto_auto_1fr] gap-x-3 gap-y-1 text-[10px]">
-                  {JOB_PASTE_FIELDS.map((f, i) => (
-                    <div key={f.key} className="contents">
-                      <span className="font-mono text-text-muted">{f.key === 'payModel' ? 7 : f.key === 'laborRate' ? 8 : i + 1}</span>
-                      <span className="font-bold uppercase tracking-wider text-text-primary whitespace-nowrap">{f.label}</span>
-                      <span className="text-text-muted truncate"><span className="font-mono text-text-secondary">{f.example}</span> — {f.hint}</span>
+                  {JOB_PASTE_LINES.map((l, i) => (
+                    <div key={i} className="contents">
+                      <span className="font-mono text-text-muted">{i + 1}</span>
+                      <span className="font-mono text-text-primary whitespace-nowrap">{l.example}</span>
+                      <span className="text-text-muted truncate">{l.label === '$' ? l.hint : `${l.label} — ${l.hint}`}</span>
                     </div>
                   ))}
                 </div>
                 <p className="text-[9px] text-text-muted uppercase tracking-wider leading-relaxed">
-                  Field Nation pastes add a lone "$" on line 6 and a status on line 9 — both are fine. Typing by hand? Use Insert Template: labeled lines can go in any order.
                   The next screen flags duplicates (active, completed and archived jobs) and lets you skip or remove rows before import.
                 </p>
               </div>

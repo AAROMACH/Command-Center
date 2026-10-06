@@ -103,6 +103,17 @@ service firebase.storage {
       allow delete: if isSignedIn() && isAdmin();
     }
 
+    // Site survey photos/plans: sales + admin capture, techs read for the job
+    match /siteSurveys/{surveyId}/{fileName} {
+      allow read: if isSignedIn() && (isAdmin() || isSales() || isTech());
+      allow create: if isSignedIn()
+                    && (isAdmin() || isSales())
+                    && request.resource.size < 15 * 1024 * 1024
+                    && (request.resource.contentType.matches('image/.*')
+                        || request.resource.contentType == 'application/pdf');
+      allow delete: if isSignedIn() && (isAdmin() || isSales());
+    }
+
     // Message image attachments: each user writes only to their own folder
     match /messageImages/{userId}/{fileName} {
       allow read: if request.auth != null;

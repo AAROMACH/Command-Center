@@ -27,6 +27,8 @@ const ROUTE_PERMISSIONS: Array<{ prefix: string; permission: Permission }> = [
   { prefix: '/admin/quotes',           permission: 'admin.crm.view' },
   { prefix: '/admin/financials',       permission: 'admin.financials.view' },
   { prefix: '/admin/assets',           permission: 'admin.assignments.view' },
+  // Sales portal
+  { prefix: '/sales',                  permission: 'admin.crm.view' },
   // Tech portal
   { prefix: '/tech/dashboard',   permission: 'tech.dashboard.view' },
   { prefix: '/tech/activity',    permission: 'tech.dashboard.view' },
@@ -58,8 +60,9 @@ export function requiredPermissionForPath(pathname: string): Permission | null {
 }
 
 /** The portal a path belongs to, or null for non-portal paths (login, etc.). */
-export function portalForPath(pathname: string): 'admin' | 'tech' | 'client' | null {
+export function portalForPath(pathname: string): 'admin' | 'tech' | 'client' | 'sales' | null {
   if (pathname.startsWith('/admin')) return 'admin';
+  if (pathname.startsWith('/sales')) return 'sales';
   if (pathname.startsWith('/tech')) return 'tech';
   if (pathname.startsWith('/client')) return 'client';
   return null;

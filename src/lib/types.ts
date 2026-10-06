@@ -60,7 +60,9 @@ export type Notification = {
   timestamp: string;
   status: 'sent' | 'failed' | 'pending';
   relatedEntityId?: string;
-  relatedEntityType?: 'assignment' | 'project' | 'request';
+  relatedEntityType?: 'assignment' | 'project' | 'request' | 'lead';
+  /** In-app alert dismissed from the bell. */
+  read?: boolean;
 };
 
 export type SlaStatus = 'on-track' | 'at-risk' | 'breached' | 'met';
@@ -227,7 +229,7 @@ export type Technician = {
   /** @deprecated Portal access is derived from subroles (see getPortalAccess).
    *  No longer written; retained only so legacy documents type-check on read. */
   portalAccess?: { admin?: boolean; tech?: boolean; client?: boolean };
-  primaryPortal?: 'admin' | 'tech' | 'client';
+  primaryPortal?: 'admin' | 'tech' | 'client' | 'sales';
   messagingBlockedClientIds?: string[];
   messagingAllowedRoles?: 'all' | 'admins' | 'techs' | 'clients' | 'none';
   /** Broadcast ids this user has acknowledged/cleared — synced so a dismissal
@@ -294,6 +296,12 @@ export type Project = {
   estimatedHours?: number;
   actualBudget?: number;
   actualHours?: number;
+  /** Set when the project came from a won CRM deal. */
+  sourceLeadId?: string;
+  sourceQuoteId?: string | null;
+  soldBy?: string;
+  handoffAt?: string;
+  sourceSurveyIds?: string[];
 };
 
 export type Phase = {
@@ -820,7 +828,7 @@ export type Lead = {
   contactName: string;
   contactEmail: string;
   contactPhone: string;
-  source: 'referral' | 'website' | 'cold_call' | 'field_nation' | 'other';
+  source: 'referral' | 'website' | 'cold_call' | 'field_nation' | 'existing_client' | 'partner' | 'trade_show' | 'linkedin' | 'other';
   stage: 'new' | 'contacted' | 'qualified' | 'proposal_sent' | 'negotiating' | 'won' | 'lost';
   estimatedValue: number;
   assignedTo: string;
@@ -835,16 +843,112 @@ export type Lead = {
   attachments?: LeadAttachment[];
   /** File name of the import source, when created by the lead importer. */
   importedFrom?: string;
+  // ── Sales detail (all optional — older leads predate these) ──
+  contactTitle?: string;
+  website?: string;
+  address?: string;
+  industry?: string;
+  /** Aaromach service lines in scope — see SERVICE_LINES in lib/crm. */
+  serviceLines?: string[];
+  /** Win probability 0–100. Falls back to the stage default when unset. */
+  probability?: number;
+  expectedCloseDate?: string;
+  nextStep?: string;
+  assignedToName?: string;
+  lostReasonCategory?: string;
+  /** Set whenever the stage changes — drives "days in stage". */
+  stageChangedAt?: string;
+  lastActivityAt?: string;
+  convertedToClient?: boolean;
+  /** Quotes written for this lead. */
+  quoteIds?: string[];
+  /** Account this deal belongs to (crmCompanies). */
+  companyId?: string;
+  /** Primary contact for this deal (crmContacts). */
+  contactId?: string;
+  /** Project ops runs once the deal is won. */
+  projectId?: string;
+};
+
+export type SurveyPhoto = { url: string; storagePath: string; caption?: string; uploadedAt: string };
+export type SurveyCloset = { name: string; location: string; rackNeeded: boolean; powerAvailable: boolean; grounded: boolean; notes: string };
+
+/** Pre-sale site walk for a deal — drives the quote and the ops project. */
+export type SiteSurvey = {
+  id: string;
+  leadId: string;
+  companyId?: string;
+  title: string;
+  status: 'draft' | 'complete';
+  surveyDate: string;
+  surveyedBy: string;
+  site: {
+    condition: string; squareFeet: number; floors: number; ceilingType: string; ceilingHeightFt: number;
+    afterHoursOnly: boolean; liftNeeded: boolean; permitRequired: boolean; unionSite: boolean;
+    accessNotes: string; hazardNotes: string;
+  };
+  cabling: {
+    dataDrops: number; voiceDrops: number; wapDrops: number; cameraDrops: number; otherDrops: number;
+    cableType: string; plenum: boolean; avgRunFt: number; pathways: string[]; removeExisting: boolean; notes: string;
+  };
+  closets: SurveyCloset[];
+  cameras: { indoor: number; outdoor: number; ptz: number; nvrLocation: string; retentionDays: number; existingSystem: string; notes: string };
+  access: { doors: number; readers: number; rex: number; existingSystem: string; notes: string };
+  wireless: { aps: number; existingSystem: string; coverageNotes: string };
+  av: { rooms: number; displays: number; notes: string };
+  fiber: { runs: number; strands: number; notes: string };
+  photos: SurveyPhoto[];
+  notes: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** A CRM account — one company can have many contacts and many deals. */
+export type CrmCompany = {
+  id: string;
+  name: string;
+  industry?: string;
+  website?: string;
+  address?: string;
+  phone?: string;
+  notes?: string;
+  ownerId?: string;
+  ownerName?: string;
+  /** Set once the account becomes a client in the app. */
+  clientUserId?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CrmContactRole = 'decision_maker' | 'influencer' | 'technical' | 'billing' | 'site_contact' | 'other';
+
+export type CrmContact = {
+  id: string;
+  companyId: string;
+  name: string;
+  title?: string;
+  email?: string;
+  phone?: string;
+  role?: CrmContactRole;
+  isPrimary?: boolean;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type LeadActivity = {
   id: string;
   leadId: string;
-  type: 'note' | 'call' | 'email' | 'meeting' | 'proposal' | 'follow_up';
+  type: 'note' | 'call' | 'email' | 'meeting' | 'proposal' | 'follow_up' | 'site_walk' | 'task';
   description: string;
   createdBy: string;
   createdAt: string;
   scheduledAt?: string;
+  /** Tasks only — when the task was checked off. */
+  completedAt?: string;
+  /** Calls only — connected / voicemail / no answer / etc. */
+  outcome?: string;
 };
 
 export type ProjectPayout = {
@@ -942,6 +1046,8 @@ export type Quote = {
   convertedToWorkOrderId: string | null;
   convertedToProjectId: string | null;
   convertedToInvoiceId: string | null;
+  /** CRM lead this quote was written for — approval marks that lead Won. */
+  leadId?: string | null;
 };
 
 export type AssetCategory = 'vehicle' | 'tool' | 'electronic' | 'inventory' | 'safety';

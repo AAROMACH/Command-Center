@@ -318,10 +318,17 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
           isAdmin()
           || isTech()
+          || isSales()
           || (isClient() && (resource.data.get('clientId', null) == request.auth.uid
               || (myCompany() != '' && resource.data.get('client', null) == myCompany())))
       );
-      allow create: if isAdmin();
+      // Sales can hand a won deal to ops — only as an on-hold project tied
+      // to the deal, with no crew assigned. Ops activates and staffs it.
+      allow create: if isAdmin()
+          || (isSales()
+              && request.resource.data.status == 'on-hold'
+              && request.resource.data.sourceLeadId is string
+              && request.resource.data.assignedTechnicianIds.size() == 0);
       allow update: if isAdmin()
           || (isTech() && (
               resource.data.assignedTechnicianIds.hasAny([request.auth.uid])
@@ -420,10 +427,13 @@ service cloud.firestore {
       // caller's specific token" (rules can't see query filter values), so
       // `resource.data.publicToken != null` ended up granting anonymous
       // read of every sent quote in the collection. Closed.
-      allow read: if isAdmin()
+      allow read: if isAdmin() || isSales()
           || (isSignedIn() && isClient() && resource.data.clientId == request.auth.uid);
-      allow create: if isAdmin();
-      allow update: if isAdmin();
+      // Sales quotes (role grants create/edit/send_quote). Approval itself
+      // only happens server-side through /api/public-quote.
+      allow create: if isAdmin() || isSales();
+      allow update: if isAdmin()
+          || (isSales() && request.resource.data.status != 'approved');
       allow delete: if isSuperAdmin();
     }
 
@@ -482,6 +492,10 @@ service cloud.firestore {
     match /notifications/{id} {
       allow create: if isAdmin();
       allow read, update, delete: if isAdmin();
+      // Everyone sees their own in-app alerts and can dismiss them — nothing else.
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
     }
 
     match /broadcasts/{id} {
@@ -619,6 +633,17 @@ service cloud.firestore {
     }
     match /leadActivities/{id} {
       allow read, write: if isAdmin() || isSales();
+    }
+    match /crmCompanies/{id} {
+      allow read, write: if isAdmin() || isSales();
+    }
+    match /crmContacts/{id} {
+      allow read, write: if isAdmin() || isSales();
+    }
+    // Pre-sale site surveys — techs read them once the job hands off.
+    match /siteSurveys/{id} {
+      allow read: if isAdmin() || isSales() || isTech();
+      allow write: if isAdmin() || isSales();
     }
 
     // Assets & materials (admin portal only)

@@ -4,10 +4,13 @@ import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import { db, auth } from '@/lib/firebase';
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
-import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { surveySummary } from '@/lib/crm-survey';
+import { useCrmPaths } from '@/lib/crm-paths';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
-import type { Quote, QuoteLineItem, QuoteOptionalGroup, QuoteOptionItem, QuoteStatus, Technician } from '@/lib/types';
+import { syncLeadOnQuoteCreated } from '@/lib/crm-actions';
+import type { Lead, SiteSurvey, Quote, QuoteLineItem, QuoteOptionalGroup, QuoteOptionItem, QuoteStatus, Technician } from '@/lib/types';
 import { isClient } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -91,11 +94,14 @@ function NewQuoteDialog({
   onClose,
   clients,
   onSaved,
+  prefillLead,
 }: {
   open: boolean;
   onClose: () => void;
   clients: Technician[];
   onSaved: () => void;
+  /** Start the quote from a CRM lead — customer details and scope carry over. */
+  prefillLead?: Lead | null;
 }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -104,7 +110,9 @@ function NewQuoteDialog({
     const unsub = onAuthStateChanged(auth, u => setFirebaseUser(u));
     return unsub;
   }, []);
-  const [customerType, setCustomerType] = useState<'in_app_client' | 'external_customer'>('in_app_client');
+  // The Sales Portal can't read client accounts, so it quotes external customers.
+  const inSalesPortal = useCrmPaths().inSalesPortal;
+  const [customerType, setCustomerType] = useState<'in_app_client' | 'external_customer'>(inSalesPortal ? 'external_customer' : 'in_app_client');
   const [clientId, setClientId] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerCompany, setCustomerCompany] = useState('');
@@ -122,6 +130,24 @@ function NewQuoteDialog({
   const [optionalGroups, setOptionalGroups] = useState<QuoteOptionalGroup[]>([]);
 
   const { subtotal, taxAmount, total } = useMemo(() => calcTotals(lineItems), [lineItems]);
+
+  useEffect(() => {
+    if (!open || !prefillLead) return;
+    setCustomerType('external_customer');
+    setCustomerName(prefillLead.contactName || prefillLead.companyName);
+    setCustomerCompany(prefillLead.companyName);
+    setCustomerEmail(prefillLead.contactEmail || '');
+    setCustomerPhone(prefillLead.contactPhone || '');
+    setTitle(prev => prev || [prefillLead.companyName, (prefillLead.serviceLines || []).join(' / ')].filter(Boolean).join(' — '));
+    setScopeSummary(prev => prev || [prefillLead.address, prefillLead.nextStep].filter(Boolean).join('\n'));
+    // Pull the site survey takeoff into the scope so pricing starts from real counts.
+    getDocs(query(collection(db, 'siteSurveys'), where('leadId', '==', prefillLead.id)))
+      .then(snap => {
+        const text = snap.docs.map(d => surveySummary({ ...d.data(), id: d.id } as SiteSurvey)).join('\n\n');
+        if (text) setScopeSummary(prev => prev.includes('Cabling:') || prev.includes('Site:') ? prev : [prev, text].filter(Boolean).join('\n\n'));
+      })
+      .catch(() => {});
+  }, [open, prefillLead?.id]);
 
   const updateLineItem = (idx: number, field: keyof QuoteLineItem, value: any) => {
     setLineItems(prev => prev.map((item, i) => {
@@ -234,8 +260,16 @@ function NewQuoteDialog({
         convertedToWorkOrderId: null,
         convertedToProjectId: null,
         convertedToInvoiceId: null,
+        leadId: prefillLead?.id ?? null,
       };
       await setDoc(doc(db, 'quotes', quoteId), { id: quoteId, ...quote });
+      if (prefillLead) {
+        try {
+          await syncLeadOnQuoteCreated(prefillLead, quoteId, total, firebaseUser.uid);
+        } catch {
+          toast({ variant: 'destructive', title: 'Quote saved, but the CRM lead was not updated' });
+        }
+      }
       toast({ title: 'Quote created', description: `${quoteId} saved as draft.` });
       onSaved();
       onClose();
@@ -527,6 +561,7 @@ function QuoteDetailSheet({
   onUpdated: () => void;
 }) {
   const { toast } = useToast();
+  const paths = useCrmPaths();
   const [acting, setActing] = useState(false);
 
   if (!quote) return null;
@@ -592,6 +627,9 @@ function QuoteDetailSheet({
           <div className="space-y-1">
             <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Customer</p>
             <p className="text-[13px] font-bold text-text-primary">{quote.customerName}</p>
+            {quote.leadId && (
+              <a href={paths.pipeline + `?lead=${quote.leadId}`} className="text-[10px] font-bold uppercase tracking-wider text-brand-red hover:underline">Linked CRM lead →</a>
+            )}
             {quote.customerCompany && <p className="text-[11px] text-text-secondary">{quote.customerCompany}</p>}
             {quote.customerEmail && (
               <p className="text-[11px] text-text-muted flex items-center gap-1"><Mail size={10} />{quote.customerEmail}</p>
@@ -778,6 +816,18 @@ export default function AdminQuotesPage() {
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useViewMode('quotes');
+  const [prefillLead, setPrefillLead] = useState<Lead | null>(null);
+
+  // /admin/quotes?leadId=… (from the CRM drawer) opens New Quote prefilled.
+  useEffect(() => {
+    const leadId = new URLSearchParams(window.location.search).get('leadId');
+    if (!leadId) return;
+    getDoc(doc(db, 'leads', leadId)).then(snap => {
+      if (!snap.exists()) return;
+      setPrefillLead({ ...snap.data(), id: snap.id } as Lead);
+      setIsNewOpen(true);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const u1 = onSnapshot(collection(db, 'quotes'), snap => {
@@ -791,7 +841,7 @@ export default function AdminQuotesPage() {
           .map(d => ({ ...d.data(), id: d.id } as Technician))
           .filter(isClient)
       );
-    });
+    }, () => setClients([]));
 
     return () => { u1(); u2(); };
   }, []);
@@ -849,9 +899,13 @@ export default function AdminQuotesPage() {
 
       <NewQuoteDialog
         open={isNewOpen}
-        onClose={() => setIsNewOpen(false)}
+        onClose={() => {
+          setIsNewOpen(false);
+          if (prefillLead) { setPrefillLead(null); window.history.replaceState(null, '', window.location.pathname); }
+        }}
         clients={clients}
         onSaved={() => {}}
+        prefillLead={prefillLead}
       />
 
       <QuoteDetailSheet

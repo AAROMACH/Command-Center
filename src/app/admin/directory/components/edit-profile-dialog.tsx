@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils';
 import {
   User, Phone, Mail, MapPin, Briefcase, Shield, Heart,
   FileText, Plus, X, Building2, DollarSign, Loader2, Globe,
-  ShieldCheck, Wrench,
+  ShieldCheck, Wrench, Handshake,
 } from 'lucide-react';
 
 type EditProfileDialogProps = {
@@ -45,6 +45,7 @@ const ROLE_ICONS: Partial<Record<AppRole, typeof User>> = Object.fromEntries(
 
 const PORTAL_GROUPS: { portal: SubrolePortal; label: string; icon: typeof User; accent: string }[] = [
   { portal: 'admin', label: 'Admin Subroles', icon: ShieldCheck, accent: 'text-brand-red' },
+  { portal: 'sales', label: 'Sales Subroles', icon: Handshake, accent: 'text-amber-400' },
   { portal: 'tech', label: 'Tech Subroles', icon: Wrench, accent: 'text-brand-blue' },
   { portal: 'client', label: 'Client Subroles', icon: Building2, accent: 'text-brand-emerald' },
 ];
@@ -149,7 +150,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
 
   // Portals unlocked by the currently-selected subroles.
   const unlockedPortals = (roles: AppRole[]): SubrolePortal[] =>
-    (['admin', 'tech', 'client'] as SubrolePortal[])
+    (['admin', 'sales', 'tech', 'client'] as SubrolePortal[])
       .filter(portal => roles.some(r => SUBROLE_DEFINITIONS[r]?.portal === portal));
 
   // Account Status vocabulary depends on the account type. Client accounts use
@@ -474,7 +475,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                       <SelectTrigger className={inputCls}><SelectValue placeholder="Auto (first available)" /></SelectTrigger>
                       <SelectContent className="bg-bg-elevated border-border-main">
                         <SelectItem value="__none__" className="text-[11px]">Auto (first available)</SelectItem>
-                        {(['admin', 'tech', 'client'] as SubrolePortal[])
+                        {(['admin', 'sales', 'tech', 'client'] as SubrolePortal[])
                           .filter(portal => form.roles.some(r => SUBROLE_DEFINITIONS[r]?.portal === portal))
                           .map(portal => (
                             <SelectItem key={portal} value={portal} className="text-[11px] capitalize">{portal} Portal</SelectItem>

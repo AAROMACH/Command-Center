@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { adminApp } from '@/lib/firebase-admin';
+import { buildProjectFromLead } from '@/lib/crm-handoff';
+import { deliverNotification, opsAdmins, usersById } from '@/lib/server/notify-delivery';
 
 // The public quote-approval page (src/app/public/quote/[token]) talks to
 // Firestore through this route instead of the client SDK directly. A
@@ -145,5 +147,92 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  if (typeof data.leadId === 'string' && data.leadId) {
+    // Best effort — the customer's answer is already saved; a CRM sync
+    // failure must not turn their approval into an error.
+    try {
+      await syncLeadWithQuoteAnswer(data.leadId, doc.id, action === 'approve', Number(data.total) || 0, now, data);
+    } catch (e) {
+      console.error('public-quote: lead sync failed', e);
+    }
+  }
+
   return NextResponse.json({ status: 'ok' });
+}
+
+/** Approved quote → lead Won at the quoted total. Rejected → timeline note only; sales decides what's next. */
+async function syncLeadWithQuoteAnswer(leadId: string, quoteId: string, approved: boolean, total: number, now: string, quote: any) {
+  const fs = getFirestore(adminApp);
+  const leadRef = fs.collection('leads').doc(leadId);
+  const lead = await leadRef.get();
+  if (!lead.exists) return;
+  const ld = lead.data()!;
+  const activities = fs.collection('leadActivities');
+  const note = (description: string, type = 'note') => {
+    const ref = activities.doc();
+    return ref.set({ id: ref.id, leadId, type, description, createdBy: 'system', createdAt: now });
+  };
+  if (approved) {
+    if (ld.stage !== 'won') {
+      await leadRef.update({
+        stage: 'won', probability: 100, closedAt: now, stageChangedAt: now, updatedAt: now, lastActivityAt: now,
+        ...(total > 0 ? { estimatedValue: total } : {}),
+      });
+      await note(`Quote ${quoteId} approved by customer — deal marked Won`);
+    } else {
+      await note(`Quote ${quoteId} approved by customer`);
+    }
+    if (!ld.projectId) {
+      const projectId = await nextProjectId(fs);
+      const lead = { ...ld, id: leadId, estimatedValue: total || ld.estimatedValue } as any;
+      const surveys = (await fs.collection('siteSurveys').where('leadId', '==', leadId).get()).docs.map(d => ({ ...d.data(), id: d.id } as any));
+      await fs.collection('projects').doc(projectId).set({
+        ...buildProjectFromLead(lead, {
+          quote: { id: quoteId, title: quote.title, scopeSummary: quote.scopeSummary, description: quote.description, total },
+          surveys, createdBy: 'system', now,
+        }),
+        id: projectId,
+      });
+      await leadRef.update({ projectId });
+      await note(`Handed off to ops — project ${projectId} created (on hold)`);
+      await deliverNotification(fs, await opsAdmins(fs), {
+        title: 'New project from sales',
+        body: `${ld.companyName} approved quote ${quoteId} ($${Math.round(total).toLocaleString()}).\nProject ${projectId} is on hold — assign a crew and set dates.`,
+        entity: { id: projectId, type: 'project' }, sentBy: 'system',
+      }).catch(e => console.error('public-quote: ops alert failed', e));
+    }
+    if (ld.assignedTo) {
+      await deliverNotification(fs, await usersById(fs, [ld.assignedTo]), {
+        title: 'Quote approved',
+        body: `${ld.companyName} approved quote ${quoteId} — $${Math.round(total).toLocaleString()}. The deal is marked Won.`,
+        entity: { id: leadId, type: 'lead' }, sentBy: 'system',
+      }).catch(e => console.error('public-quote: owner alert failed', e));
+    }
+  } else {
+    await leadRef.update({ updatedAt: now, lastActivityAt: now, followUpDate: now.slice(0, 10) });
+    await note(`Quote ${quoteId} rejected by customer — follow up`);
+    if (ld.assignedTo) {
+      await deliverNotification(fs, await usersById(fs, [ld.assignedTo]), {
+        title: 'Quote rejected',
+        body: `${ld.companyName} rejected quote ${quoteId}. Their reason is on the quote; a follow-up is set for today.`,
+        entity: { id: leadId, type: 'lead' }, sentBy: 'system',
+      }).catch(e => console.error('public-quote: owner alert failed', e));
+    }
+  }
+}
+
+/** Same counter scheme as lib/generateId (systemConfig/idCounters), via the Admin SDK. */
+async function nextProjectId(fs: FirebaseFirestore.Firestore): Promise<string> {
+  const ref = fs.collection('systemConfig').doc('idCounters');
+  try {
+    const n = await fs.runTransaction(async tx => {
+      const snap = await tx.get(ref);
+      const current = (snap.exists ? snap.data()?.prj : 0) ?? 0;
+      tx.set(ref, { prj: current + 1 }, { merge: true });
+      return current;
+    });
+    return `prj-${String(n).padStart(3, '0')}`;
+  } catch {
+    return `prj-${Date.now().toString(36)}`;
+  }
 }

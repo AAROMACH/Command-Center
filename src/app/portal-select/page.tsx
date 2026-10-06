@@ -9,7 +9,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { getAvailablePortals, getPortalAccess } from '@/lib/permissions';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Button } from '@/components/ui/button';
-import { LogOut, ShieldCheck, Wrench, Building2 } from 'lucide-react';
+import { LogOut, ShieldCheck, Wrench, Building2, Handshake } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Technician } from '@/lib/types';
 
@@ -37,6 +37,14 @@ const PORTAL_META = {
     color: 'text-brand-emerald',
     border: 'border-brand-emerald/30 hover:border-brand-emerald',
     bg: 'bg-brand-emerald/5 hover:bg-brand-emerald/10',
+  },
+  sales: {
+    icon: Handshake,
+    label: 'Sales Portal',
+    description: 'Pipeline, My Day, accounts, site surveys and quotes.',
+    color: 'text-amber-400',
+    border: 'border-amber-400/30 hover:border-amber-400',
+    bg: 'bg-amber-400/5 hover:bg-amber-400/10',
   },
 };
 

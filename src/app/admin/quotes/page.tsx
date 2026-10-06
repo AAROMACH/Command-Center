@@ -6,6 +6,7 @@ import { db, auth } from '@/lib/firebase';
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { surveySummary } from '@/lib/crm-survey';
+import { useCrmPaths } from '@/lib/crm-paths';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { syncLeadOnQuoteCreated } from '@/lib/crm-actions';
@@ -109,7 +110,9 @@ function NewQuoteDialog({
     const unsub = onAuthStateChanged(auth, u => setFirebaseUser(u));
     return unsub;
   }, []);
-  const [customerType, setCustomerType] = useState<'in_app_client' | 'external_customer'>('in_app_client');
+  // The Sales Portal can't read client accounts, so it quotes external customers.
+  const inSalesPortal = useCrmPaths().inSalesPortal;
+  const [customerType, setCustomerType] = useState<'in_app_client' | 'external_customer'>(inSalesPortal ? 'external_customer' : 'in_app_client');
   const [clientId, setClientId] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerCompany, setCustomerCompany] = useState('');
@@ -558,6 +561,7 @@ function QuoteDetailSheet({
   onUpdated: () => void;
 }) {
   const { toast } = useToast();
+  const paths = useCrmPaths();
   const [acting, setActing] = useState(false);
 
   if (!quote) return null;
@@ -624,7 +628,7 @@ function QuoteDetailSheet({
             <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Customer</p>
             <p className="text-[13px] font-bold text-text-primary">{quote.customerName}</p>
             {quote.leadId && (
-              <a href="/admin/crm" className="text-[10px] font-bold uppercase tracking-wider text-brand-red hover:underline">Linked CRM lead →</a>
+              <a href={paths.pipeline + `?lead=${quote.leadId}`} className="text-[10px] font-bold uppercase tracking-wider text-brand-red hover:underline">Linked CRM lead →</a>
             )}
             {quote.customerCompany && <p className="text-[11px] text-text-secondary">{quote.customerCompany}</p>}
             {quote.customerEmail && (
@@ -837,7 +841,7 @@ export default function AdminQuotesPage() {
           .map(d => ({ ...d.data(), id: d.id } as Technician))
           .filter(isClient)
       );
-    });
+    }, () => setClients([]));
 
     return () => { u1(); u2(); };
   }, []);
@@ -897,7 +901,7 @@ export default function AdminQuotesPage() {
         open={isNewOpen}
         onClose={() => {
           setIsNewOpen(false);
-          if (prefillLead) { setPrefillLead(null); window.history.replaceState(null, '', '/admin/quotes'); }
+          if (prefillLead) { setPrefillLead(null); window.history.replaceState(null, '', window.location.pathname); }
         }}
         clients={clients}
         onSaved={() => {}}

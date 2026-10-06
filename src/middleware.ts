@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PROTECTED_PREFIXES = ['/admin', '/tech', '/client'];
+const PROTECTED_PREFIXES = ['/admin', '/tech', '/client', '/sales'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -21,21 +21,14 @@ export function middleware(request: NextRequest) {
   if (portalsCookie) {
     try {
       const portals: Record<string, boolean> = JSON.parse(portalsCookie);
-      if (pathname.startsWith('/admin') && portals.admin === false) {
-        // Has session but no admin portal access — redirect to the first accessible portal
-        if (portals.tech) return NextResponse.redirect(new URL('/tech/dashboard', request.url));
-        if (portals.client) return NextResponse.redirect(new URL('/client/dashboard', request.url));
-        return NextResponse.redirect(new URL('/portal-select', request.url));
-      }
-      if (pathname.startsWith('/tech') && portals.tech === false) {
-        if (portals.admin) return NextResponse.redirect(new URL('/admin/dashboard', request.url));
-        if (portals.client) return NextResponse.redirect(new URL('/client/dashboard', request.url));
-        return NextResponse.redirect(new URL('/portal-select', request.url));
-      }
-      if (pathname.startsWith('/client') && portals.client === false) {
-        if (portals.admin) return NextResponse.redirect(new URL('/admin/dashboard', request.url));
-        if (portals.tech) return NextResponse.redirect(new URL('/tech/dashboard', request.url));
-        return NextResponse.redirect(new URL('/portal-select', request.url));
+      const HOME: Record<string, string> = {
+        admin: '/admin/dashboard', sales: '/sales/pipeline', tech: '/tech/dashboard', client: '/client/dashboard',
+      };
+      const current = Object.keys(HOME).find(p => pathname.startsWith(`/${p}`));
+      if (current && portals[current] !== true) {
+        // Signed in but not for this portal — send them to the first one they have.
+        const fallback = Object.keys(HOME).find(p => portals[p] === true);
+        return NextResponse.redirect(new URL(fallback ? HOME[fallback] : '/portal-select', request.url));
       }
     } catch {
       // Malformed cookie — allow through (session cookie is still valid)
@@ -46,5 +39,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/tech/:path*', '/client/:path*'],
+  matcher: ['/admin/:path*', '/tech/:path*', '/client/:path*', '/sales/:path*'],
 };

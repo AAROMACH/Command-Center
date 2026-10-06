@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, updateDoc, doc, addDoc } from 'firebase/firestore';
 import type { CrmCompany, CrmContact, Lead, LeadActivity, Quote, SiteSurvey } from '@/lib/types';
@@ -33,6 +33,7 @@ import {
   sourceLabel, leadsToCsv, downloadText,
 } from '@/lib/crm';
 import { changeLeadStage } from '@/lib/crm-actions';
+import { useCrmPaths } from '@/lib/crm-paths';
 
 const thCls = 'text-[9px] font-black uppercase tracking-widest text-text-muted';
 
@@ -194,6 +195,7 @@ function BarRows({ rows }: { rows: { label: string; value: number; display: stri
 export default function CRMPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const paths = useCrmPaths();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [activities, setActivities] = useState<LeadActivity[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -204,7 +206,10 @@ export default function CRMPage() {
   const [pendingLeadId, setPendingLeadId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [crmTab, setCrmTab] = useState('pipeline');
+  const pathname = usePathname();
+  // /sales/my-day is the same screen opened on the My Day tab.
+  const [crmTab, setCrmTab] = useState(() => (pathname?.endsWith('/my-day') ? 'myday' : 'pipeline'));
+  useEffect(() => { setCrmTab(pathname?.endsWith('/my-day') ? 'myday' : 'pipeline'); }, [pathname]);
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
   const [editLead, setEditLead] = useState<Lead | null>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -253,7 +258,7 @@ export default function CRMPage() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('lead')) setPendingLeadId(params.get('lead'));
     if (params.get('newDealFor')) setPendingLeadId(`company:${params.get('newDealFor')}`);
-    if (params.toString()) window.history.replaceState(null, '', '/admin/crm');
+    if (params.toString()) window.history.replaceState(null, '', window.location.pathname);
 
     return () => { unsubLeads(); unsubActivities(); unsubQuotes(); unsubCompanies(); unsubContacts(); unsubSurveys(); };
   }, []);
@@ -458,7 +463,7 @@ export default function CRMPage() {
       await updateDoc(doc(db, 'leads', convertLead.id), { stage: 'won', convertedToClient: true, updatedAt: new Date().toISOString() });
       toast({ title: 'Client created', description: `${convertLead.companyName} is now an active client.` });
       setConvertLead(null);
-      router.push('/admin/crm/clients');
+      if (paths.clients) router.push(paths.clients);
     } catch (e: any) {
       const denied = e?.code === 'permission-denied';
       toast({ variant: 'destructive', title: 'Failed to convert', description: denied ? 'Creating client accounts requires an admin.' : e.message });
@@ -495,12 +500,14 @@ export default function CRMPage() {
               <Upload size={12} className="mr-1.5" /> Import Leads
             </Button>
           )}
-          <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold uppercase tracking-wider border-border-main" onClick={() => router.push('/admin/crm/accounts')}>
+          <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold uppercase tracking-wider border-border-main" onClick={() => router.push(paths.accounts)}>
             <Users size={12} className="mr-1.5" /> Accounts
           </Button>
-          <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold uppercase tracking-wider border-border-main" onClick={() => router.push('/admin/crm/clients')}>
+          {paths.clients && (
+          <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold uppercase tracking-wider border-border-main" onClick={() => router.push(paths.clients!)}>
             <Building2 size={12} className="mr-1.5" /> Go To Clients
           </Button>
+          )}
         </div>
       </header>
 
@@ -841,7 +848,7 @@ export default function CRMPage() {
               </TableHeader>
               <TableBody>
                 {[...quotes].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')).map(q => (
-                  <TableRow key={q.id} className="border-border-sub hover:bg-bg-secondary cursor-pointer" onClick={() => router.push('/admin/quotes')}>
+                  <TableRow key={q.id} className="border-border-sub hover:bg-bg-secondary cursor-pointer" onClick={() => router.push(paths.quotes)}>
                     <TableCell className="font-bold text-[11px] uppercase text-text-primary">{q.title}</TableCell>
                     <TableCell className="text-[10px] text-text-muted">{q.customerName}</TableCell>
                     <TableCell className="text-[11px] font-black font-mono text-text-green">{formatMoney(q.total || 0)}</TableCell>

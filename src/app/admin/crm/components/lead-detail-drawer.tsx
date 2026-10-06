@@ -8,6 +8,7 @@ import { SiteSurveyDialog } from './site-survey-dialog';
 import { totalDrops } from '@/lib/crm-survey';
 import { contactRoleLabel } from '@/lib/crm-accounts';
 import { useRouter } from 'next/navigation';
+import { useCrmPaths } from '@/lib/crm-paths';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -65,6 +66,7 @@ function safeFormat(iso: string | undefined, fmt: string) {
 export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surveys = [], currentUserId, currentUserName, onClose, onEdit, onCloseDeal, onConvert }: Props) {
   const { toast } = useToast();
   const router = useRouter();
+  const paths = useCrmPaths();
   const [activityType, setActivityType] = useState<LeadActivity['type']>('call');
   const [callOutcome, setCallOutcome] = useState('');
   const [activityNote, setActivityNote] = useState('');
@@ -319,7 +321,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <p className={sectionLabel}>People at {lead.companyName}</p>
-                <Button size="sm" variant="ghost" className="h-6 px-2 text-[9px] font-bold uppercase" onClick={() => router.push('/admin/crm/accounts')}>
+                <Button size="sm" variant="ghost" className="h-6 px-2 text-[9px] font-bold uppercase" onClick={() => router.push(paths.accounts)}>
                   Account →
                 </Button>
               </div>
@@ -391,9 +393,15 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
               ) : (
                 <>
                   {lead.stage === 'won' && (lead.projectId ? (
-                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase tracking-wider" onClick={() => router.push(`/admin/projects/${lead.projectId}`)}>
-                      <Briefcase size={11} className="mr-1.5" /> View Project
-                    </Button>
+                    paths.project(lead.projectId) ? (
+                      <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase tracking-wider" onClick={() => router.push(paths.project(lead.projectId!)!)}>
+                        <Briefcase size={11} className="mr-1.5" /> View Project
+                      </Button>
+                    ) : (
+                      <span className="h-8 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-text-green">
+                        <Briefcase size={11} /> With ops · {lead.projectId}
+                      </span>
+                    )
                   ) : (
                     <Button size="sm" className="h-8 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white" onClick={handOff} disabled={movingStage}>
                       <Briefcase size={11} className="mr-1.5" /> Hand off to Ops
@@ -446,12 +454,12 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
             <div className="flex items-center justify-between">
               <p className={sectionLabel}>Quotes ({leadQuotes.length})</p>
               <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase tracking-wider"
-                onClick={() => router.push(`/admin/quotes?leadId=${encodeURIComponent(lead.id)}`)}>
+                onClick={() => router.push(`${paths.quotes}?leadId=${encodeURIComponent(lead.id)}`)}>
                 <FileText size={10} className="mr-1.5" /> Create Quote
               </Button>
             </div>
             {leadQuotes.map(q => (
-              <button key={q.id} onClick={() => router.push('/admin/quotes')}
+              <button key={q.id} onClick={() => router.push(paths.quotes)}
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border-sub bg-bg-primary hover:border-border-main text-left">
                 <FileText size={12} className="text-brand-red shrink-0" />
                 <span className="flex-1 min-w-0">

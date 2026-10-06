@@ -23,6 +23,7 @@ import {
   DatabaseZap, FileText, ArrowLeft,
 } from 'lucide-react';
 import { INDUSTRIES, STAGES, isOpen, formatMoney } from '@/lib/crm';
+import { useCrmPaths } from '@/lib/crm-paths';
 import { CONTACT_ROLES, contactRoleLabel, saveCompany, saveContact, backfillAccountsFromLeads, findCompany } from '@/lib/crm-accounts';
 
 const thCls = 'text-[9px] font-black uppercase tracking-widest text-text-muted';
@@ -37,6 +38,7 @@ const EMPTY_CONTACT: ContactForm = { name: '', title: '', email: '', phone: '', 
 export default function AccountsPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const paths = useCrmPaths();
   const { user } = useAuth();
   const [companies, setCompanies] = useState<CrmCompany[]>([]);
   const [contacts, setContacts] = useState<CrmContact[]>([]);
@@ -174,7 +176,7 @@ export default function AccountsPage() {
           <p className="page-subtitle">Companies, their people, and every deal you've worked with them.</p>
         </div>
         <div className="page-header-right gap-2">
-          <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold uppercase tracking-wider border-border-main" onClick={() => router.push('/admin/crm')}>
+          <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold uppercase tracking-wider border-border-main" onClick={() => router.push(paths.pipeline)}>
             <ArrowLeft size={12} className="mr-1.5" /> Pipeline
           </Button>
           <Button size="sm" className="h-9 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setCompanyForm(EMPTY_COMPANY)}>
@@ -336,14 +338,14 @@ export default function AccountsPage() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-1.5"><Target size={10} /> Deals ({selected.deals.length})</p>
-                    <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase" onClick={() => router.push(`/admin/crm?newDealFor=${selected.company.id}`)}>
+                    <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase" onClick={() => router.push(`${paths.pipeline}?newDealFor=${selected.company.id}`)}>
                       <Plus size={10} className="mr-1" /> New Deal
                     </Button>
                   </div>
                   {[...selected.deals].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')).map(d => {
                     const s = STAGES.find(x => x.key === d.stage);
                     return (
-                      <button key={d.id} onClick={() => router.push(`/admin/crm?lead=${d.id}`)}
+                      <button key={d.id} onClick={() => router.push(`${paths.pipeline}?lead=${d.id}`)}
                         className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border-sub bg-bg-primary hover:border-border-main text-left">
                         <span className="flex-1 min-w-0">
                           <span className="block text-[11px] font-bold text-text-primary truncate">{(d.serviceLines || []).join(' / ') || d.nextStep || 'Deal'}</span>
@@ -361,7 +363,7 @@ export default function AccountsPage() {
                   <div className="space-y-2">
                     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-1.5"><FileText size={10} /> Quotes ({selectedQuotes.length})</p>
                     {selectedQuotes.map(q => (
-                      <button key={q.id} onClick={() => router.push('/admin/quotes')} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border-sub bg-bg-primary hover:border-border-main text-left">
+                      <button key={q.id} onClick={() => router.push(paths.quotes)} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border-sub bg-bg-primary hover:border-border-main text-left">
                         <span className="flex-1 min-w-0 text-[11px] font-bold text-text-primary truncate">{q.title}</span>
                         <span className="text-[11px] font-black tabular-nums text-text-green">{formatMoney(q.total || 0)}</span>
                         <span className="text-[8px] font-black uppercase text-text-muted">{q.status.replace(/_/g, ' ')}</span>

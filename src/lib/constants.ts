@@ -9,6 +9,7 @@ export const TERMINOLOGY = {
     ADMIN: "Command Center",
     TECH: "Field Terminal",
     CLIENT: "Client Portal",
+    SALES: "Sales Portal",
   },
   ENTITIES: {
     OPERATIVE: "Field Technician",

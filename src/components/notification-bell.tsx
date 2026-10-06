@@ -51,7 +51,7 @@ export function NotificationBell() {
 
   // Listen to Firestore broadcasts in real-time
   useEffect(() => {
-    const currentPortal = pathname.includes('/tech') ? 'tech' : pathname.includes('/client') ? 'client' : 'admin';
+    const currentPortal = pathname.includes('/tech') ? 'tech' : pathname.includes('/client') ? 'client' : pathname.startsWith('/sales') ? 'sales' : 'admin';
     const q = query(collection(db, 'broadcasts'));
     const unsub = onSnapshot(q, (snap) => {
         const now = new Date();
@@ -69,7 +69,7 @@ export function NotificationBell() {
   }, [pathname]);
 
   const fetchMessages = useCallback(() => {
-    const currentPortal = pathname.includes('/tech') ? 'tech' : pathname.includes('/client') ? 'client' : 'admin';
+    const currentPortal = pathname.includes('/tech') ? 'tech' : pathname.includes('/client') ? 'client' : pathname.startsWith('/sales') ? 'sales' : 'admin';
     const now = new Date();
 
     // 1. Load Broadcast Ledger (Custom messages from same device/session)

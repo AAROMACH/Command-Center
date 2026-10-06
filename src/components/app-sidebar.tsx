@@ -109,6 +109,19 @@ const adminNavGroups: NavGroup[] = [
   },
 ];
 
+// Sales Portal — the CRM screens without any Admin Portal pages.
+const salesNavGroups: NavGroup[] = [
+  {
+    label: "Selling",
+    items: [
+      { href: "/sales/my-day",   label: "My Day",   icon: CalendarDays, permission: "admin.crm.view" },
+      { href: "/sales/pipeline",           label: "Pipeline", icon: Target,       permission: "admin.crm.view" },
+      { href: "/sales/accounts",           label: "Accounts", icon: Users,        permission: "admin.crm.view" },
+      { href: "/sales/quotes",             label: "Quotes",   icon: FileSearch,   permission: "admin.crm.view" },
+    ],
+  },
+];
+
 const techNavGroups: NavGroup[] = [
   {
     label: "Overview",
@@ -239,7 +252,8 @@ export function AppSidebar() {
 
   const isTechPortal = pathname.startsWith("/tech");
   const isClientPortal = pathname.startsWith("/client");
-  const isAdminPortal = !isTechPortal && !isClientPortal;
+  const isSalesPortal = pathname.startsWith("/sales");
+  const isAdminPortal = !isTechPortal && !isClientPortal && !isSalesPortal;
 
   // Admin "new item just landed" pings (bouncing "!") on Dispatch Hub and
   // Assignments — same keys/lists as the Dispatch page (hooks/use-new-arrivals).
@@ -276,10 +290,10 @@ export function AppSidebar() {
   const pingAssignments = useNewArrivals(ARRIVAL_KEYS.assignments, arrivalData.assignments ?? EMPTY, { ready: arrivalData.assignments !== null, viewing: onAdminAssignments });
   const dispatchPing = isAdminPortal ? pingUnassigned.newCount + pingReview.newCount + pingRequests.newCount : 0;
   const assignmentsPing = isAdminPortal ? pingAssignments.newCount : 0;
-  const portalLabel = isTechPortal ? "Field Terminal" : isClientPortal ? "Client Portal" : "Command Center";
-  const dashboardHref = isTechPortal ? "/tech/dashboard" : isClientPortal ? "/client/dashboard" : "/admin/dashboard";
+  const portalLabel = isTechPortal ? "Field Terminal" : isClientPortal ? "Client Portal" : isSalesPortal ? "Sales Portal" : "Command Center";
+  const dashboardHref = isTechPortal ? "/tech/dashboard" : isClientPortal ? "/client/dashboard" : isSalesPortal ? "/sales/pipeline" : "/admin/dashboard";
 
-  const activeNavGroups = isTechPortal ? techNavGroups : isClientPortal ? clientNavGroups : adminNavGroups;
+  const activeNavGroups = isTechPortal ? techNavGroups : isClientPortal ? clientNavGroups : isSalesPortal ? salesNavGroups : adminNavGroups;
 
   const filteredGroups = useMemo(() => {
     return activeNavGroups

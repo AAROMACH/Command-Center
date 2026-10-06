@@ -9,13 +9,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Layers, ChevronDown, ShieldCheck, Wrench, Building2 } from 'lucide-react';
+import { Layers, ChevronDown, ShieldCheck, Wrench, Building2, Handshake } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const PORTAL_ICONS = {
   admin: ShieldCheck,
   tech: Wrench,
   client: Building2,
+  sales: Handshake,
 };
 
 export function PortalSwitcher({ collapsed = false }: { collapsed?: boolean }) {

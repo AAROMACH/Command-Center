@@ -229,7 +229,7 @@ export type Technician = {
   /** @deprecated Portal access is derived from subroles (see getPortalAccess).
    *  No longer written; retained only so legacy documents type-check on read. */
   portalAccess?: { admin?: boolean; tech?: boolean; client?: boolean };
-  primaryPortal?: 'admin' | 'tech' | 'client';
+  primaryPortal?: 'admin' | 'tech' | 'client' | 'sales';
   messagingBlockedClientIds?: string[];
   messagingAllowedRoles?: 'all' | 'admins' | 'techs' | 'clients' | 'none';
   /** Broadcast ids this user has acknowledged/cleared — synced so a dismissal

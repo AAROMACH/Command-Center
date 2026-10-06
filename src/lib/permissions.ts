@@ -319,7 +319,7 @@ export function permissionLabel(perm: Permission | string): string {
 }
 
 export type Portal = {
-  id: 'admin' | 'tech' | 'client';
+  id: SubrolePortal;
   label: string;
   path: string;
 };
@@ -331,7 +331,7 @@ export type Portal = {
 // derived from subroles alone (never from individual permission overrides).
 // All selectors, access summaries, portal checks and permission presets read
 // from this map.
-export type SubrolePortal = 'admin' | 'tech' | 'client';
+export type SubrolePortal = 'admin' | 'tech' | 'client' | 'sales';
 
 export type SubroleDefinition = {
   portal: SubrolePortal;
@@ -400,17 +400,18 @@ export const SUBROLE_DEFINITIONS: Record<AppRole, SubroleDefinition> = {
       'admin.directory.view', 'admin.reports.view', 'admin.reports.generate',
     ],
   },
+  // Its own portal (/sales) — no Admin Portal access. The CRM action
+  // permissions keep their admin.crm.* keys because admins hold the same
+  // abilities inside /admin/crm; none of them unlock an admin page.
   sales: {
-    portal: 'admin',
+    portal: 'sales',
     label: 'Sales',
-    description: 'CRM — leads, opportunities, quotes and lead import.',
+    description: 'Sales Portal — pipeline, My Day, accounts, site surveys and quotes. No Admin Portal access.',
     permissions: [
-      'admin.dashboard.view', 'admin.crm.view', 'admin.crm.view_leads', 'admin.crm.manage_leads',
+      'admin.crm.view', 'admin.crm.view_leads', 'admin.crm.manage_leads',
       'admin.crm.create_lead', 'admin.crm.create_opportunity', 'admin.crm.create_quote',
       'admin.crm.edit_quote', 'admin.crm.send_quote', 'admin.crm.mark_won', 'admin.crm.mark_lost',
       'admin.crm.import_leads',
-      'admin.projects.view', 'admin.clients.view', 'admin.directory.view',
-      'admin.reports.view', 'admin.reports.generate',
     ],
   },
   field_technician: {
@@ -452,6 +453,7 @@ export const SUBROLES_BY_PORTAL: Record<SubrolePortal, AppRole[]> = {
   admin: APP_ROLES.filter(r => SUBROLE_DEFINITIONS[r].portal === 'admin'),
   tech: APP_ROLES.filter(r => SUBROLE_DEFINITIONS[r].portal === 'tech'),
   client: APP_ROLES.filter(r => SUBROLE_DEFINITIONS[r].portal === 'client'),
+  sales: APP_ROLES.filter(r => SUBROLE_DEFINITIONS[r].portal === 'sales'),
 };
 
 // Map a legacy free-text `role` value (e.g. "Technician", "Dispatcher") to a
@@ -598,8 +600,8 @@ export function isClient(user: RoleLike | null | undefined): boolean {
 // no subrole for. This is the same value written to the login `aaromach_portals`
 // cookie (middleware) and consumed by the client route guard (canAccessPath),
 // so edge and client agree on one effective result.
-export function getPortalAccess(user: Technician | null | undefined): { admin: boolean; tech: boolean; client: boolean } {
-  if (!user) return { admin: false, tech: false, client: false };
+export function getPortalAccess(user: Technician | null | undefined): { admin: boolean; tech: boolean; client: boolean; sales: boolean } {
+  if (!user) return { admin: false, tech: false, client: false, sales: false };
   // Subroles are the authority. The legacy `portalAccess.{portal} === true`
   // grant and the removed admin roles are honoured ONLY additively, purely so
   // pre-subrole accounts are never locked out (migration safety net). They can
@@ -611,6 +613,7 @@ export function getPortalAccess(user: Technician | null | undefined): { admin: b
     admin: hasPortalSubrole(user, 'admin') || legacyAdmin,
     tech: hasPortalSubrole(user, 'tech') || legacy.tech === true,
     client: hasPortalSubrole(user, 'client') || legacy.client === true,
+    sales: hasPortalSubrole(user, 'sales'),
   };
 }
 
@@ -621,5 +624,6 @@ export function getAvailablePortals(user: Technician | null | undefined): Portal
   if (access.admin) portals.push({ id: 'admin', label: TERMINOLOGY.PORTAL.ADMIN, path: '/admin/dashboard' });
   if (access.tech) portals.push({ id: 'tech', label: TERMINOLOGY.PORTAL.TECH, path: '/tech/dashboard' });
   if (access.client) portals.push({ id: 'client', label: TERMINOLOGY.PORTAL.CLIENT, path: '/client/dashboard' });
+  if (access.sales) portals.push({ id: 'sales', label: TERMINOLOGY.PORTAL.SALES, path: '/sales/pipeline' });
   return portals;
 }

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import type { Technician, WorkOrder, TimeOffRequest, ReliabilityEvent, ProjectDocument, ProjectDailyLog } from '@/lib/types';
-import { isAdmin as isAdminRole, isTech as isTechRole, isClient as isClientRole } from '@/lib/permissions';
+import { isAdmin as isAdminRole, isSales as isSalesRole, isTech as isTechRole, isClient as isClientRole } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -212,7 +212,7 @@ export function PersonnelDetailDialog({ isOpen, setIsOpen, person, workOrders, a
 
   const isTechnician = useMemo(() => (person ? isTechRole(person) : false), [person]);
 
-  const isStaff = useMemo(() => (person ? isAdminRole(person) : false), [person]);
+  const isStaff = useMemo(() => (person ? isAdminRole(person) || isSalesRole(person) : false), [person]);
 
   const isClient = useMemo(() => (person ? isClientRole(person) : false), [person]);
 

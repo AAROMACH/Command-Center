@@ -294,6 +294,11 @@ export type Project = {
   estimatedHours?: number;
   actualBudget?: number;
   actualHours?: number;
+  /** Set when the project came from a won CRM deal. */
+  sourceLeadId?: string;
+  sourceQuoteId?: string | null;
+  soldBy?: string;
+  handoffAt?: string;
 };
 
 export type Phase = {
@@ -858,6 +863,8 @@ export type Lead = {
   companyId?: string;
   /** Primary contact for this deal (crmContacts). */
   contactId?: string;
+  /** Project ops runs once the deal is won. */
+  projectId?: string;
 };
 
 /** A CRM account — one company can have many contacts and many deals. */

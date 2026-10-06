@@ -26,7 +26,7 @@ import {
   STAGES, STAGE_LABELS, STAGE_COLORS, OPEN_STAGES, ACTIVITY_TYPES, CALL_OUTCOMES, sourceLabel,
   probabilityOf, weightedValue, daysSince, lastTouch, isStale, todayKey, formatMoney,
 } from '@/lib/crm';
-import { changeLeadStage, logLeadActivity } from '@/lib/crm-actions';
+import { changeLeadStage, logLeadActivity, handOffToOps } from '@/lib/crm-actions';
 
 const ACTIVITY_ICONS: Record<LeadActivity['type'], React.ElementType> = {
   call: Phone,
@@ -153,6 +153,18 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], curr
       toast({ title: `Moved to ${STAGE_LABELS[stage]}` });
     } catch {
       toast({ title: 'Failed to update stage', variant: 'destructive' });
+    } finally {
+      setMovingStage(false);
+    }
+  }
+
+  async function handOff() {
+    setMovingStage(true);
+    try {
+      const id = await handOffToOps(lead!, quotes, currentUserId);
+      toast({ title: 'Handed off to ops', description: `Project ${id} created (on hold).` });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Hand-off failed', description: e?.code === 'permission-denied' ? 'Deploy the latest Firestore rules, or ask an admin.' : e?.message });
     } finally {
       setMovingStage(false);
     }
@@ -374,6 +386,15 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], curr
                 </>
               ) : (
                 <>
+                  {lead.stage === 'won' && (lead.projectId ? (
+                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase tracking-wider" onClick={() => router.push(`/admin/projects/${lead.projectId}`)}>
+                      <Briefcase size={11} className="mr-1.5" /> View Project
+                    </Button>
+                  ) : (
+                    <Button size="sm" className="h-8 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white" onClick={handOff} disabled={movingStage}>
+                      <Briefcase size={11} className="mr-1.5" /> Hand off to Ops
+                    </Button>
+                  ))}
                   {lead.stage === 'won' && !lead.convertedToClient && (
                     <Button size="sm" className="h-8 text-[10px] font-bold uppercase tracking-wider bg-text-green/20 hover:bg-text-green/30 text-text-green border border-text-green/30" onClick={() => onConvert(lead)}>
                       <UserCheck size={11} className="mr-1.5" /> Convert to Client

@@ -318,10 +318,17 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
           isAdmin()
           || isTech()
+          || isSales()
           || (isClient() && (resource.data.get('clientId', null) == request.auth.uid
               || (myCompany() != '' && resource.data.get('client', null) == myCompany())))
       );
-      allow create: if isAdmin();
+      // Sales can hand a won deal to ops — only as an on-hold project tied
+      // to the deal, with no crew assigned. Ops activates and staffs it.
+      allow create: if isAdmin()
+          || (isSales()
+              && request.resource.data.status == 'on-hold'
+              && request.resource.data.sourceLeadId is string
+              && request.resource.data.assignedTechnicianIds.size() == 0);
       allow update: if isAdmin()
           || (isTech() && (
               resource.data.assignedTechnicianIds.hasAny([request.auth.uid])

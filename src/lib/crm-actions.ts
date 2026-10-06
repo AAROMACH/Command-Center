@@ -1,8 +1,11 @@
 import { db } from './firebase';
-import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { createDocId } from './generateId';
+import { ID_PREFIXES } from './constants';
+import { buildProjectFromLead } from './crm-handoff';
 import { makeLeadActivityId } from './doc-ids';
 import { STAGE_LABELS, type Stage } from './crm';
-import type { Lead, LeadActivity } from './types';
+import type { Lead, LeadActivity, Quote } from './types';
 
 /** Writes an activity and bumps the lead's last-touch timestamps. */
 export async function logLeadActivity(
@@ -66,4 +69,17 @@ export async function syncLeadOnQuoteCreated(lead: Lead, quoteId: string, total:
     description: `Quote ${quoteId} created${total > 0 ? ` — $${Math.round(total).toLocaleString()}` : ''}`,
     createdBy: userId,
   });
+}
+
+/** Creates the ops project for a won deal and links it back. Returns the project id. */
+export async function handOffToOps(lead: Lead, quotes: Quote[], userId: string): Promise<string> {
+  if (lead.projectId) return lead.projectId;
+  const quote = quotes
+    .filter(q => (q.leadId === lead.id || (lead.quoteIds || []).includes(q.id)) && (q.status === 'approved' || q.status.startsWith('converted')))
+    .sort((a, b) => (b.approvedAt || b.updatedAt || '').localeCompare(a.approvedAt || a.updatedAt || ''))[0];
+  const projectId = await createDocId(ID_PREFIXES.PROJECT);
+  await setDoc(doc(db, 'projects', projectId), { ...buildProjectFromLead(lead, { quote, createdBy: userId }), id: projectId });
+  await updateDoc(doc(db, 'leads', lead.id), { projectId, updatedAt: new Date().toISOString() });
+  await logLeadActivity(lead.id, { type: 'note', description: `Handed off to ops — project ${projectId} created (on hold)`, createdBy: userId }, false);
+  return projectId;
 }

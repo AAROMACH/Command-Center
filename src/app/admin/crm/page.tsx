@@ -959,7 +959,7 @@ export default function CRMPage() {
         onConvert={setConvertLead}
       />
 
-      <CloseDealDialog lead={closing?.lead ?? null} outcome={closing?.outcome ?? null} currentUserId={currentUserId} onClose={() => setClosing(null)} />
+      <CloseDealDialog lead={closing?.lead ?? null} outcome={closing?.outcome ?? null} currentUserId={currentUserId} quotes={quotes} onClose={() => setClosing(null)} />
 
       <Dialog open={!!convertLead} onOpenChange={v => !v && setConvertLead(null)}>
         <DialogContent className="bg-bg-elevated border-border-main max-w-sm">

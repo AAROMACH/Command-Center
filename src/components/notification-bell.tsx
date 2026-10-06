@@ -25,6 +25,28 @@ export function NotificationBell() {
   const { user } = useAuth();
   const [messages, setMessages] = useState<AdminMessage[]>([]);
   const [firestoreBroadcasts, setFirestoreBroadcasts] = useState<AdminMessage[]>([]);
+  // Personal alerts (CRM digest, quote answers, hand-offs…) — the in-app
+  // 'push' record /api/notify writes for every recipient.
+  const [personal, setPersonal] = useState<AdminMessage[]>([]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const q = query(collection(db, 'notifications'), where('userId', '==', user.id));
+    return onSnapshot(q, (snap) => {
+      setPersonal(snap.docs
+        .map(d => d.data())
+        .filter(n => n.type === 'push' && !n.read)
+        .map(n => ({
+          id: `notif:${n.id}`,
+          subject: String(n.title || '').replace(/^\[AAROMACH\]\s*/, ''),
+          body: n.body,
+          type: /approved|won|new project/i.test(n.title) ? 'success' : /rejected|stale|overdue/i.test(n.body) ? 'warning' : 'info',
+          timestamp: n.timestamp,
+          targetPortal: 'all',
+          senderName: 'Command Center',
+        } as AdminMessage)));
+    }, () => setPersonal([]));
+  }, [user?.id]);
   const [open, setOpen] = useState(false);
 
   // Listen to Firestore broadcasts in real-time
@@ -75,7 +97,7 @@ export function NotificationBell() {
 
     // Merge localStorage broadcasts with Firestore broadcasts (deduplicate by id)
     // (Demo messages from lib/data used to be mixed in here — real ones only now.)
-    const allMessages = [...firestoreBroadcasts, ...storedMessages];
+    const allMessages = [...personal, ...firestoreBroadcasts, ...storedMessages];
 
     // Filter by Portal AND verify not cleared AND not revoked AND not expired
     const filtered = allMessages.filter(m => {
@@ -92,7 +114,7 @@ export function NotificationBell() {
     const sorted = unique.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     setMessages(sorted);
-  }, [pathname, firestoreBroadcasts, user?.acknowledgedBroadcastIds]);
+  }, [pathname, firestoreBroadcasts, personal, user?.acknowledgedBroadcastIds]);
 
   useEffect(() => {
     fetchMessages();
@@ -106,6 +128,11 @@ export function NotificationBell() {
   }, [fetchMessages]);
 
   const handleClearMessage = (id: string, subject: string) => {
+    if (id.startsWith('notif:')) {
+      updateDoc(doc(db, 'notifications', id.slice(6)), { read: true }).catch(() => {});
+      setPersonal(prev => prev.filter(m => m.id !== id));
+      return;
+    }
     // Persist per-user in Firestore so the acknowledgment syncs across devices.
     if (user?.id) {
         updateDoc(doc(db, 'users', user.id), { acknowledgedBroadcastIds: arrayUnion(id) })

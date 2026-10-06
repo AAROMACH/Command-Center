@@ -1,6 +1,6 @@
 import { auth } from './firebase';
 
-type Entity = { id: string; type: 'assignment' | 'project' | 'request' };
+type Entity = { id: string; type: 'assignment' | 'project' | 'request' | 'lead' };
 
 /**
  * Notifications go through /api/notify, which resolves recipients, checks

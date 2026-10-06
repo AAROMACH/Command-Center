@@ -3,6 +3,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { adminApp } from '@/lib/firebase-admin';
 import { buildProjectFromLead } from '@/lib/crm-handoff';
+import { deliverNotification, opsAdmins, usersById } from '@/lib/server/notify-delivery';
 
 // The public quote-approval page (src/app/public/quote/[token]) talks to
 // Firestore through this route instead of the client SDK directly. A
@@ -194,10 +195,29 @@ async function syncLeadWithQuoteAnswer(leadId: string, quoteId: string, approved
       });
       await leadRef.update({ projectId });
       await note(`Handed off to ops — project ${projectId} created (on hold)`);
+      await deliverNotification(fs, await opsAdmins(fs), {
+        title: 'New project from sales',
+        body: `${ld.companyName} approved quote ${quoteId} ($${Math.round(total).toLocaleString()}).\nProject ${projectId} is on hold — assign a crew and set dates.`,
+        entity: { id: projectId, type: 'project' }, sentBy: 'system',
+      }).catch(e => console.error('public-quote: ops alert failed', e));
+    }
+    if (ld.assignedTo) {
+      await deliverNotification(fs, await usersById(fs, [ld.assignedTo]), {
+        title: 'Quote approved',
+        body: `${ld.companyName} approved quote ${quoteId} — $${Math.round(total).toLocaleString()}. The deal is marked Won.`,
+        entity: { id: leadId, type: 'lead' }, sentBy: 'system',
+      }).catch(e => console.error('public-quote: owner alert failed', e));
     }
   } else {
     await leadRef.update({ updatedAt: now, lastActivityAt: now, followUpDate: now.slice(0, 10) });
     await note(`Quote ${quoteId} rejected by customer — follow up`);
+    if (ld.assignedTo) {
+      await deliverNotification(fs, await usersById(fs, [ld.assignedTo]), {
+        title: 'Quote rejected',
+        body: `${ld.companyName} rejected quote ${quoteId}. Their reason is on the quote; a follow-up is set for today.`,
+        entity: { id: leadId, type: 'lead' }, sentBy: 'system',
+      }).catch(e => console.error('public-quote: owner alert failed', e));
+    }
   }
 }
 

@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import { LOST_REASONS } from '@/lib/crm';
 import { changeLeadStage, handOffToOps } from '@/lib/crm-actions';
+import { NotificationService } from '@/lib/notification-service';
 
 type Props = {
   lead: Lead | null;
@@ -64,6 +65,9 @@ export function CloseDealDialog({ lead, outcome, currentUserId, quotes = [], sur
           toast({ variant: 'destructive', title: 'Deal won, but the project was not created', description: 'Use "Hand off to Ops" on the deal to retry.' });
         }
       } else {
+        if (won) {
+          NotificationService.notifyAdmins('Deal won', `${lead!.companyName} closed at $${(Number(value) || 0).toLocaleString()}. No project was created yet.`, { id: lead!.id, type: 'lead' });
+        }
         toast({ title: won ? 'Deal won 🎉' : 'Deal marked lost' });
       }
       onClose();

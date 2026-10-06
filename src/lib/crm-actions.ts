@@ -3,6 +3,7 @@ import { addDoc, collection, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { createDocId } from './generateId';
 import { ID_PREFIXES } from './constants';
 import { buildProjectFromLead } from './crm-handoff';
+import { NotificationService } from './notification-service';
 import { makeLeadActivityId } from './doc-ids';
 import { STAGE_LABELS, type Stage } from './crm';
 import type { Lead, LeadActivity, Quote, SiteSurvey } from './types';
@@ -81,5 +82,11 @@ export async function handOffToOps(lead: Lead, quotes: Quote[], userId: string, 
   await setDoc(doc(db, 'projects', projectId), { ...buildProjectFromLead(lead, { quote, surveys: surveys.filter(s => s.leadId === lead.id), createdBy: userId }), id: projectId });
   await updateDoc(doc(db, 'leads', lead.id), { projectId, updatedAt: new Date().toISOString() });
   await logLeadActivity(lead.id, { type: 'note', description: `Handed off to ops — project ${projectId} created (on hold)`, createdBy: userId }, false);
+  // Fire-and-forget: the hand-off is done whether or not the alert lands.
+  NotificationService.notifyAdmins(
+    'New project from sales',
+    `${lead.companyName} was won${lead.estimatedValue ? ` ($${Math.round(lead.estimatedValue).toLocaleString()})` : ''}${lead.assignedToName ? ` by ${lead.assignedToName}` : ''}.\nProject ${projectId} is on hold — assign a crew and set dates to kick it off.`,
+    { id: projectId, type: 'project' },
+  );
   return projectId;
 }

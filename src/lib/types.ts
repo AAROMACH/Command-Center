@@ -60,7 +60,9 @@ export type Notification = {
   timestamp: string;
   status: 'sent' | 'failed' | 'pending';
   relatedEntityId?: string;
-  relatedEntityType?: 'assignment' | 'project' | 'request';
+  relatedEntityType?: 'assignment' | 'project' | 'request' | 'lead';
+  /** In-app alert dismissed from the bell. */
+  read?: boolean;
 };
 
 export type SlaStatus = 'on-track' | 'at-risk' | 'breached' | 'met';

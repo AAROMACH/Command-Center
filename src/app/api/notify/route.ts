@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
+import { deliverNotification } from '@/lib/server/notify-delivery';
 
 /**
  * Sends a notification (in-app record + email/SMS per the recipient's
@@ -24,7 +25,7 @@ type NotifyPayload = {
   audience?: Audience;
   title: string;
   body: string;
-  entity?: { id: string; type: 'assignment' | 'project' | 'request' };
+  entity?: { id: string; type: 'assignment' | 'project' | 'request' | 'lead' };
 };
 
 const ADMIN_ROLES = ['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'];
@@ -39,57 +40,6 @@ const rolesOf = (u: Record<string, any>): string[] => [
 ];
 const isAdminUser = (u: Record<string, any>) => rolesOf(u).some(r => r === 'admin' || ADMIN_ROLES.includes(r));
 const isActive = (u: Record<string, any>) => u.accountStatus !== 'inactive' && u.approvalStatus !== 'pending' && u.approvalStatus !== 'denied';
-
-const escapeHtml = (s: string) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
-async function sendSms(to: string, text: string): Promise<'sent' | 'skipped'> {
-  const sid = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_FROM_NUMBER;
-  if (!sid || !token || !from) {
-    console.warn('[notify] Twilio env vars not set — SMS skipped');
-    return 'skipped';
-  }
-  const credentials = Buffer.from(`${sid}:${token}`).toString('base64');
-  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
-    method: 'POST',
-    headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ To: to, From: from, Body: text }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as any).message || `Twilio ${res.status}`);
-  }
-  return 'sent';
-}
-
-async function sendEmail(to: string, subject: string, body: string): Promise<'sent' | 'skipped'> {
-  const apiKey = process.env.SENDGRID_API_KEY;
-  const fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@aaromach.com';
-  if (!apiKey) {
-    console.warn('[notify] SendGrid env vars not set — email skipped');
-    return 'skipped';
-  }
-  const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      personalizations: [{ to: [{ email: to }] }],
-      from: { email: fromEmail },
-      subject,
-      content: [
-        { type: 'text/plain', value: body },
-        { type: 'text/html', value: `<p>${escapeHtml(body).replace(/\n/g, '<br/>')}</p>` },
-      ],
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(JSON.stringify((err as any).errors || res.status));
-  }
-  return 'sent';
-}
 
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('authorization') || '';
@@ -139,43 +89,8 @@ export async function POST(req: NextRequest) {
     recipients = [{ id: snap.id, data }];
   }
 
-  const subject = `[AAROMACH] ${title.toUpperCase()}`;
   const entity = payload.entity && typeof payload.entity.id === 'string' ? payload.entity : undefined;
-  let sent = 0;
-
-  await Promise.all(recipients.filter(r => r.data.accountStatus !== 'inactive').map(async ({ id, data }) => {
-    const prefs = data.notificationPreferences || { email: true, sms: true, push: true };
-    const channels: ('email' | 'sms' | 'push')[] = [];
-    if (prefs.email && data.email) channels.push('email');
-    if (prefs.sms && data.phone) channels.push('sms');
-    if (prefs.push) channels.push('push');
-    // Always leave an in-app record, even if they've opted out of every channel.
-    if (channels.length === 0) channels.push('push');
-
-    await Promise.all(channels.map(async type => {
-      let status: 'sent' | 'failed' | 'pending' = 'pending';
-      try {
-        if (type === 'email') status = (await sendEmail(data.email, subject, body)) === 'sent' ? 'sent' : 'pending';
-        else if (type === 'sms') status = (await sendSms(data.phone, `${subject}\n\n${body}`)) === 'sent' ? 'sent' : 'pending';
-      } catch (err) {
-        console.error(`[notify] ${type} delivery to ${id} failed:`, err);
-        status = 'failed';
-      }
-      if (status === 'sent') sent++;
-      const ref = fs.collection('notifications').doc();
-      await ref.set({
-        id: ref.id,
-        userId: id,
-        type,
-        title: subject,
-        body,
-        timestamp: new Date().toISOString(),
-        status,
-        sentBy: callerId,
-        ...(entity ? { relatedEntityId: entity.id, relatedEntityType: entity.type } : {}),
-      });
-    }));
-  }));
+  const sent = await deliverNotification(fs, recipients, { title, body, entity, sentBy: callerId });
 
   return NextResponse.json({ status: sent > 0 ? 'sent' : 'recorded', recipients: recipients.length });
 }

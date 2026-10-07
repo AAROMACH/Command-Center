@@ -8,6 +8,7 @@ import { calculateDistance, getTacticalCoords, getTacticalLocation } from './uti
 import { canCheckIn, canCheckOut, canComplete, canConfirm, canStartTrip, reopenStatusFor } from './trip-flow';
 import { externalWorkOrderId } from './work-order-identity';
 import { removeJobFromDraftLogs, fileCompletedJob } from './weekly-log';
+import { isLockedLog } from './weekly-log-core';
 import { helperProgressOf, helperView, isHelperOn, type HelperProgress } from './helper-progress';
 import { NotificationService } from './notification-service';
 
@@ -146,6 +147,23 @@ async function createTrip(job: Job, ctx: TechActionContext, location: string, ki
   }
 }
 
+/**
+ * Re-opening is only for corrections before payroll signs off: once the job
+ * sits on one of this tech's Approved / Paid / archived weekly logs, it's
+ * locked. Changes after that go through payroll (reopen the log, or a
+ * dispute), not through the job.
+ */
+async function assertNotOnLockedLog(techId: string, job: Job) {
+  const keys = new Set([job.id, job.workOrderId].filter(Boolean) as string[]);
+  const logs = await getDocs(query(collection(db, 'weeklyLogs'), where('techId', '==', techId)));
+  const locked = logs.docs
+    .map(d => d.data() as { status: string; weekOf?: string; items?: { workOrderId: string }[]; paid?: boolean; archived?: boolean })
+    .find(l => isLockedLog(l as any) && (l.items || []).some(i => keys.has(i.workOrderId)));
+  if (locked) {
+    throw new TechActionError(`This job is on your ${locked.status === 'Approved' ? 'approved' : 'closed'} weekly log${locked.weekOf ? ` (week of ${locked.weekOf})` : ''} and can't be re-opened. Contact payroll if something needs to change.`);
+  }
+}
+
 /** Another job this tech is on site at — as lead or as a helper. */
 async function onSiteElsewhere(techId: string, jobId: string): Promise<string | null> {
   const [led, helped] = await Promise.all([
@@ -243,6 +261,7 @@ async function performHelperAction(ref: ReturnType<typeof doc>, live: Job, actio
     }
 
     case 'reopen':
+      await assertNotOnLockedLog(me, live);
       await removeJobFromDraftLogs(me, live.id).catch(() => {});
       await write({ status: reopenStatusFor(live) as HelperProgress['status'] }, `Helper re-opened their part at ${now}.`);
       return { title: 'Re-opened', description: 'Removed from your Draft weekly log until you complete it again.' };
@@ -337,6 +356,7 @@ export async function performTechJobAction(job: Job, action: TechJobAction, ctx:
     }
 
     case 'reopen':
+      await assertNotOnLockedLog(ctx.techId, live);
       await removeJobFromDraftLogs(ctx.techId, live.id);
       await updateDoc(ref, {
         status: reopenStatusFor(live),

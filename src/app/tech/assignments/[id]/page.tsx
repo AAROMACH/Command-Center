@@ -1,6 +1,7 @@
 'use client';
 
-import { viewForTech } from '@/lib/helper-progress';
+import { viewForTech, isHelperOn } from '@/lib/helper-progress';
+import { isLockedLog } from '@/lib/weekly-log-core';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -352,13 +353,14 @@ export default function TechAssignmentDetailPage() {
     },
     {
       key: 'reopen', label: 'Re-open', icon: RotateCcw,
-      show: status === 'completed',
+      // Locked once it's on an Approved / Paid weekly log — payroll owns it then.
+      show: status === 'completed' && !relatedLogs.some(l => isLockedLog(l)),
       handler: handleReopen,
       cls: '',
     },
-  // Status actions belong to the assigned tech only — a helper can view the
-  // job but not move it through confirm / trip / complete.
-  ].filter(a => a.show && isAssignedTo(assignment, currentTechId));
+  // The assigned tech, or a helper running their own part of the job
+  // (helpers see their own status here — lib/helper-progress).
+  ].filter(a => a.show && (isAssignedTo(assignment, currentTechId) || isHelperOn(assignment, currentTechId)));
 
   return (
     <div className="space-y-5 text-left pb-24">

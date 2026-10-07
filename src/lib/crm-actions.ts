@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { addDoc, collection, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDocs, query, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { createDocId } from './generateId';
 import { ID_PREFIXES } from './constants';
 import { buildProjectFromLead } from './crm-handoff';
@@ -89,4 +89,18 @@ export async function handOffToOps(lead: Lead, quotes: Quote[], userId: string, 
     { id: projectId, type: 'project' },
   );
   return projectId;
+}
+
+/**
+ * Deletes a lead and its timeline/tasks. Quotes, site surveys, the account
+ * and any ops project are real records of their own and are left in place.
+ */
+export async function deleteLead(leadId: string): Promise<void> {
+  const acts = await getDocs(query(collection(db, 'leadActivities'), where('leadId', '==', leadId)));
+  for (let i = 0; i < acts.docs.length; i += 400) {
+    const batch = writeBatch(db);
+    acts.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+  await deleteDoc(doc(db, 'leads', leadId));
 }

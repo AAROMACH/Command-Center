@@ -15,12 +15,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, Loader2, Target } from 'lucide-react';
+import { AlertTriangle, Loader2, Target, Trash2 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { deleteLead } from '@/lib/crm-actions';
 import { SOURCES, SERVICE_LINES, INDUSTRIES, STAGES, findDuplicates, probabilityOf } from '@/lib/crm';
 
 type Props = {
   open: boolean;
   onClose: () => void;
+  /** Called after the lead being edited is deleted. */
+  onDeleted?: (leadId: string) => void;
   currentUserId: string;
   currentUserName?: string;
   /** Pass a lead to edit it; omit to create a new one. */
@@ -62,11 +69,13 @@ function fromLead(l: Lead): Form {
 const labelCls = 'text-[10px] font-bold uppercase tracking-widest text-text-muted';
 const inputCls = 'h-9 text-xs bg-bg-tertiary border-border-main';
 
-export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, lead, leads = [], companies = [], contacts = [], presetCompany }: Props) {
+export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, lead, leads = [], companies = [], contacts = [], presetCompany, onDeleted }: Props) {
   const { toast } = useToast();
   const editing = !!lead;
   const [form, setForm] = useState<Form>(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -344,6 +353,17 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
         </ScrollArea>
 
         <DialogFooter className="gap-2 p-6 pt-3 border-t border-border-sub">
+          {editing && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="sm:mr-auto text-[10px] uppercase font-bold text-text-muted hover:text-text-red"
+              onClick={() => setConfirmDelete(true)}
+              disabled={saving || deleting}
+            >
+              <Trash2 size={12} className="mr-1.5" /> Delete Lead
+            </Button>
+          )}
           <Button variant="ghost" size="sm" className="text-[10px] uppercase font-bold" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
@@ -353,6 +373,48 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={confirmDelete} onOpenChange={v => !deleting && setConfirmDelete(v)}>
+        <AlertDialogContent className="bg-bg-elevated border-border-main">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[13px] font-black uppercase tracking-widest">Delete {lead?.companyName}?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-text-muted space-y-2">
+              <span className="block">This permanently removes the lead and its activity timeline and tasks. It can't be undone.</span>
+              {(lead?.quoteIds?.length || lead?.projectId) ? (
+                <span className="block text-amber-400">
+                  Its {[lead?.quoteIds?.length ? 'quotes' : '', lead?.projectId ? `ops project (${lead.projectId})` : ''].filter(Boolean).join(' and ')} will stay — delete those separately if needed.
+                </span>
+              ) : null}
+              <span className="block">The account and its contacts are kept. If the deal just didn't work out, Mark Lost keeps it in your win/loss numbers instead.</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting} className="text-[10px] font-black uppercase">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              className="bg-text-red hover:bg-text-red/90 text-white text-[10px] font-black uppercase"
+              onClick={async e => {
+                e.preventDefault();
+                if (!lead) return;
+                setDeleting(true);
+                try {
+                  await deleteLead(lead.id);
+                  toast({ title: 'Lead deleted', description: lead.companyName });
+                  setConfirmDelete(false);
+                  onDeleted?.(lead.id);
+                  onClose();
+                } catch {
+                  toast({ variant: 'destructive', title: 'Delete failed' });
+                } finally {
+                  setDeleting(false);
+                }
+              }}
+            >
+              {deleting && <Loader2 size={12} className="animate-spin mr-1.5" />} Delete Lead
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

@@ -952,6 +952,7 @@ export default function CRMPage() {
         contacts={contacts}
         presetCompany={presetCompany}
         onClose={() => { setIsNewLeadOpen(false); setEditLead(null); setPresetCompany(null); }}
+        onDeleted={id => setSelectedLead(prev => (prev?.id === id ? null : prev))}
         currentUserId={currentUserId}
         currentUserName={currentUserName}
       />

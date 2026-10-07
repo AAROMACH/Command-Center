@@ -35,7 +35,11 @@ export function isHelperOn(job: JobLike, techId: string | null | undefined): boo
 
 export function helperProgressOf(job: JobLike, techId: string): HelperProgress {
   const hp = (job?.helperProgress || {})[techId];
-  return hp && hp.status ? hp : { status: 'assigned' };
+  if (hp && hp.status) return hp;
+  // Jobs from before helpers had their own workflow: if the lead already
+  // closed the job, the helper's part is done too — don't resurface it as a
+  // fresh "assigned" job.
+  return { status: job?.status === 'completed' ? 'completed' : 'assigned' };
 }
 
 /**

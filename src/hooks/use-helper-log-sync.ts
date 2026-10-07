@@ -1,5 +1,6 @@
 'use client';
 
+import { helperCompleted } from '@/lib/helper-progress';
 import { useEffect, useRef, useState } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -111,7 +112,8 @@ export function useHelperLogSync(techId: string | null) {
 
     // The server files these as $0 helper entries (it checks the tech is on
     // the job's additionalTechnicianIds and isn't the lead).
-    helperJobs.filter(j => !isLead(j) && needsFiling(j)).forEach(async (j) => {
+    // A helper's job files once THEY complete their part (or the whole job closes).
+    helperJobs.filter(j => !isLead(j) && needsFiling({ ...j, status: helperCompleted(j, techId) ? 'completed' : j.status })).forEach(async (j) => {
       filingRef.current.add(j.id);
       try {
         await fileCompletedJob({ techId, job: j, filedVia: 'auto_sync' });

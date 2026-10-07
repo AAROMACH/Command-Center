@@ -1,5 +1,6 @@
 'use client';
 
+import { subscribeTechAssignments } from '@/lib/tech-assignments';
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
@@ -77,15 +78,8 @@ export default function TechMapPage() {
     if (!userId) return;
     setTechId(userId);
 
-    const q = query(
-      collection(db, 'assignments'),
-      where('techId', '==', userId)
-    );
-
-    const unsub = onSnapshot(q, (snap) => {
-      // Archived is a first line of defense before deletion — never plot an
-      // archived stop as a live job on the map.
-      const jobs = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)).filter(wo => !isArchivedJob(wo) && isAssignedTo(wo, userId));
+    // Jobs they lead + jobs they help on (archived never plotted).
+    const unsub = subscribeTechAssignments(userId, (jobs) => {
       setAssignments(jobs);
       setLoading(false);
     }, () => setLoading(false));

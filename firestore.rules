@@ -207,7 +207,15 @@ service cloud.firestore {
                   .hasAny(['techId', 'assignedTechnicianId', 'assignedTechIds', 'additionalTechnicianIds',
                             'clientId', 'clientName', 'pay', 'payType', 'blendedFixedPay', 'blendedIncludedHours', 'blendedHourlyRate',
                             'finalPay', 'auditReimbursement', 'auditOverhead', 'isAudited', 'auditedAt', 'auditedBy',
-                            'source', 'payrollExcluded']));
+                            'source', 'payrollExcluded']))
+          // A helper runs their own workflow (lib/helper-progress): they may
+          // write only THEIR helperProgress entry plus a history note —
+          // never the job's status, pay, or anyone else's progress.
+          || (isTech() && resource.data.get('additionalTechnicianIds', []) is list
+              && request.auth.uid in resource.data.get('additionalTechnicianIds', [])
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['helperProgress', 'history'])
+              && request.resource.data.get('helperProgress', {})
+                   .diff(resource.data.get('helperProgress', {})).affectedKeys().hasOnly([request.auth.uid]));
       allow delete: if isAdmin();
     }
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { viewForTech } from '@/lib/helper-progress';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -118,6 +119,12 @@ function TechCard({ tech, label }: { tech: Technician; label?: string }) {
   );
 }
 
+/** A helper sees the job with their own status/trip (lib/helper-progress). */
+function asSeenByMe(job: WorkOrder): WorkOrder {
+  const me = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('currentUserId') : null;
+  return me ? viewForTech(job, me) : job;
+}
+
 export default function TechAssignmentDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -150,19 +157,19 @@ export default function TechAssignmentDetailPage() {
     (async () => {
       const aSnap = await getDoc(doc(db, 'assignments', assignmentId));
       if (aSnap.exists()) {
-        setAssignment({ ...aSnap.data(), id: aSnap.id } as WorkOrder);
+        setAssignment(asSeenByMe({ ...aSnap.data(), id: aSnap.id } as WorkOrder));
         setLoading(false);
         // Live updates
         unsub = onSnapshot(doc(db, 'assignments', assignmentId), s => {
-          if (s.exists()) setAssignment({ ...s.data(), id: s.id } as WorkOrder);
+          if (s.exists()) setAssignment(asSeenByMe({ ...s.data(), id: s.id } as WorkOrder));
         });
         return;
       }
       const wSnap = await getDoc(doc(db, 'workOrders', assignmentId));
       if (wSnap.exists()) {
-        setAssignment({ ...wSnap.data(), id: wSnap.id } as WorkOrder);
+        setAssignment(asSeenByMe({ ...wSnap.data(), id: wSnap.id } as WorkOrder));
         unsub = onSnapshot(doc(db, 'workOrders', assignmentId), s => {
-          if (s.exists()) setAssignment({ ...s.data(), id: s.id } as WorkOrder);
+          if (s.exists()) setAssignment(asSeenByMe({ ...s.data(), id: s.id } as WorkOrder));
         });
       }
       setLoading(false);

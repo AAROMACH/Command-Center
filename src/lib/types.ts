@@ -88,6 +88,8 @@ export type WorkOrder = {
   assignedTechnicianId?: string | null;
   assignedTechIds?: string[];
   additionalTechnicianIds?: string[];
+  /** Each helper's own workflow on this job, keyed by helper uid (lib/helper-progress). */
+  helperProgress?: Record<string, import('./helper-progress').HelperProgress>;
   clientName: string;
   projectType: 'Installation' | 'Troubleshooting' | 'Maintenance' | 'Survey' | 'Repair' | 'Decommission' | string;
   jobType?: string;

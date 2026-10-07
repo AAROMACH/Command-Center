@@ -139,10 +139,12 @@ export async function fileJob(opts: {
   const job = await loadJob(opts.jobId);
   if (!job) throw new WeeklyLogError('Job not found.', 404);
   if (job.payrollExcluded) throw new WeeklyLogError('This job is excluded from payroll.', 409);
-  if (opts.requireCompleted && job.status !== 'completed') throw new WeeklyLogError('Only completed jobs can be filed.', 409);
-
   const isLead = opts.asLead || assignedTechOf(job) === techId;
   const isHelper = !isLead && (job.additionalTechnicianIds || []).includes(techId);
+  // A helper's part is done when THEY complete it (helperProgress), even if
+  // the lead hasn't closed the job yet.
+  const done = job.status === 'completed' || (isHelper && job.helperProgress?.[techId]?.status === 'completed');
+  if (opts.requireCompleted && !done) throw new WeeklyLogError('Only completed jobs can be filed.', 409);
   if (!isLead && !isHelper) throw new WeeklyLogError('This job is not assigned to that technician.', 403);
 
   // Never a second entry for the same job: a lead entry anywhere on the

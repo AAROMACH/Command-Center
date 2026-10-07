@@ -34,10 +34,24 @@ export default function TechActivityPage() {
       (snap) => setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)))
     );
 
-    const unsubAssignments = onSnapshot(
+    // Jobs they lead plus jobs they helped on.
+    let led: WorkOrder[] = [];
+    let helped: WorkOrder[] = [];
+    const publish = () => {
+      const merged = new Map<string, WorkOrder>();
+      [...led, ...helped].forEach(j => merged.set(j.id, j));
+      setAssignments([...merged.values()]);
+    };
+    const unsubLed = onSnapshot(
       query(collection(db, 'assignments'), where('techId', '==', userId)),
-      (snap) => setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)).filter(wo => isAssignedTo(wo, userId)))
+      (snap) => { led = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)).filter(wo => isAssignedTo(wo, userId)); publish(); }
     );
+    const unsubHelped = onSnapshot(
+      query(collection(db, 'assignments'), where('additionalTechnicianIds', 'array-contains', userId)),
+      (snap) => { helped = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)); publish(); },
+      () => { helped = []; publish(); }
+    );
+    const unsubAssignments = () => { unsubLed(); unsubHelped(); };
 
     const unsubUser = onSnapshot(doc(db, 'users', userId), (snap) => {
       if (snap.exists()) setTechDoc({ ...snap.data(), id: snap.id } as Technician);

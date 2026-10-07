@@ -120,10 +120,13 @@ export default function DirectoryPersonPage() {
     // out of sync by an old swap may only carry one of them.
     let byTechId: WorkOrder[] = [];
     let byAssigned: WorkOrder[] = [];
+    let byHelper: WorkOrder[] = [];
     const publishJobs = () => {
       const merged = new Map<string, WorkOrder>();
-      [...byTechId, ...byAssigned].forEach(j => merged.set(j.id, j));
-      setAssignments([...merged.values()].filter(j => isAssignedTo(j, id) && !isArchivedJob(j)));
+      [...byTechId, ...byAssigned, ...byHelper].forEach(j => merged.set(j.id, j));
+      // Lead tech, or a helper on the job — helpers' jobs belong in their history too.
+      setAssignments([...merged.values()].filter(j =>
+        (isAssignedTo(j, id) || (j.additionalTechnicianIds || []).includes(id)) && !isArchivedJob(j)));
     };
     const unsubJobsA = onSnapshot(query(collection(db, 'assignments'), where('techId', '==', id)), snap => {
       byTechId = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder));
@@ -133,10 +136,14 @@ export default function DirectoryPersonPage() {
       byAssigned = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder));
       publishJobs();
     });
+    const unsubJobsC = onSnapshot(query(collection(db, 'assignments'), where('additionalTechnicianIds', 'array-contains', id)), snap => {
+      byHelper = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder));
+      publishJobs();
+    }, () => { byHelper = []; publishJobs(); });
     const unsubProjects = onSnapshot(query(collection(db, 'projects'), where('assignedTechnicianIds', 'array-contains', id)), snap => {
       setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
     }, () => setProjects([]));
-    return () => { unsubUser(); unsubDocs(); unsubPenalty(); unsubNotes(); unsubJobsA(); unsubJobsB(); unsubProjects(); };
+    return () => { unsubUser(); unsubDocs(); unsubPenalty(); unsubNotes(); unsubJobsA(); unsubJobsB(); unsubJobsC(); unsubProjects(); };
   }, [id]);
 
   useEffect(() => {

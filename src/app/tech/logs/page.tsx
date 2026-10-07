@@ -227,7 +227,26 @@ export default function TechWeeklyLogPage() {
 
     // Lead + helper jobs merged, so a helper log item can resolve its work-order
     // details (number, date, Field Nation link) for display.
-    const allJobs = useMemo(() => [...mergeJobs(assignedWorkOrders, workOrders), ...helperJobs], [assignedWorkOrders, workOrders, helperJobs]);
+    // Jobs on this tech's logs that they can't read directly (reassigned, or
+    // moved onto their log by payroll) — fetched through the server so every
+    // line on their own log is visible and confirmable.
+    const [logOnlyJobs, setLogOnlyJobs] = useState<WorkOrder[]>([]);
+    const logJobIdsKey = useMemo(
+        () => [...new Set(weeklyLogs.flatMap(l => (l.items || []).map(i => i.workOrderId)))].sort().join(','),
+        [weeklyLogs],
+    );
+    useEffect(() => {
+        if (!currentTechId || !logJobIdsKey) return;
+        const known = new Set([...workOrders, ...assignedWorkOrders, ...helperJobs].map(j => j.id));
+        if (logJobIdsKey.split(',').every(id => known.has(id))) return;
+        weeklyLogAction<WorkOrder[]>('logJobs').then(setLogOnlyJobs).catch(() => {});
+    }, [currentTechId, logJobIdsKey, workOrders.length, assignedWorkOrders.length, helperJobs.length]);
+
+    const allJobs = useMemo(() => {
+        const merged = [...mergeJobs(assignedWorkOrders, workOrders), ...helperJobs];
+        const have = new Set(merged.map(j => j.id));
+        return [...merged, ...logOnlyJobs.filter(j => !have.has(j.id))];
+    }, [assignedWorkOrders, workOrders, helperJobs, logOnlyJobs]);
     const jobsById = useMemo(() => new Map(allJobs.map(j => [j.id, j])), [allJobs]);
     const settlementOf = (log: WeeklyLog) => computeWeeklyLogSettlement(log, jobsById);
 
@@ -1185,7 +1204,13 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
     const isDisputed = item.confirmationStatus === 'disputed';
     const isPending = !item.confirmationStatus;
 
-    if (!job) return null;
+    // Every line on the tech's own log must be visible and confirmable, even
+    // before (or without) its job record loading — fall back to the line itself.
+    const shown = job || ({
+        id: item.workOrderId, title: `Job ${item.workOrderId.toUpperCase()}`, description: '',
+        scheduleDate: item.workDate || '', scheduleTime: '', location: '', clientName: '',
+        pay: item.jobPay || 0, payType: 'fixed', status: 'completed', priority: 'medium', projectType: '',
+    } as unknown as WorkOrder);
 
     return (
         <Card className={cn(
@@ -1205,7 +1230,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                         </div>
                         <div className="min-w-0 text-left flex-1">
                             <div className="flex items-center gap-3 text-left">
-                                <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[520px] text-left">{job.title || job.description}</h4>
+                                <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[520px] text-left">{shown.title || shown.description}</h4>
                                 {item.isHelper && <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter">Helper</Badge>}
                                 {isConfirmed && <Badge variant="active" className="text-[7px] h-3.5 uppercase tracking-tighter">VERIFIED</Badge>}
                                 {isDisputed && <Badge variant="missed" className="text-[7px] h-3.5 uppercase tracking-tighter">DISPUTED</Badge>}
@@ -1226,19 +1251,19 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                 )}
                             </div>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
-                                <span className="flex items-center gap-1.5 text-left"><MapPin size={10} className="text-brand-red shrink-0"/> {formatCityState(job.location)}</span>
-                                <span className="flex items-center gap-1.5 text-left"><CalendarIcon size={10} className="shrink-0"/> {job.scheduleDate}{job.scheduleTime ? ` · ${job.scheduleTime}` : ''}</span>
-                                <span className="font-mono text-brand-red font-bold text-left">ASMT: {job.id.toUpperCase()}</span>
-                                {isImported(job) && externalWorkOrderId(job) && (
+                                <span className="flex items-center gap-1.5 text-left"><MapPin size={10} className="text-brand-red shrink-0"/> {formatCityState(shown.location)}</span>
+                                <span className="flex items-center gap-1.5 text-left"><CalendarIcon size={10} className="shrink-0"/> {shown.scheduleDate}{shown.scheduleTime ? ` · ${shown.scheduleTime}` : ''}</span>
+                                <span className="font-mono text-brand-red font-bold text-left">ASMT: {shown.id.toUpperCase()}</span>
+                                {isImported(shown) && externalWorkOrderId(shown) && (
                                     <a
-                                        href={fieldNationUrl(job)}
+                                        href={fieldNationUrl(shown)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         onClick={e => e.stopPropagation()}
                                         className="flex items-center gap-1 font-mono text-blue-400 font-bold hover:text-blue-300 hover:underline text-left"
                                         title="Open in Field Nation"
                                     >
-                                        WO# {displayWorkOrderNumber(job)} <ExternalLink size={9} className="shrink-0" />
+                                        WO# {displayWorkOrderNumber(shown)} <ExternalLink size={9} className="shrink-0" />
                                     </a>
                                 )}
                             </div>
@@ -1246,7 +1271,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
 
                         <div className="text-right px-4 border-l border-border-sub/30 min-w-[100px]">
                             <p className="text-[8px] font-black text-text-muted uppercase tracking-widest text-right">{isDisputed ? 'Excluded (Disputed)' : 'Settlement'}</p>
-                            <p className="text-sm font-mono font-bold text-text-green text-right">${(isDisputed ? 0 : effectiveJobPay(item, job)).toFixed(2)}</p>
+                            <p className="text-sm font-mono font-bold text-text-green text-right">${(isDisputed ? 0 : effectiveJobPay(item, shown)).toFixed(2)}</p>
                         </div>
 
                         {itemReimbursements.length > 0 && (
@@ -1370,7 +1395,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                     <div className="px-5 pb-5 pt-1 animate-in slide-in-from-top-2 duration-300 text-left">
                         <div className="p-4 rounded-xl bg-bg-primary/50 border border-accent-gold/30 space-y-3 text-left">
                             <div className="flex items-center justify-between">
-                                <p className="text-[9px] font-black text-accent-gold uppercase tracking-[0.2em]">Add Reimbursement · WO# {displayWorkOrderNumber(job)}</p>
+                                <p className="text-[9px] font-black text-accent-gold uppercase tracking-[0.2em]">Add Reimbursement · WO# {displayWorkOrderNumber(shown)}</p>
                                 <button onClick={() => setIsReimbursing(false)} className="text-text-muted hover:text-text-primary"><X size={14}/></button>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

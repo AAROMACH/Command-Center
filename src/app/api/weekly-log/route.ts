@@ -6,7 +6,7 @@ import { hasPermission, isAdmin, isTech, type RoleLike } from '@/lib/permissions
 import type { WeeklyLogItem } from '@/lib/types';
 import {
   WeeklyLogError, addMissingReport, addReimbursement, confirmItem, createDraft, deleteReimbursement,
-  disputeItem, fileJob, moveItem, removeJobFromDrafts, requestUnsubmit, submitLog, unsubmitLog,
+  disputeItem, fileJob, jobsOnOwnLogs, moveItem, removeJobFromDrafts, requestUnsubmit, submitLog, unsubmitLog,
   type CarriedFigures,
 } from '@/lib/server/weekly-log-server';
 
@@ -114,6 +114,9 @@ export async function POST(req: NextRequest) {
         if (!hasPermission(caller, 'tech.logs.unsubmit_own')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         await unsubmitLog(uid, String(body.logId), { id: uid, name: callerName });
         return NextResponse.json({ ok: true });
+
+      case 'logJobs':
+        return NextResponse.json({ result: await jobsOnOwnLogs(target) });
 
       case 'requestUnsubmit':
         await requestUnsubmit(uid, String(body.logId), body.reason);

@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 import { db, auth } from '@/lib/firebase';
 import {
   doc, getDoc, collection, query, where, onSnapshot,
-  updateDoc, arrayUnion, arrayRemove, setDoc, deleteDoc,
+  updateDoc, arrayUnion, arrayRemove, setDoc, deleteDoc, deleteField,
 } from 'firebase/firestore';
 import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
 import { effectiveJobPay } from '@/lib/payroll';
@@ -241,9 +241,12 @@ export default function AssignmentDetailPage() {
   const handleRemoveHelper = async (id: string) => {
     if (!assignment) return;
     const ht = allTechs.find(t => t.id === id);
+    if (!confirm(`Remove ${ht?.name || 'this helper'} from the job? Their weekly log entry stays — remove it in Payroll if needed.`)) return;
     try {
       await updateDoc(doc(db, 'assignments', assignment.id), {
         additionalTechnicianIds: arrayRemove(id),
+        // Re-adding them later starts their own workflow fresh.
+        [`helperProgress.${id}`]: deleteField(),
         history: arrayUnion({ date: new Date().toISOString(), type: 'helper_removed',
           details: `${ht?.name || id} removed from team`, user: 'Admin' }),
       });
@@ -555,10 +558,11 @@ export default function AssignmentDetailPage() {
                   );
                 })()}
                 <button
-                  className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-4 h-4 rounded-full bg-bg-primary/80 flex items-center justify-center text-text-muted hover:text-rose-400 text-xs font-bold"
+                  title="Remove helper"
+                  className="mt-1 text-[8px] font-black uppercase tracking-widest text-text-muted hover:text-rose-400"
                   onClick={() => handleRemoveHelper(hid)}
                 >
-                  ×
+                  × Remove helper
                 </button>
               </div>
             );

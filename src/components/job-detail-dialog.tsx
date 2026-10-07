@@ -30,7 +30,7 @@ import { format } from 'date-fns';
 import { db, auth } from '@/lib/firebase';
 import {
   collection, query, where, getDocs, getDoc, onSnapshot,
-  orderBy, limit, doc, updateDoc, arrayUnion,
+  orderBy, limit, doc, updateDoc, arrayUnion, arrayRemove, deleteField,
 } from 'firebase/firestore';
 import { useDirectory } from '@/hooks/use-directory';
 import { useAuth } from '@/contexts/auth-context';
@@ -161,6 +161,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }:
   // even though the `mission` prop is a snapshot from when the dialog opened.
   const [optimisticTechId, setOptimisticTechId] = useState<string | null>(null);
   const [optimisticHelperIds, setOptimisticHelperIds] = useState<string[]>([]);
+  const [removedHelperIds, setRemovedHelperIds] = useState<string[]>([]);
   // Admin force-complete (close out a job on behalf of a tech who can't).
   const [forceOpen, setForceOpen] = useState(false);
   // Defaults ON: a completed job that isn't filed never reaches payroll. An
@@ -265,7 +266,23 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }:
         details: `${ht?.name || helperTechId} added as helper`, user: 'Admin' }),
     });
     setOptimisticHelperIds(ids => ids.includes(helperTechId) ? ids : [...ids, helperTechId]);
+    setRemovedHelperIds(ids => ids.filter(x => x !== helperTechId));
     setHelperOpen(false); setHelperTechId('');
+  };
+
+  const handleRemoveHelper = async (helperId: string) => {
+    if (!mission) return;
+    const ht = technicians.find(t => t.id === helperId);
+    if (!confirm(`Remove ${ht?.name || 'this helper'} from the job? Their weekly log entry stays — remove it in Payroll if needed.`)) return;
+    await updateDoc(doc(db, 'assignments', mission.id), {
+      additionalTechnicianIds: arrayRemove(helperId),
+      // Re-adding them later starts their own workflow fresh.
+      [`helperProgress.${helperId}`]: deleteField(),
+      history: arrayUnion({ date: new Date().toISOString(), type: 'helper_removed',
+        details: `${ht?.name || helperId} removed as helper`, user: 'Admin' }),
+    });
+    setOptimisticHelperIds(ids => ids.filter(x => x !== helperId));
+    setRemovedHelperIds(ids => [...ids, helperId]);
   };
 
   if (!mission) return null;
@@ -276,7 +293,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }:
   const helperIds = Array.from(new Set([
     ...(mission.additionalTechnicianIds || []),
     ...optimisticHelperIds,
-  ])).filter(id => id !== assignedTechId);
+  ])).filter(id => id !== assignedTechId && !removedHelperIds.includes(id));
   const helperTechs = helperIds.map(id => ({
     id,
     tech: technicians.find(t => t.id === id),
@@ -612,10 +629,18 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }:
                               >
                                 {name.charAt(0).toUpperCase()}
                               </div>
-                              <div className="min-w-0">
+                              <div className="min-w-0 flex-1">
                                 <p className="text-[11px] font-black text-text-primary truncate">{name}</p>
                                 <p className="text-[8px] text-text-muted font-bold uppercase tracking-widest">Helper</p>
                               </div>
+                              <button
+                                type="button"
+                                title="Remove helper"
+                                onClick={() => handleRemoveHelper(id)}
+                                className="shrink-0 text-[8px] font-black uppercase tracking-widest text-text-muted hover:text-rose-400 px-1.5"
+                              >
+                                × Remove
+                              </button>
                             </div>
                           );
                         })}

@@ -778,13 +778,14 @@ export default function PayrollAuditPage() {
                                 onChange={e => setSearchQuery(e.target.value)}
                             />
                         </div>
-                        <div className="flex items-center gap-2">
+                        {/* Phones: status pills scroll sideways instead of running off screen. */}
+                        <div className="flex items-center gap-2 max-w-full overflow-x-auto no-scrollbar">
                             {(['all', 'Draft', 'Submitted', 'Approved', 'Rejected'] as const).map(s => (
                                 <button
                                     key={s}
                                     onClick={() => setStatusFilter(s)}
                                     className={cn(
-                                        'h-9 px-3 text-[9px] font-black uppercase tracking-widest rounded-lg border transition-colors',
+                                        'h-9 px-3 shrink-0 text-[9px] font-black uppercase tracking-widest rounded-lg border transition-colors',
                                         statusFilter === s ? 'bg-brand-red text-white border-brand-red' : 'border-border-main text-text-muted hover:text-text-primary bg-bg-primary'
                                     )}
                                 >

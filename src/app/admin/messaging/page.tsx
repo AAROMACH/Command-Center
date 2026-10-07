@@ -311,13 +311,13 @@ export default function AdminMessagingPage() {
       </header>
 
       {/* Tabs */}
-      <div className="flex gap-0 border-b border-border-sub">
+      <div className="flex gap-0 border-b border-border-sub overflow-x-auto no-scrollbar">
         {TABS.map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={cn(
-              'text-[10px] font-black uppercase tracking-widest px-5 py-3 border-b-2 transition-colors whitespace-nowrap',
+              'text-[10px] font-black uppercase tracking-widest px-3 sm:px-5 py-3 border-b-2 transition-colors whitespace-nowrap shrink-0',
               activeTab === tab
                 ? 'border-brand-red text-brand-red'
                 : 'border-transparent text-text-muted hover:text-text-secondary'

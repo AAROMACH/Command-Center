@@ -159,16 +159,16 @@ export default function ClientFinancialsPage() {
             </div>
 
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-border-sub bg-bg-tertiary/20">
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border-sub bg-bg-tertiary/20">
                     <div className="text-left">
                         <CardTitle>Invoice Ledger</CardTitle>
                         <CardDescription>Comprehensive record of all field critical financial transactions.</CardDescription>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <div className="search-wrap !mb-0">
+                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                        <div className="search-wrap !mb-0 flex-1 sm:flex-none">
                             <Search />
                             <input 
-                                className="search-input !w-[250px] !h-9 !text-xs font-bold uppercase" 
+                                className="search-input sm:!w-[250px] !h-9 !text-xs font-bold uppercase" 
                                 placeholder="Filter by Invoice # or Job..." 
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}

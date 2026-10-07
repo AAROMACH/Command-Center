@@ -167,14 +167,14 @@ export default function ProjectsPage() {
             <div className="search-wrap">
               <Search />
               <input 
-                className="search-input !w-[220px]" 
+                className="search-input sm:!w-[220px]" 
                 placeholder="Search project folders..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
                 <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
                     <SelectTrigger className="w-[160px] h-10 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-widest">
                         <SelectValue placeholder="Sort By" />

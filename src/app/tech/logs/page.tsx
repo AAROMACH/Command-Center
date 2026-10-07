@@ -592,7 +592,7 @@ export default function TechWeeklyLogPage() {
                         <h1 className="page-title text-left">Weekly Log Registry</h1>
                         <p className="page-subtitle text-[11px] uppercase font-bold text-text-muted tracking-widest mt-1 text-left">Audit terminal for assignment verification and billing.</p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                         <ViewTabs />
                         <Button onClick={() => setIsCreateLogOpen(true)} className="bg-brand-red hover:bg-brand-red-hover h-10 px-6 font-bold uppercase tracking-widest text-[10px]">
                             <Plus size={16} className="mr-2" /> Initialize New Log
@@ -611,9 +611,9 @@ export default function TechWeeklyLogPage() {
                         />
                     </div>
                     
-                    <div className="flex items-center gap-3 w-full md:w-auto">
+                    <div className="grid grid-cols-2 md:flex items-center gap-3 w-full md:w-auto">
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[120px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
+                            <SelectTrigger className="w-full md:w-[140px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
@@ -625,7 +625,7 @@ export default function TechWeeklyLogPage() {
                         </Select>
 
                         <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                            <SelectTrigger className="w-[140px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
+                            <SelectTrigger className="w-full md:w-[150px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
                                 <SelectValue placeholder="Sort" />
                             </SelectTrigger>
                             <SelectContent>
@@ -654,8 +654,8 @@ export default function TechWeeklyLogPage() {
                                 )}
                                 onClick={() => setSelectedLogId(log.id)}
                             >
-                                <CardContent className="p-4 flex items-center justify-between">
-                                    <div className="flex items-center gap-4 text-left">
+                                <CardContent className="p-3 sm:p-4 flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3 sm:gap-4 text-left min-w-0">
                                         <div className={cn(
                                             "p-2.5 rounded-xl border",
                                             log.status === 'Draft' ? "bg-accent-gold-dim border-accent-gold/30 text-accent-gold" :
@@ -664,21 +664,21 @@ export default function TechWeeklyLogPage() {
                                         )}>
                                             <CalendarIcon size={16} />
                                         </div>
-                                        <div className="text-left">
-                                            <div className="flex items-center gap-3">
-                                                <p className="text-xs font-bold uppercase tracking-wide text-text-primary group-hover:text-brand-red transition-colors text-left">Week of {log.weekOf}</p>
+                                        <div className="text-left min-w-0">
+                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                <p className="text-xs font-bold uppercase tracking-wide whitespace-nowrap text-text-primary group-hover:text-brand-red transition-colors text-left">Week of {log.weekOf}</p>
                                                 {log.unsubmitRequested && (
                                                     <Badge variant="destructive" className="h-4 px-1.5 text-[7px] uppercase animate-pulse">Unsubmit Pending</Badge>
                                                 )}
                                             </div>
-                                            <div className="flex items-center gap-3 mt-0.5 text-[9px] text-text-muted font-bold uppercase tracking-widest text-left">
+                                            <div className="flex items-center gap-2 sm:gap-3 mt-0.5 text-[9px] text-text-muted font-bold uppercase tracking-widest text-left whitespace-nowrap">
                                                 <span>{(log.items || []).length} Assignments</span>
                                                 <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
                                                 <span className="text-text-green font-mono">${settlementOf(log).toFixed(2)}</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                                         <Badge variant={log.status === 'Draft' ? 'onhold' : log.status === 'Approved' ? 'active' : 'pending'}>
                                             {(log.status || '').toUpperCase()}
                                         </Badge>

@@ -250,7 +250,7 @@ export default function TechDashboardPage() {
             <div className="flex flex-col lg:flex-row gap-5 items-start">
 
                 {/* Left column — active job + schedule */}
-                <div className="flex-1 min-w-0 space-y-4">
+                <div className="w-full flex-1 min-w-0 space-y-4">
                     {activeJob ? (
                         <Card className={cn(
                             "border-2 bg-bg-secondary cursor-pointer transition-all overflow-hidden",

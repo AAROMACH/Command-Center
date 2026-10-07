@@ -1,5 +1,6 @@
 'use client';
 
+import { useDirectory } from '@/hooks/use-directory';
 import { viewForTech, isHelperOn } from '@/lib/helper-progress';
 import { isLockedLog } from '@/lib/weekly-log-core';
 import { useState, useEffect } from 'react';
@@ -179,24 +180,18 @@ export default function TechAssignmentDetailPage() {
     return () => unsub?.();
   }, [assignmentId]);
 
-  // Load primary tech
+  // Lead and helper names come from the directory (server-backed for techs):
+  // the rules only let a tech read their OWN user doc, so reading a teammate's
+  // directly failed with permission-denied.
+  const directory = useDirectory();
   useEffect(() => {
     if (!assignment) return;
     const tid = assignment.assignedTechnicianId || assignment.techId || assignment.assignedTechIds?.[0];
-    if (!tid) return;
-    return onSnapshot(doc(db, 'users', tid), s => {
-      if (s.exists()) setTech({ ...s.data(), id: s.id } as Technician);
-    });
-  }, [assignment?.assignedTechnicianId, assignment?.techId]);
-
-  // Load helper techs
-  useEffect(() => {
-    if (!assignment?.additionalTechnicianIds?.length) { setHelperTechs([]); return; }
-    const ids = assignment.additionalTechnicianIds;
-    Promise.all(ids.map(id => getDoc(doc(db, 'users', id)))).then(snaps => {
-      setHelperTechs(snaps.filter(s => s.exists()).map(s => ({ ...s.data(), id: s.id } as Technician)));
-    });
-  }, [assignment?.additionalTechnicianIds]);
+    const lead = tid ? directory.find(p => p.id === tid) : undefined;
+    if (lead) setTech(lead);
+    const ids = assignment.additionalTechnicianIds || [];
+    setHelperTechs(ids.map(id => directory.find(p => p.id === id)).filter(Boolean) as Technician[]);
+  }, [directory, assignment?.assignedTechnicianId, assignment?.techId, assignment?.additionalTechnicianIds]);
 
   // Weekly logs for this assignment
   useEffect(() => {

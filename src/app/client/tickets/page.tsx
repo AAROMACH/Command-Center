@@ -515,18 +515,18 @@ function TicketList({ requests }: { requests: ServiceRequest[] }) {
         <div className="grid grid-cols-1 gap-4 text-left">
             {requests.map(ticket => (
                 <Card key={ticket.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all group">
-                    <CardContent className="min-h-24 p-5 flex items-center justify-between text-left">
-                        <div className="text-left space-y-1 flex-1">
+                    <CardContent className="min-h-24 p-4 sm:p-5 flex items-center justify-between gap-3 text-left">
+                        <div className="text-left space-y-1 flex-1 min-w-0">
                             <div className="flex items-center gap-2 text-left">
                                 <span className="text-[9px] font-mono font-bold text-brand-red uppercase">{(ticket.id || '').toUpperCase()}</span>
                                 <Badge variant={ticket.priority === 'critical' ? 'high' : 'medium'} className="text-[7px] h-3.5 px-1 uppercase">{ticket.priority}</Badge>
                             </div>
-                            <h3 className="text-sm font-bold text-text-primary uppercase truncate max-w-[400px] text-left">{ticket.description}</h3>
+                            <h3 className="text-sm font-bold text-text-primary uppercase truncate sm:max-w-[400px] text-left">{ticket.description}</h3>
                             <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
                                 <span className="flex items-center gap-1.5"><MapPin size={10} className="text-brand-red"/> {ticket.location}</span>
                             </div>
                         </div>
-                        <Badge variant={ticket.status === 'new' ? 'pending' : 'active'} className="uppercase h-6 px-4">{ticket.status}</Badge>
+                        <Badge variant={ticket.status === 'new' ? 'pending' : 'active'} className="uppercase h-6 px-3 sm:px-4 shrink-0">{ticket.status}</Badge>
                     </CardContent>
                 </Card>
             ))}

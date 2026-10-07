@@ -211,8 +211,8 @@ export default function AdminClientsPage() {
 
             {/* Search & controls */}
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub shadow-sm">
-                <div className="flex items-center gap-3 w-full md:w-auto flex-1">
-                    <div className="search-wrap flex-1 !mb-0 text-left">
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto flex-1">
+                    <div className="search-wrap basis-full sm:basis-auto flex-1 !mb-0 text-left">
                         <Search className="h-4 w-4 text-text-muted" />
                         <input
                             className="search-input"

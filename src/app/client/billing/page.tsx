@@ -68,8 +68,8 @@ export default function ClientBillingPage() {
     const myInvoices = useMemo(() => {
         return liveInvoices
             .filter(inv => 
-                inv.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                inv.status.toLowerCase().includes(searchQuery.toLowerCase())
+                (inv.invoiceNumber || inv.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (inv.status || '').toLowerCase().includes(searchQuery.toLowerCase())
             );
     }, [liveInvoices, searchQuery]);
     const invoicePager = usePaged(myInvoices, PAGE_SIZES_LARGE, 'client-billing-invoices', []);

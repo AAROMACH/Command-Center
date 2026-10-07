@@ -18,11 +18,12 @@ import { cn } from '@/lib/utils';
 import {
   Target, Plus, Search, DollarSign, Phone, Mail, User, TrendingUp, CheckCircle2, XCircle,
   ChevronRight, LayoutGrid, List, ArrowUpDown, UserCheck, Building2, Upload, Download,
-  AlertTriangle, Calendar, ListTodo, Trophy, Percent, Clock, Users,
+  AlertTriangle, Calendar, ListTodo, Trophy, Percent, Clock, Users, SlidersHorizontal,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { hasPermission } from '@/lib/permissions';
@@ -481,6 +482,61 @@ export default function CRMPage() {
     <TableRow><TableCell colSpan={cols} className="text-center py-12 text-[10px] text-text-muted uppercase tracking-widest">{text}</TableCell></TableRow>
   );
 
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const activeFilterCount = (ownerFilter !== 'all' ? 1 : 0) + (sourceFilter !== 'all' ? 1 : 0) + (serviceFilter !== 'all' ? 1 : 0) + (staleOnly ? 1 : 0);
+  const clearFilters = () => { setOwnerFilter('all'); setSourceFilter('all'); setServiceFilter('all'); setStaleOnly(false); };
+
+  // Same controls inline (sm+) and in the phone filter sheet.
+  const filterControls = (mode: 'inline' | 'sheet') => {
+    const trig = mode === 'sheet' ? 'h-10 w-full bg-bg-primary border-border-main text-[11px] font-bold uppercase tracking-widest' : filterTrigger;
+    const label = (t: string) => mode === 'sheet' ? <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted -mb-1.5">{t}</p> : null;
+    return (
+      <>
+        {label('Owner')}
+        <Select value={ownerFilter} onValueChange={(v: any) => setOwnerFilter(v)}>
+          <SelectTrigger className={trig}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-[10px] uppercase font-bold">All Owners</SelectItem>
+            <SelectItem value="mine" className="text-[10px] uppercase font-bold">My Leads</SelectItem>
+            <SelectItem value="unassigned" className="text-[10px] uppercase font-bold">Unassigned</SelectItem>
+          </SelectContent>
+        </Select>
+        {label('Source')}
+        <Select value={sourceFilter} onValueChange={setSourceFilter}>
+          <SelectTrigger className={trig}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-[10px] uppercase font-bold">All Sources</SelectItem>
+            {SOURCES.map(s => <SelectItem key={s.key} value={s.key} className="text-[10px] uppercase font-bold">{s.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {label('Service')}
+        <Select value={serviceFilter} onValueChange={setServiceFilter}>
+          <SelectTrigger className={trig}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-[10px] uppercase font-bold">All Services</SelectItem>
+            {SERVICE_LINES.map(s => <SelectItem key={s} value={s} className="text-[10px] uppercase font-bold">{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {label('Sort')}
+        <Select value={listSort.col} onValueChange={(v: any) => setListSort(prev => ({ ...prev, col: v }))}>
+          <SelectTrigger className={trig}>
+            <div className="flex items-center gap-2"><ArrowUpDown size={12} className="text-text-muted" /><SelectValue /></div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="updated" className="text-[10px] uppercase font-bold">Last Updated</SelectItem>
+            <SelectItem value="close" className="text-[10px] uppercase font-bold">Close Date</SelectItem>
+            <SelectItem value="stage" className="text-[10px] uppercase font-bold">By Stage</SelectItem>
+            <SelectItem value="value" className="text-[10px] uppercase font-bold">By Value</SelectItem>
+            <SelectItem value="company" className="text-[10px] uppercase font-bold">By Company</SelectItem>
+          </SelectContent>
+        </Select>
+        <label className={cn('flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-text-muted cursor-pointer', mode === 'sheet' && 'h-10 px-3 rounded-lg border border-border-main bg-bg-primary')}>
+          <Checkbox checked={staleOnly} onCheckedChange={v => setStaleOnly(!!v)} /> Stale {STALE_DAYS}d+ only
+        </label>
+      </>
+    );
+  };
+
   const filterTrigger = 'h-9 w-[140px] bg-bg-primary border-border-main text-[10px] font-bold uppercase tracking-widest';
 
   return (
@@ -492,6 +548,9 @@ export default function CRMPage() {
           <p className="page-subtitle">Leads & opportunities from first contact to closed deal.</p>
         </div>
         <div className="page-header-right gap-2">
+          <Button size="sm" className="sm:hidden h-9 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setIsNewLeadOpen(true)}>
+            <Plus size={12} className="mr-1.5" /> New Lead
+          </Button>
           <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold uppercase tracking-wider border-border-main" onClick={exportCsv}>
             <Download size={12} className="mr-1.5" /> Export
           </Button>
@@ -520,70 +579,57 @@ export default function CRMPage() {
         <Stat icon={Clock} label="Avg Sales Cycle" value={`${insights.avgCycle}d`} sub="created → won" />
       </div>
 
-      {/* Search / filter bar */}
-      <div className="bg-bg-secondary p-3 rounded-xl border border-border-sub flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[180px]">
+      {/* Search / filter bar.
+          Phone: search + Filters (bottom sheet) + view toggle in one row.
+          sm and up: every control inline. */}
+      <div className="bg-bg-secondary p-2.5 sm:p-3 rounded-xl border border-border-sub flex items-center gap-2 sm:gap-3 sm:flex-wrap">
+        <div className="relative flex-1 min-w-0 sm:min-w-[180px]">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
             className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-main bg-bg-primary text-[11px] font-bold uppercase tracking-wide text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-red transition-colors"
-            placeholder="Search company, contact, phone, tag..."
+            placeholder="Search leads..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
-        <Select value={ownerFilter} onValueChange={(v: any) => setOwnerFilter(v)}>
-          <SelectTrigger className={filterTrigger}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="text-[10px] uppercase font-bold">All Owners</SelectItem>
-            <SelectItem value="mine" className="text-[10px] uppercase font-bold">My Leads</SelectItem>
-            <SelectItem value="unassigned" className="text-[10px] uppercase font-bold">Unassigned</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={sourceFilter} onValueChange={setSourceFilter}>
-          <SelectTrigger className={filterTrigger}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="text-[10px] uppercase font-bold">All Sources</SelectItem>
-            {SOURCES.map(s => <SelectItem key={s.key} value={s.key} className="text-[10px] uppercase font-bold">{s.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={serviceFilter} onValueChange={setServiceFilter}>
-          <SelectTrigger className={filterTrigger}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="text-[10px] uppercase font-bold">All Services</SelectItem>
-            {SERVICE_LINES.map(s => <SelectItem key={s} value={s} className="text-[10px] uppercase font-bold">{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-text-muted cursor-pointer">
-          <Checkbox checked={staleOnly} onCheckedChange={v => setStaleOnly(!!v)} /> Stale {STALE_DAYS}d+
-        </label>
-        <Select value={listSort.col} onValueChange={(v: any) => setListSort(prev => ({ ...prev, col: v }))}>
-          <SelectTrigger className={filterTrigger}>
-            <div className="flex items-center gap-2"><ArrowUpDown size={12} className="text-text-muted" /><SelectValue /></div>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="updated" className="text-[10px] uppercase font-bold">Last Updated</SelectItem>
-            <SelectItem value="close" className="text-[10px] uppercase font-bold">Close Date</SelectItem>
-            <SelectItem value="stage" className="text-[10px] uppercase font-bold">By Stage</SelectItem>
-            <SelectItem value="value" className="text-[10px] uppercase font-bold">By Value</SelectItem>
-            <SelectItem value="company" className="text-[10px] uppercase font-bold">By Company</SelectItem>
-          </SelectContent>
-        </Select>
-        <div className="flex items-center border border-border-main rounded-lg overflow-hidden h-9 bg-bg-primary">
-          <button onClick={() => setViewMode('kanban')} className={cn('h-9 w-9 flex items-center justify-center transition-colors', viewMode === 'kanban' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}>
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn('sm:hidden h-9 px-3 shrink-0 text-[10px] font-bold uppercase tracking-wider border-border-main', activeFilterCount > 0 && 'border-brand-red text-brand-red')}
+          onClick={() => setFiltersOpen(true)}
+        >
+          <SlidersHorizontal size={13} className="mr-1.5" /> Filters{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}
+        </Button>
+        <div className="hidden sm:contents">{filterControls('inline')}</div>
+        <div className="flex items-center border border-border-main rounded-lg overflow-hidden h-9 bg-bg-primary shrink-0">
+          <button aria-label="Board view" onClick={() => setViewMode('kanban')} className={cn('h-9 w-9 flex items-center justify-center transition-colors', viewMode === 'kanban' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}>
             <LayoutGrid size={13} />
           </button>
           <div className="w-px h-full bg-border-main" />
-          <button onClick={() => setViewMode('list')} className={cn('h-9 w-9 flex items-center justify-center transition-colors', viewMode === 'list' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}>
+          <button aria-label="List view" onClick={() => setViewMode('list')} className={cn('h-9 w-9 flex items-center justify-center transition-colors', viewMode === 'list' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}>
             <List size={13} />
           </button>
         </div>
-        <Button size="sm" className="h-9 ml-auto text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setIsNewLeadOpen(true)}>
+        <Button size="sm" className="hidden sm:inline-flex h-9 ml-auto text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setIsNewLeadOpen(true)}>
           <Plus size={12} className="mr-1.5" /> New Lead
         </Button>
       </div>
 
+      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <SheetContent side="bottom" className="bg-bg-secondary border-border-main rounded-t-2xl max-h-[85vh] overflow-y-auto">
+          <SheetHeader className="text-left">
+            <SheetTitle className="text-sm font-black uppercase tracking-widest">Filter &amp; Sort</SheetTitle>
+          </SheetHeader>
+          <div className="flex flex-col gap-3 py-4">{filterControls('sheet')}</div>
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1 h-10 text-[10px] font-bold uppercase" onClick={clearFilters} disabled={activeFilterCount === 0}>Clear</Button>
+            <Button className="flex-1 h-10 text-[10px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setFiltersOpen(false)}>Show Results</Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
       <Tabs value={crmTab} onValueChange={setCrmTab} className="w-full">
-        <TabsList className="tabs border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-start mb-1 flex-wrap">
+        <TabsList className="tabs w-full border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-5 sm:gap-8 justify-start mb-1 !flex-nowrap overflow-x-auto no-scrollbar">
           <TabsTrigger value="pipeline" className="crm-tab-trigger">Pipeline</TabsTrigger>
           <TabsTrigger value="myday" className="crm-tab-trigger flex items-center gap-2">
             My Day
@@ -1010,7 +1056,7 @@ export default function CRMPage() {
 
       <style jsx global>{`
         .crm-tab-trigger {
-          @apply px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
+          @apply shrink-0 whitespace-nowrap px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
         }
       `}</style>
     </div>

@@ -188,7 +188,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                 </div>
             </div>
 
-            <div className="detail-tabs justify-center">
+            <div className="detail-tabs no-scrollbar">
                 <button className={`detail-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Overview</button>
                 <button className={`detail-tab ${activeTab === 'milestones' ? 'active' : ''}`} onClick={() => setActiveTab('milestones')}>Milestones</button>
                 <button className={`detail-tab ${activeTab === 'documents' ? 'active' : ''}`} onClick={() => setActiveTab('documents')}>Documents</button>

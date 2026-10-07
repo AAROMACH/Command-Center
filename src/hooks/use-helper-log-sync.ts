@@ -1,6 +1,7 @@
 'use client';
 
 import { helperCompleted } from '@/lib/helper-progress';
+import { fetchHelperJobs } from '@/lib/tech-assignments';
 import { useEffect, useRef, useState } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -73,10 +74,13 @@ export function useHelperLogSync(techId: string | null) {
 
   useEffect(() => {
     if (!techId) { setHelperJobs([]); setLeadAssignments([]); setLeadPoolJobs([]); setOwnLogs(null); return; }
+    // Live query when Firestore allows it; the server read covers the case
+    // where it refuses the query (see /api/tech/helper-jobs).
+    let helperStopped = false;
     const unsubHelper = onSnapshot(
       query(collection(db, 'assignments'), where('additionalTechnicianIds', 'array-contains', techId)),
       (snap) => setHelperJobs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder))),
-      () => setHelperJobs([]),
+      () => { fetchHelperJobs().then(j => { if (!helperStopped) setHelperJobs(j); }).catch(() => setHelperJobs([])); },
     );
     const unsubLead = onSnapshot(
       query(collection(db, 'assignments'), where('techId', '==', techId)),
@@ -92,7 +96,7 @@ export function useHelperLogSync(techId: string | null) {
       query(collection(db, 'weeklyLogs'), where('techId', '==', techId)),
       (snap) => setOwnLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog))),
     );
-    return () => { unsubHelper(); unsubLead(); unsubPool(); unsubLogs(); };
+    return () => { helperStopped = true; unsubHelper(); unsubLead(); unsubPool(); unsubLogs(); };
   }, [techId]);
 
   useEffect(() => {

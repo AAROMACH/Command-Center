@@ -1,8 +1,17 @@
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import { db } from './firebase';
+import { auth, db } from './firebase';
 import type { WorkOrder } from './types';
 import { isArchivedJob, isAssignedTo } from './jobs';
 import { isHelperOn, viewForTech } from './helper-progress';
+
+/** Jobs the signed-in tech helps on, read server-side (see /api/tech/helper-jobs). */
+export async function fetchHelperJobs(): Promise<WorkOrder[]> {
+  const token = await auth.currentUser?.getIdToken();
+  if (!token) return [];
+  const res = await fetch('/api/tech/helper-jobs', { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`helper-jobs ${res.status}`);
+  return ((await res.json()).jobs || []) as WorkOrder[];
+}
 
 /**
  * A tech's live, non-archived assignments: jobs they lead plus jobs they're a
@@ -31,9 +40,42 @@ export function subscribeTechAssignments(
     ledLoaded = true;
     publish();
   }, () => { ledLoaded = true; publish(); onError?.(); });
-  const u2 = onSnapshot(query(collection(db, 'assignments'), where('additionalTechnicianIds', 'array-contains', techId)), snap => {
-    helped = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder));
+  // Helper jobs: a live query when Firestore allows it, plus the server
+  // endpoint (always works) on load, every minute, and when the app regains
+  // focus — so a helper's jobs never silently go missing.
+  let live: WorkOrder[] = [];
+  let fetched: WorkOrder[] = [];
+  const mergeHelped = () => {
+    const m = new Map<string, WorkOrder>();
+    [...fetched, ...live].forEach(j => m.set(j.id, j)); // live wins (fresher)
+    helped = [...m.values()];
     publish();
-  }, () => { helped = []; publish(); });
-  return () => { u1(); u2(); };
+  };
+  const u2 = onSnapshot(query(collection(db, 'assignments'), where('additionalTechnicianIds', 'array-contains', techId)), snap => {
+    live = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder));
+    mergeHelped();
+  }, (err) => {
+    console.warn('[tech-assignments] live helper-job query refused; using server fetch', err?.code || err);
+    live = [];
+    mergeHelped();
+  });
+  let stopped = false;
+  const refetch = async () => {
+    try {
+      const jobs = await fetchHelperJobs();
+      if (!stopped) { fetched = jobs; mergeHelped(); }
+    } catch (e) {
+      console.warn('[tech-assignments] helper-job fetch failed', e);
+    }
+  };
+  refetch();
+  const timer = setInterval(refetch, 60_000);
+  const onFocus = () => { refetch(); };
+  if (typeof window !== 'undefined') window.addEventListener('focus', onFocus);
+  return () => {
+    stopped = true;
+    u1(); u2();
+    clearInterval(timer);
+    if (typeof window !== 'undefined') window.removeEventListener('focus', onFocus);
+  };
 }

@@ -187,8 +187,9 @@ service cloud.firestore {
           || (isTech() && resource.data.techId == request.auth.uid)
           // A helper (additional technician) may read the jobs they assisted on,
           // so the job can surface on their own weekly work log.
-          || (isTech() && resource.data.additionalTechnicianIds is list
-              && request.auth.uid in resource.data.additionalTechnicianIds)
+          // (plain `uid in field` so Firestore can prove it for an
+          // array-contains query on the helper's job lists)
+          || (isTech() && request.auth.uid in resource.data.additionalTechnicianIds)
           || (isClient() && (resource.data.get('clientId', null) == request.auth.uid
               || (myCompany() != '' && resource.data.get('clientName', null) == myCompany())))
       );

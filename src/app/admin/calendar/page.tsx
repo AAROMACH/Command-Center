@@ -131,6 +131,8 @@ export default function AdminCalendarPage() {
   const [showAssignPanel, setShowAssignPanel] = useState(false);
   const [savingEdit, setSavingEdit]       = useState(false);
   const [activeId, setActiveId]           = useState<string | null>(null);
+  // Day cell showing all of its jobs instead of the first 3 (yyyy-MM-dd).
+  const [expandedDay, setExpandedDay]     = useState<string | null>(null);
   const [editForm, setEditForm]           = useState({
     scheduleDate: '', scheduleTime: '', scheduleEndTime: '',
     priority: '', assignedTechnicianId: '', notes: '',
@@ -457,7 +459,9 @@ export default function AdminCalendarPage() {
           <div className="grid grid-cols-7 divide-x divide-y divide-border-sub">
             {monthDays.map((day, idx) => {
               const dayJobs  = jobsForDate(day);
-              const visible  = dayJobs.slice(0, 3);
+              const dayKey   = format(day, 'yyyy-MM-dd');
+              const expanded = expandedDay === dayKey;
+              const visible  = expanded ? dayJobs : dayJobs.slice(0, 3);
               const overflow = dayJobs.length - 3;
               const inMonth       = day.getMonth() === monthDate.getMonth();
               const isCurrentDay  = isToday(day);
@@ -490,9 +494,15 @@ export default function AdminCalendarPage() {
                     />
                   ))}
                   {overflow > 0 && (
-                    <span className="text-[8px] font-bold text-text-muted pl-0.5 pointer-events-none">
-                      +{overflow} more
-                    </span>
+                    <button
+                      type="button"
+                      // Don't start a drag or select the day — just expand/collapse.
+                      onPointerDown={e => e.stopPropagation()}
+                      onClick={e => { e.stopPropagation(); setExpandedDay(expanded ? null : dayKey); }}
+                      className="self-start text-[8px] font-bold text-text-muted hover:text-brand-red pl-0.5 underline-offset-2 hover:underline"
+                    >
+                      {expanded ? 'Show less' : `+${overflow} more`}
+                    </button>
                   )}
                 </DroppableDay>
               );

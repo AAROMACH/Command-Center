@@ -416,3 +416,32 @@ export const requestUnsubmit = (techId: string, logId: string, reason: unknown) 
     if (!r) throw new WeeklyLogError('A reason is required.');
     return { unsubmitRequested: true, unsubmitReason: r, unsubmitRequestedAt: new Date().toISOString() };
   });
+
+/**
+ * Job details for every line on a tech's own weekly logs. A line can sit on
+ * a tech's log for a job record they're no longer on (reassigned, moved by
+ * payroll), and the Firestore rules won't let them read that job directly —
+ * so the log would show a line they can't see or confirm. Returns only the
+ * fields the log card displays.
+ */
+export async function jobsOnOwnLogs(techId: string): Promise<Partial<WorkOrder>[]> {
+  const logs = await logsOf(techId).get();
+  const ids = new Set<string>();
+  logs.docs.forEach(d => ((d.data().items || []) as WeeklyLogItem[]).forEach(i => i.workOrderId && ids.add(i.workOrderId)));
+  const out: Partial<WorkOrder>[] = [];
+  for (const id of ids) {
+    const job = await loadJob(id);
+    if (!job) continue;
+    const {
+      title, description, scheduleDate, scheduleTime, location, clientName, pay, payType,
+      blendedFixedPay, blendedIncludedHours, blendedHourlyRate, source, status, projectType,
+      externalWorkOrderId, workOrderId, shortId,
+    } = job as WorkOrder & Record<string, any>;
+    out.push(JSON.parse(JSON.stringify({
+      id: job.id, title, description, scheduleDate, scheduleTime, location, clientName, pay, payType,
+      blendedFixedPay, blendedIncludedHours, blendedHourlyRate, source, status, projectType,
+      externalWorkOrderId, workOrderId, shortId,
+    })));
+  }
+  return out;
+}

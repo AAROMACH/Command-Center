@@ -61,7 +61,9 @@ import { differenceInMinutes, parseISO, format } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { db, auth } from '@/lib/firebase';
-import { doc, setDoc, updateDoc, deleteDoc, arrayUnion, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, arrayUnion, collection, query, where, onSnapshot, runTransaction } from 'firebase/firestore';
+import { isLockedLog } from '@/lib/weekly-log-core';
+import { isSuperAdmin } from '@/lib/permissions';
 import { toUnassignedWorkOrder, archiveJobRecord } from '@/lib/jobs';
 import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
@@ -315,7 +317,10 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     const [selectedJobForDetail, setSelectedJobForDetail] = useState<WorkOrder | null>(null);
     const [isJobDetailOpen, setIsJobDetailOpen] = useState(false);
     const { toast } = useToast();
-    const { hasPermission } = useAuth();
+    const { hasPermission, user: authUser } = useAuth();
+    const superAdmin = isSuperAdmin(authUser);
+    const [toolsOpen, setToolsOpen] = useState(false);
+    const [toolBusy, setToolBusy] = useState<string | null>(null);
     // Weekly-log review authority (subrole-driven). Approve settles a submitted
     // log; return sends it back to the tech (Deny / Authorize Unsubmit).
     const canApproveLog = hasPermission('admin.logs.approve');
@@ -669,6 +674,90 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         }
     };
 
+    // ── Log tools: move a job to another of this tech's logs, remove it, or
+    // delete an emptied log. Admin-only, never on locked (approved/paid) logs.
+    const otherOpenLogs = useMemo(() => {
+        if (!localLog) return [] as WeeklyLog[];
+        return allWeeklyLogs
+            .filter(l => l.techId === localLog.techId && l.id !== localLog.id && !isLockedLog(l as any))
+            .sort((a, b) => (b.weekOf || '').localeCompare(a.weekOf || ''));
+    }, [allWeeklyLogs, localLog?.id, localLog?.techId]);
+
+    const adminName = () => auth.currentUser?.displayName || authUser?.name || 'Admin';
+
+    const handleMoveItem = async (item: WeeklyLogItem, toLogId: string) => {
+        if (!localLog) return;
+        setToolBusy(item.id);
+        try {
+            const fromRef = doc(db, 'weeklyLogs', localLog.id);
+            const toRef = doc(db, 'weeklyLogs', toLogId);
+            let toWeek = '';
+            await runTransaction(db, async tx => {
+                const [a, b] = await Promise.all([tx.get(fromRef), tx.get(toRef)]);
+                if (!a.exists() || !b.exists()) throw new Error('Weekly log not found.');
+                const from = a.data() as WeeklyLog & { history?: unknown[] };
+                const to = b.data() as WeeklyLog & { history?: unknown[] };
+                if (isLockedLog(from as any) || isLockedLog(to as any)) throw new Error('Approved or paid logs can\'t be changed.');
+                const moving = (from.items || []).find(i => i.id === item.id);
+                if (!moving) throw new Error('That job is no longer on this log.');
+                if ((to.items || []).some(i => i.workOrderId === moving.workOrderId)) throw new Error('That job is already on the destination log.');
+                const reimbs = (from.reimbursements || []).filter(r => r.workOrderId === moving.workOrderId);
+                toWeek = to.weekOf;
+                const stamp = { type: 'item_moved', workOrderId: moving.workOrderId, fromWeek: from.weekOf, toWeek: to.weekOf, by: adminName(), at: new Date().toISOString() };
+                tx.update(fromRef, {
+                    items: (from.items || []).filter(i => i.id !== item.id),
+                    reimbursements: (from.reimbursements || []).filter(r => r.workOrderId !== moving.workOrderId),
+                    history: [...(from.history || []), stamp],
+                });
+                tx.update(toRef, {
+                    items: [...(to.items || []), moving],
+                    reimbursements: [...(to.reimbursements || []), ...reimbs],
+                    history: [...(to.history || []), stamp],
+                });
+            });
+            setLocalLog(prev => prev ? { ...prev, items: (prev.items || []).filter(i => i.id !== item.id), reimbursements: (prev.reimbursements || []).filter(r => r.workOrderId !== item.workOrderId) } : prev);
+            await auditEvent('weeklyLogs', localLog.id, auth.currentUser?.uid || '', adminName(), 'item_moved',
+                `Moved ${item.workOrderId} from week of ${localLog.weekOf} to ${toLogId} (week of ${toWeek}).`).catch(() => {});
+            toast({ title: 'Job moved', description: `Now on the week of ${toWeek}.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Move failed', description: e.message });
+        } finally {
+            setToolBusy(null);
+        }
+    };
+
+    const handleRemoveItemTool = async (item: WeeklyLogItem) => {
+        if (!localLog || !confirm(`Remove ${item.workOrderId} from this log? The job itself is not deleted.`)) return;
+        setToolBusy(item.id);
+        try {
+            await removeLogItem(item.id);
+            await auditEvent('weeklyLogs', localLog.id, auth.currentUser?.uid || '', adminName(), 'item_removed',
+                `Removed ${item.workOrderId} from week of ${localLog.weekOf}.`).catch(() => {});
+            toast({ title: 'Removed from log' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Remove failed', description: e.message });
+        } finally {
+            setToolBusy(null);
+        }
+    };
+
+    const handleDeleteEmptyLog = async () => {
+        if (!localLog || (localLog.items || []).length > 0 || (localLog.reimbursements || []).length > 0) return;
+        if (!confirm(`Delete the empty log for the week of ${localLog.weekOf}?`)) return;
+        setToolBusy('log');
+        try {
+            await deleteDoc(doc(db, 'weeklyLogs', localLog.id));
+            await auditEvent('weeklyLogs', localLog.id, auth.currentUser?.uid || '', adminName(), 'deleted_empty',
+                `Deleted empty log ${localLog.id} for week of ${localLog.weekOf}.`).catch(() => {});
+            toast({ title: 'Log deleted' });
+            setIsOpen(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Delete failed', description: e.message });
+        } finally {
+            setToolBusy(null);
+        }
+    };
+
     const removeLogItem = async (itemId: string) => {
         if (!localLog) return;
         const updatedItems = (localLog.items || []).filter(i => i.id !== itemId);
@@ -780,6 +869,55 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             </div>
                         </div>
                     </DialogHeader>
+
+                    {!isLogApproved && !isLockedLog(localLog as any) && canOverrideDispute && (
+                        <div className="px-3 sm:px-4 py-2 border-b border-border-sub shrink-0 bg-bg-tertiary/30">
+                            <button onClick={() => setToolsOpen(o => !o)} className="text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-text-primary flex items-center gap-1.5">
+                                <Wrench size={11} /> Log Tools {toolsOpen ? '▾' : '▸'}
+                            </button>
+                            {toolsOpen && (
+                                <div className="mt-2 space-y-1.5">
+                                    {(localLog.items || []).length === 0 && (
+                                        <p className="text-[10px] text-text-muted uppercase tracking-wider">No jobs on this log.</p>
+                                    )}
+                                    {(localLog.items || []).map(item => {
+                                        const m = missions.find(x => x.id === item.workOrderId);
+                                        return (
+                                            <div key={item.id} className="flex flex-wrap items-center gap-2 text-[10px]">
+                                                <span className="font-mono font-bold text-text-primary">{item.workOrderId.toUpperCase()}</span>
+                                                <span className="text-text-muted truncate max-w-[220px]">{m?.title || ''}</span>
+                                                <select
+                                                    className="ml-auto h-7 rounded border border-border-main bg-bg-primary text-[10px] px-1.5"
+                                                    value=""
+                                                    disabled={!!toolBusy || otherOpenLogs.length === 0}
+                                                    onChange={e => e.target.value && handleMoveItem(item, e.target.value)}
+                                                >
+                                                    <option value="">{otherOpenLogs.length ? 'Move to…' : 'No other open logs'}</option>
+                                                    {otherOpenLogs.map(l => (
+                                                        <option key={l.id} value={l.id}>Week of {l.weekOf} · {l.status}</option>
+                                                    ))}
+                                                </select>
+                                                <Button size="sm" variant="ghost" className="h-7 px-2 text-[9px] font-bold uppercase text-text-muted hover:text-text-red"
+                                                    disabled={!!toolBusy} onClick={() => handleRemoveItemTool(item)}>
+                                                    {toolBusy === item.id ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />} Remove
+                                                </Button>
+                                            </div>
+                                        );
+                                    })}
+                                    {(localLog.items || []).length === 0 && (localLog.reimbursements || []).length === 0 && (
+                                        superAdmin ? (
+                                            <Button size="sm" className="h-7 text-[9px] font-bold uppercase bg-text-red hover:bg-text-red/90 text-white"
+                                                disabled={!!toolBusy} onClick={handleDeleteEmptyLog}>
+                                                {toolBusy === 'log' ? <Loader2 size={11} className="mr-1.5 animate-spin" /> : <Trash2 size={11} className="mr-1.5" />} Delete Empty Log
+                                            </Button>
+                                        ) : (
+                                            <p className="text-[9px] text-text-muted uppercase tracking-wider">A super admin can delete this empty log.</p>
+                                        )
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {isLogApproved && (
                         <div className="flex flex-wrap items-center justify-between gap-3 px-3 sm:px-4 py-2 border-b border-border-sub shrink-0 text-[10px] font-bold uppercase tracking-widest bg-bg-tertiary/50 text-text-muted">

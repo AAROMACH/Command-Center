@@ -287,8 +287,13 @@ export default function TechWeeklyLogPage() {
         }
 
         if (searchQuery) {
-            const q = searchQuery.toLowerCase();
-            filtered = filtered.filter(l => (l.weekOf || '').includes(q));
+            // Week date, or any job on the log: ASMT id, WO#, title, city.
+            const q = searchQuery.toLowerCase().trim();
+            filtered = filtered.filter(l => (l.weekOf || '').includes(q) || (l.items || []).some(i => {
+                const j = jobsById.get(i.workOrderId);
+                return [i.workOrderId, j && externalWorkOrderId(j), j?.title, j?.description, j?.location, j?.clientName]
+                    .some(v => String(v || '').toLowerCase().includes(q));
+            }));
         }
 
         if (dateRange?.from) {

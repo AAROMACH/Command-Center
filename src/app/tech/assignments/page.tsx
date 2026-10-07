@@ -1,5 +1,6 @@
 'use client';
 
+import { externalWorkOrderId } from '@/lib/work-order-identity';
 import { subscribeTechAssignments } from '@/lib/tech-assignments';
 import dynamic from 'next/dynamic';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
@@ -161,6 +162,9 @@ export default function TechAssignmentsPage() {
                 const q = deferredSearch.toLowerCase();
                 const matchesSearch = (
                     wo.id.toLowerCase().includes(q) ||
+                    // Field Nation / client WO number — what techs actually search by.
+                    String(externalWorkOrderId(wo) || '').toLowerCase().includes(q) ||
+                    String((wo as any).workOrderId || '').toLowerCase().includes(q) ||
                     (wo.title || '').toLowerCase().includes(q) ||
                     (wo.description || '').toLowerCase().includes(q) ||
                     (wo.clientName || '').toLowerCase().includes(q) ||

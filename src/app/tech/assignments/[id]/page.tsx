@@ -1,5 +1,7 @@
 'use client';
 
+import { viewForTech, isHelperOn } from '@/lib/helper-progress';
+import { isLockedLog } from '@/lib/weekly-log-core';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -118,6 +120,12 @@ function TechCard({ tech, label }: { tech: Technician; label?: string }) {
   );
 }
 
+/** A helper sees the job with their own status/trip (lib/helper-progress). */
+function asSeenByMe(job: WorkOrder): WorkOrder {
+  const me = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('currentUserId') : null;
+  return me ? viewForTech(job, me) : job;
+}
+
 export default function TechAssignmentDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -150,19 +158,19 @@ export default function TechAssignmentDetailPage() {
     (async () => {
       const aSnap = await getDoc(doc(db, 'assignments', assignmentId));
       if (aSnap.exists()) {
-        setAssignment({ ...aSnap.data(), id: aSnap.id } as WorkOrder);
+        setAssignment(asSeenByMe({ ...aSnap.data(), id: aSnap.id } as WorkOrder));
         setLoading(false);
         // Live updates
         unsub = onSnapshot(doc(db, 'assignments', assignmentId), s => {
-          if (s.exists()) setAssignment({ ...s.data(), id: s.id } as WorkOrder);
+          if (s.exists()) setAssignment(asSeenByMe({ ...s.data(), id: s.id } as WorkOrder));
         });
         return;
       }
       const wSnap = await getDoc(doc(db, 'workOrders', assignmentId));
       if (wSnap.exists()) {
-        setAssignment({ ...wSnap.data(), id: wSnap.id } as WorkOrder);
+        setAssignment(asSeenByMe({ ...wSnap.data(), id: wSnap.id } as WorkOrder));
         unsub = onSnapshot(doc(db, 'workOrders', assignmentId), s => {
-          if (s.exists()) setAssignment({ ...s.data(), id: s.id } as WorkOrder);
+          if (s.exists()) setAssignment(asSeenByMe({ ...s.data(), id: s.id } as WorkOrder));
         });
       }
       setLoading(false);
@@ -345,13 +353,14 @@ export default function TechAssignmentDetailPage() {
     },
     {
       key: 'reopen', label: 'Re-open', icon: RotateCcw,
-      show: status === 'completed',
+      // Locked once it's on an Approved / Paid weekly log — payroll owns it then.
+      show: status === 'completed' && !relatedLogs.some(l => isLockedLog(l)),
       handler: handleReopen,
       cls: '',
     },
-  // Status actions belong to the assigned tech only — a helper can view the
-  // job but not move it through confirm / trip / complete.
-  ].filter(a => a.show && isAssignedTo(assignment, currentTechId));
+  // The assigned tech, or a helper running their own part of the job
+  // (helpers see their own status here — lib/helper-progress).
+  ].filter(a => a.show && (isAssignedTo(assignment, currentTechId) || isHelperOn(assignment, currentTechId)));
 
   return (
     <div className="space-y-5 text-left pb-24">

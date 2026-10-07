@@ -127,15 +127,26 @@ export default function DashboardPage() {
             setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
         });
 
-        // Completed jobs feed MTD revenue / profit (same model as Financials).
+        // Completed jobs feed MTD revenue / profit AND payroll: weekly logs are
+        // for finished work, so without these the settlement can't find the
+        // job and pays Field Nation jobs at full price (no FN fee / split).
+        // Both collections, same as Financials.
+        let doneAsmt: WorkOrder[] = [];
+        let doneWO: WorkOrder[] = [];
+        const pushDone = () => setCompletedJobs([...doneWO, ...doneAsmt]);
         const unsubDone = onSnapshot(
             query(collection(db, 'assignments'), where('status', '==', 'completed')),
-            (snap) => setCompletedJobs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder))),
-            () => setCompletedJobs([]),
+            (snap) => { doneAsmt = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)); pushDone(); },
+            () => { doneAsmt = []; pushDone(); },
+        );
+        const unsubDoneWO = onSnapshot(
+            query(collection(db, 'workOrders'), where('status', '==', 'completed')),
+            (snap) => { doneWO = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)); pushDone(); },
+            () => { doneWO = []; pushDone(); },
         );
 
         return () => {
-            unsubUser(); unsubWO(); unsubAsmt(); unsubTech(); unsubProj(); unsubDone();
+            unsubUser(); unsubWO(); unsubAsmt(); unsubTech(); unsubProj(); unsubDone(); unsubDoneWO();
             unsubLogs(); unsubSite(); unsubClientReq(); unsubTOR(); unsubInv();
         };
     }, []);
@@ -167,9 +178,11 @@ export default function DashboardPage() {
         weeklyLogs.filter(l => l.status === 'Submitted' && !inactiveTechIds.has(l.techId)),
     [weeklyLogs, inactiveTechIds]);
 
+    // Every job the dashboard knows about, finished ones included — the
+    // payroll and financial cards must see the same jobs Financials does.
     const jobsById = useMemo(
-        () => new Map(mergeJobs(workOrders, assignments).map(j => [j.id, j as WorkOrder])),
-        [workOrders, assignments],
+        () => new Map(mergeJobs(workOrders, [...assignments, ...completedJobs]).map(j => [j.id, j as WorkOrder])),
+        [workOrders, assignments, completedJobs],
     );
 
     // Live settlement — same figure as Financials' Pending Payouts card and
@@ -240,15 +253,14 @@ export default function DashboardPage() {
     // revenue = pay on jobs completed this month (or their paid invoice) +
     // paid invoices not tied to a job; profit = Aaromach portion.
     const financialKpis = useMemo(() => {
-        const allJobs = new Map(mergeJobs(workOrders, [...assignments, ...completedJobs]).map(j => [j.id, j as WorkOrder]));
-        const summary = computeFinancialSummary({ invoices, expenses: [], weeklyLogs, jobsById: allJobs });
+        const summary = computeFinancialSummary({ invoices, expenses: [], weeklyLogs, jobsById });
         return {
             mtdRevenue: Math.round(summary.month.revenue),
             mtdProfit: Math.round(summary.month.profit),
             outstanding: Math.round(summary.receivableTotal),
             upcomingPayroll: Math.round(pendingPay),
         };
-    }, [invoices, weeklyLogs, workOrders, assignments, completedJobs, pendingPay]);
+    }, [invoices, weeklyLogs, jobsById, pendingPay]);
 
     const availablePortals = useMemo(() => getAvailablePortals(currentUser), [currentUser]);
     const techPortal = useMemo(() => availablePortals.find(p => p.id === 'tech'), [availablePortals]);

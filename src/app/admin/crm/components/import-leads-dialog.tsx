@@ -5,8 +5,11 @@ import { db, storage } from '@/lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { makeLeadId } from '@/lib/doc-ids';
-import { parseCsv, rowsToLeads, extractLeadFromPdfText, type ExtractedLead } from '@/lib/lead-import';
-import type { Lead, LeadAttachment } from '@/lib/types';
+import { parseCsv, rowsToLeads, groupLeadsByCompany, extractLeadFromPdfText, type ExtractedLead } from '@/lib/lead-import';
+import { companyKey, findCompany, findContact, resolveLeadAccount, saveContact } from '@/lib/crm-accounts';
+import { SOURCES, findDuplicates } from '@/lib/crm';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { CrmCompany, CrmContact, Lead, LeadAttachment } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -16,12 +19,17 @@ import {
   Upload, FileText, FileSpreadsheet, Loader2, X, CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 
-type Candidate = ExtractedLead & { include: boolean };
+type Candidate = ExtractedLead & { include: boolean; duplicateOf?: string };
 
 type Props = {
   open: boolean;
   onClose: () => void;
   currentUserId: string;
+  currentUserName?: string;
+  /** Existing CRM data — used to flag companies already in the pipeline and to link accounts. */
+  leads?: Lead[];
+  companies?: CrmCompany[];
+  contacts?: CrmContact[];
 };
 
 async function extractPdfFirstPageText(file: File): Promise<string> {
@@ -68,7 +76,7 @@ function fileKindIcon(name: string) {
   return /\.(csv|xlsx?|xls)$/i.test(name) ? FileSpreadsheet : FileText;
 }
 
-export function ImportLeadsDialog({ open, onClose, currentUserId }: Props) {
+export function ImportLeadsDialog({ open, onClose, currentUserId, currentUserName, leads = [], companies = [], contacts = [] }: Props) {
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
@@ -76,6 +84,7 @@ export function ImportLeadsDialog({ open, onClose, currentUserId }: Props) {
   const [parsing, setParsing] = useState(false);
   const [importing, setImporting] = useState(false);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
+  const [source, setSource] = useState<Lead['source']>('other');
 
   const reset = () => {
     setFiles([]); setCandidates([]); setParseErrors([]);
@@ -118,7 +127,20 @@ export function ImportLeadsDialog({ open, onClose, currentUserId }: Props) {
     }
 
     setFiles(prev => [...prev, ...newFiles]);
-    setCandidates(prev => [...prev, ...newCandidates]);
+    // One deal per company: Apollo-style exports have a row per person.
+    setCandidates(prev => {
+      const merged = groupLeadsByCompany([...prev, ...newCandidates], companyKey).map(c => ({ ...c, include: true } as Candidate));
+      return merged.map(c => {
+        const prior = prev.find(p => companyKey(p.companyName) === companyKey(c.companyName));
+        const dup = findDuplicates(leads, c)[0];
+        return {
+          ...c,
+          duplicateOf: dup ? dup.companyName : undefined,
+          // Already in the pipeline → off by default; keep earlier manual choices.
+          include: prior ? prior.include : !dup,
+        };
+      });
+    });
     setParseErrors(prev => [...prev, ...errors]);
     setParsing(false);
     if (inputRef.current) inputRef.current.value = '';
@@ -148,30 +170,70 @@ export function ImportLeadsDialog({ open, onClose, currentUserId }: Props) {
       }
 
       const now = new Date().toISOString();
+      // Local copies so companies/contacts created earlier in this batch are reused.
+      const knownCompanies = [...companies];
+      const knownContacts = [...contacts];
+      let contactCount = 0;
       for (const c of included) {
         const id = await makeLeadId();
         const attachment = uploadsByName.get(c.sourceFile);
+        const companyName = c.companyName || c.sourceFile;
+
+        // Attach to an account (found or created) with every person from the file.
+        let account: { companyId?: string; contactId?: string } = {};
+        try {
+          account = await resolveLeadAccount(
+            { companyName, contactName: c.contactName, contactTitle: c.contactTitle, contactEmail: c.contactEmail, contactPhone: c.contactPhone, industry: c.industry, website: c.website, address: c.address },
+            knownCompanies, knownContacts, { id: currentUserId, name: currentUserName },
+          );
+          if (!knownCompanies.some(k => k.id === account.companyId)) {
+            knownCompanies.push({ id: account.companyId!, name: companyName, createdAt: now, updatedAt: now });
+          }
+          if (account.contactId) {
+            contactCount++;
+            if (!knownContacts.some(k => k.id === account.contactId)) {
+              knownContacts.push({ id: account.contactId, companyId: account.companyId!, name: c.contactName, email: c.contactEmail, createdAt: now, updatedAt: now });
+            }
+          }
+          for (const p of c.otherContacts) {
+            if (findContact(knownContacts, account.companyId!, p)) continue;
+            const cid = await saveContact({ companyId: account.companyId!, name: p.name, title: p.title, email: p.email, phone: p.phone });
+            knownContacts.push({ id: cid, companyId: account.companyId!, name: p.name, email: p.email, createdAt: now, updatedAt: now });
+            contactCount++;
+          }
+        } catch {
+          // Account linking is additive — the lead still imports without it.
+        }
+
         const lead: Lead = {
           id,
-          companyName: c.companyName || c.sourceFile,
+          companyName,
           contactName: c.contactName,
           contactEmail: c.contactEmail,
           contactPhone: c.contactPhone,
-          source: 'other',
+          contactTitle: c.contactTitle,
+          website: c.website,
+          address: c.address,
+          industry: c.industry,
+          source,
           stage: 'new',
           estimatedValue: c.estimatedValue,
           assignedTo: currentUserId,
+          assignedToName: currentUserName || '',
           notes: c.notes,
           tags: ['imported'],
           createdAt: now,
           updatedAt: now,
+          stageChangedAt: now,
           importedFrom: c.sourceFile,
           attachments: attachment ? [attachment] : [],
+          ...(account.companyId ? { companyId: account.companyId } : {}),
+          ...(account.contactId ? { contactId: account.contactId } : {}),
         };
         await addDoc(collection(db, 'leads'), { ...lead });
       }
 
-      toast({ title: 'Leads imported', description: `${included.length} lead${included.length !== 1 ? 's' : ''} added to the New stage with originals attached.` });
+      toast({ title: 'Leads imported', description: `${included.length} deal${included.length !== 1 ? 's' : ''} added to New · ${contactCount} contact${contactCount !== 1 ? 's' : ''} saved to Accounts.` });
       reset();
       onClose();
     } catch (e: any) {
@@ -191,7 +253,7 @@ export function ImportLeadsDialog({ open, onClose, currentUserId }: Props) {
             <Upload size={14} className="text-brand-red" /> Import Leads
           </DialogTitle>
           <DialogDescription className="text-[10px] uppercase font-bold text-text-muted">
-            PDF (first page), CSV, or Excel. Extracted leads land in the New stage with the original file attached.
+            PDF (first page), CSV or Excel — including Apollo exports. One deal per company; every person is saved to the account.
           </DialogDescription>
         </DialogHeader>
 
@@ -247,6 +309,18 @@ export function ImportLeadsDialog({ open, onClose, currentUserId }: Props) {
             </div>
           )}
 
+          {candidates.length > 0 && (
+            <div className="flex items-center gap-3">
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">Lead Source</span>
+              <Select value={source} onValueChange={v => setSource(v as Lead['source'])}>
+                <SelectTrigger className="h-8 w-[180px] text-xs bg-bg-tertiary border-border-main"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-bg-elevated border-border-main">
+                  {SOURCES.map(s => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Extracted candidates */}
           {candidates.length > 0 && (
             <div className="flex-1 min-h-0 flex flex-col">
@@ -267,10 +341,26 @@ export function ImportLeadsDialog({ open, onClose, currentUserId }: Props) {
                         {c.include && <CheckCircle2 size={10} className="text-white" />}
                       </button>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-bold text-text-primary truncate">{c.companyName || '(no company)'}</p>
-                        <p className="text-[10px] text-text-muted truncate">
-                          {[c.contactName, c.contactEmail, c.contactPhone].filter(Boolean).join(' · ') || 'No contact details extracted'}
+                        <p className="text-[11px] font-bold text-text-primary truncate flex items-center gap-2">
+                          {c.companyName || '(no company)'}
+                          {c.duplicateOf && (
+                            <span className="text-[8px] font-black uppercase tracking-wider text-amber-400 border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 rounded shrink-0">Already in CRM</span>
+                          )}
+                          {findCompany(companies, c.companyName) && !c.duplicateOf && (
+                            <span className="text-[8px] font-black uppercase tracking-wider text-text-green border border-text-green/30 bg-text-green/10 px-1.5 py-0.5 rounded shrink-0">Existing account</span>
+                          )}
                         </p>
+                        <p className="text-[10px] text-text-muted truncate">
+                          {[[c.contactName, c.contactTitle].filter(Boolean).join(', '), c.contactEmail, c.contactPhone].filter(Boolean).join(' · ') || 'No contact details extracted'}
+                        </p>
+                        {(c.industry || c.address) && (
+                          <p className="text-[10px] text-text-muted truncate">{[c.industry, c.address].filter(Boolean).join(' · ')}</p>
+                        )}
+                        {c.otherContacts.length > 0 && (
+                          <p className="text-[10px] text-text-secondary truncate">
+                            +{c.otherContacts.length} more: {c.otherContacts.map(o => [o.name, o.title].filter(Boolean).join(' – ')).join('; ')}
+                          </p>
+                        )}
                         {c.estimatedValue > 0 && <p className="text-[10px] text-text-green font-mono">${c.estimatedValue.toLocaleString()}</p>}
                         <p className="text-[8px] text-text-muted uppercase tracking-widest mt-0.5">{c.sourceFile}</p>
                       </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { subscribeTechAssignments } from '@/lib/tech-assignments';
 import dynamic from 'next/dynamic';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
@@ -112,10 +113,8 @@ export default function TechAssignmentsPage() {
             const key = `lastAssignmentSeen_${userId}`;
             const lastSeen = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
 
-            const unsubAsmt = onSnapshot(query(collection(db, 'assignments'), where('techId', '==', userId)), (snap) => {
-                // Archived is a first line of defense before deletion — never
-                // let an archived job resurface here as live/active.
-                const orders = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)).filter(wo => !isArchivedJob(wo) && isAssignedTo(wo, userId));
+            // Jobs they lead + jobs they help on (archived never resurface).
+            const unsubAsmt = subscribeTechAssignments(userId, (orders) => {
                 setAllWorkOrders(orders);
                 if (lastSeen) {
                     const count = orders.filter(o => {

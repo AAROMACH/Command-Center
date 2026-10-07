@@ -1,5 +1,6 @@
 'use client';
 
+import { helperProgressOf } from '@/lib/helper-progress';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -541,6 +542,18 @@ export default function AssignmentDetailPage() {
             return (
               <div key={hid} className="relative group">
                 <TechCard tech={ht} label="HELPER" />
+                {(() => {
+                  // The helper's own progress on this job (lib/helper-progress).
+                  const hp = helperProgressOf(assignment, hid);
+                  const done = hp.status === 'completed';
+                  return (
+                    <p className={`mt-1 text-[8px] font-black uppercase tracking-widest ${done ? 'text-text-green' : hp.status === 'assigned' ? 'text-text-muted' : 'text-amber-400'}`}>
+                      {hp.status.replace(/-/g, ' ')}
+                      {hp.checkInAt ? ` · in ${new Date(hp.checkInAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}
+                      {hp.completedAt ? ` · done ${new Date(hp.completedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}
+                    </p>
+                  );
+                })()}
                 <button
                   className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-4 h-4 rounded-full bg-bg-primary/80 flex items-center justify-center text-text-muted hover:text-rose-400 text-xs font-bold"
                   onClick={() => handleRemoveHelper(hid)}

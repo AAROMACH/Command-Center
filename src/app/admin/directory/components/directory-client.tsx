@@ -1,6 +1,6 @@
 'use client';
 import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from '@/lib/types';
-import { isAdmin, isTech, isClient } from '@/lib/permissions';
+import { isAdmin, isSales, isTech, isClient } from '@/lib/permissions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -260,7 +260,8 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
 
     const techniciansList = personnel.filter(isTech);
 
-    const staffList = personnel.filter(isAdmin);
+    // Staff = office personnel: admin subroles plus Sales (its own portal now).
+    const staffList = personnel.filter(p => isAdmin(p) || isSales(p));
 
     const clientsList = personnel.filter(isClient);
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { subscribeTechAssignments } from '@/lib/tech-assignments';
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
@@ -91,12 +92,8 @@ export default function TechDashboardPage() {
             console.warn("Personnel registry handshake restricted:", err);
         });
 
-        const unsubAsmt = onSnapshot(query(collection(db, 'assignments'), where('techId', '==', userId)), (snap) => {
-            // Archived is a first line of defense before deletion — a job
-            // that's been archived (or somehow left behind with a stale
-            // 'archived' flag) must never resurface as live/upcoming here.
-            setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)).filter(wo => !isArchivedJob(wo) && isAssignedTo(wo, userId)));
-        });
+        // Jobs they lead + jobs they help on (archived never resurface).
+        const unsubAsmt = subscribeTechAssignments(userId, setAllWorkOrders);
 
         const logQ = query(collection(db, 'weeklyLogs'), where('techId', '==', userId), where('status', '==', 'Draft'));
         const unsubLogs = onSnapshot(logQ, (snap) => {

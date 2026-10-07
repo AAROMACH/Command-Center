@@ -952,11 +952,20 @@ export default function CRMPage() {
         contacts={contacts}
         presetCompany={presetCompany}
         onClose={() => { setIsNewLeadOpen(false); setEditLead(null); setPresetCompany(null); }}
+        onDeleted={id => setSelectedLead(prev => (prev?.id === id ? null : prev))}
         currentUserId={currentUserId}
         currentUserName={currentUserName}
       />
 
-      <ImportLeadsDialog open={isImportOpen} onClose={() => setIsImportOpen(false)} currentUserId={currentUserId} />
+      <ImportLeadsDialog
+        open={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        currentUserId={currentUserId}
+        currentUserName={currentUserName}
+        leads={leads}
+        companies={companies}
+        contacts={contacts}
+      />
 
       <LeadDetailDrawer
         lead={selectedLead}

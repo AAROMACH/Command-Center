@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { readJobBlock, JOB_PASTE_LINES, JOB_PASTE_TEMPLATE } from '@/lib/job-paste';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -92,16 +93,13 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
       const blocks = text.split(/\n\s*\n/).filter(b => b.trim());
 
       return (blocks.map((block, blockIdx): Omit<ParsedRow, 'rowStatus' | 'match'> | null => {
-        const lines = block.split('\n').map(l => l.trim());
-        if (lines.length < 5) return null;
-
-        const rawId = lines[0]; // 8 digit identifier
-        const title = lines[1];
-        const serviceDateTime = lines[2]; // e.g. 5/26/2026 at 11:00 AM(EDT)
-        const location = lines[3];
-        const company = lines[4];
-        const payModelRaw = lines[6] || ''; // e.g. blendedPayment Terms
-        const laborRateRaw = lines[7] || ''; // e.g. 2 hrs @ $110 and then up to 1 hr @ $55/hr
+        // One value per line, Field Nation order (see lib/job-paste).
+        const read = readJobBlock(block);
+        if (!read) return null;
+        const { rawId, title, location, company } = read;
+        const serviceDateTime = read.dateTime; // e.g. 5/26/2026 at 11:00 AM(EDT)
+        const payModelRaw = read.payModel; // e.g. blendedPayment Terms
+        const laborRateRaw = read.laborRate; // e.g. 2 hrs @ $110 and then up to 1 hr @ $55/hr
 
         let payType: 'fixed' | 'hourly' | 'blended' = 'fixed';
         if (payModelRaw.toLowerCase().includes('blended')) payType = 'blended';
@@ -299,17 +297,38 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
           {step === 'input' ? (
             <div className="space-y-4 h-full min-h-0 flex flex-col">
               <div className="space-y-2 flex-1 min-h-0">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Data Input Buffer</label>
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Data Input Buffer</label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-[9px] font-bold uppercase tracking-wider"
+                    onClick={() => setPastedText(t => (t.trim() ? `${t.trimEnd()}\n\n` : '') + JOB_PASTE_TEMPLATE)}
+                  >
+                    Insert Template
+                  </Button>
+                </div>
                 <Textarea
-                  placeholder="Paste job details here...&#10;19204205&#10;HP Printer Repair...&#10;4/8/2026 at 3:10 PM..."
+                  placeholder={JOB_PASTE_TEMPLATE}
                   className="h-full min-h-[350px] bg-bg-primary border-border-sub font-mono text-xs leading-relaxed"
                   value={pastedText}
                   onChange={(e) => setPastedText(e.target.value)}
                 />
               </div>
-              <div className="p-3 rounded bg-bg-secondary/50 border border-border-sub">
-                <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest leading-relaxed">
-                  Parser extracts external work order #, title, time, location, and client. The next screen flags duplicates (checked against active, completed, and archived jobs) and lets you skip or remove rows before import.
+              {/* What goes on each line — Field Nation's paste order. */}
+              <div className="p-3 rounded bg-bg-secondary/50 border border-border-sub space-y-2">
+                <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">One value per line · blank line between jobs</p>
+                <div className="grid grid-cols-[auto_auto_1fr] gap-x-3 gap-y-1 text-[10px]">
+                  {JOB_PASTE_LINES.map((l, i) => (
+                    <div key={i} className="contents">
+                      <span className="font-mono text-text-muted">{i + 1}</span>
+                      <span className="font-mono text-text-primary whitespace-nowrap">{l.example}</span>
+                      <span className="text-text-muted truncate">{l.label === '$' ? l.hint : `${l.label} — ${l.hint}`}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[9px] text-text-muted uppercase tracking-wider leading-relaxed">
+                  The next screen flags duplicates (active, completed and archived jobs) and lets you skip or remove rows before import.
                 </p>
               </div>
             </div>

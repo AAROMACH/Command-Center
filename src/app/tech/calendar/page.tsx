@@ -1,5 +1,6 @@
 'use client';
 
+import { subscribeTechAssignments } from '@/lib/tech-assignments';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -142,11 +143,9 @@ export default function TechCalendarPage() {
 
   useEffect(() => {
     if (!currentTechId) return;
-    const q1 = query(collection(db, 'assignments'), where('techId', '==', currentTechId));
-    const u1 = onSnapshot(q1, snap => {
-      // Archived is a first line of defense before deletion — never let an
-      // archived job resurface here as live/scheduled.
-      setRawAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id, _src: 'assignment' } as JobWithSrc)).filter(wo => !isArchivedJob(wo) && isAssignedTo(wo, currentTechId)));
+    // Jobs they lead + jobs they help on (archived never resurface).
+    const u1 = subscribeTechAssignments(currentTechId, jobs => {
+      setRawAssignments(jobs.map(j => ({ ...j, _src: 'assignment' } as JobWithSrc)));
       setLoading(false);
     }, () => setLoading(false));
 

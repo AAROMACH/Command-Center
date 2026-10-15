@@ -1,7 +1,7 @@
 'use client';
 
 import { helperCompleted } from '@/lib/helper-progress';
-import { fetchHelperJobs } from '@/lib/tech-assignments';
+import { fetchHelperJobsRetrying } from '@/lib/tech-assignments';
 import { useEffect, useRef, useState } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -80,7 +80,7 @@ export function useHelperLogSync(techId: string | null) {
     const unsubHelper = onSnapshot(
       query(collection(db, 'assignments'), where('additionalTechnicianIds', 'array-contains', techId)),
       (snap) => setHelperJobs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder))),
-      () => { fetchHelperJobs().then(j => { if (!helperStopped) setHelperJobs(j); }).catch(() => setHelperJobs([])); },
+      () => { fetchHelperJobsRetrying(() => helperStopped).then(j => { if (!helperStopped) setHelperJobs(j); }).catch(() => { if (!helperStopped) setHelperJobs([]); }); },
     );
     const unsubLead = onSnapshot(
       query(collection(db, 'assignments'), where('techId', '==', techId)),

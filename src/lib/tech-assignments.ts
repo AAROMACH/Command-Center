@@ -6,11 +6,29 @@ import { isHelperOn, viewForTech } from './helper-progress';
 
 /** Jobs the signed-in tech helps on, read server-side (see /api/tech/helper-jobs). */
 export async function fetchHelperJobs(): Promise<WorkOrder[]> {
+  // On a page load Firebase restores the signed-in user asynchronously; asking
+  // before that finished returned [] (no token) and the helper's jobs stayed
+  // missing until the next retry a minute later.
+  await auth.authStateReady();
   const token = await auth.currentUser?.getIdToken();
-  if (!token) return [];
+  if (!token) throw new Error('helper-jobs: not signed in yet');
   const res = await fetch('/api/tech/helper-jobs', { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) throw new Error(`helper-jobs ${res.status}`);
   return ((await res.json()).jobs || []) as WorkOrder[];
+}
+
+/** fetchHelperJobs with a few quick retries (2s, 4s, 8s, 16s) for one-off callers. */
+export async function fetchHelperJobsRetrying(isStopped: () => boolean = () => false): Promise<WorkOrder[]> {
+  let delay = 2_000;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fetchHelperJobs();
+    } catch (e) {
+      if (attempt >= 4 || isStopped()) throw e;
+      await new Promise(r => setTimeout(r, delay));
+      delay *= 2;
+    }
+  }
 }
 
 /**
@@ -58,22 +76,35 @@ export function subscribeTechAssignments(
     console.warn('[tech-assignments] live helper-job query refused; using server fetch', err?.code || err);
     live = [];
     mergeHelped();
+    refetch(); // the server copy is now the only source — get it right away
   });
   let stopped = false;
-  const refetch = async () => {
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let retryDelay = 2_000;
+  async function refetch() {
+    if (stopped) return;
     try {
       const jobs = await fetchHelperJobs();
-      if (!stopped) { fetched = jobs; mergeHelped(); }
+      if (stopped) return;
+      fetched = jobs;
+      retryDelay = 2_000;
+      mergeHelped();
     } catch (e) {
-      console.warn('[tech-assignments] helper-job fetch failed', e);
+      console.warn('[tech-assignments] helper-job fetch failed; retrying', e);
+      // Retry soon (2s, 4s, 8s … up to 30s) instead of waiting for the minute tick.
+      if (!stopped && !retryTimer) {
+        retryTimer = setTimeout(() => { retryTimer = null; refetch(); }, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, 30_000);
+      }
     }
-  };
+  }
   refetch();
   const timer = setInterval(refetch, 60_000);
   const onFocus = () => { refetch(); };
   if (typeof window !== 'undefined') window.addEventListener('focus', onFocus);
   return () => {
     stopped = true;
+    if (retryTimer) clearTimeout(retryTimer);
     u1(); u2();
     clearInterval(timer);
     if (typeof window !== 'undefined') window.removeEventListener('focus', onFocus);

@@ -1,6 +1,6 @@
 'use client';
 
-import { fetchHelperJobs } from '@/lib/tech-assignments';
+import { fetchHelperJobsRetrying } from '@/lib/tech-assignments';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
@@ -51,7 +51,7 @@ export default function TechActivityPage() {
       query(collection(db, 'assignments'), where('additionalTechnicianIds', 'array-contains', userId)),
       (snap) => { helped = snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)); publish(); },
       // Query refused → read helper jobs server-side instead.
-      () => { fetchHelperJobs().then(j => { helped = j; publish(); }).catch(() => { helped = []; publish(); }); }
+      () => { fetchHelperJobsRetrying().then(j => { helped = j; publish(); }).catch(() => { helped = []; publish(); }); }
     );
     const unsubAssignments = () => { unsubLed(); unsubHelped(); };
 

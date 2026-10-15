@@ -260,11 +260,24 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }:
     if (!helperTechId || !mission) return;
     const ht = technicians.find(t => t.id === helperTechId);
     if (ht && isInactiveTechnician(ht)) return;
-    await updateDoc(doc(db, 'assignments', mission.id), {
-      additionalTechnicianIds: arrayUnion(helperTechId),
-      history: arrayUnion({ date: new Date().toISOString(), type: 'helper_added',
-        details: `${ht?.name || helperTechId} added as helper`, user: 'Admin' }),
-    });
+    // Helpers live on dispatched jobs (assignments). On a pool job this write
+    // used to fail silently while the panel still showed the helper as added.
+    try {
+      const ref = doc(db, 'assignments', mission.id);
+      if (!(await getDoc(ref)).exists()) {
+        toast({ variant: 'destructive', title: 'Assign a lead tech first', description: 'Helpers can be added once the job is dispatched to a lead tech.' });
+        return;
+      }
+      await updateDoc(ref, {
+        additionalTechnicianIds: arrayUnion(helperTechId),
+        history: arrayUnion({ date: new Date().toISOString(), type: 'helper_added',
+          details: `${ht?.name || helperTechId} added as helper`, user: 'Admin' }),
+      });
+      toast({ title: 'Helper Added', description: `${ht?.name || 'Helper'} will see this job on their Assignments page.` });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Could not add helper', description: e?.message || 'Please try again.' });
+      return;
+    }
     setOptimisticHelperIds(ids => ids.includes(helperTechId) ? ids : [...ids, helperTechId]);
     setRemovedHelperIds(ids => ids.filter(x => x !== helperTechId));
     setHelperOpen(false); setHelperTechId('');

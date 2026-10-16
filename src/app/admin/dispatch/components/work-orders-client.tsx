@@ -79,6 +79,8 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [mobileAssignOrder, setMobileAssignOrder] = useState<WorkOrder | null>(null);
   const clearMobileAssignOrder = useCallback(() => setMobileAssignOrder(null), []);
+  const [mobileEditOrder, setMobileEditOrder] = useState<WorkOrder | null>(null);
+  const clearMobileEditOrder = useCallback(() => setMobileEditOrder(null), []);
   // The desktop table pages itself; the phone card list pages here.
   const mobilePager = usePaged(workOrders, PAGE_SIZES_LARGE, 'dispatch-mobile-cards');
 
@@ -91,7 +93,9 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
     <div className="space-y-4">
       {/* Desktop view: Tactical Table */}
       <div className="hidden md:block">
-        <WorkOrdersTable {...props} mobileAssignOrder={mobileAssignOrder} onMobileAssignOrderHandled={clearMobileAssignOrder} />
+        <WorkOrdersTable {...props}
+          mobileAssignOrder={mobileAssignOrder} onMobileAssignOrderHandled={clearMobileAssignOrder}
+          mobileEditOrder={mobileEditOrder} onMobileEditOrderHandled={clearMobileEditOrder} />
       </div>
 
       {/* Mobile view: Tactical Cards */}
@@ -184,10 +188,13 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
       </div>
       <div className="md:hidden"><ListPager pager={mobilePager} noun="jobs" /></div>
 
-      <JobDetailDialog 
-        isOpen={isDetailOpen} 
-        setIsOpen={setIsDetailOpen} 
-        mission={selectedJob} 
+      <JobDetailDialog
+        isOpen={isDetailOpen}
+        setIsOpen={setIsDetailOpen}
+        mission={selectedJob}
+        // On a phone this is the way into the edit form: close the panel and
+        // let the (CSS-hidden) table open its edit dialog for this job.
+        onEdit={(job) => { setIsDetailOpen(false); setMobileEditOrder(job); }}
       />
     </div>
   );

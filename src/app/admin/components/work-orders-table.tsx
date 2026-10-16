@@ -116,6 +116,9 @@ type WorkOrdersTableProps = {
   onToggleDateSort?: () => void;
   mobileAssignOrder?: WorkOrder | null;
   onMobileAssignOrderHandled?: () => void;
+  /** Phone card list asks the (CSS-hidden) table to open its edit form. */
+  mobileEditOrder?: WorkOrder | null;
+  onMobileEditOrderHandled?: () => void;
 };
 
 export const WorkOrdersTable = React.memo(({
@@ -127,6 +130,8 @@ export const WorkOrdersTable = React.memo(({
   onToggleDateSort,
   mobileAssignOrder,
   onMobileAssignOrderHandled,
+  mobileEditOrder,
+  onMobileEditOrderHandled,
 }: WorkOrdersTableProps) => {
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -187,6 +192,12 @@ export const WorkOrdersTable = React.memo(({
     setEditedOrder({ ...order });
     setIsEditDialogOpen(true);
   }, []);
+
+  useEffect(() => {
+    if (!mobileEditOrder) return;
+    handleOpenEditDialog(mobileEditOrder);
+    onMobileEditOrderHandled?.();
+  }, [mobileEditOrder, handleOpenEditDialog, onMobileEditOrderHandled]);
 
   const handleOpenDetail = useCallback((order: WorkOrder) => {
     setDetailJob(order);
@@ -773,10 +784,10 @@ export const WorkOrdersTable = React.memo(({
 
       <Dialog open={isEditDialogOpen} onOpenChange={(open) => { if(!open) { setSelectedOrder(null); setEditedOrder(null); } setIsEditDialogOpen(open); }}>
         <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default max-h-[90vh] overflow-hidden flex flex-col p-0 shadow-2xl">
-            <DialogHeader className="p-6 pb-2 text-left border-b border-border-sub bg-bg-tertiary/30 text-left">
+            <DialogHeader className="p-4 sm:p-6 pb-2 text-left border-b border-border-sub bg-bg-tertiary/30 text-left">
                 <div className="flex items-center justify-between">
                     <div className="space-y-1 text-left">
-                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Parameters</DialogTitle>
+                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Edit Job</DialogTitle>
                         <p className="text-xs text-text-muted text-left">Adjust manual parameters for record <span className="font-bold text-text-primary">{selectedOrder?.id.toUpperCase()}</span></p>
                     </div>
                 </div>
@@ -788,7 +799,7 @@ export const WorkOrdersTable = React.memo(({
                 // flex-col dialog, so tall content silently got clipped
                 // instead of scrolling. Confirmed with a live browser test.
                 <div className="flex-1 min-h-0 overflow-y-auto">
-                    <div className="px-6 py-4 space-y-6">
+                    <div className="px-4 sm:px-6 py-4 space-y-6">
                         <div className="space-y-4">
                             <div className="space-y-2 text-left">
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
@@ -875,7 +886,7 @@ export const WorkOrdersTable = React.memo(({
                         </div>
 
                         {editedOrder.payType === 'blended' && (
-                            <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50 text-left">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50 text-left">
                                 <div className="space-y-2 text-left">
                                     <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Fixed Base ($)</Label>
                                     <div className="relative">
@@ -912,7 +923,7 @@ export const WorkOrdersTable = React.memo(({
                                         />
                                     </div>
                                 </div>
-                                <p className="col-span-3 text-[9px] text-text-muted uppercase font-bold italic tracking-tighter text-left">Fixed amount for specified hours, then hourly rate applies.</p>
+                                <p className="sm:col-span-3 text-[9px] text-text-muted uppercase font-bold italic tracking-tighter text-left">Fixed amount for specified hours, then hourly rate applies.</p>
                             </div>
                         )}
 
@@ -951,15 +962,17 @@ export const WorkOrdersTable = React.memo(({
                     </div>
                 </div>
             )}
-            <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 shrink-0 flex flex-row items-center justify-between gap-3">
-                <Button variant="destructive-outline" onClick={handleDeleteOrder} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim">
+            {/* Stacks on phones (Save on top, within thumb reach); one row on
+                wider screens. The old single row overflowed a phone. */}
+            <DialogFooter className="bg-bg-tertiary/30 p-4 sm:p-6 border-t border-border-default mt-4 shrink-0 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                <Button variant="destructive-outline" onClick={handleDeleteOrder} className="h-11 w-full sm:w-auto px-8 uppercase font-bold text-[10px] tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim">
                     <Trash2 size={16} className="mr-2" />
                     Delete
                 </Button>
-                <div className="flex gap-3">
-                    <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
-                    <Button onClick={handleSaveChanges} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white shadow-lg">
-                        Commit Registry Updates
+                <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
+                    <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 w-full sm:w-auto px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
+                    <Button onClick={handleSaveChanges} className="h-11 w-full sm:w-auto px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white shadow-lg">
+                        Save Changes
                     </Button>
                 </div>
             </DialogFooter>

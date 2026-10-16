@@ -28,6 +28,8 @@ import { getReliabilityTier, getTierBadgeVariant } from '@/lib/reliability';
 import { hasPermission, PERMISSION_TREE, getPortalAccess, getSubroles, SUBROLE_DEFINITIONS, isTech as isTechRole, isClient as isClientRole, type Permission } from '@/lib/permissions';
 import { auditEvent, auditFieldChange } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-context';
+import { canEditUserAccess } from '@/lib/profile-permissions';
 import {
   vendorReadiness, customerReadiness, customerDisplayName, hasW9OnFile, WORKER_TYPE_LABELS, type Readiness,
 } from '@/lib/accounting-readiness';
@@ -139,6 +141,8 @@ export default function DirectoryPersonPage() {
   const [legacyDocs, setLegacyDocs] = useState<DirectoryDocument[]>([]);
   const documents = useMemo(() => [...canonicalDocs, ...legacyDocs], [canonicalDocs, legacyDocs]);
   const { toast } = useToast();
+  const { user: me } = useAuth();
+  const canEditAccess = canEditUserAccess(me);
   const [projects, setProjects] = useState<Project[]>([]);
   const [penaltyEvents, setPenaltyEvents] = useState<ReliabilityEvent[]>([]);
   const [techNotes, setTechNotes] = useState<{ id: string; text: string; createdAt: string; authorName?: string }[]>([]);
@@ -1092,10 +1096,13 @@ export default function DirectoryPersonPage() {
                 <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
                   <Shield size={11} /> Portal Access &amp; Permissions
                 </h3>
-                <Button size="sm" onClick={handleSavePerms} disabled={!permsDirty || savingPerms} className="h-7 text-[9px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white disabled:opacity-40">
+                <Button size="sm" onClick={handleSavePerms} disabled={!canEditAccess || !permsDirty || savingPerms} className="h-7 text-[9px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white disabled:opacity-40">
                   {savingPerms ? 'Saving...' : 'Save Permissions'}
                 </Button>
               </div>
+              {!canEditAccess && (
+                <p className="text-[9px] text-amber-400">View only — only a super admin can change permissions.</p>
+              )}
               {userPortals.length === 0 ? (
                 <div className="py-12 text-center">
                   <Shield size={24} className="mx-auto text-text-muted mb-3 opacity-30" />

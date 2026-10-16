@@ -11,7 +11,8 @@ const nextConfig: NextConfig = {
     },
   },
   typescript: {
-    ignoreBuildErrors: true,
+    // tsc --noEmit is clean — keep it that way by failing the build on type errors.
+    ignoreBuildErrors: false,
   },
   eslint: {
     ignoreDuringBuilds: true,

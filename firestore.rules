@@ -28,6 +28,36 @@ service cloud.firestore {
           || d.get('role', '') in ['super_admin', 'payroll_admin'];
     }
 
+    // ── Who may change which parts of a user doc ─────────────────────────
+    // The UI gives role/permission editing to super_admin only and pay to
+    // payroll (admin.directory.assign_roles / admin.financials.*). isAdmin()
+    // alone let any admin subrole — dispatch, project manager — rewrite any
+    // user's roles from the browser console, including making themselves
+    // super_admin.
+    function accessKeys() {
+      return ['roles', 'role', 'permissionOverrides', 'primaryPortal', 'portalAccess'];
+    }
+    function payKeys() {
+      return ['hourlyRate', 'payRate', 'payType', 'payoutPreferences', 'accounting'];
+    }
+    function adminMayUpdateUser() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return isAdmin()
+          && (!changed.hasAny(accessKeys()) || isSuperAdmin())
+          && (!changed.hasAny(payKeys()) || isPayrollAdmin());
+    }
+    // Any admin may still create client accounts (Sites, CRM); anything with
+    // staff/tech access needs a super admin.
+    function adminMayCreateUser() {
+      let d = request.resource.data;
+      let clientOnly = d.get('roles', []).hasOnly(['client'])
+          && d.get('role', 'client') in ['client', '']
+          && !d.keys().hasAny(['permissionOverrides', 'primaryPortal', 'portalAccess']);
+      return isAdmin()
+          && (clientOnly || isSuperAdmin())
+          && (!d.keys().hasAny(payKeys()) || isPayrollAdmin());
+    }
+
     function isTech() {
       let d = userData();
       return d.get('roles', []).hasAny(['project_lead', 'field_technician'])
@@ -131,7 +161,7 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow create: if isAdmin()
+      allow create: if adminMayCreateUser()
           || (request.auth != null
               && request.auth.uid == userId
               && request.resource.data.approvalStatus == 'pending'
@@ -141,7 +171,7 @@ service cloud.firestore {
                     'payoutPreferences', 'accounting'])
               && (!request.resource.data.keys().hasAny(['roles'])
                   || request.resource.data.roles.size() == 0));
-      allow update: if isAdmin()
+      allow update: if adminMayUpdateUser()
           || (isSignedIn() && request.auth.uid == userId
               && !request.resource.data.diff(resource.data).affectedKeys()
                   .hasAny(['roles', 'role', 'reliabilityScore', 'reliabilityTier', 'status', 'accountStatus',

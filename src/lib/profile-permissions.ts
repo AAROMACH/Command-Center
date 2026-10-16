@@ -1,5 +1,5 @@
 import type { Technician } from './types';
-import { isAdmin, hasPermission } from './permissions';
+import { isAdmin, hasPermission, getSubroles } from './permissions';
 
 // Fields a user may edit on their own profile (no admin required)
 export const SELF_EDITABLE_FIELDS = [
@@ -57,4 +57,17 @@ export function getEditableProfileFields(
     return [...SELF_EDITABLE_FIELDS];
   }
   return [];
+}
+
+// These two mirror firestore.rules (accessKeys / payKeys on users) so the UI
+// locks exactly what the rules would reject.
+
+/** Subroles, portal and permission overrides — super admin only. */
+export function canEditUserAccess(currentUser: Technician | null | undefined): boolean {
+  return getSubroles(currentUser).includes('super_admin');
+}
+
+/** Pay rate, payout method and the tax/QuickBooks profile — payroll or super admin. */
+export function canEditUserPay(currentUser: Technician | null | undefined): boolean {
+  return getSubroles(currentUser).some(r => r === 'super_admin' || r === 'payroll_admin');
 }

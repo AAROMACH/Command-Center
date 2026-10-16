@@ -22,6 +22,8 @@ import {
   type SubrolePortal,
 } from '@/lib/permissions';
 import { isValidLast4, WORKER_TYPE_LABELS } from '@/lib/accounting-readiness';
+import { useAuth } from '@/contexts/auth-context';
+import { canEditUserAccess, canEditUserPay } from '@/lib/profile-permissions';
 import { ROLE_DATA } from '@/lib/constants/roles';
 import type { Technician, AppRole } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -76,6 +78,16 @@ function readPath(obj: unknown, path: string): unknown {
 }
 
 const orNull = (s: string) => (s.trim() ? s.trim() : null);
+
+// '' / null / undefined all mean "not set" — so re-saving an untouched form
+// doesn't register as a change (and doesn't trip the pay/access rules).
+const sameValue = (a: unknown, b: unknown) => {
+  const norm = (v: unknown) => (v === undefined || v === null || v === '' ? null : v);
+  return JSON.stringify(norm(a)) === JSON.stringify(norm(b));
+};
+const ACCESS_FIELDS = ['roles', 'primaryPortal'];
+const PAY_FIELDS = ['hourlyRate', 'payoutPreferences'];
+const isPayField = (k: string) => PAY_FIELDS.includes(k) || k.startsWith('accounting.');
 
 type FormState = {
   name: string;
@@ -179,6 +191,10 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
   const [certInput, setCertInput] = useState('');
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  // Mirrors firestore.rules: subroles need a super admin, pay/tax needs payroll.
+  const { user: me } = useAuth();
+  const canAccess = canEditUserAccess(me);
+  const canPay = canEditUserPay(me);
 
   useEffect(() => {
     if (open) {
@@ -329,6 +345,16 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
         });
       }
 
+      // Write only what changed, and never fields this admin may not change.
+      for (const k of Object.keys(updates)) {
+        const locked = (!canAccess && ACCESS_FIELDS.includes(k)) || (!canPay && isPayField(k));
+        if (locked || sameValue(readPath(person, k), updates[k])) delete updates[k];
+      }
+      if (Object.keys(updates).length === 0) {
+        toast({ title: 'No changes to save' });
+        onClose();
+        return;
+      }
       // Old values for exactly the keys being written (dotted paths included).
       const oldSnapshot: Record<string, unknown> = Object.fromEntries(
         Object.keys(updates).map(k => [k, readPath(person, k)]));
@@ -484,6 +510,9 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                       <p className="text-[9px] text-text-muted normal-case tracking-normal mt-1 leading-relaxed">
                         Selecting a subrole unlocks its portal and applies its preset permissions. Removing the last subrole in a portal removes access to that portal.
                       </p>
+                      {!canAccess && (
+                        <p className="text-[9px] text-amber-400 normal-case tracking-normal mt-1">Only a super admin can change subroles.</p>
+                      )}
                     </div>
 
                     {PORTAL_GROUPS.map(group => {
@@ -503,6 +532,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                                 <button
                                   key={role}
                                   type="button"
+                                  disabled={!canAccess}
                                   onClick={() => toggleRole(role)}
                                   className={cn(
                                     'flex items-start gap-2 px-3 py-2 rounded-lg border text-left transition-all',
@@ -556,6 +586,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                     <Select
                       value={form.primaryPortal || '__none__'}
                       onValueChange={v => set('primaryPortal', v === '__none__' ? '' : v)}
+                      disabled={!canAccess}
                     >
                       <SelectTrigger className={inputCls}><SelectValue placeholder="Auto (first available)" /></SelectTrigger>
                       <SelectContent className="bg-bg-elevated border-border-main">
@@ -649,7 +680,10 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
             {activeSection === 'pay' && (
               <div>
                 <h3 className={sectionHeading}><Landmark size={11} /> Pay &amp; Tax</h3>
-                <div className="space-y-4">
+                {!canPay && (
+                  <p className="text-[9px] text-amber-400 mb-3">Only payroll admins and super admins can change pay and tax details.</p>
+                )}
+                <fieldset disabled={!canPay} className="space-y-4 disabled:opacity-60">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className={labelCls}>Worker Classification</Label>
@@ -731,7 +765,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                       <p className="text-[9px] text-text-muted normal-case tracking-normal">The full SSN/EIN stays on the W-9 document and in QuickBooks — never in the app. Mailing address for the 1099 is the address under Basic Info.</p>
                     </div>
                   )}
-                </div>
+                </fieldset>
               </div>
             )}
 

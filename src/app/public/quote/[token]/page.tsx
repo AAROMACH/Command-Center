@@ -1,5 +1,6 @@
 'use client';
 
+import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import type { Quote, QuoteOptionalGroup } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -12,7 +13,10 @@ function fmtMoney(n: number) {
 
 type PageState = 'loading' | 'error' | 'not_found' | 'already_done' | 'active' | 'confirming_approve' | 'confirming_reject' | 'success_approve' | 'success_reject';
 
-export default function PublicQuotePage({ params }: { params: { token: string } }) {
+// Next 15 passes page `params` as a Promise; a client page reads them with
+// useParams() instead (typing them as a plain object fails the build check).
+export default function PublicQuotePage() {
+  const { token } = useParams<{ token: string }>();
   const [state, setState] = useState<PageState>('loading');
   const [quote, setQuote] = useState<Quote | null>(null);
   const [choices, setChoices] = useState<QuoteOptionalGroup[]>([]);
@@ -26,7 +30,7 @@ export default function PublicQuotePage({ params }: { params: { token: string } 
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`/api/public-quote?token=${encodeURIComponent(params.token)}`);
+        const res = await fetch(`/api/public-quote?token=${encodeURIComponent(token)}`);
         if (res.status === 404) { setState('not_found'); return; }
         if (!res.ok) { setState('error'); return; }
         const { quote: data } = await res.json() as { quote: Quote };
@@ -41,7 +45,7 @@ export default function PublicQuotePage({ params }: { params: { token: string } 
         setState('error');
       }
     })();
-  }, [params.token]);
+  }, [token]);
 
   const toggleOption = (gIdx: number, oIdx: number) => {
     setChoices(prev => prev.map((g, gi) =>
@@ -62,7 +66,7 @@ export default function PublicQuotePage({ params }: { params: { token: string } 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          token: params.token,
+          token: token,
           action: 'approve',
           approverName,
           approverEmail,
@@ -86,7 +90,7 @@ export default function PublicQuotePage({ params }: { params: { token: string } 
       const res = await fetch('/api/public-quote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: params.token, action: 'reject', rejectReason }),
+        body: JSON.stringify({ token: token, action: 'reject', rejectReason }),
       });
       if (!res.ok) { setState('error'); return; }
       setState('success_reject');

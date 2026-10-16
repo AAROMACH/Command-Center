@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -115,8 +116,7 @@ export function AlertBand() {
       ));
     } else {
       // Admin: filtered to only the status values needed for alerts
-      unsubs.push(onSnapshot(
-        collection(db, 'users'),
+      unsubs.push(onSharedSnapshot('users',
         (snap) => setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)))
       ));
       unsubs.push(onSnapshot(

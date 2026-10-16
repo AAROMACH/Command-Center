@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect } from 'react';
 import { db } from "@/lib/firebase";
@@ -85,16 +86,16 @@ export function IntelligenceTerminal({
     }, [timeWindow]);
 
     useEffect(() => {
-        const unsubWO = onSnapshot(collection(db, 'assignments'), (snap) => {
+        const unsubWO = onSharedSnapshot('assignments', (snap) => {
             setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
-        const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
+        const unsubTech = onSharedSnapshot('users', (snap) => {
             setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
         });
-        const unsubLogs = onSnapshot(collection(db, 'weeklyLogs'), (snap) => {
+        const unsubLogs = onSharedSnapshot('weeklyLogs', (snap) => {
             setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
         });
-        const unsubDaily = onSnapshot(collection(db, 'projectDailyLogs'), (snap) => {
+        const unsubDaily = onSharedSnapshot('projectDailyLogs', (snap) => {
             setDailyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as ProjectDailyLog)));
             setLoading(false);
         });

@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { helperProgressOf } from '@/lib/helper-progress';
 import { useState, useEffect } from 'react';
@@ -191,7 +192,7 @@ export default function AssignmentDetailPage() {
   }, [assignment, assignmentId]);
 
   // All techs (for dialogs)
-  useEffect(() => onSnapshot(collection(db, 'users'), s => {
+  useEffect(() => onSharedSnapshot('users', s => {
     setAllTechs(s.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
   }), []);
 

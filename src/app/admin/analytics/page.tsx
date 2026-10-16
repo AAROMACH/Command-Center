@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
@@ -66,22 +67,22 @@ export default function FieldIntelligencePage() {
     const [timelinePage, setTimelinePage] = useState(0);
 
     useEffect(() => {
-        const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
+        const unsubWO = onSharedSnapshot('workOrders', (snap) => {
             setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
-        const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
+        const unsubAsmt = onSharedSnapshot('assignments', (snap) => {
             setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
-        const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
+        const unsubTech = onSharedSnapshot('users', (snap) => {
             setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
         });
-        const unsubLogs = onSnapshot(collection(db, 'weeklyLogs'), (snap) => {
+        const unsubLogs = onSharedSnapshot('weeklyLogs', (snap) => {
             setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
         });
-        const unsubInv = onSnapshot(collection(db, 'invoices'), (snap) => {
+        const unsubInv = onSharedSnapshot('invoices', (snap) => {
             setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
         });
-        const unsubArchive = onSnapshot(collection(db, 'activityArchive'), (snap) => {
+        const unsubArchive = onSharedSnapshot('activityArchive', (snap) => {
             const jobs = snap.docs.flatMap(d => {
                 const data = d.data() as any;
                 if (!data.archivedFrom) return [];

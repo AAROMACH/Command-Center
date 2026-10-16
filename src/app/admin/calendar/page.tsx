@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { db } from '@/lib/firebase';
@@ -95,14 +96,14 @@ export default function AdminCalendarPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const u1 = onSnapshot(collection(db, 'workOrders'), snap => {
+    const u1 = onSharedSnapshot('workOrders', snap => {
       setRawWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id, _src: 'workOrder' } as JobWithSrc)));
       setLoading(false);
     }, () => setLoading(false));
-    const u2 = onSnapshot(collection(db, 'assignments'), snap => {
+    const u2 = onSharedSnapshot('assignments', snap => {
       setRawAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id, _src: 'assignment' } as JobWithSrc)));
     });
-    const u3 = onSnapshot(collection(db, 'users'), snap => {
+    const u3 = onSharedSnapshot('users', snap => {
       setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
     });
     return () => { u1(); u2(); u3(); };

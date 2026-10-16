@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
@@ -233,24 +234,24 @@ export default function CRMPage() {
   useEffect(() => {
     setCurrentUserId(sessionStorage.getItem('currentUserId') || '');
 
-    const unsubLeads = onSnapshot(collection(db, 'leads'), (snap) => {
+    const unsubLeads = onSharedSnapshot('leads', (snap) => {
       setLeads(snap.docs.map(d => ({ ...d.data(), id: d.id } as Lead)));
       setLoading(false);
     }, () => setLoading(false));
-    const unsubActivities = onSnapshot(collection(db, 'leadActivities'), (snap) => {
+    const unsubActivities = onSharedSnapshot('leadActivities', (snap) => {
       setActivities(snap.docs.map(d => ({ ...d.data(), id: d.id } as LeadActivity)));
     });
-    const unsubQuotes = onSnapshot(collection(db, 'quotes'), (snap) => {
+    const unsubQuotes = onSharedSnapshot('quotes', (snap) => {
       setQuotes(snap.docs.map(d => ({ ...d.data(), id: d.id } as Quote)));
     });
-    const unsubCompanies = onSnapshot(collection(db, 'crmCompanies'), (snap) => {
+    const unsubCompanies = onSharedSnapshot('crmCompanies', (snap) => {
       setCompanies(snap.docs.map(d => ({ ...d.data(), id: d.id } as CrmCompany)));
     }, () => {});
-    const unsubContacts = onSnapshot(collection(db, 'crmContacts'), (snap) => {
+    const unsubContacts = onSharedSnapshot('crmContacts', (snap) => {
       setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id } as CrmContact)));
     }, () => {});
 
-    const unsubSurveys = onSnapshot(collection(db, 'siteSurveys'), (snap) => {
+    const unsubSurveys = onSharedSnapshot('siteSurveys', (snap) => {
       setSurveys(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteSurvey)));
     }, () => {});
 

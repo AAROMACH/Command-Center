@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -55,10 +56,10 @@ export default function AccountsPage() {
 
   useEffect(() => {
     const subs = [
-      onSnapshot(collection(db, 'crmCompanies'), s => { setCompanies(s.docs.map(d => ({ ...d.data(), id: d.id } as CrmCompany))); setLoading(false); }, () => setLoading(false)),
-      onSnapshot(collection(db, 'crmContacts'), s => setContacts(s.docs.map(d => ({ ...d.data(), id: d.id } as CrmContact)))),
-      onSnapshot(collection(db, 'leads'), s => setLeads(s.docs.map(d => ({ ...d.data(), id: d.id } as Lead)))),
-      onSnapshot(collection(db, 'quotes'), s => setQuotes(s.docs.map(d => ({ ...d.data(), id: d.id } as Quote))), () => {}),
+      onSharedSnapshot('crmCompanies', s => { setCompanies(s.docs.map(d => ({ ...d.data(), id: d.id } as CrmCompany))); setLoading(false); }, () => setLoading(false)),
+      onSharedSnapshot('crmContacts', s => setContacts(s.docs.map(d => ({ ...d.data(), id: d.id } as CrmContact)))),
+      onSharedSnapshot('leads', s => setLeads(s.docs.map(d => ({ ...d.data(), id: d.id } as Lead)))),
+      onSharedSnapshot('quotes', s => setQuotes(s.docs.map(d => ({ ...d.data(), id: d.id } as Quote))), () => {}),
     ];
     return () => subs.forEach(u => u());
   }, []);

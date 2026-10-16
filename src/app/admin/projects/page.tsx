@@ -1,5 +1,6 @@
 
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, setDoc } from 'firebase/firestore';
@@ -50,10 +51,10 @@ export default function ProjectsPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubProj = onSnapshot(collection(db, 'projects'), (snap) => {
+    const unsubProj = onSharedSnapshot('projects', (snap) => {
         setAllProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
     });
-    const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
+    const unsubTech = onSharedSnapshot('users', (snap) => {
         setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
     });
     return () => { unsubProj(); unsubTech(); };

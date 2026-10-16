@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
@@ -35,17 +36,17 @@ export default function ClientsPage() {
   const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
-    const unsubClients = onSnapshot(collection(db, 'users'), (snap) => {
+    const unsubClients = onSharedSnapshot('users', (snap) => {
       setClients(snap.docs
         .map(d => ({ ...d.data(), id: d.id } as Technician))
         .filter(isClient)
       );
     });
 
-    const unsubSiteReqs = onSnapshot(collection(db, 'siteRequests'), (snap) => {
+    const unsubSiteReqs = onSharedSnapshot('siteRequests', (snap) => {
       setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)));
     });
-    const unsubProjects = onSnapshot(collection(db, 'projects'), (snap) => {
+    const unsubProjects = onSharedSnapshot('projects', (snap) => {
       setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
     });
 

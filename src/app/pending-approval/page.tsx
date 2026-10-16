@@ -1,4 +1,5 @@
 'use client';
+import { signOutAndClear } from '@/lib/sign-out';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -113,13 +114,7 @@ export default function PendingApprovalPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSignOut = async () => {
-    await signOut(auth);
-    document.cookie = 'aaromach_session=; path=/; max-age=0';
-    document.cookie = 'aaromach_portals=; path=/; max-age=0';
-    sessionStorage.removeItem('currentUserId');
-    router.push('/login');
-  };
+  const handleSignOut = () => signOutAndClear();
 
   const isDenied = approvalStatus === 'denied';
 

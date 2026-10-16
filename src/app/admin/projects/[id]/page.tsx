@@ -1,5 +1,6 @@
 
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect } from 'react';
 import { db } from "@/lib/firebase";
@@ -33,7 +34,7 @@ export default function ProjectDetailPage() {
     });
 
     // 2. Establish Personnel Registry Link
-    const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
+    const unsubTech = onSharedSnapshot('users', (snap) => {
       setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
     });
 

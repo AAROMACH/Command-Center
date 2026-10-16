@@ -1,4 +1,5 @@
 'use client';
+import { signOutAndClear } from '@/lib/sign-out';
 
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
@@ -126,15 +127,7 @@ export function UserNav() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => {
-            if (typeof window !== 'undefined') {
-                sessionStorage.removeItem('currentUserId');
-                document.cookie = 'aaromach_session=; path=/; max-age=0; SameSite=Strict';
-                document.cookie = 'aaromach_portals=; path=/; max-age=0; SameSite=Strict';
-            }
-            auth.signOut();
-            router.push('/login');
-        }}>
+        <DropdownMenuItem onSelect={() => { void signOutAndClear(); }}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Sign out</span>
         </DropdownMenuItem>

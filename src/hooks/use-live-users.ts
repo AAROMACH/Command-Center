@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useEffect, useState } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -16,8 +17,7 @@ export function useLiveUsers(enabled = true): Technician[] {
     const [users, setUsers] = useState<Technician[]>([]);
     useEffect(() => {
         if (!enabled) return;
-        return onSnapshot(
-            collection(db, 'users'),
+        return onSharedSnapshot('users',
             snap => setUsers(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician))),
             () => setUsers([]),
         );

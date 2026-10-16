@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
@@ -146,16 +147,16 @@ export default function AssetsAndMaterialsPage() {
     const [returnSaving, setReturnSaving] = useState(false);
 
     useEffect(() => {
-        const unsubA = onSnapshot(collection(db, 'assets'), snap => {
+        const unsubA = onSharedSnapshot('assets', snap => {
             setAssets(snap.docs.map(d => ({ ...d.data(), id: d.id } as Asset)));
         });
-        const unsubM = onSnapshot(collection(db, 'materials'), snap => {
+        const unsubM = onSharedSnapshot('materials', snap => {
             setMaterials(snap.docs.map(d => ({ ...d.data(), id: d.id } as Material)));
         });
-        const unsubAsgn = onSnapshot(collection(db, 'assetAssignments'), snap => {
+        const unsubAsgn = onSharedSnapshot('assetAssignments', snap => {
             setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as AssetAssignment)));
         });
-        const unsubT = onSnapshot(collection(db, 'users'), snap => {
+        const unsubT = onSharedSnapshot('users', snap => {
             setTechnicians(
                 snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician))
                     .filter(t => !isClient(t))

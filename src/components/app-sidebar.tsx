@@ -1,4 +1,5 @@
 "use client";
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
@@ -272,7 +273,8 @@ export function AppSidebar() {
         snap => set("unassigned")(unassignedArrivalIds(snap.docs.map(d => ({ ...d.data(), id: d.id })))), ignore));
       unsubs.push(onSnapshot(query(collection(db, "assignments"), where("status", "==", "cancelled")),
         snap => set("review")(reviewArrivalIds(snap.docs.map(d => ({ ...d.data(), id: d.id })))), ignore));
-      unsubs.push(onSnapshot(collection(db, "clientRequests"),
+      // Shared with Dispatch and Requests — one listener for all three.
+      unsubs.push(onSharedSnapshot("clientRequests",
         snap => set("requests")(snap.docs.filter(d => isServiceTicketDoc(d.data())).map(d => d.id)), ignore));
     }
     if (canAssignments) {

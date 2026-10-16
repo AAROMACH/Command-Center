@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
@@ -132,15 +133,13 @@ export default function RequestsPage() {
   const [priorityFilter, setPriorityFilter] = useState<'all' | RequestPriority>('all');
 
   useEffect(() => {
-    const u1 = onSnapshot(
-      collection(db, 'clientRequests'),
+    const u1 = onSharedSnapshot('clientRequests',
       snap => setClientRequestDocs(snap.docs.map(d => normalizeRequest(d.data(), d.id, 'clientRequests'))),
       err => console.error('clientRequests snapshot error', err),
     );
     // Legacy collection: old public-form submissions live here. New form
     // submissions write to clientRequests; this listener keeps history visible.
-    const u2 = onSnapshot(
-      collection(db, 'serviceRequests'),
+    const u2 = onSharedSnapshot('serviceRequests',
       snap => setLegacyServiceDocs(snap.docs.map(d => normalizeRequest(d.data(), d.id, 'serviceRequests'))),
       err => console.error('serviceRequests snapshot error', err),
     );

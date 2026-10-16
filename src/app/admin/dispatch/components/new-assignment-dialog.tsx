@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { isClient } from '@/lib/permissions';
@@ -159,7 +160,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
   const [allUsers, setAllUsers] = useState<Technician[]>([]);
   useEffect(() => {
     if (!isOpen) return;
-    const unsub = onSnapshot(collection(db, 'users'), snap => {
+    const unsub = onSharedSnapshot('users', snap => {
       setAllUsers(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
     });
     return () => unsub();

@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
@@ -66,7 +67,7 @@ export default function SiteDetailPage() {
     if (!site) return;
     const lookupId = (site as any).clientId || '';
     const lookupName = site.clientName || '';
-    const unsubClient = onSnapshot(collection(db, 'users'), snap => {
+    const unsubClient = onSharedSnapshot('users', snap => {
       const users = snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician));
       const found = users.find(u =>
         (lookupId && u.id === lookupId) ||
@@ -75,7 +76,7 @@ export default function SiteDetailPage() {
       );
       setClientUser(found || null);
     });
-    const unsubPlans = onSnapshot(collection(db, 'plans'), snap => {
+    const unsubPlans = onSharedSnapshot('plans', snap => {
       setPlans(snap.docs.map(d => ({ id: d.id, name: (d.data() as any).name || d.id })));
     });
     return () => { unsubClient(); unsubPlans(); };

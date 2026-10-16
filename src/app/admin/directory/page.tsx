@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, Suspense } from 'react';
 import { db } from "@/lib/firebase";
@@ -15,21 +16,21 @@ export default function DirectoryPage() {
   const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
 
   useEffect(() => {
-    const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
+    const unsubTech = onSharedSnapshot('users', (snap) => {
       setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
     });
-    const unsubTOR = onSnapshot(collection(db, 'timeOffRequests'), (snap) => {
+    const unsubTOR = onSharedSnapshot('timeOffRequests', (snap) => {
       setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)));
     });
-    const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
+    const unsubWO = onSharedSnapshot('workOrders', (snap) => {
       setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
     });
     // Dispatched jobs live in `assignments`, not `workOrders` (see lib/jobs.ts)
     // — a tech's assignment history is otherwise invisible in the directory.
-    const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
+    const unsubAsmt = onSharedSnapshot('assignments', (snap) => {
       setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
     });
-    const unsubSite = onSnapshot(collection(db, 'siteRequests'), (snap) => {
+    const unsubSite = onSharedSnapshot('siteRequests', (snap) => {
       setSiteRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as SiteRequest)));
     });
 

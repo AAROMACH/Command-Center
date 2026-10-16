@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import Link from 'next/link';
 import {
@@ -123,7 +124,7 @@ export default function DashboardPage() {
             (snap) => setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)))
         );
 
-        const unsubInv = onSnapshot(collection(db, 'invoices'), (snap) => {
+        const unsubInv = onSharedSnapshot('invoices', (snap) => {
             setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
         });
 

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { useParams, useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, onSnapshot, addDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot, addDoc, updateDoc, setDoc, query, where, or, type Query, type DocumentData } from 'firebase/firestore';
 import type { Technician, Site, Project, WorkOrder, Invoice, Quote, ClientDocument, ClientContact, SiteAccessInfo, ClientNote } from '@/lib/types';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -135,26 +135,37 @@ export default function ClientWorkspacePage() {
         const unsubAccess = onSnapshot(doc(db, `users/${id}/accessInfo/main`), snap => {
             if (snap.exists()) setAccessInfo(snap.data() as Partial<SiteAccessInfo>);
         });
-        const unsubSites = onSnapshot(collection(db, 'sites'), snap => {
-            setSites(snap.docs.map(d => ({ ...d.data(), id: d.id } as Site)));
-        });
-        const unsubProjects = onSnapshot(collection(db, 'projects'), snap => {
-            setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
-        });
-        const unsubWO = onSnapshot(collection(db, 'workOrders'), snap => {
-            setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
-        });
-        const unsubInv = onSnapshot(collection(db, 'invoices'), snap => {
-            setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
-        });
-        const unsubQ = onSnapshot(collection(db, 'quotes'), snap => {
-            setQuotes(snap.docs.map(d => ({ ...d.data(), id: d.id } as Quote)));
-        });
-
-        return () => { unsubNotes(); unsubCDocs(); unsubContacts(); unsubAccess(); unsubSites(); unsubProjects(); unsubWO(); unsubInv(); unsubQ(); };
+        return () => { unsubNotes(); unsubCDocs(); unsubContacts(); unsubAccess(); };
     }, [id]);
 
     const clientName = client?.clientCompany || client?.name || '';
+
+    // Only this client's records — these used to stream every client's
+    // sites, projects, work orders, invoices and quotes and filter here.
+    // Records link by id or (older ones) by company name, so match either.
+    useEffect(() => {
+        if (!id || loading) return;
+        const byIdOrName = (nameField: string) => clientName
+            ? or(where('clientId', '==', id), where(nameField, '==', clientName))
+            : or(where('clientId', '==', id));
+        const listen = <T,>(name: string, q: Query<DocumentData>, set: (rows: T[]) => void) =>
+            onSnapshot(q, snap => set(snap.docs.map(d => ({ ...d.data(), id: d.id } as T))), () => set([]));
+        const unsubs = [
+            listen<Site>('sites', query(collection(db, 'sites'), byIdOrName('clientName')), setSites),
+            listen<Invoice>('invoices', query(collection(db, 'invoices'), byIdOrName('clientName')), setInvoices),
+            listen<Quote>('quotes', query(collection(db, 'quotes'), byIdOrName('customerName')), setQuotes),
+        ];
+        if (clientName) {
+            unsubs.push(
+                listen<Project>('projects', query(collection(db, 'projects'), where('client', '==', clientName)), setProjects),
+                listen<WorkOrder>('workOrders', query(collection(db, 'workOrders'), where('clientName', '==', clientName)), setWorkOrders),
+            );
+        } else {
+            setProjects([]);
+            setWorkOrders([]);
+        }
+        return () => unsubs.forEach(u => u());
+    }, [id, clientName, loading]);
 
     const clientSites = useMemo(() => sites.filter(s => s.clientName === clientName || s.clientId === id), [sites, clientName, id]);
     const clientProjects = useMemo(() => projects.filter(p => p.client === clientName), [projects, clientName]);

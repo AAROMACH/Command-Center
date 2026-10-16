@@ -1,5 +1,6 @@
 
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect, useDeferredValue } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
@@ -188,7 +189,7 @@ export default function AssignmentsHubPage() {
 
     // Weekly logs let Job History show each closed job's payroll stage
     // (logged → submitted → paid) without a per-row lookup.
-    const logUnsub = onSnapshot(collection(db, 'weeklyLogs'), (snapshot) => {
+    const logUnsub = onSharedSnapshot('weeklyLogs', (snapshot) => {
       setWeeklyLogs(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
     });
 

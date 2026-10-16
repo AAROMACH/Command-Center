@@ -457,7 +457,6 @@ export default function CRMPage() {
         ...(convertLead.address ? { address: convertLead.address } : {}),
         roles: ['client'],
         role: 'Client',
-        subscriptionStatus: 'active',
         createdAt: new Date().toISOString(),
         convertedFromLeadId: convertLead.id,
       });

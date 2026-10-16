@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useClientPlan } from '@/components/client-plan-card';
 import { useState, useEffect, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { db } from "@/lib/firebase";
@@ -31,11 +32,8 @@ import { NotificationBell } from '@/components/notification-bell';
 import { cn } from '@/lib/utils';
 import { jobDateTimeValue, parseLocalDate } from '@/lib/jobs';
 
-const SLA_HOURS: Record<string, number> = {
-    'on-call': 48,
-    'site-partner': 24,
-    'dedicated': 8,
-};
+// Without a plan, requests are held to the standard 48-hour response.
+const DEFAULT_RESPONSE_HOURS = 48;
 
 export default function ClientDashboardPage() {
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
@@ -69,6 +67,9 @@ export default function ClientDashboardPage() {
     const myProjects = useClientProjects(currentUser);
     const myWorkOrders = useClientJobs(currentUser);
     const myInvoices = useClientInvoices(currentUser);
+    // Response target comes from the client's actual plan (was hard-coded by
+    // plan id, with ids that didn't match the Plans page).
+    const { plan: myPlan } = useClientPlan(currentUser);
 
     useEffect(() => {
         if (!currentUser?.id) return;
@@ -92,7 +93,7 @@ export default function ClientDashboardPage() {
 
     const slaData = useMemo(() => {
         if (!currentUser) return [];
-        const slaLimit = SLA_HOURS[currentUser.planId || ''] ?? 48;
+        const slaLimit = myPlan?.benefits.responseHours || DEFAULT_RESPONSE_HOURS;
         return myRequests
             .filter(r => r.status === 'new' || r.status === 'reviewed')
             .map(r => {
@@ -108,7 +109,7 @@ export default function ClientDashboardPage() {
                 } catch { return null; }
             })
             .filter(Boolean) as { request: typeof myRequests[0]; hoursRemaining: number; pct: number; color: string; bgColor: string }[];
-    }, [currentUser, myRequests]);
+    }, [currentUser, myRequests, myPlan]);
 
     const outstandingBalance = useMemo(() => {
         return myInvoices

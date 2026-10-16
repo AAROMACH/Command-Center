@@ -83,7 +83,6 @@ export default function ClientsPage() {
         phone: newClientForm.phone,
         roles: ['client'],
         role: 'Client',
-        subscriptionStatus: 'active',
         createdAt: new Date().toISOString(),
       });
       toast({ title: 'Client added', description: `${newClientForm.company || newClientForm.name} added.` });

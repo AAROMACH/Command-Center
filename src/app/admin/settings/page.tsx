@@ -1,7 +1,9 @@
 "use client";
 
+import { onAuthStateChanged } from 'firebase/auth';
+import { resolveNotificationPrefs, withNotificationPref } from '@/lib/notification-prefs';
 import { useState, useEffect } from 'react';
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { doc, onSnapshot, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -33,32 +35,25 @@ import { ThemeToggleSetting } from '@/components/theme-toggle-setting';
 
 export default function AdminSettingsPage() {
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
-    const [newPin, setNewPin] = useState('');
-    const [currentPin, setCurrentPin] = useState('••••');
-    const [showPin, setShowPin] = useState(false);
-    const [savingPin, setSavingPin] = useState(false);
     const [mileageRate, setMileageRate] = useState('0.67');
     const [savingMileageRate, setSavingMileageRate] = useState(false);
     const { toast } = useToast();
 
     const userIsSuperAdmin = isSuperAdmin(currentUser);
 
+    // Signed-in user from Firebase Auth (sessionStorage is per-tab).
     useEffect(() => {
-        const userId = sessionStorage.getItem('currentUserId');
-        if (userId) {
-            const unsub = onSnapshot(doc(db, 'users', userId), (snap) => {
+        let unsubUser: (() => void) | undefined;
+        const unsubAuth = onAuthStateChanged(auth, fbUser => {
+            unsubUser?.();
+            unsubUser = fbUser ? onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
                 if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id } as Technician);
-            });
-            return () => unsub();
-        }
+            }) : undefined;
+        });
+        return () => { unsubAuth(); unsubUser?.(); };
     }, []);
 
     useEffect(() => {
-        getDoc(doc(db, 'adminConfig', 'plans')).then(snap => {
-            if (snap.exists() && snap.data()?.editPin) {
-                setCurrentPin(snap.data()!.editPin);
-            }
-        }).catch(() => {});
         getDoc(doc(db, 'adminConfig', 'finance')).then(snap => {
             if (snap.exists() && snap.data()?.mileageRate != null) {
                 setMileageRate(String(snap.data()!.mileageRate));
@@ -66,28 +61,9 @@ export default function AdminSettingsPage() {
         }).catch(() => {});
     }, []);
 
-    const handleSavePin = async () => {
-        if (!newPin || newPin.length < 4) {
-            toast({ variant: 'destructive', title: 'Invalid PIN', description: 'PIN must be at least 4 characters.' });
-            return;
-        }
-        setSavingPin(true);
-        try {
-            await setDoc(doc(db, 'adminConfig', 'plans'), { editPin: newPin }, { merge: true });
-            setCurrentPin(newPin);
-            setNewPin('');
-            toast({ title: 'Plans PIN updated', description: 'The new PIN is now active.' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Failed to update PIN', description: e.message });
-        } finally {
-            setSavingPin(false);
-        }
-    };
-
     const handleTogglePreference = async (type: keyof NotificationPreferences) => {
         if (!currentUser) return;
-        const currentPrefs = currentUser.notificationPreferences || { email: true, sms: true, push: true };
-        const updatedPrefs = { ...currentPrefs, [type]: !currentPrefs[type] };
+        const updatedPrefs = withNotificationPref(currentUser.notificationPreferences, type, !resolveNotificationPrefs(currentUser.notificationPreferences)[type]);
 
         try {
             await updateDoc(doc(db, 'users', currentUser.id), {
@@ -199,7 +175,7 @@ export default function AdminSettingsPage() {
                                         <p className="text-[10px] text-text-muted uppercase">{item.desc}</p>
                                     </div>
                                     <Switch 
-                                        checked={!!currentUser?.notificationPreferences?.[item.id as keyof NotificationPreferences]} 
+                                        checked={resolveNotificationPrefs(currentUser?.notificationPreferences)[item.id as keyof NotificationPreferences]} 
                                         onCheckedChange={() => handleTogglePreference(item.id as keyof NotificationPreferences)}
                                     />
                                 </div>
@@ -217,56 +193,6 @@ export default function AdminSettingsPage() {
                     <ThemeToggleSetting />
                     <FontPreferenceSetting />
                 </section>
-
-                {/* PLANS PIN (super admin only) */}
-                {userIsSuperAdmin && (
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2 px-1">
-                        <Lock size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Plans Security</h3>
-                    </div>
-                    <Card>
-                        <CardHeader className="text-left">
-                            <CardTitle>Plans Edit PIN</CardTitle>
-                            <CardDescription>Control access to plan edits. Required before any create, edit, or delete action on the Plans page.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center gap-3 p-3 rounded-lg border border-border-sub bg-bg-primary">
-                                <Lock size={14} className="text-text-muted shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[9px] font-black uppercase tracking-widest text-text-muted mb-0.5">Current PIN</p>
-                                    <p className="text-sm font-mono font-bold text-text-primary tracking-[0.4em]">
-                                        {showPin ? currentPin : '••••'}
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => setShowPin(s => !s)}
-                                    className="text-text-muted hover:text-text-primary transition-colors"
-                                >
-                                    {showPin ? <EyeOff size={14} /> : <Eye size={14} />}
-                                </button>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Input
-                                    type="password"
-                                    placeholder="New PIN (min 4 chars)"
-                                    value={newPin}
-                                    onChange={e => setNewPin(e.target.value)}
-                                    className="h-9 flex-1 text-[11px] bg-bg-primary border-border-main font-mono"
-                                />
-                                <Button
-                                    size="sm"
-                                    onClick={handleSavePin}
-                                    disabled={savingPin || !newPin}
-                                    className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase tracking-widest"
-                                >
-                                    {savingPin ? 'Saving...' : 'Save PIN'}
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </section>
-                )}
 
                 {/* FINANCE */}
                 <section className="space-y-4">

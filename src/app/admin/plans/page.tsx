@@ -1,1271 +1,442 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
-import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
-import { db } from '@/lib/firebase';
-import { getDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
-import {
-    Zap, Plus, ChevronRight, Target, Clock, ShieldCheck, Building2,
-    Search, DollarSign, PenTool, Trash2, Eye, Lock, Unlock, ShieldAlert,
-    History, ExternalLink, TrendingUp, Activity, Wrench, UserCheck,
-    BookOpen, PencilLine, Save,
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { useMemo, useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from '@/components/ui/dialog';
-import {
-    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  BookOpen, Plus, Pencil, Archive, RotateCcw, Copy, Building2, CalendarClock, CheckCircle2,
+  XCircle, Receipt, Ban, Info, Download, Search, Clock, Percent, MapPin, Moon,
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { ViewToggle, useViewMode } from '@/components/view-toggle';
-import { isSuperAdmin, isClient } from '@/lib/permissions';
-import { createDocId } from '@/lib/generateId';
-import { ID_PREFIXES } from '@/lib/constants';
-import type { PlanTier, Technician } from '@/lib/types';
-import { differenceInMinutes, addHours } from 'date-fns';
+import { useAuth } from '@/contexts/auth-context';
 import { useLiveUsers } from '@/hooks/use-live-users';
+import { canEditUserPay } from '@/lib/profile-permissions';
+import { isClient } from '@/lib/permissions';
+import { useAllSubscriptions, usePricingSettings, useServicePlans } from '@/hooks/use-billing';
+import {
+  formatMoney, INTERVAL_LABELS, isLiveSubscription, monthlyValue, subscriptionAmount, SUBSCRIPTION_STATUS_LABELS,
+  type ServicePlan, type Subscription,
+} from '@/lib/billing';
+import { cancelSubscription, declineRequest, markPeriodBilled, setPlanStatus } from '@/lib/billing-actions';
+import { PlanEditorDialog } from './components/plan-editor-dialog';
+import { SubscriptionDialog, type SubscriptionDialogMode } from './components/subscription-dialog';
+import { PricingTab } from './components/pricing-tab';
+import { MigrationDialog } from './components/migration-dialog';
 
-const SLA_HOURS: Record<string, number> = { 'std-1': 48, 'std-2': 24, 'std-3': 8 };
-const DEFAULT_SLA_HOURS = 48;
+/**
+ * Service plans, client subscriptions, requests and the pricing settings
+ * (labor rates, material markup by category, sales tax). All data is live
+ * from Firestore — see lib/billing.ts for the model and
+ * docs/billing-roadmap.md for how it maps onto Stripe and QuickBooks.
+ *
+ * Billing staff (payroll / super admin) manage everything; other admins see
+ * it read-only. firestore.rules enforces the same split.
+ */
 
-function getSlaStatus(submittedAt: string | undefined, slaHours: number) {
-    const submitted = submittedAt ? new Date(submittedAt) : new Date(Date.now() - 6 * 60 * 60 * 1000);
-    const deadline = addHours(submitted, slaHours);
-    const now = new Date();
-    const totalMinutes = slaHours * 60;
-    const remainingMinutes = differenceInMinutes(deadline, now);
-    const pct = remainingMinutes / totalMinutes;
-    if (remainingMinutes <= 0) return { label: 'SLA Breached', color: 'text-brand-red', bg: 'bg-brand-red/10 border-brand-red/30' };
-    const h = Math.floor(remainingMinutes / 60);
-    const m = remainingMinutes % 60;
-    const display = h > 0 ? `${h}h ${m}m` : `${m}m`;
-    if (pct > 0.5) return { label: `${display} left`, color: 'text-text-green', bg: 'bg-green-500/10 border-green-500/30' };
-    if (pct > 0.1) return { label: `${display} left`, color: 'text-accent-gold', bg: 'bg-accent-gold/10 border-accent-gold/30' };
-    return { label: `${display} left`, color: 'text-brand-red', bg: 'bg-brand-red/10 border-brand-red/30' };
-}
-
-const PLAN_CAPABILITIES = [
-    '48-hr priority scheduling', '24-hr priority scheduling', 'Same-day scheduling',
-    '10% off all labor', '15% off all labor', '20% off all labor',
-    'Phone triage support', 'Annual site walkthrough', 'Quarterly site inspection',
-    'Monthly site visits included', 'Infrastructure documentation', 'Full infrastructure documentation',
-    'Emergency dispatch available', 'After-hours emergency dispatch',
-    'Dedicated tech assignment', 'No contract — month to month',
-];
-
-const INITIAL_PLANS: PlanTier[] = [
-    {
-        id: 'std-1', name: 'On-Call', price: 199, billingPeriod: 'monthly', type: 'standard',
-        features: ['48-hr priority scheduling', '10% off all labor', 'Phone triage support', 'Annual site walkthrough', 'No contract — month to month'],
-        siteLimit: 5, responseTime: '48h', status: 'active',
-    },
-    {
-        id: 'std-2', name: 'Site Partner', price: 499, billingPeriod: 'monthly', type: 'standard',
-        features: ['24-hr priority scheduling', '15% off all labor', 'Quarterly site inspection', 'Infrastructure documentation', 'Emergency dispatch available'],
-        siteLimit: 20, responseTime: '24h', status: 'active',
-    },
-    {
-        id: 'std-3', name: 'Dedicated', price: 999, billingPeriod: 'monthly', type: 'standard',
-        features: ['Same-day scheduling', '20% off all labor', 'Monthly site visits included', 'Dedicated tech assignment', 'After-hours emergency dispatch', 'Full infrastructure documentation'],
-        siteLimit: 100, responseTime: 'Same-Day', status: 'active',
-    },
-    {
-        id: 'cust-1', name: 'Strategic Fiber Initiative', clientName: 'Global Corp', price: 8500, billingPeriod: 'monthly', type: 'custom',
-        features: ['Full infrastructure documentation', 'Dedicated tech assignment', 'After-hours emergency dispatch'],
-        siteLimit: 50, responseTime: '2h', status: 'active',
-    },
-];
-
-const DEFAULT_RATES = {
-    standardLabor: 150,
-    helperLabor: 85,
-    projectLabor: 120,
-    emergencyLabor: 225,
-    afterHoursLabor: 225,
-    travelFee: 75,
-    minimumServiceCall: 150,
-    diagnosticFee: 100,
-    materialMarkup: 20,
+const STATUS_VARIANT: Record<Subscription['status'], 'active' | 'pending' | 'destructive' | 'onhold' | 'outline'> = {
+  active: 'active', pending: 'pending', past_due: 'destructive', paused: 'onhold', canceled: 'outline',
 };
-type ServiceRates = typeof DEFAULT_RATES;
-
-const DEFAULT_RATE_LABELS: Record<keyof ServiceRates, string> = {
-    standardLabor: 'Fiber',
-    helperLabor: 'Smart Hands',
-    projectLabor: 'Installation',
-    emergencyLabor: 'Emergency Labor',
-    afterHoursLabor: 'After Hours',
-    travelFee: 'Travel Fee',
-    minimumServiceCall: 'Min. Service Call',
-    diagnosticFee: 'Diagnostics',
-    materialMarkup: 'Material Markup',
-};
-
-const DEFAULT_RATE_MINS: Record<keyof ServiceRates, string> = {
-    standardLabor: '2 hr min',
-    helperLabor: '2 hr min',
-    projectLabor: '2 hr min',
-    emergencyLabor: '2 hr min',
-    afterHoursLabor: '1.5× base · 2 hr min',
-    travelFee: '',
-    minimumServiceCall: '',
-    diagnosticFee: '1 hr min',
-    materialMarkup: '',
-};
-
-type RateDef = {
-    key: keyof ServiceRates;
-    label: string;
-    unit: '/hr' | 'flat' | '%';
-    section: 'labor' | 'other';
-    icon: React.ElementType;
-    description: string;
-};
-
-const RATE_DEFS: RateDef[] = [
-    { key: 'standardLabor', label: 'Fiber', unit: '/hr', section: 'labor', icon: Wrench, description: '$150/hr · 2 hr min' },
-    { key: 'projectLabor', label: 'Installation', unit: '/hr', section: 'labor', icon: Activity, description: '$120/hr · 2 hr min' },
-    { key: 'diagnosticFee', label: 'Diagnostics', unit: '/hr', section: 'labor', icon: Search, description: '$100/hr · 1 hr min' },
-    { key: 'helperLabor', label: 'Smart Hands', unit: '/hr', section: 'labor', icon: UserCheck, description: '$85/hr · 2 hr min' },
-    { key: 'afterHoursLabor', label: 'After Hours', unit: '/hr', section: 'labor', icon: Clock, description: '1.5× base · 2 hr min' },
-    { key: 'emergencyLabor', label: 'Emergency Labor', unit: '/hr', section: 'other', icon: Zap, description: 'Emergency dispatch rate' },
-    { key: 'travelFee', label: 'Travel Fee', unit: 'flat', section: 'other', icon: TrendingUp, description: 'Per-trip travel charge' },
-    { key: 'minimumServiceCall', label: 'Min. Service Call', unit: 'flat', section: 'other', icon: DollarSign, description: 'Minimum billable per visit' },
-    { key: 'materialMarkup', label: 'Material Markup', unit: '%', section: 'other', icon: TrendingUp, description: 'Applied to all materials sourced' },
-];
 
 export default function ServicePlansPage() {
-    const [plans, setPlans] = useState<PlanTier[]>(INITIAL_PLANS);
-    const [isTerminalOpen, setIsTerminalOpen] = useState(false);
-    const [terminalMode, setTerminalMode] = useState<'create' | 'edit' | 'view'>('view');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [viewMode, setViewMode] = useViewMode('plans');
-    const [selectedPlan, setSelectedPlan] = useState<Partial<PlanTier>>({});
-    const [currentUser, setCurrentUser] = useState<Technician | null>(null);
-    // Live user records (was seeded from the demo list). Local edits below are
-    // layered on top until the next snapshot.
-    const liveUsers = useLiveUsers();
-    const [localTechs, setLocalTechs] = useState<Technician[]>([]);
-    useEffect(() => { setLocalTechs(liveUsers); }, [liveUsers]);
+  const { toast } = useToast();
+  const { user: me } = useAuth();
+  const canManage = canEditUserPay(me);
 
-    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-    const [planToDelete, setPlanToDelete] = useState<PlanTier | null>(null);
-    const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const { plans, loading: plansLoading } = useServicePlans();
+  const { settings: pricing } = usePricingSettings();
+  const { subscriptions, loading: subsLoading } = useAllSubscriptions();
+  const users = useLiveUsers();
+  const clients = useMemo(() => users.filter(u => isClient(u))
+    .sort((a, b) => (a.clientCompany || a.name || '').localeCompare(b.clientCompany || b.name || '')), [users]);
+  const clientName = (id: string | null) => {
+    const c = clients.find(x => x.id === id);
+    return c ? (c.clientCompany || c.name) : '';
+  };
+  const planById = useMemo(() => new Map(plans.map(p => [p.id, p])), [plans]);
 
-    const [rates, setRates] = useState<ServiceRates>(DEFAULT_RATES);
-    const [rateLabels, setRateLabels] = useState<Record<keyof ServiceRates, string>>(DEFAULT_RATE_LABELS);
-    const [ratesEditMode, setRatesEditMode] = useState(false);
-    const [editRates, setEditRates] = useState<ServiceRates>(DEFAULT_RATES);
-    const [editRateLabels, setEditRateLabels] = useState<Record<keyof ServiceRates, string>>(DEFAULT_RATE_LABELS);
-    const [savingRates, setSavingRates] = useState(false);
+  const [editorPlan, setEditorPlan] = useState<ServicePlan | Omit<ServicePlan, 'id' | 'createdAt' | 'updatedAt'> | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [subDialog, setSubDialog] = useState<SubscriptionDialogMode | null>(null);
+  const [migrationOpen, setMigrationOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<Subscription | null>(null);
+  const [declineTarget, setDeclineTarget] = useState<Subscription | null>(null);
+  const [declineReason, setDeclineReason] = useState('');
+  const [subFilter, setSubFilter] = useState<'live' | 'due' | 'canceled'>('live');
+  const [search, setSearch] = useState('');
 
-    const [isPlansAuthed, setIsPlansAuthed] = useState(false);
-    const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
-    const [pinInput, setPinInput] = useState('');
-    const [pinError, setPinError] = useState('');
-    const pendingActionRef = useRef<(() => void) | null>(null);
+  const today = new Date().toISOString().slice(0, 10);
+  const live = subscriptions.filter(isLiveSubscription);
+  const requests = subscriptions.filter(s => s.status === 'pending')
+    .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+  const due = live.filter(s => s.status !== 'paused' && s.nextBillingDate && s.nextBillingDate <= today);
+  const mrr = live.filter(s => s.status !== 'paused').reduce((sum, s) => sum + monthlyValue(s, planById.get(s.planId)), 0);
+  const pastDue = live.filter(s => s.status === 'past_due');
+  const subscriberCount = (planId: string) => live.filter(s => s.planId === planId).length;
 
-    const [isEditSubOpen, setIsEditSubOpen] = useState(false);
-    const [editSubClient, setEditSubClient] = useState<Technician | null>(null);
-    const [editSubForm, setEditSubForm] = useState<{ planId: string; subscriptionStatus: string; subscriptionStartDate: string; subscriptionExpiryDate: string }>({ planId: '', subscriptionStatus: 'active', subscriptionStartDate: '', subscriptionExpiryDate: '' });
-    const [editSubSaving, setEditSubSaving] = useState(false);
+  const shownSubs = useMemo(() => {
+    const base = subFilter === 'live' ? live : subFilter === 'due' ? due : subscriptions.filter(s => s.status === 'canceled');
+    const q = search.trim().toLowerCase();
+    return base
+      .filter(s => !q || (s.clientName || '').toLowerCase().includes(q) || (planById.get(s.planId)?.name || '').toLowerCase().includes(q))
+      .sort((a, b) => (a.nextBillingDate || '9999').localeCompare(b.nextBillingDate || '9999'));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscriptions, subFilter, search, planById]);
 
-    const { toast } = useToast();
+  const openNewPlan = () => { setEditorPlan(null); setEditorOpen(true); };
+  const openEditPlan = (p: ServicePlan) => { setEditorPlan(p); setEditorOpen(true); };
+  const duplicateAsCustom = (p: ServicePlan) => {
+    const { id: _id, createdAt: _c, updatedAt: _u, stripe: _s, ...rest } = p;
+    setEditorPlan({ ...rest, name: `${p.name} (custom)`, kind: 'custom', clientId: null, status: 'draft' });
+    setEditorOpen(true);
+  };
 
-    useEffect(() => {
-        const userId = sessionStorage.getItem('currentUserId');
-        if (userId) setCurrentUser(localTechs.find(t => t.id === userId) || null);
-        getDoc(doc(db, 'adminConfig', 'serviceRates')).then(snap => {
-            if (snap.exists()) {
-                const data = { ...DEFAULT_RATES, ...snap.data() } as ServiceRates;
-                const labels = { ...DEFAULT_RATE_LABELS, ...(snap.data().labels || {}) } as Record<keyof ServiceRates, string>;
-                setRates(data);
-                setEditRates(data);
-                setRateLabels(labels);
-                setEditRateLabels(labels);
-            }
-        }).catch(() => {});
-        getDoc(doc(db, 'adminConfig', 'servicePricing')).then(snap => {
-            // Guard: never let a missing/empty Firestore array blank out the
-            // page — standard tiers always exist, so an empty array is bad data.
-            if (snap.exists() && Array.isArray(snap.data().plans) && snap.data().plans.length > 0) {
-                setPlans(snap.data().plans as PlanTier[]);
-            } else {
-                setDoc(doc(db, 'adminConfig', 'servicePricing'), {
-                    plans: INITIAL_PLANS,
-                    updatedAt: new Date().toISOString(),
-                }, { merge: true }).catch(() => {});
-            }
-        }).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+  const run = async (fn: () => Promise<unknown>, ok: string) => {
+    try { await fn(); toast({ title: ok }); }
+    catch (e: any) { toast({ variant: 'destructive', title: 'Action failed', description: e.message }); }
+  };
 
-    const userIsSuperAdmin = isSuperAdmin(currentUser);
-    const clientsList = useMemo(() => localTechs.filter(t => isClient(t)), [localTechs]);
-    const activeSubscriptions = useMemo(() => clientsList.filter(c => c.planId && c.subscriptionStatus === 'active'), [clientsList]);
-    const pendingSubscriptions = useMemo(() => clientsList.filter(c => c.subscriptionStatus === 'pending'), [clientsList]);
-    const subPager = usePaged(activeSubscriptions, PAGE_SIZES_SMALL, 'plans-subscriptions', []);
+  const exportCsv = () => {
+    const rows = [['Client', 'Plan', 'Billing', 'Amount', 'Monthly value', 'Status', 'Next billing', 'Collection']];
+    live.forEach(s => {
+      const p = planById.get(s.planId);
+      rows.push([s.clientName, p?.name || s.planId, INTERVAL_LABELS[s.interval], String(subscriptionAmount(s, p)),
+        String(monthlyValue(s, p)), SUBSCRIPTION_STATUS_LABELS[s.status], s.nextBillingDate || '', s.collection]);
+    });
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = `subscriptions-${today}.csv`;
+    a.click();
+  };
 
-    const filteredPlans = useMemo(() => {
-        if (!searchQuery) return plans;
-        const q = searchQuery.toLowerCase();
-        return plans.filter(p => p.name.toLowerCase().includes(q) || (p.clientName || '').toLowerCase().includes(q));
-    }, [plans, searchQuery]);
+  const noData = !plansLoading && !subsLoading && plans.length === 0 && subscriptions.length === 0;
 
-    // Grid of cards or compact list rows, sharing the same edit/view/delete
-    // callbacks. Edit/delete controls appear once the page-level PIN unlock
-    // (header Edit button) has been entered.
-    const renderPlans = (items: PlanTier[]) => (
-        viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {items.map(plan => (
-                    <PlanCard key={plan.id} plan={plan}
-                        onEdit={p => requirePin(() => handleOpenTerminal('edit', p))}
-                        onView={p => handleOpenTerminal('view', p)}
-                        onDelete={p => requirePin(() => confirmDeleteRequest(p))}
-                        canEdit={userIsSuperAdmin && isPlansAuthed}
-                    />
-                ))}
-            </div>
-        ) : (
-            <div className="space-y-1">
-                {items.map(plan => (
-                    <PlanRow key={plan.id} plan={plan}
-                        onEdit={p => requirePin(() => handleOpenTerminal('edit', p))}
-                        onView={p => handleOpenTerminal('view', p)}
-                        onDelete={p => requirePin(() => confirmDeleteRequest(p))}
-                        canEdit={userIsSuperAdmin && isPlansAuthed}
-                    />
-                ))}
-            </div>
-        )
-    );
-
-    const handleOpenTerminal = (mode: 'create' | 'edit' | 'view', plan?: PlanTier) => {
-        setTerminalMode(mode);
-        setSelectedPlan(plan ? { ...plan } : { type: 'custom', billingPeriod: 'monthly', features: [], siteLimit: 5, responseTime: '24h', status: 'active' });
-        setIsTerminalOpen(true);
-    };
-
-    const handleSavePlan = async () => {
-        if (!selectedPlan.name || !selectedPlan.price) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: 'Please populate all critical plan parameters.' });
-            return;
-        }
-        let updatedPlans: PlanTier[];
-        if (terminalMode === 'create') {
-            const plan: PlanTier = { ...selectedPlan as PlanTier, features: selectedPlan.features || [], id: await createDocId(ID_PREFIXES.PLAN_TIER) };
-            updatedPlans = [...plans, plan];
-            setPlans(updatedPlans);
-            toast({ title: 'Custom Agreement Authorized', description: `${plan.name} has been committed to the registry.` });
-        } else {
-            const saved: PlanTier = { ...selectedPlan as PlanTier, features: selectedPlan.features || [] };
-            updatedPlans = plans.map(p => p.id === selectedPlan.id ? saved : p);
-            setPlans(updatedPlans);
-            toast({ title: 'Agreement Updated', description: `${selectedPlan.name} parameters have been synchronized.` });
-        }
-        try {
-            await setDoc(doc(db, 'adminConfig', 'servicePricing'), {
-                plans: updatedPlans,
-                updatedAt: new Date().toISOString(),
-                updatedBy: currentUser?.id || '',
-            }, { merge: true });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Firestore save failed', description: e.message });
-        }
-        setIsTerminalOpen(false);
-    };
-
-    const handleToggleFeature = (feature: string) => {
-        if (terminalMode === 'view') return;
-        const current = selectedPlan.features || [];
-        setSelectedPlan({ ...selectedPlan, features: current.includes(feature) ? current.filter(f => f !== feature) : [...current, feature] });
-    };
-
-    const confirmDeleteRequest = (plan: PlanTier) => {
-        if (plan.type === 'standard') {
-            toast({ variant: 'destructive', title: 'Action Restricted', description: 'Standard Tiers are core and cannot be deleted from the system.' });
-            return;
-        }
-        setPlanToDelete(plan);
-        setDeleteConfirmText('');
-        setIsDeleteOpen(true);
-    };
-
-    const executeDelete = () => {
-        if (!planToDelete) return;
-        if (deleteConfirmText !== planToDelete.name) {
-            toast({ variant: 'destructive', title: 'Authorization Failed', description: 'Input does not match registry identifier.' });
-            return;
-        }
-        const activeUsage = localTechs.filter(t => t.planId === planToDelete.id);
-        if (activeUsage.length > 0) {
-            toast({ variant: 'destructive', title: 'Deletion Blocked', description: `This plan is linked to ${activeUsage.length} active client registry folder(s). Unlink all accounts before removal.` });
-            return;
-        }
-        const updatedPlans = plans.filter(p => p.id !== planToDelete.id);
-        setPlans(updatedPlans);
-        setDoc(doc(db, 'adminConfig', 'servicePricing'), {
-            plans: updatedPlans,
-            updatedAt: new Date().toISOString(),
-            updatedBy: currentUser?.id || '',
-        }, { merge: true }).catch(() => {});
-        toast({ title: 'Deleted', description: 'Agreement has been removed from the system.' });
-        setIsDeleteOpen(false);
-        setPlanToDelete(null);
-    };
-
-    // These two used to change only the on-screen list (and say so in a toast)
-    // without saving — the request came back on reload. They now persist.
-    const handleDiscardRequest = async (clientId: string) => {
-        try {
-            await updateDoc(doc(db, 'users', clientId), { subscriptionStatus: 'none' });
-            setLocalTechs(prev => prev.map(t => t.id === clientId ? { ...t, subscriptionStatus: 'none' } : t));
-            toast({ variant: 'destructive', title: 'Request Discarded', description: 'The pending service agreement request has been removed from the funnel.' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Could not discard', description: e.message });
-        }
-    };
-
-    const handleInitializeQuote = async (clientId: string) => {
-        const client = localTechs.find(t => t.id === clientId);
-        // Keep the plan the client requested; fall back to the standard tier.
-        const planId = client?.planId || 'std-1';
-        try {
-            await updateDoc(doc(db, 'users', clientId), { subscriptionStatus: 'active', planId });
-            setLocalTechs(prev => prev.map(t => t.id === clientId ? { ...t, subscriptionStatus: 'active', planId } : t));
-            toast({ title: 'Quote Initialized', description: 'The client has been transitioned to active status.' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Could not activate', description: e.message });
-        }
-    };
-
-    const handleSaveRates = async () => {
-        setSavingRates(true);
-        try {
-            await setDoc(doc(db, 'adminConfig', 'serviceRates'), { ...editRates, labels: editRateLabels }, { merge: true });
-            setRates(editRates);
-            setRateLabels(editRateLabels);
-            setRatesEditMode(false);
-            toast({ title: 'Service rates saved', description: 'All client billing rates have been updated.' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Failed to save', description: e.message });
-        } finally {
-            setSavingRates(false);
-        }
-    };
-
-    function requirePin(action: () => void) {
-        if (isPlansAuthed) { action(); return; }
-        pendingActionRef.current = action;
-        setPinInput(''); setPinError('');
-        setIsPinDialogOpen(true);
-    }
-
-    // Global edit toggle: one PIN entry unlocks editing across the page
-    // (plan cards + service rates). Unlocking only flips the flag — the
-    // plans stay right where they are, no editor modal opens.
-    const handleGlobalUnlock = () => {
-        requirePin(() => {
-            toast({ title: 'Editing Unlocked', description: 'Plans and service rates can now be adjusted. Lock when finished.' });
-        });
-    };
-
-    const handleGlobalLock = () => {
-        setIsPlansAuthed(false);
-        setRatesEditMode(false);
-        toast({ title: 'Editing Locked', description: 'Plans and service rates are read-only again.' });
-    };
-
-    async function handlePinSubmit() {
-        try {
-            const snap = await getDoc(doc(db, 'adminConfig', 'plans'));
-            const expectedPin: string = snap.exists() ? (snap.data()?.editPin || '1234') : '1234';
-            if (pinInput === expectedPin) {
-                setIsPlansAuthed(true); setIsPinDialogOpen(false);
-                pendingActionRef.current?.(); pendingActionRef.current = null;
-            } else { setPinError('Incorrect PIN'); }
-        } catch {
-            if (pinInput === '1234') {
-                setIsPlansAuthed(true); setIsPinDialogOpen(false);
-                pendingActionRef.current?.(); pendingActionRef.current = null;
-            } else { setPinError('Incorrect PIN'); }
-        }
-    }
-
-    const handleOpenEditSub = (client: Technician) => {
-        setEditSubClient(client);
-        setEditSubForm({
-            planId: client.planId || '',
-            subscriptionStatus: client.subscriptionStatus || 'active',
-            subscriptionStartDate: (client as any).subscriptionStartDate || '',
-            subscriptionExpiryDate: (client as any).subscriptionExpiryDate || '',
-        });
-        setIsEditSubOpen(true);
-    };
-
-    const handleSaveEditSub = async () => {
-        if (!editSubClient) return;
-        setEditSubSaving(true);
-        try {
-            await updateDoc(doc(db, 'users', editSubClient.id), editSubForm);
-            setLocalTechs(prev => prev.map(t => t.id === editSubClient.id ? { ...t, ...editSubForm, subscriptionStatus: editSubForm.subscriptionStatus as 'active' | 'pending' | 'none' } : t));
-            toast({ title: 'Subscription updated' });
-            setIsEditSubOpen(false);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Failed to save', description: e.message });
-        } finally {
-            setEditSubSaving(false);
-        }
-    };
-
-    const laborRates = RATE_DEFS.filter(r => r.section === 'labor');
-    const otherRates = RATE_DEFS.filter(r => r.section === 'other');
-
-    return (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            <header className="page-header">
-                <div>
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <BookOpen size={12} /> Financial Architecture
-                    </p>
-                    <h1 className="page-title">Service Plans</h1>
-                    <p className="page-subtitle text-xs font-bold text-text-muted uppercase tracking-widest mt-1">
-                        Manage service tiers, subscription agreements, and client billing rates.
-                    </p>
-                </div>
-                <div className="page-header-right">
-                    <div className="search-wrap">
-                        <Search className="h-4 w-4" />
-                        <input
-                            className="search-input !bg-bg-secondary h-10 w-[250px]"
-                            placeholder="Find agreement..."
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                    <ViewToggle value={viewMode} onChange={setViewMode} />
-                    {userIsSuperAdmin && (
-                        isPlansAuthed ? (
-                            <Button variant="outline" onClick={handleGlobalLock}
-                                className="h-10 px-4 font-bold uppercase tracking-widest border-text-green/40 text-text-green hover:bg-text-green/5">
-                                <Unlock size={14} className="mr-2" /> Editing Unlocked — Lock
-                            </Button>
-                        ) : (
-                            <Button variant="outline" onClick={handleGlobalUnlock}
-                                className="h-10 px-4 font-bold uppercase tracking-widest">
-                                <Lock size={14} className="mr-2" /> Edit
-                            </Button>
-                        )
-                    )}
-                    {userIsSuperAdmin && (
-                        <Button onClick={() => requirePin(() => handleOpenTerminal('create'))} className="h-10 px-6 font-bold uppercase tracking-widest">
-                            <Plus size={16} className="mr-2" /> Architect Custom Plan
-                        </Button>
-                    )}
-                </div>
-            </header>
-
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="bg-bg-secondary border-border-main">
-                    <CardHeader className="pb-2"><p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Active Agreements</p></CardHeader>
-                    <CardContent><p className="text-2xl font-bold text-text-primary">{activeSubscriptions.length}</p></CardContent>
-                </Card>
-                <Card className="bg-bg-secondary border-border-main">
-                    <CardHeader className="pb-2"><p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Avg. Site Yield</p></CardHeader>
-                    <CardContent><p className="text-2xl font-mono font-bold text-text-primary">$284.50</p></CardContent>
-                </Card>
-                <Card className="bg-bg-secondary border-border-main">
-                    <CardHeader className="pb-2"><p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Pending Quotes</p></CardHeader>
-                    <CardContent><p className="text-2xl font-bold text-accent-gold">{pendingSubscriptions.length}</p></CardContent>
-                </Card>
-            </div>
-
-            {/* Main tabs */}
-            <Tabs defaultValue="all" className="w-full">
-                <TabsList className="tabs border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-start mb-6">
-                    <TabsTrigger value="all" className="tab-trigger-plans">All Agreements</TabsTrigger>
-                    <TabsTrigger value="subscriptions" className="tab-trigger-plans flex items-center gap-2">
-                        Active Subscriptions
-                        <Badge variant="outline" className="h-4 px-1.5 text-[8px] bg-bg-tertiary border-border-sub">{activeSubscriptions.length}</Badge>
-                    </TabsTrigger>
-                    <TabsTrigger value="pending" className="tab-trigger-plans flex items-center gap-2">
-                        Pending Requests
-                        {pendingSubscriptions.length > 0 && <Badge variant="destructive" className="h-4 px-1.5 text-[8px]">{pendingSubscriptions.length}</Badge>}
-                    </TabsTrigger>
-                    <TabsTrigger value="standard" className="tab-trigger-plans">Standard Tiers</TabsTrigger>
-                    <TabsTrigger value="custom" className="tab-trigger-plans">Custom Plans</TabsTrigger>
-                    <TabsTrigger value="rates" className="tab-trigger-plans">Service Rates</TabsTrigger>
-                </TabsList>
-
-                {/* All */}
-                <TabsContent value="all" className="m-0">
-                    {renderPlans(filteredPlans)}
-                </TabsContent>
-
-                {/* Active Subscriptions */}
-                <TabsContent value="subscriptions" className="m-0">
-                    <div className="grid grid-cols-1 gap-3 max-w-5xl">
-                        {subPager.items.map(client => {
-                            const plan = plans.find(p => p.id === client.planId);
-                            const startDate = (client as any).subscriptionStartDate;
-                            const expiryDate = (client as any).subscriptionExpiryDate;
-                            return (
-                                <Card key={client.id} className="bg-bg-secondary border-border-main group hover:border-text-muted transition-all">
-                                    <CardContent className="p-4 flex items-center justify-between">
-                                        <div className="flex items-center gap-6">
-                                            <div className="p-3 bg-bg-tertiary rounded-xl border border-border-sub group-hover:bg-brand-red-dim transition-colors">
-                                                <Building2 size={24} className="text-text-muted group-hover:text-brand-red transition-colors" />
-                                            </div>
-                                            <div className="text-left">
-                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{client.clientCompany || client.name}</p>
-                                                <div className="flex items-center gap-3 mt-1">
-                                                    <Badge variant="active" className="text-[8px] h-4 uppercase tracking-widest">Active Partner</Badge>
-                                                    <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
-                                                    <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">{client.businessType || 'Strategic Entity'}</p>
-                                                </div>
-                                                {(startDate || expiryDate) && (
-                                                    <div className="flex items-center gap-3 mt-1.5">
-                                                        {startDate && <p className="text-[9px] font-mono text-text-muted">Start: {startDate}</p>}
-                                                        {expiryDate && <p className="text-[9px] font-mono text-text-muted">Expires: {expiryDate}</p>}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-12">
-                                            <div className="text-left min-w-[150px]">
-                                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-0.5">Assigned Tier</p>
-                                                <div className="flex items-center gap-2">
-                                                    <p className="text-xs font-bold text-text-primary uppercase">{plan?.name || 'Manual Settlement'}</p>
-                                                    <Badge variant="outline" className="text-[8px] bg-bg-tertiary">{plan?.type === 'custom' ? 'CUSTOM' : 'STD'}</Badge>
-                                                </div>
-                                            </div>
-                                            <div className="text-right min-w-[120px]">
-                                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-0.5">Monthly Settlement</p>
-                                                <p className="text-sm font-mono font-bold text-text-green">${(plan?.price || 0).toLocaleString()}</p>
-                                            </div>
-                                            <Button variant="ghost" size="icon" className="text-text-muted hover:text-text-primary" onClick={() => requirePin(() => handleOpenEditSub(client))}>
-                                                <ChevronRight size={18} />
-                                            </Button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            );
-                        })}
-                        {activeSubscriptions.length === 0 && (
-                            <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl opacity-40 bg-bg-secondary/30">
-                                <ShieldCheck size={48} className="mx-auto text-text-muted mb-2" />
-                                <p className="text-[10px] font-bold uppercase tracking-widest">No active client agreements in registry</p>
-                            </div>
-                        )}
-                    </div>
-                    <ListPager pager={subPager} noun="subscriptions" />
-                </TabsContent>
-
-                {/* Pending */}
-                <TabsContent value="pending" className="m-0">
-                    <div className="mb-6 p-4 rounded-xl bg-bg-secondary border border-border-sub flex flex-col md:flex-row items-center justify-between gap-4 max-w-5xl shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-brand-red-dim rounded-lg border border-brand-red/20 text-brand-red">
-                                <ExternalLink size={18} />
-                            </div>
-                            <div className="text-left">
-                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">External Intake Buffer</p>
-                                <p className="text-[10px] text-text-muted font-medium uppercase leading-relaxed">
-                                    Partner applications are synchronized from the global enrollment form.
-                                </p>
-                            </div>
-                        </div>
-                        <Button variant="outline" size="sm" className="h-9 px-6 text-[10px] uppercase font-bold tracking-widest border-border-sub" asChild>
-                            <a href="https://forms.gle/WQ55ipWZvn4vMmvb9" target="_blank" rel="noopener noreferrer">
-                                <ExternalLink size={14} className="mr-2" /> New Request
-                            </a>
-                        </Button>
-                    </div>
-                    <div className="grid grid-cols-1 gap-3 max-w-5xl">
-                        {pendingSubscriptions.map(client => {
-                            const slaHours = SLA_HOURS[client.planId || ''] ?? DEFAULT_SLA_HOURS;
-                            const sla = getSlaStatus((client as any).createdAt || (client as any).pendingAt, slaHours);
-                            return (
-                                <Card key={client.id} className="bg-bg-secondary border-border-main border-dashed border-accent-gold/40">
-                                    <CardContent className="p-4 flex items-center justify-between">
-                                        <div className="flex items-center gap-6">
-                                            <div className="p-3 bg-accent-gold-dim/20 rounded-xl border border-accent-gold/20 text-accent-gold"><History size={24} /></div>
-                                            <div className="text-left">
-                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{client.clientCompany || client.name}</p>
-                                                <div className="flex items-center gap-3 mt-1">
-                                                    <Badge variant="onhold" className="text-[8px] h-4 uppercase tracking-widest">Awaiting Authorization</Badge>
-                                                    <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
-                                                    <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">New Partner</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-6">
-                                            <div className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-widest', sla.bg, sla.color)}>
-                                                <Clock size={11} />{sla.label}
-                                            </div>
-                                            <Button size="sm" variant="outline" className="h-8 text-[9px] uppercase font-bold border-border-sub" onClick={() => requirePin(() => handleDiscardRequest(client.id))}>Discard Request</Button>
-                                            <Button size="sm" className="h-8 text-[9px] uppercase font-bold bg-accent-gold hover:bg-accent-gold/90" onClick={() => requirePin(() => handleInitializeQuote(client.id))}>Approve Request</Button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            );
-                        })}
-                        {pendingSubscriptions.length === 0 && (
-                            <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl opacity-40 bg-bg-secondary/30">
-                                <Zap size={48} className="mx-auto text-text-muted mb-2" />
-                                <p className="text-[10px] font-bold uppercase tracking-widest">No pending service agreements</p>
-                            </div>
-                        )}
-                    </div>
-                </TabsContent>
-
-                {/* Standard */}
-                <TabsContent value="standard" className="m-0">
-                    {renderPlans(filteredPlans.filter(p => p.type === 'standard'))}
-                </TabsContent>
-
-                {/* Custom */}
-                <TabsContent value="custom" className="m-0">
-                    {filteredPlans.filter(p => p.type === 'custom').length === 0 ? (
-                        <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl opacity-40 bg-bg-secondary/30">
-                            <Building2 size={48} className="mx-auto text-text-muted mb-2" />
-                            <p className="text-[10px] font-bold uppercase tracking-widest">No custom client agreements in registry</p>
-                        </div>
-                    ) : renderPlans(filteredPlans.filter(p => p.type === 'custom'))}
-                </TabsContent>
-
-                {/* Service Rates */}
-                <TabsContent value="rates" className="m-0">
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Client billing rates — separate from technician pay rates</p>
-                            {userIsSuperAdmin && !ratesEditMode && (
-                                <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase" onClick={() => requirePin(() => { setEditRates({ ...rates }); setEditRateLabels({ ...rateLabels }); setRatesEditMode(true); })}>
-                                    <PencilLine size={12} className="mr-1.5" /> Edit Rates
-                                </Button>
-                            )}
-                            {ratesEditMode && (
-                                <div className="flex items-center gap-2">
-                                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase" onClick={() => { setRatesEditMode(false); setEditRates({ ...rates }); }}>Cancel</Button>
-                                    <Button size="sm" disabled={savingRates} className="h-8 text-[10px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white" onClick={handleSaveRates}>
-                                        <Save size={12} className="mr-1.5" />{savingRates ? 'Saving...' : 'Save Rates'}
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="space-y-2">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-brand-red px-1 pb-1 border-b border-border-sub">Labor Rates</p>
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                                {laborRates.map(r => (
-                                    <RateCard key={r.key} def={r}
-                                        value={ratesEditMode ? editRates[r.key] : rates[r.key]}
-                                        editMode={ratesEditMode}
-                                        onChange={v => setEditRates(prev => ({ ...prev, [r.key]: v }))}
-                                        label={ratesEditMode ? editRateLabels[r.key] : rateLabels[r.key]}
-                                        onLabelChange={ratesEditMode ? v => setEditRateLabels(prev => ({ ...prev, [r.key]: v })) : undefined}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-brand-red px-1 pb-1 border-b border-border-sub">Other Charges</p>
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                {otherRates.map(r => (
-                                    <RateCard key={r.key} def={r}
-                                        value={ratesEditMode ? editRates[r.key] : rates[r.key]}
-                                        editMode={ratesEditMode}
-                                        onChange={v => setEditRates(prev => ({ ...prev, [r.key]: v }))}
-                                        label={ratesEditMode ? editRateLabels[r.key] : rateLabels[r.key]}
-                                        onLabelChange={ratesEditMode ? v => setEditRateLabels(prev => ({ ...prev, [r.key]: v })) : undefined}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </TabsContent>
-            </Tabs>
-
-            {/* ── Plan Dialog ── */}
-            <Dialog open={isTerminalOpen} onOpenChange={setIsTerminalOpen}>
-                <DialogContent className="sm:max-w-[720px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh]">
-                    <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
-                        <div className="flex items-center gap-3">
-                            {terminalMode === 'view' ? <Eye className="text-accent-gold h-5 w-5" /> : <PenTool className="text-brand-red h-5 w-5" />}
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">
-                                {terminalMode === 'create' ? 'Custom Plan Architect' : terminalMode === 'edit' ? 'Modify Agreement Registry' : 'Agreement Audit Shell'}
-                            </DialogTitle>
-                        </div>
-                        <DialogDescription className="text-xs uppercase font-bold text-text-muted">
-                            {terminalMode === 'view' ? 'High-fidelity technical specifications for this agreement tier.' : 'Construct or adjust strategic service agreement parameters.'}
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <ScrollArea className="flex-1">
-                        <div className="px-6 py-6 space-y-6">
-                            {/* Client + Name */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Target Client</Label>
-                                    <Select
-                                        disabled={terminalMode === 'view' || selectedPlan.type === 'standard'}
-                                        value={selectedPlan.clientName || 'Standard Tier'}
-                                        onValueChange={val => setSelectedPlan({ ...selectedPlan, clientName: val === 'Standard Tier' ? undefined : val })}
-                                    >
-                                        <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold"><SelectValue placeholder="Standard Tier" /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Standard Tier">Standard Tier (Global)</SelectItem>
-                                            {clientsList.map(c => (
-                                                <SelectItem key={c.id} value={c.clientCompany || c.name} className="text-xs uppercase font-bold">
-                                                    {c.clientCompany || c.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Agreement Identifier</Label>
-                                    <Input
-                                        readOnly={terminalMode === 'view'}
-                                        placeholder="e.g. Q3 Strategic Fiber"
-                                        className="h-11 bg-bg-primary text-xs font-bold uppercase"
-                                        value={selectedPlan.name || ''}
-                                        onChange={e => setSelectedPlan({ ...selectedPlan, name: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Plan Type + Status */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Plan Type</Label>
-                                    <Select
-                                        disabled={terminalMode === 'view'}
-                                        value={selectedPlan.planType || '__none__'}
-                                        onValueChange={val => setSelectedPlan({ ...selectedPlan, planType: val === '__none__' ? undefined : val as PlanTier['planType'] })}
-                                    >
-                                        <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold"><SelectValue placeholder="Select type" /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="__none__">Not specified</SelectItem>
-                                            <SelectItem value="standard-tier">Standard Tier</SelectItem>
-                                            <SelectItem value="subscription-tier">Subscription Tier</SelectItem>
-                                            <SelectItem value="custom-client-tier">Custom Client Tier</SelectItem>
-                                            <SelectItem value="one-time-rate">One-Time Service Rate</SelectItem>
-                                            <SelectItem value="emergency-rate">Emergency Service Rate</SelectItem>
-                                            <SelectItem value="project-rate">Project Rate</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Status</Label>
-                                    <Select
-                                        disabled={terminalMode === 'view'}
-                                        value={selectedPlan.status || 'active'}
-                                        onValueChange={val => setSelectedPlan({ ...selectedPlan, status: val as 'active' | 'inactive' })}
-                                    >
-                                        <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="active">Active</SelectItem>
-                                            <SelectItem value="inactive">Inactive</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            {/* Price + Billing */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Monthly Rate ($)</Label>
-                                    <div className="relative">
-                                        <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-green" />
-                                        <Input
-                                            readOnly={terminalMode === 'view'}
-                                            type="number" placeholder="0.00"
-                                            className="h-11 bg-bg-primary pl-10 text-sm font-mono font-bold"
-                                            value={selectedPlan.price || 0}
-                                            onChange={e => setSelectedPlan({ ...selectedPlan, price: parseFloat(e.target.value) || 0 })}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Settlement Cycle</Label>
-                                    <Select
-                                        disabled={terminalMode === 'view'}
-                                        value={selectedPlan.billingPeriod}
-                                        onValueChange={(val: PlanTier['billingPeriod']) => setSelectedPlan({ ...selectedPlan, billingPeriod: val })}
-                                    >
-                                        <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="monthly">Monthly Recurring</SelectItem>
-                                            <SelectItem value="quarterly">Quarterly Bulk</SelectItem>
-                                            <SelectItem value="annual">Annual Commitment</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            {/* Site Quota + SLA */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Verified Site Quota</Label>
-                                    <Input
-                                        readOnly={terminalMode === 'view'}
-                                        type="number"
-                                        className="h-11 bg-bg-primary text-sm font-mono font-bold"
-                                        value={selectedPlan.siteLimit || 0}
-                                        onChange={e => setSelectedPlan({ ...selectedPlan, siteLimit: parseInt(e.target.value) || 0 })}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Response Tier SLA</Label>
-                                    <Select
-                                        disabled={terminalMode === 'view'}
-                                        value={selectedPlan.responseTime}
-                                        onValueChange={val => setSelectedPlan({ ...selectedPlan, responseTime: val })}
-                                    >
-                                        <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Same-Day">Same-Day Priority</SelectItem>
-                                            <SelectItem value="2h">2-Hour Emergency</SelectItem>
-                                            <SelectItem value="4h">4-Hour Critical</SelectItem>
-                                            <SelectItem value="8h">8-Hour Priority</SelectItem>
-                                            <SelectItem value="24h">24-Hour Standard</SelectItem>
-                                            <SelectItem value="48h">48-Hour Routine</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            {/* Applicable Hourly Rates */}
-                            <div className="space-y-3">
-                                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1">Client Billing Rates (per hour)</p>
-                                <div className="grid grid-cols-3 gap-3">
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[9px] uppercase font-bold text-text-muted">Standard ($/hr)</Label>
-                                        <Input
-                                            readOnly={terminalMode === 'view'}
-                                            type="number" placeholder="e.g. 150"
-                                            className="h-9 bg-bg-primary text-xs font-mono"
-                                            value={selectedPlan.standardHourlyRate ?? ''}
-                                            onChange={e => setSelectedPlan({ ...selectedPlan, standardHourlyRate: e.target.value ? parseFloat(e.target.value) : undefined })}
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[9px] uppercase font-bold text-text-muted">After-Hours ($/hr)</Label>
-                                        <Input
-                                            readOnly={terminalMode === 'view'}
-                                            type="number" placeholder="e.g. 200"
-                                            className="h-9 bg-bg-primary text-xs font-mono"
-                                            value={selectedPlan.afterHoursHourlyRate ?? ''}
-                                            onChange={e => setSelectedPlan({ ...selectedPlan, afterHoursHourlyRate: e.target.value ? parseFloat(e.target.value) : undefined })}
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[9px] uppercase font-bold text-text-muted">Emergency ($/hr)</Label>
-                                        <Input
-                                            readOnly={terminalMode === 'view'}
-                                            type="number" placeholder="e.g. 225"
-                                            className="h-9 bg-bg-primary text-xs font-mono"
-                                            value={selectedPlan.emergencyHourlyRate ?? ''}
-                                            onChange={e => setSelectedPlan({ ...selectedPlan, emergencyHourlyRate: e.target.value ? parseFloat(e.target.value) : undefined })}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Travel + Min + Contract */}
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="space-y-1.5">
-                                    <Label className="text-[9px] uppercase font-bold text-text-muted">Travel Fee ($)</Label>
-                                    <Input
-                                        readOnly={terminalMode === 'view'}
-                                        type="number" placeholder="e.g. 75"
-                                        className="h-9 bg-bg-primary text-xs font-mono"
-                                        value={selectedPlan.travelFee ?? ''}
-                                        onChange={e => setSelectedPlan({ ...selectedPlan, travelFee: e.target.value ? parseFloat(e.target.value) : undefined })}
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[9px] uppercase font-bold text-text-muted">Min Service Charge ($)</Label>
-                                    <Input
-                                        readOnly={terminalMode === 'view'}
-                                        type="number" placeholder="e.g. 150"
-                                        className="h-9 bg-bg-primary text-xs font-mono"
-                                        value={selectedPlan.minimumServiceCharge ?? ''}
-                                        onChange={e => setSelectedPlan({ ...selectedPlan, minimumServiceCharge: e.target.value ? parseFloat(e.target.value) : undefined })}
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[9px] uppercase font-bold text-text-muted">Contract Length</Label>
-                                    <Select
-                                        disabled={terminalMode === 'view'}
-                                        value={selectedPlan.contractLength || '__none__'}
-                                        onValueChange={val => setSelectedPlan({ ...selectedPlan, contractLength: val === '__none__' ? undefined : val })}
-                                    >
-                                        <SelectTrigger className="h-9 bg-bg-primary text-[10px] font-bold"><SelectValue placeholder="Select" /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="__none__">Not specified</SelectItem>
-                                            <SelectItem value="month-to-month">Month-to-Month</SelectItem>
-                                            <SelectItem value="6-months">6 Months</SelectItem>
-                                            <SelectItem value="1-year">1 Year</SelectItem>
-                                            <SelectItem value="2-years">2 Years</SelectItem>
-                                            <SelectItem value="3-years">3 Years</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            {/* Capability Matrix */}
-                            <div className="space-y-3">
-                                <Label className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 block text-left">Capability Matrix</Label>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-left">
-                                    {PLAN_CAPABILITIES.map(feature => {
-                                        const isSelected = selectedPlan.features?.includes(feature);
-                                        return (
-                                            <div
-                                                key={feature}
-                                                onClick={() => handleToggleFeature(feature)}
-                                                className={cn(
-                                                    'flex items-center justify-between p-3 rounded-lg border transition-all',
-                                                    isSelected ? 'bg-brand-red-dim/10 border-brand-red' : 'bg-bg-primary border-border-sub',
-                                                    terminalMode !== 'view' ? 'cursor-pointer hover:border-text-muted' : 'opacity-80'
-                                                )}
-                                            >
-                                                <span className={cn('text-[10px] font-bold uppercase tracking-tight', isSelected ? 'text-text-primary' : 'text-text-muted')}>{feature}</span>
-                                                <Checkbox checked={isSelected} className={cn('h-4 w-4', terminalMode === 'view' && 'pointer-events-none')} />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Notes */}
-                            <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Notes</Label>
-                                <textarea
-                                    readOnly={terminalMode === 'view'}
-                                    placeholder="Any additional terms, negotiated conditions, or internal notes..."
-                                    className="w-full min-h-[80px] px-3 py-2 text-[11px] bg-bg-primary border border-border-main rounded-md text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-brand-red/50"
-                                    value={selectedPlan.notes || ''}
-                                    onChange={e => setSelectedPlan({ ...selectedPlan, notes: e.target.value })}
-                                />
-                            </div>
-                        </div>
-                    </ScrollArea>
-
-                    <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default">
-                        {terminalMode === 'view' ? (
-                            <Button variant="outline" onClick={() => setIsTerminalOpen(false)} className="w-full h-11 uppercase font-bold text-[10px] tracking-widest">Exit Audit</Button>
-                        ) : (
-                            <div className="grid grid-cols-2 gap-3 w-full">
-                                <Button variant="outline" onClick={() => setIsTerminalOpen(false)} className="h-11 uppercase font-bold text-[10px] tracking-widest">Discard Changes</Button>
-                                <Button onClick={handleSavePlan} className="h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">Authorize Agreement</Button>
-                            </div>
-                        )}
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Delete Dialog */}
-            <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-                <DialogContent className="sm:max-w-[450px] bg-bg-elevated border-border-default shadow-2xl">
-                    <DialogHeader className="text-left">
-                        <div className="flex items-center gap-2 mb-1">
-                            <ShieldAlert className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Authorize Deletion</DialogTitle>
-                        </div>
-                        <DialogDescription className="text-xs">This will permanently delete the plan from the system.</DialogDescription>
-                    </DialogHeader>
-                    <div className="py-6 space-y-4 text-left">
-                        <div className="p-4 rounded-lg bg-brand-red-dim/5 border border-brand-red/30">
-                            <p className="text-[10px] font-black text-brand-red uppercase tracking-widest mb-1">Safety Lock Required</p>
-                            <p className="text-[11px] text-text-secondary leading-relaxed uppercase font-medium">
-                                To confirm deletion of <span className="text-text-primary font-bold">{planToDelete?.name}</span>, type the plan name exactly as shown below.
-                            </p>
-                        </div>
-                        <div className="space-y-2 pt-2">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted flex">Type <span className="text-text-primary ml-1">{planToDelete?.name}</span> to confirm</Label>
-                            <Input
-                                placeholder="Enter identifier..."
-                                value={deleteConfirmText}
-                                onChange={e => setDeleteConfirmText(e.target.value)}
-                                className="h-11 bg-bg-primary border-border-sub text-center font-mono font-bold uppercase tracking-widest"
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default flex gap-3">
-                        <Button variant="outline" onClick={() => setIsDeleteOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Cancel</Button>
-                        <Button variant="destructive" onClick={executeDelete} disabled={deleteConfirmText !== planToDelete?.name} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white">Authorize Delete</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* PIN Dialog */}
-            <Dialog open={isPinDialogOpen} onOpenChange={setIsPinDialogOpen}>
-                <DialogContent className="sm:max-w-[360px] bg-bg-elevated border-border-default">
-                    <DialogHeader className="text-left">
-                        <div className="flex items-center gap-2 mb-1">
-                            <Lock className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Plans PIN Required</DialogTitle>
-                        </div>
-                        <DialogDescription className="text-[10px] uppercase font-bold text-text-muted">Enter your edit PIN to unlock editing for service plans and service rates.</DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4 space-y-3">
-                        <Input
-                            type="password" placeholder="Enter PIN"
-                            value={pinInput}
-                            onChange={e => { setPinInput(e.target.value); setPinError(''); }}
-                            onKeyDown={e => { if (e.key === 'Enter') handlePinSubmit(); }}
-                            className="h-11 text-center text-xl font-mono bg-bg-primary border-border-main tracking-[0.5em]"
-                            autoFocus
-                        />
-                        {pinError && <p className="text-[10px] font-bold text-brand-red uppercase tracking-widest text-center">{pinError}</p>}
-                    </div>
-                    <DialogFooter className="gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setIsPinDialogOpen(false)} className="flex-1 text-[10px] font-black uppercase">Cancel</Button>
-                        <Button size="sm" onClick={handlePinSubmit} className="flex-1 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">Unlock</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Edit Subscription Dialog */}
-            <Dialog open={isEditSubOpen} onOpenChange={setIsEditSubOpen}>
-                <DialogContent className="sm:max-w-[420px] bg-bg-elevated border-border-default">
-                    <DialogHeader className="text-left">
-                        <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Edit Subscription</DialogTitle>
-                        <DialogDescription className="text-[10px] uppercase font-bold text-text-muted">{editSubClient?.clientCompany || editSubClient?.name}</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-3 py-2">
-                        <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Plan</Label>
-                            <Select value={editSubForm.planId} onValueChange={v => setEditSubForm(f => ({ ...f, planId: v }))}>
-                                <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main">
-                                    <SelectValue placeholder="Select plan" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-bg-elevated border-border-main">
-                                    {plans.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</Label>
-                            <Select value={editSubForm.subscriptionStatus} onValueChange={v => setEditSubForm(f => ({ ...f, subscriptionStatus: v }))}>
-                                <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-bg-elevated border-border-main">
-                                    <SelectItem value="active">Active</SelectItem>
-                                    <SelectItem value="pending">Pending</SelectItem>
-                                    <SelectItem value="none">None</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Start Date</Label>
-                                <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={editSubForm.subscriptionStartDate} onChange={e => setEditSubForm(f => ({ ...f, subscriptionStartDate: e.target.value }))} />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Expiry Date</Label>
-                                <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={editSubForm.subscriptionExpiryDate} onChange={e => setEditSubForm(f => ({ ...f, subscriptionExpiryDate: e.target.value }))} />
-                            </div>
-                        </div>
-                    </div>
-                    <DialogFooter className="gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setIsEditSubOpen(false)} className="flex-1 text-[10px] font-black uppercase">Cancel</Button>
-                        <Button size="sm" onClick={handleSaveEditSub} disabled={editSubSaving} className="flex-1 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
-                            {editSubSaving ? 'Saving...' : 'Save'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <style jsx global>{`
-                .tab-trigger-plans {
-                    @apply px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
-                }
-            `}</style>
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <header className="page-header">
+        <div>
+          <p className="page-eyebrow flex items-center gap-2"><BookOpen size={12} /> Billing</p>
+          <h1 className="page-title">Service Plans</h1>
+          <p className="page-subtitle">Plans, client subscriptions and the price book quotes and invoices use.</p>
         </div>
-    );
-}
+        {canManage && (
+          <div className="page-header-right flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setSubDialog({ kind: 'create' })} disabled={plans.length === 0}
+              className="h-10 px-4 text-[10px] font-black uppercase tracking-widest">
+              <Building2 size={14} className="mr-2" /> Start Subscription
+            </Button>
+            <Button onClick={openNewPlan} className="h-10 px-4 text-[10px] font-black uppercase tracking-widest bg-brand-red hover:bg-brand-red/90 text-white">
+              <Plus size={14} className="mr-2" /> New Plan
+            </Button>
+          </div>
+        )}
+      </header>
 
-function RateCard({ def, value, editMode, onChange, label, onLabelChange }: {
-    def: RateDef;
-    value: number;
-    editMode: boolean;
-    onChange: (v: number) => void;
-    label?: string;
-    onLabelChange?: (v: string) => void;
-}) {
-    const Icon = def.icon;
-    const displayLabel = label || def.label;
-    return (
-        <Card className="bg-bg-secondary border-border-main hover:border-text-muted transition-all group">
-            <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub p-3">
-                <div className="flex items-center gap-2">
-                    <div className="p-2 bg-bg-primary rounded-lg border border-border-sub group-hover:bg-brand-red-dim group-hover:border-brand-red/30 transition-all">
-                        <Icon size={15} className="text-text-muted group-hover:text-brand-red transition-colors" />
+      <div className="flex items-start gap-2 p-3 rounded-lg border border-border-sub bg-bg-secondary text-[11px] text-text-secondary">
+        <Info size={14} className="text-brand-red shrink-0 mt-0.5" />
+        <p>
+          Stripe isn&apos;t connected yet, so subscriptions are billed by invoice: when one is <b>due</b>, bill it and click
+          <b> Mark billed</b> to move it to the next period. Once Stripe is connected it charges automatically and these
+          dates update themselves.
+        </p>
+      </div>
+
+      {canManage && noData && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border border-accent-gold/40 bg-accent-gold/5">
+          <p className="text-xs text-text-primary">No plans here yet. Import the plans, rates and client plan settings from the old Plans page?</p>
+          <Button variant="outline" onClick={() => setMigrationOpen(true)} className="h-9 text-[10px] font-black uppercase tracking-widest shrink-0">
+            <Download size={12} className="mr-1.5" /> Import Old Data
+          </Button>
+        </div>
+      )}
+
+      {/* Stats — all computed from live subscriptions */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        {[
+          { label: 'Monthly Recurring', value: formatMoney(mrr), color: 'text-text-green' },
+          { label: 'Active Subscriptions', value: String(live.length - pastDue.length), color: 'text-text-primary' },
+          { label: 'Due to Bill', value: String(due.length), color: due.length ? 'text-accent-gold' : 'text-text-primary' },
+          { label: 'Past Due', value: String(pastDue.length), color: pastDue.length ? 'text-text-red' : 'text-text-primary' },
+          { label: 'Requests', value: String(requests.length), color: requests.length ? 'text-accent-gold' : 'text-text-primary' },
+        ].map(s => (
+          <Card key={s.label} className="bg-bg-secondary border-border-main">
+            <CardContent className="p-4">
+              <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">{s.label}</p>
+              <p className={cn('text-xl font-mono font-bold mt-1', s.color)}>{s.value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Tabs defaultValue="subscriptions" className="w-full">
+        <div className="overflow-x-auto">
+          <TabsList className="tabs border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-6 justify-start mb-5 min-w-max">
+            <TabsTrigger value="subscriptions" className="tab-trigger-plans">Subscriptions</TabsTrigger>
+            <TabsTrigger value="plans" className="tab-trigger-plans">Plans</TabsTrigger>
+            <TabsTrigger value="requests" className="tab-trigger-plans flex items-center gap-1.5">
+              Requests {requests.length > 0 && <Badge variant="destructive" className="h-4 px-1.5 text-[8px]">{requests.length}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="pricing" className="tab-trigger-plans">Pricing</TabsTrigger>
+          </TabsList>
+        </div>
+
+        {/* ── Subscriptions ── */}
+        <TabsContent value="subscriptions" className="m-0 space-y-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+            <div className="flex gap-1">
+              {([['live', `Current (${live.length})`], ['due', `Due (${due.length})`], ['canceled', 'Canceled']] as const).map(([k, l]) => (
+                <Button key={k} size="sm" variant={subFilter === k ? 'default' : 'outline'} onClick={() => setSubFilter(k)}
+                  className="h-8 text-[10px] font-black uppercase tracking-widest">{l}</Button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <div className="relative flex-1 sm:w-56">
+                <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
+                <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Client or plan…" className="h-8 pl-7 text-xs bg-bg-secondary" />
+              </div>
+              <Button size="sm" variant="outline" onClick={exportCsv} disabled={live.length === 0} className="h-8 text-[10px] font-black uppercase">
+                <Download size={12} className="mr-1" /> CSV
+              </Button>
+            </div>
+          </div>
+
+          {shownSubs.length === 0 ? (
+            <div className="py-16 text-center border-2 border-dashed border-border-sub rounded-xl">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                {subFilter === 'due' ? 'Nothing due to bill' : subFilter === 'canceled' ? 'No canceled subscriptions' : 'No client subscriptions yet'}
+              </p>
+            </div>
+          ) : shownSubs.map(s => {
+            const p = planById.get(s.planId);
+            const isDue = s.status !== 'paused' && s.status !== 'canceled' && !!s.nextBillingDate && s.nextBillingDate <= today;
+            return (
+              <Card key={s.id} className="bg-bg-secondary border-border-main">
+                <CardContent className="p-4 flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-6">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-bold text-text-primary truncate">{s.clientName || clientName(s.clientId) || s.clientId}</p>
+                      <Badge variant={STATUS_VARIANT[s.status]} className="text-[8px] h-4 uppercase">{SUBSCRIPTION_STATUS_LABELS[s.status]}</Badge>
+                      {s.cancelAtPeriodEnd && <Badge variant="outline" className="text-[8px] h-4 uppercase">Ends {s.nextBillingDate || 'at period end'}</Badge>}
+                      {s.priceOverride != null && <Badge variant="outline" className="text-[8px] h-4 uppercase">Custom price</Badge>}
                     </div>
-                    {editMode && onLabelChange ? (
-                        <Input
-                            value={displayLabel}
-                            onChange={e => onLabelChange(e.target.value)}
-                            className="h-6 text-[9px] font-bold uppercase tracking-wider bg-bg-primary border-border-main p-1"
-                        />
-                    ) : (
-                        <p className="text-[9px] font-bold uppercase tracking-wider leading-tight text-text-primary">{displayLabel}</p>
-                    )}
-                </div>
-            </CardHeader>
-            <CardContent className="p-3 text-center space-y-1">
-                {editMode ? (
-                    <Input
-                        type="number" step="0.01" min="0" value={value}
-                        onChange={e => onChange(parseFloat(e.target.value) || 0)}
-                        className="h-8 text-sm font-mono font-bold text-center bg-bg-primary border-border-main"
-                    />
+                    <p className="text-[11px] text-text-muted mt-0.5">
+                      {p?.name || <span className="text-text-red">Unknown plan ({s.planId})</span>} · {INTERVAL_LABELS[s.interval]}
+                      {s.startDate && <> · since {s.startDate}</>}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <div>
+                      <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Amount</p>
+                      <p className="text-sm font-mono font-bold text-text-green">{formatMoney(subscriptionAmount(s, p))}</p>
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Next Bill</p>
+                      <p className={cn('text-sm font-mono font-bold', isDue ? 'text-accent-gold' : 'text-text-primary')}>
+                        {s.status === 'canceled' ? '—' : s.nextBillingDate || 'Not set'}
+                      </p>
+                    </div>
+                  </div>
+                  {canManage && s.status !== 'canceled' && (
+                    <div className="flex flex-wrap gap-2">
+                      {isDue && (
+                        <Button size="sm" onClick={() => run(() => markPeriodBilled(s), 'Marked billed')}
+                          className="h-8 text-[10px] font-black uppercase bg-accent-gold hover:bg-accent-gold/90 text-black">
+                          <Receipt size={12} className="mr-1" /> Mark billed
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline" onClick={() => setSubDialog({ kind: 'edit', sub: s })} className="h-8 text-[10px] font-black uppercase">
+                        <Pencil size={12} className="mr-1" /> Edit
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setCancelTarget(s)} className="h-8 text-[10px] font-black uppercase text-text-red border-brand-red/40">
+                        <Ban size={12} className="mr-1" /> Cancel
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </TabsContent>
+
+        {/* ── Plans ── */}
+        <TabsContent value="plans" className="m-0 space-y-6">
+          {(['standard', 'custom'] as const).map(kind => {
+            const list = plans.filter(p => p.kind === kind);
+            return (
+              <section key={kind} className="space-y-3">
+                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">
+                  {kind === 'standard' ? 'Standard Plans' : 'Custom Client Plans'}
+                </h2>
+                {list.length === 0 ? (
+                  <p className="text-[11px] text-text-muted">
+                    {kind === 'standard' ? 'No standard plans yet.' : 'No custom plans. Duplicate a standard plan to write one for a client.'}
+                  </p>
                 ) : (
-                    <p className="text-xl font-mono font-bold text-text-primary tracking-tighter">
-                        {def.unit === '%' ? `${value}%` : def.unit === 'flat' ? `$${value}` : `$${value}/hr`}
-                    </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {list.map(p => (
+                      <Card key={p.id} className={cn('bg-bg-secondary border-border-main flex flex-col', p.status === 'archived' && 'opacity-60')}>
+                        <CardContent className="p-5 flex flex-col gap-3 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-base font-black uppercase tracking-wide truncate">{p.name}</p>
+                              {p.kind === 'custom' && <p className="text-[10px] text-text-muted truncate">For {clientName(p.clientId) || 'unknown client'}</p>}
+                            </div>
+                            <Badge variant={p.status === 'active' ? 'active' : p.status === 'draft' ? 'pending' : 'outline'} className="text-[8px] h-4 uppercase shrink-0">{p.status}</Badge>
+                          </div>
+                          <div className="space-y-0.5">
+                            {p.prices.map(pr => (
+                              <p key={pr.interval} className="text-sm font-mono font-bold text-text-green">
+                                {formatMoney(pr.amount)} <span className="text-[10px] text-text-muted font-sans font-normal">{INTERVAL_LABELS[pr.interval].toLowerCase()}</span>
+                              </p>
+                            ))}
+                            {p.setupFee > 0 && <p className="text-[10px] text-text-muted">+ {formatMoney(p.setupFee)} setup</p>}
+                          </div>
+                          {p.description && <p className="text-[11px] text-text-secondary">{p.description}</p>}
+                          <div className="grid grid-cols-2 gap-1.5 text-[10px] text-text-secondary">
+                            <span className="flex items-center gap-1"><Clock size={10} /> {p.benefits.responseHours}h response</span>
+                            <span className="flex items-center gap-1"><Percent size={10} /> {p.benefits.laborDiscountPct}% off labor</span>
+                            <span className="flex items-center gap-1"><CalendarClock size={10} />
+                              {p.benefits.includedVisits ? `${p.benefits.includedVisits} visit${p.benefits.includedVisits === 1 ? '' : 's'}/${p.benefits.includedVisitsPer}` : 'No visits incl.'}
+                            </span>
+                            <span className="flex items-center gap-1"><MapPin size={10} /> {p.benefits.siteLimit ?? 'Unlimited'} site{p.benefits.siteLimit === 1 ? '' : 's'}</span>
+                            {p.benefits.afterHoursDispatch && <span className="flex items-center gap-1 col-span-2"><Moon size={10} /> After-hours dispatch</span>}
+                          </div>
+                          {p.features.length > 0 && (
+                            <ul className="space-y-0.5 text-[11px] text-text-secondary list-disc pl-4">
+                              {p.features.map(f => <li key={f}>{f}</li>)}
+                            </ul>
+                          )}
+                          <p className="text-[10px] text-text-muted mt-auto pt-2 border-t border-border-sub">
+                            {subscriberCount(p.id)} active client{subscriberCount(p.id) === 1 ? '' : 's'}
+                            {p.minimumTermMonths ? ` · ${p.minimumTermMonths}-month minimum` : ' · month to month'}
+                          </p>
+                          {canManage && (
+                            <div className="flex flex-wrap gap-2">
+                              <Button size="sm" variant="outline" onClick={() => openEditPlan(p)} className="h-8 text-[10px] font-black uppercase">
+                                <Pencil size={12} className="mr-1" /> Edit
+                              </Button>
+                              {p.kind === 'standard' && (
+                                <Button size="sm" variant="outline" onClick={() => duplicateAsCustom(p)} className="h-8 text-[10px] font-black uppercase">
+                                  <Copy size={12} className="mr-1" /> Custom copy
+                                </Button>
+                              )}
+                              {p.status === 'archived' ? (
+                                <Button size="sm" variant="outline" onClick={() => run(() => setPlanStatus(p.id, 'active'), 'Plan restored')} className="h-8 text-[10px] font-black uppercase">
+                                  <RotateCcw size={12} className="mr-1" /> Restore
+                                </Button>
+                              ) : (
+                                <Button size="sm" variant="outline" onClick={() => run(() => setPlanStatus(p.id, 'archived'), 'Plan archived — existing clients keep it')}
+                                  className="h-8 text-[10px] font-black uppercase">
+                                  <Archive size={12} className="mr-1" /> Archive
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 )}
-                <p className="text-[8px] text-text-muted font-medium">{def.description}</p>
-            </CardContent>
-        </Card>
-    );
-}
+              </section>
+            );
+          })}
+        </TabsContent>
 
-function PlanRow({ plan, onEdit, onView, onDelete, canEdit }: {
-    plan: PlanTier;
-    onEdit: (p: PlanTier) => void;
-    onView: (p: PlanTier) => void;
-    onDelete: (p: PlanTier) => void;
-    canEdit: boolean;
-}) {
-    const isCustom = plan.type === 'custom';
-    const isStandard = plan.type === 'standard';
-    const isInactive = plan.status === 'inactive';
-    return (
-        <div className={cn(
-            'flex items-center gap-3 px-4 py-2.5 rounded-lg border bg-bg-secondary hover:border-text-muted transition-colors',
-            isCustom ? 'border-brand-red/30' : 'border-border-sub',
-            isInactive && 'opacity-60'
-        )}>
-            <button type="button" onClick={() => onView(plan)} className="flex-1 min-w-0 text-left">
-                <p className="text-[12px] font-bold uppercase tracking-wide text-text-primary truncate">{plan.name}</p>
-                <p className="text-[10px] text-text-muted truncate">
-                    <span className="uppercase">{plan.type} agreement</span>
-                    {isCustom && plan.clientName ? ` · ${plan.clientName}` : ''}
-                    {isInactive ? ' · Inactive' : ''}
-                </p>
-            </button>
-            <span className="hidden md:block text-[10px] font-mono font-bold text-text-primary shrink-0">
-                ${plan.price.toLocaleString()}<span className="text-text-muted font-sans"> / {plan.billingPeriod}</span>
-            </span>
-            <span className="hidden lg:block text-[10px] font-mono text-text-muted shrink-0">SLA {plan.responseTime}</span>
-            <div className="flex gap-1 shrink-0">
-                {canEdit && <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-primary hover:bg-bg-primary" title="Edit Plan" onClick={() => onEdit(plan)}><PenTool size={14} /></Button>}
-                {canEdit && !isStandard && <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-brand-red hover:bg-brand-red/10" title="Delete Plan" onClick={() => onDelete(plan)}><Trash2 size={14} /></Button>}
-                {canEdit && isStandard && <div className="h-7 w-7 flex items-center justify-center text-text-muted/30"><Lock size={12} /></div>}
+        {/* ── Requests ── */}
+        <TabsContent value="requests" className="m-0 space-y-3">
+          <p className="text-[11px] text-text-muted">Plan requests from the client portal. Approving starts billing; a plan change ends the client&apos;s current subscription.</p>
+          {requests.length === 0 ? (
+            <div className="py-16 text-center border-2 border-dashed border-border-sub rounded-xl">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No pending requests</p>
             </div>
-        </div>
-    );
-}
+          ) : requests.map(r => {
+            const p = planById.get(r.planId);
+            const current = r.replacesSubscriptionId ? subscriptions.find(s => s.id === r.replacesSubscriptionId) : undefined;
+            return (
+              <Card key={r.id} className="bg-bg-secondary border-dashed border-accent-gold/40">
+                <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold">{r.clientName || clientName(r.clientId)}</p>
+                    <p className="text-[11px] text-text-muted">
+                      {current ? <>Change from {planById.get(current.planId)?.name || current.planId} to </> : 'New: '}
+                      <b className="text-text-primary">{p?.name || r.planId}</b> · {INTERVAL_LABELS[r.interval]} · {formatMoney(subscriptionAmount(r, p))}
+                      {r.createdAt && <> · asked {r.createdAt.slice(0, 10)}</>}
+                    </p>
+                    {r.notes && <p className="text-[11px] text-text-secondary mt-1 whitespace-pre-wrap">&ldquo;{r.notes}&rdquo;</p>}
+                  </div>
+                  {canManage && (
+                    <div className="flex gap-2 shrink-0">
+                      <Button size="sm" variant="outline" onClick={() => { setDeclineTarget(r); setDeclineReason(''); }} className="h-8 text-[10px] font-black uppercase">
+                        <XCircle size={12} className="mr-1" /> Decline
+                      </Button>
+                      <Button size="sm" onClick={() => setSubDialog({ kind: 'approve', sub: r })} className="h-8 text-[10px] font-black uppercase bg-brand-red hover:bg-brand-red/90 text-white">
+                        <CheckCircle2 size={12} className="mr-1" /> Approve
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </TabsContent>
 
-function PlanCard({ plan, onEdit, onView, onDelete, canEdit }: {
-    plan: PlanTier;
-    onEdit: (p: PlanTier) => void;
-    onView: (p: PlanTier) => void;
-    onDelete: (p: PlanTier) => void;
-    canEdit: boolean;
-}) {
-    const isCustom = plan.type === 'custom';
-    const isStandard = plan.type === 'standard';
-    const isInactive = plan.status === 'inactive';
+        {/* ── Pricing ── */}
+        <TabsContent value="pricing" className="m-0">
+          <PricingTab settings={pricing} canEdit={canManage} />
+        </TabsContent>
+      </Tabs>
 
-    return (
-        <Card className={cn(
-            'bg-bg-secondary border-border-main flex flex-col group transition-all hover:border-text-muted',
-            isCustom && 'border-brand-red/30 shadow-[0_0_15px_rgba(204,34,0,0.05)]',
-            isInactive && 'opacity-60'
-        )}>
-            <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub pb-4 text-left">
-                <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                        <Badge variant={isCustom ? 'high' : 'outline'} className={cn('text-[9px] uppercase tracking-widest h-5', !isCustom && 'bg-bg-primary text-text-muted')}>
-                            {plan.type} agreement
-                        </Badge>
-                        {isInactive && <Badge variant="outline" className="text-[9px] uppercase h-5 border-text-muted/40 text-text-muted">Inactive</Badge>}
-                    </div>
-                    <div className="flex gap-1">
-                        {canEdit && <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-primary hover:bg-bg-primary" title="Edit Plan" onClick={() => onEdit(plan)}><PenTool size={14} /></Button>}
-                        {canEdit && !isStandard && <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-brand-red hover:bg-brand-red/10" title="Delete Plan" onClick={() => onDelete(plan)}><Trash2 size={14} /></Button>}
-                        {canEdit && isStandard && <div className="h-7 w-7 flex items-center justify-center text-text-muted/30"><Lock size={12} /></div>}
-                    </div>
-                </div>
-                <div className="space-y-1">
-                    <p className="text-base font-bold uppercase tracking-wide text-text-primary">{plan.name}</p>
-                    {isCustom && (
-                        <p className="text-[10px] font-bold text-brand-red uppercase tracking-widest flex items-center gap-1.5">
-                            <Building2 size={10} /> {plan.clientName}
-                        </p>
-                    )}
-                </div>
-            </CardHeader>
-            <CardContent className="p-5 flex-1 flex flex-col">
-                <div className="mb-6 flex items-baseline gap-1.5 justify-start">
-                    <span className="text-3xl font-mono font-bold text-text-primary">${plan.price.toLocaleString()}</span>
-                    <span className="text-[10px] font-bold text-text-muted uppercase">/ {plan.billingPeriod}</span>
-                </div>
-                <div className="space-y-4 flex-1">
-                    <div className="space-y-2 text-left">
-                        {(plan.features || []).slice(0, 5).map((feature, i) => (
-                            <div key={i} className="flex items-center gap-2">
-                                <div className="h-1 w-1 rounded-full bg-text-green" />
-                                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-tight truncate">{feature}</span>
-                            </div>
-                        ))}
-                        {(plan.features || []).length > 5 && <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest pl-3">+{(plan.features || []).length - 5} More Capabilities</p>}
-                    </div>
-                    <div className="pt-4 border-t border-border-sub mt-auto space-y-3">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5 text-[9px] font-bold text-text-muted uppercase"><Target size={12} /> Site Quota</div>
-                            <span className="text-[10px] font-mono font-bold text-text-primary">{plan.siteLimit === 100 ? 'UNLIMITED' : plan.siteLimit}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5 text-[9px] font-bold text-text-muted uppercase"><Clock size={12} /> Target SLA</div>
-                            <span className="text-[10px] font-mono font-bold text-text-primary">{plan.responseTime}</span>
-                        </div>
-                        {plan.standardHourlyRate && (
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1.5 text-[9px] font-bold text-text-muted uppercase"><DollarSign size={12} /> Std. Rate</div>
-                                <span className="text-[10px] font-mono font-bold text-text-primary">${plan.standardHourlyRate}/hr</span>
-                            </div>
-                        )}
-                        <div className="flex items-center justify-between pt-1">
-                            <div className="flex items-center gap-1.5 text-[9px] font-bold text-text-muted uppercase"><TrendingUp size={12} /> Est. Margin</div>
-                            <span className="text-[10px] font-mono font-bold text-text-green">~${(plan.price * 0.75).toFixed(0)} / mo</span>
-                        </div>
-                    </div>
-                </div>
-            </CardContent>
-            <CardFooter className="pt-0 p-5">
-                <Button variant="outline" className="w-full h-9 text-[10px] font-bold uppercase tracking-widest bg-bg-primary hover:bg-bg-tertiary" onClick={() => onView(plan)}>
-                    View Registry Details <ChevronRight size={14} className="ml-2" />
-                </Button>
-            </CardFooter>
-        </Card>
-    );
+      <PlanEditorDialog open={editorOpen} onClose={() => setEditorOpen(false)} plan={editorPlan} clients={clients}
+        nextSortOrder={plans.length} />
+      <SubscriptionDialog mode={subDialog} onClose={() => setSubDialog(null)} plans={plans} clients={clients} />
+      <MigrationDialog open={migrationOpen} onClose={() => setMigrationOpen(false)} users={users} />
+
+      <AlertDialog open={!!cancelTarget} onOpenChange={v => { if (!v) setCancelTarget(null); }}>
+        <AlertDialogContent className="bg-bg-elevated border-border-main">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm uppercase font-black tracking-wide">Cancel {cancelTarget?.clientName}&apos;s subscription?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              End of period keeps service until {cancelTarget?.nextBillingDate || 'the next billing date'} and stops renewal. Cancel now ends it today.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex flex-col-reverse sm:flex-row gap-2">
+            <AlertDialogCancel className="text-[10px] font-black uppercase">Keep</AlertDialogCancel>
+            <Button variant="outline" className="text-[10px] font-black uppercase"
+              onClick={() => { const s = cancelTarget!; setCancelTarget(null); run(() => cancelSubscription(s, true), 'Will end at period end'); }}>
+              End of period
+            </Button>
+            <AlertDialogAction className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase"
+              onClick={() => { const s = cancelTarget!; setCancelTarget(null); run(() => cancelSubscription(s, false), 'Subscription canceled'); }}>
+              Cancel now
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!declineTarget} onOpenChange={v => { if (!v) setDeclineTarget(null); }}>
+        <AlertDialogContent className="bg-bg-elevated border-border-main">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm uppercase font-black tracking-wide">Decline this request?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">The client keeps their current plan, if any.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input value={declineReason} onChange={e => setDeclineReason(e.target.value)} placeholder="Reason (optional, kept with the request)" className="text-xs" />
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-[10px] font-black uppercase">Back</AlertDialogCancel>
+            <AlertDialogAction className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase"
+              onClick={() => { const r = declineTarget!; setDeclineTarget(null); run(() => declineRequest(r, declineReason.trim()), 'Request declined'); }}>
+              Decline
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
 }

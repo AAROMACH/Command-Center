@@ -1,4 +1,6 @@
 'use client';
+import { useClientSubscriptions, useServicePlans } from '@/hooks/use-billing';
+import { isLiveSubscription, SUBSCRIPTION_STATUS_LABELS } from '@/lib/billing';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -34,8 +36,6 @@ export default function SiteDetailPage() {
   const [editForm, setEditForm] = useState<Partial<Site>>({});
   const [isEditing, setIsEditing] = useState(false);
   const [clientUser, setClientUser] = useState<Technician | null>(null);
-  const [plans, setPlans] = useState<{ id: string; name: string }[]>([]);
-  const [subSaving, setSubSaving] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -69,17 +69,15 @@ export default function SiteDetailPage() {
     const lookupName = site.clientName || '';
     const unsubClient = onSharedSnapshot('users', snap => {
       const users = snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician));
-      const found = users.find(u =>
-        (lookupId && u.id === lookupId) ||
-        (lookupName && (u.clientCompany === lookupName || u.name === lookupName)) ||
-        isClient(u)
-      );
+      // By id first, then by company name. There used to be a third
+      // fallback — "any client" — so an unmatched site showed some other
+      // client's details and subscription.
+      const found = (lookupId && users.find(u => u.id === lookupId))
+        || (lookupName && users.find(u => isClient(u) && (u.clientCompany === lookupName || u.name === lookupName)))
+        || undefined;
       setClientUser(found || null);
     });
-    const unsubPlans = onSharedSnapshot('plans', snap => {
-      setPlans(snap.docs.map(d => ({ id: d.id, name: (d.data() as any).name || d.id })));
-    });
-    return () => { unsubClient(); unsubPlans(); };
+    return () => { unsubClient(); };
   }, [site?.clientName, (site as any)?.clientId]);
 
   const totalPay = useMemo(() =>
@@ -123,18 +121,6 @@ export default function SiteDetailPage() {
     }
   };
 
-  const handleSubUpdate = async (updates: { subscriptionStatus?: string; planId?: string }) => {
-    if (!clientUser) return;
-    setSubSaving(true);
-    try {
-      await updateDoc(doc(db, 'users', clientUser.id), updates);
-      toast({ title: 'Subscription updated' });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Failed to update subscription', description: e.message });
-    } finally {
-      setSubSaving(false);
-    }
-  };
 
   if (!site) {
     return (
@@ -270,53 +256,9 @@ export default function SiteDetailPage() {
             </div>
           )}
 
-          {/* Subscription card */}
-          {clientUser && (
-            <div className="bg-bg-secondary border border-border-sub rounded-xl p-4 space-y-3">
-              <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Subscription</p>
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant={clientUser.subscriptionStatus === 'active' ? 'active' : clientUser.subscriptionStatus === 'pending' ? 'scheduled' : 'outline'}
-                    className="text-[8px] h-5 px-2 capitalize"
-                  >
-                    {clientUser.subscriptionStatus || 'none'}
-                  </Badge>
-                  <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Status</span>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={subSaving}
-                  onClick={() => {
-                    const cycle: Record<string, string> = { active: 'pending', pending: 'none', none: 'active' };
-                    const next = cycle[clientUser.subscriptionStatus || 'none'] || 'active';
-                    handleSubUpdate({ subscriptionStatus: next });
-                  }}
-                  className="h-6 text-[9px] font-black uppercase tracking-widest px-2"
-                >
-                  Toggle
-                </Button>
-              </div>
-              <div className="space-y-1.5">
-                <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Plan</p>
-                <Select
-                  value={clientUser.planId || ''}
-                  onValueChange={v => handleSubUpdate({ planId: v })}
-                  disabled={subSaving || plans.length === 0}
-                >
-                  <SelectTrigger className="h-9 text-[11px] bg-bg-primary border-border-main">
-                    <SelectValue placeholder={plans.length === 0 ? 'Loading plans...' : 'No plan assigned'} />
-                  </SelectTrigger>
-                  <SelectContent className="bg-bg-elevated border-border-main">
-                    {plans.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
+          {/* Subscription — read from the client's real subscription;
+              managed on Service Plans (it used to cycle a status flag here). */}
+          {clientUser && <SiteSubscriptionCard clientId={clientUser.id} />}
         </div>
       )}
 
@@ -423,3 +365,30 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
     </div>
   );
 }
+
+function SiteSubscriptionCard({ clientId }: { clientId: string }) {
+  const { subscriptions } = useClientSubscriptions(clientId);
+  const { plans } = useServicePlans();
+  const sub = subscriptions.find(isLiveSubscription) || subscriptions.find(x => x.status === 'pending');
+  const plan = plans.find(p => p.id === sub?.planId);
+  return (
+    <div className="bg-bg-secondary border border-border-sub rounded-xl p-4 space-y-2">
+      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Service Plan</p>
+      {sub ? (
+        <>
+          <div className="flex items-center gap-2">
+            <p className="text-[12px] font-bold text-text-primary">{plan?.name || sub.planId}</p>
+            <Badge variant={sub.status === 'active' ? 'active' : sub.status === 'pending' ? 'scheduled' : 'outline'} className="text-[8px] h-5 px-2">
+              {SUBSCRIPTION_STATUS_LABELS[sub.status]}
+            </Badge>
+          </div>
+          {plan && <p className="text-[10px] text-text-muted">{plan.benefits.responseHours}h response · {plan.benefits.laborDiscountPct}% off labor</p>}
+        </>
+      ) : (
+        <p className="text-[11px] text-text-muted">No plan.</p>
+      )}
+      <Link href="/admin/plans" className="text-[10px] font-bold uppercase text-brand-red hover:underline">Manage on Service Plans →</Link>
+    </div>
+  );
+}
+

@@ -51,7 +51,7 @@ service cloud.firestore {
     function adminMayCreateUser() {
       let d = request.resource.data;
       let clientOnly = d.get('roles', []).hasOnly(['client'])
-          && d.get('role', 'client') in ['client', '']
+          && d.get('role', 'client').lower() in ['client', '']
           && !d.keys().hasAny(['permissionOverrides', 'primaryPortal', 'portalAccess']);
       return isAdmin()
           && (clientOnly || isSuperAdmin())
@@ -184,6 +184,8 @@ service cloud.firestore {
                             'clientCompany', 'clientId', 'companyId',
                             'messagingAllowedRoles', 'messagingBlockedClientIds',
                             'payRate', 'payType', 'currentWorkload',
+                            // Mirrored from subscriptions by billing staff.
+                            'planId', 'subscriptionStatus',
                             // Tax / QuickBooks profile — admin-only (see UserAccounting).
                             'accounting',
                             // Contact email is admin-set; changing it here never
@@ -635,6 +637,29 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
+    // Service plans — clients see them to choose one; billing admins
+    // (payroll/super) manage them. See lib/billing.ts.
+    match /servicePlans/{id} {
+      allow read: if isSignedIn();
+      allow write: if isPayrollAdmin();
+    }
+
+    // Client subscriptions. A client reads their own and may request a plan
+    // (a 'pending', manual, list-price request) or withdraw their own pending
+    // request; activating, pricing and canceling is billing staff only.
+    match /subscriptions/{id} {
+      allow read: if isSignedIn() && (isAdmin() || resource.data.clientId == request.auth.uid);
+      allow create: if isPayrollAdmin()
+          || (isClient()
+              && request.resource.data.clientId == request.auth.uid
+              && request.resource.data.status == 'pending'
+              && request.resource.data.collection == 'manual'
+              && request.resource.data.priceOverride == null);
+      allow update: if isPayrollAdmin();
+      allow delete: if isPayrollAdmin()
+          || (isClient() && resource.data.clientId == request.auth.uid && resource.data.status == 'pending');
+    }
+
     match /financialRecords/{id} {
       allow read, write: if isPayrollAdmin();
     }
@@ -767,7 +792,8 @@ service cloud.firestore {
     // Admin-managed config read across portals (skills list, finance rates)
     match /adminConfig/{id} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      // Pricing (labor rates, markups, sales tax) is billing staff only.
+      allow write: if (id != 'pricing' && isAdmin()) || (id == 'pricing' && isPayrollAdmin());
     }
   }
 }

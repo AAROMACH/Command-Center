@@ -14,7 +14,7 @@ export const ADMIN_ONLY_FIELDS = [
   'hourlyRate', 'payoutPreferences', 'adminNotes', 'email',
   'certifications', 'serviceArea', 'jobTitle', 'department',
   'approvedAt', 'approvedBy', 'deniedAt', 'deniedBy', 'denialReason',
-  'updatedBy',
+  'updatedBy', 'accounting',
 ] as const;
 
 /** Can currentUser edit targetUser's profile at all? */

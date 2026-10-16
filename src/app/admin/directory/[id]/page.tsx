@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
-import { doc, collection, onSnapshot, addDoc, updateDoc, arrayUnion, arrayRemove, query, where } from 'firebase/firestore';
+import { doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, query, where } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,15 +18,21 @@ import {
   ArrowLeft, Mail, Phone, MapPin, Briefcase, Clock, CheckCircle, AlertTriangle,
   Calendar, FileText, Upload, Shield, CheckSquare, Square, Minus,
   Star, Activity, TrendingUp, StickyNote, Plus, Users, Wrench,
-  PhoneCall, UserCheck, BarChart2, Pencil, Search, Ban, ChevronDown, ChevronRight,
+  PhoneCall, UserCheck, BarChart2, Pencil, Ban, ChevronDown, ChevronRight,
+  Landmark, ExternalLink, Trash2, XCircle, Link2,
 } from 'lucide-react';
 import { EditProfileDialog } from '../components/edit-profile-dialog';
 import { uploadFile } from '@/lib/upload';
 import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierBadgeVariant } from '@/lib/reliability';
-import { hasPermission, ALL_PERMISSIONS, PERMISSION_TREE, getPortalAccess, isTech as isTechRole, isClient as isClientRole, type Permission } from '@/lib/permissions';
+import { hasPermission, ALL_PERMISSIONS, PERMISSION_TREE, getPortalAccess, getSubroles, SUBROLE_DEFINITIONS, isTech as isTechRole, isClient as isClientRole, type Permission } from '@/lib/permissions';
+import { auditEvent, auditFieldChange } from '@/lib/audit';
+import { useToast } from '@/hooks/use-toast';
+import {
+  vendorReadiness, customerReadiness, customerDisplayName, hasW9OnFile, WORKER_TYPE_LABELS, type Readiness,
+} from '@/lib/accounting-readiness';
 import { format, parseISO, differenceInDays } from 'date-fns';
-import type { Technician, WorkOrder, PersonnelDocument, Project, ReliabilityEvent } from '@/lib/types';
+import type { Technician, WorkOrder, PersonnelDocument, Project, ReliabilityEvent, QboLink } from '@/lib/types';
 import { isAssignedTo, isArchivedJob } from '@/lib/jobs';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -47,6 +53,56 @@ const DOC_TYPE_COLORS: Record<string, string> = {
   other: 'bg-bg-tertiary text-text-muted border-border-sub',
 };
 
+// Documents uploaded by the old directory pop-up before documents moved to
+// users/{id}/documents. Shown read-only beside the canonical ones.
+type DirectoryDocument = PersonnelDocument & { _legacy?: boolean };
+
+/** QuickBooks readiness checklist for a vendor (tech) or customer (client). */
+function ReadinessPanel({ title, readiness, link }: { title: string; readiness: Readiness; link?: QboLink }) {
+  const done = readiness.checks.filter(c => c.ok).length;
+  return (
+    <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
+      <div className="flex items-center justify-between border-b border-border-sub pb-2">
+        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+          <Link2 size={11} className="text-brand-red" /> {title}
+        </h3>
+        {readiness.applies && (
+          <Badge variant={readiness.ready ? 'active' : 'onhold'} className="text-[8px] uppercase">
+            {readiness.ready ? 'Ready' : `${done}/${readiness.checks.length}`}
+          </Badge>
+        )}
+      </div>
+      {!readiness.applies ? (
+        <p className="text-[10px] text-text-muted">{readiness.note}</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {readiness.checks.map(c => (
+            <li key={c.key} className="flex items-start gap-2">
+              {c.ok
+                ? <CheckCircle size={12} className="text-text-green mt-0.5 shrink-0" />
+                : <XCircle size={12} className="text-text-red mt-0.5 shrink-0" />}
+              <div className="min-w-0">
+                <p className={cn('text-[11px]', c.ok ? 'text-text-secondary' : 'text-text-primary font-bold')}>{c.label}</p>
+                {!c.ok && c.hint && <p className="text-[9px] text-text-muted">{c.hint}</p>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="pt-2 border-t border-border-sub flex items-center justify-between text-[10px]">
+        <span className="text-text-muted uppercase font-bold tracking-widest">QuickBooks link</span>
+        {link?.id ? (
+          <span className={cn('font-mono', link.error ? 'text-text-red' : 'text-text-green')}>
+            #{link.id}{link.error ? ` · ${link.error}` : link.syncedAt ? ` · synced ${format(parseISO(link.syncedAt), 'MM/dd/yy')}` : ''}
+          </span>
+        ) : (
+          <span className="text-text-muted">Not linked yet</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function permissionLabel(perm: string): string {
   const parts = perm.split('.');
   if (parts.length === 3) {
@@ -62,7 +118,10 @@ export default function DirectoryPersonPage() {
 
   const [person, setPerson] = useState<Technician | null>(null);
   const [assignments, setAssignments] = useState<WorkOrder[]>([]);
-  const [documents, setDocuments] = useState<PersonnelDocument[]>([]);
+  const [canonicalDocs, setCanonicalDocs] = useState<DirectoryDocument[]>([]);
+  const [legacyDocs, setLegacyDocs] = useState<DirectoryDocument[]>([]);
+  const documents = useMemo(() => [...canonicalDocs, ...legacyDocs], [canonicalDocs, legacyDocs]);
+  const { toast } = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [penaltyEvents, setPenaltyEvents] = useState<ReliabilityEvent[]>([]);
   const [techNotes, setTechNotes] = useState<{ id: string; text: string; createdAt: string; authorName?: string }[]>([]);
@@ -80,9 +139,7 @@ export default function DirectoryPersonPage() {
   const [savingPerms, setSavingPerms] = useState(false);
   const [permsDirty, setPermsDirty] = useState(false);
 
-  const [rolesBuffer, setRolesBuffer] = useState<string[]>([]);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
-  const [restrictSearch, setRestrictSearch] = useState('');
   const [noteText, setNoteText] = useState('');
   const [addingNote, setAddingNote] = useState(false);
   const [allClients, setAllClients] = useState<Technician[]>([]);
@@ -95,17 +152,27 @@ export default function DirectoryPersonPage() {
         const data = { ...snap.data(), id: snap.id } as Technician;
         setPerson(data);
         setPermOverrides(data.permissionOverrides || {});
-        setRolesBuffer(Array.isArray(data.roles) ? [...(data.roles as string[])] : (data.role ? [data.role] : []));
+        setPermsDirty(false);
       }
       setLoading(false);
     });
 
     const unsubDocs = onSnapshot(collection(db, 'users', id, 'documents'), snap => {
-      setDocuments(snap.docs.map(d => ({ ...d.data(), id: d.id } as PersonnelDocument)));
+      setCanonicalDocs(snap.docs.map(d => ({ ...d.data(), id: d.id } as DirectoryDocument)));
     });
-    const unsubPenalty = onSnapshot(collection(db, 'penaltyEvents'), snap => {
-      const all = snap.docs.map(d => ({ ...d.data(), id: d.id } as ReliabilityEvent));
-      setPenaltyEvents(all.filter(e => e.techId === id).sort((a, b) => b.createdAt?.localeCompare(a.createdAt || '') || 0));
+    const unsubLegacyDocs = onSnapshot(query(collection(db, 'personnelDocuments'), where('personnelId', '==', id)), snap => {
+      setLegacyDocs(snap.docs.map(d => {
+        const data = d.data();
+        return {
+          id: d.id, name: data.name || 'Document', type: data.type === 'w9' ? 'w9' : 'other', url: data.url || '',
+          uploadedAt: data.uploadedAt || '', approvalStatus: data.approvalStatus || 'approved', _legacy: true,
+        } as DirectoryDocument;
+      }));
+    }, () => setLegacyDocs([]));
+    // Only this person's events (was a listener on the whole collection).
+    const unsubPenalty = onSnapshot(query(collection(db, 'penaltyEvents'), where('techId', '==', id)), snap => {
+      const mine = snap.docs.map(d => ({ ...d.data(), id: d.id } as ReliabilityEvent));
+      setPenaltyEvents(mine.sort((a, b) => b.createdAt?.localeCompare(a.createdAt || '') || 0));
     });
     const unsubNotes = onSnapshot(collection(db, 'users', id, 'techNotes'), snap => {
       setTechNotes(
@@ -143,7 +210,7 @@ export default function DirectoryPersonPage() {
     const unsubProjects = onSnapshot(query(collection(db, 'projects'), where('assignedTechnicianIds', 'array-contains', id)), snap => {
       setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
     }, () => setProjects([]));
-    return () => { unsubUser(); unsubDocs(); unsubPenalty(); unsubNotes(); unsubJobsA(); unsubJobsB(); unsubJobsC(); unsubProjects(); };
+    return () => { unsubUser(); unsubDocs(); unsubLegacyDocs(); unsubPenalty(); unsubNotes(); unsubJobsA(); unsubJobsB(); unsubJobsC(); unsubProjects(); };
   }, [id]);
 
   useEffect(() => {
@@ -164,11 +231,12 @@ export default function DirectoryPersonPage() {
   const isClient = useMemo(() => (person ? isClientRole(person) : false), [person]);
 
   const certDocuments = useMemo(() => documents.filter(d => d.type === 'certification'), [documents]);
-  const roles: string[] = rolesBuffer;
-  const activePortals = useMemo(() => {
-    if (!person) return { admin: false, tech: false, client: false };
-    return getPortalAccess({ ...person, roles: rolesBuffer as any });
-  }, [person, rolesBuffer]);
+  const roles: string[] = useMemo(() => getSubroles(person), [person]);
+  const activePortals = useMemo(() => getPortalAccess(person), [person]);
+  const vendorStatus = useMemo(() => (person ? vendorReadiness(person, documents) : null), [person, documents]);
+  const customerStatus = useMemo(() => (person ? customerReadiness(person) : null), [person]);
+  const adminName = () => auth.currentUser?.displayName || 'Admin';
+  const adminId = () => auth.currentUser?.uid || '';
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '—';
@@ -179,7 +247,7 @@ export default function DirectoryPersonPage() {
     if (!uploadForm.name || !id) return;
     setUploadSaving(true);
     try {
-      let resolvedUrl = uploadForm.url || '#';
+      let resolvedUrl = uploadForm.url.trim();
       if (uploadMode === 'file' && uploadFileObj) {
         const safeName = uploadFileObj.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         // Store under personnelDocuments/{userId} so it uses the deployed storage
@@ -200,19 +268,33 @@ export default function DirectoryPersonPage() {
       setUploadForm({ name: '', type: 'other', expiryDate: '', url: '' });
       setUploadFileObj(null);
       setUploadMode('url');
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Upload failed', description: e.message });
     } finally {
       setUploadSaving(false);
     }
   };
 
-  const handleApproveDoc = async (docId: string) => {
-    if (!id) return;
-    await updateDoc(doc(db, 'users', id, 'documents', docId), { approvalStatus: 'approved' });
+  const handleReviewDoc = async (d: DirectoryDocument, approvalStatus: 'approved' | 'rejected') => {
+    if (!id || d._legacy) return;
+    try {
+      await updateDoc(doc(db, 'users', id, 'documents', d.id), {
+        approvalStatus, approvedBy: adminId(), reviewedAt: new Date().toISOString(),
+      });
+      await auditEvent('users', id, adminId(), adminName(), `document_${approvalStatus}`, `${DOC_TYPE_LABELS[d.type] || d.type} "${d.name}" ${approvalStatus} by ${adminName()}`);
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Update failed', description: e.message });
+    }
   };
 
-  const handleToggleRole = (role: string, add: boolean) => {
-    setRolesBuffer(prev => add ? [...prev, role] : prev.filter(r => r !== role));
-    setPermsDirty(true);
+  const handleDeleteDoc = async (d: DirectoryDocument) => {
+    if (!id || !window.confirm(`Delete "${d.name}"? This can't be undone.`)) return;
+    try {
+      await deleteDoc(d._legacy ? doc(db, 'personnelDocuments', d.id) : doc(db, 'users', id, 'documents', d.id));
+      await auditEvent('users', id, adminId(), adminName(), 'document_deleted', `${DOC_TYPE_LABELS[d.type] || d.type} "${d.name}" deleted by ${adminName()}`);
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Delete failed', description: e.message });
+    }
   };
 
   const handleTogglePerm = (perm: Permission, value: boolean | null) => {
@@ -224,15 +306,20 @@ export default function DirectoryPersonPage() {
     setPermsDirty(true);
   };
 
+  // Subroles (and so portal access) are edited in Edit Profile only. This tab
+  // saves individual overrides — it used to also write `roles`, where ticking
+  // "Admin Portal" silently made the person a super admin.
   const handleSavePerms = async () => {
-    if (!id) return;
+    if (!id || !person) return;
     setSavingPerms(true);
     try {
-      await updateDoc(doc(db, 'users', id), {
-        roles: rolesBuffer,
-        permissionOverrides: permOverrides,
-      });
+      await auditFieldChange('users', id, adminId(), adminName(),
+        { permissionOverrides: person.permissionOverrides || {} }, { permissionOverrides: permOverrides });
+      await updateDoc(doc(db, 'users', id), { permissionOverrides: permOverrides });
       setPermsDirty(false);
+      toast({ title: 'Permissions saved' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Save failed', description: e.message });
     } finally {
       setSavingPerms(false);
     }
@@ -334,6 +421,7 @@ export default function DirectoryPersonPage() {
     { value: 'contact', label: 'Contact' },
     { value: 'skills', label: 'Skills', badge: (person.skills?.length || 0) + certDocuments.length || undefined },
     { value: 'availability', label: 'Availability' },
+    { value: 'pay', label: 'Pay & Tax' },
     { value: 'documents', label: 'Documents', badge: documents.length || undefined },
     { value: 'permissions', label: 'Permissions' },
     { value: 'notes', label: 'Notes', badge: techNotes.length || undefined },
@@ -352,7 +440,7 @@ export default function DirectoryPersonPage() {
   const clientTabs = [
     { value: 'overview', label: 'Overview' },
     { value: 'contact', label: 'Contact' },
-    { value: 'business', label: 'Business Profile' },
+    { value: 'business', label: 'Billing & Accounting' },
     { value: 'documents', label: 'Documents', badge: documents.length || undefined },
     { value: 'notes', label: 'Notes', badge: techNotes.length || undefined },
   ];
@@ -645,8 +733,33 @@ export default function DirectoryPersonPage() {
                   onClick={() => setIsEditOpen(true)}
                   className="w-full h-8 text-[10px] font-black uppercase tracking-widest mt-2"
                 >
-                  <Pencil size={11} className="mr-1.5" /> Edit Business Profile
+                  <Pencil size={11} className="mr-1.5" /> Edit Billing &amp; Accounting
                 </Button>
+              </div>
+              {customerStatus && (
+                <ReadinessPanel title="QuickBooks Customer" readiness={customerStatus} link={person.accounting?.qboCustomer} />
+              )}
+              <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                  <Landmark size={11} /> Accounting
+                </h3>
+                <div className="space-y-2.5">
+                  <div>
+                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Customer Name in QuickBooks</p>
+                    <p className="text-[11px] text-text-primary">{customerDisplayName(person) || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Billing Address</p>
+                    <p className="text-[11px] text-text-primary">{person.accounting?.billingAddress || person.address || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Sales Tax</p>
+                    <p className="text-[11px] text-text-primary">
+                      {person.accounting?.taxExempt === true ? `Exempt — ${person.accounting.taxExemptReason || 'no reason given'}`
+                        : person.accounting?.taxExempt === false ? 'Taxable' : 'Not set'}
+                    </p>
+                  </div>
+                </div>
               </div>
               {person.billingDetails && (
                 <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
@@ -813,6 +926,9 @@ export default function DirectoryPersonPage() {
         {/* ── AVAILABILITY (tech) ── */}
         {isTech && (
           <TabsContent value="availability" className="m-0 pt-5">
+            {!Object.values(person.availability || {}).some(Boolean) && (
+              <p className="text-[10px] text-text-muted mb-3">No weekly availability has been set for this tech, so every day shows as off.</p>
+            )}
             <div className="rounded-xl border border-border-sub overflow-hidden">
               <div className="p-3 bg-bg-tertiary border-b border-border-sub">
                 <p className="text-[10px] font-black text-text-muted uppercase tracking-widest flex items-center gap-2">
@@ -821,7 +937,7 @@ export default function DirectoryPersonPage() {
               </div>
               <div className="divide-y divide-border-sub">
                 {DAYS.map(day => {
-                  const slot = person.availability?.[day];
+                  const slot = person.availability?.[day.toLowerCase()] ?? person.availability?.[day];
                   const isOff = !slot;
                   return (
                     <div key={day} className={cn('flex items-center justify-between px-4 py-3', isOff && 'bg-bg-tertiary/30')}>
@@ -846,6 +962,42 @@ export default function DirectoryPersonPage() {
           </TabsContent>
         )}
 
+        {/* ── PAY & TAX (tech → QuickBooks Vendor) ── */}
+        {isTech && (
+          <TabsContent value="pay" className="m-0 pt-5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                  <Landmark size={11} className="text-brand-red" /> Pay &amp; Tax Profile
+                </h3>
+                {[
+                  { label: 'Worker Classification', value: person.accounting?.workerType ? WORKER_TYPE_LABELS[person.accounting.workerType] : 'Not set' },
+                  { label: 'Payout Method', value: person.payoutPreferences?.method
+                    ? `${person.payoutPreferences.method}${person.payoutPreferences.notes ? ` — ${person.payoutPreferences.notes}` : ''}` : 'Not on file' },
+                  { label: 'Project Hourly Rate', value: person.hourlyRate ? `$${person.hourlyRate.toFixed(2)} / hr` : 'Not set' },
+                  { label: 'Legal Name (W-9)', value: person.accounting?.payeeLegalName || '—' },
+                  { label: 'Business Name', value: person.accounting?.payeeBusinessName || '—' },
+                  { label: 'Tax ID', value: person.accounting?.taxIdLast4
+                    ? `${person.accounting.taxIdType || 'ID'} ending ${person.accounting.taxIdLast4}` : '—' },
+                  { label: '1099 Mailing Address', value: person.address || '—' },
+                  { label: 'W-9', value: hasW9OnFile(documents) ? 'Approved, on file' : documents.some(d => d.type === 'w9') ? 'Uploaded — needs approval' : 'Missing' },
+                ].map(row => (
+                  <div key={row.label} className="flex justify-between gap-4 text-[11px]">
+                    <span className="text-[9px] font-black text-text-muted uppercase tracking-widest pt-0.5">{row.label}</span>
+                    <span className="text-text-primary text-right">{row.value}</span>
+                  </div>
+                ))}
+                <Button size="sm" variant="outline" onClick={() => setIsEditOpen(true)} className="w-full h-8 text-[10px] font-black uppercase tracking-widest mt-2">
+                  <Pencil size={11} className="mr-1.5" /> Edit Pay &amp; Tax
+                </Button>
+              </div>
+              {vendorStatus && (
+                <ReadinessPanel title="QuickBooks Vendor (1099)" readiness={vendorStatus} link={person.accounting?.qboVendor} />
+              )}
+            </div>
+          </TabsContent>
+        )}
+
         {/* ── ROLE & DUTIES (staff) ── */}
         {!isTech && (
           <TabsContent value="role" className="m-0 pt-5">
@@ -857,9 +1009,10 @@ export default function DirectoryPersonPage() {
                 <div className="flex flex-wrap gap-2">
                   {roles.map(r => (
                     <div key={r} className="px-3 py-2 rounded-lg border border-border-sub bg-bg-primary">
-                      <p className="text-[10px] font-bold text-text-primary uppercase">{r.replace(/_/g, ' ')}</p>
+                      <p className="text-[10px] font-bold text-text-primary uppercase">{SUBROLE_DEFINITIONS[r as keyof typeof SUBROLE_DEFINITIONS]?.label || r.replace(/_/g, ' ')}</p>
                     </div>
                   ))}
+                  {roles.length === 0 && <p className="text-[10px] text-text-muted">No subroles — set them in Edit Profile.</p>}
                 </div>
               </div>
               <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary">
@@ -867,7 +1020,7 @@ export default function DirectoryPersonPage() {
                   <Shield size={11} /> Permission Summary
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {ALL_PERMISSIONS.slice(0, 18).map(perm => {
+                  {ALL_PERMISSIONS.map(perm => {
                     const granted = hasPermission(person, perm);
                     return granted ? (
                       <div key={perm} className="flex items-center gap-1.5 p-1.5 rounded bg-text-green/5 border border-text-green/20">
@@ -902,7 +1055,7 @@ export default function DirectoryPersonPage() {
                   <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Uploaded</TableHead>
                   <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Expiry</TableHead>
                   <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</TableHead>
-                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted w-20">Action</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted w-36">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -912,7 +1065,14 @@ export default function DirectoryPersonPage() {
                   const expired = daysToExpiry !== null && daysToExpiry < 0;
                   return (
                     <TableRow key={d.id} className={cn('border-border-sub', expiringSoon && 'bg-amber-500/5', expired && 'bg-text-red/5')}>
-                      <TableCell className="font-bold text-[11px] text-text-primary">{d.name}</TableCell>
+                      <TableCell className="font-bold text-[11px] text-text-primary">
+                        {d.url ? (
+                          <a href={d.url} target="_blank" rel="noopener noreferrer" className="hover:text-brand-red inline-flex items-center gap-1">
+                            {d.name} <ExternalLink size={10} className="text-text-muted" />
+                          </a>
+                        ) : d.name}
+                        {d._legacy && <span className="ml-1.5 text-[8px] text-text-muted uppercase">(older upload)</span>}
+                      </TableCell>
                       <TableCell>
                         <Badge className={`text-[8px] h-5 uppercase border ${DOC_TYPE_COLORS[d.type] || DOC_TYPE_COLORS.other}`}>
                           {DOC_TYPE_LABELS[d.type] || d.type}
@@ -936,11 +1096,21 @@ export default function DirectoryPersonPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {d.approvalStatus === 'pending' && (
-                          <Button size="sm" variant="ghost" className="h-6 text-[9px] font-bold text-text-green hover:bg-text-green/10" onClick={() => handleApproveDoc(d.id)}>
-                            Approve
+                        <div className="flex items-center gap-1">
+                          {!d._legacy && d.approvalStatus !== 'approved' && (
+                            <Button size="sm" variant="ghost" className="h-6 px-2 text-[9px] font-bold text-text-green hover:bg-text-green/10" onClick={() => handleReviewDoc(d, 'approved')}>
+                              Approve
+                            </Button>
+                          )}
+                          {!d._legacy && d.approvalStatus === 'pending' && (
+                            <Button size="sm" variant="ghost" className="h-6 px-2 text-[9px] font-bold text-text-red hover:bg-text-red/10" onClick={() => handleReviewDoc(d, 'rejected')}>
+                              Reject
+                            </Button>
+                          )}
+                          <Button size="icon" variant="ghost" className="h-6 w-6 text-text-muted hover:text-text-red" onClick={() => handleDeleteDoc(d)} title="Delete document">
+                            <Trash2 size={11} />
                           </Button>
-                        )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -962,31 +1132,28 @@ export default function DirectoryPersonPage() {
               <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
                 <Shield size={11} /> Portal Access
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {[
-                  { role: 'super_admin', label: 'Admin Portal', desc: 'Full platform access' },
-                  { role: 'field_technician', label: 'Technician Portal', desc: 'Field app access' },
-                  { role: 'client', label: 'Client Portal', desc: 'Client dashboard access' },
-                ].map(portal => {
-                  const active = roles.includes(portal.role);
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {([
+                  { key: 'admin', label: 'Admin Portal' },
+                  { key: 'sales', label: 'Sales Portal' },
+                  { key: 'tech', label: 'Technician Portal' },
+                  { key: 'client', label: 'Client Portal' },
+                ] as const).map(portal => {
+                  const active = activePortals[portal.key];
                   return (
-                    <div
-                      key={portal.role}
-                      className={cn(
-                        'p-3 rounded-lg border cursor-pointer transition-all',
-                        active ? 'bg-brand-red/10 border-brand-red/30 text-text-primary' : 'border-border-sub bg-bg-secondary text-text-muted hover:border-border-main'
-                      )}
-                      onClick={() => handleToggleRole(portal.role, !active)}
-                    >
-                      <div className="flex items-center justify-between mb-1">
+                    <div key={portal.key} className={cn('p-3 rounded-lg border', active ? 'bg-brand-red/10 border-brand-red/30 text-text-primary' : 'border-border-sub bg-bg-secondary text-text-muted')}>
+                      <div className="flex items-center justify-between">
                         <p className="text-[10px] font-black uppercase tracking-wider">{portal.label}</p>
                         {active ? <CheckSquare size={13} className="text-brand-red" /> : <Square size={13} className="text-text-muted" />}
                       </div>
-                      <p className="text-[9px] text-text-muted">{portal.desc}</p>
                     </div>
                   );
                 })}
               </div>
+              <p className="text-[9px] text-text-muted">
+                Portal access comes from subroles.{' '}
+                <button onClick={() => setIsEditOpen(true)} className="text-brand-red font-bold hover:underline">Change subroles in Edit Profile →</button>
+              </p>
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between border-b border-border-sub pb-2">
@@ -998,11 +1165,11 @@ export default function DirectoryPersonPage() {
                 </Button>
               </div>
               <p className="text-[9px] text-text-muted uppercase tracking-wider">Overrides take precedence over role defaults. Sections reflect active portal access.</p>
-              {!activePortals.admin && !activePortals.tech && !activePortals.client ? (
+              {!activePortals.admin && !activePortals.tech && !activePortals.client && !activePortals.sales ? (
                 <div className="py-12 text-center">
                   <Shield size={24} className="mx-auto text-text-muted mb-3 opacity-30" />
                   <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">No Active Portal Access</p>
-                  <p className="text-[9px] text-text-muted mt-1">Assign a role above to manage permissions</p>
+                  <p className="text-[9px] text-text-muted mt-1">Assign a subrole in Edit Profile to manage permissions</p>
                 </div>
               ) : (
                 <div className="space-y-6 pt-1">
@@ -1085,7 +1252,7 @@ export default function DirectoryPersonPage() {
                               {!isCollapsed && (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
                                   {(perms as Permission[]).map(perm => {
-                                    const roleDefault = hasPermission(person, perm);
+                                    const roleDefault = hasPermission({ ...person, permissionOverrides: undefined }, perm);
                                     const override = permOverrides[perm];
                                     const effective = override !== undefined ? override : roleDefault;
                                     return (
@@ -1183,7 +1350,6 @@ export default function DirectoryPersonPage() {
                   <SelectContent className="bg-bg-elevated border-border-main">
                     {allClients
                       .filter(c => !(person.messagingBlockedClientIds || []).includes(c.id))
-                      .filter(c => !restrictSearch || c.name?.toLowerCase().includes(restrictSearch.toLowerCase()))
                       .map(c => (
                         <SelectItem key={c.id} value={c.id} className="text-[10px]">
                           {c.name}{c.clientCompany ? ` — ${c.clientCompany}` : ''}
@@ -1384,7 +1550,7 @@ export default function DirectoryPersonPage() {
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" size="sm" onClick={() => { setUploadOpen(false); setUploadFileObj(null); setUploadMode('url'); }} className="text-[10px] font-black uppercase">Cancel</Button>
-            <Button size="sm" onClick={handleUploadDoc} disabled={!uploadForm.name || uploadSaving || (uploadMode === 'file' && !uploadFileObj)} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+            <Button size="sm" onClick={handleUploadDoc} disabled={!uploadForm.name || uploadSaving || (uploadMode === 'file' ? !uploadFileObj : !/^https?:\/\//.test(uploadForm.url.trim()))} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
               {uploadSaving ? 'Uploading...' : 'Upload'}
             </Button>
           </DialogFooter>

@@ -21,13 +21,14 @@ import {
   normalizeLegacyRole, APP_ROLES, SUBROLE_DEFINITIONS, SUBROLES_BY_PORTAL,
   type SubrolePortal,
 } from '@/lib/permissions';
+import { isValidLast4, WORKER_TYPE_LABELS } from '@/lib/accounting-readiness';
 import { ROLE_DATA } from '@/lib/constants/roles';
 import type { Technician, AppRole } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
   User, Phone, Mail, MapPin, Briefcase, Shield, Heart,
   FileText, Plus, X, Building2, DollarSign, Loader2, Globe,
-  ShieldCheck, Wrench, Handshake,
+  ShieldCheck, Wrench, Handshake, Landmark,
 } from 'lucide-react';
 
 type EditProfileDialogProps = {
@@ -50,16 +51,31 @@ const PORTAL_GROUPS: { portal: SubrolePortal; label: string; icon: typeof User; 
   { portal: 'client', label: 'Client Subroles', icon: Building2, accent: 'text-brand-emerald' },
 ];
 
+// Which kinds of account a section applies to. Sections that don't apply are
+// hidden AND not saved, so a tech no longer gets client billing defaults
+// (Net 30 / Portal) written onto their profile and vice versa.
+type AccountKinds = { tech: boolean; client: boolean; personnel: boolean };
+
 const SECTIONS = [
-  { id: 'basic', label: 'Basic Info', icon: User },
-  { id: 'status', label: 'Status & Access', icon: Shield },
-  { id: 'work', label: 'Work Info', icon: Briefcase },
-  { id: 'emergency', label: 'Emergency', icon: Heart },
-  { id: 'client', label: 'Client Details', icon: Building2 },
-  { id: 'notes', label: 'Admin Notes', icon: FileText },
+  { id: 'basic', label: 'Basic Info', icon: User, show: (_: AccountKinds) => true },
+  { id: 'status', label: 'Status & Access', icon: Shield, show: (_: AccountKinds) => true },
+  { id: 'work', label: 'Work Info', icon: Briefcase, show: (k: AccountKinds) => k.personnel },
+  { id: 'pay', label: 'Pay & Tax', icon: Landmark, show: (k: AccountKinds) => k.tech },
+  { id: 'emergency', label: 'Emergency', icon: Heart, show: (k: AccountKinds) => k.personnel },
+  { id: 'client', label: 'Billing & Tax', icon: Building2, show: (k: AccountKinds) => k.client },
+  { id: 'notes', label: 'Admin Notes', icon: FileText, show: (_: AccountKinds) => true },
 ] as const;
 
 type SectionId = typeof SECTIONS[number]['id'];
+
+const PAYOUT_METHODS = ['ACH', 'Check', 'Zelle', 'Venmo', 'Other'];
+
+/** Read a dotted path ('accounting.workerType') off the person for the audit diff. */
+function readPath(obj: unknown, path: string): unknown {
+  return path.split('.').reduce<unknown>((o, k) => (o && typeof o === 'object' ? (o as Record<string, unknown>)[k] : undefined), obj);
+}
+
+const orNull = (s: string) => (s.trim() ? s.trim() : null);
 
 type FormState = {
   name: string;
@@ -86,6 +102,18 @@ type FormState = {
   billingEmail: string;
   billingTerms: string;
   billingDelivery: string;
+  customerDisplayName: string;
+  billingAddress: string;
+  /** '' = not decided yet. */
+  taxStatus: '' | 'taxable' | 'exempt';
+  taxExemptReason: string;
+  payoutMethod: string;
+  payoutNotes: string;
+  workerType: string;
+  payeeLegalName: string;
+  payeeBusinessName: string;
+  taxIdType: string;
+  taxIdLast4: string;
   adminNotes: string;
 };
 
@@ -120,6 +148,19 @@ function personToForm(p: Technician): FormState {
     billingEmail: p.billingDetails?.email || '',
     billingTerms: p.billingDetails?.terms || 'Net 30',
     billingDelivery: p.billingDetails?.deliveryMethod || 'Portal',
+    customerDisplayName: p.accounting?.customerDisplayName || '',
+    billingAddress: p.accounting?.billingAddress || '',
+    taxStatus: p.accounting?.taxExempt === true ? 'exempt' : p.accounting?.taxExempt === false ? 'taxable' : '',
+    taxExemptReason: p.accounting?.taxExemptReason || '',
+    // Legacy docs stored lowercase ('ach'); normalize to the option labels.
+    payoutMethod: PAYOUT_METHODS.find(m => m.toLowerCase() === (p.payoutPreferences?.method || '').toLowerCase())
+      || p.payoutPreferences?.method || '',
+    payoutNotes: p.payoutPreferences?.notes || '',
+    workerType: p.accounting?.workerType || '',
+    payeeLegalName: p.accounting?.payeeLegalName || '',
+    payeeBusinessName: p.accounting?.payeeBusinessName || '',
+    taxIdType: p.accounting?.taxIdType || '',
+    taxIdLast4: p.accounting?.taxIdLast4 || '',
     adminNotes: p.adminNotes || '',
   };
 }
@@ -159,7 +200,16 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
   // dropdown show client-only terms on techs.
   const CLIENT_STATUSES = ['active', 'inactive', 'lead', 'prospect', 'past_client', 'on_hold', 'do_not_service', 'collections', 'vip', 'archived'];
   const PERSONNEL_STATUSES = ['active', 'inactive', 'on_hold', 'archived'];
-  const isClientAccount = unlockedPortals(form.roles).includes('client') || !!form.clientCompany;
+  const portalsNow = unlockedPortals(form.roles);
+  const isClientAccount = portalsNow.includes('client') || !!form.clientCompany;
+  const kinds: AccountKinds = {
+    tech: portalsNow.includes('tech'),
+    client: isClientAccount,
+    personnel: portalsNow.some(p => p !== 'client'),
+  };
+  const visibleSections = SECTIONS.filter(s => s.show(kinds));
+  // A subrole change can hide the section being viewed.
+  const activeSection: SectionId = visibleSections.some(s => s.id === section) ? section : 'basic';
   const accountStatusOptions = (() => {
     const base = isClientAccount ? CLIENT_STATUSES : PERSONNEL_STATUSES;
     // Always keep the currently-saved value selectable even if it's off-list.
@@ -196,6 +246,16 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
       toast({ variant: 'destructive', title: 'Name required', description: 'Full name cannot be blank.' });
       return;
     }
+    if (kinds.tech && form.taxIdLast4.trim() && !isValidLast4(form.taxIdLast4.trim())) {
+      setSection('pay');
+      toast({ variant: 'destructive', title: 'Tax ID last 4', description: 'Enter exactly the last 4 digits — never the full SSN/EIN.' });
+      return;
+    }
+    if (kinds.client && form.taxStatus === 'exempt' && !form.taxExemptReason.trim()) {
+      setSection('client');
+      toast({ variant: 'destructive', title: 'Exemption reason required', description: 'Say why this customer is tax exempt (e.g. resale certificate on file).' });
+      return;
+    }
 
     setSaving(true);
     try {
@@ -218,48 +278,57 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
         accountStatus: form.accountStatus,
         roles: form.roles,
         primaryPortal: form.primaryPortal || null,
-        hourlyRate: form.hourlyRate ? parseFloat(form.hourlyRate) : null,
-        serviceArea: form.serviceArea.trim(),
-        skills: form.skills,
-        certifications: form.certifications,
-        ...(ecFilled
-          ? { emergencyContact: { name: form.ecName.trim(), relation: form.ecRelation.trim(), phone: form.ecPhone.trim() } }
-          : {}),
-        clientCompany: form.clientCompany.trim(),
-        businessType: form.businessType.trim(),
-        billingDetails: {
-          contactName: form.billingContactName.trim(),
-          email: form.billingEmail.trim(),
-          terms: form.billingTerms,
-          deliveryMethod: form.billingDelivery,
-        },
         adminNotes: form.adminNotes.trim(),
-        updatedAt: new Date().toISOString(),
-        updatedBy: adminId,
       };
 
-      const oldSnapshot: Record<string, unknown> = {
-        name: person.name,
-        preferredName: person.preferredName,
-        jobTitle: person.jobTitle,
-        department: person.department,
-        email: person.email,
-        phone: person.phone,
-        address: person.address,
-        approvalStatus: person.approvalStatus,
-        accountStatus: person.accountStatus,
-        roles: person.roles,
-        primaryPortal: person.primaryPortal,
-        hourlyRate: person.hourlyRate,
-        serviceArea: person.serviceArea,
-        skills: person.skills,
-        certifications: person.certifications,
-        emergencyContact: person.emergencyContact,
-        clientCompany: person.clientCompany,
-        businessType: person.businessType,
-        billingDetails: person.billingDetails,
-        adminNotes: person.adminNotes,
-      };
+      if (kinds.personnel) {
+        Object.assign(updates, {
+          serviceArea: form.serviceArea.trim(),
+          skills: form.skills,
+          certifications: form.certifications,
+          ...(ecFilled
+            ? { emergencyContact: { name: form.ecName.trim(), relation: form.ecRelation.trim(), phone: form.ecPhone.trim() } }
+            : {}),
+        });
+      }
+
+      if (kinds.tech) {
+        // Dotted paths so the QuickBooks link the sync writes onto
+        // `accounting` is never overwritten by this (possibly stale) form.
+        Object.assign(updates, {
+          hourlyRate: form.hourlyRate ? parseFloat(form.hourlyRate) : null,
+          payoutPreferences: form.payoutMethod
+            ? { method: form.payoutMethod, notes: form.payoutNotes.trim() }
+            : null,
+          'accounting.workerType': form.workerType || null,
+          'accounting.payeeLegalName': orNull(form.payeeLegalName),
+          'accounting.payeeBusinessName': orNull(form.payeeBusinessName),
+          'accounting.taxIdType': form.taxIdType || null,
+          'accounting.taxIdLast4': orNull(form.taxIdLast4),
+        });
+      }
+
+      if (kinds.client) {
+        Object.assign(updates, {
+          clientCompany: form.clientCompany.trim(),
+          businessType: form.businessType.trim(),
+          billingDetails: {
+            contactName: form.billingContactName.trim(),
+            email: form.billingEmail.trim(),
+            terms: form.billingTerms,
+            deliveryMethod: form.billingDelivery,
+          },
+          'accounting.customerDisplayName': orNull(form.customerDisplayName),
+          'accounting.billingAddress': orNull(form.billingAddress),
+          'accounting.taxExempt': form.taxStatus === 'exempt' ? true : form.taxStatus === 'taxable' ? false : null,
+          'accounting.taxExemptReason': form.taxStatus === 'exempt' ? orNull(form.taxExemptReason) : null,
+        });
+      }
+
+      // Old values for exactly the keys being written (dotted paths included).
+      const oldSnapshot: Record<string, unknown> = Object.fromEntries(
+        Object.keys(updates).map(k => [k, readPath(person, k)]));
+      Object.assign(updates, { updatedAt: new Date().toISOString(), updatedBy: adminId });
 
       await auditFieldChange('users', person.id, adminId, adminName, oldSnapshot, updates as Record<string, unknown>);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -287,7 +356,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
         <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* Sidebar */}
           <nav className="w-40 shrink-0 border-r border-border-sub bg-bg-secondary py-3 flex flex-col gap-0.5 px-2">
-            {SECTIONS.map(s => {
+            {visibleSections.map(s => {
               const Icon = s.icon;
               return (
                 <button
@@ -296,7 +365,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                   className={cn(
                     'flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all',
                     'text-[10px] font-black uppercase tracking-wider',
-                    section === s.id
+                    activeSection === s.id
                       ? 'bg-brand-red/10 text-brand-red border border-brand-red/20'
                       : 'text-text-muted hover:bg-bg-tertiary hover:text-text-secondary border border-transparent',
                   )}
@@ -312,7 +381,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
 
             {/* ── Basic Info ── */}
-            {section === 'basic' && (
+            {activeSection === 'basic' && (
               <div>
                 <h3 className={sectionHeading}><User size={11} /> Basic Information</h3>
                 <div className="space-y-3">
@@ -343,6 +412,9 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                         <Mail size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input className={cn(inputCls, 'pl-7')} value={form.email} onChange={e => set('email', e.target.value)} placeholder="user@example.com" />
                       </div>
+                      {form.email.trim() !== (person.email || '') && (
+                        <p className="text-[9px] text-amber-400 normal-case tracking-normal">Contact email only — this does not change the address they sign in with.</p>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label className={labelCls}>Phone</Label>
@@ -364,7 +436,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
             )}
 
             {/* ── Status & Access ── */}
-            {section === 'status' && (
+            {activeSection === 'status' && (
               <div>
                 <h3 className={sectionHeading}><Shield size={11} /> Status &amp; Access</h3>
                 <div className="space-y-4">
@@ -489,32 +561,15 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
             )}
 
             {/* ── Work Info ── */}
-            {section === 'work' && (
+            {activeSection === 'work' && (
               <div>
                 <h3 className={sectionHeading}><Briefcase size={11} /> Work Information</h3>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className={labelCls}>Hourly Rate ($)</Label>
-                      <div className="relative">
-                        <DollarSign size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
-                        <Input
-                          className={cn(inputCls, 'pl-7')}
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={form.hourlyRate}
-                          onChange={e => set('hourlyRate', e.target.value)}
-                          placeholder="0.00"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className={labelCls}>Service Area</Label>
-                      <div className="relative">
-                        <Globe size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
-                        <Input className={cn(inputCls, 'pl-7')} value={form.serviceArea} onChange={e => set('serviceArea', e.target.value)} placeholder="e.g. Greater NYC" />
-                      </div>
+                  <div className="space-y-1">
+                    <Label className={labelCls}>Service Area</Label>
+                    <div className="relative">
+                      <Globe size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
+                      <Input className={cn(inputCls, 'pl-7')} value={form.serviceArea} onChange={e => set('serviceArea', e.target.value)} placeholder="e.g. Metro Detroit" />
                     </div>
                   </div>
 
@@ -577,8 +632,98 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
               </div>
             )}
 
+            {/* ── Pay & Tax (tech → QuickBooks Vendor) ── */}
+            {activeSection === 'pay' && (
+              <div>
+                <h3 className={sectionHeading}><Landmark size={11} /> Pay &amp; Tax</h3>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className={labelCls}>Worker Classification</Label>
+                      <Select value={form.workerType || '__unset__'} onValueChange={v => set('workerType', v === '__unset__' ? '' : v)}>
+                        <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
+                        <SelectContent className="bg-bg-elevated border-border-main">
+                          <SelectItem value="__unset__" className="text-[11px]">Not set</SelectItem>
+                          {Object.entries(WORKER_TYPE_LABELS).map(([k, v]) => (
+                            <SelectItem key={k} value={k} className="text-[11px]">{v}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className={labelCls}>Project Hourly Rate ($)</Label>
+                      <div className="relative">
+                        <DollarSign size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <Input className={cn(inputCls, 'pl-7')} type="number" min="0" step="0.01" value={form.hourlyRate}
+                          onChange={e => set('hourlyRate', e.target.value)} placeholder="0.00" />
+                      </div>
+                      <p className="text-[9px] text-text-muted normal-case tracking-normal">Used for hourly project payouts from timesheets.</p>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-border-sub pt-3 space-y-3">
+                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Payout</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className={labelCls}>Payout Method</Label>
+                        <Select value={form.payoutMethod || '__unset__'} onValueChange={v => set('payoutMethod', v === '__unset__' ? '' : v)}>
+                          <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
+                          <SelectContent className="bg-bg-elevated border-border-main">
+                            <SelectItem value="__unset__" className="text-[11px]">Not on file</SelectItem>
+                            {(PAYOUT_METHODS.includes(form.payoutMethod) || !form.payoutMethod ? PAYOUT_METHODS : [form.payoutMethod, ...PAYOUT_METHODS]).map(m => (
+                              <SelectItem key={m} value={m} className="text-[11px]">{m}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className={labelCls}>Payout Notes</Label>
+                        <Input className={inputCls} value={form.payoutNotes} onChange={e => set('payoutNotes', e.target.value)} placeholder="e.g. Zelle to phone on file" />
+                      </div>
+                    </div>
+                    <p className="text-[9px] text-text-muted normal-case tracking-normal">Shown on paystubs. Never enter bank account or routing numbers here — those are collected by QuickBooks Bill Pay.</p>
+                  </div>
+
+                  {form.workerType !== 'w2_employee' && form.workerType !== 'not_paid' && (
+                    <div className="border-t border-border-sub pt-3 space-y-3">
+                      <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">1099 Payee (from their W-9)</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className={labelCls}>Legal Name (W-9 line 1)</Label>
+                          <Input className={inputCls} value={form.payeeLegalName} onChange={e => set('payeeLegalName', e.target.value)} placeholder="As shown on their tax return" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className={labelCls}>Business Name (line 2)</Label>
+                          <Input className={inputCls} value={form.payeeBusinessName} onChange={e => set('payeeBusinessName', e.target.value)} placeholder="LLC / DBA, if any" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className={labelCls}>Tax ID Type</Label>
+                          <Select value={form.taxIdType || '__unset__'} onValueChange={v => set('taxIdType', v === '__unset__' ? '' : v)}>
+                            <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
+                            <SelectContent className="bg-bg-elevated border-border-main">
+                              <SelectItem value="__unset__" className="text-[11px]">Not set</SelectItem>
+                              <SelectItem value="SSN" className="text-[11px]">SSN (individual)</SelectItem>
+                              <SelectItem value="EIN" className="text-[11px]">EIN (business)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className={labelCls}>Tax ID — Last 4 Only</Label>
+                          <Input className={cn(inputCls, 'font-mono')} inputMode="numeric" maxLength={4} value={form.taxIdLast4}
+                            onChange={e => set('taxIdLast4', e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="1234" />
+                        </div>
+                      </div>
+                      <p className="text-[9px] text-text-muted normal-case tracking-normal">The full SSN/EIN stays on the W-9 document and in QuickBooks — never in the app. Mailing address for the 1099 is the address under Basic Info.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* ── Emergency Contact ── */}
-            {section === 'emergency' && (
+            {activeSection === 'emergency' && (
               <div>
                 <h3 className={sectionHeading}><Heart size={11} /> Emergency Contact</h3>
                 <div className="space-y-3">
@@ -602,9 +747,9 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
             )}
 
             {/* ── Client Details ── */}
-            {section === 'client' && (
+            {activeSection === 'client' && (
               <div>
-                <h3 className={sectionHeading}><Building2 size={11} /> Client Details</h3>
+                <h3 className={sectionHeading}><Building2 size={11} /> Billing &amp; Tax</h3>
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
@@ -658,12 +803,49 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                       </div>
                     </div>
                   </div>
+                  <div className="border-t border-border-sub pt-3">
+                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-3">Accounting (QuickBooks Customer)</p>
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <Label className={labelCls}>Customer Name in QuickBooks</Label>
+                        <Input className={inputCls} value={form.customerDisplayName} onChange={e => set('customerDisplayName', e.target.value)}
+                          placeholder={form.clientCompany.trim() || form.name.trim() || 'Defaults to company name'} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className={labelCls}>Billing Address</Label>
+                        <AddressAutocompleteInput className={inputCls} value={form.billingAddress} onChange={v => set('billingAddress', v)}
+                          placeholder={form.address.trim() || 'Defaults to the address under Basic Info'} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className={labelCls}>Sales Tax</Label>
+                          <Select value={form.taxStatus || '__unset__'} onValueChange={v => set('taxStatus', (v === '__unset__' ? '' : v) as FormState['taxStatus'])}>
+                            <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
+                            <SelectContent className="bg-bg-elevated border-border-main">
+                              <SelectItem value="__unset__" className="text-[11px]">Not set</SelectItem>
+                              <SelectItem value="taxable" className="text-[11px]">Taxable</SelectItem>
+                              <SelectItem value="exempt" className="text-[11px]">Tax exempt</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {form.taxStatus === 'exempt' && (
+                          <div className="space-y-1">
+                            <Label className={labelCls}>Exemption Reason *</Label>
+                            <Input className={inputCls} value={form.taxExemptReason} onChange={e => set('taxExemptReason', e.target.value)} placeholder="e.g. Resale cert on file" />
+                          </div>
+                        )}
+                      </div>
+                      {form.taxStatus === 'exempt' && (
+                        <p className="text-[9px] text-text-muted normal-case tracking-normal">Upload the exemption certificate under Documents.</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* ── Admin Notes ── */}
-            {section === 'notes' && (
+            {activeSection === 'notes' && (
               <div>
                 <h3 className={sectionHeading}><FileText size={11} /> Admin Notes</h3>
                 <div className="space-y-2">

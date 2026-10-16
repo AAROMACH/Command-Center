@@ -220,6 +220,10 @@ export type Technician = {
     method: 'ACH' | 'Check' | 'Zelle' | 'Venmo' | string;
     notes?: string;
   };
+  /** Admin-only accounting profile — what QuickBooks needs to create this
+   *  user as a Vendor (a paid tech) or a Customer (a client). See
+   *  lib/accounting-readiness.ts. */
+  accounting?: UserAccounting;
   billingDetails?: {
     contactName: string;
     email: string;
@@ -260,6 +264,45 @@ export type Technician = {
   certifications?: string[];
   adminNotes?: string;
   serviceArea?: string;
+};
+
+/** A record's link to its QuickBooks Online counterpart, written by the sync. */
+export type QboLink = {
+  id: string;
+  syncToken?: string;
+  syncedAt?: string;
+  error?: string | null;
+};
+
+export type WorkerType = '1099_contractor' | 'w2_employee' | 'not_paid';
+
+/**
+ * Accounting fields kept off billingDetails on purpose: clients edit
+ * billingDetails from their own profile, while everything here is admin-only
+ * (firestore.rules blocks self-writes to `accounting`).
+ *
+ * Never store a full SSN/EIN here — only the last 4 for matching. The full
+ * number lives on the W-9 document and in QuickBooks.
+ */
+export type UserAccounting = {
+  // ── Payee (tech → QuickBooks Vendor) ──
+  workerType?: WorkerType | null;
+  /** Name exactly as on W-9 line 1. */
+  payeeLegalName?: string | null;
+  /** W-9 line 2 (LLC / DBA), when the tech is paid as a business. */
+  payeeBusinessName?: string | null;
+  taxIdType?: 'SSN' | 'EIN' | null;
+  taxIdLast4?: string | null;
+  // ── Customer (client → QuickBooks Customer) ──
+  /** Customer name in QuickBooks; defaults to clientCompany. */
+  customerDisplayName?: string | null;
+  billingAddress?: string | null;
+  /** undefined = not decided yet (blocks invoicing readiness). */
+  taxExempt?: boolean | null;
+  taxExemptReason?: string | null;
+  // ── Links (written by the QuickBooks sync, never by hand) ──
+  qboVendor?: QboLink;
+  qboCustomer?: QboLink;
 };
 
 export type Recommendation = {

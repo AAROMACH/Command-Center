@@ -49,8 +49,6 @@ import {
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AddPersonnelDialog } from './add-personnel-dialog';
-import { EditPersonnelDialog } from './edit-personnel-dialog';
-import { PersonnelDetailDialog } from './personnel-detail-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn, isInactiveTechnician } from '@/lib/utils';
 import { 
@@ -66,7 +64,6 @@ import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/rel
 import { useSearchParams } from 'next/navigation';
 import { db, auth } from "@/lib/firebase";
 import { doc, updateDoc, setDoc, deleteDoc, addDoc, collection } from 'firebase/firestore';
-import { auditFieldChange } from '@/lib/audit';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -121,9 +118,6 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
     const [itemsPerPage, setItemsPerPage] = useState(10);
 
     const [isAddPersonnelOpen, setIsAddPersonnelOpen] = useState(false);
-    const [isEditPersonnelOpen, setIsEditPersonnelOpen] = useState(false);
-    const [selectedPerson, setSelectedPerson] = useState<Technician | null>(null);
-    const [isDetailOpen, setIsDetailOpen] = useState(false);
 
     const [selectedClientCompany, setSelectedClientCompany] = useState<{ name: string; businessType?: string; contacts: Technician[] } | null>(null);
 
@@ -166,34 +160,6 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
     const handleCompanyClick = (companyName: string) => {
         const company = companies.find(c => c.name === companyName);
         if (company) setSelectedClientCompany(company);
-    };
-
-    const handleEditClick = (person: Technician) => {
-        setSelectedPerson(person);
-        setIsDetailOpen(false);
-        setIsEditPersonnelOpen(true);
-    };
-
-    const handleSavePersonnel = async (personId: string, updates: Partial<Technician>) => {
-        try {
-            const oldPerson = personnel.find(p => p.id === personId);
-            const adminId = auth.currentUser?.uid || '';
-            const adminName = auth.currentUser?.displayName || 'Admin';
-            if (oldPerson) {
-                await auditFieldChange('users', personId, adminId, adminName, oldPerson as Record<string, unknown>, updates as Record<string, unknown>);
-            }
-            // Partial update only — never spread the full stale snapshot back,
-            // or fields edited elsewhere since this dialog opened (like admin
-            // notes) get silently reverted.
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await updateDoc(doc(db, 'users', personId), updates as any);
-            toast({
-                title: "Operative Updated",
-                description: `Personnel records for ${updates.name || oldPerson?.name} committed.`
-            });
-        } catch (e: any) {
-            toast({ variant: "destructive", title: "Update Failed", description: e.message });
-        }
     };
 
     const handleApproveUser = async () => {
@@ -1190,25 +1156,6 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                 onSave={handleAddPersonnel}
             />
             
-            {selectedPerson && (
-                <EditPersonnelDialog 
-                    isOpen={isEditPersonnelOpen} 
-                    setIsOpen={setIsEditPersonnelOpen} 
-                    person={selectedPerson}
-                    onSave={handleSavePersonnel}
-                />
-            )}
-            
-            <PersonnelDetailDialog
-                isOpen={isDetailOpen}
-                setIsOpen={setIsDetailOpen}
-                person={selectedPerson}
-                workOrders={workOrders}
-                assignments={assignments}
-                onEdit={() => handleEditClick(selectedPerson!)}
-                timeOffRequests={timeOffRequests}
-            />
-
             {/* Approve User Dialog */}
             <Dialog open={approveOpen} onOpenChange={setApproveOpen}>
                 <DialogContent className="bg-bg-secondary border-border-main max-w-md">

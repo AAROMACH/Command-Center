@@ -137,7 +137,8 @@ service cloud.firestore {
               && request.resource.data.approvalStatus == 'pending'
               && !request.resource.data.keys().hasAny(['role', 'clientCompany', 'clientId', 'companyId',
                     'portalAccess', 'primaryPortal', 'permissionOverrides',
-                    'messagingAllowedRoles', 'messagingBlockedClientIds', 'hourlyRate', 'payRate'])
+                    'messagingAllowedRoles', 'messagingBlockedClientIds', 'hourlyRate', 'payRate',
+                    'payoutPreferences', 'accounting'])
               && (!request.resource.data.keys().hasAny(['roles'])
                   || request.resource.data.roles.size() == 0));
       allow update: if isAdmin()
@@ -152,7 +153,9 @@ service cloud.firestore {
                             // project threads; the messaging fields are admin-set limits.
                             'clientCompany', 'clientId', 'companyId',
                             'messagingAllowedRoles', 'messagingBlockedClientIds',
-                            'payRate', 'payType', 'currentWorkload']));
+                            'payRate', 'payType', 'currentWorkload',
+                            // Tax / QuickBooks profile — admin-only (see UserAccounting).
+                            'accounting']));
       allow delete: if isSuperAdmin();
 
       // Client-workspace subcollections (notes, documents, contacts, access

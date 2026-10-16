@@ -442,7 +442,7 @@ export default function TechAssignmentsPage() {
                                         <div className="cell-desc-title break-words mt-1">{wo.title || wo.description}</div>
                                         <div className="text-[10px] text-text-muted uppercase tracking-widest">{wo.clientName}</div>
                                     </div>
-                                    <div className="flex items-center gap-1 shrink-0">
+                                    <div className="flex items-center gap-2 shrink-0">
                                         <Badge
                                             variant={
                                                 wo.status === 'in-progress' ? 'inprogress' :
@@ -457,12 +457,14 @@ export default function TechAssignmentsPage() {
                                         </Badge>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
+                                                {/* A visible, thumb-sized button — the bare grey
+                                                    icon was easy to miss on a phone. */}
                                                 <button
                                                     onClick={(e) => e.stopPropagation()}
                                                     aria-label="More actions"
-                                                    className="p-1 -m-0.5 rounded text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+                                                    className="h-9 w-9 shrink-0 flex items-center justify-center rounded-lg border border-border-main bg-bg-tertiary text-text-primary shadow-sm active:bg-bg-secondary hover:border-text-muted transition-colors"
                                                 >
-                                                    <MoreVertical size={15} />
+                                                    <MoreVertical size={18} strokeWidth={2.5} />
                                                 </button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
@@ -676,9 +678,10 @@ export default function TechAssignmentsPage() {
                                                       <button
                                                           onClick={(e) => e.stopPropagation()}
                                                           aria-label="More actions"
-                                                          className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+                                                          title="More actions"
+                                                          className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg border border-border-main bg-bg-tertiary text-text-primary shadow-sm hover:border-text-muted hover:bg-bg-secondary transition-colors"
                                                       >
-                                                          <MoreVertical size={16} />
+                                                          <MoreVertical size={16} strokeWidth={2.5} />
                                                       </button>
                                                   </DropdownMenuTrigger>
                                                   <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>

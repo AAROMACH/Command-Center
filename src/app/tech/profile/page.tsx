@@ -24,7 +24,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { format, parseISO } from 'date-fns';
-import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSearchParams } from 'next/navigation';
@@ -159,8 +158,6 @@ export default function TechProfilePage() {
     // The tech's real reliability events (was the empty demo list).
     const myReliabilityEvents: ReliabilityEvent[] = usePenaltyEvents(currentTechId, !!currentTechId);
 
-    const reliabilityScore = tech?.reliabilityScore ?? 100;
-    const reliabilityTier = getReliabilityTier(reliabilityScore);
 
     const userFallback = useMemo(() => {
         if (!tech) return 'FT';
@@ -372,33 +369,6 @@ export default function TechProfilePage() {
                                 <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide">{tech?.name || '—'}</h2>
                                 <p className="text-xs text-brand-red font-bold uppercase tracking-widest">{roleLabel}</p>
                             </div>
-                            <div className="flex justify-center">
-                                <Badge variant={getTierBadgeVariant(reliabilityTier)} className="uppercase text-[9px] tracking-widest">
-                                    {reliabilityTier}
-                                </Badge>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-sm">
-                                <Gauge size={14} className={getTierColor(reliabilityTier)} />
-                                Reliability Score
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            <div className="flex items-end gap-2">
-                                <span className={cn("text-4xl font-black", getTierColor(reliabilityTier))}>{reliabilityScore}</span>
-                                <span className="text-text-muted text-sm mb-1">/100</span>
-                            </div>
-                            <div className="w-full bg-bg-tertiary rounded-full h-2">
-                                <div
-                                    className={cn("h-2 rounded-full transition-all", reliabilityScore >= 80 ? "bg-text-green" : reliabilityScore >= 60 ? "bg-accent-gold" : "bg-brand-red")}
-                                    style={{ width: `${reliabilityScore}%` }}
-                                />
-                            </div>
-                            <p className="text-[9px] uppercase tracking-widest text-text-muted">30-day rolling score</p>
                         </CardContent>
                     </Card>
 

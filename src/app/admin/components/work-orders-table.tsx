@@ -56,7 +56,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Activity,
-  Gauge,
   Type,
   FileText,
   RefreshCw,
@@ -77,7 +76,6 @@ import { JobDetailDialog } from "@/components/job-detail-dialog";
 import { WorkOrderId } from "@/components/work-order-id";
 import { isPayAdmin } from "@/lib/permissions";
 import { archiveJobRecord, toUnassignedWorkOrder } from "@/lib/jobs";
-import { getReliabilityTier, getTierBadgeVariant, getTierColor } from "@/lib/reliability";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
@@ -199,7 +197,9 @@ export const WorkOrdersTable = React.memo(({
     const matched = technicians
       .filter(isAssignableTechnician)
       .filter(t => (t.name || '').toLowerCase().includes(techSearchQuery.toLowerCase()))
-      .sort((a, b) => (b.reliabilityScore || 0) - (a.reliabilityScore || 0));
+      // Alphabetical — the reliability score was never recalculated, so it
+      // was ranking techs on stale numbers. Removed until it's real.
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     // Deactivated accounts stay visible but drop to the bottom and render
     // disabled/greyed (see isInactiveTechnician usage below).
     return sortTechniciansForDeployment(matched);
@@ -721,8 +721,6 @@ export const WorkOrdersTable = React.memo(({
                 <ScrollArea className="h-[250px] rounded-xl border border-border-sub bg-bg-primary shadow-inner">
                     <div className="divide-y divide-border-sub">
                         {filteredTechniciansRegistry.map(tech => {
-                            const tier = getReliabilityTier(tech.reliabilityScore || 0);
-                            const tierColor = getTierColor(tier);
                             const inactive = isInactiveTechnician(tech);
 
                             return (
@@ -738,16 +736,11 @@ export const WorkOrdersTable = React.memo(({
                                         <div className="text-left">
                                             <div className="flex items-center gap-2">
                                                 <p className="text-xs font-black uppercase tracking-tight text-left">{tech.name}</p>
-                                                <Badge variant={getTierBadgeVariant(tier)} className="text-[7px] h-3.5 uppercase px-1.5">{tier}</Badge>
                                                 {inactive && (
                                                     <Badge variant="outline" className="text-[7px] h-3.5 uppercase px-1.5 border-text-muted/40 text-text-muted">Inactive</Badge>
                                                 )}
                                             </div>
                                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
-                                                <div className="flex items-center gap-1.5">
-                                                    <Gauge size={10} className={tierColor} />
-                                                    <p className={cn("text-[9px] font-black uppercase", tierColor)}>{tech.reliabilityScore || 0}% INDEX</p>
-                                                </div>
                                                 <div className="flex items-center gap-1.5">
                                                     <Navigation size={10} className="text-text-muted" />
                                                     <p className="text-[9px] text-text-muted font-bold uppercase truncate max-w-[120px]">{tech.address || tech.currentLocation}</p>

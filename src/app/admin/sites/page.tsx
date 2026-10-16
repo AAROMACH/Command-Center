@@ -165,7 +165,6 @@ export default function AdminClientsPage() {
                 skills: [],
                 availability: {},
                 workPreferences: { preferredRadius: 0, maxTravelDistance: 0, preferredJobTypes: [], availabilityOverride: false },
-                reliabilityScore: 0,
                 currentWorkload: 0,
                 currentLocation: '',
                 avatarUrl: '',

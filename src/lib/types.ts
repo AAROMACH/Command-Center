@@ -197,7 +197,10 @@ export type Technician = {
     phone: string;
   };
   currentLocation: string;
-  reliabilityScore: number;
+  /** @deprecated Never recalculated after signup, so it was removed from the
+   *  UI and tech ranking. Old documents still carry it; nothing reads it. */
+  reliabilityScore?: number;
+  /** @deprecated See reliabilityScore. */
   reliabilityTier?: ReliabilityTier;
   currentWorkload: number;
   skills: string[];

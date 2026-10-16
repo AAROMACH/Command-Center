@@ -67,7 +67,6 @@ export default function GetAccessPage() {
         roles: [],
         approvalStatus: 'pending',
         accountStatus: 'inactive',
-        reliabilityScore: 100,
         currentWorkload: 0,
         skills: [],
         currentLocation: "",

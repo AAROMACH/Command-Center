@@ -207,13 +207,6 @@ export default function DashboardPage() {
 
     const maxLoad = useMemo(() => Math.max(...workloadData.map(d => d.assigned), 1), [workloadData]);
 
-    const reliabilityData = useMemo(() =>
-        technicians
-            .filter(t => isTech(t) && !isInactiveTechnician(t) && t.reliabilityScore !== undefined && t.reliabilityScore !== null)
-            .sort((a, b) => (b.reliabilityScore || 0) - (a.reliabilityScore || 0))
-            .slice(0, 5),
-    [technicians]);
-
     const pendingRequests = useMemo(() => {
         const unsubmits = weeklyLogs.filter(l => l.unsubmitRequested && !inactiveTechIds.has(l.techId));
         const activeTimeOff = timeOffRequests.filter(request => !inactiveTechIds.has(request.techId));
@@ -268,17 +261,6 @@ export default function DashboardPage() {
     const handleSwapPortal = useCallback(() => {
         if (techPortal) router.push(techPortal.path);
     }, [router, techPortal]);
-
-    // Green = good (Elite/Reliable), yellow = moderate (Monitored),
-    // red = unreliable (Restricted/Suspended Review).
-    const getTierStyle = (tier?: string) => {
-        switch (tier) {
-            case 'Elite':
-            case 'Reliable': return 'text-text-green bg-text-green/10 border-text-green/20';
-            case 'Monitored': return 'text-accent-gold bg-accent-gold/10 border-accent-gold/20';
-            default: return 'text-brand-red bg-brand-red/10 border-brand-red/20';
-        }
-    };
 
     return (
         <div className="animate-in fade-in duration-500 text-left">
@@ -604,33 +586,6 @@ export default function DashboardPage() {
                             )) : (
                                 <div className="py-6 text-center opacity-40">
                                     <p className="text-[10px] font-bold uppercase text-text-muted">No active assignments</p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Reliability Scores */}
-                    <Card>
-                        <CardHeader className="pb-3 text-left">
-                            <CardTitle>Reliability Scores</CardTitle>
-                            <CardDescription>Field operative performance index.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-1">
-                            {reliabilityData.length > 0 ? reliabilityData.map(tech => (
-                                <div key={tech.id} className="flex items-center gap-2 py-2 border-b border-border-sub last:border-0">
-                                    <Avatar className="h-6 w-6 shrink-0">
-                                        <AvatarImage src={tech.avatarUrl} />
-                                        <AvatarFallback className="text-[8px]">{(tech.name || 'U').charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <span className="text-[10px] font-bold uppercase text-text-primary flex-1 truncate">{tech.name}</span>
-                                    <span className="text-[10px] font-mono font-bold text-text-primary shrink-0">{tech.reliabilityScore ?? '--'}</span>
-                                    <span className={cn('text-[7px] font-black uppercase px-1.5 py-0.5 rounded border shrink-0', getTierStyle(tech.reliabilityTier))}>
-                                        {(tech.reliabilityTier || 'Reliable').toUpperCase()}
-                                    </span>
-                                </div>
-                            )) : (
-                                <div className="py-6 text-center opacity-40">
-                                    <p className="text-[10px] font-bold uppercase text-text-muted">No operative data</p>
                                 </div>
                             )}
                         </CardContent>

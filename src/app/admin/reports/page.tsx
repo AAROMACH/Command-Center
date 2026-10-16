@@ -99,7 +99,6 @@ import type { Technician, WorkOrder, WeeklyLog, TimeOffRequest, AdminMessage, In
 import { format, parseISO, subDays, isAfter, addHours, isSameDay, startOfDay, isWithinInterval } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 import { isAdmin, isSuperAdmin, isClient } from '@/lib/permissions';
 import { usePenaltyEvents, penaltyPoints } from '@/hooks/use-penalty-events';
 import { computeWeeklyLogSettlement } from '@/lib/payroll';
@@ -509,7 +508,6 @@ export default function ActivityAuditPage() {
         const completed = myJobs.filter(wo => wo.status === 'completed').length;
         const penalties = allPenalties.filter(pe => pe.techId === selectedTechId);
         const points = penaltyPoints(allPenalties, selectedTechId);
-        const reliability = Math.max(0, 100 - (points * 5));
         
         const myLogs = weeklyLogs.filter(log => log.techId === selectedTechId)
             .sort((a, b) => {
@@ -526,7 +524,6 @@ export default function ActivityAuditPage() {
         return { 
             total: myJobs.length, 
             completed, 
-            reliability, 
             penaltyPoints: points, 
             penalties,
             totalEarnings,
@@ -805,7 +802,7 @@ export default function ActivityAuditPage() {
                 results.push({
                     type: 'OPERATIVE',
                     label: t.name,
-                    meta: `${t.role} · Reliability: ${t.reliabilityScore}%`,
+                    meta: `${t.role}`,
                     id: t.id,
                     cat: 'tech',
                     cls: 'border-brand-red text-brand-red'
@@ -1274,11 +1271,8 @@ export default function ActivityAuditPage() {
 
                                                         <div className="space-y-4 pt-3 border-t border-border-sub/30 text-left">
                                                             <div className="space-y-1 text-center">
-                                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] text-center">Reliability</p>
-                                                                <p className={cn("text-4xl font-mono font-bold tracking-tighter text-center", techStats.reliability > 90 ? 'text-text-green' : 'text-accent-gold')}>{techStats.reliability}%</p>
-                                                                <Badge variant={getReliabilityTier(techStats.reliability) === 'Elite' ? 'active' : 'onhold'} className="h-5 px-3 uppercase text-[8px] tracking-widest">
-                                                                    {getReliabilityTier(techStats.reliability)}
-                                                                </Badge>
+                                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] text-center">Penalty Points</p>
+                                                                <p className={cn("text-4xl font-mono font-bold tracking-tighter text-center", techStats.penaltyPoints === 0 ? 'text-text-green' : 'text-accent-gold')}>{techStats.penaltyPoints}</p>
                                                             </div>
                                                             <div className="flex items-center justify-center gap-1.5 opacity-60 text-center">
                                                                 <span className="text-[8px] text-text-muted font-mono uppercase tracking-widest text-center">REG ID: {activeTech.userId || activeTech.id}</span>

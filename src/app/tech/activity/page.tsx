@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Activity, CheckCircle2, Clock, AlertTriangle, ShieldCheck, BarChart2, ClipboardList, Coins, Filter, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getReliabilityTier, getTierColor } from '@/lib/reliability';
 import { format, parseISO, subWeeks, startOfMonth, endOfMonth } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { isAssignedTo, jobDateTimeValue, weekOfValue, parseLocalDate } from '@/lib/jobs';
@@ -62,10 +61,7 @@ export default function TechActivityPage() {
     return () => { unsubLogs(); unsubAssignments(); unsubUser(); };
   }, []);
 
-  const reliabilityScore = (techDoc as any)?.reliabilityScore ?? 100;
   const reliabilityEvents = (techDoc as any)?.reliabilityEvents ?? [];
-  const tier = getReliabilityTier(reliabilityScore);
-  const tierColor = getTierColor(tier);
 
   const logCounts = useMemo(() => ({
     draft: weeklyLogs.filter(l => l.status === 'Draft').length,
@@ -208,11 +204,10 @@ export default function TechActivityPage() {
       </header>
 
       {/* Stat tiles */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <StatTile label="Completed Jobs" value={jobCounts.completed} color="text-text-green" />
         <StatTile label="In Progress" value={jobCounts.inProgress} color="text-blue-400" />
         <StatTile label="Scheduled" value={jobCounts.assigned} />
-        <StatTile label="Reliability Score" value={reliabilityScore} sub={tier} color={tierColor} />
         <StatTile label="Pending Verify" value={pendingVerification} color={pendingVerification > 0 ? 'text-accent-gold' : 'text-text-primary'} />
         <StatTile label="Disputed Items" value={disputed} color={disputed > 0 ? 'text-brand-red' : 'text-text-primary'} />
       </div>

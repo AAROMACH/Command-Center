@@ -17,7 +17,6 @@ import { Input } from '@/components/ui/input';
 import { cn, isInactiveTechnician } from '@/lib/utils';
 import type { WorkOrder, Technician, WeeklyLog, Invoice } from '@/lib/types';
 import { IntelligenceTerminal } from '../reports/components/intelligence-terminal';
-import { getReliabilityTier } from '@/lib/reliability';
 import { effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
 import { Tabs as InnerTabs, TabsList as InnerTabsList, TabsTrigger as InnerTabsTrigger, TabsContent as InnerTabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -481,9 +480,6 @@ export default function FieldIntelligencePage() {
                                             <div className="pt-3 border-t border-border-sub/30 space-y-1">
                                                 <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Penalty Points</p>
                                                 <p className={cn("text-4xl font-mono font-bold", techStats.points === 0 ? 'text-text-green' : 'text-accent-gold')}>{techStats.points}</p>
-                                                <Badge variant={techStats.points <= 2 ? 'active' : 'onhold'} className="h-5 px-3 uppercase text-[8px] tracking-widest">
-                                                    {getReliabilityTier(Math.max(0, 100 - techStats.points * 5))}
-                                                </Badge>
                                             </div>
                                             <div className="flex gap-2">
                                                 <Button variant="outline" size="sm" className="flex-1 h-8 !text-[10px] font-bold uppercase" asChild>

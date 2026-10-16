@@ -610,7 +610,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }:
                       <div className="h-px bg-border-sub mx-4" />
                       <div className="flex items-stretch divide-x divide-border-sub">
                         {[
-                          { icon: ShieldCheck, stat: leadTech.reliabilityScore ?? '—', sub: 'Reliability' },
                           { icon: ClipboardList, stat: leadTech.currentWorkload ?? '—', sub: 'Jobs Completed' },
                           { icon: Clock, stat: '—', sub: 'On-Time' },
                         ].map(({ icon: Icon, stat, sub }) => (

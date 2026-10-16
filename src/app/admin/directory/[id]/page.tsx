@@ -24,7 +24,6 @@ import {
 import { EditProfileDialog } from '../components/edit-profile-dialog';
 import { uploadFile } from '@/lib/upload';
 import { cn } from '@/lib/utils';
-import { getReliabilityTier, getTierBadgeVariant } from '@/lib/reliability';
 import { hasPermission, PERMISSION_TREE, getPortalAccess, getSubroles, SUBROLE_DEFINITIONS, isTech as isTechRole, isClient as isClientRole, type Permission } from '@/lib/permissions';
 import { auditEvent, auditFieldChange } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
@@ -244,8 +243,6 @@ export default function DirectoryPersonPage() {
 
   const activeJobs = useMemo(() => assignments.filter(wo => wo.status !== 'completed' && wo.status !== 'cancelled'), [assignments]);
   const completedJobs = useMemo(() => assignments.filter(wo => wo.status === 'completed'), [assignments]);
-  const reliabilityScore = person?.reliabilityScore ?? 0;
-  const tier = getReliabilityTier(reliabilityScore);
 
   const isTech = useMemo(() => (person ? isTechRole(person) : false), [person]);
 
@@ -482,7 +479,6 @@ export default function DirectoryPersonPage() {
             <AvatarImage src={person.avatarUrl} />
             <AvatarFallback className="text-lg font-bold">{(person.name || 'U')[0]}</AvatarFallback>
           </Avatar>
-          {isTech && <Badge variant={getTierBadgeVariant(tier)} className="text-[8px] uppercase tracking-widest px-3">{tier}</Badge>}
         </div>
         <div className="flex-1 space-y-4">
           <div>
@@ -624,25 +620,6 @@ export default function DirectoryPersonPage() {
             </div>
           ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {isTech && (
-              <div className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
-                  <Star size={11} className="text-brand-red" /> Reliability
-                </h3>
-                <div className="flex items-center gap-4">
-                  <div className="text-4xl font-black font-mono text-text-primary">{reliabilityScore}</div>
-                  <div>
-                    <Badge variant={getTierBadgeVariant(tier)} className="text-[9px] uppercase">{tier}</Badge>
-                    <p className="text-[9px] text-text-muted uppercase mt-1">{penaltyEvents.length} events logged</p>
-                  </div>
-                </div>
-                {reliabilityScore > 0 && (
-                  <div className="h-1.5 rounded-full bg-bg-primary overflow-hidden">
-                    <div className="h-full bg-brand-red rounded-full transition-all" style={{ width: `${Math.min(reliabilityScore, 100)}%` }} />
-                  </div>
-                )}
-              </div>
-            )}
             <div className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-2">
               <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
                 <Activity size={11} /> Recent Assignments
@@ -1369,18 +1346,7 @@ export default function DirectoryPersonPage() {
         {isTech && (
           <TabsContent value="reliability" className="m-0 pt-5">
             <div className="space-y-5">
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { label: 'Score', value: reliabilityScore, color: reliabilityScore >= 80 ? 'text-text-green' : reliabilityScore >= 60 ? 'text-text-amber' : 'text-text-red' },
-                  { label: 'Tier', value: tier, color: 'text-text-primary' },
-                  { label: 'Events', value: penaltyEvents.length, color: 'text-text-muted' },
-                ].map(s => (
-                  <div key={s.label} className="p-3 rounded-xl border border-border-sub bg-bg-secondary text-center">
-                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">{s.label}</p>
-                    <p className={cn('text-xl font-black font-mono mt-1', s.color)}>{s.value}</p>
-                  </div>
-                ))}
-              </div>
+              <p className="text-[10px] text-text-muted">The reliability score is turned off for now; events are still recorded here.</p>
               <div className="space-y-2">
                 <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
                   <BarChart2 size={11} /> Event History ({penaltyEvents.length})

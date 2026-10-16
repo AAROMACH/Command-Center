@@ -147,14 +147,6 @@ export default function TechDashboardPage() {
         unsubmittedLogs.reduce((sum, log) => sum + computeWeeklyLogSettlement(log, jobsById), 0),
     [unsubmittedLogs, jobsById]);
 
-    const reliabilityTier = useMemo(() => {
-        const score = tech?.reliabilityScore ?? 100;
-        if (score >= 90) return { label: 'Elite', variant: 'active' as const };
-        if (score >= 75) return { label: 'Reliable', variant: 'onhold' as const };
-        if (score >= 60) return { label: 'Standard', variant: 'scheduled' as const };
-        return { label: 'At Risk', variant: 'missed' as const };
-    }, [tech?.reliabilityScore]);
-
     const weeklyJobCount = useMemo(() => {
         const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
         return allWorkOrders.filter(wo => {
@@ -203,7 +195,7 @@ export default function TechDashboardPage() {
             </header>
 
             {/* Stat cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <Card className="bg-bg-secondary border-border-sub cursor-pointer hover:border-border-main transition-all" onClick={() => router.push('/tech/assignments')}>
                     <CardContent className="p-3 space-y-1">
                         <div className="flex items-center justify-between">
@@ -232,16 +224,6 @@ export default function TechDashboardPage() {
                         </div>
                         <p className="text-2xl font-mono font-bold text-text-primary">{unsubmittedLogs.length}</p>
                         <p className="text-[8px] text-text-muted uppercase tracking-widest">Draft weekly logs</p>
-                    </CardContent>
-                </Card>
-                <Card className="bg-bg-secondary border-border-sub cursor-pointer hover:border-border-main transition-all" onClick={() => router.push('/tech/assignments')}>
-                    <CardContent className="p-3 space-y-1">
-                        <div className="flex items-center justify-between">
-                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Reliability</p>
-                            <ShieldCheck size={12} className="text-brand-red" />
-                        </div>
-                        <p className="text-2xl font-mono font-bold text-text-primary">{tech.reliabilityScore ?? 100}</p>
-                        <p className="text-[8px] text-text-muted uppercase tracking-widest">/ 100 score</p>
                     </CardContent>
                 </Card>
             </div>

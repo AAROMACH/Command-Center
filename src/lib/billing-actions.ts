@@ -1,6 +1,6 @@
 'use client';
 
-import { doc, setDoc, updateDoc, writeBatch, type WriteBatch } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { createDocId } from './generateId';
 import { ID_PREFIXES } from './constants';
@@ -10,21 +10,15 @@ import {
 } from './billing';
 
 /**
- * Writes for service plans and subscriptions. Every subscription change also
- * mirrors `planId` / `subscriptionStatus` onto the client's user doc, which
- * older screens (directory, client portal guards) read. Once Stripe is
- * connected, its webhook calls the same mirror server-side.
+ * Writes for service plans and subscriptions. The `subscriptions` collection
+ * is the only record of who is on what plan — the old planId /
+ * subscriptionStatus fields on user docs were placeholders and are no longer
+ * read or written.
  */
 
 const now = () => new Date().toISOString();
 const today = () => now().slice(0, 10);
 const actor = () => ({ id: auth.currentUser?.uid || '', name: auth.currentUser?.displayName || 'Admin' });
-
-function mirrorToClient(batch: WriteBatch, clientId: string, live: { planId: string; status: Subscription['status'] } | null) {
-  batch.update(doc(db, 'users', clientId), live
-    ? { planId: live.planId, subscriptionStatus: live.status }
-    : { planId: null, subscriptionStatus: 'none' });
-}
 
 async function audit(sub: Pick<Subscription, 'id' | 'clientId'>, action: string, detail: string) {
   const a = actor();
@@ -78,7 +72,6 @@ export async function createSubscription(input: NewSubscription): Promise<string
   };
   const batch = writeBatch(db);
   batch.set(doc(db, 'subscriptions', id), sub);
-  mirrorToClient(batch, input.clientId, { planId: input.planId, status: 'active' });
   await batch.commit();
   await audit(sub, 'subscription_created', `Started ${input.interval} subscription to plan ${input.planId} for ${input.clientName}`);
   return id;
@@ -88,10 +81,6 @@ export async function updateSubscription(sub: Subscription, patch: Partial<Pick<
   'planId' | 'interval' | 'priceOverride' | 'nextBillingDate' | 'notes' | 'status'>>) {
   const batch = writeBatch(db);
   batch.update(doc(db, 'subscriptions', sub.id), { ...patch, updatedAt: now() });
-  const next = { ...sub, ...patch };
-  if (next.status !== 'pending' && next.status !== 'canceled') {
-    mirrorToClient(batch, sub.clientId, { planId: next.planId, status: next.status });
-  }
   await batch.commit();
   await audit(sub, 'subscription_updated', `Updated: ${Object.keys(patch).join(', ')}`);
 }
@@ -103,7 +92,6 @@ export async function cancelSubscription(sub: Subscription, atPeriodEnd: boolean
     batch.update(doc(db, 'subscriptions', sub.id), { cancelAtPeriodEnd: true, updatedAt: now() });
   } else {
     batch.update(doc(db, 'subscriptions', sub.id), { status: 'canceled', canceledAt: now(), cancelAtPeriodEnd: false, updatedAt: now() });
-    mirrorToClient(batch, sub.clientId, null);
   }
   await batch.commit();
   await audit(sub, 'subscription_canceled', atPeriodEnd ? `Cancels on ${sub.nextBillingDate || 'period end'}` : 'Canceled immediately');
@@ -117,7 +105,6 @@ export async function markPeriodBilled(sub: Subscription) {
   batch.update(doc(db, 'subscriptions', sub.id), ending
     ? { status: 'canceled', canceledAt: now(), nextBillingDate: null, updatedAt: now() }
     : { nextBillingDate: addInterval(from, sub.interval), updatedAt: now() });
-  if (ending) mirrorToClient(batch, sub.clientId, null);
   await batch.commit();
   await audit(sub, 'subscription_billed', ending ? `Final period billed (${from}); subscription ended` : `Billed period starting ${from}`);
 }
@@ -153,6 +140,7 @@ export async function approveRequest(req: Subscription, terms: { startDate: stri
   const batch = writeBatch(db);
   batch.update(doc(db, 'subscriptions', req.id), {
     status: 'active',
+    planId: req.planId,
     interval: terms.interval,
     priceOverride: terms.priceOverride,
     startDate: terms.startDate,
@@ -164,7 +152,6 @@ export async function approveRequest(req: Subscription, terms: { startDate: stri
       status: 'canceled', canceledAt: now(), cancelAtPeriodEnd: false, updatedAt: now(),
     });
   }
-  mirrorToClient(batch, req.clientId, { planId: req.planId, status: 'active' });
   await batch.commit();
   await audit(req, 'subscription_approved', `Approved ${req.clientName}'s request for plan ${req.planId}`);
 }

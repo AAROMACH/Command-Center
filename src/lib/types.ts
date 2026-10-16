@@ -208,9 +208,15 @@ export type Technician = {
   availability: Record<string, { start: string; end: string } | null>;
   clientCompany?: string; 
   businessType?: string;
+  /** @deprecated Placeholder fields from the old Plans page — never real
+   *  data, no longer read or written. Plans live in `subscriptions`
+   *  (lib/billing.ts). */
   planId?: string;
-  subscriptionStatus?: 'active' | 'pending' | 'none';
+  /** @deprecated See planId. */
+  subscriptionStatus?: string;
+  /** @deprecated See planId. */
   subscriptionStartDate?: string;
+  /** @deprecated See planId. */
   subscriptionExpiryDate?: string;
   managedSites?: { id: string; name: string; location: string }[];
   workPreferences: {

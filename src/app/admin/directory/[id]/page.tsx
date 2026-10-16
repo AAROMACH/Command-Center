@@ -1,5 +1,7 @@
 'use client';
 
+import { useClientSubscriptions, useServicePlans } from '@/hooks/use-billing';
+import { formatMoney, INTERVAL_LABELS, isLiveSubscription, subscriptionAmount, SUBSCRIPTION_STATUS_LABELS } from '@/lib/billing';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
@@ -254,6 +256,10 @@ export default function DirectoryPersonPage() {
   const userPortals = useMemo(() => PORTAL_ORDER.filter(p => activePortals[p]), [activePortals]);
   const [pickedPortal, setSelectedPortal] = useState<PortalKey | null>(null);
   const selectedPortal: PortalKey | null = pickedPortal && userPortals.includes(pickedPortal) ? pickedPortal : (userPortals[0] ?? null);
+  const { subscriptions: clientSubs } = useClientSubscriptions(person && isClientRole(person) ? person.id : null);
+  const { plans: allPlans } = useServicePlans();
+  const clientSub = clientSubs.find(isLiveSubscription) || clientSubs.find(s => s.status === 'pending') || null;
+  const clientPlan = allPlans.find(p => p.id === clientSub?.planId);
   const vendorStatus = useMemo(() => (person ? vendorReadiness(person, documents) : null), [person, documents]);
   const customerStatus = useMemo(() => (person ? customerReadiness(person) : null), [person]);
   const adminName = () => auth.currentUser?.displayName || 'Admin';
@@ -512,7 +518,7 @@ export default function DirectoryPersonPage() {
         </div>
         <div className="md:w-48 shrink-0 grid grid-cols-2 md:grid-cols-1 gap-3">
           {isClient ? [
-            { label: 'Subscription', value: person.subscriptionStatus || 'None', color: person.subscriptionStatus === 'active' ? 'text-text-green' : 'text-text-muted' },
+            { label: 'Service Plan', value: clientPlan?.name || (clientSub ? 'Plan' : 'None'), color: clientSub?.status === 'active' ? 'text-text-green' : 'text-text-muted' },
             { label: 'Account', value: (person.accountStatus || 'Unknown').replace(/_/g, ' '), color: 'text-text-primary' },
           ].map(stat => (
             <div key={stat.label} className="p-2.5 rounded-lg bg-bg-primary border border-border-sub">
@@ -581,26 +587,40 @@ export default function DirectoryPersonPage() {
                 <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
                   <BarChart2 size={11} /> Subscription
                 </h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] text-text-muted uppercase font-bold">Status</span>
-                    <Badge variant={person.subscriptionStatus === 'active' ? 'active' : 'outline'} className="text-[9px] uppercase">
-                      {person.subscriptionStatus || 'None'}
-                    </Badge>
+                {/* From the client's subscription record (Service Plans). */}
+                {clientSub ? (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-text-muted uppercase font-bold">Plan</span>
+                      <span className="text-[11px] font-bold text-text-primary">{clientPlan?.name || clientSub.planId}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-text-muted uppercase font-bold">Status</span>
+                      <Badge variant={clientSub.status === 'active' ? 'active' : 'outline'} className="text-[9px] uppercase">
+                        {SUBSCRIPTION_STATUS_LABELS[clientSub.status]}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-text-muted uppercase font-bold">Billing</span>
+                      <span className="text-[10px] text-text-primary font-mono">{formatMoney(subscriptionAmount(clientSub, clientPlan))} · {INTERVAL_LABELS[clientSub.interval]}</span>
+                    </div>
+                    {clientSub.startDate && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] text-text-muted uppercase font-bold">Since</span>
+                        <span className="text-[10px] text-text-primary font-mono">{formatDate(clientSub.startDate)}</span>
+                      </div>
+                    )}
+                    {clientSub.nextBillingDate && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] text-text-muted uppercase font-bold">Next Bill</span>
+                        <span className="text-[10px] text-text-primary font-mono">{formatDate(clientSub.nextBillingDate)}</span>
+                      </div>
+                    )}
                   </div>
-                  {person.subscriptionStartDate && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] text-text-muted uppercase font-bold">Start Date</span>
-                      <span className="text-[10px] text-text-primary font-mono">{formatDate(person.subscriptionStartDate)}</span>
-                    </div>
-                  )}
-                  {person.subscriptionExpiryDate && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] text-text-muted uppercase font-bold">Expiry</span>
-                      <span className="text-[10px] text-text-primary font-mono">{formatDate(person.subscriptionExpiryDate)}</span>
-                    </div>
-                  )}
-                </div>
+                ) : (
+                  <p className="text-[11px] text-text-muted">Not on a service plan.</p>
+                )}
+                <a href="/admin/plans" className="text-[10px] font-bold uppercase text-brand-red hover:underline">Manage on Service Plans →</a>
               </div>
               {(person as any).managedSites && (person as any).managedSites.length > 0 && (
                 <div className="lg:col-span-2 p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">

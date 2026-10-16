@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { resolveNotificationPrefs, withNotificationPref } from '@/lib/notification-prefs';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -28,19 +30,22 @@ export default function ClientSettingsPage() {
 
     useEffect(() => {
         setMounted(true);
-        const userId = sessionStorage.getItem('currentUserId');
-        if (userId) {
-            const unsub = onSnapshot(doc(db, 'users', userId), (snap) => {
+        // Firebase Auth, not sessionStorage (per-tab — a new tab got a dead page).
+        let unsubUser: (() => void) | undefined;
+        const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
+            unsubUser?.();
+            unsubUser = undefined;
+            if (!fbUser) { setCurrentUser(null); return; }
+            unsubUser = onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
                 if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id } as Technician);
             });
-            return () => unsub();
-        }
+        });
+        return () => { unsubAuth(); unsubUser?.(); };
     }, []);
 
     const handleTogglePreference = async (type: keyof NotificationPreferences) => {
         if (!currentUser) return;
-        const currentPrefs = currentUser.notificationPreferences || { email: true, sms: true, push: true };
-        const updatedPrefs = { ...currentPrefs, [type]: !currentPrefs[type] };
+        const updatedPrefs = withNotificationPref(currentUser.notificationPreferences, type, !resolveNotificationPrefs(currentUser.notificationPreferences)[type]);
 
         try {
             await updateDoc(doc(db, 'users', currentUser.id), {
@@ -94,7 +99,7 @@ export default function ClientSettingsPage() {
                                         <p className="text-[10px] text-text-muted uppercase font-medium">{item.desc}</p>
                                     </div>
                                     <Switch 
-                                        checked={!!currentUser?.notificationPreferences?.[item.id as keyof NotificationPreferences]} 
+                                        checked={resolveNotificationPrefs(currentUser?.notificationPreferences)[item.id as keyof NotificationPreferences]} 
                                         onCheckedChange={() => handleTogglePreference(item.id as keyof NotificationPreferences)}
                                     />
                                 </div>

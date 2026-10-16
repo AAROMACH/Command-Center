@@ -25,7 +25,7 @@ import { EditProfileDialog } from '../components/edit-profile-dialog';
 import { uploadFile } from '@/lib/upload';
 import { cn } from '@/lib/utils';
 import { getReliabilityTier, getTierBadgeVariant } from '@/lib/reliability';
-import { hasPermission, ALL_PERMISSIONS, PERMISSION_TREE, getPortalAccess, getSubroles, SUBROLE_DEFINITIONS, isTech as isTechRole, isClient as isClientRole, type Permission } from '@/lib/permissions';
+import { hasPermission, PERMISSION_TREE, getPortalAccess, getSubroles, SUBROLE_DEFINITIONS, isTech as isTechRole, isClient as isClientRole, type Permission } from '@/lib/permissions';
 import { auditEvent, auditFieldChange } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -51,6 +51,23 @@ const DOC_TYPE_COLORS: Record<string, string> = {
   id: 'bg-pink-400/10 text-pink-400 border-pink-400/20',
   training: 'bg-sky-400/10 text-sky-400 border-sky-400/20',
   other: 'bg-bg-tertiary text-text-muted border-border-sub',
+};
+
+type PortalKey = 'admin' | 'sales' | 'tech' | 'client';
+const PORTAL_ORDER: PortalKey[] = ['admin', 'sales', 'tech', 'client'];
+const PORTAL_META: Record<PortalKey, { label: string; dot: string }> = {
+  admin: { label: 'Admin Portal', dot: 'bg-brand-red' },
+  sales: { label: 'Sales Portal', dot: 'bg-amber-400' },
+  tech: { label: 'Technician Portal', dot: 'bg-blue-400' },
+  client: { label: 'Client Portal', dot: 'bg-text-green' },
+};
+// The Sales Portal has no permission group of its own — its subrole is built
+// from the admin.crm.* actions (see SUBROLE_DEFINITIONS.sales).
+const PORTAL_PERMISSION_SECTIONS: Record<PortalKey, Record<string, Permission[]>> = {
+  admin: PERMISSION_TREE.admin as Record<string, Permission[]>,
+  sales: { crm: PERMISSION_TREE.admin.crm as Permission[] },
+  tech: PERMISSION_TREE.tech as Record<string, Permission[]>,
+  client: PERMISSION_TREE.client as Record<string, Permission[]>,
 };
 
 // Documents uploaded by the old directory pop-up before documents moved to
@@ -233,6 +250,9 @@ export default function DirectoryPersonPage() {
   const certDocuments = useMemo(() => documents.filter(d => d.type === 'certification'), [documents]);
   const roles: string[] = useMemo(() => getSubroles(person), [person]);
   const activePortals = useMemo(() => getPortalAccess(person), [person]);
+  const userPortals = useMemo(() => PORTAL_ORDER.filter(p => activePortals[p]), [activePortals]);
+  const [pickedPortal, setSelectedPortal] = useState<PortalKey | null>(null);
+  const selectedPortal: PortalKey | null = pickedPortal && userPortals.includes(pickedPortal) ? pickedPortal : (userPortals[0] ?? null);
   const vendorStatus = useMemo(() => (person ? vendorReadiness(person, documents) : null), [person, documents]);
   const customerStatus = useMemo(() => (person ? customerReadiness(person) : null), [person]);
   const adminName = () => auth.currentUser?.displayName || 'Admin';
@@ -297,18 +317,24 @@ export default function DirectoryPersonPage() {
     }
   };
 
-  const handleTogglePerm = (perm: Permission, value: boolean | null) => {
+  // A user's permission = their override if one is set, else their subroles'
+  // preset. Overrides are only kept where they differ from the preset, so
+  // "on" for something the role already grants stores nothing.
+  const roleDefaultPerm = (perm: Permission) => hasPermission({ ...person, permissionOverrides: undefined }, perm);
+  const effectivePerm = (perm: Permission) => permOverrides[perm] ?? roleDefaultPerm(perm);
+
+  const setAllPerms = (perms: Permission[], value: boolean) => {
     setPermOverrides(prev => {
       const next = { ...prev };
-      if (value === null) { delete next[perm]; } else { next[perm] = value; }
+      perms.forEach(p => { if (roleDefaultPerm(p) === value) delete next[p]; else next[p] = value; });
       return next;
     });
     setPermsDirty(true);
   };
+  const setPerm = (perm: Permission, value: boolean) => setAllPerms([perm], value);
 
   // Subroles (and so portal access) are edited in Edit Profile only. This tab
-  // saves individual overrides — it used to also write `roles`, where ticking
-  // "Admin Portal" silently made the person a super admin.
+  // saves individual overrides.
   const handleSavePerms = async () => {
     if (!id || !person) return;
     setSavingPerms(true);
@@ -330,36 +356,7 @@ export default function DirectoryPersonPage() {
     await updateDoc(doc(db, 'users', id), { messagingAllowedRoles: value });
   };
 
-  const handleSelectAllForPortal = (portal: 'admin' | 'tech' | 'client') => {
-    const portalPerms = Object.values(PERMISSION_TREE[portal]).flat() as Permission[];
-    setPermOverrides(prev => {
-      const next = { ...prev };
-      portalPerms.forEach(p => { next[p] = true; });
-      return next;
-    });
-    setPermsDirty(true);
-  };
-
-  const handleClearAllForPortal = (portal: 'admin' | 'tech' | 'client') => {
-    const portalPerms = Object.values(PERMISSION_TREE[portal]).flat() as Permission[];
-    setPermOverrides(prev => {
-      const next = { ...prev };
-      portalPerms.forEach(p => { delete next[p]; });
-      return next;
-    });
-    setPermsDirty(true);
-  };
-
-  const handleSelectAllForPage = (perms: Permission[]) => {
-    setPermOverrides(prev => {
-      const next = { ...prev };
-      perms.forEach(p => { next[p] = true; });
-      return next;
-    });
-    setPermsDirty(true);
-  };
-
-  const handleClearAllForPage = (perms: Permission[]) => {
+  const resetPerms = (perms: Permission[]) => {
     setPermOverrides(prev => {
       const next = { ...prev };
       perms.forEach(p => { delete next[p]; });
@@ -431,7 +428,6 @@ export default function DirectoryPersonPage() {
   const staffTabs = [
     { value: 'overview', label: 'Overview' },
     { value: 'contact', label: 'Contact' },
-    { value: 'role', label: 'Role & Duties' },
     { value: 'permissions', label: 'Permissions' },
     { value: 'documents', label: 'Documents', badge: documents.length || undefined },
     { value: 'notes', label: 'Notes', badge: techNotes.length || undefined },
@@ -442,6 +438,7 @@ export default function DirectoryPersonPage() {
     { value: 'contact', label: 'Contact' },
     { value: 'business', label: 'Billing & Accounting' },
     { value: 'documents', label: 'Documents', badge: documents.length || undefined },
+    { value: 'permissions', label: 'Permissions' },
     { value: 'notes', label: 'Notes', badge: techNotes.length || undefined },
   ];
 
@@ -998,44 +995,6 @@ export default function DirectoryPersonPage() {
           </TabsContent>
         )}
 
-        {/* ── ROLE & DUTIES (staff) ── */}
-        {!isTech && (
-          <TabsContent value="role" className="m-0 pt-5">
-            <div className="space-y-5">
-              <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 mb-3 flex items-center gap-2">
-                  <UserCheck size={11} /> Assigned Roles
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {roles.map(r => (
-                    <div key={r} className="px-3 py-2 rounded-lg border border-border-sub bg-bg-primary">
-                      <p className="text-[10px] font-bold text-text-primary uppercase">{SUBROLE_DEFINITIONS[r as keyof typeof SUBROLE_DEFINITIONS]?.label || r.replace(/_/g, ' ')}</p>
-                    </div>
-                  ))}
-                  {roles.length === 0 && <p className="text-[10px] text-text-muted">No subroles — set them in Edit Profile.</p>}
-                </div>
-              </div>
-              <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 mb-3 flex items-center gap-2">
-                  <Shield size={11} /> Permission Summary
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {ALL_PERMISSIONS.map(perm => {
-                    const granted = hasPermission(person, perm);
-                    return granted ? (
-                      <div key={perm} className="flex items-center gap-1.5 p-1.5 rounded bg-text-green/5 border border-text-green/20">
-                        <CheckSquare size={10} className="text-text-green shrink-0" />
-                        <p className="text-[8px] font-bold text-text-primary truncate">{permissionLabel(perm)}</p>
-                      </div>
-                    ) : null;
-                  }).filter(Boolean)}
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-        )}
-
-
         {/* ── DOCUMENTS ── */}
         <TabsContent value="documents" className="m-0 pt-5">
           <div className="flex items-center justify-between mb-4">
@@ -1129,132 +1088,118 @@ export default function DirectoryPersonPage() {
         <TabsContent value="permissions" className="m-0 pt-5">
           <div className="space-y-6">
             <div className="space-y-3">
-              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
-                <Shield size={11} /> Portal Access
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {([
-                  { key: 'admin', label: 'Admin Portal' },
-                  { key: 'sales', label: 'Sales Portal' },
-                  { key: 'tech', label: 'Technician Portal' },
-                  { key: 'client', label: 'Client Portal' },
-                ] as const).map(portal => {
-                  const active = activePortals[portal.key];
-                  return (
-                    <div key={portal.key} className={cn('p-3 rounded-lg border', active ? 'bg-brand-red/10 border-brand-red/30 text-text-primary' : 'border-border-sub bg-bg-secondary text-text-muted')}>
-                      <div className="flex items-center justify-between">
-                        <p className="text-[10px] font-black uppercase tracking-wider">{portal.label}</p>
-                        {active ? <CheckSquare size={13} className="text-brand-red" /> : <Square size={13} className="text-text-muted" />}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <p className="text-[9px] text-text-muted">
-                Portal access comes from subroles.{' '}
-                <button onClick={() => setIsEditOpen(true)} className="text-brand-red font-bold hover:underline">Change subroles in Edit Profile →</button>
-              </p>
-            </div>
-            <div className="space-y-3">
               <div className="flex items-center justify-between border-b border-border-sub pb-2">
                 <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
-                  <CheckSquare size={11} /> Permission Overrides
+                  <Shield size={11} /> Portal Access &amp; Permissions
                 </h3>
                 <Button size="sm" onClick={handleSavePerms} disabled={!permsDirty || savingPerms} className="h-7 text-[9px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white disabled:opacity-40">
-                  {savingPerms ? 'Saving...' : 'Save Access & Permissions'}
+                  {savingPerms ? 'Saving...' : 'Save Permissions'}
                 </Button>
               </div>
-              <p className="text-[9px] text-text-muted uppercase tracking-wider">Overrides take precedence over role defaults. Sections reflect active portal access.</p>
-              {!activePortals.admin && !activePortals.tech && !activePortals.client && !activePortals.sales ? (
+              {userPortals.length === 0 ? (
                 <div className="py-12 text-center">
                   <Shield size={24} className="mx-auto text-text-muted mb-3 opacity-30" />
-                  <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">No Active Portal Access</p>
-                  <p className="text-[9px] text-text-muted mt-1">Assign a subrole in Edit Profile to manage permissions</p>
+                  <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">No Portal Access</p>
+                  <p className="text-[9px] text-text-muted mt-1">
+                    <button onClick={() => setIsEditOpen(true)} className="text-brand-red font-bold hover:underline">Assign a subrole in Edit Profile</button> to give this user a portal.
+                  </p>
                 </div>
               ) : (
-                <div className="space-y-6 pt-1">
-                  {(['admin', 'tech', 'client'] as const).map(portal => {
-                    if (!activePortals[portal]) return null;
-                    const portalLabel = portal === 'admin' ? 'Admin Portal' : portal === 'tech' ? 'Technician Portal' : 'Client Portal';
-                    const dotColor = portal === 'admin' ? 'bg-brand-red' : portal === 'tech' ? 'bg-blue-400' : 'bg-text-green';
+                <>
+                  <p className="text-[9px] text-text-muted">
+                    Select a portal to see and change this user&apos;s permissions in it. Portals come from subroles —{' '}
+                    <button onClick={() => setIsEditOpen(true)} className="text-brand-red font-bold hover:underline">change subroles in Edit Profile</button>.
+                  </p>
+                  <div className={cn('grid gap-3', userPortals.length > 2 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2')}>
+                    {userPortals.map(portal => {
+                      const perms = Object.values(PORTAL_PERMISSION_SECTIONS[portal]).flat();
+                      const on = perms.filter(effectivePerm).length;
+                      const overrides = perms.filter(p => permOverrides[p] !== undefined).length;
+                      const selected = portal === selectedPortal;
+                      return (
+                        <button
+                          key={portal}
+                          type="button"
+                          onClick={() => setSelectedPortal(portal)}
+                          aria-pressed={selected}
+                          className={cn('p-3 rounded-lg border text-left transition-all',
+                            selected ? 'bg-brand-red/10 border-brand-red text-text-primary' : 'border-border-sub bg-bg-secondary text-text-secondary hover:border-border-main')}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                              <span className={cn('inline-block w-2 h-2 rounded-full', PORTAL_META[portal].dot)} />
+                              {PORTAL_META[portal].label}
+                            </p>
+                            {selected ? <ChevronDown size={12} className="text-brand-red" /> : <ChevronRight size={12} className="text-text-muted" />}
+                          </div>
+                          <p className="text-[9px] text-text-muted mt-1.5 truncate">
+                            {roles.filter(r => SUBROLE_DEFINITIONS[r as keyof typeof SUBROLE_DEFINITIONS]?.portal === portal)
+                              .map(r => SUBROLE_DEFINITIONS[r as keyof typeof SUBROLE_DEFINITIONS].label).join(', ') || 'Legacy access'}
+                          </p>
+                          <p className="text-[9px] font-mono mt-1 text-text-secondary">
+                            {on}/{perms.length} on{overrides > 0 && <span className="text-amber-400"> · {overrides} override{overrides !== 1 ? 's' : ''}</span>}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {selectedPortal && (() => {
+                    const sections = PORTAL_PERMISSION_SECTIONS[selectedPortal];
+                    const allPerms = Object.values(sections).flat();
+                    const allOn = allPerms.every(effectivePerm);
                     return (
-                      <div key={portal} className="space-y-3">
+                      <div className="space-y-3 pt-2">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em] flex items-center gap-1.5">
-                            <span className={cn('inline-block w-2 h-2 rounded-full', dotColor)} />
-                            {portalLabel}
+                          <h4 className="text-[10px] font-black text-text-primary uppercase tracking-[0.15em] flex items-center gap-1.5">
+                            <span className={cn('inline-block w-2 h-2 rounded-full', PORTAL_META[selectedPortal].dot)} />
+                            {PORTAL_META[selectedPortal].label} Permissions
                           </h4>
-                          {(() => {
-                            const allPortalPerms = Object.values(PERMISSION_TREE[portal]).flat() as Permission[];
-                            const allPortalSelected = allPortalPerms.every(p => {
-                              const ov = permOverrides[p]; return ov !== undefined ? ov : hasPermission(person, p);
-                            });
-                            const somePortalSelected = allPortalPerms.some(p => {
-                              const ov = permOverrides[p]; return ov !== undefined ? ov : hasPermission(person, p);
-                            });
-                            return (
-                              <button
-                                onClick={() => allPortalSelected ? handleClearAllForPortal(portal) : handleSelectAllForPortal(portal)}
-                                className="h-4 w-4 rounded border border-border-main flex items-center justify-center transition-colors hover:border-text-primary"
-                                title={allPortalSelected ? 'Clear all' : 'Select all'}
-                              >
-                                {allPortalSelected
-                                  ? <CheckSquare size={10} className="text-text-green" />
-                                  : somePortalSelected
-                                    ? <Minus size={10} className="text-text-muted" />
-                                    : null}
-                              </button>
-                            );
-                          })()}
+                          <div className="flex items-center gap-3">
+                            <button onClick={() => setAllPerms(allPerms, !allOn)} className="text-[9px] font-bold uppercase text-text-muted hover:text-text-primary">
+                              {allOn ? 'Turn all off' : 'Turn all on'}
+                            </button>
+                            <button onClick={() => resetPerms(allPerms)} className="text-[9px] font-bold uppercase text-text-muted hover:text-text-primary">
+                              Reset to role defaults
+                            </button>
+                          </div>
                         </div>
-                        {Object.entries(PERMISSION_TREE[portal]).map(([page, perms]) => {
-                          const sectionKey = `${portal}:${page}`;
+                        {selectedPortal === 'sales' && (
+                          <p className="text-[9px] text-text-muted">Sales Portal access is controlled by the CRM permissions below.</p>
+                        )}
+                        {Object.entries(sections).map(([page, perms]) => {
+                          const sectionKey = `${selectedPortal}:${page}`;
                           const isCollapsed = collapsedSections.has(sectionKey);
+                          const allSel = perms.every(effectivePerm);
+                          const someSel = perms.some(effectivePerm);
                           return (
                             <div key={page} className="pl-3 border-l-2 border-border-sub space-y-1.5">
-                              <div
-                                className="flex items-center justify-between cursor-pointer"
-                                onClick={() => setCollapsedSections(prev => {
-                                  const next = new Set(prev);
-                                  if (next.has(sectionKey)) next.delete(sectionKey); else next.add(sectionKey);
-                                  return next;
-                                })}
-                              >
-                                <div className="flex items-center gap-1.5">
+                              <div className="flex items-center justify-between">
+                                <button
+                                  type="button"
+                                  className="flex items-center gap-1.5"
+                                  onClick={() => setCollapsedSections(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(sectionKey)) next.delete(sectionKey); else next.add(sectionKey);
+                                    return next;
+                                  })}
+                                >
                                   {isCollapsed ? <ChevronRight size={10} className="text-text-muted" /> : <ChevronDown size={10} className="text-text-muted" />}
-                                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">{page.replace(/_/g, ' ')}</p>
-                                </div>
-                                <div onClick={e => e.stopPropagation()}>
-                                  {(() => {
-                                    const sectionPerms = perms as Permission[];
-                                    const allSel = sectionPerms.every(p => {
-                                      const ov = permOverrides[p]; return ov !== undefined ? ov : hasPermission(person, p);
-                                    });
-                                    const someSel = sectionPerms.some(p => {
-                                      const ov = permOverrides[p]; return ov !== undefined ? ov : hasPermission(person, p);
-                                    });
-                                    return (
-                                      <button
-                                        onClick={() => allSel ? handleClearAllForPage(sectionPerms) : handleSelectAllForPage(sectionPerms)}
-                                        className="h-4 w-4 rounded border border-border-main flex items-center justify-center transition-colors hover:border-text-primary"
-                                        title={allSel ? 'Clear section' : 'Select all in section'}
-                                      >
-                                        {allSel
-                                          ? <CheckSquare size={10} className="text-text-green" />
-                                          : someSel
-                                            ? <Minus size={10} className="text-text-muted" />
-                                            : null}
-                                      </button>
-                                    );
-                                  })()}
-                                </div>
+                                  <span className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">{page.replace(/_/g, ' ')}</span>
+                                </button>
+                                <button
+                                  onClick={() => setAllPerms(perms, !allSel)}
+                                  className="h-4 w-4 rounded border border-border-main flex items-center justify-center transition-colors hover:border-text-primary"
+                                  title={allSel ? 'Turn section off' : 'Turn section on'}
+                                >
+                                  {allSel ? <CheckSquare size={10} className="text-text-green" /> : someSel ? <Minus size={10} className="text-text-muted" /> : null}
+                                </button>
                               </div>
                               {!isCollapsed && (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
-                                  {(perms as Permission[]).map(perm => {
-                                    const roleDefault = hasPermission({ ...person, permissionOverrides: undefined }, perm);
+                                  {perms.map(perm => {
                                     const override = permOverrides[perm];
-                                    const effective = override !== undefined ? override : roleDefault;
+                                    const effective = effectivePerm(perm);
                                     return (
                                       <div key={perm} className={cn('flex items-center justify-between p-2 rounded-lg border transition-all', effective ? 'bg-text-green/5 border-text-green/20' : 'bg-bg-secondary border-border-sub')}>
                                         <div className="min-w-0">
@@ -1263,13 +1208,14 @@ export default function DirectoryPersonPage() {
                                         </div>
                                         <div className="flex items-center gap-1 shrink-0 ml-2">
                                           <button
-                                            onClick={() => handleTogglePerm(perm, effective ? false : true)}
+                                            onClick={() => setPerm(perm, !effective)}
+                                            aria-label={`${effective ? 'Turn off' : 'Turn on'} ${permissionLabel(perm)}`}
                                             className={cn('h-5 w-5 rounded flex items-center justify-center transition-colors border', effective ? 'bg-text-green/20 border-text-green/30 text-text-green' : 'bg-bg-primary border-border-sub text-text-muted hover:border-border-main')}
                                           >
                                             {effective ? <CheckSquare size={11} /> : <Square size={11} />}
                                           </button>
                                           {override !== undefined && (
-                                            <button onClick={() => handleTogglePerm(perm, null)} className="text-[8px] text-text-muted hover:text-text-primary uppercase font-bold px-1" title="Reset to role default">✕</button>
+                                            <button onClick={() => resetPerms([perm])} className="text-[8px] text-text-muted hover:text-text-primary uppercase font-bold px-1" title="Reset to role default">✕</button>
                                           )}
                                         </div>
                                       </div>
@@ -1282,8 +1228,8 @@ export default function DirectoryPersonPage() {
                         })}
                       </div>
                     );
-                  })}
-                </div>
+                  })()}
+                </>
               )}
             </div>
             {/* ── MESSAGE RESTRICTIONS ── */}

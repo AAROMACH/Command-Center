@@ -85,6 +85,8 @@ type FormState = {
   email: string;
   phone: string;
   address: string;
+  /** City/region the tech is dispatched from — the tech sets this on their own profile too. */
+  workingLocation: string;
   approvalStatus: 'pending' | 'approved' | 'denied';
   accountStatus: string;
   roles: AppRole[];
@@ -125,7 +127,8 @@ function personToForm(p: Technician): FormState {
     department: p.department || '',
     email: p.email || '',
     phone: p.phone || '',
-    address: p.address || p.currentLocation || '',
+    address: p.address || '',
+    workingLocation: p.currentLocation || '',
     approvalStatus: p.approvalStatus || 'approved',
     accountStatus: p.accountStatus || 'active',
     // Only valid AppRole values may enter the form (and later be saved).
@@ -273,7 +276,6 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
         email: form.email.trim(),
         phone: form.phone.trim(),
         address: form.address.trim(),
-        currentLocation: form.address.trim(),
         approvalStatus: form.approvalStatus,
         accountStatus: form.accountStatus,
         roles: form.roles,
@@ -283,6 +285,8 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
 
       if (kinds.personnel) {
         Object.assign(updates, {
+          // Separate from the mailing address (it used to be overwritten with it).
+          currentLocation: form.workingLocation.trim(),
           serviceArea: form.serviceArea.trim(),
           skills: form.skills,
           certifications: form.certifications,
@@ -424,8 +428,17 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                       </div>
                     </div>
                   </div>
+                  {kinds.personnel && (
+                    <div className="space-y-1">
+                      <Label className={labelCls}>Working Location</Label>
+                      <div className="relative">
+                        <Globe size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <AddressAutocompleteInput className={cn(inputCls, 'pl-7')} value={form.workingLocation} onChange={v => set('workingLocation', v)} types={['(cities)']} placeholder="City / region they're dispatched from" />
+                      </div>
+                    </div>
+                  )}
                   <div className="space-y-1">
-                    <Label className={labelCls}>Address</Label>
+                    <Label className={labelCls}>Mailing Address</Label>
                     <div className="relative">
                       <MapPin size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
                       <AddressAutocompleteInput className={cn(inputCls, 'pl-7')} value={form.address} onChange={v => set('address', v)} placeholder="Street address, City, State ZIP" />

@@ -98,11 +98,13 @@ export default function LoginPage() {
           createdVia: "google_sso",
         });
       } else {
-        // Sync Google profile fields if they changed
+        // Fill in Google profile fields only when the account has none. This
+        // used to overwrite them on every sign-in, undoing any name or photo
+        // the user or an admin had set in the app.
         const existing = snap.data();
         const updates: Record<string, string> = {};
-        if (firebaseUser.photoURL && existing.avatarUrl !== firebaseUser.photoURL) updates.avatarUrl = firebaseUser.photoURL;
-        if (firebaseUser.displayName && existing.name !== firebaseUser.displayName) updates.name = firebaseUser.displayName;
+        if (firebaseUser.photoURL && !existing.avatarUrl) updates.avatarUrl = firebaseUser.photoURL;
+        if (firebaseUser.displayName && !existing.name) updates.name = firebaseUser.displayName;
         if (Object.keys(updates).length > 0) {
           await setDoc(doc(db, "users", firebaseUser.uid), updates, { merge: true });
         }

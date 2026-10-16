@@ -1,4 +1,5 @@
 import type { Firestore } from 'firebase-admin/firestore';
+import { resolveNotificationPrefs } from '@/lib/notification-prefs';
 
 /**
  * Server-side delivery shared by /api/notify, the CRM digest and the
@@ -70,7 +71,7 @@ export async function deliverNotification(
   let sent = 0;
 
   await Promise.all(recipients.filter(r => r.data.accountStatus !== 'inactive').map(async ({ id, data }) => {
-    const prefs = data.notificationPreferences || { email: true, sms: true, push: true };
+    const prefs = resolveNotificationPrefs(data.notificationPreferences);
     const channels: ('email' | 'sms' | 'push')[] = [];
     if (prefs.email && data.email) channels.push('email');
     if (prefs.sms && data.phone) channels.push('sms');

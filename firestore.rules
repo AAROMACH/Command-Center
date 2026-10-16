@@ -155,7 +155,15 @@ service cloud.firestore {
                             'messagingAllowedRoles', 'messagingBlockedClientIds',
                             'payRate', 'payType', 'currentWorkload',
                             // Tax / QuickBooks profile — admin-only (see UserAccounting).
-                            'accounting']));
+                            'accounting',
+                            // Contact email is admin-set; changing it here never
+                            // changed the sign-in email, so self-edits only confused records.
+                            'email'])
+              // Payment terms set the invoice due date — clients may edit their
+              // billing contact, but not their own terms.
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['billingDetails'])
+                  || request.resource.data.get('billingDetails', {}).get('terms', null)
+                     == resource.data.get('billingDetails', {}).get('terms', null)));
       allow delete: if isSuperAdmin();
 
       // Client-workspace subcollections (notes, documents, contacts, access
@@ -176,7 +184,13 @@ service cloud.firestore {
       // their own. Written by the directory detail page.
       match /documents/{docId} {
         allow read: if isSignedIn() && (isAdmin() || request.auth.uid == userId);
-        allow write: if isAdmin();
+        // The owner may submit a document for review (tech profile → Upload);
+        // only admins approve, edit or delete.
+        allow create: if isAdmin()
+            || (isSignedIn() && request.auth.uid == userId
+                && request.resource.data.approvalStatus == 'pending'
+                && !request.resource.data.keys().hasAny(['approvedBy', 'reviewedAt']));
+        allow update, delete: if isAdmin();
       }
       // Admin-only personnel notes.
       match /techNotes/{noteId} {

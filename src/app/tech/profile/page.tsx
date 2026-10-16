@@ -30,6 +30,18 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSearchParams } from 'next/navigation';
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import { auditFieldChange } from '@/lib/audit';
+import { getSubroles, isTech as isTechRole, SUBROLE_DEFINITIONS } from '@/lib/permissions';
+import { resolveNotificationPrefs, withNotificationPref } from '@/lib/notification-prefs';
+import { hasW9OnFile } from '@/lib/accounting-readiness';
+
+const WEEK_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
+type DaySlot = { on: boolean; start: string; end: string };
+const toSlots = (a: Technician['availability'] | undefined): Record<string, DaySlot> =>
+    Object.fromEntries(WEEK_DAYS.map(d => {
+        // Stored lowercase ('monday'); tolerate older capitalized keys.
+        const slot = a?.[d] ?? a?.[d[0].toUpperCase() + d.slice(1)];
+        return [d, slot ? { on: true, start: slot.start, end: slot.end } : { on: false, start: '08:00', end: '17:00' }];
+    }));
 
 const DOC_TYPE_LABELS: Record<string, string> = {
     w9: 'W-9', insurance: 'Insurance', license: 'License', certification: 'Certification',
@@ -76,11 +88,9 @@ export default function TechProfilePage() {
     const [predefinedSkills, setPredefinedSkills] = useState<string[]>([]);
     const [selectedSkill, setSelectedSkill] = useState('');
 
-    const [techNotes, setTechNotes] = useState<{ id: string; text: string; createdAt: string; createdBy: string; authorName: string }[]>([]);
-    const [newNoteText, setNewNoteText] = useState('');
-    const [addingNote, setAddingNote] = useState(false);
-    const [emailAlerts, setEmailAlerts] = useState(false);
-    const [smsAlerts, setSmsAlerts] = useState(false);
+    const [availability, setAvailability] = useState<Record<string, DaySlot>>(() => toSlots(undefined));
+    const [availabilityDirty, setAvailabilityDirty] = useState(false);
+    const [savingAvailability, setSavingAvailability] = useState(false);
 
     const [timeOffForm, setTimeOffForm] = useState({
         type: 'Vacation' as TimeOffRequest['type'],
@@ -130,11 +140,8 @@ export default function TechProfilePage() {
                     setEcName(data.emergencyContact?.name || '');
                     setEcRelation(data.emergencyContact?.relation || '');
                     setEcPhone(data.emergencyContact?.phone || '');
-                    setEmailAlerts(data.notificationPreferences?.email ?? false);
-                    setSmsAlerts(data.notificationPreferences?.sms ?? false);
                     savedSnapshotRef.current = {
                         name: data.name || '', preferredName: data.preferredName || '',
-                        email: data.email || '',
                         phone: data.phone || '', currentLocation: data.currentLocation || '',
                         address: data.address || '',
                         emergencyContact: data.emergencyContact || null,
@@ -144,10 +151,7 @@ export default function TechProfilePage() {
             const unsubDocs = onSnapshot(collection(db, 'users', fbUser.uid, 'documents'), snap => {
                 setDocuments(snap.docs.map(d => ({ ...d.data(), id: d.id } as PersonnelDocument)));
             });
-            const unsubNotes = onSnapshot(collection(db, 'users', fbUser.uid, 'techNotes'), snap => {
-                setTechNotes(snap.docs.map(d => ({ id: d.id, ...d.data() } as { id: string; text: string; createdAt: string; createdBy: string; authorName: string })));
-            });
-            return () => { unsubUser(); unsubDocs(); unsubNotes(); unsubTimeOff(); };
+            return () => { unsubUser(); unsubDocs(); unsubTimeOff(); };
         });
         return () => unsubAuth();
     }, []);
@@ -192,46 +196,62 @@ export default function TechProfilePage() {
         await updateDoc(doc(db, 'users', currentTechId), { skills: updated });
     };
 
+    // Same preferences the Settings page and notification delivery read.
+    const alertPrefs = resolveNotificationPrefs(tech?.notificationPreferences);
     const handleToggleAlert = async (field: 'email' | 'sms', value: boolean) => {
         if (!currentTechId) return;
-        if (field === 'email') setEmailAlerts(value);
-        else setSmsAlerts(value);
-        await updateDoc(doc(db, 'users', currentTechId), { [`notificationPreferences.${field}`]: value });
-    };
-
-    const handleAddNote = async () => {
-        if (!currentTechId || !newNoteText.trim()) return;
-        setAddingNote(true);
         try {
-            await addDoc(collection(db, 'users', currentTechId, 'techNotes'), {
-                text: newNoteText.trim(),
-                createdAt: new Date().toISOString(),
-                createdBy: currentTechId,
-                authorName: tech?.name || 'Me',
+            await updateDoc(doc(db, 'users', currentTechId), {
+                notificationPreferences: withNotificationPref(tech?.notificationPreferences, field, value),
             });
-            setNewNoteText('');
-        } finally { setAddingNote(false); }
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Update failed', description: err.message });
+        }
     };
 
-    const handleDeleteNote = async (noteId: string) => {
-        if (!currentTechId) return;
-        await deleteDoc(doc(db, 'users', currentTechId, 'techNotes', noteId));
+    // Weekly availability — shown to dispatch on the directory profile.
+    useEffect(() => {
+        if (!availabilityDirty) setAvailability(toSlots(tech?.availability));
+    }, [tech?.availability, availabilityDirty]);
+    const setDay = (day: string, patch: Partial<DaySlot>) => {
+        setAvailability(prev => ({ ...prev, [day]: { ...prev[day], ...patch } }));
+        setAvailabilityDirty(true);
     };
+    const handleSaveAvailability = async () => {
+        if (!currentTechId) return;
+        const bad = WEEK_DAYS.find(d => availability[d].on && availability[d].start >= availability[d].end);
+        if (bad) {
+            toast({ variant: 'destructive', title: 'Check your hours', description: `${bad[0].toUpperCase() + bad.slice(1)}: end time must be after start time.` });
+            return;
+        }
+        setSavingAvailability(true);
+        try {
+            const value = Object.fromEntries(WEEK_DAYS.map(d => [d, availability[d].on ? { start: availability[d].start, end: availability[d].end } : null]));
+            await updateDoc(doc(db, 'users', currentTechId), { availability: value });
+            setAvailabilityDirty(false);
+            toast({ title: 'Availability saved' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: err.message });
+        } finally {
+            setSavingAvailability(false);
+        }
+    };
+
+    const isFieldTech = isTechRole(tech);
+    const roleLabel = getSubroles(tech).map(r => SUBROLE_DEFINITIONS[r]?.label).filter(Boolean).join(' · ') || 'Field Technician';
+    const w9OnFile = hasW9OnFile(documents);
+    const w9Pending = !w9OnFile && documents.some(d => d.type === 'w9' && d.approvalStatus === 'pending');
 
     const handleUploadDocument = async () => {
-        if (!currentTechId || !docName.trim()) return;
+        if (!currentTechId || !docName.trim() || !docFile) return;
         setDocUploading(true);
         try {
-            let url = '';
-            if (docFile) {
-                const path = `personnelDocuments/${currentTechId}/${Date.now()}-${docFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-                const result = await uploadFile(path, docFile, { contentType: docFile.type });
-                url = result.url;
-            }
+            const path = `personnelDocuments/${currentTechId}/${Date.now()}-${docFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+            const { url } = await uploadFile(path, docFile, { contentType: docFile.type });
             await addDoc(collection(db, 'users', currentTechId, 'documents'), {
                 name: docName.trim(),
                 type: docType,
-                url: url || '#',
+                url,
                 uploadedAt: new Date().toISOString(),
                 expiryDate: docExpiry || null,
                 approvalStatus: 'pending',
@@ -253,7 +273,7 @@ export default function TechProfilePage() {
         if (!currentTechId) return;
         setIsSaving(true);
         try {
-            const updates: Record<string, any> = { name, preferredName, email, phone, currentLocation: location, address };
+            const updates: Record<string, any> = { name, preferredName, phone, currentLocation: location, address };
             if (ecName.trim() || ecRelation.trim() || ecPhone.trim()) {
                 updates.emergencyContact = { name: ecName, relation: ecRelation, phone: ecPhone };
             }
@@ -350,7 +370,7 @@ export default function TechProfilePage() {
                             </div>
                             <div className="space-y-1 text-center">
                                 <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide">{tech?.name || '—'}</h2>
-                                <p className="text-xs text-brand-red font-bold uppercase tracking-widest">{tech?.role || 'Field Technician'}</p>
+                                <p className="text-xs text-brand-red font-bold uppercase tracking-widest">{roleLabel}</p>
                             </div>
                             <div className="flex justify-center">
                                 <Badge variant={getTierBadgeVariant(reliabilityTier)} className="uppercase text-[9px] tracking-widest">
@@ -400,15 +420,14 @@ export default function TechProfilePage() {
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <TabsList className="tabs border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-start mb-6">
                             <TabsTrigger value="identity" className="tab-trigger-plans">Identity</TabsTrigger>
-                            {tech?.roles?.some(r => ['field_technician', 'project_lead'].includes(r)) && (
+                            {isFieldTech && (
                                 <TabsTrigger value="reliability" className="tab-trigger-plans">Reliability</TabsTrigger>
                             )}
                             <TabsTrigger value="documents" className="tab-trigger-plans">Documents</TabsTrigger>
-                            {tech?.roles?.some(r => ['field_technician', 'project_lead'].includes(r)) && (
+                            {isFieldTech && (
                                 <TabsTrigger value="timeoff" className="tab-trigger-plans">Time Off</TabsTrigger>
                             )}
                             <TabsTrigger value="integrations" className="tab-trigger-plans">Integrations</TabsTrigger>
-                            <TabsTrigger value="notes" className="tab-trigger-plans">Notes</TabsTrigger>
                         </TabsList>
 
                         {/* IDENTITY TAB */}
@@ -430,7 +449,8 @@ export default function TechProfilePage() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><Mail size={10} /> Email</Label>
-                                            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 text-xs" />
+                                            <Input type="email" value={email} readOnly disabled className="h-11 text-xs" />
+                                            <p className="text-[9px] text-text-muted">Ask an admin to change your email.</p>
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><Phone size={10} /> Phone</Label>
@@ -489,17 +509,79 @@ export default function TechProfilePage() {
                                             <p className="text-xs font-bold uppercase tracking-widest text-text-primary">Email Alerts</p>
                                             <p className="text-[10px] text-text-muted">Get emailed when assigned to a new job</p>
                                         </div>
-                                        <Switch checked={emailAlerts} onCheckedChange={v => handleToggleAlert('email', v)} />
+                                        <Switch checked={alertPrefs.email} onCheckedChange={v => handleToggleAlert('email', v)} />
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <p className="text-xs font-bold uppercase tracking-widest text-text-primary">SMS Alerts</p>
                                             <p className="text-[10px] text-text-muted">Get a text message when assigned to a new job</p>
                                         </div>
-                                        <Switch checked={smsAlerts} onCheckedChange={v => handleToggleAlert('sms', v)} />
+                                        <Switch checked={alertPrefs.sms} onCheckedChange={v => handleToggleAlert('sms', v)} />
                                     </div>
                                 </CardContent>
                             </Card>
+
+                            {isFieldTech && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2"><CalendarIcon size={14} className="text-brand-red" /> Weekly Availability</CardTitle>
+                                        <CardDescription>The days and hours dispatch can schedule you. Time off is requested separately.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-2">
+                                        {WEEK_DAYS.map(day => {
+                                            const slot = availability[day];
+                                            return (
+                                                <div key={day} className="flex flex-wrap items-center gap-3 py-1.5 border-b border-border-sub last:border-none">
+                                                    <Switch checked={slot.on} onCheckedChange={v => setDay(day, { on: v })} aria-label={`Available ${day}`} />
+                                                    <span className="w-24 text-[11px] font-bold uppercase tracking-wider text-text-primary">{day}</span>
+                                                    {slot.on ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <Input type="time" value={slot.start} onChange={e => setDay(day, { start: e.target.value })} className="h-8 w-28 text-xs" />
+                                                            <span className="text-text-muted text-[10px]">to</span>
+                                                            <Input type="time" value={slot.end} onChange={e => setDay(day, { end: e.target.value })} className="h-8 w-28 text-xs" />
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[10px] text-text-muted uppercase">Off</span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                        <div className="flex justify-end pt-2">
+                                            <Button onClick={handleSaveAvailability} disabled={!availabilityDirty || savingAvailability}>
+                                                {savingAvailability && <Loader2 size={14} className="mr-2 animate-spin" />}
+                                                Save Availability
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {isFieldTech && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Pay Information</CardTitle>
+                                        <CardDescription>Set by the office. Contact an admin to change it.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-2 text-xs">
+                                        <div className="flex justify-between gap-4">
+                                            <span className="text-[10px] uppercase font-bold text-text-muted">Payout Method</span>
+                                            <span className="text-text-primary">{tech?.payoutPreferences?.method || 'Not on file'}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-4">
+                                            <span className="text-[10px] uppercase font-bold text-text-muted">W-9</span>
+                                            <span className={cn(w9OnFile ? 'text-text-green' : 'text-amber-400')}>
+                                                {w9OnFile ? 'On file' : w9Pending ? 'Submitted — awaiting review' : 'Missing'}
+                                            </span>
+                                        </div>
+                                        {!w9OnFile && !w9Pending && (
+                                            <Button variant="outline" size="sm" className="w-full mt-2 h-8 text-[10px] font-bold uppercase"
+                                                onClick={() => { setDocType('w9'); setDocName('W-9'); setUploadDocOpen(true); }}>
+                                                <Upload size={12} className="mr-1.5" /> Upload your W-9
+                                            </Button>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            )}
 
                             <Card>
                                 <CardHeader>
@@ -727,68 +809,6 @@ export default function TechProfilePage() {
                             </div>
                         </TabsContent>
 
-                        {/* NOTES TAB */}
-                        <TabsContent value="notes" className="m-0 space-y-4">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2"><StickyNote size={14} className="text-brand-red" /> Notes</CardTitle>
-                                    <CardDescription>Personal notes and admin-added memos about your profile.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Textarea
-                                            value={newNoteText}
-                                            onChange={e => setNewNoteText(e.target.value)}
-                                            placeholder="Add a note…"
-                                            className="text-xs min-h-[80px] bg-bg-secondary border-border-main resize-none"
-                                        />
-                                        <div className="flex justify-end">
-                                            <Button
-                                                size="sm"
-                                                onClick={handleAddNote}
-                                                disabled={!newNoteText.trim() || addingNote}
-                                                className="text-[10px] font-black uppercase tracking-widest h-8"
-                                            >
-                                                <Plus size={12} className="mr-1" /> {addingNote ? 'Adding…' : 'Add Note'}
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    {techNotes.length === 0 ? (
-                                        <p className="text-[10px] text-text-muted text-center py-6 italic">No notes yet.</p>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {[...techNotes].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(note => {
-                                                const isOwn = note.createdBy === currentTechId;
-                                                let dateStr = '';
-                                                try { dateStr = format(parseISO(note.createdAt), 'MM/dd/yyyy h:mm a'); } catch {}
-                                                return (
-                                                    <div key={note.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary space-y-1">
-                                                        <div className="flex items-center justify-between gap-2">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">{note.authorName}</span>
-                                                                {!isOwn && <Badge variant="outline" className="text-[7px] h-3.5 px-1 uppercase">Admin</Badge>}
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-[8px] font-mono text-text-muted">{dateStr}</span>
-                                                                {isOwn && (
-                                                                    <button
-                                                                        onClick={() => handleDeleteNote(note.id)}
-                                                                        className="text-text-muted hover:text-brand-red transition-colors"
-                                                                    >
-                                                                        <X size={10} />
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        <p className="text-[11px] text-text-secondary leading-relaxed whitespace-pre-wrap">{note.text}</p>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
                     </Tabs>
                 </div>
             </div>
@@ -835,7 +855,7 @@ export default function TechProfilePage() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setUploadDocOpen(false)} className="text-[10px] uppercase font-bold">Cancel</Button>
-                        <Button onClick={handleUploadDocument} disabled={!docName.trim() || docUploading} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] uppercase font-bold">
+                        <Button onClick={handleUploadDocument} disabled={!docName.trim() || !docFile || docUploading} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] uppercase font-bold">
                             {docUploading ? <><Loader2 size={12} className="mr-2 animate-spin" />Uploading...</> : 'Submit'}
                         </Button>
                     </DialogFooter>

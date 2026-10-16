@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { User, Search, Loader2, Camera } from "lucide-react";
 import Image from "next/image";
+import { resolveNotificationPrefs, withNotificationPref } from '@/lib/notification-prefs';
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import { useToast } from "@/hooks/use-toast";
 
@@ -46,8 +47,9 @@ export default function ProfilePage() {
                     setName(data.name || '');
                     setEmail(data.email || '');
                     setAvatarUrl(data.avatarUrl);
-                    setEmailNotif(data.notificationPreferences?.email ?? true);
-                    setPushNotif(data.notificationPreferences?.push ?? false);
+                    const prefs = resolveNotificationPrefs(data.notificationPreferences);
+                    setEmailNotif(prefs.email);
+                    setPushNotif(prefs.push);
                 }
             });
             return () => unsubUser();
@@ -80,7 +82,7 @@ export default function ProfilePage() {
         if (!currentUser?.id) return;
         setIsSaving(true);
         try {
-            await updateDoc(doc(db, 'users', currentUser.id), { name, email });
+            await updateDoc(doc(db, 'users', currentUser.id), { name });
             toast({ title: "Profile Saved", description: "Your personal information has been updated." });
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: err.message });
@@ -95,7 +97,7 @@ export default function ProfilePage() {
         if (!currentUser?.id) return;
         try {
             await updateDoc(doc(db, 'users', currentUser.id), {
-                [`notificationPreferences.${key}`]: value,
+                notificationPreferences: withNotificationPref(currentUser.notificationPreferences, key, value),
             });
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Update Failed', description: err.message });
@@ -176,7 +178,8 @@ export default function ProfilePage() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="email">Email Address</Label>
-                                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                                    <Input id="email" type="email" value={email} readOnly disabled />
+                                    <p className="text-[10px] text-text-muted">Contact email is managed in the Directory. It isn&apos;t your sign-in email.</p>
                                 </div>
                             </div>
                         </CardContent>

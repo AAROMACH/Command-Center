@@ -28,8 +28,9 @@ The app is where work, quotes, invoices, plans and pay are created.
 - Plans page: plans, subscriptions, requests, pricing — no mock data, no PIN
   (access is by role, enforced in firestore.rules).
 - Client billing / financials / dashboard and site detail read the same data.
-- One-time import of the old `adminConfig/servicePricing` plans and the
-  `planId`/`subscriptionStatus` fields on client users.
+- Starts empty — the old Plans page held no real data. Its leftover
+  `adminConfig/servicePricing`, `adminConfig/serviceRates` and
+  `adminConfig/plans` (edit PIN) docs are no longer read and can be deleted.
 
 ### Phase 1 — Quotes & invoices that work (no outside accounts)
 1. Materials catalog feeds quote/invoice lines (cost, category markup, sell price, taxable). CSV price import + price history. Quote shows margin.

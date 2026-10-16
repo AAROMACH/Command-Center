@@ -632,11 +632,6 @@ service cloud.firestore {
 
     // Service plans — the app reads/writes the `plans` collection (the rule
     // previously guarded `planTiers`, which no code references).
-    match /plans/{id} {
-      allow read: if isSignedIn();
-      allow write: if isSuperAdmin();
-    }
-
     // Service plans — clients see them to choose one; billing admins
     // (payroll/super) manage them. See lib/billing.ts.
     match /servicePlans/{id} {

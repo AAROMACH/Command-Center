@@ -29,7 +29,6 @@ import { cancelSubscription, declineRequest, markPeriodBilled, setPlanStatus } f
 import { PlanEditorDialog } from './components/plan-editor-dialog';
 import { SubscriptionDialog, type SubscriptionDialogMode } from './components/subscription-dialog';
 import { PricingTab } from './components/pricing-tab';
-import { MigrationDialog } from './components/migration-dialog';
 
 /**
  * Service plans, client subscriptions, requests and the pricing settings
@@ -65,7 +64,6 @@ export default function ServicePlansPage() {
   const [editorPlan, setEditorPlan] = useState<ServicePlan | Omit<ServicePlan, 'id' | 'createdAt' | 'updatedAt'> | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [subDialog, setSubDialog] = useState<SubscriptionDialogMode | null>(null);
-  const [migrationOpen, setMigrationOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<Subscription | null>(null);
   const [declineTarget, setDeclineTarget] = useState<Subscription | null>(null);
   const [declineReason, setDeclineReason] = useState('');
@@ -149,12 +147,16 @@ export default function ServicePlansPage() {
         </p>
       </div>
 
-      {canManage && noData && (
+      {noData && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border border-accent-gold/40 bg-accent-gold/5">
-          <p className="text-xs text-text-primary">No plans here yet. Import the plans, rates and client plan settings from the old Plans page?</p>
-          <Button variant="outline" onClick={() => setMigrationOpen(true)} className="h-9 text-[10px] font-black uppercase tracking-widest shrink-0">
-            <Download size={12} className="mr-1.5" /> Import Old Data
-          </Button>
+          <p className="text-xs text-text-primary">
+            No plans yet. Set your labor rates, markups and sales tax on the <b>Pricing</b> tab, then create your first plan.
+          </p>
+          {canManage && (
+            <Button onClick={openNewPlan} className="h-9 text-[10px] font-black uppercase tracking-widest shrink-0 bg-brand-red hover:bg-brand-red/90 text-white">
+              <Plus size={12} className="mr-1.5" /> Create First Plan
+            </Button>
+          )}
         </div>
       )}
 
@@ -397,7 +399,6 @@ export default function ServicePlansPage() {
       <PlanEditorDialog open={editorOpen} onClose={() => setEditorOpen(false)} plan={editorPlan} clients={clients}
         nextSortOrder={plans.length} />
       <SubscriptionDialog mode={subDialog} onClose={() => setSubDialog(null)} plans={plans} clients={clients} />
-      <MigrationDialog open={migrationOpen} onClose={() => setMigrationOpen(false)} users={users} />
 
       <AlertDialog open={!!cancelTarget} onOpenChange={v => { if (!v) setCancelTarget(null); }}>
         <AlertDialogContent className="bg-bg-elevated border-border-main">

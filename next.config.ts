@@ -2,14 +2,6 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
-  experimental: {
-    serverActions: {
-      allowedOrigins: [
-        '6000-firebase-studio-1777209284208.cluster-kadnvepafzbgiwrf2a46powzly.cloudworkstations.dev',
-        '*.cloudworkstations.dev',
-      ],
-    },
-  },
   typescript: {
     // tsc --noEmit is clean — keep it that way by failing the build on type errors.
     ignoreBuildErrors: false,

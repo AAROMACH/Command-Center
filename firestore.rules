@@ -86,7 +86,7 @@ service cloud.firestore {
     function isCounterBump() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       return changed.size() == 1
-          && changed.hasOnly(['asmt', 'cli', 'creq', 'fnr', 'batch', 'inv', 'lead', 'lact', 'msg', 'msr', 'noti', 'pdis', 'pen', 'plan', 'prj', 'plog', 'pdoc', 'ppay', 'reimb', 'route', 'site', 'sreq', 'svc', 'cint', 'pto', 'tlog', 'uID', 'wlog', 'wli', 'qt', 'wo'])
+          && changed.hasOnly(['asmt', 'cli', 'creq', 'fnr', 'batch', 'inv', 'lead', 'lact', 'msg', 'msr', 'noti', 'pdis', 'pen', 'plan', 'prj', 'plog', 'pdoc', 'ppay', 'reimb', 'route', 'site', 'sreq', 'sub', 'svc', 'cint', 'pto', 'tlog', 'uID', 'wlog', 'wli', 'qt', 'wo'])
           && counterStep('asmt')
           && counterStep('cli')
           && counterStep('creq')
@@ -109,6 +109,7 @@ service cloud.firestore {
           && counterStep('route')
           && counterStep('site')
           && counterStep('sreq')
+          && counterStep('sub')
           && counterStep('svc')
           && counterStep('cint')
           && counterStep('pto')
@@ -630,8 +631,6 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Service plans — the app reads/writes the `plans` collection (the rule
-    // previously guarded `planTiers`, which no code references).
     // Service plans — clients see them to choose one; billing admins
     // (payroll/super) manage them. See lib/billing.ts.
     match /servicePlans/{id} {

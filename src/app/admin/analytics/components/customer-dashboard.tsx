@@ -435,7 +435,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
     );
 }
 
-function Tip({ title, lines }: { title: string; lines: string[] }) {
+export function Tip({ title, lines }: { title: string; lines: string[] }) {
     return (
         <div className="rounded-md border border-border-main bg-bg-elevated px-3 py-2 shadow-xl text-[10px]">
             <p className="font-black text-text-primary mb-0.5">{title}</p>
@@ -445,7 +445,7 @@ function Tip({ title, lines }: { title: string; lines: string[] }) {
 }
 
 /** Clickable horizontal bars (customer / type rankings). */
-function HBars({ items, fmt, selected, onPick, color, empty }: {
+export function HBars({ items, fmt, selected, onPick, color, empty }: {
     items: { key: string; value: number; extra?: string; tip?: string }[];
     fmt: (v: number) => string;
     selected: string | null;

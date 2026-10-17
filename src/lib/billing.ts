@@ -154,16 +154,25 @@ export function monthlyValue(sub: Subscription, plan: ServicePlan | undefined): 
   return roundCents(subscriptionAmount(sub, plan) / INTERVAL_MONTHS[sub.interval]);
 }
 
-/** Next billing date one interval after `from` (yyyy-MM-dd). */
-export function addInterval(from: string, interval: BillingInterval): string {
+/**
+ * Next billing date one interval after `from` (yyyy-MM-dd). `anchorDay` is
+ * the subscription's original day of month, so a Jan 31 start bills Feb 28,
+ * then Mar 31 (as Stripe does) instead of drifting to the 28th for good.
+ */
+export function addInterval(from: string, interval: BillingInterval, anchorDay?: number): string {
   const [y, m, d] = from.split('-').map(Number);
   const date = new Date(y, m - 1 + INTERVAL_MONTHS[interval], 1);
   // Clamp the day (Jan 31 + 1 month → Feb 28/29).
   const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  date.setDate(Math.min(d, lastDay));
+  date.setDate(Math.min(anchorDay && anchorDay >= 1 && anchorDay <= 31 ? anchorDay : d, lastDay));
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const dd = String(date.getDate()).padStart(2, '0');
   return `${date.getFullYear()}-${mm}-${dd}`;
+}
+
+/** Today's local calendar date as yyyy-MM-dd. */
+export function localDay(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 export function markupFor(category: string | undefined, settings: PricingSettings): number {

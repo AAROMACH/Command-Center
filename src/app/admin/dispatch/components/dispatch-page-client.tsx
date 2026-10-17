@@ -143,7 +143,10 @@ export function DispatchPageClient() {
   /** Write each changed job's changed fields in one batch (≤ 500 per commit). */
   const saveChangedJobs = async (collectionName: 'workOrders' | 'assignments', updated: WorkOrder[], current: WorkOrder[]) => {
     const byId = new Map(current.map(j => [j.id, j]));
+    // Skip jobs no longer in this collection (deleted or moved by someone
+    // else) — one missing doc would otherwise fail the whole batch.
     const writes = updated
+      .filter(j => byId.has(j.id))
       .map(j => ({ id: j.id, fields: changedFields(byId.get(j.id), j) }))
       .filter(w => Object.keys(w.fields).length > 0);
     for (let i = 0; i < writes.length; i += 500) {

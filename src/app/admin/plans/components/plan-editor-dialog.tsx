@@ -176,7 +176,7 @@ export function PlanEditorDialog({
               <div className="space-y-1">
                 <Label className={labelCls}>Response Time (hours)</Label>
                 <Input type="number" min="1" className={`${inputCls} font-mono`} value={draft.benefits.responseHours || ''}
-                  onChange={e => setBenefit('responseHours', parseFloat(e.target.value) || 0)} />
+                  onChange={e => setBenefit('responseHours', Math.max(1, parseFloat(e.target.value) || 0))} />
                 <p className="text-[9px] text-text-muted">Drives the client&apos;s request SLA clock.</p>
               </div>
               <div className="space-y-1">

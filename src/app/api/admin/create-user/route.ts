@@ -12,6 +12,7 @@ import { adminApp } from '@/lib/firebase-admin';
  */
 
 const ADMIN_ROLES = ['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'];
+const NON_ADMIN_ROLES = ['client', 'field_technician', 'project_lead', 'sales'];
 
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('authorization') || '';
@@ -30,10 +31,19 @@ export async function POST(req: NextRequest) {
   if (!isAdmin) return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
 
   let email = '';
+  let requestedRoles: string[] = [];
   try {
-    email = String((await req.json())?.email || '').trim().toLowerCase();
+    const body = await req.json();
+    email = String(body?.email || '').trim().toLowerCase();
+    requestedRoles = Array.isArray(body?.roles) ? body.roles.map(String) : [];
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+  // Mirrors firestore.rules adminMayCreateUser: refuse here, before the login
+  // exists, when the profile write would be refused anyway.
+  const isSuper = roles.includes('super_admin') || ['super_admin', 'admin'].includes(caller.role || '');
+  if (!isSuper && requestedRoles.some(r => !NON_ADMIN_ROLES.includes(r))) {
+    return NextResponse.json({ error: 'Only a super admin can add someone with an admin role.' }, { status: 403 });
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 });

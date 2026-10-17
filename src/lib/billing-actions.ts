@@ -6,7 +6,7 @@ import { createDocId } from './generateId';
 import { ID_PREFIXES } from './constants';
 import { auditEvent } from './audit';
 import {
-  addInterval, type BillingInterval, type PricingSettings, type ServicePlan, type Subscription,
+  addInterval, localDay, type BillingInterval, type PricingSettings, type ServicePlan, type Subscription,
 } from './billing';
 
 /**
@@ -17,7 +17,8 @@ import {
  */
 
 const now = () => new Date().toISOString();
-const today = () => now().slice(0, 10);
+/** Local calendar date — the UTC date is already tomorrow on US evenings. */
+const today = () => localDay();
 const actor = () => ({ id: auth.currentUser?.uid || '', name: auth.currentUser?.displayName || 'Admin' });
 
 async function audit(sub: Pick<Subscription, 'id' | 'clientId'>, action: string, detail: string) {
@@ -104,7 +105,7 @@ export async function markPeriodBilled(sub: Subscription) {
   const batch = writeBatch(db);
   batch.update(doc(db, 'subscriptions', sub.id), ending
     ? { status: 'canceled', canceledAt: now(), nextBillingDate: null, updatedAt: now() }
-    : { nextBillingDate: addInterval(from, sub.interval), updatedAt: now() });
+    : { nextBillingDate: addInterval(from, sub.interval, Number(sub.startDate?.slice(8, 10)) || undefined), updatedAt: now() });
   await batch.commit();
   await audit(sub, 'subscription_billed', ending ? `Final period billed (${from}); subscription ended` : `Billed period starting ${from}`);
 }

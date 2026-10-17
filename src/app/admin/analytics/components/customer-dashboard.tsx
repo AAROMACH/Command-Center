@@ -23,8 +23,8 @@ import {
  * comparisons (top chart, scatter, table) keep the other filters only.
  */
 
-type Metric = 'net' | 'jobs' | 'rate' | 'avg' | 'total';
-type SortKey = keyof Pick<CustomerRow, 'buyer' | 'jobs' | 'net' | 'share' | 'avg' | 'hours' | 'rate' | 'feePct' | 'last' | 'mainType'>;
+type Metric = 'net' | 'jobs' | 'rate' | 'avg' | 'total' | 'profit' | 'profitRate';
+type SortKey = keyof Pick<CustomerRow, 'buyer' | 'jobs' | 'net' | 'share' | 'avg' | 'hours' | 'rate' | 'profit' | 'profitRate' | 'feePct' | 'last' | 'mainType'>;
 type Params = IntelFilter & { minJobs: number; capHours: boolean; metric: Metric };
 
 const DEFAULTS: Params = { start: null, end: null, type: null, provider: null, buyer: null, minJobs: 1, capHours: true, metric: 'net' };
@@ -44,7 +44,10 @@ const METRICS: Record<Metric, { label: string; fmt: (v: number) => string }> = {
     rate: { label: 'Net per hour', fmt: money },
     avg: { label: 'Avg net per job', fmt: money },
     total: { label: 'Gross pay', fmt: big },
+    profit: { label: 'Profit after tech pay', fmt: big },
+    profitRate: { label: 'Profit per hour', fmt: money },
 };
+const HOURLY: Metric[] = ['rate', 'profitRate'];
 
 const label = 'text-[9px] font-black uppercase tracking-widest text-text-muted';
 const control = 'h-8 bg-bg-primary border-border-main text-[10px] font-bold uppercase';
@@ -60,10 +63,21 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
     const [trips, setTrips] = useState<TripLog[]>([]);
     useEffect(() => onSharedSnapshot('tripLogs', snap => setTrips(snap.docs.map(d => ({ ...d.data(), id: d.id } as TripLog)))), []);
 
-    const [p, setP] = useState<Params>(() => {
-        try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STORE_KEY) || '{}') }; } catch { return DEFAULTS; }
-    });
-    useEffect(() => { try { localStorage.setItem(STORE_KEY, JSON.stringify(p)); } catch { /* private mode */ } }, [p]);
+    // Saved filters load after mount (the server render has no localStorage,
+    // so reading it in the initializer would mismatch on hydration).
+    const [p, setP] = useState<Params>(DEFAULTS);
+    const [restored, setRestored] = useState(false);
+    useEffect(() => {
+        try {
+            const saved = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+            if (saved && typeof saved === 'object') setP({ ...DEFAULTS, ...saved });
+        } catch { /* private mode / bad JSON */ }
+        setRestored(true);
+    }, []);
+    useEffect(() => {
+        if (!restored) return;
+        try { localStorage.setItem(STORE_KEY, JSON.stringify(p)); } catch { /* private mode */ }
+    }, [p, restored]);
     const set = (patch: Partial<Params>) => setP(prev => ({ ...prev, ...patch }));
     const pickBuyer = (b: string) => set({ buyer: p.buyer === b ? null : b });
 
@@ -82,6 +96,15 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
     );
     const types = useMemo(() => [...new Set(all.map(r => r.type))].sort(), [all]);
     const providers = useMemo(() => [...new Set(all.map(r => r.provider))].sort(), [all]);
+    // A saved type/technician that no longer exists (renamed tech, retyped
+    // jobs) would blank the Select and filter out every row — drop it.
+    useEffect(() => {
+        if (!all.length) return;
+        const patch: Partial<Params> = {};
+        if (p.type && !types.includes(p.type)) patch.type = null;
+        if (p.provider && !providers.includes(p.provider)) patch.provider = null;
+        if (Object.keys(patch).length) setP(prev => ({ ...prev, ...patch }));
+    }, [all.length, types, providers, p.type, p.provider]);
 
     const cap = p.capHours;
     const minJobs = Math.max(1, Math.floor(p.minJobs) || 1);
@@ -96,6 +119,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
     const net = sel.reduce((s, r) => s + r.net, 0);
     const gross = sel.reduce((s, r) => s + r.total, 0);
     const fees = sel.reduce((s, r) => s + r.fees, 0);
+    const profit = sel.reduce((s, r) => s + r.profit, 0);
     const rp = rateParts(sel, cap);
     const nCust = new Set(sel.map(r => r.buyer)).size;
     const repeat = custsAll.filter(c => c.jobs >= 5).length;
@@ -107,6 +131,8 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
         { label: 'Avg net per job', value: sel.length ? money(net / sel.length) : '—', sub: med != null ? `median ${money(med)}` : '' },
         { label: 'Net per hour on site', value: rp.rate != null ? money(rp.rate) : '—', sub: rp.hours ? `over ${count(Math.round(rp.hours))} h logged` : 'no hours logged' },
         { label: 'Platform fees', value: gross ? pct(fees / gross) : '—', sub: `${big(fees)} of gross` },
+        { label: 'Profit after tech pay', value: big(profit), sub: gross ? `${pct(profit / gross)} margin · ${big(net - profit)} tech pay` : '' },
+        { label: 'Profit per hour on site', value: rp.profitRate != null ? money(rp.profitRate) : '—', sub: rp.hours ? 'same jobs as net per hour' : 'no hours logged' },
     ];
 
     // Takeaway
@@ -126,9 +152,10 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
 
     // Top customers
     const metric = METRICS[p.metric] ? p.metric : 'net';
-    const pool = metric === 'rate' ? custs.filter(c => c.rate != null && c.jobs >= Math.max(5, minJobs) && c.hours >= 5) : custs;
+    const hourly = HOURLY.includes(metric);
+    const pool = hourly ? custs.filter(c => c.rate != null && c.jobs >= Math.max(5, minJobs) && c.hours >= 5) : custs;
     const top = [...pool].sort((a, b) => (b[metric] ?? -1) - (a[metric] ?? -1)).slice(0, 15)
-        .map(c => ({ key: c.buyer, value: c[metric] ?? 0, tip: `${count(c.jobs)} jobs · ${money(c.net)} net · ${money(c.avg)}/job · ${c.rate != null ? `${money(c.rate)}/hr` : 'no hours'} · ${pct(c.share)} of net` }));
+        .map(c => ({ key: c.buyer, value: c[metric] ?? 0, tip: `${count(c.jobs)} jobs · ${money(c.net)} net · ${money(c.profit)} profit · ${c.rate != null ? `${money(c.rate)}/hr net, ${money(c.profitRate ?? 0)}/hr profit` : 'no hours'} · ${pct(c.share)} of net` }));
 
     // Scatter: volume vs hourly return
     const scatterPts = useMemo(() => {
@@ -235,7 +262,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                 </Card>
             ) : (<>
                 {/* KPIs */}
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {kpis.map(k => (
                         <Card key={k.label} className="bg-bg-secondary border-border-main">
                             <CardContent className="p-4 min-w-0">
@@ -254,7 +281,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                             <div>
                                 <CardTitle className="text-sm font-bold uppercase tracking-wide">Top customers</CardTitle>
                                 <CardDescription className="text-[10px]">
-                                    {metric === 'rate' ? 'Customers with 5+ jobs and 5+ logged hours. ' : ''}Click a bar to focus the page on that customer.
+                                    {hourly ? 'Customers with 5+ jobs and 5+ logged hours. ' : ''}Click a bar to focus the page on that customer.
                                 </CardDescription>
                             </div>
                             <Select value={metric} onValueChange={v => set({ metric: v as Metric })}>
@@ -289,7 +316,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                                         {medRate != null && <ReferenceLine y={medRate} stroke="currentColor" strokeOpacity={0.35} strokeDasharray="4 4" />}
                                         <Tooltip cursor={false} content={({ payload }) => {
                                             const c = payload?.[0]?.payload as CustomerRow | undefined;
-                                            return c ? <Tip title={c.buyer} lines={[`${count(c.jobs)} jobs · ${money(c.net)} net`, `${c.rate != null ? money(c.rate) : '—'}/hr over ${c.hours.toFixed(1)} h`]} /> : null;
+                                            return c ? <Tip title={c.buyer} lines={[`${count(c.jobs)} jobs · ${money(c.net)} net · ${money(c.profit)} profit`, `${c.rate != null ? money(c.rate) : '—'}/hr net · ${c.profitRate != null ? money(c.profitRate) : '—'}/hr profit over ${c.hours.toFixed(1)} h`]} /> : null;
                                         }} />
                                         <Scatter data={scatterPts} onClick={(d: { buyer?: string }) => d?.buyer && pickBuyer(d.buyer)} className="cursor-pointer">
                                             {scatterPts.map(c => (
@@ -359,7 +386,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                                 <tr className="border-b border-border-sub">
                                     {([
                                         ['buyer', 'Customer', ''], ['jobs', 'Jobs', ''], ['net', 'Net pay', ''], ['share', 'Share', ''], ['avg', 'Avg/job', ''],
-                                        ['hours', 'Hours', 'hidden md:table-cell'], ['rate', 'Net/hr', ''], ['feePct', 'Fees %', 'hidden md:table-cell'],
+                                        ['hours', 'Hours', 'hidden md:table-cell'], ['rate', 'Net/hr', ''], ['profit', 'Profit', ''], ['profitRate', 'Profit/hr', 'hidden sm:table-cell'], ['feePct', 'Fees %', 'hidden md:table-cell'],
                                         ['last', 'Last job', 'hidden lg:table-cell'], ['mainType', 'Main work', 'hidden lg:table-cell'],
                                     ] as [SortKey, string, string][]).map(([k, text, cls]) => (
                                         <th key={k} className={cn('px-3 py-2 font-black uppercase tracking-widest text-[9px] text-text-muted', k === 'buyer' || k === 'mainType' ? 'text-left' : 'text-right', cls)}
@@ -385,20 +412,22 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                                         <td className="px-3 py-2 text-right">{money(c.avg)}</td>
                                         <td className="px-3 py-2 text-right hidden md:table-cell">{c.hours.toFixed(1)}</td>
                                         <td className="px-3 py-2 text-right">{c.rate != null ? money(c.rate) : '—'}</td>
+                                        <td className={cn('px-3 py-2 text-right', c.profit < 0 && 'text-brand-red')}>{money(c.profit)}</td>
+                                        <td className="px-3 py-2 text-right hidden sm:table-cell">{c.profitRate != null ? money(c.profitRate) : '—'}</td>
                                         <td className="px-3 py-2 text-right hidden md:table-cell">{pct(c.feePct)}</td>
                                         <td className="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap">{day(c.last)}</td>
                                         <td className="px-3 py-2 text-left hidden lg:table-cell max-w-[180px] truncate">{c.mainType}</td>
                                     </tr>
                                 ))}
                                 {tableRows.length === 0 && (
-                                    <tr><td colSpan={10} className="px-3 py-10 text-center text-text-muted">No customers match.</td></tr>
+                                    <tr><td colSpan={12} className="px-3 py-10 text-center text-text-muted">No customers match.</td></tr>
                                 )}
                             </tbody>
                         </table>
                     </CardContent>
                 </Card>
                 <p className="text-[10px] text-text-muted">
-                    Completed jobs only. Gross = paid invoice (pre-tax) or job pay; fees = Field Nation's 15.85% on imported jobs; net = gross − fees, before tech pay.
+                    Completed jobs only. Gross = paid invoice (pre-tax) or job pay; fees = Field Nation's 15.85% on imported jobs; net = gross − fees; profit = net − tech pay (weekly-log settlement, else the payroll formula).
                     Hours = on-site time from trip check-in to check-out. Pending approval = not yet on an approved weekly log.
                 </p>
             </>)}

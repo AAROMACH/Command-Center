@@ -666,7 +666,8 @@ export const WorkOrdersTable = React.memo(({
         mission={detailJob} 
         onEdit={(m) => {
           setIsDetailOpen(false);
-          handleOpenEditDialog(m);
+          // Live record, not the panel's snapshot (see work-orders-client).
+          handleOpenEditDialog(workOrders.find(w => w.id === m.id) ?? m);
         }}
         onUpdate={handleJobUpdate}
       />

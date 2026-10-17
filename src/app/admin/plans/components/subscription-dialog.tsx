@@ -13,6 +13,7 @@ import type { Technician } from '@/lib/types';
 import {
   formatMoney, INTERVAL_LABELS, planPrice, SUBSCRIPTION_STATUS_LABELS,
   type BillingInterval, type ServicePlan, type Subscription, type SubscriptionStatus,
+  localDay,
 } from '@/lib/billing';
 import { approveRequest, createSubscription, updateSubscription } from '@/lib/billing-actions';
 
@@ -35,7 +36,7 @@ export function SubscriptionDialog({
   clients: Technician[];
 }) {
   const { toast } = useToast();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDay();
   const existing = mode && mode.kind !== 'create' ? mode.sub : null;
 
   const [clientId, setClientId] = useState('');

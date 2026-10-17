@@ -877,7 +877,7 @@ export default function AssignmentsHubPage() {
             isOpen={isDetailOpen} 
             setIsOpen={setIsDetailOpen} 
             mission={selectedJob} 
-            onEdit={(m) => { setIsDetailOpen(false); handleOpenEditDialog(m); }} 
+            onEdit={(m) => { setIsDetailOpen(false); handleOpenEditDialog(workOrders.find(w => w.id === m.id) ?? m); }} 
             onUpdate={handleJobUpdate}
         />
         

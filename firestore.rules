@@ -17,15 +17,17 @@ service cloud.firestore {
           || d.get('role', '') in ['admin', 'super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'];
     }
 
+    // Legacy accounts with only role: 'admin' (no roles array) are treated as
+    // super admins, as the app does (normalizeLegacyRole).
     function isSuperAdmin() {
       let d = userData();
-      return d.get('roles', []).hasAny(['super_admin']) || d.get('role', '') == 'super_admin';
+      return d.get('roles', []).hasAny(['super_admin']) || d.get('role', '') in ['super_admin', 'admin'];
     }
 
     function isPayrollAdmin() {
       let d = userData();
       return d.get('roles', []).hasAny(['super_admin', 'payroll_admin'])
-          || d.get('role', '') in ['super_admin', 'payroll_admin'];
+          || d.get('role', '') in ['super_admin', 'payroll_admin', 'admin'];
     }
 
     // ── Who may change which parts of a user doc ─────────────────────────
@@ -40,21 +42,32 @@ service cloud.firestore {
     function payKeys() {
       return ['hourlyRate', 'payRate', 'payType', 'payoutPreferences', 'accounting'];
     }
+    // Roles any admin may hand out (approving a sign-up, adding a tech or
+    // client). Admin roles, and the per-user permission/portal overrides, stay
+    // with super admins — that is the escalation this closes.
+    function nonAdminRoles() {
+      return ['client', 'field_technician', 'project_lead', 'sales'];
+    }
+    function holdsOnlyNonAdminRoles(d) {
+      return d.get('roles', []).hasOnly(nonAdminRoles())
+          && !(d.get('role', '').lower().replace(' ', '_') in
+               ['admin', 'super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager', 'administrator', 'owner', 'operator']);
+    }
     function adminMayUpdateUser() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let nonAdminRoleChange = !changed.hasAny(['permissionOverrides', 'primaryPortal', 'portalAccess'])
+          && holdsOnlyNonAdminRoles(resource.data)
+          && holdsOnlyNonAdminRoles(request.resource.data);
       return isAdmin()
-          && (!changed.hasAny(accessKeys()) || isSuperAdmin())
+          && (!changed.hasAny(accessKeys()) || isSuperAdmin() || nonAdminRoleChange)
           && (!changed.hasAny(payKeys()) || isPayrollAdmin());
     }
-    // Any admin may still create client accounts (Sites, CRM); anything with
-    // staff/tech access needs a super admin.
     function adminMayCreateUser() {
       let d = request.resource.data;
-      let clientOnly = d.get('roles', []).hasOnly(['client'])
-          && d.get('role', 'client').lower() in ['client', '']
+      let nonAdminOnly = holdsOnlyNonAdminRoles(d)
           && !d.keys().hasAny(['permissionOverrides', 'primaryPortal', 'portalAccess']);
       return isAdmin()
-          && (clientOnly || isSuperAdmin())
+          && (nonAdminOnly || isSuperAdmin())
           && (!d.keys().hasAny(payKeys()) || isPayrollAdmin());
     }
 

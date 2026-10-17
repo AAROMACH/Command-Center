@@ -49,6 +49,7 @@ import {
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AddPersonnelDialog } from './add-personnel-dialog';
+import { canEditUserAccess, NON_ADMIN_ROLES } from '@/lib/profile-permissions';
 import { useToast } from '@/hooks/use-toast';
 import { cn, isInactiveTechnician } from '@/lib/utils';
 import { 
@@ -163,6 +164,13 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
 
     const handleApproveUser = async () => {
         if (!selectedPendingUser || selectedRoles.length === 0 || !primaryRole) return;
+        // Any admin approves techs, leads, sales and clients; admin roles need
+        // a super admin (firestore.rules adminMayUpdateUser).
+        const me = personnel.find(p => p.id === auth.currentUser?.uid);
+        if (selectedRoles.some(r => !NON_ADMIN_ROLES.includes(r)) && !canEditUserAccess(me)) {
+            toast({ variant: 'destructive', title: 'Super admin only', description: 'Only a super admin can grant an admin role. Approve with a tech, sales or client role, or ask a super admin.' });
+            return;
+        }
         setApproving(true);
         try {
             const adminUid = auth.currentUser?.uid || '';

@@ -12,6 +12,8 @@ import type { Invoice, TripLog, WeeklyLog, WorkOrder } from './types';
  *   gross = what the job pays in (paid invoice pre-tax, else job pay)
  *   fees  = Field Nation's 15.85% on imported jobs, 0 otherwise
  *   net   = gross − fees (before tech pay)
+ *   labor = tech pay (weekly-log settlement, else the payroll formula)
+ *   profit = net − labor (the Aaromach portion)
  *   hours = on-site time from check-in → check-out trips; null when none
  *   date  = the job's work date (YYYY-MM-DD)
  *   approved = the job sits on an Approved weekly log
@@ -26,6 +28,8 @@ export type IntelRow = {
     total: number;
     fees: number;
     net: number;
+    labor: number;
+    profit: number;
     hours: number | null;
 };
 
@@ -35,7 +39,7 @@ export function isoDay(raw?: string | null): string | null {
     const p = raw.trim().slice(0, 10).split(/[-/]/);
     if (p.length !== 3) return null;
     const [y, m, d] = p[0].length === 4 ? p : [p[2], p[0], p[1]];
-    if (!/^\d{4}$/.test(y) || !+m || !+d) return null;
+    if (!/^\d{4}$/.test(y) || !(+m >= 1 && +m <= 12) || !(+d >= 1 && +d <= 31)) return null;
     return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
 }
 
@@ -78,6 +82,8 @@ export function buildIntelRows(
             total: e.revenue,
             fees: e.fnFee,
             net: Math.round((e.revenue - e.fnFee) * 100) / 100,
+            labor: e.techPortion,
+            profit: e.profit,
             hours: mins != null && mins > 0 ? mins / 60 : null,
         });
     }
@@ -101,13 +107,16 @@ export function inIntelFilter(r: IntelRow, f: IntelFilter, ignoreBuyer = false):
     return true;
 }
 
-/** Net per on-site hour over rows that logged hours (optionally skipping > 24 h). */
+/**
+ * Net and profit per on-site hour, over rows that logged hours (optionally
+ * skipping > 24 h). Both rates use the same jobs so they compare directly.
+ */
 export function rateParts(rows: IntelRow[], cap: boolean) {
-    let n = 0, h = 0;
+    let n = 0, pr = 0, h = 0;
     for (const r of rows) {
-        if (r.hours != null && r.hours > 0 && (!cap || r.hours <= 24)) { n += r.net; h += r.hours; }
+        if (r.hours != null && r.hours > 0 && (!cap || r.hours <= 24)) { n += r.net; pr += r.profit; h += r.hours; }
     }
-    return { net: n, hours: h, rate: h > 0 ? n / h : null };
+    return { net: n, profit: pr, hours: h, rate: h > 0 ? n / h : null, profitRate: h > 0 ? pr / h : null };
 }
 
 export type CustomerRow = {
@@ -116,10 +125,14 @@ export type CustomerRow = {
     net: number;
     total: number;
     fees: number;
+    profit: number;
+    /** profit ÷ gross */
+    margin: number | null;
     share: number;
     avg: number;
     hours: number;
     rate: number | null;
+    profitRate: number | null;
     feePct: number;
     last: string;
     mainType: string;
@@ -136,15 +149,19 @@ export function byCustomer(rows: IntelRow[], cap: boolean): CustomerRow[] {
         const net = rs.reduce((s, r) => s + r.net, 0);
         const total = rs.reduce((s, r) => s + r.total, 0);
         const fees = rs.reduce((s, r) => s + r.fees, 0);
+        const profit = rs.reduce((s, r) => s + r.profit, 0);
+        const rp = rateParts(rs, cap);
         const types = new Map<string, number>();
         for (const r of rs) types.set(r.type, (types.get(r.type) || 0) + 1);
         const mainType = [...types.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
         return {
-            buyer, jobs: rs.length, net, total, fees,
+            buyer, jobs: rs.length, net, total, fees, profit,
+            margin: total ? profit / total : null,
             share: totalNet ? net / totalNet : 0,
             avg: net / rs.length,
             hours: rs.reduce((s, r) => s + (r.hours != null && (!cap || r.hours <= 24) ? r.hours : 0), 0),
-            rate: rateParts(rs, cap).rate,
+            rate: rp.rate,
+            profitRate: rp.profitRate,
             feePct: total ? fees / total : 0,
             last: rs.reduce((m, r) => (r.date && r.date > m ? r.date : m), ''),
             mainType,

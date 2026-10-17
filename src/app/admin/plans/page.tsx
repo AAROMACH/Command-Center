@@ -24,6 +24,7 @@ import { useAllSubscriptions, usePricingSettings, useServicePlans } from '@/hook
 import {
   formatMoney, INTERVAL_LABELS, isLiveSubscription, monthlyValue, subscriptionAmount, SUBSCRIPTION_STATUS_LABELS,
   type ServicePlan, type Subscription,
+  localDay,
 } from '@/lib/billing';
 import { cancelSubscription, declineRequest, markPeriodBilled, setPlanStatus } from '@/lib/billing-actions';
 import { PlanEditorDialog } from './components/plan-editor-dialog';
@@ -70,7 +71,7 @@ export default function ServicePlansPage() {
   const [subFilter, setSubFilter] = useState<'live' | 'due' | 'canceled'>('live');
   const [search, setSearch] = useState('');
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDay();
   const live = subscriptions.filter(isLiveSubscription);
   const requests = subscriptions.filter(s => s.status === 'pending')
     .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));

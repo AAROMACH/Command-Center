@@ -194,7 +194,9 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
         mission={selectedJob}
         // On a phone this is the way into the edit form: close the panel and
         // let the (CSS-hidden) table open its edit dialog for this job.
-        onEdit={(job) => { setIsDetailOpen(false); setMobileEditOrder(job); }}
+        // Edit the live record: the panel's copy is from when it was opened, and
+        // a swap/helper/verify made in the panel would be saved back over.
+        onEdit={(job) => { setIsDetailOpen(false); setMobileEditOrder(workOrders.find(w => w.id === job.id) ?? job); }}
       />
     </div>
   );

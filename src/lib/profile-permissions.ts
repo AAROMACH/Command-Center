@@ -63,6 +63,13 @@ export function getEditableProfileFields(
 // locks exactly what the rules would reject.
 
 /** Subroles, portal and permission overrides — super admin only. */
+/**
+ * Roles any admin may grant (approve a sign-up, add a tech or client).
+ * Admin roles and permission overrides stay super-admin only — mirrors
+ * nonAdminRoles() in firestore.rules.
+ */
+export const NON_ADMIN_ROLES: string[] = ['client', 'field_technician', 'project_lead', 'sales'];
+
 export function canEditUserAccess(currentUser: Technician | null | undefined): boolean {
   return getSubroles(currentUser).includes('super_admin');
 }

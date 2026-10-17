@@ -19,6 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import type { AppRole, Technician } from '@/lib/types';
 import { createDocId } from '@/lib/generateId';
+import { canEditUserAccess, canEditUserPay, NON_ADMIN_ROLES } from '@/lib/profile-permissions';
 import { ID_PREFIXES } from '@/lib/constants';
 import { ROLE_DATA } from '@/lib/constants/roles';
 import { 
@@ -205,6 +206,15 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         return;
     }
 
+    // Same split as firestore.rules: any admin adds techs, leads, sales and
+    // clients; admin roles need a super admin. Checked before the login is
+    // created so a refused profile never leaves an orphaned account.
+    const me = technicians.find(t => t.id === auth.currentUser?.uid);
+    if ((formData.roles || []).some(r => !NON_ADMIN_ROLES.includes(r)) && !canEditUserAccess(me)) {
+        toast({ variant: "destructive", title: "Super admin only", description: "Only a super admin can add someone with an admin role." });
+        return;
+    }
+
     try {
         const idToken = await auth.currentUser?.getIdToken();
         if (!idToken) {
@@ -214,7 +224,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         const res = await fetch('/api/admin/create-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-            body: JSON.stringify({ email: formData.email }),
+            body: JSON.stringify({ email: formData.email, roles: formData.roles || [] }),
         });
         const created = await res.json().catch(() => ({}));
         const uid: string | null = res.ok ? created.uid : null;
@@ -242,6 +252,8 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
             userId,
             role: (formData.roles || [])[0] || ''
         };
+        // Pay is payroll's (rules): only send a rate someone allowed to set it entered.
+        if (!(canEditUserPay(me) && (newPerson.hourlyRate || 0) > 0)) delete (newPerson as Partial<Technician>).hourlyRate;
         onSave(newPerson);
 
         // The server only creates the account; this actually emails the
@@ -401,7 +413,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                     <Lock size={16} />
                     <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Authorization Grid</h3>
                 </div>
-                {isFieldTech && (
+                {isFieldTech && canEditUserPay(technicians.find(t => t.id === auth.currentUser?.uid)) && (
                     <div className="space-y-1 text-right">
                         <Label className="text-[10px] uppercase font-bold text-text-muted">Project Base Rate ($/hr)</Label>
                         <div className="relative w-32 ml-auto">

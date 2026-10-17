@@ -55,15 +55,18 @@ extend and enforce it rather than starting over.
 
 ## Phases
 
-### Phase 0 — Fix the foundation (no redesign; ~1 day)
-Makes existing styles actually render. Low risk, big visible win.
+### Phase 0 — Fix the foundation (no redesign; ~1–2 days)
+Makes existing styles actually render and fixes lists that show wrong data.
+Low risk, big visible win.
 1. Redefine theme colors as RGB channels (`--brand-red-rgb: 204 34 0`, Tailwind
    `rgb(var(--brand-red-rgb) / <alpha-value>)`) so the ~700 tint classes work.
 2. Define the missing `amber` / `gold-border` tokens (or map them to
    `accent-gold`).
 3. `.tab[data-state=active]` so pill tabs highlight.
 4. One `STATUS_STYLES` map in `lib/status-styles.ts`; Badge `completed` → green.
-5. Build + screenshot check of key pages in light and dark.
+5. Fix the 13 confirmed list bugs from the Phase 2b audit (wrong job counts,
+   vanishing tickets, reversed CRM sort, dead filters, pager resets, crash).
+6. Build + screenshot check of key pages in light and dark.
 
 ### Phase 1 — Tokens and primitives (~2 days)
 1. Type tokens in `globals.css`: `.text-caption` (11px), `.text-label`,
@@ -113,7 +116,75 @@ must actually work — verified per page, not assumed.
 Each page gets a checklist row in the audit table below (built from a code
 trace), and is only marked done when every control on it passes.
 
-<!-- LIST-CONTROLS-AUDIT -->
+#### Audit results (code trace, Oct 2026)
+
+**Nothing has select-all, row checkboxes, bulk actions or per-column filters
+today** — those are new work, not fixes.
+
+Status per page (✓ works · ✗ broken · — missing · NR = pager doesn't reset to
+page 1 when search/filters change):
+
+| Portal | Page | Search | Sort | Filters | Pager | Export |
+|---|---|---|---|---|---|---|
+| Admin | Assignments | ✓ | ✓ | ✗ Cancelled never shows | ✓ | ✓ |
+| Admin | Dispatch | ✓ | ✓ (priority NaN) | ✗ Requests filters counted but not applied | NR (mobile) | — |
+| Admin | Requests | ✓ | — | ✓ | NR | — |
+| Admin | Projects | ✓ | ✓ | ✓ | ✓ | — |
+| Admin | CRM leads | ✓ | ✗ reversed; Last Touch sorts wrong field | ✓ | NR | — |
+| Admin | CRM clients / accounts | ✓ | — / ✓ | — | NR | — |
+| Admin | Quotes | — | — | tabs only | NR | — |
+| Admin | Assets / materials | ✓ | — | ✓ | NR | — |
+| Admin | Sites | ✓ | ✓ | ✓ | NR | — (job counts wrong) |
+| Admin | Client detail – jobs | — | — | ✗ misses assigned jobs | NR | — |
+| Admin | Directory | ✓ | ✓ | ✓ | ✗ can land on empty page | — |
+| Admin | Accounting – invoices | ✓ | — | — | NR | ledger only |
+| Admin | Accounting – reimbursements | ✗ new reimbursements ignore search | fixed | ✓ | partial | — |
+| Admin | Payroll audit | ✓ (tech name) | fixed | ✓ | NR | ✓ |
+| Admin | Archives history tabs | ✓ | — | ✓ | ✓ | ✓ |
+| Admin | Archives – archive | ✗ two search boxes | ✓ | ✓ | ✓ | ✓ |
+| Admin | Archives – timeline | ✓ | ✗ mixed date formats | ✓ | ✓ | — |
+| Admin | Intel customers | ✓ | ✓ | ✓ | — | — |
+| Admin | Messaging contacts | — | — | ✓ | — | — |
+| Tech | Assignments | ✓ | ✗ History ignores priority/pay | ✓ | NR | — |
+| Tech | Logs | ✓ | ✓ | ✓ (no Rejected option; week-start only) | ✓ | — |
+| Tech | Earnings | ✗ week text only | ✗ no control | ✓ | NR | — |
+| Tech | Activity | ✓ | ✓ | ✓ | ✓ | — |
+| Tech | Projects / Messaging | ✓ / — | — | ✓ / — | — | — |
+| Client | Tickets | ✓ | ✓ (priority NaN) | ✗ denied/archived tickets vanish | — | — |
+| Client | Quotes | — | — | split only | — | — |
+| Client | Financials / Billing | ✓ | fixed / — | — | NR | — |
+| Client | Projects / Sites | ✓ (crash if a project has no location) | — | tabs | — | — |
+
+**Confirmed bugs to fix first** (data shown wrong, not just styling):
+1. Client detail Jobs, Sites list and site detail read only `workOrders`, so
+   every assigned job is missing from their open/completed counts and lists.
+2. Client ticket tabs drop tickets admins set to denied / archived /
+   pending_review; the client dashboard count is off too.
+3. CRM list sort is reversed for Value / Updated (default shows stalest deals
+   first); "Last Touch" sorts by a different field than it shows.
+4. Reimbursements search skips the new reimbursement records.
+5. Admin Assignments "Cancelled" filter shows nothing (and the CSV count
+   disagrees with the screen).
+6. Dispatch → Requests counts Source/Status filters it never applies.
+7. Archives → Archive has two search boxes; Reset doesn't clear the top one.
+8. Directory paging can land on a blank page after hiding inactive people.
+9. Tech Earnings: sort has no control; search only matches the week text.
+10. Priority sorts produce random order when a job has no priority (4 places);
+    tech History ignores Sort.
+11. Timeline sorts mixed date formats as text.
+12. ~17 lists don't return to page 1 when search/filters change.
+13. Client Projects crashes on a project with no location.
+
+(5 and 7 came from this branch's own recent work.)
+
+**Missing controls to add**: sort on Requests, Quotes, Invoices, Client
+Billing, Assets, CRM Clients and Archives history; search on Quotes,
+Messaging contacts and Payroll disputes; status filter on invoices; Rejected in
+tech Logs; pager on Intel customers; CSV on Requests, CRM leads, Quotes,
+Invoices and Directory; a full notifications page (the bell shows 3).
+
+Mobile: no control is hidden on phones without an alternative.
+
 
 ### Phase 3 — Migrate pages, highest traffic first (~1–2 weeks)
 Each page: swap to the building blocks, apply the type scale, fix copy. No

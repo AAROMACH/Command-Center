@@ -74,11 +74,11 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
 
     // Defensive Protocol: Handle referer or activation failures from Google Maps
     window.gm_authFailure = () => {
-      console.warn("Google Maps API Handshake Restricted.");
+      console.warn("Google Maps could not load.");
       toast({
         variant: "destructive",
         title: "Google Maps unavailable",
-        description: "Google Maps API referer or activation restriction active. Please authorize this workstation URL in your Cloud Console.",
+        description: "Address lookup is off on this site. Type the address manually.",
       });
     };
 
@@ -99,7 +99,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
           }
         });
       } catch (e) {
-        console.warn("Places Autocomplete Terminal Restricted.");
+        console.warn("Places autocomplete unavailable.");
       }
     };
 
@@ -130,19 +130,19 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
           const place = results[0];
           setFormData(prev => ({ ...prev, location: place.formatted_address }));
           toast({
-            title: "Coordinate Match Verified",
-            description: `Registry updated to verified site: ${place.formatted_address}`,
+            title: "Address verified",
+            description: `Location set to ${place.formatted_address}`,
           });
         } else {
           toast({
             variant: "destructive",
-            title: "Resolution Failed",
-            description: "No verified coordinates found. Verify referer permissions in console.",
+            title: "Address not found",
+            description: "Google could not find that address. Check it and try again.",
           });
         }
       });
     } catch (e) {
-      console.error("Places Service Protocol Error:", e);
+      console.error("Places lookup failed:", e);
     }
   };
 
@@ -182,8 +182,8 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
     setFormData(prev => ({ ...prev, location: site.location }));
     setIsSiteRegistryOpen(false);
     toast({
-        title: "Site Coordinates Applied",
-        description: `Deployment target set to ${site.name}.`,
+        title: "Site selected",
+        description: `Location set to ${site.name}.`,
     });
   };
 
@@ -191,7 +191,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
     if (!formData.clientName || !formData.location || !formData.description) {
       toast({
         variant: "destructive",
-        title: "Incomplete Request",
+        title: "Missing details",
         description: "Please populate all critical fields.",
       });
       return;
@@ -210,7 +210,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
       setIsOpen(false);
       handleReset();
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+      toast({ variant: 'destructive', title: 'Save failed', description: e.message });
     }
   };
 
@@ -278,13 +278,13 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
               <ClipboardList className="text-brand-red h-5 w-5" />
               <DialogTitle className="text-lg font-bold text-text-primary">New Service Intake</DialogTitle>
             </div>
-            <DialogDescription className="text-left text-xs font-bold text-text-muted">Initialize a new client request in the intake funnel.</DialogDescription>
+            <DialogDescription className="text-left text-xs font-bold text-text-muted">Log a new client request.</DialogDescription>
           </DialogHeader>
 
           <div className="px-6 py-4 space-y-6 text-left">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client / Entity</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client</Label>
                 <div className="space-y-1.5">
                   <Input 
                     placeholder="Name or Organization"
@@ -299,12 +299,12 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                     className="h-6 text-[10px] uppercase font-bold tracking-wider text-brand-red hover:bg-brand-red/10 p-0 flex items-center gap-1.5"
                     onClick={() => setIsRegistryOpen(true)}
                   >
-                    <Search size={12}/> Search Registry
+                    <Search size={12}/> Find client
                   </Button>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Site Location</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Location</Label>
                 <div className="space-y-1.5">
                     <div className="relative group">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
@@ -320,7 +320,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                             onClick={resolveAddress}
                             type="button"
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-brand-red transition-colors"
-                            title="Verify Coordinates"
+                            title="Verify address"
                         >
                             <SearchCode size={14} />
                         </button>
@@ -347,7 +347,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Service Category</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Service category</Label>
                 <Select value={formData.requestType} onValueChange={(val: any) => setFormData({...formData, requestType: val})}>
                   <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -377,7 +377,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Scope of Request</Label>
               <Textarea 
-                placeholder="Provide detailed job parameters and client requirements..." 
+                placeholder="What the client needs…" 
                 value={formData.description}
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                 className="bg-bg-primary border-border-sub h-24 text-xs font-medium leading-relaxed"
@@ -476,7 +476,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
               <X size={14} className="mr-2"/> Cancel Intake
             </Button>
             <div className="flex-1">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2 text-center md:text-left">Authorize Deployment Path:</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2 text-center md:text-left">Next step</p>
               <div className="grid grid-cols-1">
                 <Button type="button" onClick={handleSave} className="h-11 text-[10px] uppercase font-bold tracking-wider bg-brand-red hover:bg-brand-red-hover shadow-lg">
                   <SquarePlus size={14} className="mr-2" /> Create request
@@ -493,7 +493,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
               <DialogHeader className="p-6 pb-2 text-left">
                   <div className="flex items-center gap-2 mb-1">
                       <Users className="text-brand-red h-5 w-5" />
-                      <DialogTitle className="text-lg font-bold text-text-primary text-left">Client Registry</DialogTitle>
+                      <DialogTitle className="text-lg font-bold text-text-primary text-left">Select client</DialogTitle>
                   </div>
                   <DialogDescription className="text-xs text-left">Select existing client to link to this service request.</DialogDescription>
               </DialogHeader>
@@ -501,7 +501,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                   <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                       <Input 
-                          placeholder="Filter registry by name or ID..." 
+                          placeholder="Search clients by name or ID…" 
                           value={registrySearch}
                           onChange={(e) => setRegistrySearch(e.target.value)}
                           className="bg-bg-primary h-10 pl-10 text-xs font-bold"
@@ -523,7 +523,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                               <div className="flex-1 overflow-hidden">
                                   <p className="text-xs font-bold text-text-primary truncate">{client.clientCompany || client.name}</p>
                                   {client.businessType && (
-                                      <p className="text-[10px] text-accent-gold uppercase font-bold tracking-tighter leading-none mt-0.5">{client.businessType}</p>
+                                      <p className="text-[10px] text-accent-gold uppercase font-bold leading-none mt-0.5">{client.businessType}</p>
                                   )}
                                   <p className="text-[10px] text-text-muted uppercase tracking-wider">ID: {client.id.toUpperCase()}</p>
                               </div>
@@ -532,13 +532,13 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                       ))}
                       {filteredRegistry.length === 0 && (
                           <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
-                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider italic">No registry matches found</p>
+                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider ">No matching clients</p>
                           </div>
                       )}
                   </div>
               </ScrollArea>
               <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                  <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-wider h-9" onClick={() => setIsRegistryOpen(false)}>Close Registry</Button>
+                  <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-wider h-9" onClick={() => setIsRegistryOpen(false)}>Close</Button>
               </DialogFooter>
           </DialogContent>
       </Dialog>
@@ -549,9 +549,9 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
               <DialogHeader className="p-6 pb-2 text-left">
                   <div className="flex items-center gap-2 mb-1">
                       <Navigation className="text-accent-gold h-5 w-5" />
-                      <DialogTitle className="text-lg font-bold text-text-primary">Site Registry</DialogTitle>
+                      <DialogTitle className="text-lg font-bold text-text-primary">Select site</DialogTitle>
                   </div>
-                  <DialogDescription className="text-xs text-left">Select verified coordinates for <span className="text-text-primary font-bold">{formData.clientName}</span>.</DialogDescription>
+                  <DialogDescription className="text-xs text-left">Pick a saved site for <span className="text-text-primary font-bold">{formData.clientName}</span>.</DialogDescription>
               </DialogHeader>
               <ScrollArea className="flex-1 px-6 py-4">
                   <div className="space-y-1">
@@ -576,13 +576,13 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                       ))}
                       {(!selectedClient?.managedSites || selectedClient.managedSites.length === 0) && (
                           <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
-                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider italic">No verified sites on record for this client</p>
+                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider ">No saved sites for this client</p>
                           </div>
                       )}
                   </div>
               </ScrollArea>
               <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                  <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-wider h-10" onClick={() => setIsSiteRegistryOpen(false)}>Close Terminal</Button>
+                  <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-wider h-10" onClick={() => setIsSiteRegistryOpen(false)}>Close</Button>
               </DialogFooter>
           </DialogContent>
       </Dialog>

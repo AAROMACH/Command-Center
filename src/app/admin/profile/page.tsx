@@ -1,4 +1,7 @@
 'use client';
+import { PageHeader } from '@/components/page-header';
+import { SearchField } from '@/components/search-field';
+import { PageLoading } from '@/components/empty-state';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { auth, db } from '@/lib/firebase';
@@ -111,37 +114,26 @@ export default function ProfilePage() {
         }
     };
 
-    if (!mounted) return <div className="p-8 text-center text-[10px] uppercase tracking-wider text-text-muted">Loading...</div>;
+    if (!mounted) return <PageLoading label="Loading profile…" />;
 
     return (
         <div className="space-y-6">
-            <header className="page-header">
-                <div>
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <User size={12} />
-                        User Account
-                    </p>
-                    <h1 className="page-title">Profile & Settings</h1>
-                    <p className="page-subtitle">Manage your personal information, notification preferences, and security settings.</p>
-                </div>
-                <div className="page-header-right items-center">
-                    <div className="search-wrap">
-                        <Search />
-                        <input
-                            className="search-input !w-full md:!w-[250px]"
-                            placeholder="Find setting..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                </div>
-            </header>
+            <PageHeader
+                eyebrow="Account"
+                icon={User}
+                title="Profile & settings"
+                subtitle="Your details, notifications and security."
+                actions={<>
+                    <SearchField className="w-full md:w-[260px]" placeholder="Find a setting…" value={searchQuery} onChange={setSearchQuery} />
+                
+                </>}
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6 text-left">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Personal Information</CardTitle>
+                            <CardTitle>Personal information</CardTitle>
                             <CardDescription>Update your photo and personal details here.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
@@ -180,11 +172,11 @@ export default function ProfilePage() {
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="fullName">Full Name</Label>
+                                    <Label htmlFor="fullName">Full name</Label>
                                     <Input id="fullName" value={name} onChange={(e) => setName(e.target.value)} />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="email">Email Address</Label>
+                                    <Label htmlFor="email">Email address</Label>
                                     <Input id="email" type="email" value={email} readOnly disabled />
                                     <p className="text-[10px] text-text-muted">Contact email is managed in the Directory. It isn&apos;t your sign-in email.</p>
                                 </div>
@@ -206,7 +198,7 @@ export default function ProfilePage() {
                             <CardDescription>Manage your password and two-factor authentication.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <Button variant="outline" className="w-full" onClick={() => setIsPasswordDialogOpen(true)}>Change Password</Button>
+                            <Button variant="outline" className="w-full" onClick={() => setIsPasswordDialogOpen(true)}>Change password</Button>
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -230,7 +222,7 @@ export default function ProfilePage() {
                         <CardContent className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <Label htmlFor="email-notifications" className="flex flex-col space-y-1">
-                                    <span>Email Notifications</span>
+                                    <span>Email notifications</span>
                                     <span className="font-normal leading-snug text-text-muted">
                                         Receive updates and alerts via email.
                                     </span>
@@ -243,7 +235,7 @@ export default function ProfilePage() {
                             </div>
                             <div className="flex items-center justify-between">
                                 <Label htmlFor="sms-notifications" className="flex flex-col space-y-1">
-                                    <span>Text Messages</span>
+                                    <span>Text messages</span>
                                     <span className="font-normal leading-snug text-text-muted">
                                         Alerts texted to your phone number.
                                     </span>

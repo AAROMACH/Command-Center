@@ -18,14 +18,14 @@ const PORTAL_META = {
   admin: {
     icon: ShieldCheck,
     label: 'Command Center',
-    description: 'Admin operations, dispatch, payroll, and settings.',
+    description: 'Admin, dispatch, payroll and settings.',
     color: 'text-brand-red',
     border: 'border-brand-red/30 hover:border-brand-red',
     bg: 'bg-brand-red/5 hover:bg-brand-red/10',
   },
   tech: {
     icon: Wrench,
-    label: 'Field Terminal',
+    label: 'Tech Portal',
     description: 'Assignments, logs, earnings, and schedule.',
     color: 'text-brand-blue',
     border: 'border-brand-blue/30 hover:border-brand-blue',
@@ -34,7 +34,7 @@ const PORTAL_META = {
   client: {
     icon: Building2,
     label: 'Client Portal',
-    description: 'Projects, support tickets, invoices, and sites.',
+    description: 'Projects, service requests, invoices and sites.',
     color: 'text-brand-emerald',
     border: 'border-brand-emerald/30 hover:border-brand-emerald',
     bg: 'bg-brand-emerald/5 hover:bg-brand-emerald/10',
@@ -42,10 +42,10 @@ const PORTAL_META = {
   sales: {
     icon: Handshake,
     label: 'Sales Portal',
-    description: 'Pipeline, My Day, accounts, site surveys and quotes.',
-    color: 'text-amber-400',
-    border: 'border-amber-400/30 hover:border-amber-400',
-    bg: 'bg-amber-400/5 hover:bg-amber-400/10',
+    description: 'Pipeline, accounts, site surveys and quotes.',
+    color: 'text-accent-gold',
+    border: 'border-accent-gold/30 hover:border-accent-gold',
+    bg: 'bg-accent-gold/5 hover:bg-accent-gold/10',
   },
 };
 
@@ -127,8 +127,8 @@ export default function PortalSelectPage() {
         )}
 
         <div className="space-y-2">
-          <h1 className="text-2xl font-black tracking-wide text-text-primary">Select Portal</h1>
-          <p className="text-sm text-text-secondary">Your account has access to multiple portals. Choose where to go.</p>
+          <h1 className="text-2xl font-semibold text-text-primary">Choose a portal</h1>
+          <p className="text-sm text-text-secondary">Your account can use more than one portal. Where would you like to go?</p>
         </div>
 
         <div className="grid gap-3">
@@ -140,7 +140,7 @@ export default function PortalSelectPage() {
                 key={id}
                 onClick={() => handleSelectPortal(path)}
                 className={cn(
-                  'w-full rounded-lg border p-4 text-left transition-all cursor-pointer',
+                  'w-full rounded-xl border p-4 text-left shadow-sm transition-all cursor-pointer',
                   meta.border,
                   meta.bg
                 )}
@@ -150,8 +150,8 @@ export default function PortalSelectPage() {
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className={cn('text-sm font-bold', meta.color)}>{meta.label}</p>
-                    <p className="text-xs text-text-muted mt-0.5">{meta.description}</p>
+                    <p className={cn('text-sm font-semibold', meta.color)}>{meta.label}</p>
+                    <p className="text-[13px] text-text-muted mt-0.5">{meta.description}</p>
                   </div>
                 </div>
               </button>
@@ -162,13 +162,13 @@ export default function PortalSelectPage() {
         <Button
           variant="ghost"
           onClick={handleSignOut}
-          className="w-full h-10 font-bold text-xs text-text-muted hover:text-text-primary"
+          className="w-full h-10 text-text-muted hover:text-text-primary"
         >
-          <LogOut size={14} className="mr-2" /> Sign Out
+          <LogOut size={14} className="mr-2" /> Sign out
         </Button>
 
-        <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">
-          Aaromach Command Center · Authorized Access Only
+        <p className="text-[12px] text-text-muted">
+          Aaromach Command Center · For authorized users only
         </p>
       </div>
     </div>

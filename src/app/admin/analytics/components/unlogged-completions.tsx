@@ -108,7 +108,7 @@ export function UnloggedCompletions({ rows, excluded, technicians, currentUser }
                 history: arrayUnion({
                     type: 'note',
                     date: format(new Date(), 'MM-dd-yyyy'),
-                    details: `Marked not payable through weekly logs by ${adminName} (Intel → Flags → Unlogged Jobs).`,
+                    details: `Marked not payable through weekly logs by ${adminName} (Insights → Flags → Unlogged jobs).`,
                     user: adminName,
                 }),
             });
@@ -204,7 +204,7 @@ export function UnloggedCompletions({ rows, excluded, technicians, currentUser }
                             <div key={r.job.id} className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 py-3 text-left">
                                 <div className="min-w-0 space-y-0.5">
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <a href={`/admin/assignments/${r.job.id}`} className="text-[11px] font-bold font-mono text-blue-400 hover:underline">{r.job.id.toUpperCase()}</a>
+                                        <a href={`/admin/assignments/${r.job.id}`} className="text-[11px] font-bold font-mono text-brand-blue hover:underline">{r.job.id.toUpperCase()}</a>
                                         <span className="text-[10px] font-mono text-text-muted">WO {displayWorkOrderNumber(r.job)}</span>
                                         {tech && isInactiveTechnician(tech) && <Badge variant="destructive" className="text-[10px] h-4">Inactive tech</Badge>}
                                     </div>
@@ -247,7 +247,7 @@ export function UnloggedCompletions({ rows, excluded, technicians, currentUser }
                         <div className="divide-y divide-border-sub border-t border-border-sub">
                             {excluded.map(e => (
                                 <div key={e.job.id} className="px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                                    <a href={`/admin/assignments/${e.job.id}`} className="text-[10px] font-mono font-bold text-blue-400 hover:underline">{e.job.id.toUpperCase()}</a>
+                                    <a href={`/admin/assignments/${e.job.id}`} className="text-[10px] font-mono font-bold text-brand-blue hover:underline">{e.job.id.toUpperCase()}</a>
                                     <span className="text-[10px] font-mono text-text-muted">WO {displayWorkOrderNumber(e.job)}</span>
                                     <span className="text-[10px] text-text-secondary">{techName(e.techId)} · {e.job.scheduleDate || 'No date'}</span>
                                     <span className="text-[11px] text-text-muted basis-full">{reasonLabel(e)}</span>

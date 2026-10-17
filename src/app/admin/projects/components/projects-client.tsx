@@ -121,7 +121,7 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
     if (projects.length === 0) {
         return (
             <div className="table-wrap">
-                <div className="empty-state !py-12 text-center text-text-muted italic uppercase text-[10px] font-bold tracking-wider border-none">
+                <div className="empty-state !py-12 text-center text-text-muted uppercase text-[10px] font-bold tracking-wider border-none">
                     No projects found in this category.
                 </div>
             </div>
@@ -184,8 +184,8 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
                         <th className="text-center w-[160px] pl-0">Status & ID</th>
                         <th className="text-left pl-0">Project Identification</th>
                         <th className="text-center">Project Lead</th>
-                        <th className="text-left pl-0">Site Coordinates</th>
-                        <th className="text-left pl-0">Schedule Date</th>
+                        <th className="text-left pl-0">Location</th>
+                        <th className="text-left pl-0">Date</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -204,7 +204,7 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
                                     <td className="pl-0 pt-4 pb-2">
                                         <div className="flex flex-col items-center justify-center gap-1.5">
                                             <div className="cell-id !text-[10px] font-mono font-bold !mt-0 !text-center">{(project.id || '').toUpperCase()}</div>
-                                            <Badge variant={project.status} className="capitalize text-[10px] h-4 px-1.5 tracking-widest">{project.status}</Badge>
+                                            <Badge variant={project.status} className="capitalize text-[10px] h-4 px-1.5 tracking-wider">{project.status}</Badge>
                                         </div>
                                     </td>
                                     <td className="text-left pl-0 pt-4 pb-2">
@@ -224,7 +224,7 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
                                                     <span className="text-[10px] font-bold text-text-primary">{lead.name}</span>
                                                 </div>
                                             ) : (
-                                                <span className="text-[10px] text-text-muted italic uppercase font-bold tracking-wider">Unallocated</span>
+                                                <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider">Unallocated</span>
                                             )}
                                         </div>
                                     </td>

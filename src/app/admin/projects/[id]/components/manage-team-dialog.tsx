@@ -134,7 +134,7 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
                             })}
                             {team.length === 0 && (
                                 <div className="p-8 text-center border border-dashed border-border-sub rounded-md">
-                                    <p className="text-[10px] font-bold text-text-muted italic">No personnel assigned</p>
+                                    <p className="text-[10px] font-bold text-text-muted ">No personnel assigned</p>
                                 </div>
                             )}
                         </div>
@@ -144,14 +144,14 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
                         <div className="flex items-center gap-2">
                              <Select value={newTechId} onValueChange={setNewTechId}>
                                 <SelectTrigger className="flex-1 bg-bg-secondary border-border-sub h-9 text-[10px] font-bold">
-                                    <SelectValue placeholder="Select operative..." />
+                                    <SelectValue placeholder="Select technician…" />
                                 </SelectTrigger>
                                 <SelectContent>
                                      <div className="p-2">
                                         <div className="relative">
                                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
                                             <Input 
-                                                placeholder="Search registry..."
+                                                placeholder="Search technicians…"
                                                 className="w-full h-8 pl-8 bg-bg-primary border-border-sub text-[10px] font-bold"
                                                 value={searchQuery}
                                                 onChange={e => setSearchQuery(e.target.value)}
@@ -169,7 +169,7 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
                                                     </div>
                                                 </SelectItem>
                                             )) : (
-                                                <div className="text-center text-[10px] font-bold text-text-muted p-4">No operatives found</div>
+                                                <div className="text-center text-[10px] font-bold text-text-muted p-4">No technicians found</div>
                                             )}
                                         </div>
                                     </ScrollArea>

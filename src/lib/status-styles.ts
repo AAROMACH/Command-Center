@@ -39,7 +39,7 @@ const PAY: Record<string, Tone> = {
     approved: 'done', paid: 'done', submitted: 'progress', draft: 'scheduled', returned: 'problem', 'not-filed': 'problem', upcoming: 'neutral',
 };
 const REQUEST: Record<string, Tone> = {
-    new: 'progress', pending: 'progress', pending_review: 'progress', reviewed: 'info', approved: 'done', converted: 'done',
+    new: 'progress', pending: 'progress', pending_review: 'progress', reviewed: 'info', approved: 'done', converted: 'done', paid: 'done',
     denied: 'problem', rejected: 'problem', closed: 'neutral', archived: 'neutral',
 };
 const INVOICE: Record<string, Tone> = {

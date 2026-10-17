@@ -32,11 +32,11 @@ export function isAssignableTechnician(t: { roles?: string[]; role?: string }): 
  */
 /**
  * A person's display name for audit/history entries — the user doc's `name`,
- * falling back to `fullName`, then email. "Field Operative" only when the
+ * falling back to `fullName`, then email. "Technician" only when the
  * record truly isn't loaded.
  */
 export function techDisplayName(t: { name?: string; fullName?: string; email?: string } | null | undefined): string {
-  return t?.name || t?.fullName || t?.email || 'Field Operative';
+  return t?.name || t?.fullName || t?.email || 'Technician';
 }
 
 export function isInactiveTechnician(t: { accountStatus?: string }): boolean {
@@ -130,7 +130,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
       return formatCityState(response[0].formatted_address);
     }
   } catch (e) {
-    console.warn("Tactical resolution failed:", e);
+    console.warn("Address lookup failed:", e);
   }
   return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 }

@@ -38,6 +38,8 @@ import { PayrollReviewDialog } from '@/app/admin/financials/components/payroll-r
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { useRouter } from 'next/navigation';
+import { PageHeader } from '@/components/page-header';
+import { SearchField } from '@/components/search-field';
 
 // Within a group of duplicate weekly logs for the same tech+week, picks the
 // one considered the legitimate original: whichever left Draft first
@@ -109,6 +111,7 @@ export default function PayrollAuditPage() {
     // "Post-Approval Disputes" tab for the per-log view of the same data.
     const [payrollDisputes, setPayrollDisputes] = useState<PayrollDispute[]>([]);
     const [resolvingDisputeId, setResolvingDisputeId] = useState<string | null>(null);
+    const [adjSearch, setAdjSearch] = useState('');
     // Weekly-log audit review (moved here from the Accounting page).
     const [reviewLog, setReviewLog] = useState<WeeklyLog | null>(null);
     const [reviewOpen, setReviewOpen] = useState(false);
@@ -177,7 +180,7 @@ export default function PayrollAuditPage() {
                 'payrollDisputes', dispute.id, adminId, adminName, 'resolved_dispute',
                 `Resolved ${dispute.reason.replace(/_/g, ' ')} dispute from ${dispute.techName} for week of ${dispute.weekOf}.`
             ).catch(() => {});
-            toast({ title: 'Dispute Resolved' });
+            toast({ title: 'Dispute resolved' });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Could Not Resolve', description: e.message });
         } finally {
@@ -273,7 +276,7 @@ export default function PayrollAuditPage() {
             const adminName = auth.currentUser?.displayName || currentUser?.name || 'Admin';
             await auditEvent('weeklyLogs', primary.id, adminId, adminName, 'ignored_duplicate_alert',
                 `Ignored duplicate log alert for ${primary.techId}, week of ${primary.weekOf}: ${group.map(log => log.id).join(', ')}.`).catch(() => {});
-            toast({ title: 'Alert Ignored', description: 'Both logs and their pay totals are unchanged.' });
+            toast({ title: 'Alert dismissed', description: 'Both logs and their pay totals are unchanged.' });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Could Not Ignore Alert', description: e.message });
         } finally {
@@ -341,14 +344,14 @@ export default function PayrollAuditPage() {
 
             await auditEvent(
                 'weeklyLogs', merged.kept.id, adminId, adminName, 'merged_duplicate',
-                `Merged ${merged.rest.length} duplicate log${merged.rest.length > 1 ? 's' : ''} (${merged.rest.map(l => l.id).join(', ')}) for week of ${merged.kept.weekOf} into ${merged.kept.id}.${merged.kept.status === 'Approved' ? ' Prior approval reopened; payroll review required.' : ''}`
+                `Merged ${merged.rest.length} duplicate log${merged.rest.length > 1 ? 's' : ''} (${merged.rest.map(l => l.id).join(', ')}) for week of ${merged.kept.weekOf} into ${merged.kept.id}.${merged.kept.status === 'Approved' ? 'Prior approval reopened; payroll review required.' : ''}`
             ).catch(() => {});
 
-            toast({ title: 'Logs Merged', description: merged.kept.status === 'Approved'
+            toast({ title: 'Logs merged', description: merged.kept.status === 'Approved'
                 ? `Combined logs for ${merged.kept.weekOf}. Approval reopened; payroll review is required.`
                 : `Combined ${group.length} logs for week of ${merged.kept.weekOf} into ${merged.kept.id.toUpperCase()}.` });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Merge Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Merge failed', description: e.message });
         } finally {
             setMergingKey(null);
         }
@@ -369,9 +372,9 @@ export default function PayrollAuditPage() {
                 'weeklyLogs', log.id, adminId, adminName, 'deleted_duplicate',
                 `Deleted duplicate log ${log.id} (${log.items?.length || 0} item${(log.items?.length || 0) === 1 ? '' : 's'}) for week of ${log.weekOf} — original kept: ${primary.id}.`
             ).catch(() => {});
-            toast({ title: 'Duplicate Deleted', description: `Removed ${log.id.toUpperCase()}. Original ${primary.id.toUpperCase()} kept.` });
+            toast({ title: 'Duplicate deleted', description: `Removed ${log.id.toUpperCase()}. Original ${primary.id.toUpperCase()} kept.` });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Delete Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Delete failed', description: e.message });
         } finally {
             setDeletingLogId(null);
             setLogToDelete(null);
@@ -415,11 +418,24 @@ export default function PayrollAuditPage() {
     const logsPager = usePaged(filteredLogs, PAGE_SIZES_LARGE, 'payroll-audit-logs', [searchQuery, statusFilter, dateFrom, dateTo]);
     const stubTechPager = usePaged(approvedLogsByTech, PAGE_SIZES_SMALL, 'payroll-stub-techs');
     const [allStubsFor, setAllStubsFor] = useState<Set<string>>(new Set());
-    const sortedDisputes = useMemo(() => [...payrollDisputes].sort((a, b) => (a.status === b.status ? (b.createdAt || '').localeCompare(a.createdAt || '') : a.status === 'open' ? -1 : 1)), [payrollDisputes]);
-    const disputePager = usePaged(sortedDisputes, PAGE_SIZES_SMALL, 'payroll-disputes');
+    // One search box for disputes and adjustments: tech, week, reason, notes, amount.
+    const adjQuery = adjSearch.trim().toLowerCase();
+    const techNameOf = (id: string) => technicians.find(t => t.id === id)?.name || '';
+    const sortedDisputes = useMemo(() => [...payrollDisputes]
+        .filter(d => !adjQuery || [d.techName, techNameOf(d.techId), d.weekOf, d.reason?.replace(/_/g, ' '), d.notes, d.workOrderId, d.status]
+            .some(v => (v || '').toLowerCase().includes(adjQuery)))
+        .sort((a, b) => (a.status === b.status ? (b.createdAt || '').localeCompare(a.createdAt || '') : a.status === 'open' ? -1 : 1)),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [payrollDisputes, adjQuery, technicians]);
+    const disputePager = usePaged(sortedDisputes, PAGE_SIZES_SMALL, 'payroll-disputes', [adjQuery]);
     // Copy before sorting — sorting the state array in render mutated it.
-    const sortedAdjustments = useMemo(() => [...adjustments].sort((a, b) => (b.date || '').localeCompare(a.date || '')), [adjustments]);
-    const adjPager = usePaged(sortedAdjustments, PAGE_SIZES_LARGE, 'payroll-adjustments');
+    const sortedAdjustments = useMemo(() => [...adjustments]
+        .filter(a => !adjQuery || [techNameOf(a.techId), a.techId, a.reason, a.addedBy, a.date, String(a.amount ?? '')]
+            .some(v => (v || '').toLowerCase().includes(adjQuery)))
+        .sort((a, b) => (parseLocalDate(b.date)?.getTime() ?? 0) - (parseLocalDate(a.date)?.getTime() ?? 0)),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [adjustments, adjQuery, technicians]);
+    const adjPager = usePaged(sortedAdjustments, PAGE_SIZES_LARGE, 'payroll-adjustments', [adjQuery]);
 
     const renderLogList = (logs: WeeklyLog[]) => (
         logs.length === 0 ? (
@@ -440,7 +456,7 @@ export default function PayrollAuditPage() {
                                     className="flex-1 min-w-0 grid grid-cols-4 gap-3 items-center text-left"
                                 >
                                     <div>
-                                        <p className="text-[11px] font-bold text-text-primary">{tech?.name || log.techId}</p>
+                                        <p className="text-[12px] font-bold text-text-primary">{tech?.name || log.techId}</p>
                                         <p className="text-[11px] text-text-muted font-mono">Week of {log.weekOf}</p>
                                     </div>
                                     <div className="flex flex-col items-start gap-1">
@@ -468,7 +484,7 @@ export default function PayrollAuditPage() {
                                     className="h-7 shrink-0 text-[10px] font-bold uppercase tracking-wider"
                                     onClick={() => openReview(log)}
                                 >
-                                    <Receipt size={11} className="mr-1.5" /> Audit Log
+                                    <Receipt size={11} className="mr-1.5" /> Audit log
                                 </Button>
                                 <button onClick={() => toggleExpand(log.id)} className="shrink-0 p-1 text-text-muted" aria-label="Expand">
                                     {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -488,11 +504,11 @@ export default function PayrollAuditPage() {
                                             title={job ? 'Open job details' : 'Job record not found'}
                                         >
                                             <div className="min-w-0">
-                                                <p className="text-[10px] font-bold text-text-primary font-mono">
+                                                <p className="text-[12px] font-bold text-text-primary font-mono">
                                                     {item.workOrderId?.toUpperCase() || item.id}
                                                     {job && <span className="ml-2 text-text-muted">WO {displayWorkOrderNumber(job)}</span>}
                                                 </p>
-                                                {job && <p className="text-[10px] text-text-secondary truncate">{job.title || job.description}</p>}
+                                                {job && <p className="text-[12px] text-text-secondary truncate">{job.title || job.description}</p>}
                                                 {item.outcomeCode && <p className="text-[11px] text-text-muted">{item.outcomeCode.replace(/_/g, ' ')}</p>}
                                             </div>
                                             <div className="flex items-center gap-3">
@@ -535,43 +551,32 @@ export default function PayrollAuditPage() {
         <div className="space-y-5">
             {/* Back to wherever the admin came from (Financials, Dashboard, an
                 alert); straight to Financials when opened directly. */}
-            <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 -ml-2 text-[10px] font-bold text-text-muted"
-                onClick={() => (window.history.length > 1 ? router.back() : router.push('/admin/financials'))}
-            >
-                <ArrowLeft size={13} className="mr-1.5" /> Back
-            </Button>
-            <header className="page-header">
-                <div className="text-left">
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <Receipt size={12} />
-                        Financial Registry
-                    </p>
-                    <h1 className="page-title">Payroll Audit</h1>
-                    <p className="page-subtitle">Full audit trail of weekly log submissions and approvals.</p>
-                </div>
-                <div className="page-header-right">
-                    <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold border-border-main" onClick={handleExportCsv}>
-                        <Download size={12} className="mr-1.5" /> Export CSV
+            <PageHeader
+                back={{ href: '/admin/financials', label: 'Accounting' }}
+                eyebrow="Finance"
+                icon={Receipt}
+                title="Payroll audit"
+                subtitle="Every weekly log submission and approval, with disputes and adjustments."
+                actions={
+                    <Button variant="outline" size="sm" className="h-9 border-border-main" onClick={handleExportCsv}>
+                        <Download size={14} className="mr-1.5" /> Export CSV
                     </Button>
-                </div>
-            </header>
+                }
+            />
 
             {/* Summary chips */}
             <div className="flex flex-wrap gap-3">
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-text-green/10 border border-text-green/20">
                     <CheckCircle size={12} className="text-text-green" />
-                    <span className="text-[10px] font-bold text-text-green">${totals.approved.toFixed(2)} approved</span>
+                    <span className="text-[12px] font-semibold text-text-green">${totals.approved.toFixed(2)} approved</span>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-text-amber/10 border border-text-amber/20">
                     <Clock size={12} className="text-text-amber" />
-                    <span className="text-[10px] font-bold text-text-amber">${totals.pending.toFixed(2)} pending</span>
+                    <span className="text-[12px] font-semibold text-text-amber">${totals.pending.toFixed(2)} pending</span>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bg-secondary border border-border-sub">
                     <DollarSign size={12} className="text-text-muted" />
-                    <span className="text-[10px] font-bold text-text-muted">{totals.count} log{totals.count !== 1 ? 's' : ''} shown</span>
+                    <span className="text-[12px] font-semibold text-text-muted">{totals.count} log{totals.count !== 1 ? 's' : ''} shown</span>
                 </div>
             </div>
 
@@ -593,7 +598,7 @@ export default function PayrollAuditPage() {
                                             <p className="text-[11px] font-bold text-brand-red">
                                                 {group.length} duplicate logs — {tech?.name || group[0].techId} — week of {group[0].weekOf}
                                             </p>
-                                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">
+                                            <p className="text-[12px] text-text-muted">
                                                 {totalItems} total job entries across the {group.length} logs ({uniqueItems} unique) — merge combines everything, or delete an individual duplicate below.
                                             </p>
                                             {primary.status === 'Approved' && (
@@ -646,7 +651,7 @@ export default function PayrollAuditPage() {
                                         return (
                                             <div key={log.id} className="flex items-center justify-between gap-3 px-4 py-2">
                                                 <div className="flex items-center gap-2 min-w-0">
-                                                    <span className="text-[10px] font-mono font-bold text-text-primary">{log.id}</span>
+                                                    <span className="text-[12px] font-mono font-bold text-text-primary">{log.id}</span>
                                                     <Badge variant="outline" className="h-4 px-1.5 text-[10px] uppercase tracking-wider shrink-0">{log.status}</Badge>
                                                     <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider shrink-0">{log.items?.length || 0} item{(log.items?.length || 0) === 1 ? '' : 's'}</span>
                                                 </div>
@@ -758,7 +763,7 @@ export default function PayrollAuditPage() {
                 <TabsList className="border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-start mb-4">
                     {[
                         { value: 'weekly', label: 'Weekly', count: filteredLogs.length },
-                        { value: 'history', label: 'Paystub History', count: approvedLogsByTech.length },
+                        { value: 'history', label: 'Paystub history', count: approvedLogsByTech.length },
                         { value: 'adjustments', label: 'Adjustments', count: adjustments.length + payrollDisputes.filter(d => d.status === 'open').length },
                     ].map(t => (
                         <TabsTrigger key={t.value} value={t.value} className="tab-underline">
@@ -775,7 +780,7 @@ export default function PayrollAuditPage() {
                         <div className="relative flex-1 min-w-[180px]">
                             <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                             <input
-                                className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-main bg-bg-primary text-[11px] font-bold tracking-wide text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-red transition-colors"
+                                className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-main bg-bg-primary text-[12px] font-bold tracking-wide text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-red transition-colors"
                                 placeholder="Search by tech name..."
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
@@ -796,9 +801,9 @@ export default function PayrollAuditPage() {
                             ))}
                         </div>
                         <div className="flex items-center gap-2">
-                            <input type="date" className="h-9 px-3 rounded-lg border border-border-main bg-bg-primary text-[10px] font-bold text-text-primary" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="From" />
+                            <input type="date" className="h-9 px-3 rounded-lg border border-border-main bg-bg-primary text-[12px] font-bold text-text-primary" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="From" />
                             <span className="text-[11px] text-text-muted">to</span>
-                            <input type="date" className="h-9 px-3 rounded-lg border border-border-main bg-bg-primary text-[10px] font-bold text-text-primary" value={dateTo} onChange={e => setDateTo(e.target.value)} title="To" />
+                            <input type="date" className="h-9 px-3 rounded-lg border border-border-main bg-bg-primary text-[12px] font-bold text-text-primary" value={dateTo} onChange={e => setDateTo(e.target.value)} title="To" />
                             {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[11px] text-brand-red font-bold hover:underline">Clear</button>}
                         </div>
                     </div>
@@ -818,7 +823,7 @@ export default function PayrollAuditPage() {
                         <div key={techId} className="rounded-xl border border-border-sub bg-bg-secondary overflow-hidden">
                             <div className="flex items-center justify-between px-4 py-3 bg-bg-tertiary/30 border-b border-border-sub">
                                 <div>
-                                    <p className="text-[11px] font-bold text-text-primary">{tech?.name || techId}</p>
+                                    <p className="text-[12px] font-bold text-text-primary">{tech?.name || techId}</p>
                                     <p className="text-[11px] text-text-muted">{logs.length} approved logs · ${logs.reduce((s, l) => s + settlementOf(l), 0).toFixed(2)} total</p>
                                 </div>
                                 <Badge variant="active" className="text-[10px] h-4">{logs.length} stubs</Badge>
@@ -827,12 +832,12 @@ export default function PayrollAuditPage() {
                                 {(allStubsFor.has(techId) ? logs : logs.slice(0, 12)).map(log => (
                                     <div key={log.id} className="flex items-center justify-between px-4 py-2.5">
                                         <div>
-                                            <p className="text-[10px] font-bold text-text-primary font-mono">Week of {log.weekOf}</p>
+                                            <p className="text-[12px] font-bold text-text-primary font-mono">Week of {log.weekOf}</p>
                                             <p className="text-[11px] text-text-muted">{log.items?.length || 0} items</p>
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <p className="text-[12px] font-bold font-mono text-text-green">${settlementOf(log).toFixed(2)}</p>
-                                            <button className="text-[11px] text-text-muted hover:text-text-primary font-bold border border-border-sub rounded px-2 py-0.5 hover:border-border-main transition-colors" onClick={() => downloadPaystub(log, tech, techId, jobsById)}>
+                                            <button className="text-[12px] text-text-muted hover:text-text-primary font-bold border border-border-sub rounded px-2 py-0.5 hover:border-border-main transition-colors" onClick={() => downloadPaystub(log, tech, techId, jobsById)}>
                                                 <Download size={9} className="inline mr-0.5" /> Stub
                                             </button>
                                         </div>
@@ -859,17 +864,23 @@ export default function PayrollAuditPage() {
                         so it lives here instead of only inside each log's own
                         review dialog. Open ones first, resolved ones collapsed
                         underneath for a paper trail. */}
+                    {(payrollDisputes.length > 0 || adjustments.length > 0) && (
+                        <SearchField className="max-w-md" placeholder="Search tech, week, reason, notes…" value={adjSearch} onChange={setAdjSearch} />
+                    )}
                     {payrollDisputes.length > 0 && (
                         <div className="space-y-2">
-                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
-                                Payroll Disputes ({payrollDisputes.filter(d => d.status === 'open').length} open)
+                            <p className="text-[13px] font-semibold text-text-primary">
+                                Payroll disputes ({payrollDisputes.filter(d => d.status === 'open').length} open)
                             </p>
+                            {sortedDisputes.length === 0 && (
+                                <p className="text-[12px] text-text-muted py-2">No disputes match this search.</p>
+                            )}
                             <div className="space-y-2">
                                 {disputePager.items.map(dispute => {
                                     const isOpenDispute = dispute.status === 'open';
-                                    const reasonLabel = dispute.reason === 'incorrect_pay' ? 'Incorrect Pay'
-                                        : dispute.reason === 'missing_reimbursement' ? 'Missing Reimbursement'
-                                        : 'Missing Job';
+                                    const reasonLabel = dispute.reason === 'incorrect_pay' ? 'Incorrect pay'
+                                        : dispute.reason === 'missing_reimbursement' ? 'Missing reimbursement'
+                                        : 'Missing job';
                                     const relatedJob = dispute.workOrderId ? jobsById.get(dispute.workOrderId) : undefined;
                                     const relatedLog = weeklyLogs.find(l => l.id === dispute.weeklyLogId);
                                     return (
@@ -886,7 +897,7 @@ export default function PayrollAuditPage() {
                                                     <span className="text-[11px] text-text-muted font-mono">Week of {dispute.weekOf}</span>
                                                     {relatedJob && <span className="text-[11px] text-text-muted font-mono">{relatedJob.title || relatedJob.description || dispute.workOrderId?.toUpperCase()}</span>}
                                                 </div>
-                                                <p className="text-[10px] text-text-secondary leading-relaxed mt-1">{dispute.notes}</p>
+                                                <p className="text-[12px] text-text-secondary leading-relaxed mt-1">{dispute.notes}</p>
                                                 <p className="text-[10px] text-text-muted font-mono mt-1">
                                                     {new Date(dispute.createdAt).toLocaleString()}
                                                     {!isOpenDispute && dispute.resolvedBy && ` · Resolved by ${dispute.resolvedBy}`}
@@ -921,20 +932,20 @@ export default function PayrollAuditPage() {
                     )}
 
                     <div className="flex items-center justify-between">
-                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{adjustments.length} Adjustment{adjustments.length !== 1 ? 's' : ''}</p>
-                        <Button size="sm" className="h-8 text-[10px] font-bold bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setAdjustDialogOpen(true)}>
-                            <Plus size={11} className="mr-1.5" /> Add Adjustment
+                        <p className="text-[13px] font-semibold text-text-primary">{adjQuery ? `${sortedAdjustments.length} of ${adjustments.length}` : adjustments.length} adjustment{adjustments.length !== 1 ? 's' : ''}</p>
+                        <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setAdjustDialogOpen(true)}>
+                            <Plus size={14} className="mr-1.5" /> Add adjustment
                         </Button>
                     </div>
                     <div className="rounded-xl border border-border-sub overflow-hidden">
                         <Table>
                             <TableHeader>
                                 <TableRow className="border-border-sub">
-                                    <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Tech</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Date</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Amount</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Reason</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Added By</TableHead>
+                                    <TableHead className="text-text-muted">Tech</TableHead>
+                                    <TableHead className="text-text-muted">Date</TableHead>
+                                    <TableHead className="text-text-muted">Amount</TableHead>
+                                    <TableHead className="text-text-muted">Reason</TableHead>
+                                    <TableHead className="text-text-muted">Added by</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -943,19 +954,19 @@ export default function PayrollAuditPage() {
                                     const amount = parseFloat(adj.amount || 0);
                                     return (
                                         <TableRow key={adj.id} className="border-border-sub hover:bg-bg-secondary">
-                                            <TableCell className="font-bold text-[11px] text-text-primary">{tech?.name || adj.techId}</TableCell>
-                                            <TableCell className="text-[10px] text-text-muted">{parseLocalDate(adj.date)?.toLocaleDateString() ?? '—'}</TableCell>
+                                            <TableCell className="font-bold text-[12px] text-text-primary">{tech?.name || adj.techId}</TableCell>
+                                            <TableCell className="text-[12px] text-text-muted">{parseLocalDate(adj.date)?.toLocaleDateString() ?? '—'}</TableCell>
                                             <TableCell className={cn('text-[11px] font-bold font-mono', amount >= 0 ? 'text-text-green' : 'text-text-red')}>
                                                 {amount >= 0 ? '+' : ''}${amount.toFixed(2)}
                                             </TableCell>
-                                            <TableCell className="text-[10px] text-text-muted max-w-[200px] truncate">{adj.reason || '—'}</TableCell>
-                                            <TableCell className="text-[10px] text-text-muted">{adj.addedBy || '—'}</TableCell>
+                                            <TableCell className="text-[12px] text-text-muted max-w-[200px] truncate">{adj.reason || '—'}</TableCell>
+                                            <TableCell className="text-[12px] text-text-muted">{adj.addedBy || '—'}</TableCell>
                                         </TableRow>
                                     );
                                 })}
-                                {adjustments.length === 0 && (
+                                {sortedAdjustments.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-12 text-[10px] text-text-muted uppercase tracking-wider">No adjustments recorded</TableCell>
+                                        <TableCell colSpan={5} className="text-center py-12 text-[13px] text-text-muted">{adjustments.length ? 'No adjustments match this search' : 'No adjustments yet'}</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
@@ -970,8 +981,8 @@ export default function PayrollAuditPage() {
             <Dialog open={adjustDialogOpen} onOpenChange={setAdjustDialogOpen}>
                 <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
                     <DialogHeader>
-                        <DialogTitle className="text-[13px] font-bold flex items-center gap-2">
-                            <SlidersHorizontal size={14} className="text-brand-red" /> Add Adjustment
+                        <DialogTitle className="text-base font-semibold flex items-center gap-2">
+                            <SlidersHorizontal size={14} className="text-brand-red" /> Add adjustment
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
@@ -980,7 +991,7 @@ export default function PayrollAuditPage() {
                             <Select value={adjustForm.techId} onValueChange={v => setAdjustForm(p => ({ ...p, techId: v }))}>
                                 <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue placeholder="Select tech..." /></SelectTrigger>
                                 <SelectContent className="bg-bg-elevated border-border-main">
-                                    {staffTechs.map(t => <SelectItem key={t.id} value={t.id} className="text-[11px]">{t.name}</SelectItem>)}
+                                    {staffTechs.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -1013,7 +1024,7 @@ export default function PayrollAuditPage() {
                             setAdjustDialogOpen(false);
                             setAdjustSaving(false);
                         }}>
-                            {adjustSaving ? 'Saving...' : 'Add Adjustment'}
+                            {adjustSaving ? 'Saving...' : 'Add adjustment'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

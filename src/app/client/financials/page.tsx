@@ -31,6 +31,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { money } from '@/lib/financial-summary';
+import { PageHeader } from '@/components/page-header';
+import { SearchField } from '@/components/search-field';
+import { FiltersPopover, FilterSection, CheckboxFilter } from '@/components/list-toolbar';
+import { StatCard } from '@/components/stat-card';
+import { StatusBadge } from '@/components/status-badge';
+import { statusLabel } from '@/lib/status-styles';
+import { jobDateTimeValue } from '@/lib/jobs';
+
+/** Invoice numbers are stored with or without the INV- prefix. */
+const invLabel = (n?: string) => (n || '').toUpperCase().startsWith('INV') ? (n || '') : `INV-${n || ''}`;
 
 export default function ClientFinancialsPage() {
     // Signed-in client from Firebase Auth (sessionStorage is per-tab, so a
@@ -38,6 +48,7 @@ export default function ClientFinancialsPage() {
     const { user: currentUser } = useAuth();
     const [mounted, setMounted] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState<string[]>([]);
     const { toast } = useToast();
     const router = useRouter();
     const { plan: currentPlan, current: currentSub } = useClientPlan(currentUser);
@@ -45,48 +56,61 @@ export default function ClientFinancialsPage() {
     useEffect(() => { setMounted(true); }, []);
     const myInvoices = useClientInvoices(currentUser);
 
-    const filteredInvoices = useMemo(() => {
-        return myInvoices
-            .filter(inv => 
-                (inv.invoiceNumber || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (inv.projectId || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (inv.workOrderId || '').toLowerCase().includes(searchQuery.toLowerCase())
-            )
-            .sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
-    }, [myInvoices, searchQuery]);
-    const invoicePager = usePaged(filteredInvoices, PAGE_SIZES_LARGE, 'client-financials-invoices', [searchQuery]);
+    const statusOptions = useMemo(() => {
+        const counts = new Map<string, number>();
+        myInvoices.forEach(inv => { const st = (inv.status || '').toLowerCase(); if (st) counts.set(st, (counts.get(st) || 0) + 1); });
+        return [...counts.entries()].sort(([a], [b]) => a.localeCompare(b))
+            .map(([value, n]) => ({ value, label: `${statusLabel(value)} (${n})` }));
+    }, [myInvoices]);
 
+    const filteredInvoices = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        return myInvoices
+            .filter(inv =>
+                (!statusFilter.length || statusFilter.includes((inv.status || '').toLowerCase())) &&
+                (!q ||
+                    (inv.invoiceNumber || '').toLowerCase().includes(q) ||
+                    (inv.projectId || '').toLowerCase().includes(q) ||
+                    (inv.workOrderId || '').toLowerCase().includes(q))
+            )
+            .sort((a, b) => jobDateTimeValue(b.issueDate) - jobDateTimeValue(a.issueDate));
+    }, [myInvoices, searchQuery, statusFilter]);
+    const invoicePager = usePaged(filteredInvoices, PAGE_SIZES_LARGE, 'client-financials-invoices', [searchQuery, statusFilter]);
+    const filtered = !!searchQuery || statusFilter.length > 0;
+    const resetFilters = () => { setSearchQuery(''); setStatusFilter([]); };
+
+    // Totals cover every invoice on the account, not just the filtered rows.
     const metrics = useMemo(() => {
-        const outstanding = filteredInvoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').reduce((acc, inv) => acc + money(inv.total), 0);
-        const paid = filteredInvoices.filter(inv => inv.status === 'paid').reduce((acc, inv) => acc + money(inv.total), 0);
+        const outstanding = myInvoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').reduce((acc, inv) => acc + money(inv.total), 0);
+        const paid = myInvoices.filter(inv => inv.status === 'paid').reduce((acc, inv) => acc + money(inv.total), 0);
         
         return { outstanding, paid };
-    }, [filteredInvoices]);
+    }, [myInvoices]);
 
     const getInvoiceSource = (invoice: Invoice) => {
         if (invoice.projectId) return { label: 'Project', id: invoice.projectId, icon: Briefcase };
         if (invoice.workOrderId) return { label: 'Job', id: invoice.workOrderId, icon: Wrench };
-        return { label: 'General', id: 'N/A', icon: FileText };
+        return { label: 'General', id: '', icon: FileText };
     };
 
     const handleExportInvoices = () => {
         const rows = [
-            ['INVOICE #', 'DATE', 'SOURCE', 'SOURCE ID', 'STATUS', 'TOTAL']
+            ['Invoice #', 'Date', 'Source', 'Source ID', 'Status', 'Total']
         ];
         
         filteredInvoices.forEach(inv => {
             const source = getInvoiceSource(inv);
             rows.push([
-                `INV-${inv.invoiceNumber}`,
-                inv.issueDate,
+                invLabel(inv.invoiceNumber),
+                inv.issueDate || '',
                 source.label,
-                inv.projectId || inv.workOrderId || 'N/A',
-                inv.status.toUpperCase(),
-                inv.total.toString()
+                inv.projectId || inv.workOrderId || '',
+                statusLabel(inv.status),
+                String(inv.total ?? 0)
             ]);
         });
 
-        const csvContent = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+        const csvContent = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -95,90 +119,64 @@ export default function ClientFinancialsPage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast({ title: "Download Executed", description: "Audit CSV generated for settlement verification."});
+        toast({ title: "Download started", description: `${filteredInvoices.length} invoices exported to CSV.`});
     };
 
 
     if (!mounted) return null;
 
     return (
-        <div className="space-y-8">
-            <header className="page-header">
-                <div>
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <Banknote size={12} />
-                        Financial Settlement
-                    </p>
-                    <h1 className="page-title">Billing & A/R</h1>
-                    <p className="page-subtitle text-left">Invoice audit, current outstanding balances, and low voltage job-level cost breakdowns.</p>
-                </div>
-            </header>
+        <div className="space-y-6">
+            <PageHeader
+                eyebrow="Client portal"
+                icon={Banknote}
+                title="Financials"
+                subtitle="Balances, payments and every invoice on your account."
+            />
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-border-main border border-border-main rounded-lg overflow-hidden shadow-sm">
-                <div className="bg-bg-secondary p-6 text-left">
-                    <div className="flex justify-between items-start mb-2">
-                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Outstanding Balance</p>
-                        <ArrowUpRight className="h-4 w-4 text-brand-red" />
-                    </div>
-                    <p className="text-3xl font-mono font-bold text-text-primary">${metrics.outstanding.toLocaleString()}</p>
-                    <p className="text-[10px] text-text-muted mt-1 uppercase tracking-wider font-bold">Funds Due for Settlement</p>
-                </div>
-                <div className="bg-bg-secondary p-6 text-left">
-                    <div className="flex justify-between items-start mb-2">
-                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Settled (YTD)</p>
-                        <CheckCircle2 className="h-4 w-4 text-text-green" />
-                    </div>
-                    <p className="text-3xl font-mono font-bold text-text-green">${metrics.paid.toLocaleString()}</p>
-                    <p className="text-[10px] text-text-muted mt-1 uppercase tracking-wider font-bold">Successfully Cleared</p>
-                </div>
-                <div className="bg-bg-secondary p-6 text-left cursor-pointer hover:bg-bg-tertiary transition-colors group" onClick={() => router.push('/client/billing')}>
-                    <div className="flex justify-between items-start mb-2">
-                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Current Plan</p>
-                        <div className="flex items-center gap-1">
-                            <Coins className="h-4 w-4 text-accent-gold" />
-                            <ChevronRight className="h-3 w-3 text-text-muted group-hover:text-text-primary transition-colors" />
-                        </div>
-                    </div>
-                    <p className="text-3xl font-bold text-text-primary capitalize">
-                        {currentSub ? (currentPlan?.name || 'Service plan') : 'No plan'}
-                    </p>
-                    <p className="text-[10px] text-text-muted mt-1 uppercase tracking-wider font-bold">
-                        {currentPlan ? `${currentPlan.benefits.responseHours}-hour response` : `${currentUser?.billingDetails?.terms || 'Net 30'} terms`}
-                    </p>
-                </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <StatCard label="Balance due" icon={ArrowUpRight} value={`$${metrics.outstanding.toLocaleString()}`} sub="Sent and overdue invoices" />
+                <StatCard label="Paid" icon={CheckCircle2} tone="done" value={`$${metrics.paid.toLocaleString()}`} sub="Invoices paid in full" />
+                <StatCard
+                    label="Service plan"
+                    icon={Coins}
+                    onClick={() => router.push('/client/billing')}
+                    value={currentSub ? <span className="capitalize">{currentPlan?.name || 'Service plan'}</span> : 'No plan'}
+                    sub={<span className="flex items-center gap-1">{currentPlan ? `${currentPlan.benefits.responseHours}-hour response` : `${currentUser?.billingDetails?.terms || 'Net 30'} terms`}<ChevronRight size={12} /></span>}
+                />
             </div>
 
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-border-sub bg-bg-tertiary/20">
+            <Card className="rounded-xl border-border-main bg-bg-secondary shadow-sm">
+                <CardHeader className="flex flex-col gap-4 pb-4 border-b border-border-sub lg:flex-row lg:items-center lg:justify-between space-y-0">
                     <div className="text-left">
-                        <CardTitle>Invoice Ledger</CardTitle>
-                        <CardDescription>Comprehensive record of all field critical financial transactions.</CardDescription>
+                        <CardTitle className="text-base font-semibold">Invoices</CardTitle>
+                        <CardDescription>Every invoice for your projects and jobs.</CardDescription>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <div className="search-wrap !mb-0">
-                            <Search />
-                            <input 
-                                className="search-input !w-[250px] !h-9 !text-xs font-bold" 
-                                placeholder="Filter by Invoice # or Job..." 
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <SearchField value={searchQuery} onChange={setSearchQuery} placeholder="Search invoice #, project or job" className="sm:w-[260px]" />
+                        <div className="flex gap-2">
+                            <FiltersPopover activeCount={statusFilter.length} onReset={() => setStatusFilter([])}>
+                                <FilterSection title="Status">
+                                    <CheckboxFilter idPrefix="fin-status" options={statusOptions} selected={statusFilter} onChange={setStatusFilter} columns={1} />
+                                </FilterSection>
+                            </FiltersPopover>
+                            <Button variant="outline" onClick={handleExportInvoices} disabled={filteredInvoices.length === 0}>
+                                <Download size={14} className="mr-2" /> Export CSV
+                            </Button>
                         </div>
-                        <Button variant="outline" size="sm" className="h-9 px-4 uppercase text-[10px] font-bold tracking-wider" onClick={handleExportInvoices}>
-                            <Download size={14} className="mr-2" /> Export CSV
-                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
+                    <div className="overflow-x-auto">
                     <Table>
-                        <TableHeader className="bg-bg-tertiary/50">
+                        <TableHeader>
                             <TableRow className="hover:bg-transparent border-border-sub">
-                                <TableHead className="pl-6 text-[10px] uppercase tracking-wider font-bold">Reference #</TableHead>
-                                <TableHead className="text-[10px] uppercase tracking-wider font-bold">Originating Source</TableHead>
-                                <TableHead className="text-[10px] uppercase tracking-wider font-bold">Date Issued</TableHead>
-                                <TableHead className="text-[10px] uppercase tracking-wider font-bold">Status</TableHead>
-                                <TableHead className="text-right text-[10px] uppercase tracking-wider font-bold">Total Amount</TableHead>
-                                <TableHead className="text-right pr-6"></TableHead>
+                                <TableHead className="pl-6">Invoice #</TableHead>
+                                <TableHead>For</TableHead>
+                                <TableHead>Issued</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Total</TableHead>
+                                <TableHead className="text-right pr-6"><span className="sr-only">Open</span></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -188,31 +186,29 @@ export default function ClientFinancialsPage() {
                                 return (
                                     <TableRow key={invoice.id} className="border-border-sub hover:bg-bg-tertiary transition-colors group">
                                         <TableCell className="pl-6 text-left">
-                                            <p className="text-xs font-bold text-text-primary tracking-wide">INV-{invoice.invoiceNumber}</p>
+                                            <p className="font-mono text-xs font-semibold text-text-primary">{invLabel(invoice.invoiceNumber)}</p>
                                         </TableCell>
                                         <TableCell className="text-left">
                                             <div className="flex items-center gap-2">
                                                 <Badge variant="outline" className="text-[11px] bg-bg-primary border-border-sub flex items-center gap-1.5">
-                                                    <SourceIcon size={10}/>
+                                                    <SourceIcon size={12}/>
                                                     {source.label}
                                                 </Badge>
-                                                <span className="font-mono text-[10px] text-text-muted">{(source.id || '').toUpperCase()}</span>
+                                                {source.id && <span className="font-mono text-[11px] text-text-muted">{source.id.toUpperCase()}</span>}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-left">
-                                            <p className="text-xs text-text-secondary">{invoice.issueDate}</p>
+                                            <p className="text-[13px] text-text-secondary">{invoice.issueDate || '—'}</p>
                                         </TableCell>
                                         <TableCell className="text-left">
-                                            <Badge variant={invoice.status === 'paid' ? 'active' : invoice.status === 'sent' ? 'pending' : 'onhold'}>
-                                                {invoice.status.toUpperCase()}
-                                            </Badge>
+                                            <StatusBadge kind="invoice" value={invoice.status} />
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <p className="text-sm font-mono font-bold text-text-primary">${invoice.total.toLocaleString()}</p>
+                                            <p className="text-[13px] font-mono font-semibold text-text-primary">${(invoice.total ?? 0).toLocaleString()}</p>
                                         </TableCell>
                                         <TableCell className="text-right pr-6">
                                             <div className="flex justify-end gap-2">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted group-hover:text-brand-red transition-colors" onClick={() => toast({ title: "Audit Link", description: "This will open the detailed invoice audit terminal in a future protocol update."})}>
+                                                <Button variant="ghost" size="icon" aria-label="Invoice details" className="h-8 w-8 text-text-muted group-hover:text-text-primary transition-colors" onClick={() => toast({ title: "Coming soon", description: "Detailed invoice view is on the way."})}>
                                                     <ExternalLink className="h-4 w-4" />
                                                 </Button>
                                             </div>
@@ -221,14 +217,22 @@ export default function ClientFinancialsPage() {
                                 );
                             })}
                             {filteredInvoices.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="h-32 text-center text-text-muted uppercase text-[10px] tracking-wider italic">
-                                        Financial ledger clear. No transaction history found.
+                                <TableRow className="hover:bg-transparent">
+                                    <TableCell colSpan={6} className="h-32 text-center">
+                                        {filtered && myInvoices.length > 0 ? (
+                                            <div className="space-y-2">
+                                                <p className="text-[13px] text-text-muted">No invoices match these filters.</p>
+                                                <Button variant="outline" size="sm" onClick={resetFilters}>Reset</Button>
+                                            </div>
+                                        ) : (
+                                            <p className="text-[13px] text-text-muted">No invoices yet.</p>
+                                        )}
                                     </TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
                     </Table>
+                    </div>
                     <div className="px-4"><ListPager pager={invoicePager} noun="invoices" /></div>
                 </CardContent>
             </Card>

@@ -8,6 +8,9 @@ import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import type { WorkOrder } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/page-header';
+import { StatusBadge } from '@/components/status-badge';
+import { EmptyState, LoadingState } from '@/components/empty-state';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -34,7 +37,7 @@ const AdminMapView = dynamic(() => import('./components/admin-map-view'), {
     <div className="flex items-center justify-center h-full bg-bg-secondary rounded-lg border border-border-main">
       <div className="text-center space-y-3">
         <MapIcon size={32} className="mx-auto text-text-muted animate-pulse" />
-        <p className="text-xs text-text-muted font-bold">Loading map...</p>
+        <p className="text-xs text-text-muted font-bold">Loading map…</p>
       </div>
     </div>
   ),
@@ -98,23 +101,18 @@ export default function AdminMapPage() {
 
   return (
     <div className="space-y-4">
-      <header className="page-header">
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-          <div className="text-left">
-            <p className="page-eyebrow flex items-center gap-2">
-              <MapPin size={12} />
-              Operations Map
-            </p>
-            <h1 className="page-title">Job Map</h1>
-            <p className="page-subtitle">Work orders by date — view site locations and technician assignments.</p>
-          </div>
-
-          {/* Date Selector */}
-          <div className="flex items-center gap-2 shrink-0">
+      <PageHeader
+        eyebrow="Schedule"
+        icon={MapPin}
+        title="Job map"
+        subtitle="Jobs by date — see site locations and who is assigned."
+        actions={
+          <div className="flex items-center gap-2 shrink-0" aria-label="Date">
             <Button
               variant="outline"
               size="sm"
               className="h-8 w-8 p-0"
+              aria-label="Previous day"
               onClick={prevDay}
             >
               <ChevronLeft size={14} />
@@ -131,6 +129,7 @@ export default function AdminMapPage() {
               variant="outline"
               size="sm"
               className="h-8 w-8 p-0"
+              aria-label="Next day"
               onClick={nextDay}
             >
               <ChevronRightIcon size={14} />
@@ -146,47 +145,41 @@ export default function AdminMapPage() {
               </Button>
             )}
           </div>
-        </div>
-      </header>
+        }
+      />
 
       {/* Date summary strip */}
       <div className="flex items-center gap-3 px-0">
         <p className="text-sm font-bold text-text-primary">{dateLabel}</p>
         <span className="text-text-muted text-xs">·</span>
         <p className="text-xs text-text-muted font-bold tracking-wider">
-          {loading ? '...' : `${dateJobs.length} work order${dateJobs.length !== 1 ? 's' : ''}`}
+          {loading ? '...' : `${dateJobs.length} job${dateJobs.length !== 1 ? 's' : ''}`}
         </p>
         {!loading && mappableJobs.length < dateJobs.length && dateJobs.length > 0 && (
           <>
             <span className="text-text-muted text-xs">·</span>
             <div className="flex items-center gap-1 text-[11px] text-accent-gold font-bold">
               <AlertCircle size={10} />
-              {dateJobs.length - mappableJobs.length} without coordinates
+              {dateJobs.length - mappableJobs.length} without a map location
             </div>
           </>
         )}
       </div>
 
       {/* Mobile tab switcher */}
-      <div className="flex lg:hidden gap-1 p-1 bg-bg-secondary border border-border-main rounded-lg">
-        <button
-          className={cn(
-            'flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors',
-            mobileTab === 'map' ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary'
-          )}
+      <div className="tabs lg:hidden" role="tablist" aria-label="Map view">
+        <button type="button" role="tab" aria-selected={mobileTab === 'map'}
+          data-state={mobileTab === 'map' ? 'active' : 'inactive'} className="tab flex-1 flex items-center justify-center gap-1.5"
           onClick={() => setMobileTab('map')}
         >
           <MapIcon size={12} /> Map
         </button>
-        <button
-          className={cn(
-            'flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors',
-            mobileTab === 'jobs' ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary'
-          )}
+        <button type="button" role="tab" aria-selected={mobileTab === 'jobs'}
+          data-state={mobileTab === 'jobs' ? 'active' : 'inactive'} className="tab flex-1 flex items-center justify-center gap-1.5"
           onClick={() => setMobileTab('jobs')}
         >
           <Calendar size={12} />
-          {dateJobs.length} Jobs
+          {dateJobs.length} jobs
         </button>
       </div>
 
@@ -201,24 +194,12 @@ export default function AdminMapPage() {
           style={{ minHeight: '400px', height: '65vh' }}
         >
           {loading ? (
-            <div className="flex items-center justify-center h-full bg-bg-secondary">
-              <div className="text-center space-y-3">
-                <MapPin size={32} className="mx-auto text-text-muted animate-pulse" />
-                <p className="text-xs text-text-muted font-bold">Loading work orders...</p>
-              </div>
+            <div className="flex items-center justify-center h-full bg-bg-secondary p-6">
+              <LoadingState label="Loading jobs…" rows={3} className="w-full max-w-sm" />
             </div>
           ) : dateJobs.length === 0 ? (
-            <div className="flex items-center justify-center h-full bg-bg-secondary">
-              <div className="text-center space-y-4 px-8">
-                <div className="p-4 bg-bg-tertiary rounded-full w-fit mx-auto">
-                  <MapPin size={32} className="text-text-muted" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-bold text-text-primary tracking-wide">No work orders</p>
-                  <p className="text-xs text-text-muted">No work orders scheduled for {dateLabel}.</p>
-                </div>
-                <p className="text-[10px] text-text-muted font-bold">Try a different date above.</p>
-              </div>
+            <div className="flex items-center justify-center h-full bg-bg-secondary p-6">
+              <EmptyState icon={MapPin} title="No jobs on this date" description={`Nothing is scheduled for ${dateLabel}. Try a different date above.`} className="w-full max-w-sm border-none" />
             </div>
           ) : (
             <AdminMapView
@@ -239,23 +220,15 @@ export default function AdminMapPage() {
         >
           <div className="flex items-center justify-between">
             <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
-              {dateJobs.length} Work Order{dateJobs.length !== 1 ? 's' : ''}
+              {dateJobs.length} job{dateJobs.length !== 1 ? 's' : ''}
             </p>
           </div>
 
           {loading ? (
             [1, 2, 3].map(i => <Skeleton key={i} className="h-32 rounded-lg" />)
           ) : dateJobs.length === 0 ? (
-            <Card className="bg-bg-secondary border-border-main">
-              <CardContent className="py-10 text-center space-y-2">
-                <Calendar size={24} className="mx-auto text-text-muted opacity-40" />
-                <p className="text-xs text-text-muted font-bold">No work orders</p>
-                <p className="text-[10px] text-text-muted">Nothing scheduled for {dateLabel}.</p>
-                <Button variant="outline" size="sm" className="h-7 text-[11px] font-bold mt-2" onClick={goToday}>
-                  Go to Today
-                </Button>
-              </CardContent>
-            </Card>
+            <EmptyState compact icon={Calendar} title="No jobs on this date" description={`Nothing is scheduled for ${dateLabel}.`}
+              action={<Button variant="outline" size="sm" onClick={goToday}>Go to today</Button>} />
           ) : (
             dateJobs.map((job, index) => {
               const isSelected = selectedJob?.id === job.id;
@@ -284,9 +257,7 @@ export default function AdminMapPage() {
                           {job.title || job.description || `Job ${job.id.slice(0, 6).toUpperCase()}`}
                         </p>
                       </div>
-                      <Badge variant={getStatusVariant(job.status)} className="h-4 text-[10px] flex-shrink-0">
-                        {job.status}
-                      </Badge>
+                      <StatusBadge kind="job" value={job.status} className="flex-shrink-0" />
                     </div>
                   </div>
                   <div className="px-4 pb-4 space-y-3">
@@ -329,7 +300,7 @@ export default function AdminMapPage() {
                     </div>
 
                     {!hasCoordsForMap && (
-                      <p className="text-[11px] text-text-muted font-bold opacity-60">· No coordinates — not on map</p>
+                      <p className="text-[11px] text-text-muted font-bold opacity-60">· No map location — not shown on map</p>
                     )}
                   </div>
                 </div>

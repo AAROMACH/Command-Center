@@ -327,7 +327,7 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                         onClick={() => !isReadOnly && setIsEditing(true)} 
                         className={cn("h-8 !text-[10px]", isReadOnly && "opacity-50 cursor-not-allowed")}
                     >
-                        {isReadOnly ? 'Registry Locked' : 'Edit Milestones'}
+                        {isReadOnly ? 'Read only' : 'Edit milestones'}
                     </Button>
                 ) : (
                     <div className='flex items-center gap-2'>
@@ -363,7 +363,7 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
             <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
                 <DialogContent className="sm:max-w-xl bg-bg-elevated border-border-default p-0 overflow-hidden flex flex-col max-h-[90vh]">
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30">
-                        <DialogTitle className="font-bold">Task Parameters</DialogTitle>
+                        <DialogTitle className="font-bold">Task details</DialogTitle>
                         <DialogDescription className="text-[11px]">Define requirements for this project action.</DialogDescription>
                     </DialogHeader>
                     {editingTaskData && (
@@ -530,7 +530,7 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                     )}
                     <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex gap-3">
                         <Button variant="outline" onClick={() => setTaskDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider h-10">Discard</Button>
-                        <Button onClick={handleSaveTaskDetails} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider h-10">Update Registry</Button>
+                        <Button onClick={handleSaveTaskDetails} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider h-10">Save task</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

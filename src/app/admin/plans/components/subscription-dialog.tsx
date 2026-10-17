@@ -113,7 +113,7 @@ export function SubscriptionDialog({
     <Dialog open={!!mode} onOpenChange={v => { if (!v && !saving) onClose(); }}>
       <DialogContent className="sm:max-w-[520px] max-h-[90vh] p-0 flex flex-col bg-bg-elevated border-border-main">
         <DialogHeader className="p-4 sm:p-6 pb-3 border-b border-border-sub text-left">
-          <DialogTitle className="text-[13px] font-bold">{title}</DialogTitle>
+          <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
           <DialogDescription className="text-xs">
             Billed by invoice from the app until Stripe is connected; then Stripe charges automatically.
           </DialogDescription>
@@ -135,7 +135,7 @@ export function SubscriptionDialog({
                 <SelectTrigger className={inputCls}><SelectValue placeholder="Choose plan…" /></SelectTrigger>
                 <SelectContent>
                   {choosable.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}{p.kind === 'custom' ? ' (custom)' : ''}{p.status === 'archived' ? ' · archived' : ''}</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>{p.name}{p.kind === 'custom' ? '(custom)' : ''}{p.status === 'archived' ? '· archived' : ''}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

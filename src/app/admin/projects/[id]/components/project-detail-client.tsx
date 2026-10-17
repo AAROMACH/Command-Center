@@ -183,7 +183,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                 <div className="ml-auto flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => { setEditedProject(project); setIsEditOpen(true); }} className="h-8 !text-[10px]">
                         {isReadOnly ? <Eye size={12} className="mr-1.5"/> : <Edit size={12} className="mr-1.5"/>}
-                        {isReadOnly ? 'View Registry' : 'Edit Project'}
+                        {isReadOnly ? 'View details' : 'Edit project'}
                     </Button>
                 </div>
             </div>
@@ -234,7 +234,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                         <div className="flex items-center justify-between">
                             <div className="text-left">
                                 <DialogTitle className="font-bold text-lg">
-                                    {isReadOnly ? 'Audit Project Registry' : 'Modify Project Registry'}
+                                    {isReadOnly ? 'Project details' : 'Edit project'}
                                 </DialogTitle>
                                 <DialogDescription>Project Identifier: <span className="text-brand-red font-mono">{(project.id || '').toUpperCase()}</span>.</DialogDescription>
                             </div>
@@ -281,7 +281,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                             )}
                             {isReadOnly && (
                                 <Badge variant="active" className="h-6 px-4 font-bold">
-                                    FINALIZED REGISTRY
+                                    Completed
                                 </Badge>
                             )}
                         </div>
@@ -291,7 +291,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
                             <div className="space-y-6">
                                 <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-wider flex items-center gap-2 border-b border-border-sub pb-2 text-left">
-                                    <Building2 size={12}/> Identity & Coordinates
+                                    <Building2 size={12}/> Name &amp; location
                                 </h3>
                                 <div className="space-y-4">
                                     <div className="space-y-2 text-left">
@@ -313,7 +313,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                                         />
                                     </div>
                                     <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] font-bold text-text-muted">Operational Address</Label>
+                                        <Label className="text-[10px] font-bold text-text-muted">Address</Label>
                                         <div className="relative">
                                             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
                                             <Input 
@@ -357,11 +357,11 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
 
                             <div className="space-y-6">
                                 <h3 className="text-[10px] font-bold text-accent-gold uppercase tracking-wider flex items-center gap-2 border-b border-border-sub pb-2 text-left">
-                                    <ShieldAlert size={12}/> Operational Briefing
+                                    <ShieldAlert size={12}/> Scope &amp; notes
                                 </h3>
                                 <div className="space-y-4">
                                     <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] font-bold text-text-muted">Scope of Work</Label>
+                                        <Label className="text-[10px] font-bold text-text-muted">Scope of work</Label>
                                         <Textarea 
                                             disabled={isReadOnly}
                                             value={editedProject.scope || ''} 
@@ -458,7 +458,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
 
                     <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default flex flex-row items-center justify-end gap-3">
                         <Button variant="outline" onClick={() => setIsEditOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-wider">
-                            {isReadOnly ? 'Exit Registry' : 'Discard'}
+                            {isReadOnly ? 'Close' : 'Discard'}
                         </Button>
                         {isReadOnly ? (
                             <Button variant="outline" className="h-11 bg-green-dim border-green-border text-text-green hover:bg-green-dim/80 text-[10px] uppercase font-bold tracking-wider pointer-events-none">
@@ -466,7 +466,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                             </Button>
                         ) : (
                             <Button onClick={handleSaveEdit} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider text-white">
-                                <Check size={16} className="mr-2"/> Commit Registry Updates
+                                <Check size={16} className="mr-2"/> Save changes
                             </Button>
                         )}
                     </DialogFooter>

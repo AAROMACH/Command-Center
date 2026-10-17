@@ -67,7 +67,7 @@ export function UserNav() {
 
   if (!mounted) return <div className="h-8 w-8 rounded-full bg-bg-secondary animate-pulse" />;
 
-  const displayName = firebaseUser?.displayName || currentUser?.name || 'Authorized User';
+  const displayName = firebaseUser?.displayName || currentUser?.name || 'Signed-in user';
   const email = firebaseUser?.email || currentUser?.email || 'No email';
   const userAvatarUrl = firebaseUser?.photoURL || currentUser?.avatarUrl;
   const userFallback = displayName.split(' ').map(n => n[0]).join('') || 'U';
@@ -92,11 +92,11 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative flex h-auto items-center gap-3 px-2 py-1 hover:bg-bg-tertiary rounded-md group">
           <div className="flex flex-col items-end text-right hidden sm:flex">
-             <span className="text-[11px] font-bold tracking-wider text-white leading-tight">
+             <span className="text-[13px] font-semibold text-text-primary leading-tight">
                 {displayName}
              </span>
-             <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider leading-none mt-0.5">
-                {activePortalId === 'admin' ? 'Administrator' : activePortalId === 'tech' ? 'Field Technician' : 'Client Lead'}
+             <span className="text-[11px] text-text-muted leading-none mt-0.5">
+                {activePortalId === 'admin' ? 'Admin' : activePortalId === 'tech' ? 'Field technician' : pathname.startsWith('/sales') ? 'Sales' : 'Client'}
              </span>
           </div>
           <ChevronDown size={12} className="text-text-muted group-hover:text-text-primary transition-colors" />
@@ -111,8 +111,8 @@ export function UserNav() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal border-b border-border-sub bg-bg-tertiary/20 pb-4">
           <div className="flex flex-col space-y-1.5">
-            <p className="text-sm font-bold tracking-wide text-text-primary truncate">{displayName}</p>
-            <p className="text-[10px] font-mono font-bold text-brand-red uppercase tracking-tighter truncate opacity-70">
+            <p className="text-sm font-semibold text-text-primary truncate">{displayName}</p>
+            <p className="text-[12px] text-text-muted truncate">
               {email}
             </p>
           </div>

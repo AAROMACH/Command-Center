@@ -1,4 +1,5 @@
 "use client";
+import { PageHeader } from '@/components/page-header';
 
 import { onAuthStateChanged } from 'firebase/auth';
 import { resolveNotificationPrefs, withNotificationPref } from '@/lib/notification-prefs';
@@ -97,23 +98,19 @@ export default function AdminSettingsPage() {
 
     return (
         <div className="space-y-6 text-left max-w-5xl mx-auto pb-24">
-            <header className="page-header">
-                <div className="text-left">
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <SettingsIcon size={12} />
-                        Administration
-                    </p>
-                    <h1 className="page-title">Settings</h1>
-                    <p className="page-subtitle">Your notifications and display, plus company-wide settings for your role.</p>
-                </div>
-            </header>
+            <PageHeader
+                eyebrow="Admin"
+                icon={SettingsIcon}
+                title="Settings"
+                subtitle="Your notifications and display, plus company-wide settings for your role."
+            />
 
             <div className="space-y-12">
                 {/* GENERAL — what the app actually runs on */}
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Globe size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">General</h3>
+                        <h3 className="text-[13px] font-semibold text-text-primary">General</h3>
                     </div>
                     <Card>
                         <CardContent className="p-4 flex items-center justify-between gap-4">
@@ -121,7 +118,7 @@ export default function AdminSettingsPage() {
                                 <h4 className="text-xs font-bold text-text-primary">Business Time Zone</h4>
                                 <p className="text-[10px] text-text-muted">Weekly logs, pay weeks and schedules use this time zone.</p>
                             </div>
-                            <span className="text-[11px] font-mono font-bold text-text-primary">{BUSINESS_TIME_ZONE.replace('_', ' ')}</span>
+                            <span className="text-[12px] font-mono font-bold text-text-primary">{BUSINESS_TIME_ZONE.replace('_', ' ')}</span>
                         </CardContent>
                     </Card>
                 </section>
@@ -130,7 +127,7 @@ export default function AdminSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Bell size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{TERMINOLOGY.CONFIG.NOTIFICATIONS}</h3>
+                        <h3 className="text-[13px] font-semibold text-text-primary">{TERMINOLOGY.CONFIG.NOTIFICATIONS}</h3>
                     </div>
                     <Card>
                         <CardHeader className="text-left">
@@ -162,7 +159,7 @@ export default function AdminSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Type size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Display</h3>
+                        <h3 className="text-[13px] font-semibold text-text-primary">Display</h3>
                     </div>
                     <ThemeToggleSetting />
                     <FontPreferenceSetting />
@@ -173,7 +170,7 @@ export default function AdminSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Banknote size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Finance & Payroll</h3>
+                        <h3 className="text-[13px] font-semibold text-text-primary">Finance & payroll</h3>
                     </div>
                     <Card>
                         <CardHeader className="text-left">
@@ -199,7 +196,7 @@ export default function AdminSettingsPage() {
                                     size="sm"
                                     onClick={handleSaveMileageRate}
                                     disabled={savingMileageRate}
-                                    className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold uppercase tracking-wider shrink-0"
+                                    className="h-9 bg-brand-red hover:bg-brand-red/90 text-white shrink-0"
                                 >
                                     {savingMileageRate ? 'Saving...' : 'Save Rate'}
                                 </Button>
@@ -213,7 +210,7 @@ export default function AdminSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Activity size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{TERMINOLOGY.CONFIG.INTEGRATIONS}</h3>
+                        <h3 className="text-[13px] font-semibold text-text-primary">{TERMINOLOGY.CONFIG.INTEGRATIONS}</h3>
                     </div>
                     <Card className="bg-bg-secondary border-border-main">
                         <CardContent className="p-6">

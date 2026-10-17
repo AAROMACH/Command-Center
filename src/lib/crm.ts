@@ -4,11 +4,11 @@ export type Stage = Lead['stage'];
 
 /** Pipeline stages in order, with the default win probability for forecasting. */
 export const STAGES: { key: Stage; label: string; color: string; bg: string; probability: number }[] = [
-  { key: 'new', label: 'New Lead', color: 'text-text-muted', bg: 'bg-bg-tertiary', probability: 10 },
-  { key: 'contacted', label: 'Contacted', color: 'text-blue-400', bg: 'bg-blue-400/10', probability: 20 },
-  { key: 'qualified', label: 'Qualified', color: 'text-amber-400', bg: 'bg-amber-400/10', probability: 40 },
-  { key: 'proposal_sent', label: 'Proposal Sent', color: 'text-purple-400', bg: 'bg-purple-400/10', probability: 60 },
-  { key: 'negotiating', label: 'Negotiating', color: 'text-orange-400', bg: 'bg-orange-400/10', probability: 80 },
+  { key: 'new', label: 'New lead', color: 'text-text-muted', bg: 'bg-bg-tertiary', probability: 10 },
+  { key: 'contacted', label: 'Contacted', color: 'text-brand-blue', bg: 'bg-brand-blue/10', probability: 20 },
+  { key: 'qualified', label: 'Qualified', color: 'text-accent-gold', bg: 'bg-accent-gold/10', probability: 40 },
+  { key: 'proposal_sent', label: 'Proposal sent', color: 'text-brand-blue', bg: 'bg-brand-blue/10', probability: 60 },
+  { key: 'negotiating', label: 'Negotiating', color: 'text-text-gold', bg: 'bg-text-gold/10', probability: 80 },
   { key: 'won', label: 'Won', color: 'text-text-green', bg: 'bg-text-green/10', probability: 100 },
   { key: 'lost', label: 'Lost', color: 'text-text-red', bg: 'bg-text-red/10', probability: 0 },
 ];

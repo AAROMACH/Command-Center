@@ -94,7 +94,7 @@ const EMPTY: FormState = {
 
 function FieldLabel({ label, required }: { label: string; required?: boolean }) {
   return (
-    <label className="block text-[11px] font-bold text-text-muted mb-1.5">
+    <label className="block text-[12px] font-medium text-text-secondary mb-1.5">
       {label}{required && <span className="text-brand-red ml-0.5">*</span>}
     </label>
   );
@@ -108,7 +108,7 @@ function FInput({ value, onChange, type = 'text', placeholder, className }: any)
       onChange={onChange}
       placeholder={placeholder}
       className={cn(
-        'w-full h-11 px-3 rounded-lg border border-border-sub bg-bg-secondary text-[13px] text-text-primary placeholder:text-text-muted',
+        'w-full h-10 px-3 rounded-md border border-border-main bg-bg-primary text-[13px] text-text-primary placeholder:text-text-muted',
         'focus:outline-none focus:ring-2 focus:ring-brand-red/30 focus:border-brand-red/50 transition-colors',
         className,
       )}
@@ -123,7 +123,7 @@ function FTextarea({ value, onChange, placeholder, rows = 4 }: any) {
       onChange={onChange}
       placeholder={placeholder}
       rows={rows}
-      className="w-full px-3 py-2.5 rounded-lg border border-border-sub bg-bg-secondary text-[13px] text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-red/30 focus:border-brand-red/50 transition-colors resize-none"
+      className="w-full px-3 py-2.5 rounded-md border border-border-main bg-bg-primary text-[13px] text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-red/30 focus:border-brand-red/50 transition-colors resize-none"
     />
   );
 }
@@ -243,22 +243,22 @@ export default function PublicClientIntakePage() {
             <Check size={32} className="text-text-green" />
           </div>
           <div>
-            <h1 className="text-[20px] font-black text-text-primary mb-2">Application Received</h1>
+            <h1 className="text-[20px] font-semibold text-text-primary mb-2">Application received</h1>
             <p className="text-[13px] text-text-secondary leading-relaxed">
               Thank you. Your client partnership request has been submitted. Aaromach will review your information and contact you regarding next steps.
             </p>
           </div>
           <div className="rounded-xl border border-border-sub bg-bg-secondary p-4 text-left space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Your submission</p>
-            <p className="text-[12px] font-bold text-text-primary">{form.companyName}</p>
-            <p className="text-[11px] text-text-muted">{form.primaryContactName} · {form.email}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Your submission</p>
+            <p className="text-[13px] font-semibold text-text-primary">{form.companyName}</p>
+            <p className="text-[12px] text-text-muted">{form.primaryContactName} · {form.email}</p>
             {submittedCode && (
               <p className="text-[10px] font-mono text-text-muted">Reference: {submittedCode}</p>
             )}
           </div>
           <button
             onClick={() => { setForm(EMPTY); setStep(1); setSubmitted(false); setSubmittedCode(''); }}
-            className="text-[11px] text-text-muted hover:text-text-primary underline transition-colors"
+            className="text-[13px] text-text-muted hover:text-text-primary underline transition-colors"
           >
             Submit another application
           </button>
@@ -273,8 +273,8 @@ export default function PublicClientIntakePage() {
 
         {/* Header */}
         <div className="text-center space-y-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-brand-red">Aaromach</p>
-          <h1 className="text-[28px] font-black text-text-primary">Partner With Aaromach</h1>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-red">Aaromach</p>
+          <h1 className="text-[26px] font-semibold text-text-primary">Partner with Aaromach</h1>
           <p className="text-[13px] text-text-secondary max-w-md mx-auto">
             For businesses that want an ongoing service partner for cabling, cameras, AV, networks and site maintenance — at one
             location or many. Tell us about your sites and we&apos;ll recommend a service plan.
@@ -288,12 +288,12 @@ export default function PublicClientIntakePage() {
             return (
               <div key={s} className="flex items-center gap-1.5 flex-1 min-w-0">
                 <div className={cn(
-                  'w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0',
+                  'w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-semibold shrink-0',
                   step > s ? 'bg-text-green text-white' : step === s ? 'bg-brand-red text-white' : 'bg-bg-secondary border border-border-sub text-text-muted',
                 )}>
                   {step > s ? <Check size={12} /> : s}
                 </div>
-                <span className={cn('text-[10px] font-bold uppercase tracking-wider truncate hidden sm:block', step === s ? 'text-text-primary' : 'text-text-muted')}>
+                <span className={cn('text-[10px] font-semibold uppercase tracking-wider truncate hidden sm:block', step === s ? 'text-text-primary' : 'text-text-muted')}>
                   {label}
                 </span>
                 {s < STEPS.length && <div className="flex-1 h-px bg-border-sub" />}
@@ -304,54 +304,54 @@ export default function PublicClientIntakePage() {
 
         {/* ── Step 1: Company Information ── */}
         {step === 1 && (
-          <div className="rounded-2xl border border-border-sub bg-bg-secondary p-6 space-y-5">
+          <div className="rounded-xl border border-border-main bg-bg-secondary p-6 shadow-sm space-y-5">
             <div className="flex items-center gap-2.5 border-b border-border-sub pb-4">
               <Building2 size={16} className="text-brand-red" />
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-brand-red">Section 1 of 4</p>
-                <h2 className="text-[15px] font-bold text-text-primary">Company Information</h2>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-red">Section 1 of 4</p>
+                <h2 className="text-[16px] font-semibold text-text-primary">Company information</h2>
               </div>
             </div>
 
             <div>
-              <FieldLabel label="Business Email" required />
+              <FieldLabel label="Business email" required />
               <FInput type="email" value={form.email} onChange={(e: any) => set('email', e.target.value)} placeholder="contact@yourcompany.com" />
-              {errors.email && <p className="text-[11px] text-brand-red mt-1">{errors.email}</p>}
+              {errors.email && <p className="text-[12px] text-text-red mt-1">{errors.email}</p>}
             </div>
 
             <div>
-              <FieldLabel label="Company / Organization Name" required />
+              <FieldLabel label="Company name" required />
               <FInput value={form.companyName} onChange={(e: any) => set('companyName', e.target.value)} placeholder="Acme Corp" />
-              {errors.companyName && <p className="text-[11px] text-brand-red mt-1">{errors.companyName}</p>}
+              {errors.companyName && <p className="text-[12px] text-text-red mt-1">{errors.companyName}</p>}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <FieldLabel label="Primary Contact Name" required />
+                <FieldLabel label="Primary contact name" required />
                 <FInput value={form.primaryContactName} onChange={(e: any) => set('primaryContactName', e.target.value)} placeholder="Jane Smith" />
-                {errors.primaryContactName && <p className="text-[11px] text-brand-red mt-1">{errors.primaryContactName}</p>}
+                {errors.primaryContactName && <p className="text-[12px] text-text-red mt-1">{errors.primaryContactName}</p>}
               </div>
               <div>
-                <FieldLabel label="Job Title" required />
+                <FieldLabel label="Job title" required />
                 <FInput value={form.jobTitle} onChange={(e: any) => set('jobTitle', e.target.value)} placeholder="Facilities Manager" />
-                {errors.jobTitle && <p className="text-[11px] text-brand-red mt-1">{errors.jobTitle}</p>}
+                {errors.jobTitle && <p className="text-[12px] text-text-red mt-1">{errors.jobTitle}</p>}
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <FieldLabel label="Phone Number" required />
+                <FieldLabel label="Phone" required />
                 <FInput type="tel" value={form.phoneNumber} onChange={(e: any) => set('phoneNumber', e.target.value)} placeholder="+1 (555) 000-0000" />
-                {errors.phoneNumber && <p className="text-[11px] text-brand-red mt-1">{errors.phoneNumber}</p>}
+                {errors.phoneNumber && <p className="text-[12px] text-text-red mt-1">{errors.phoneNumber}</p>}
               </div>
               <div>
-                <FieldLabel label="Company Website URL" />
+                <FieldLabel label="Company website" />
                 <FInput type="url" value={form.companyWebsiteUrl} onChange={(e: any) => set('companyWebsiteUrl', e.target.value)} placeholder="https://yourcompany.com" />
               </div>
             </div>
 
             <button type="button" onClick={next}
-              className="w-full h-12 rounded-xl bg-brand-red hover:bg-brand-red/90 text-white text-[12px] font-bold flex items-center justify-center gap-2 transition-colors">
+              className="w-full h-10 rounded-md bg-brand-red hover:bg-brand-red/90 text-white text-[13px] font-semibold flex items-center justify-center gap-2 transition-colors">
               Next: Business Profile <ChevronRight size={16} />
             </button>
           </div>
@@ -359,30 +359,30 @@ export default function PublicClientIntakePage() {
 
         {/* ── Step 2: Business Profile ── */}
         {step === 2 && (
-          <div className="rounded-2xl border border-border-sub bg-bg-secondary p-6 space-y-5">
+          <div className="rounded-xl border border-border-main bg-bg-secondary p-6 shadow-sm space-y-5">
             <div className="flex items-center gap-2.5 border-b border-border-sub pb-4">
               <Briefcase size={16} className="text-brand-red" />
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-brand-red">Section 2 of 4</p>
-                <h2 className="text-[15px] font-bold text-text-primary">Business Profile</h2>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-red">Section 2 of 4</p>
+                <h2 className="text-[16px] font-semibold text-text-primary">Business profile</h2>
               </div>
             </div>
 
             <div>
-              <FieldLabel label="Industry Type" required />
+              <FieldLabel label="Industry" required />
               <FInput value={form.industryType} onChange={(e: any) => set('industryType', e.target.value)}
                 placeholder="e.g. Finance, Retail, Healthcare, Manufacturing" />
-              {errors.industryType && <p className="text-[11px] text-brand-red mt-1">{errors.industryType}</p>}
+              {errors.industryType && <p className="text-[12px] text-text-red mt-1">{errors.industryType}</p>}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <FieldLabel label="Number of Sites Needing Service" required />
+                <FieldLabel label="Number of sites needing service" required />
                 <div className="space-y-1.5">
                   {LOCATION_OPTIONS.map(opt => (
                     <button key={opt.value} type="button" onClick={() => set('numberOfLocations', opt.value)}
                       className={cn(
-                        'w-full px-3 py-2 rounded-lg border text-[11px] font-bold text-left transition-all',
+                        'w-full px-3 py-2 rounded-md border text-[13px] font-medium text-left transition-all',
                         form.numberOfLocations === opt.value
                           ? 'border-brand-red bg-brand-red/10 text-brand-red'
                           : 'border-border-sub bg-bg-primary text-text-secondary hover:border-border-main',
@@ -390,16 +390,16 @@ export default function PublicClientIntakePage() {
                     >{opt.label}</button>
                   ))}
                 </div>
-                {errors.numberOfLocations && <p className="text-[11px] text-brand-red mt-1">{errors.numberOfLocations}</p>}
+                {errors.numberOfLocations && <p className="text-[12px] text-text-red mt-1">{errors.numberOfLocations}</p>}
               </div>
               <div>
-                <FieldLabel label="Total Employee Count" />
+                <FieldLabel label="Number of employees" />
                 <div className="space-y-1.5">
                   {EMPLOYEE_OPTIONS.map(opt => (
                     <button key={opt.value} type="button"
                       onClick={() => set('totalEmployeeCount', form.totalEmployeeCount === opt.value ? '' : opt.value)}
                       className={cn(
-                        'w-full px-3 py-2 rounded-lg border text-[11px] font-bold text-left transition-all',
+                        'w-full px-3 py-2 rounded-md border text-[13px] font-medium text-left transition-all',
                         form.totalEmployeeCount === opt.value
                           ? 'border-brand-red bg-brand-red/10 text-brand-red'
                           : 'border-border-sub bg-bg-primary text-text-secondary hover:border-border-main',
@@ -411,14 +411,14 @@ export default function PublicClientIntakePage() {
             </div>
 
             <div>
-              <FieldLabel label="Primary Operating Region (State/Province or Country)" required />
+              <FieldLabel label="Main operating region (state, province or country)" required />
               <FInput value={form.primaryOperatingRegion} onChange={(e: any) => set('primaryOperatingRegion', e.target.value)}
                 placeholder="e.g. Metro Detroit, or Southeast Michigan and Ohio" />
-              {errors.primaryOperatingRegion && <p className="text-[11px] text-brand-red mt-1">{errors.primaryOperatingRegion}</p>}
+              {errors.primaryOperatingRegion && <p className="text-[12px] text-text-red mt-1">{errors.primaryOperatingRegion}</p>}
             </div>
 
             <div>
-              <FieldLabel label="Current Service Provider or In-House Team" />
+              <FieldLabel label="Current service provider or in-house team" />
               <FInput value={form.existingItProviderOrInternalTeam} onChange={(e: any) => set('existingItProviderOrInternalTeam', e.target.value)}
                 placeholder="e.g. In-house facilities team, or ABC Electric handles our cabling" />
             </div>
@@ -427,16 +427,16 @@ export default function PublicClientIntakePage() {
               <FieldLabel label="What problems are you dealing with at your sites today?" required />
               <FTextarea value={form.currentPainPoints} onChange={(e: any) => set('currentPainPoints', e.target.value)}
                 placeholder="e.g. Messy network closets, cameras that keep dropping, no documentation of cable runs, slow response from your current vendor..." rows={4} />
-              {errors.currentPainPoints && <p className="text-[11px] text-brand-red mt-1">{errors.currentPainPoints}</p>}
+              {errors.currentPainPoints && <p className="text-[12px] text-text-red mt-1">{errors.currentPainPoints}</p>}
             </div>
 
             <div className="flex gap-3">
               <button type="button" onClick={back}
-                className="h-12 px-5 rounded-xl border border-border-main text-[11px] font-bold text-text-secondary hover:text-text-primary transition-colors flex items-center gap-2">
+                className="h-10 px-4 rounded-md border border-border-main text-[13px] font-medium text-text-secondary hover:text-text-primary transition-colors flex items-center gap-2">
                 <ChevronLeft size={16} /> Back
               </button>
               <button type="button" onClick={next}
-                className="flex-1 h-12 rounded-xl bg-brand-red hover:bg-brand-red/90 text-white text-[12px] font-bold flex items-center justify-center gap-2 transition-colors">
+                className="flex-1 h-10 rounded-md bg-brand-red hover:bg-brand-red/90 text-white text-[13px] font-semibold flex items-center justify-center gap-2 transition-colors">
                 Next: Service Interests <ChevronRight size={16} />
               </button>
             </div>
@@ -445,12 +445,12 @@ export default function PublicClientIntakePage() {
 
         {/* ── Step 3: Service Interests ── */}
         {step === 3 && (
-          <div className="rounded-2xl border border-border-sub bg-bg-secondary p-6 space-y-5">
+          <div className="rounded-xl border border-border-main bg-bg-secondary p-6 shadow-sm space-y-5">
             <div className="flex items-center gap-2.5 border-b border-border-sub pb-4">
               <Briefcase size={16} className="text-brand-red" />
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-brand-red">Section 3 of 4</p>
-                <h2 className="text-[15px] font-bold text-text-primary">Service Interests</h2>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-red">Section 3 of 4</p>
+                <h2 className="text-[16px] font-semibold text-text-primary">Service interests</h2>
               </div>
             </div>
 
@@ -467,11 +467,11 @@ export default function PublicClientIntakePage() {
                   </label>
                 ))}
               </div>
-              {errors.serviceInterests && <p className="text-[11px] text-brand-red mt-1">{errors.serviceInterests}</p>}
+              {errors.serviceInterests && <p className="text-[12px] text-text-red mt-1">{errors.serviceInterests}</p>}
             </div>
 
             <div>
-              <FieldLabel label="Which Subscription Tier best fits your needs?" required />
+              <FieldLabel label="Which service plan fits best?" required />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {SUBSCRIPTION_TIERS.map(opt => (
                   <button key={opt.value} type="button" onClick={() => set('subscriptionTier', opt.value)}
@@ -481,13 +481,13 @@ export default function PublicClientIntakePage() {
                         ? 'border-brand-red bg-brand-red/10'
                         : 'border-border-sub bg-bg-primary hover:border-border-main',
                     )}>
-                    <span className={cn('block text-[11px] font-bold mb-0.5',
+                    <span className={cn('block text-[13px] font-semibold mb-0.5',
                       form.subscriptionTier === opt.value ? 'text-brand-red' : 'text-text-primary')}>{opt.label}</span>
-                    <span className="text-[10px] text-text-muted leading-tight">{opt.desc}</span>
+                    <span className="text-[12px] text-text-muted leading-tight">{opt.desc}</span>
                   </button>
                 ))}
               </div>
-              {errors.subscriptionTier && <p className="text-[11px] text-brand-red mt-1">{errors.subscriptionTier}</p>}
+              {errors.subscriptionTier && <p className="text-[12px] text-text-red mt-1">{errors.subscriptionTier}</p>}
             </div>
 
             <div>
@@ -498,11 +498,11 @@ export default function PublicClientIntakePage() {
 
             <div className="flex gap-3">
               <button type="button" onClick={back}
-                className="h-12 px-5 rounded-xl border border-border-main text-[11px] font-bold text-text-secondary hover:text-text-primary transition-colors flex items-center gap-2">
+                className="h-10 px-4 rounded-md border border-border-main text-[13px] font-medium text-text-secondary hover:text-text-primary transition-colors flex items-center gap-2">
                 <ChevronLeft size={16} /> Back
               </button>
               <button type="button" onClick={next}
-                className="flex-1 h-12 rounded-xl bg-brand-red hover:bg-brand-red/90 text-white text-[12px] font-bold flex items-center justify-center gap-2 transition-colors">
+                className="flex-1 h-10 rounded-md bg-brand-red hover:bg-brand-red/90 text-white text-[13px] font-semibold flex items-center justify-center gap-2 transition-colors">
                 Next: Final Details <ChevronRight size={16} />
               </button>
             </div>
@@ -511,23 +511,23 @@ export default function PublicClientIntakePage() {
 
         {/* ── Step 4: Additional Details & Requirements ── */}
         {step === 4 && (
-          <div className="rounded-2xl border border-border-sub bg-bg-secondary p-6 space-y-5">
+          <div className="rounded-xl border border-border-main bg-bg-secondary p-6 shadow-sm space-y-5">
             <div className="flex items-center gap-2.5 border-b border-border-sub pb-4">
               <FileText size={16} className="text-brand-red" />
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-brand-red">Section 4 of 4</p>
-                <h2 className="text-[15px] font-bold text-text-primary">Additional Details & Requirements</h2>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-red">Section 4 of 4</p>
+                <h2 className="text-[16px] font-semibold text-text-primary">Additional details and requirements</h2>
               </div>
             </div>
 
             <div>
-              <FieldLabel label="Estimated Monthly Service Volume / Budget Range" />
+              <FieldLabel label="Estimated monthly volume or budget" />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {VOLUME_OPTIONS.map(opt => (
                   <button key={opt.value} type="button"
                     onClick={() => set('estimatedMonthlyServiceVolume', form.estimatedMonthlyServiceVolume === opt.value ? '' : opt.value)}
                     className={cn(
-                      'px-3 py-2 rounded-lg border text-[11px] font-bold text-left transition-all',
+                      'px-3 py-2 rounded-md border text-[13px] font-medium text-left transition-all',
                       form.estimatedMonthlyServiceVolume === opt.value
                         ? 'border-brand-red bg-brand-red/10 text-brand-red'
                         : 'border-border-sub bg-bg-primary text-text-secondary hover:border-border-main',
@@ -538,7 +538,7 @@ export default function PublicClientIntakePage() {
             </div>
 
             <div>
-              <FieldLabel label="Is 24/7 Emergency Response a mandatory requirement?" />
+              <FieldLabel label="Do you need 24/7 emergency response?" />
               <div className="flex gap-2">
                 {[
                   { v: true, label: 'Yes' },
@@ -547,7 +547,7 @@ export default function PublicClientIntakePage() {
                   <button key={String(opt.v)} type="button"
                     onClick={() => set('emergencyResponseRequired', form.emergencyResponseRequired === opt.v ? null : opt.v)}
                     className={cn(
-                      'flex-1 px-3 py-2.5 rounded-lg border text-[11px] font-bold text-center transition-all',
+                      'flex-1 px-3 py-2.5 rounded-md border text-[13px] font-medium text-center transition-all',
                       form.emergencyResponseRequired === opt.v
                         ? 'border-brand-red bg-brand-red/10 text-brand-red'
                         : 'border-border-sub bg-bg-primary text-text-secondary hover:border-border-main',
@@ -558,13 +558,13 @@ export default function PublicClientIntakePage() {
             </div>
 
             <div>
-              <FieldLabel label="Preferred Communication Method for follow-up" />
+              <FieldLabel label="Preferred way to follow up" />
               <div className="flex gap-2">
                 {[{ v: 'email', label: 'Email' }, { v: 'phone_call', label: 'Phone Call' }].map(opt => (
                   <button key={opt.v} type="button"
                     onClick={() => set('preferredCommunicationMethod', form.preferredCommunicationMethod === opt.v ? '' : opt.v)}
                     className={cn(
-                      'px-6 py-2 rounded-lg border text-[11px] font-bold transition-all',
+                      'px-6 py-2 rounded-md border text-[13px] font-medium transition-all',
                       form.preferredCommunicationMethod === opt.v
                         ? 'border-brand-red bg-brand-red/10 text-brand-red'
                         : 'border-border-sub bg-bg-primary text-text-secondary hover:border-border-main',
@@ -575,7 +575,7 @@ export default function PublicClientIntakePage() {
             </div>
 
             <div>
-              <FieldLabel label="Additional Notes or Questions for the Aaromach Team" />
+              <FieldLabel label="Anything else we should know?" />
               <FTextarea value={form.additionalNotesOrQuestions} onChange={(e: any) => set('additionalNotesOrQuestions', e.target.value)}
                 placeholder="Anything else we should know — site access, working hours, union requirements, upcoming moves or build-outs?" rows={4} />
             </div>
@@ -592,7 +592,7 @@ export default function PublicClientIntakePage() {
                     <span className="text-brand-red ml-0.5">*</span>
                   </span>
                 </label>
-                {errors.informationAccuracyConfirmed && <p className="text-[11px] text-brand-red mt-1 ml-7">{errors.informationAccuracyConfirmed}</p>}
+                {errors.informationAccuracyConfirmed && <p className="text-[12px] text-text-red mt-1 ml-7">{errors.informationAccuracyConfirmed}</p>}
               </div>
 
               <div>
@@ -602,18 +602,18 @@ export default function PublicClientIntakePage() {
                     className="w-4 h-4 mt-0.5 rounded accent-brand-red shrink-0" />
                   <span className="text-[12px] text-text-secondary leading-relaxed">
                     I consent to the{' '}
-                    <a href="https://www.aaromach.com/about-us/terms-of-service" target="_blank" rel="noopener noreferrer" className="text-brand-red underline hover:text-brand-red/80">Terms of Service</a>
+                    <a href="https://www.aaromach.com/about-us/terms-of-service" target="_blank" rel="noopener noreferrer" className="text-brand-red underline hover:text-brand-red/80">Terms of service</a>
                     {' '}and{' '}
-                    <a href="https://www.aaromach.com/about-us/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-brand-red underline hover:text-brand-red/80">Privacy Policy</a>.
+                    <a href="https://www.aaromach.com/about-us/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-brand-red underline hover:text-brand-red/80">Privacy policy</a>.
                     <span className="text-brand-red ml-0.5">*</span>
                   </span>
                 </label>
-                {errors.termsConsent && <p className="text-[11px] text-brand-red mt-1 ml-7">{errors.termsConsent}</p>}
+                {errors.termsConsent && <p className="text-[12px] text-text-red mt-1 ml-7">{errors.termsConsent}</p>}
               </div>
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-brand-red/10 border border-brand-red/30">
+              <div className="flex items-center gap-2 p-3 rounded-md bg-brand-red/10 border border-brand-red/30">
                 <AlertTriangle size={14} className="text-brand-red shrink-0" />
                 <p className="text-[12px] text-brand-red">{error}</p>
               </div>
@@ -621,22 +621,22 @@ export default function PublicClientIntakePage() {
 
             <div className="flex gap-3">
               <button type="button" onClick={back}
-                className="h-12 px-5 rounded-xl border border-border-main text-[11px] font-bold text-text-secondary hover:text-text-primary transition-colors flex items-center gap-2">
+                className="h-10 px-4 rounded-md border border-border-main text-[13px] font-medium text-text-secondary hover:text-text-primary transition-colors flex items-center gap-2">
                 <ChevronLeft size={16} /> Back
               </button>
               <button type="button" onClick={handleSubmit} disabled={submitting}
-                className="flex-1 h-12 rounded-xl bg-brand-red hover:bg-brand-red/90 disabled:opacity-60 text-white text-[12px] font-bold flex items-center justify-center gap-2 transition-colors">
-                {submitting ? <><Loader2 size={16} className="animate-spin" />Submitting...</> : 'Submit Application'}
+                className="flex-1 h-10 rounded-md bg-brand-red hover:bg-brand-red/90 disabled:opacity-60 text-white text-[13px] font-semibold flex items-center justify-center gap-2 transition-colors">
+                {submitting ? <><Loader2 size={16} className="animate-spin" />Submitting…</> : 'Submit application'}
               </button>
             </div>
           </div>
         )}
 
-        <p className="text-center text-[10px] text-text-muted pb-4">
+        <p className="text-center text-[12px] text-text-muted pb-4">
           Aaromach · Technical Field Services — Cabling, Cameras, AV &amp; Networks · This form is secure and confidential. ·{' '}
-          <a href="https://www.aaromach.com/about-us/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline hover:text-text-secondary">Privacy Policy</a>
+          <a href="https://www.aaromach.com/about-us/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline hover:text-text-secondary">Privacy policy</a>
           {' '}·{' '}
-          <a href="https://www.aaromach.com/about-us/terms-of-service" target="_blank" rel="noopener noreferrer" className="underline hover:text-text-secondary">Terms of Service</a>
+          <a href="https://www.aaromach.com/about-us/terms-of-service" target="_blank" rel="noopener noreferrer" className="underline hover:text-text-secondary">Terms of service</a>
         </p>
       </div>
     </div>

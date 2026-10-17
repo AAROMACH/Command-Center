@@ -10,6 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+import { StatCard } from '@/components/stat-card';
+import { EmptyState } from '@/components/empty-state';
+import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import type { Invoice, Technician, TripLog, WeeklyLog, WorkOrder } from '@/lib/types';
 import {
     buildIntelRows, byCustomer, inIntelFilter, median, rateParts,
@@ -191,6 +194,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
         return sortDir * ((va ?? -Infinity) - (vb ?? -Infinity));
     });
     const maxNet = Math.max(1, ...custs.map(c => c.net));
+    const tablePager = usePaged(tableRows, PAGE_SIZES_LARGE, 'insights-customers', [search, sortKey, sortDir, p.start, p.end, p.type, p.provider, p.minJobs, p.capHours]);
 
     const isDefault = JSON.stringify({ ...p }) === JSON.stringify(DEFAULTS);
     const empty = all.length === 0;
@@ -242,7 +246,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                 </label>
                 {p.buyer && (
                     <button onClick={() => set({ buyer: null })}
-                        className="h-8 px-3 inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 text-amber-500 text-[10px] font-bold">
+                        className="h-8 px-3 inline-flex items-center gap-1.5 rounded-full border border-brand-red/40 bg-brand-red/10 text-brand-red text-[12px] font-semibold" aria-label={`Clear customer focus ${p.buyer}`}>
                         {p.buyer} <X size={11} />
                     </button>
                 )}
@@ -255,23 +259,11 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
             </div>
 
             {empty ? (
-                <Card className="bg-bg-secondary border-border-main">
-                    <CardContent className="py-16 text-center text-[11px] font-bold text-text-muted">
-                        No completed jobs yet — the dashboard fills in as jobs are completed.
-                    </CardContent>
-                </Card>
+                <EmptyState title="No completed jobs yet" description="This dashboard fills in as jobs are completed." />
             ) : (<>
                 {/* KPIs */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {kpis.map(k => (
-                        <Card key={k.label} className="bg-bg-secondary border-border-main">
-                            <CardContent className="p-4 min-w-0">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider truncate">{k.label}</p>
-                                <p className="text-xl font-black text-text-primary tabular-nums truncate">{k.value}</p>
-                                <p className="text-[10px] text-text-muted truncate">{k.sub}</p>
-                            </CardContent>
-                        </Card>
-                    ))}
+                    {kpis.map(k => <StatCard key={k.label} label={k.label} value={k.value} sub={k.sub || undefined} />)}
                 </div>
                 <p className="text-sm text-text-secondary">{takeaway}</p>
 
@@ -377,10 +369,10 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                         </div>
                         <div className="relative w-full sm:w-[240px]">
                             <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
-                            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search customers" className="h-8 pl-7 bg-bg-primary border-border-main text-[11px]" />
+                            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search customers" aria-label="Search customers" className="h-8 pl-7 bg-bg-primary border-border-main text-[12px]" />
                         </div>
                     </CardHeader>
-                    <CardContent className="p-0 overflow-x-auto max-h-[560px] overflow-y-auto">
+                    <CardContent className="p-0 overflow-x-auto">
                         <table className="w-full text-[11px] tabular-nums">
                             <thead className="sticky top-0 bg-bg-secondary z-10">
                                 <tr className="border-b border-border-sub">
@@ -399,7 +391,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                                 </tr>
                             </thead>
                             <tbody>
-                                {tableRows.map(c => (
+                                {tablePager.items.map(c => (
                                     <tr key={c.buyer} onClick={() => pickBuyer(c.buyer)}
                                         className={cn('border-b border-border-sub/60 cursor-pointer hover:bg-bg-tertiary/40', c.buyer === p.buyer && 'bg-brand-red/10')}>
                                         <td className="px-3 py-2 text-left font-bold text-text-primary max-w-[220px] truncate">{c.buyer}</td>
@@ -420,11 +412,13 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                                     </tr>
                                 ))}
                                 {tableRows.length === 0 && (
-                                    <tr><td colSpan={12} className="px-3 py-10 text-center text-text-muted">No customers match.</td></tr>
+                                    <tr><td colSpan={12} className="p-4"><EmptyState compact icon={Search} title="No customers match these filters"
+                                        action={!isDefault || search ? <button onClick={() => { setSearch(''); setP(DEFAULTS); }} className="text-[12px] font-semibold text-brand-red hover:underline">Reset filters</button> : undefined} /></td></tr>
                                 )}
                             </tbody>
                         </table>
                     </CardContent>
+                    <div className="px-4"><ListPager pager={tablePager} noun="customers" /></div>
                 </Card>
                 <p className="text-[10px] text-text-muted">
                     Completed jobs only. Gross = paid invoice (pre-tax) or job pay; fees = Field Nation's 15.85% on imported jobs; net = gross − fees; profit = net − tech pay (weekly-log settlement, else the payroll formula).

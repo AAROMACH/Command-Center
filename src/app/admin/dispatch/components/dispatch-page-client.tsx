@@ -36,6 +36,7 @@ import { NotificationService } from '@/lib/notification-service';
 import { useNewArrivals, ARRIVAL_KEYS, unassignedArrivalIds, reviewArrivalIds, recentAssignmentArrivalIds } from '@/hooks/use-new-arrivals';
 import { NewArrivalPing } from '@/components/new-arrival-ping';
 import { SearchField } from '@/components/search-field';
+import { PageHeader } from '@/components/page-header';
 import { SortControl, FiltersPopover, FilterSection, CheckboxFilter, DateRangeButton, type SortOptionDef } from '@/components/list-toolbar';
 import { parseLocalDate, jobMatchesSearch } from '@/lib/jobs';
 
@@ -271,19 +272,19 @@ export function DispatchPageClient() {
   const handleAddNewOrder = async (order: WorkOrder) => {
     try {
         await setDoc(doc(db, 'workOrders', order.id), { ...sanitize(order), source: 'Manual' });
-        toast({ title: "Assignment Staged", description: "Job entry committed to Firestore." });
+        toast({ title: "Job created", description: "The new job was saved." });
         
         const client = technicians.find(t => t.clientCompany === order.clientName);
         if (client) {
             await NotificationService.notify(
                 client.id, 
                 "New Assignment Staged", 
-                `A new work order [${order.title}] has been initialized for your site at ${order.location}.`,
+                `A new work order [${order.title}] has been created for your site at ${order.location}.`,
                 { id: order.id, type: 'assignment' }
             );
         }
     } catch (e: any) {
-        toast({ variant: "destructive", title: "Write Failed", description: e.message });
+        toast({ variant: "destructive", title: "Save failed", description: e.message });
     }
   };
 
@@ -292,7 +293,7 @@ export function DispatchPageClient() {
         setDoc(doc(db, 'workOrders', order.id), { ...sanitize(order), source: 'Imported' })
             .catch(e => console.error("Import error", e));
     });
-    toast({ title: "Import Processed", description: `${newOrders.length} records transmitted to registry.` });
+    toast({ title: "Import complete", description: `${newOrders.length} job${newOrders.length === 1 ? '' : 's'} imported.` });
   };
 
   const handleAddNewRequest = async (request: ServiceRequest) => {
@@ -305,7 +306,7 @@ export function DispatchPageClient() {
             createdAt: now,
             updatedAt: now,
         });
-        toast({ title: "Request Logged", description: "Service ticket added to intake funnel." });
+        toast({ title: "Request logged", description: "Service request added to Requests." });
         
         const adminIds = technicians.filter(t => t.roles?.includes('super_admin') || t.roles?.includes('dispatch_admin')).map(t => t.id);
         await NotificationService.broadcast(
@@ -315,7 +316,7 @@ export function DispatchPageClient() {
             { id: request.id, type: 'request' }
         );
     } catch (e: any) {
-        toast({ variant: "destructive", title: "Write Failed", description: e.message });
+        toast({ variant: "destructive", title: "Save failed", description: e.message });
     }
   };
 
@@ -517,7 +518,7 @@ export function DispatchPageClient() {
       }]);
       await setDoc(doc(db, 'workOrders', target.id), sanitize(target));
       await deleteDoc(doc(db, 'assignments', wo.id));
-      toast({ title: "Moved to Unassigned", description: "Job reset to unassigned for redispatch." });
+      toast({ title: "Moved to Unassigned", description: "The job is back in the unassigned pool." });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Save failed", description: e.message });
     }
@@ -533,7 +534,7 @@ export function DispatchPageClient() {
         archiveReason: `${wo.techOutcome === 'did_not_do' ? 'Did Not Do' : 'Cancelled'} — closed from the Dispatch Hub review queue.`,
         techName: technicians.find(t => t.id === jobTechId(wo))?.name,
       });
-      toast({ title: "Job Archived", description: "Moved to Archives — recoverable from the Archives page." });
+      toast({ title: "Job archived", description: "Moved to History — you can restore it from there." });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Archive failed", description: e.message });
     }
@@ -541,31 +542,32 @@ export function DispatchPageClient() {
 
   return (
     <div className="space-y-6">
-        <header className="page-header flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div className="text-left">
-              <p className="page-eyebrow flex items-center gap-2"><Layers size={12} />Operations Control Center</p>
-              <h1 className="page-title text-left">Dispatch & Intake</h1>
-              <p className="page-subtitle text-left">Unified terminal for client requests and logistical job routing.</p>
-            </div>
-            <div className="flex items-center gap-3">
+      <PageHeader
+        eyebrow="Jobs"
+        icon={Layers}
+        title="Dispatch"
+        subtitle="Route new jobs, review client requests and manage assignments."
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
                 {activeMasterTab === 'requests' && (
-                  <Button variant="outline" onClick={() => setIsNewRequestOpen(true)} className="h-10 px-4 text-[10px] uppercase font-bold tracking-wider border-border-main">+ New Service Request</Button>
+              <Button variant="outline" onClick={() => setIsNewRequestOpen(true)}><Plus size={14} className="mr-1.5" />New request</Button>
                 )}
                 {activeMasterTab !== 'requests' && (
                   <>
-                    <Button variant="outline" onClick={() => setIsImportDialogOpen(true)} className="h-10 px-4 text-[10px] uppercase font-bold tracking-wider border-border-main"><ImportIcon size={14} className="mr-2"/>Import Jobs</Button>
-                    <Button variant="default" onClick={() => setIsNewDispatchOpen(true)} className="h-10 px-4 text-[10px] uppercase font-bold tracking-wider">+ New Dispatch Entry</Button>
+                <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><ImportIcon size={14} className="mr-1.5"/>Import jobs</Button>
+                <Button onClick={() => setIsNewDispatchOpen(true)}><Plus size={14} className="mr-1.5" />New job</Button>
                   </>
                 )}
             </div>
-      </header>
+        }
+      />
 
       <Tabs value={activeMasterTab} onValueChange={(val: any) => setActiveMasterTab(val)} className="w-full">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub shadow-sm">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
             <TabsList className="tabs !mb-0">
-              <TabsTrigger value="dispatch" className="tab flex items-center gap-1.5">DISPATCH HUB <NewArrivalPing count={newUnassigned.newCount + newReview.newCount} /></TabsTrigger>
-              <TabsTrigger value="requests" className="tab flex items-center gap-1.5">SERVICE REQUESTS <NewArrivalPing count={newRequests.newCount} /></TabsTrigger>
-              <TabsTrigger value="assignments" className="tab flex items-center gap-1.5">ASSIGNMENTS <NewArrivalPing count={newAssignmentsArrivals.newCount} /></TabsTrigger>
+              <TabsTrigger value="dispatch" className="tab flex items-center gap-1.5">Dispatch <NewArrivalPing count={newUnassigned.newCount + newReview.newCount} /></TabsTrigger>
+              <TabsTrigger value="requests" className="tab flex items-center gap-1.5">Requests <NewArrivalPing count={newRequests.newCount} /></TabsTrigger>
+              <TabsTrigger value="assignments" className="tab flex items-center gap-1.5">Assignments <NewArrivalPing count={newAssignmentsArrivals.newCount} /></TabsTrigger>
             </TabsList>
 
             {/* Same search / sort / filter / date controls as the Assignments pages. */}
@@ -573,7 +575,7 @@ export function DispatchPageClient() {
               <SearchField
                 value={searchQuery}
                 onChange={setSearchQuery}
-                placeholder="Search job, client, or tech..."
+                placeholder="Search job, client or tech…"
                 className="basis-full md:basis-auto md:w-[260px]"
               />
               <div className="flex w-full gap-2 sm:w-auto">
@@ -590,16 +592,16 @@ export function DispatchPageClient() {
                   onReset={() => { setActivePriorities([]); setActiveTypes([]); setActiveSources([]); setActiveStatuses([]); }}
                   className="shrink-0"
                 >
-                  <FilterSection title="Job Status">
+                  <FilterSection title="Job status">
                     <CheckboxFilter idPrefix="status" options={JOB_STATUS_OPTIONS} selected={activeStatuses} onChange={setActiveStatuses} />
                   </FilterSection>
                   <FilterSection title="Priority">
                     <CheckboxFilter idPrefix="prio" options={['critical', 'high', 'medium', 'low']} selected={activePriorities} onChange={setActivePriorities} />
                   </FilterSection>
-                  <FilterSection title="Service Category">
+                  <FilterSection title="Service category">
                     <CheckboxFilter idPrefix="type" options={SERVICE_CATEGORIES} selected={activeTypes} onChange={setActiveTypes} columns={1} maxHeight={140} />
                   </FilterSection>
-                  <FilterSection title="Job Source">
+                  <FilterSection title="Job source">
                     <CheckboxFilter idPrefix="src" options={ASSIGNMENT_SOURCES} selected={activeSources} onChange={setActiveSources} columns={1} />
                   </FilterSection>
                 </FiltersPopover>
@@ -649,8 +651,8 @@ export function DispatchPageClient() {
                     }
                     await Promise.all(moves.map(({ wo, asmtId }) => NotificationService.notify(
                         wo.assignedTechnicianId!,
-                        "Priority Mission Dispatched",
-                        `New mission [${wo.id.toUpperCase()}] assigned. Confirm schedule via terminal.`,
+                        "New job assigned",
+                        `Job ${wo.id.toUpperCase()} was assigned to you. Confirm the schedule in the Tech Portal.`,
                         { id: asmtId, type: 'assignment' }
                     )));
                 }
@@ -677,13 +679,13 @@ export function DispatchPageClient() {
 
         <TabsContent value="assignments" className="mt-0">
             <Tabs defaultValue="active">
-                <div className="flex items-center justify-between gap-4 mb-4 bg-bg-secondary/50 p-3 rounded-lg border border-border-sub">
-                    <TabsList className="tabs !mb-0 !p-0 !bg-bg-tertiary">
+                <div className="flex items-center justify-between gap-4 mb-4">
+                    <TabsList className="tabs !mb-0">
                         <TabsTrigger value="active" className="tab flex items-center gap-2">
-                            <Wrench size={12} /> Active Assignments
+                            <Wrench size={12} /> Active
                         </TabsTrigger>
                         <TabsTrigger value="history" className="tab flex items-center gap-2">
-                            <HistoryIcon size={12} /> Assignment History
+                            <HistoryIcon size={12} /> History
                         </TabsTrigger>
                     </TabsList>
                 </div>

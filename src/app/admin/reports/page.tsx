@@ -95,6 +95,9 @@ import { DateRange } from "react-day-picker";
 import { cn, formatCityState } from '@/lib/utils';
 import { isArchivedJob, archiveJobRecord, jobTechId, weekOfValue, parseLocalDate, mergeJobs, jobDateTimeValue } from '@/lib/jobs';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
+import { PageHeader } from '@/components/page-header';
+import { StatusBadge } from '@/components/status-badge';
+import { SearchField } from '@/components/search-field';
 import { ArchiveTab, AssignmentHistoryTab, ProjectHistoryTab, WeeklyLogHistoryTab } from './components/history-tabs';
 import type { Technician, WorkOrder, WeeklyLog, TimeOffRequest, AdminMessage, Invoice, Project } from '@/lib/types';
 import { format, parseISO, subDays, isAfter, addHours, isSameDay, startOfDay, isWithinInterval } from 'date-fns';
@@ -288,7 +291,7 @@ export default function ActivityAuditPage() {
 
         window.dispatchEvent(new Event('storage'));
 
-        toast({ title: 'Broadcast Executed', description: 'Tactical directive has been transmitted to all target terminals.' });
+        toast({ title: 'Message sent', description: 'Your announcement was sent.' });
         setIsBroadcasting(false);
         setNewMessage({ type: 'info', targetPortal: 'all', subject: '', body: '', isLocked: false });
     }, [newMessage, currentUser, messages, durationHours, toast]);
@@ -318,7 +321,7 @@ export default function ActivityAuditPage() {
 
     const handleVerifyAssignment = async (woId: string) => {
         if (!isAdmin(currentUser)) {
-            toast({ variant: 'destructive', title: 'Unauthorized', description: 'Administrative privileges required for registry verification.' });
+            toast({ variant: 'destructive', title: 'Unauthorized', description: 'Only admins can verify jobs.' });
             return;
         }
         const docRef = doc(db, 'assignments', woId);
@@ -358,7 +361,7 @@ export default function ActivityAuditPage() {
                 archiveReason: `Archived from Reports by ${adminName}.`,
                 techName: technicians.find(t => t.id === (record.assignedTechnicianId || record.techId))?.name,
             });
-            toast({ title: 'Archived', description: `Assignment ${woId.toUpperCase()} moved to Archives — recoverable from the Job Archive.` });
+            toast({ title: 'Archived', description: `Job ${woId.toUpperCase()} archived — restore it from the Archive tab.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Archive failed', description: e.message });
         }
@@ -470,7 +473,7 @@ export default function ActivityAuditPage() {
                 });
             }
             await deleteDoc(doc(db, 'activityArchive', eventId));
-            toast({ title: 'Restored', description: rec ? 'Record restored to active registry.' : 'Event restored to activity feed.' });
+            toast({ title: 'Restored', description: rec ? 'Record restored.' : 'Event restored to the activity feed.' });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Restore Failed', description: e.message });
         }
@@ -601,7 +604,7 @@ export default function ActivityAuditPage() {
         let filename = "Audit_Export";
 
         if (activeTab === 'tech' && selectedTechId && techStats) {
-            rows.push(['DATE', 'MISSION ID', 'TITLE', 'CLIENT', 'STATUS', 'PAYOUT']);
+            rows.push(['DATE', 'JOB ID', 'TITLE', 'CLIENT', 'STATUS', 'PAYOUT']);
             sortedTechVisits.forEach(wo => {
                 rows.push([
                     wo.scheduleDate,
@@ -626,7 +629,7 @@ export default function ActivityAuditPage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast({ title: "Audit Dispatched", description: "Manifest exported successfully." });
+        toast({ title: "Export complete", description: "Your CSV was downloaded." });
     };
 
     const anomalyCounts = useMemo(() => {
@@ -804,7 +807,7 @@ export default function ActivityAuditPage() {
         technicians.filter(t => !isClient(t)).forEach(t => {
             if ((t.name || '').toLowerCase().includes(q) || (t.id || '').toLowerCase().includes(q)) {
                 results.push({
-                    type: 'OPERATIVE',
+                    type: 'TECHNICIAN',
                     label: t.name,
                     meta: `${t.role}`,
                     id: t.id,
@@ -878,7 +881,7 @@ export default function ActivityAuditPage() {
                                 </Avatar>
                             </div>
                             <div className="text-left">
-                                <p className="text-sm font-bold text-text-primary tracking-wide group-hover:text-brand-red transition-colors text-left">{t.name || 'Unnamed Operative'}</p>
+                                <p className="text-sm font-bold text-text-primary tracking-wide group-hover:text-brand-red transition-colors text-left">{t.name || 'Unnamed technician'}</p>
                                 <p className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5 text-left">{t.email}</p>
                             </div>
                         </div>
@@ -905,8 +908,8 @@ export default function ActivityAuditPage() {
                 <div className="flex items-center gap-3 text-left">
                     <MessageSquare className="text-brand-red h-5 w-5" />
                     <div className="text-left">
-                        <h3 className="text-sm font-bold text-text-primary tracking-wide text-left">Operational Communications</h3>
-                        <p className="text-[10px] text-text-muted uppercase tracking-wider text-left">System-wide broadcast terminal</p>
+                        <h3 className="text-sm font-bold text-text-primary tracking-wide text-left">Announcements</h3>
+                        <p className="text-[10px] text-text-muted uppercase tracking-wider text-left">Send a message to a portal</p>
                     </div>
                 </div>
                 <Button onClick={() => setIsBroadcasting(true)} className="bg-brand-red hover:bg-brand-red-hover h-9 px-6 text-[10px] font-bold uppercase tracking-wider text-white">
@@ -973,7 +976,7 @@ export default function ActivityAuditPage() {
                             <MessageSquare className="text-brand-red h-5 w-5" />
                             <DialogTitle className="text-lg font-bold">Compose Broadcast</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs text-left">Transmit a tactical message to the selected portal registry.</DialogDescription>
+                        <DialogDescription className="text-xs text-left">Send a message to everyone in the selected portal.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-6 py-4 px-6 text-left">
                         <div className="grid grid-cols-2 gap-4 text-left">
@@ -997,7 +1000,7 @@ export default function ActivityAuditPage() {
                                         <SelectItem value="info">Informational</SelectItem>
                                         <SelectItem value="warning">System Alert</SelectItem>
                                         <SelectItem value="critical">Critical/Emergency</SelectItem>
-                                        <SelectItem value="success">Operational Success</SelectItem>
+                                        <SelectItem value="success">Success</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -1006,7 +1009,7 @@ export default function ActivityAuditPage() {
                         <div className="space-y-2 text-left">
                             <Label className="text-[10px] font-bold text-text-muted text-left">Subject / Headline</Label>
                             <Input 
-                                placeholder="Clear, concise directive..." 
+                                placeholder="Write a short, clear message…" 
                                 value={newMessage.subject}
                                 onChange={e => setNewMessage({...newMessage, subject: e.target.value})}
                                 className="h-10 bg-bg-primary border-border-sub text-xs font-bold tracking-wide"
@@ -1041,7 +1044,7 @@ export default function ActivityAuditPage() {
                 </div>
                 <div className="text-left">
                     <h3 className="text-xs font-bold text-text-primary text-left">{title}</h3>
-                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider text-left">{count} records match registry constraints</p>
+                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider text-left">{count} records match</p>
                 </div>
             </div>
 
@@ -1061,7 +1064,7 @@ export default function ActivityAuditPage() {
                                 "text-[10px] font-bold uppercase tracking-wider whitespace-nowrap",
                                 auditRange !== 'all' ? "text-text-primary" : "text-text-muted"
                             )}>
-                                {auditRange === 'all' ? 'Full Temporal Registry' : 
+                                {auditRange === 'all' ? 'All time' : 
                                  auditRange === '7d' ? 'Last 7 Days' : 
                                  auditRange === '30d' ? 'Last 30 Days' :
                                  customVisitRange?.from ? (
@@ -1072,12 +1075,12 @@ export default function ActivityAuditPage() {
                     </PopoverTrigger>
                     <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
                         <div className="p-3 border-b border-border-sub bg-bg-tertiary flex justify-between items-center text-left">
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-primary">Temporal constraints</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-primary">Date range</p>
                             <button onClick={() => { setAuditRange('all'); setCustomVisitRange(undefined); }} className="text-[11px] font-bold text-brand-red hover:underline">Reset</button>
                         </div>
                         <div className="p-3 space-y-4 text-left">
                             <div className="grid grid-cols-1 gap-2 text-left">
-                                <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] font-bold", auditRange === 'all' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('all')}>Full Registry</Button>
+                                <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] font-bold", auditRange === 'all' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('all')}>All time</Button>
                                 <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] font-bold", auditRange === '7d' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('7d')}>Last 7 Days</Button>
                                 <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] font-bold", auditRange === '30d' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('30d')}>Last 30 Days</Button>
                                 <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] font-bold", auditRange === 'custom' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('custom')}>Custom Range</Button>
@@ -1109,25 +1112,22 @@ export default function ActivityAuditPage() {
 
     return (
         <div className="max-w-[1200px] mx-auto space-y-8 text-left">
-            <header className="space-y-1 text-center text-left">
-                <p className="text-[10px] font-bold text-brand-red uppercase tracking-wider text-center">Business History</p>
-                <h1 className="text-3xl font-bold text-text-primary text-center">Archives</h1>
-                <p className="text-xs text-text-muted font-bold mt-2 text-center">History, logs, and search across all field service records</p>
-            </header>
+            <PageHeader
+                eyebrow="Records"
+                icon={History}
+                title="History"
+                subtitle="Completed jobs, projects, weekly logs and archived records."
+            />
 
             <div className="space-y-6 text-left">
                 {/* Hidden on the Archive tab, which has its own search in its
                     FilterBar — one search box per list. */}
                 {activeTab !== 'archive' && (
-                <div className="relative group text-left">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted group-focus-within:text-brand-red transition-colors" />
-                    <Input
-                        placeholder="Search technicians, assignments, projects…"
-                        className="h-9 pl-9 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-wide focus:border-brand-red rounded-lg"
+                <SearchField
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={setSearchQuery}
+                    placeholder="Search technicians, jobs, projects…"
                     />
-                </div>
                 )}
 
                 {/* The Archive tab ignores the global search (see archiveItems) —
@@ -1135,17 +1135,17 @@ export default function ActivityAuditPage() {
                     results. */}
                 {(!searchQuery || activeTab === 'archive') ? (
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full text-left">
-                        <div className="flex justify-center text-left">
-                            <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-center mb-8 flex-wrap">
-                                <TabsTrigger value="assignments_history" className="tab-trigger-activity">Assignment History</TabsTrigger>
-                                <TabsTrigger value="project_history" className="tab-trigger-activity">Project History</TabsTrigger>
-                                <TabsTrigger value="weekly_logs" className="tab-trigger-activity">Weekly Log History</TabsTrigger>
-                                <TabsTrigger value="archive" className="tab-trigger-activity">Archive</TabsTrigger>
+                        <div className="overflow-x-auto">
+                            <TabsList className="tabs mb-6 w-max">
+                                <TabsTrigger value="assignments_history" className="tab">Jobs</TabsTrigger>
+                                <TabsTrigger value="project_history" className="tab">Projects</TabsTrigger>
+                                <TabsTrigger value="weekly_logs" className="tab">Weekly logs</TabsTrigger>
+                                <TabsTrigger value="archive" className="tab">Archive</TabsTrigger>
                             </TabsList>
                         </div>
 
                         <div className="min-h-[500px] text-left">
-                            {/* TIMELINE TAB - moved to Intel page */}
+                            {/* TIMELINE TAB - moved to Insights page */}
                             <TabsContent value="timeline" className="m-0 text-left hidden">
                                 <div className="space-y-5">
                                     {/* Filter bar */}
@@ -1272,7 +1272,7 @@ export default function ActivityAuditPage() {
                                                                 <AvatarFallback className="text-[10px]">{(activeTech.name || 'U').charAt(0)}</AvatarFallback>
                                                             </Avatar>
                                                             <div className="space-y-0.5 text-center">
-                                                                <h2 className="text-lg font-bold text-text-primary tracking-wide text-center">{activeTech.name || 'Unnamed Operative'}</h2>
+                                                                <h2 className="text-lg font-bold text-text-primary tracking-wide text-center">{activeTech.name || 'Unnamed technician'}</h2>
                                                                 <p className="text-[10px] text-text-muted font-mono uppercase tracking-wider text-center">{activeTech.email}</p>
                                                             </div>
                                                         </div>
@@ -1280,7 +1280,7 @@ export default function ActivityAuditPage() {
                                                         <div className="space-y-4 pt-3 border-t border-border-sub/30 text-left">
                                                             <div className="space-y-1 text-center">
                                                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-center">Penalty Points</p>
-                                                                <p className={cn("text-4xl font-mono font-bold tracking-tighter text-center", techStats.penaltyPoints === 0 ? 'text-text-green' : 'text-accent-gold')}>{techStats.penaltyPoints}</p>
+                                                                <p className={cn("text-4xl font-mono font-bold text-center", techStats.penaltyPoints === 0 ? 'text-text-green' : 'text-accent-gold')}>{techStats.penaltyPoints}</p>
                                                             </div>
                                                             <div className="flex items-center justify-center gap-1.5 opacity-60 text-center">
                                                                 <span className="text-[10px] text-text-muted font-mono uppercase tracking-wider text-center">REG ID: {activeTech.userId || activeTech.id}</span>
@@ -1306,13 +1306,13 @@ export default function ActivityAuditPage() {
                                                     </CardHeader>
                                                     <CardContent className="p-4 pt-0 space-y-3 text-left">
                                                         <div className="flex justify-between items-center px-1 text-left">
-                                                            <span className="text-[10px] font-bold text-text-muted text-left">Mission Success</span>
+                                                            <span className="text-[10px] font-bold text-text-muted text-left">Completed</span>
                                                             <span className="text-xs font-bold text-text-primary text-right">{techStats.completed} / {techStats.total}</span>
                                                         </div>
                                                         <div className="h-1.5 w-full bg-bg-primary rounded-full overflow-hidden border border-border-sub text-left">
                                                             <div className="h-full bg-brand-red" style={{ width: `${(techStats.completed / (techStats.total || 1)) * 100}%` }} />
                                                         </div>
-                                                        <p className="text-[10px] text-text-muted italic text-left">Finalized deployments within rolling registry.</p>
+                                                        <p className="text-[10px] text-text-muted text-left">Completed jobs in this period.</p>
                                                     </CardContent>
                                                 </Card>
                                             </div>
@@ -1326,15 +1326,15 @@ export default function ActivityAuditPage() {
                                                     </TabsList>
 
                                                     <TabsContent value="assignments" className="m-0 space-y-3 text-left">
-                                                        {renderAuditHeader("Assignment Audit Manifest", sortedTechVisits.length)}
+                                                        {renderAuditHeader("Job history", sortedTechVisits.length)}
                                                         <div className="table-wrap p-0 text-left">
                                                             <Table>
                                                                 <TableHeader className="bg-bg-tertiary">
                                                                     <TableRow className="hover:bg-transparent border-border-sub">
-                                                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider pl-6">Mission ID</TableHead>
+                                                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider pl-6">Job ID</TableHead>
                                                                         <TableHead className="text-[10px] uppercase font-bold tracking-wider text-left">Date</TableHead>
                                                                         <TableHead className="text-[10px] uppercase font-bold tracking-wider text-center">Status</TableHead>
-                                                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider text-center">Audit Registry</TableHead>
+                                                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider text-center">Audit</TableHead>
                                                                         <TableHead className="text-right pr-6 text-[10px] uppercase font-bold tracking-wider">Actions</TableHead>
                                                                     </TableRow>
                                                                 </TableHeader>
@@ -1354,17 +1354,15 @@ export default function ActivityAuditPage() {
                                                                                     {formatDateDisplay(wo.scheduleDate)}
                                                                                 </TableCell>
                                                                                 <TableCell className="text-center">
-                                                                                    <Badge variant={wo.status === 'completed' ? 'active' : wo.status === 'in-progress' ? 'inprogress' : 'onhold'} className="uppercase h-4 text-[10px] tracking-wider">
-                                                                                        {wo.status}
-                                                                                    </Badge>
+                                                                                    <StatusBadge kind="job" value={wo.status} />
                                                                                 </TableCell>
                                                                                 <TableCell className="text-center">
                                                                                     {linkedLog ? (
-                                                                                        <Badge variant="outline" className="text-[10px] bg-bg-primary border-border-sub uppercase tracking-tighter">
+                                                                                        <Badge variant="outline" className="text-[10px] bg-bg-primary border-border-sub uppercase ">
                                                                                             <FileCheck size={10} className="mr-1 text-text-green"/> WK: {linkedLog.weekOf}
                                                                                         </Badge>
                                                                                     ) : (
-                                                                                        <span className="text-[11px] text-text-muted font-bold italic opacity-40">Pending audit</span>
+                                                                                        <span className="text-[11px] text-text-muted font-bold opacity-40">Pending audit</span>
                                                                                     )}
                                                                                 </TableCell>
                                                                                 <TableCell className="text-right pr-6">
@@ -1418,9 +1416,7 @@ export default function ActivityAuditPage() {
                                                                         <TableRow key={log.id} className="border-border-sub hover:bg-bg-tertiary transition-colors text-left">
                                                                             <TableCell className="font-bold text-xs text-left pl-6 text-left">Week of {log.weekOf}</TableCell>
                                                                             <TableCell className="text-left text-left">
-                                                                                <Badge variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'onhold' : 'pending'} className="uppercase h-4 text-[10px] tracking-wider">
-                                                                                    {log.status}
-                                                                                </Badge>
+                                                                                <StatusBadge kind="log" value={log.status} />
                                                                             </TableCell>
                                                                             <TableCell className="text-right pr-6 font-mono font-bold text-text-primary">${log.amount.toFixed(2)}</TableCell>
                                                                         </TableRow>
@@ -1451,7 +1447,7 @@ export default function ActivityAuditPage() {
                                                         {techStats.penalties.length === 0 && (
                                                             <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30 text-left">
                                                                 <CheckCircle2 size={48} className="mx-auto text-text-green mb-2" />
-                                                                <p className="text-[10px] font-bold uppercase tracking-wider text-center">Clean penalty registry</p>
+                                                                <p className="text-[10px] font-bold uppercase tracking-wider text-center">No penalties</p>
                                                             </div>
                                                         )}
                                                     </TabsContent>
@@ -1511,7 +1507,7 @@ export default function ActivityAuditPage() {
                         )) : (
                             <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl opacity-60 bg-bg-secondary/30 text-left">
                                 <SearchX size={48} className="mx-auto text-text-muted mb-4" />
-                                <p className="text-sm font-bold text-center text-text-muted">No operational matches found</p>
+                                <p className="text-sm font-bold text-center text-text-muted">No matches found</p>
                             </div>
                         )}
                     </div>
@@ -1528,9 +1524,9 @@ export default function ActivityAuditPage() {
             <AlertDialog open={!!deleteConfirmId} onOpenChange={open => { if (!open) setDeleteConfirmId(null); }}>
                 <AlertDialogContent className="bg-bg-elevated border-border-main">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-text-primary font-bold tracking-wide text-sm">Archive Assignment?</AlertDialogTitle>
+                        <AlertDialogTitle className="text-text-primary font-bold tracking-wide text-sm">Archive this job?</AlertDialogTitle>
                         <AlertDialogDescription className="text-text-muted text-[11px]">
-                            This will move assignment <span className="font-bold text-text-primary">{deleteConfirmId?.toUpperCase()}</span> to Archives. It will no longer appear in active views, but stays recoverable from the Job Archive.
+                            This will archive job <span className="font-bold text-text-primary">{deleteConfirmId?.toUpperCase()}</span>. It will no longer appear in active views, but you can restore it from the Archive tab.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

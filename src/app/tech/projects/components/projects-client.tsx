@@ -2,7 +2,10 @@
 
 import { useRouter } from 'next/navigation';
 import type { Project, Technician } from '@/lib/types';
-import { Badge } from '@/components/ui/badge';
+import { Briefcase } from 'lucide-react';
+import { EmptyState } from '@/components/empty-state';
+import { StatusBadge } from '@/components/status-badge';
+import { statusLabel } from '@/lib/status-styles';
 import { MapPin, Calendar, Timer, User } from 'lucide-react';
 import { cn, formatCityState } from '@/lib/utils';
 
@@ -31,16 +34,16 @@ function getTotalTasksCount(project: Project): number {
     return phases.reduce((acc, phase) => acc + (phase.tasks || []).length, 0);
 }
 
-export function ProjectsClient({ projects, technicians, viewMode = 'grid' }: ProjectsClientProps) {
+export function ProjectsClient({ projects, technicians, viewMode = 'grid', filtered = false }: ProjectsClientProps & { filtered?: boolean }) {
     const router = useRouter();
 
     if (projects.length === 0) {
         return (
-            <div className="table-wrap">
-                <div className="empty-state !py-12 text-center text-text-muted italic uppercase text-[10px] font-bold tracking-wider">
-                    You are not assigned to any active projects.
-                </div>
-            </div>
+            <EmptyState
+                icon={Briefcase}
+                title={filtered ? 'No projects match your search' : 'No projects here'}
+                description={filtered ? 'Try a different name, client or location.' : 'Projects you are added to show up here.'}
+            />
         );
     }
 
@@ -53,7 +56,7 @@ export function ProjectsClient({ projects, technicians, viewMode = 'grid' }: Pro
                             <th className="text-left pl-0">Project</th>
                             <th className="text-left pl-0">Client</th>
                             <th className="text-center">Progress</th>
-                            <th className="text-left pl-0">Start Date</th>
+                            <th className="text-left pl-0">Start date</th>
                             <th className="text-left pl-0">Status</th>
                         </tr>
                     </thead>
@@ -64,20 +67,20 @@ export function ProjectsClient({ projects, technicians, viewMode = 'grid' }: Pro
                             return (
                                 <tr key={project.id} onClick={() => router.push(`/tech/projects/${project.id}`)} className="cursor-pointer hover:bg-bg-tertiary/50 transition-colors border-b border-border-sub">
                                     <td className="pl-0 py-3">
-                                        <p className="text-[11px] font-bold text-text-primary truncate">{project.name}</p>
-                                        {project.location && <p className="text-[11px] text-text-muted truncate mt-0.5">{project.location}</p>}
+                                        <p className="text-[13px] font-semibold text-text-primary truncate">{project.name}</p>
+                                        {project.location && <p className="text-[12px] text-text-muted truncate mt-0.5">{project.location}</p>}
                                     </td>
                                     <td className="pl-0">
-                                        <p className="text-[10px] font-bold text-text-secondary truncate">{project.client}</p>
+                                        <p className="text-[12px] text-text-secondary truncate">{project.client}</p>
                                     </td>
                                     <td className="text-center">
-                                        <p className={cn('text-[11px] font-mono font-bold', progressColor)}>{Math.round(progress)}%</p>
+                                        <p className={cn('text-[12px] font-mono font-semibold', progressColor)}>{Math.round(progress)}%</p>
                                     </td>
                                     <td className="pl-0">
-                                        <p className="text-[10px] font-mono text-text-muted">{project.startDate || '—'}</p>
+                                        <p className="text-[12px] font-mono text-text-muted">{project.startDate || '—'}</p>
                                     </td>
                                     <td className="pl-0">
-                                        <Badge variant={project.status} className="text-[10px] h-4 px-1.5 capitalize">{project.status}</Badge>
+                                        <StatusBadge kind="job" value={project.status === 'active' ? 'in-progress' : project.status === 'on-hold' ? 'cancelled' : project.status} label={statusLabel(project.status)} />
                                     </td>
                                 </tr>
                             );
@@ -103,32 +106,30 @@ export function ProjectsClient({ projects, technicians, viewMode = 'grid' }: Pro
                     <div
                         key={project.id}
                         onClick={() => router.push(`/tech/projects/${project.id}`)}
-                        className="group flex flex-col cursor-pointer rounded-xl border border-border-sub bg-bg-secondary hover:border-brand-red transition-all duration-200 overflow-hidden"
+                        className="group flex flex-col cursor-pointer rounded-xl border border-border-main bg-bg-secondary shadow-sm hover:border-brand-red transition-all duration-200 overflow-hidden"
                     >
                         {/* Card body */}
                         <div className="flex flex-col flex-1 p-4 gap-3">
                             {/* Top row: status + lead */}
                             <div className="flex items-start justify-between gap-2">
-                                <Badge variant={project.status} className="capitalize text-[10px] h-4 px-1.5 tracking-widest shrink-0">
-                                    {project.status}
-                                </Badge>
-                                <div className="flex items-center gap-1 text-[10px] text-text-muted font-bold uppercase tracking-wider">
+                                <StatusBadge kind="job" value={project.status === 'active' ? 'in-progress' : project.status === 'on-hold' ? 'cancelled' : project.status} label={statusLabel(project.status)} className="shrink-0" />
+                                <div className="flex items-center gap-1 text-[12px] text-text-muted">
                                     <User className="h-3 w-3 shrink-0" />
-                                    <span className="truncate max-w-[120px]">Project Lead: {lead ? lead.name : 'Unassigned'}</span>
+                                    <span className="truncate max-w-[160px]">Lead: {lead ? lead.name : 'Unassigned'}</span>
                                 </div>
                             </div>
 
                             {/* Project name + client */}
                             <div>
-                                <p className="text-[13px] font-bold text-text-primary tracking-wide leading-tight group-hover:text-brand-red transition-colors">
+                                <p className="text-[14px] font-semibold text-text-primary leading-tight group-hover:text-brand-red transition-colors">
                                     {project.name}
                                 </p>
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-0.5">{project.client}</p>
+                                <p className="text-[12px] text-text-muted mt-0.5">{project.client}</p>
                             </div>
 
                             {/* Location */}
                             {project.location && (
-                                <div className="flex items-center gap-1.5 text-[10px] text-text-secondary font-bold">
+                                <div className="flex items-center gap-1.5 text-[12px] text-text-secondary">
                                     <MapPin size={11} className="text-brand-red shrink-0" />
                                     <span className="truncate">{formatCityState(project.location)}</span>
                                 </div>
@@ -137,13 +138,13 @@ export function ProjectsClient({ projects, technicians, viewMode = 'grid' }: Pro
                             {/* Dates */}
                             <div className="flex items-center gap-4">
                                 {project.startDate && (
-                                    <div className="flex items-center gap-1.5 text-[11px] text-text-secondary font-mono">
+                                    <div className="flex items-center gap-1.5 text-[12px] text-text-secondary font-mono">
                                         <Calendar size={10} className="text-text-muted shrink-0" />
                                         <span>{project.startDate}</span>
                                     </div>
                                 )}
                                 {project.estimatedDuration && (
-                                    <div className="flex items-center gap-1.5 text-[11px] text-text-muted font-bold">
+                                    <div className="flex items-center gap-1.5 text-[12px] text-text-muted">
                                         <Timer size={10} className="text-accent-gold shrink-0" />
                                         <span>{project.estimatedDuration}</span>
                                     </div>
@@ -164,8 +165,8 @@ export function ProjectsClient({ projects, technicians, viewMode = 'grid' }: Pro
                                     {Math.round(progress)}%
                                 </span>
                             </div>
-                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-1">
-                                {completedTasks} / {totalTasks} targets
+                            <p className="text-[12px] text-text-muted mt-1">
+                                {completedTasks} of {totalTasks} tasks done
                             </p>
                         </div>
                     </div>

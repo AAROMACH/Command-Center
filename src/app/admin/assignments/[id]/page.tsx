@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
 import { effectiveJobPay } from '@/lib/payroll';
+import { StatusBadge } from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -307,7 +308,7 @@ export default function AssignmentDetailPage() {
       } as any);
     }
 
-    history.push({ type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: 'Registry parameters adjusted.', user: currentUser?.name || 'Admin' });
+    history.push({ type: 'note', date: format(new Date(), 'MM-dd-yyyy'), details: 'Job details edited.', user: currentUser?.name || 'Admin' });
     finalUpdate.history = history;
 
     // A doc's collection follows its assignment state: unassigned jobs live
@@ -343,7 +344,7 @@ export default function AssignmentDetailPage() {
         await setDoc(doc(db, 'assignments', assignmentId), assignmentData);
         await deleteDoc(doc(db, 'workOrders', editedOrder.id));
         await syncWeeklyLogForAdminStatusEdit({ prevStatus: assignment.status, job: { ...(finalUpdate as WorkOrder), id: assignmentId }, techId: newTechId });
-        toast({ title: 'Saved', description: 'Job entry synchronized.' });
+        toast({ title: 'Saved', description: 'Job updated.' });
         router.push(`/admin/assignments/${assignmentId}`);
         return;
       }
@@ -359,9 +360,9 @@ export default function AssignmentDetailPage() {
       setAssignment(finalUpdate as WorkOrder);
       setIsEditOpen(false);
       setEditedOrder(null);
-      toast({ title: 'Saved', description: 'Job entry synchronized.' });
+      toast({ title: 'Saved', description: 'Job updated.' });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+      toast({ variant: 'destructive', title: 'Save failed', description: e.message });
     }
   };
 
@@ -549,7 +550,7 @@ export default function AssignmentDetailPage() {
                   const hp = helperProgressOf(assignment, hid);
                   const done = hp.status === 'completed';
                   return (
-                    <p className={`mt-1 text-[10px] font-black uppercase tracking-widest ${done ? 'text-text-green' : hp.status === 'assigned' ? 'text-text-muted' : 'text-amber-400'}`}>
+                    <p className={`mt-1 text-[10px] font-black uppercase tracking-wider ${done ? 'text-text-green' : hp.status === 'assigned' ? 'text-text-muted' : 'text-accent-gold'}`}>
                       {hp.status.replace(/-/g, ' ')}
                       {hp.checkInAt ? ` · in ${new Date(hp.checkInAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}
                       {hp.completedAt ? ` · done ${new Date(hp.completedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}
@@ -558,7 +559,7 @@ export default function AssignmentDetailPage() {
                 })()}
                 <button
                   title="Remove helper"
-                  className="mt-1 text-[10px] font-bold uppercase tracking-wider text-text-muted hover:text-rose-400"
+                  className="mt-1 text-[10px] font-bold uppercase tracking-wider text-text-muted hover:text-text-red"
                   onClick={() => handleRemoveHelper(hid)}
                 >
                   × Remove helper
@@ -711,7 +712,7 @@ export default function AssignmentDetailPage() {
               {assignment.description || '—'}
             </p>
             {assignment.notes && (
-              <p className="mt-3 pt-3 border-t border-border-sub text-[10px] text-text-muted leading-relaxed italic">
+              <p className="mt-3 pt-3 border-t border-border-sub text-[10px] text-text-muted leading-relaxed ">
                 {assignment.notes}
               </p>
             )}
@@ -746,7 +747,7 @@ export default function AssignmentDetailPage() {
             </Button>
             <Button size="sm" variant="outline"
               className={cn('h-9 text-[10px] font-bold uppercase tracking-wider gap-1.5 px-3 justify-start',
-                assignment.isAudited && 'text-green-400 border-green-400/30')}
+                assignment.isAudited && 'text-text-green border-text-green/30')}
               onClick={handleVerify}>
               <ShieldCheck size={10} /> {assignment.isAudited ? 'Verified' : 'Verify Assignment'}
             </Button>
@@ -777,7 +778,7 @@ export default function AssignmentDetailPage() {
                   ${jobPayIn(log).toFixed(2)}
                 </p>
                 <p className="text-[10px] text-text-muted">This job&apos;s pay</p>
-                <Badge variant="outline" className="h-4 text-[10px] mt-1">{log.status}</Badge>
+                <StatusBadge kind="log" value={log.status} className="mt-1" />
               </div>
             ))}
           </div>
@@ -861,8 +862,8 @@ export default function AssignmentDetailPage() {
         <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default max-h-[90vh] overflow-hidden flex flex-col p-0 shadow-2xl">
           <DialogHeader className="p-6 pb-2 text-left border-b border-border-sub bg-bg-tertiary/30">
             <div className="space-y-1 text-left">
-              <DialogTitle className="text-lg font-bold text-text-primary">Update Parameters</DialogTitle>
-              <p className="text-xs text-text-muted text-left">Adjust manual parameters for record <span className="font-bold text-text-primary">{assignmentId.toUpperCase()}</span></p>
+              <DialogTitle className="text-lg font-bold text-text-primary">Edit job</DialogTitle>
+              <p className="text-xs text-text-muted text-left">Update the details for job <span className="font-bold text-text-primary">{assignmentId.toUpperCase()}</span></p>
             </div>
           </DialogHeader>
           {editedOrder && (
@@ -890,18 +891,18 @@ export default function AssignmentDetailPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client / Entity</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client</Label>
                     <Input value={editedOrder.clientName || ''} onChange={(e) => setEditedOrder({ ...editedOrder, clientName: e.target.value })} className="bg-bg-primary h-10 text-xs font-bold" />
                   </div>
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Site Location</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Location</Label>
                     <Input value={editedOrder.location || ''} onChange={(e) => setEditedOrder({ ...editedOrder, location: e.target.value })} className="bg-bg-primary h-10 text-xs" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Service Category</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Service category</Label>
                     <Select value={editedOrder.projectType} onValueChange={(val) => setEditedOrder({ ...editedOrder, projectType: val })}>
                       <SelectTrigger className="h-10 bg-bg-primary text-xs font-bold"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -929,18 +930,18 @@ export default function AssignmentDetailPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Schedule Date</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Date</Label>
                     <Input type="date" value={editedOrder.scheduleDate || ''} onChange={(e) => setEditedOrder({ ...editedOrder, scheduleDate: e.target.value })} className="h-10 bg-bg-primary text-xs" />
                   </div>
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Start Window</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Start time</Label>
                     <Input placeholder="e.g. 10:00 AM EST" value={editedOrder.scheduleTime || ''} onChange={(e) => setEditedOrder({ ...editedOrder, scheduleTime: e.target.value })} className="h-10 bg-bg-primary text-xs" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Pay Model</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Pay type</Label>
                     <Select value={editedOrder.payType} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, payType: val })}>
                       <SelectTrigger className="h-10 bg-bg-primary text-xs font-bold"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -952,7 +953,7 @@ export default function AssignmentDetailPage() {
                   </div>
                   {editedOrder.payType !== 'blended' && (
                     <div className="space-y-2 text-left">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Labor Rate ($)</Label>
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Labor rate ($)</Label>
                       <Input type="number" value={editedOrder.pay || 0} onChange={(e) => setEditedOrder({ ...editedOrder, pay: parseFloat(e.target.value) || 0 })} className="bg-bg-primary h-10 text-xs font-mono text-text-green" />
                     </div>
                   )}
@@ -961,7 +962,7 @@ export default function AssignmentDetailPage() {
                 {editedOrder.payType === 'blended' && (
                   <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50 text-left">
                     <div className="space-y-2 text-left">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Fixed Base ($)</Label>
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Fixed base ($)</Label>
                       <div className="relative">
                         <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input
@@ -976,7 +977,7 @@ export default function AssignmentDetailPage() {
                       </div>
                     </div>
                     <div className="space-y-2 text-left">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Incl. Hours</Label>
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Incl. hours</Label>
                       <Input
                         type="number"
                         value={editedOrder.blendedIncludedHours || ''}
@@ -985,7 +986,7 @@ export default function AssignmentDetailPage() {
                       />
                     </div>
                     <div className="space-y-2 text-left">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Post Rate ($/hr)</Label>
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Then ($/hr)</Label>
                       <div className="relative">
                         <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input
@@ -996,7 +997,7 @@ export default function AssignmentDetailPage() {
                         />
                       </div>
                     </div>
-                    <p className="col-span-3 text-[10px] text-text-muted uppercase font-bold italic tracking-tighter text-left">Fixed amount for specified hours, then hourly rate applies.</p>
+                    <p className="col-span-3 text-[10px] text-text-muted uppercase font-bold text-left">Fixed amount for the included hours, then the hourly rate applies.</p>
                   </div>
                 )}
 
@@ -1016,7 +1017,7 @@ export default function AssignmentDetailPage() {
                     </Select>
                   </div>
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-bold text-text-muted ml-1 text-center block">Operational Status</Label>
+                    <Label className="text-[10px] font-bold text-text-muted ml-1 text-center block">Status</Label>
                     <Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}>
                       <SelectTrigger className="bg-bg-primary h-11 font-bold tracking-wider focus:ring-brand-red text-xs">
                         <SelectValue />
@@ -1038,7 +1039,7 @@ export default function AssignmentDetailPage() {
           <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 shrink-0 flex flex-row items-center justify-end gap-3">
             <Button variant="outline" onClick={() => setIsEditOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-wider">Cancel</Button>
             <Button onClick={handleSaveEdit} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider text-white shadow-lg">
-              Commit Registry Updates
+              Save changes
             </Button>
           </DialogFooter>
         </DialogContent>

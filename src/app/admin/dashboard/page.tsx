@@ -29,6 +29,10 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { getAvailablePortals, isTech } from '@/lib/permissions';
 import { useRouter } from 'next/navigation';
 import { NotificationBell } from '@/components/notification-bell';
+import { PageHeader } from '@/components/page-header';
+import { TONE_DOT, statusTone } from '@/lib/status-styles';
+import { EmptyState } from '@/components/empty-state';
+import { StatCard, StatGrid } from '@/components/stat-card';
 import { TERMINOLOGY } from '@/lib/constants';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
@@ -265,39 +269,37 @@ export default function DashboardPage() {
 
     return (
         <div className="animate-in fade-in duration-500 text-left">
-            <header className="page-header">
-                <div className="text-left">
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <LayoutDashboard size={12} />
-                        {TERMINOLOGY.PORTAL.ADMIN}
-                    </p>
-                    <h1 className="page-title">Dashboard</h1>
-                    <p className="page-subtitle">A real-time overview of global field service operations.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <NotificationBell />
-                    {availablePortals.length > 1 && techPortal && (
-                        <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-wider border-border-main" onClick={handleSwapPortal}>
-                            <MonitorUp size={12} className="mr-1.5 text-text-muted" />
-                            Swap View
-                        </Button>
-                    )}
-                </div>
-            </header>
+            <PageHeader
+                eyebrow={TERMINOLOGY.PORTAL.ADMIN}
+                icon={LayoutDashboard}
+                title="Dashboard"
+                subtitle="Today's jobs, open requests and what needs attention."
+                actions={
+                    <div className="flex items-center gap-3">
+                        <NotificationBell />
+                        {availablePortals.length > 1 && techPortal && (
+                            <Button variant="outline" size="sm" onClick={handleSwapPortal}>
+                                <MonitorUp size={12} className="mr-1.5 text-text-muted" />
+                                Switch to Tech Portal
+                            </Button>
+                        )}
+                    </div>
+                }
+            />
 
             {/* Financial KPIs — compact top strip */}
             <div className="flex flex-wrap items-center gap-2 mb-4 px-1">
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary">
                     <Banknote size={11} className="text-text-green shrink-0" />
                     <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">MTD Revenue</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Revenue this month</p>
                         <p className="text-[12px] font-bold font-mono text-text-green">${financialKpis.mtdRevenue.toLocaleString()}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary">
                     <TrendingUp size={11} className="text-text-green shrink-0" />
                     <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">MTD Aaromach Profit</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Profit this month</p>
                         <p className={cn('text-[12px] font-bold font-mono', financialKpis.mtdProfit >= 0 ? 'text-text-green' : 'text-text-red')}>${financialKpis.mtdProfit.toLocaleString()}</p>
                     </div>
                 </div>
@@ -311,7 +313,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary">
                     <Zap size={11} className="text-brand-red shrink-0" />
                     <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Upcoming Payroll</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Upcoming payroll</p>
                         <p className="text-[12px] font-bold font-mono text-text-primary">${financialKpis.upcomingPayroll.toLocaleString()}</p>
                     </div>
                 </div>
@@ -320,18 +322,18 @@ export default function DashboardPage() {
             {/* Quick Actions */}
             <div className="flex flex-wrap items-center gap-2 mb-4">
                 <Link href="/admin/dispatch">
-                    <Button size="sm" className="h-8 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white gap-1.5">
-                        <Plus size={11} /> New Work Order
+                    <Button size="sm" className="gap-1.5">
+                        <Plus size={11} /> New job
                     </Button>
                 </Link>
                 <Link href="/admin/projects?action=new">
-                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5">
-                        <FolderKanban size={11} /> New Project
+                    <Button size="sm" variant="outline" className="gap-1.5">
+                        <FolderKanban size={11} /> New project
                     </Button>
                 </Link>
                 <Link href="/admin/messaging">
-                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5">
-                        <MessageSquare size={11} /> Send Broadcast
+                    <Button size="sm" variant="outline" className="gap-1.5">
+                        <MessageSquare size={11} /> Send announcement
                     </Button>
                 </Link>
             </div>
@@ -349,62 +351,32 @@ export default function DashboardPage() {
                 )}
             </div>
 
-            {/* 5 Stat Boxes */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
-                <Link href="/admin/dispatch?subtab=assignments">
-                    <div className="bg-bg-secondary p-4 rounded-xl border border-border-default hover:border-border-main transition-colors h-full">
-                        <Wrench size={13} className="text-text-muted mb-3" />
-                        <p className="text-3xl font-bold text-text-primary tracking-tighter">{activeAssignmentsCount}</p>
-                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-0.5 mb-2">Active Jobs</p>
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-text-green/10 text-text-green border border-text-green/20">ACTIVE</span>
-                    </div>
-                </Link>
-                <Link href="/admin/dispatch">
-                    <div className="bg-bg-secondary p-4 rounded-xl border border-border-default hover:border-border-main transition-colors h-full">
-                        <AlertCircle size={13} className="text-text-muted mb-3" />
-                        <p className="text-3xl font-bold text-text-primary tracking-tighter">{unassignedJobs.length}</p>
-                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-0.5 mb-2">Unassigned</p>
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-brand-red/10 text-brand-red border border-brand-red/20">UNASSIGNED</span>
-                    </div>
-                </Link>
-                <Link href="/admin/projects">
-                    <div className="bg-bg-secondary p-4 rounded-xl border border-border-default hover:border-border-main transition-colors h-full">
-                        <FolderKanban size={13} className="text-text-muted mb-3" />
-                        <p className="text-3xl font-bold text-text-primary tracking-tighter">{projects.filter(p => p.status === 'on-hold').length}</p>
-                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-0.5 mb-2">On Hold</p>
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-accent-gold/10 text-accent-gold border border-accent-gold/20">ON HOLD</span>
-                    </div>
-                </Link>
-                <Link href="/admin/payroll/audit">
-                    <div className="bg-bg-secondary p-4 rounded-xl border border-border-default hover:border-border-main transition-colors h-full">
-                        <ClipboardList size={13} className="text-text-muted mb-3" />
-                        <p className="text-3xl font-bold text-text-primary tracking-tighter">{pendingLogs.length}</p>
-                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-0.5 mb-2">Pending Logs</p>
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-accent-gold/10 text-accent-gold border border-accent-gold/20">AWAITING REVIEW</span>
-                    </div>
-                </Link>
-                <div className="cursor-pointer" onClick={() => setIsPendingDialogOpen(true)}>
-                    <div className="bg-bg-secondary p-4 rounded-xl border border-border-default hover:border-border-main transition-colors h-full">
-                        <Clock size={13} className="text-text-muted mb-3" />
-                        <p className="text-3xl font-bold text-text-primary tracking-tighter">{pendingRequests.total}</p>
-                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-0.5 mb-2">Global Requests</p>
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-brand-red/10 text-brand-red border border-brand-red/20">AWAITING ACTION</span>
-                    </div>
-                </div>
-            </div>
+            {/* Stat tiles */}
+            <StatGrid className="mb-8 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5">
+                <StatCard icon={Wrench} label="Active jobs" value={activeAssignmentsCount} sub="Assigned and in progress" tone="done"
+                    onClick={() => router.push('/admin/dispatch?subtab=assignments')} />
+                <StatCard icon={AlertCircle} label="Unassigned" value={unassignedJobs.length} sub="Need a technician" tone={unassignedJobs.length ? 'problem' : undefined}
+                    onClick={() => router.push('/admin/dispatch')} />
+                <StatCard icon={FolderKanban} label="Projects on hold" value={projects.filter(p => p.status === 'on-hold').length} sub="Paused projects"
+                    onClick={() => router.push('/admin/projects')} />
+                <StatCard icon={ClipboardList} label="Pending logs" value={pendingLogs.length} sub="Waiting for review" tone={pendingLogs.length ? 'progress' : undefined}
+                    onClick={() => router.push('/admin/payroll/audit')} />
+                <StatCard icon={Clock} label="Open requests" value={pendingRequests.total} sub="Waiting for action" tone={pendingRequests.total ? 'problem' : undefined}
+                    onClick={() => setIsPendingDialogOpen(true)} />
+            </StatGrid>
 
             {/* Today's Schedule Strip */}
             {todayJobs.length > 0 && (
                 <div className="mb-6">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2 flex items-center gap-1.5">
                         <Calendar size={10} className="text-brand-red" />
-                        Today's Schedule — {todayJobs.length} job{todayJobs.length !== 1 ? 's' : ''}
+                        Today's schedule — {todayJobs.length} job{todayJobs.length !== 1 ? 's' : ''}
                     </p>
                     <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
                         {todayJobs.map(wo => {
                             const techId = wo.assignedTechnicianId || (wo as any).techId;
                             const tech = technicians.find(t => t.id === techId);
-                            const statusDot = wo.status === 'in-progress' ? 'bg-text-green' : wo.status === 'on-my-way' ? 'bg-blue-400' : wo.status === 'completed' ? 'bg-border-main' : 'bg-accent-gold';
+                            const statusDot = TONE_DOT[statusTone('job', wo.status)];
                             return (
                                 <Link key={wo.id} href={`/admin/assignments/${wo.id}`} className="shrink-0">
                                     <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border-sub bg-bg-secondary hover:border-border-main transition-colors min-w-[200px] max-w-[220px]">
@@ -435,8 +407,8 @@ export default function DashboardPage() {
                     {/* Unassigned Jobs Table */}
                     <Card>
                         <CardHeader className="text-left">
-                            <CardTitle>Unassigned Jobs — Needs Dispatch</CardTitle>
-                            <CardDescription>Work orders awaiting operative allocation.</CardDescription>
+                            <CardTitle>Unassigned jobs</CardTitle>
+                            <CardDescription>Jobs waiting for a technician.</CardDescription>
                         </CardHeader>
                         <CardContent className="table-wrap !border-none !rounded-none p-0">
                             <Table>
@@ -445,7 +417,7 @@ export default function DashboardPage() {
                                         <TableHead className="pl-6">WO#</TableHead>
                                         <TableHead>Client</TableHead>
                                         <TableHead>Location</TableHead>
-                                        <TableHead>Job Type</TableHead>
+                                        <TableHead>Job type</TableHead>
                                         <TableHead>Priority</TableHead>
                                         <TableHead className="text-right pr-6">Action</TableHead>
                                     </TableRow>
@@ -468,15 +440,15 @@ export default function DashboardPage() {
                                                     className="h-7 text-[10px] bg-brand-red hover:bg-brand-red/90 text-white uppercase font-bold tracking-wider px-3"
                                                     onClick={() => router.push('/admin/dispatch?tab=dispatch')}
                                                 >
-                                                    ASSIGN TECH
+                                                    Assign tech
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}
                                     {unassignedJobs.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="text-center h-32 text-xs font-bold text-text-muted italic opacity-40">
-                                                All jobs dispatched — queue clear.
+                                            <TableCell colSpan={6} className="text-center h-32 text-xs font-bold text-text-muted opacity-40">
+                                                Every job has a technician.
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -486,7 +458,7 @@ export default function DashboardPage() {
                         {unassignedJobs.length > 8 && (
                             <CardFooter className="pt-0 border-t border-border-sub bg-bg-tertiary/20 p-4">
                                 <Button variant="ghost" className="w-full text-[10px] uppercase font-bold tracking-wider h-8" onClick={() => router.push('/admin/dispatch')}>
-                                    View All {unassignedJobs.length} Unassigned Jobs <ChevronRight size={12} className="ml-2" />
+                                    View all {unassignedJobs.length} unassigned jobs <ChevronRight size={12} className="ml-2" />
                                 </Button>
                             </CardFooter>
                         )}
@@ -496,8 +468,8 @@ export default function DashboardPage() {
                     <div ref={slaRef}>
                         <Card>
                             <CardHeader className="text-left">
-                                <CardTitle>Service Requests — SLA Clock Running</CardTitle>
-                                <CardDescription>Active intake tickets with elapsed response time.</CardDescription>
+                                <CardTitle>Service requests — response time</CardTitle>
+                                <CardDescription>Open requests and how long they have been waiting.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-2">
                                 {clientRequests.slice(0, 6).map(req => {
@@ -563,8 +535,8 @@ export default function DashboardPage() {
                     {/* Tech Workload */}
                     <Card>
                         <CardHeader className="pb-3 text-left">
-                            <CardTitle>Tech Workload</CardTitle>
-                            <CardDescription>Active assignment density per operative.</CardDescription>
+                            <CardTitle>Tech workload</CardTitle>
+                            <CardDescription>Active jobs per technician.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {workloadData.length > 0 ? workloadData.map(item => (
@@ -595,7 +567,7 @@ export default function DashboardPage() {
                     {/* This Week */}
                     <Card>
                         <CardHeader className="pb-3 text-left">
-                            <CardTitle>Operations Snapshot</CardTitle>
+                            <CardTitle>Business snapshot</CardTitle>
                             <CardDescription>Current financial & project status.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-0">
@@ -615,15 +587,15 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* GLOBAL REQUESTS AUDIT TERMINAL */}
+            {/* OPEN REQUESTS DIALOG */}
             <Dialog open={isPendingDialogOpen} onOpenChange={setIsPendingDialogOpen}>
                 <DialogContent className="sm:max-w-[800px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[90vh] shadow-2xl">
                     <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-3">
                             <Clock className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold text-text-primary">Global Requests</DialogTitle>
+                            <DialogTitle className="text-lg font-bold text-text-primary">Open requests</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs font-bold text-text-muted">Consolidated audit terminal for unverified field signals and intake data.</DialogDescription>
+                        <DialogDescription className="text-xs font-bold text-text-muted">Service requests, time off, log changes and site verifications waiting for action.</DialogDescription>
                     </DialogHeader>
 
                     <Tabs defaultValue="tickets" className="flex-1 overflow-hidden flex flex-col">
@@ -633,13 +605,13 @@ export default function DashboardPage() {
                                     <ClipboardList size={14} /> Requests <Badge variant="outline" className="h-4 px-1.5 text-[10px]">{pendingRequests.tickets.length}</Badge>
                                 </TabsTrigger>
                                 <TabsTrigger value="timeoff" className="tab-trigger-dashboard flex items-center gap-2">
-                                    <Users size={14} /> Personnel Logs <Badge variant="outline" className="h-4 px-1.5 text-[10px]">{pendingRequests.timeOff.length}</Badge>
+                                    <Users size={14} /> Time off <Badge variant="outline" className="h-4 px-1.5 text-[10px]">{pendingRequests.timeOff.length}</Badge>
                                 </TabsTrigger>
                                 <TabsTrigger value="unsubmits" className="tab-trigger-dashboard flex items-center gap-2">
-                                    <Undo2 size={14} /> Amendments <Badge variant="outline" className="h-4 px-1.5 text-[10px]">{pendingRequests.unsubmits.length}</Badge>
+                                    <Undo2 size={14} /> Log changes <Badge variant="outline" className="h-4 px-1.5 text-[10px]">{pendingRequests.unsubmits.length}</Badge>
                                 </TabsTrigger>
                                 <TabsTrigger value="sites" className="tab-trigger-dashboard flex items-center gap-2">
-                                    <MapPin size={14} /> Site Registry <Badge variant="outline" className="h-4 px-1.5 text-[10px]">{pendingRequests.sites.length}</Badge>
+                                    <MapPin size={14} /> Sites <Badge variant="outline" className="h-4 px-1.5 text-[10px]">{pendingRequests.sites.length}</Badge>
                                 </TabsTrigger>
                             </TabsList>
                         </div>
@@ -660,7 +632,7 @@ export default function DashboardPage() {
                                             <Button size="sm" variant="ghost" className="h-8 text-[10px] font-bold uppercase tracking-wider" onClick={() => { setIsPendingDialogOpen(false); router.push('/admin/requests'); }}>Audit detail</Button>
                                         </div>
                                     ))}
-                                    {pendingRequests.tickets.length === 0 && <EmptyState icon={ClipboardList} label="Service funnel clear" />}
+                                    {pendingRequests.tickets.length === 0 && <EmptyState compact icon={ClipboardList} title="No open service requests" />}
                                 </TabsContent>
 
                                 <TabsContent value="timeoff" className="m-0 space-y-3">
@@ -686,7 +658,7 @@ export default function DashboardPage() {
                                             </div>
                                         );
                                     })}
-                                    {pendingRequests.timeOff.length === 0 && <EmptyState icon={Users} label="Personnel registry nominal" />}
+                                    {pendingRequests.timeOff.length === 0 && <EmptyState compact icon={Users} title="No time-off requests" />}
                                 </TabsContent>
 
                                 <TabsContent value="unsubmits" className="m-0 space-y-3">
@@ -702,17 +674,17 @@ export default function DashboardPage() {
                                                     <div className="text-left">
                                                         <div className="flex items-center gap-2">
                                                             <p className="text-xs font-bold text-text-primary tracking-wide">{tech?.name}</p>
-                                                            <Badge variant="destructive" className="h-3.5 px-1 text-[10px]">Unsubmit Req.</Badge>
+                                                            <Badge variant="destructive" className="h-3.5 px-1 text-[10px]">Unsubmit request</Badge>
                                                         </div>
                                                         <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Week of {log.weekOf}</p>
-                                                        <p className="text-[10px] text-text-secondary leading-tight mt-1 line-clamp-1 italic">&quot;{log.unsubmitReason}&quot;</p>
+                                                        <p className="text-[10px] text-text-secondary leading-tight mt-1 line-clamp-1 ">&quot;{log.unsubmitReason}&quot;</p>
                                                     </div>
                                                 </div>
-                                                <Button size="sm" variant="ghost" className="h-8 text-[10px] font-bold uppercase tracking-wider" onClick={() => { setIsPendingDialogOpen(false); router.push('/admin/financials?tab=payroll'); }}>Audit Manifest</Button>
+                                                <Button size="sm" variant="ghost" className="h-8" onClick={() => { setIsPendingDialogOpen(false); router.push('/admin/financials?tab=payroll'); }}>Review payroll</Button>
                                             </div>
                                         );
                                     })}
-                                    {pendingRequests.unsubmits.length === 0 && <EmptyState icon={Undo2} label="No amendment requests" />}
+                                    {pendingRequests.unsubmits.length === 0 && <EmptyState compact icon={Undo2} title="No log change requests" />}
                                 </TabsContent>
 
                                 <TabsContent value="sites" className="m-0 space-y-3">
@@ -729,14 +701,14 @@ export default function DashboardPage() {
                                             <Button size="sm" variant="ghost" className="h-8 text-[10px] font-bold uppercase tracking-wider" onClick={() => { setIsPendingDialogOpen(false); router.push('/admin/directory?tab=requests&subtab=client'); }}>Verify Site</Button>
                                         </div>
                                     ))}
-                                    {pendingRequests.sites.length === 0 && <EmptyState icon={MapPin} label="Site verifications complete" />}
+                                    {pendingRequests.sites.length === 0 && <EmptyState compact icon={MapPin} title="No sites waiting for verification" />}
                                 </TabsContent>
                             </div>
                         </ScrollArea>
                     </Tabs>
 
                     <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default">
-                        <Button variant="outline" className="w-full h-11 uppercase font-bold text-[10px] tracking-wider" onClick={() => setIsPendingDialogOpen(false)}>Close Buffer</Button>
+                        <Button variant="outline" className="w-full h-11 uppercase font-bold text-[10px] tracking-wider" onClick={() => setIsPendingDialogOpen(false)}>Close</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -745,11 +717,3 @@ export default function DashboardPage() {
     );
 }
 
-function EmptyState({ icon: Icon, label }: { icon: any, label: string }) {
-    return (
-        <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
-            <Icon size={48} className="mx-auto text-text-muted mb-2" />
-            <p className="text-[10px] font-bold uppercase tracking-wider">{label}</p>
-        </div>
-    );
-}

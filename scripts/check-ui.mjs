@@ -40,6 +40,7 @@ for (const file of walk(SRC)) {
   const lines = readFileSync(file, 'utf8').split('\n');
   lines.forEach((line, i) => {
     if (/^\s*(\/\/|\*|\/\*)/.test(line)) return; // comments
+    if (/ui-check-ignore/.test(line) || /ui-check-ignore/.test(lines[i - 1] || '')) return; // stored text other code parses
     for (const rule of RULES) {
       rule.re.lastIndex = 0;
       if (rule.re.test(line)) (hits[rule.name] ||= []).push(`${relative(ROOT, file)}:${i + 1}`);

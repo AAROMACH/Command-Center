@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyState } from '@/components/empty-state';
 import { useState } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import type { WorkOrder, Technician } from "@/lib/types";
@@ -18,7 +19,7 @@ type HistoryEntry = NonNullable<WorkOrder['history']>[number] & {
 };
 
 /** Placeholder names older entries were saved with when the tech's record wasn't loaded. */
-const GENERIC_NAMES = new Set(['field operative', 'tech', '']);
+const GENERIC_NAMES = new Set(['field operative', 'technician', 'tech', '']);
 
 /**
  * Who marked the job Cancelled / Did Not Do — the tech who sent it to the
@@ -67,12 +68,7 @@ export function ReviewQueueView({ jobs, technicians, onSendToDispatch, onArchive
 
   if (jobs.length === 0) {
     return (
-      <div className="p-24 text-center border-2 border-dashed border-border-main rounded-xl bg-bg-secondary/30">
-        <ClipboardList size={32} className="mx-auto text-text-muted mb-3 opacity-40" />
-        <p className="text-xs font-bold text-text-muted italic">
-          Review queue is clear — no cancelled or unfinished jobs awaiting a decision.
-        </p>
-      </div>
+      <EmptyState icon={ClipboardList} title="Review queue is clear" description="No cancelled or unfinished jobs are waiting for a decision." />
     );
   }
 
@@ -108,7 +104,7 @@ export function ReviewQueueView({ jobs, technicians, onSendToDispatch, onArchive
                     {wo.techOutcomeAt && (<><span>·</span><span>{format(new Date(wo.techOutcomeAt), 'MM/dd h:mm a')}</span></>)}
                   </div>
                   {lastNote && (
-                    <p className="text-[10px] text-text-secondary italic mt-1.5 truncate max-w-xl">{lastNote.details}</p>
+                    <p className="text-[12px] text-text-secondary mt-1.5 truncate max-w-xl">{lastNote.details}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -126,7 +122,7 @@ export function ReviewQueueView({ jobs, technicians, onSendToDispatch, onArchive
                     className="h-8 text-[10px] font-bold uppercase tracking-wider border-text-muted text-text-muted hover:bg-bg-tertiary"
                     onClick={() => onArchive(wo)}
                   >
-                    <ArchiveIcon size={13} className="mr-1.5" /> Move to Archives
+                    <ArchiveIcon size={13} className="mr-1.5" /> Archive
                   </Button>
                 </div>
               </div>

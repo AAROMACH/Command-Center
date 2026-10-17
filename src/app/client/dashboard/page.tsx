@@ -3,16 +3,21 @@
 
 import { useClientPlan } from '@/components/client-plan-card';
 import { useState, useEffect, useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
+import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
 import { db } from "@/lib/firebase";
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { useClientInvoices } from '@/hooks/use-client-invoices';
 import { useClientProjects, useClientJobs } from '@/hooks/use-client-data';
 import type { Project, ServiceRequest, Technician, Invoice, WorkOrder } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
+import { StatCard } from '@/components/stat-card';
+import { StatusBadge } from '@/components/status-badge';
+import { EmptyState } from '@/components/empty-state';
+import { requestDate, formatRequestDate, requestKind } from '../_lib/requests';
 import {
     LayoutDashboard,
     Briefcase,
@@ -30,7 +35,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { NotificationBell } from '@/components/notification-bell';
 import { cn } from '@/lib/utils';
-import { jobDateTimeValue, parseLocalDate } from '@/lib/jobs';
+import { jobDateTimeValue } from '@/lib/jobs';
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const tooltipStyle = { background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 12 };
 
 // Without a plan, requests are held to the standard 48-hour response.
 const DEFAULT_RESPONSE_HOURS = 48;
@@ -94,21 +103,20 @@ export default function ClientDashboardPage() {
     const slaData = useMemo(() => {
         if (!currentUser) return [];
         const slaLimit = myPlan?.benefits.responseHours || DEFAULT_RESPONSE_HOURS;
+        const now = Date.now();
         return myRequests
             .filter(r => ['new', 'reviewed', 'pending_review'].includes(r.status as string))
             .map(r => {
-                try {
-                    const submitted = parseLocalDate(r.submittedDate) ?? new Date(NaN);
-                    const now = new Date();
-                    const hoursElapsed = (now.getTime() - submitted.getTime()) / (1000 * 60 * 60);
-                    const hoursRemaining = Math.max(0, slaLimit - hoursElapsed);
-                    const pct = Math.min(100, (hoursElapsed / slaLimit) * 100);
-                    const color = pct < 50 ? 'text-text-green' : pct < 80 ? 'text-accent-gold' : 'text-brand-red';
-                    const bgColor = pct < 50 ? 'bg-text-green' : pct < 80 ? 'bg-accent-gold' : 'bg-brand-red';
-                    return { request: r, hoursRemaining, pct, color, bgColor };
-                } catch { return null; }
-            })
-            .filter(Boolean) as { request: typeof myRequests[0]; hoursRemaining: number; pct: number; color: string; bgColor: string }[];
+                const submitted = requestDate(r);
+                // No usable submit time → no countdown (was "NaNh remaining").
+                if (!submitted) return { request: r, hoursRemaining: null, pct: 0, color: 'text-text-muted', bgColor: 'bg-border-main' };
+                const hoursElapsed = Math.max(0, (now - submitted.getTime()) / (1000 * 60 * 60));
+                const hoursRemaining = Math.max(0, slaLimit - hoursElapsed);
+                const pct = Math.min(100, (hoursElapsed / slaLimit) * 100);
+                const color = pct < 50 ? 'text-text-green' : pct < 80 ? 'text-accent-gold' : 'text-brand-red';
+                const bgColor = pct < 50 ? 'bg-text-green' : pct < 80 ? 'bg-accent-gold' : 'bg-brand-red';
+                return { request: r, hoursRemaining, pct, color, bgColor };
+            });
     }, [currentUser, myRequests, myPlan]);
 
     const outstandingBalance = useMemo(() => {
@@ -123,16 +131,20 @@ export default function ClientDashboardPage() {
             .slice(0, 5);
     }, [myWorkOrders]);
 
+    const recentRequests = useMemo(() =>
+        [...myRequests].sort((a, b) => (requestDate(b)?.getTime() ?? 0) - (requestDate(a)?.getTime() ?? 0)),
+        [myRequests]);
+
     const requestsByMonth = useMemo(() => {
         const grouped: Record<string, number> = {};
         myRequests.forEach(r => {
-            try {
-                const month = (r.submittedDate || '').slice(0, 7);
-                if (month) grouped[month] = (grouped[month] || 0) + 1;
-            } catch {}
+            const d = requestDate(r);
+            if (!d) return;
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            grouped[key] = (grouped[key] || 0) + 1;
         });
         return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).slice(-8)
-            .map(([month, count]) => ({ month: month.slice(5), count }));
+            .map(([key, count]) => ({ month: `${MONTHS[Number(key.slice(5)) - 1]} ${key.slice(2, 4)}`, count }));
     }, [myRequests]);
 
     const invoicePie = useMemo(() => {
@@ -164,48 +176,50 @@ export default function ClientDashboardPage() {
     if (loading) {
         return (
             <div className="space-y-6">
-                <div className="page-header">
-                    <Skeleton className="h-20 w-64" />
+                <Skeleton className="h-16 w-64" />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {[1,2,3,4].map(i => <Skeleton key={i} className="h-24 rounded-lg" />)}
-                </div>
-                <Skeleton className="h-64 rounded-lg" />
+                <Skeleton className="h-64 rounded-xl" />
             </div>
         );
     }
 
+    const chartCard = 'min-w-0 rounded-xl border border-border-main bg-bg-secondary p-4 shadow-sm';
+    const chartTitle = 'mb-3 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted';
+    const chartEmpty = (text: string) => (
+        <div className="flex h-[160px] items-center justify-center"><p className="text-[12px] text-text-muted">{text}</p></div>
+    );
+
     return (
         <div className="space-y-6">
-            <header className="page-header">
-                <div className="text-left">
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <LayoutDashboard size={12} />
-                        Client Portal
-                    </p>
-                    <h1 className="page-title">Command Dashboard</h1>
-                    <p className="page-subtitle text-left">
-                        Real-time job tracking for {currentUser?.clientCompany || currentUser?.name || 'your account'}.
-                    </p>
-                </div>
-                <div className="page-header-right items-center">
-                    <NotificationBell />
-                </div>
-            </header>
+            <PageHeader
+                eyebrow="Client portal"
+                icon={LayoutDashboard}
+                title="Dashboard"
+                subtitle={`Jobs, requests and invoices for ${currentUser?.clientCompany || currentUser?.name || 'your account'}.`}
+                actions={<NotificationBell />}
+            />
 
-            {/* SLA Countdown Strip */}
+            {/* Response-time countdown for open requests */}
             {slaData.length > 0 && (
                 <div className="space-y-2">
                     {slaData.map(item => (
-                        <div key={item.request.id} className="flex items-center gap-3 p-3 rounded-lg bg-bg-secondary border border-border-sub">
-                            <Timer size={14} className={item.color} />
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between mb-1">
-                                    <p className="text-[10px] font-bold text-text-primary uppercase tracking-wider truncate">{item.request.requestType} · {item.request.description}</p>
-                                    <span className={cn("text-[10px] font-bold shrink-0 ml-2", item.color)}>{Math.round(item.hoursRemaining)}h remaining</span>
+                        <div key={item.request.id} className="flex items-center gap-3 rounded-xl border border-border-main bg-bg-secondary p-3 shadow-sm">
+                            <Timer size={14} className={cn('shrink-0', item.color)} />
+                            <div className="min-w-0 flex-1">
+                                <div className="mb-1 flex items-center justify-between gap-2">
+                                    <p className="truncate text-[13px] font-medium text-text-primary">
+                                        {requestKind(item.request)} · {item.request.description}
+                                    </p>
+                                    <span className={cn('ml-2 shrink-0 text-[12px] font-semibold', item.color)}>
+                                        {item.hoursRemaining == null
+                                            ? 'No target'
+                                            : item.hoursRemaining > 0 ? `${Math.round(item.hoursRemaining)}h to respond` : 'Response due'}
+                                    </span>
                                 </div>
-                                <div className="w-full bg-bg-tertiary rounded-full h-1">
-                                    <div className={cn("h-1 rounded-full transition-all", item.bgColor)} style={{ width: `${item.pct}%` }} />
+                                <div className="h-1 w-full rounded-full bg-bg-tertiary">
+                                    <div className={cn('h-1 rounded-full transition-all', item.bgColor)} style={{ width: `${item.pct}%` }} />
                                 </div>
                             </div>
                         </div>
@@ -213,244 +227,174 @@ export default function ClientDashboardPage() {
                 </div>
             )}
 
-            {/* Stat Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="bg-bg-secondary border-border-main">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-[10px] text-text-muted uppercase tracking-wider flex items-center gap-2">
-                            <Briefcase size={12} className="text-brand-red" /> Active Projects
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-text-primary">{myProjects.filter(p => p.status === 'active').length}</p>
-                    </CardContent>
-                </Card>
-                <Card className="bg-bg-secondary border-border-main">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-[10px] text-text-muted uppercase tracking-wider flex items-center gap-2">
-                            <ClipboardList size={12} className="text-accent-gold" /> Open Tickets
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-text-primary">
-                            {myRequests.filter(r => ['new', 'reviewed', 'pending_review', 'approved'].includes(r.status as string)).length}
-                        </p>
-                    </CardContent>
-                </Card>
-                <Card className="bg-bg-secondary border-border-main">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-[10px] text-text-muted uppercase tracking-wider flex items-center gap-2">
-                            <Coins size={12} className="text-text-green" /> Outstanding A/R
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-mono font-bold text-text-green">${outstandingBalance.toLocaleString()}</p>
-                    </CardContent>
-                </Card>
-                <Card className="bg-bg-secondary border-border-main">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-[10px] text-text-muted uppercase tracking-wider flex items-center gap-2">
-                            <Activity size={12} className="text-brand-red" /> Live Sessions
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-3xl font-bold text-text-primary">
-                            {myWorkOrders.filter(wo => wo.status === 'in-progress').length}
-                        </p>
-                    </CardContent>
-                </Card>
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <StatCard label="Active projects" icon={Briefcase} value={myProjects.filter(p => p.status === 'active').length} />
+                <StatCard label="Open requests" icon={ClipboardList}
+                    value={myRequests.filter(r => ['new', 'reviewed', 'pending_review', 'approved'].includes(r.status as string)).length} />
+                <StatCard label="Balance due" icon={Coins} tone={outstandingBalance > 0 ? 'progress' : 'done'} value={`$${outstandingBalance.toLocaleString()}`} />
+                <StatCard label="Jobs in progress" icon={Activity} value={myWorkOrders.filter(wo => wo.status === 'in-progress').length} />
             </div>
 
-            {/* Analytics Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="bg-bg-secondary border border-border-main rounded-xl p-4">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-3 flex items-center gap-1.5"><ClipboardList size={10} className="text-brand-red" /> Requests / Month</p>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <div className={chartCard}>
+                    <p className={chartTitle}><ClipboardList size={12} /> Requests per month</p>
                     {requestsByMonth.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={160}>
-                            <BarChart data={requestsByMonth} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
-                                <XAxis dataKey="month" tick={{ fontSize: 8, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 8, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                                <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 10 }} cursor={{ fill: 'color-mix(in srgb, var(--brand-red) 8%, transparent)' }} />
-                                <Bar dataKey="count" fill="var(--brand-red)" radius={[3, 3, 0, 0]} name="Requests" />
+                        <ChartContainer config={{ count: { label: 'Requests', color: 'var(--brand-red)' } } satisfies ChartConfig} className="aspect-auto h-[160px] w-full">
+                            <BarChart data={requestsByMonth} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                                <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                                <Tooltip contentStyle={tooltipStyle} cursor={{ opacity: 0.1 }} />
+                                <Bar dataKey="count" fill="var(--color-count)" radius={[3, 3, 0, 0]} maxBarSize={40} name="Requests" />
                             </BarChart>
-                        </ResponsiveContainer>
-                    ) : (
-                        <div className="h-[160px] flex items-center justify-center"><p className="text-[11px] text-text-muted opacity-40">No requests yet</p></div>
-                    )}
+                        </ChartContainer>
+                    ) : chartEmpty('No requests yet')}
                 </div>
-                <div className="bg-bg-secondary border border-border-main rounded-xl p-4">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-3 flex items-center gap-1.5"><Coins size={10} className="text-brand-red" /> Invoice Status</p>
+                <div className={chartCard}>
+                    <p className={chartTitle}><Coins size={12} /> Invoice status</p>
                     {invoicePie.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={160}>
+                        <ChartContainer config={{ Paid: { label: 'Paid', color: 'var(--text-green)' }, Pending: { label: 'Pending', color: 'var(--accent-gold)' }, Overdue: { label: 'Overdue', color: 'var(--brand-red)' } } satisfies ChartConfig} className="aspect-auto h-[160px] w-full">
                             <PieChart>
-                                <Pie data={invoicePie} dataKey="value" cx="50%" cy="50%" outerRadius={60} strokeWidth={0}>
+                                <Pie data={invoicePie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} strokeWidth={0}>
                                     {invoicePie.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                                 </Pie>
-                                <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 10 }} />
+                                <Tooltip contentStyle={tooltipStyle} />
                             </PieChart>
-                        </ResponsiveContainer>
-                    ) : (
-                        <div className="h-[160px] flex items-center justify-center"><p className="text-[11px] text-text-muted opacity-40">No invoices yet</p></div>
-                    )}
+                        </ChartContainer>
+                    ) : chartEmpty('No invoices yet')}
                 </div>
-                <div className="bg-bg-secondary border border-border-main rounded-xl p-4">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-3 flex items-center gap-1.5"><Activity size={10} className="text-brand-red" /> Project Progress</p>
+                <div className={chartCard}>
+                    <p className={chartTitle}><Activity size={12} /> Project progress</p>
                     {projectProgress.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={160}>
+                        <ChartContainer config={{ pct: { label: 'Complete', color: 'var(--text-green)' } } satisfies ChartConfig} className="aspect-auto h-[160px] w-full">
                             <BarChart data={projectProgress} layout="vertical" margin={{ top: 0, right: 4, bottom: 0, left: 0 }}>
-                                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 8, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} unit="%" />
-                                <YAxis type="category" dataKey="name" tick={{ fontSize: 8, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={70} />
-                                <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 10 }} formatter={(v: number) => [`${v}%`, 'Complete']} />
-                                <Bar dataKey="pct" fill="var(--text-green)" radius={[0, 3, 3, 0]} name="% Complete" />
+                                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} unit="%" />
+                                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={80} />
+                                <Tooltip contentStyle={tooltipStyle} cursor={{ opacity: 0.1 }} formatter={(v: number) => [`${v}%`, 'Complete']} />
+                                <Bar dataKey="pct" fill="var(--color-pct)" radius={[0, 3, 3, 0]} maxBarSize={24} name="Complete" />
                             </BarChart>
-                        </ResponsiveContainer>
-                    ) : (
-                        <div className="h-[160px] flex items-center justify-center"><p className="text-[11px] text-text-muted opacity-40">No projects yet</p></div>
-                    )}
+                        </ChartContainer>
+                    ) : chartEmpty('No projects yet')}
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Projects Table */}
-                    <Card>
-                        <CardHeader className="text-left flex flex-row items-center justify-between space-y-0">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <div className="space-y-6 lg:col-span-2">
+                    <Card className="rounded-xl border-border-main bg-bg-secondary shadow-sm">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 text-left">
                             <div>
-                                <CardTitle>Infrastructure Deployment</CardTitle>
-                                <CardDescription>Status tracking for your low voltage projects.</CardDescription>
+                                <CardTitle className="text-base font-semibold">Projects</CardTitle>
+                                <CardDescription>Status of your current projects.</CardDescription>
                             </div>
-                            <Link href="/client/projects">
-                                <Button variant="outline" size="sm" className="h-7 text-[11px] font-bold">
-                                    View All
-                                </Button>
-                            </Link>
+                            <Button asChild variant="outline" size="sm">
+                                <Link href="/client/projects">View all</Link>
+                            </Button>
                         </CardHeader>
                         <CardContent className="p-0">
-                            <div className="divide-y divide-border-sub">
-                                {myProjects.length === 0 ? (
-                                    <div className="p-12 text-center space-y-2">
-                                        <Briefcase size={24} className="mx-auto text-text-muted opacity-40" />
-                                        <p className="text-xs text-text-muted">No active projects.</p>
-                                        <p className="text-[10px] text-text-muted">Contact Aaromach to start a new project.</p>
-                                    </div>
-                                ) : (
-                                    myProjects.map(project => (
-                                        <Link key={project.id} href="/client/projects">
-                                            <div className="p-4 flex items-center justify-between hover:bg-bg-tertiary transition-colors group cursor-pointer text-left">
-                                                <div className="space-y-1 min-w-0 flex-1 mr-4">
-                                                    <p className="text-sm font-bold text-text-primary tracking-wide truncate">{project.name}</p>
-                                                    <div className="flex flex-wrap items-center gap-3 text-[10px] text-text-muted font-bold">
-                                                        <span className="flex items-center gap-1.5">
-                                                            <MapPin size={10} className="text-brand-red flex-shrink-0" />
-                                                            <span className="truncate max-w-[120px]">{project.location}</span>
-                                                        </span>
-                                                        <span className="flex items-center gap-1.5">
-                                                            <Calendar size={10} />
-                                                            {formatDateStr(project.startDate)}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-3 flex-shrink-0">
-                                                    <Badge variant={project.status === 'active' ? 'active' : 'completed'} className="h-5">
-                                                        {project.status}
-                                                    </Badge>
-                                                    <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all hidden sm:block" />
+                            {myProjects.length === 0 ? (
+                                <div className="p-4 pt-0">
+                                    <EmptyState compact icon={Briefcase} title="No projects yet" description="Contact Aaromach to start a new project." />
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-border-sub">
+                                    {myProjects.map(project => (
+                                        <Link key={project.id} href="/client/projects" className="group flex items-center justify-between p-4 text-left transition-colors hover:bg-bg-tertiary">
+                                            <div className="mr-4 min-w-0 flex-1 space-y-1">
+                                                <p className="truncate text-sm font-semibold text-text-primary">{project.name}</p>
+                                                <div className="flex flex-wrap items-center gap-3 text-[12px] text-text-muted">
+                                                    <span className="flex items-center gap-1.5">
+                                                        <MapPin size={12} className="shrink-0" />
+                                                        <span className="max-w-[160px] truncate">{project.location}</span>
+                                                    </span>
+                                                    <span className="flex items-center gap-1.5">
+                                                        <Calendar size={12} />
+                                                        {formatDateStr(project.startDate)}
+                                                    </span>
                                                 </div>
                                             </div>
+                                            <div className="flex shrink-0 items-center gap-3">
+                                                <StatusBadge kind="job" value={project.status === 'active' ? 'in-progress' : project.status} label={project.status ? project.status.charAt(0).toUpperCase() + project.status.slice(1) : undefined} />
+                                                <ChevronRight size={16} className="hidden text-text-muted transition-all group-hover:translate-x-1 group-hover:text-text-primary sm:block" />
+                                            </div>
                                         </Link>
-                                    ))
-                                )}
-                            </div>
+                                    ))}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 
-                    {/* Recent Field Activity */}
-                    <Card>
+                    <Card className="rounded-xl border-border-main bg-bg-secondary shadow-sm">
                         <CardHeader className="text-left">
-                            <CardTitle>Field Activity</CardTitle>
-                            <CardDescription>Latest technician updates and job results.</CardDescription>
+                            <CardTitle className="text-base font-semibold">Recent jobs</CardTitle>
+                            <CardDescription>Latest technician visits and results.</CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
-                            <div className="divide-y divide-border-sub">
-                                {recentActivity.length === 0 ? (
-                                    <div className="p-12 text-center space-y-2">
-                                        <Clock size={24} className="mx-auto text-text-muted opacity-40" />
-                                        <p className="text-xs text-text-muted">No recent field activity.</p>
-                                    </div>
-                                ) : (
-                                    recentActivity.map(activity => (
-                                        <div key={activity.id} className="p-4 flex items-center justify-between text-left">
-                                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-text-muted flex-shrink-0">
+                            {recentActivity.length === 0 ? (
+                                <div className="p-4 pt-0">
+                                    <EmptyState compact icon={Clock} title="No jobs yet" />
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-border-sub">
+                                    {recentActivity.map(activity => (
+                                        <div key={activity.id} className="flex items-center justify-between p-4 text-left">
+                                            <div className="flex min-w-0 flex-1 items-center gap-3">
+                                                <div className="shrink-0 rounded-md border border-border-sub bg-bg-tertiary p-2 text-text-muted">
                                                     <Clock size={14} />
                                                 </div>
-                                                <div className="text-left min-w-0">
-                                                    <p className="text-xs font-bold text-text-primary tracking-wide truncate">{activity.description || activity.title}</p>
-                                                    <p className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5 truncate">
+                                                <div className="min-w-0 text-left">
+                                                    <p className="truncate text-[13px] font-medium text-text-primary">{activity.description || activity.title}</p>
+                                                    <p className="mt-0.5 truncate text-[12px] text-text-muted">
                                                         {activity.location} · {formatDateStr(activity.scheduleDate)}
                                                     </p>
                                                 </div>
                                             </div>
-                                            <Badge
-                                                variant={activity.status === 'completed' ? 'active' : activity.status === 'in-progress' ? 'inprogress' : 'scheduled'}
-                                                className="h-5 flex-shrink-0 ml-3"
-                                            >
-                                                {activity.status}
-                                            </Badge>
+                                            <StatusBadge kind="job" value={activity.status} className="ml-3 shrink-0" />
                                         </div>
-                                    ))
-                                )}
-                            </div>
+                                    ))}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </div>
 
-                {/* Sidebar */}
                 <div className="space-y-6">
-                    <Card>
+                    <Card className="rounded-xl border-border-main bg-bg-secondary shadow-sm">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                            <CardTitle>Service Requests</CardTitle>
-                            <Button variant="default" size="sm" className="h-7 text-[11px] font-bold" onClick={() => router.push('/client/tickets')}>
-                                <Plus size={12} className="mr-1.5" />
+                            <CardTitle className="text-base font-semibold">Service requests</CardTitle>
+                            <Button size="sm" onClick={() => router.push('/client/tickets')}>
+                                <Plus size={14} className="mr-1.5" />
                                 New
                             </Button>
                         </CardHeader>
                         <CardContent className="p-0">
-                            <div className="divide-y divide-border-sub">
-                                {myRequests.length === 0 ? (
-                                    <div className="p-8 text-center space-y-2">
-                                        <ClipboardList size={20} className="mx-auto text-text-muted opacity-40" />
-                                        <p className="text-[10px] text-text-muted uppercase tracking-wider">No pending requests.</p>
-                                        <Button variant="outline" size="sm" className="h-7 text-[11px] font-bold mt-2" onClick={() => router.push('/client/tickets')}>
-                                            Submit a Ticket
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    myRequests.slice(0, 4).map(request => (
-                                        <div
+                            {recentRequests.length === 0 ? (
+                                <div className="p-4 pt-0">
+                                    <EmptyState compact icon={ClipboardList} title="No requests yet"
+                                        action={<Button variant="outline" size="sm" onClick={() => router.push('/client/tickets')}>Submit a request</Button>} />
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-border-sub">
+                                    {recentRequests.slice(0, 4).map(request => (
+                                        <button
+                                            type="button"
                                             key={request.id}
-                                            className="p-3 flex flex-col gap-1.5 hover:bg-bg-tertiary transition-colors cursor-pointer text-left"
+                                            className="flex w-full flex-col gap-1.5 p-3 text-left transition-colors hover:bg-bg-tertiary"
                                             onClick={() => router.push('/client/tickets')}
                                         >
-                                            <div className="flex justify-between items-start gap-2">
-                                                <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide line-clamp-1 flex-1">
-                                                    {request.description}
-                                                </p>
-                                                <Badge variant={request.status === 'new' ? 'pending' : 'active'} className="text-[10px] h-4 flex-shrink-0">
-                                                    {request.status}
-                                                </Badge>
+                                            <div className="flex w-full items-start justify-between gap-2">
+                                                <p className="line-clamp-1 flex-1 text-[13px] font-medium text-text-primary">{request.description}</p>
+                                                <StatusBadge kind="request" value={request.status} className="shrink-0" />
                                             </div>
-                                            <p className="text-[10px] text-text-muted uppercase tracking-wider">
-                                                {request.requestType} · {formatDateStr(request.submittedDate)}
+                                            <p className="text-[12px] text-text-muted">
+                                                {requestKind(request)} · {formatRequestDate(request)}
                                             </p>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                            {myRequests.length > 4 && (
-                                <div className="p-3 border-t border-border-sub">
-                                    <Button variant="ghost" size="sm" className="w-full h-7 text-[11px] font-bold" onClick={() => router.push('/client/tickets')}>
-                                        View All {myRequests.length} Requests
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            {recentRequests.length > 4 && (
+                                <div className="border-t border-border-sub p-3">
+                                    <Button variant="ghost" size="sm" className="w-full" onClick={() => router.push('/client/tickets')}>
+                                        View all {recentRequests.length} requests
                                     </Button>
                                 </div>
                             )}

@@ -38,7 +38,7 @@ export function RequestsTabs({ serviceRequests, workOrders = [] }: RequestsTabsP
             Approved <span className="tab-count">({approvedRequests.length})</span>
           </TabsTrigger>
            <TabsTrigger value="closed" className="tab">
-            resolved/closed <span className="tab-count">({closedRequests.length})</span>
+            Closed <span className="tab-count">({closedRequests.length})</span>
           </TabsTrigger>
         </TabsList>
         

@@ -8,6 +8,8 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { isTech } from '@/lib/permissions';
 import { BarChart2, ShieldAlert, Users, AlertTriangle, Clock, ChevronRight, Mail, Phone, ArrowLeft, RefreshCw, Filter, X, Activity as ActivityIcon } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { PageHeader } from '@/components/page-header';
+import { StatusBadge } from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -276,27 +278,23 @@ export default function FieldIntelligencePage() {
 
     return (
         <div className="space-y-5">
-            <header className="page-header">
-                <div className="text-left">
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <BarChart2 size={12} />
-                        Real-time Field Operations
-                    </p>
-                    <h1 className="page-title">Intel</h1>
-                    <p className="page-subtitle">Live field awareness, technician status, and operational analytics.</p>
-                </div>
-            </header>
+            <PageHeader
+                eyebrow="Reports"
+                icon={BarChart2}
+                title="Insights"
+                subtitle="Customer trends, technician performance, app activity and flags."
+            />
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <div className="flex justify-center">
-                    <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-center mb-8">
-                        <TabsTrigger value="intelligence" className="tab-trigger-activity">Intel</TabsTrigger>
-                        <TabsTrigger value="techs" className="tab-trigger-activity" onClick={() => setSelectedTechId(null)}>
+                <div className="overflow-x-auto">
+                    <TabsList className="tabs mb-6 w-max">
+                        <TabsTrigger value="intelligence" className="tab">Customers</TabsTrigger>
+                        <TabsTrigger value="techs" className="tab" onClick={() => setSelectedTechId(null)}>
                             Techs
                         </TabsTrigger>
-                        <TabsTrigger value="app_activity" className="tab-trigger-activity">App Activity</TabsTrigger>
-                        <TabsTrigger value="insights" className="tab-trigger-activity">Insights</TabsTrigger>
-                        <TabsTrigger value="flags" className="tab-trigger-activity flex items-center gap-3">
+                        <TabsTrigger value="app_activity" className="tab">App activity</TabsTrigger>
+                        <TabsTrigger value="insights" className="tab">Trends</TabsTrigger>
+                        <TabsTrigger value="flags" className="tab flex items-center gap-2">
                             Flags
                             {flagsTotal > 0 && (
                                 <Badge variant="destructive" className="h-5 px-1.5 text-[11px] min-w-[20px] flex items-center justify-center font-bold">{flagsTotal}</Badge>
@@ -311,18 +309,18 @@ export default function FieldIntelligencePage() {
                     <Card className="bg-bg-secondary border-border-main mb-5">
                         <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
                             <div className="min-w-0">
-                                <p className="text-[11px] font-bold text-text-primary">Job Density — Michigan &amp; Ohio</p>
+                                <p className="text-[11px] font-bold text-text-primary">Job density — Michigan &amp; Ohio</p>
                                 <p className="text-[10px] text-text-muted">{densityJobs.length.toLocaleString()} completed job{densityJobs.length === 1 ? '' : 's'} in the dashboard view below</p>
                             </div>
                             <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase tracking-wider" onClick={() => setDensityOpen(true)}>
-                                Open Map
+                                Open map
                             </Button>
                         </CardContent>
                     </Card>
                     <Dialog open={densityOpen} onOpenChange={setDensityOpen}>
                         <DialogContent className="sm:max-w-4xl bg-bg-elevated border-border-default">
                             <DialogHeader>
-                                <DialogTitle className="text-sm font-bold">Job Density — Michigan &amp; Ohio</DialogTitle>
+                                <DialogTitle className="text-sm font-bold">Job density — Michigan &amp; Ohio</DialogTitle>
                                 <DialogDescription className="text-[10px]">Darker squares = more jobs in that area for the selected filters. Hover a square for the count and top cities.</DialogDescription>
                             </DialogHeader>
                             {densityOpen && <JobDensityMap jobs={densityJobs} />}
@@ -342,8 +340,8 @@ export default function FieldIntelligencePage() {
                         <InnerTabsList className="tabs mb-4">
                             {([
                                 { value: 'anomalies', label: 'Anomalies', count: anomalyCounts },
-                                { value: 'unlogged', label: 'Unlogged Jobs', count: unloggedAudit.rows.length },
-                                { value: 'wrong-tech', label: 'Wrong Tech', count: wrongTechCount },
+                                { value: 'unlogged', label: 'Unlogged jobs', count: unloggedAudit.rows.length },
+                                { value: 'wrong-tech', label: 'Wrong tech', count: wrongTechCount },
                             ] as const).map(t => (
                                 <InnerTabsTrigger key={t.value} value={t.value} className="tab">
                                     {t.label}{t.count > 0 && <span className="tab-count">({t.count})</span>}
@@ -352,12 +350,12 @@ export default function FieldIntelligencePage() {
                         </InnerTabsList>
                         <InnerTabsContent value="anomalies" className="m-0">
                         <div className="space-y-4 text-left">
-                            <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 px-1">Anomaly Registry</h3>
+                            <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 px-1">Anomalies</h3>
                             {anomalyCounts === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
                                     <ShieldAlert size={28} className="text-text-green" />
-                                    <p className="text-[11px] font-bold text-text-green tracking-wide">All Clear — No Anomalies Detected</p>
-                                    <p className="text-[10px] text-text-muted uppercase tracking-wider">All work orders assigned. All weekly logs submitted.</p>
+                                    <p className="text-[11px] font-bold text-text-green tracking-wide">All clear — no anomalies</p>
+                                    <p className="text-[10px] text-text-muted uppercase tracking-wider">Every job is assigned and every weekly log is submitted.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-2 text-left">
@@ -366,7 +364,7 @@ export default function FieldIntelligencePage() {
                                             <AlertTriangle size={14} className="text-text-red mt-0.5 shrink-0" />
                                             <div className="space-y-0.5 text-left min-w-0">
                                                 <p className="text-[11px] font-bold text-text-red tracking-wide truncate">{row.wo.title || row.wo.id}</p>
-                                                <p className="text-[10px] text-text-muted uppercase tracking-wider">Unassigned — no technician allocated</p>
+                                                <p className="text-[10px] text-text-muted uppercase tracking-wider">Unassigned — no technician yet</p>
                                             </div>
                                         </div>
                                     ) : (() => {
@@ -399,7 +397,7 @@ export default function FieldIntelligencePage() {
                     {selectedTechId && activeTech && techStats ? (
                         <div className="space-y-6 animate-in fade-in duration-300">
                             <Button variant="ghost" size="sm" onClick={() => setSelectedTechId(null)} className="h-8 text-[10px] font-bold text-text-muted">
-                                <ArrowLeft size={14} className="mr-2"/> Back to Roster
+                                <ArrowLeft size={14} className="mr-2"/> Back to technicians
                             </Button>
 
                             <div className="flex flex-col lg:flex-row gap-6">
@@ -415,7 +413,7 @@ export default function FieldIntelligencePage() {
                                                 <p className="text-[10px] text-text-muted font-mono uppercase tracking-wider">{activeTech.email}</p>
                                             </div>
                                             <div className="pt-3 border-t border-border-sub/30 space-y-1">
-                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Penalty Points</p>
+                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Penalty points</p>
                                                 <p className={cn("text-4xl font-mono font-bold", techStats.points === 0 ? 'text-text-green' : 'text-accent-gold')}>{techStats.points}</p>
                                             </div>
                                             <div className="flex gap-2">
@@ -432,16 +430,16 @@ export default function FieldIntelligencePage() {
 
                                 <div className="flex-1 overflow-hidden">
                                     <InnerTabs defaultValue="assignments" className="w-full">
-                                        <InnerTabsList className="tabs bg-bg-secondary/50 border border-border-sub mb-4 h-10 w-full justify-start gap-8 px-4">
-                                            <InnerTabsTrigger value="assignments" className="tab h-full data-[state=active]:bg-brand-red">Assignments ({techStats.myJobs.length})</InnerTabsTrigger>
-                                            <InnerTabsTrigger value="weeklogs" className="tab h-full data-[state=active]:bg-brand-red">Weekly Logs ({techStats.myLogs.length})</InnerTabsTrigger>
+                                        <InnerTabsList className="tabs mb-4">
+                                            <InnerTabsTrigger value="assignments" className="tab">Assignments ({techStats.myJobs.length})</InnerTabsTrigger>
+                                            <InnerTabsTrigger value="weeklogs" className="tab">Weekly logs ({techStats.myLogs.length})</InnerTabsTrigger>
                                         </InnerTabsList>
                                         <InnerTabsContent value="assignments" className="m-0">
                                             <div className="table-wrap p-0">
                                                 <Table>
                                                     <TableHeader className="bg-bg-tertiary">
                                                         <TableRow className="hover:bg-transparent border-border-sub">
-                                                            <TableHead className="text-[10px] uppercase font-bold tracking-wider pl-4">Mission</TableHead>
+                                                            <TableHead className="text-[10px] uppercase font-bold tracking-wider pl-4">Job</TableHead>
                                                             <TableHead className="text-[10px] uppercase font-bold tracking-wider">Date</TableHead>
                                                             <TableHead className="text-[10px] uppercase font-bold tracking-wider text-center">Status</TableHead>
                                                             <TableHead className="text-[10px] uppercase font-bold tracking-wider text-right pr-4">Admin</TableHead>
@@ -456,7 +454,7 @@ export default function FieldIntelligencePage() {
                                                                 </TableCell>
                                                                 <TableCell className="text-[10px] font-mono text-text-secondary">{formatDateDisplay(wo.scheduleDate)}</TableCell>
                                                                 <TableCell className="text-center">
-                                                                    <Badge variant={wo.status === 'completed' ? 'active' : 'onhold'} className="h-4 text-[10px] uppercase tracking-wider">{JOB_STATUS_OPTIONS.find(o => o.value === wo.status)?.label || wo.status}</Badge>
+                                                                    <StatusBadge kind="job" value={wo.status} label={JOB_STATUS_OPTIONS.find(o => o.value === wo.status)?.label} />
                                                                 </TableCell>
                                                                 <TableCell className="text-right pr-4">
                                                                     <Button variant="outline" size="sm" className="h-7 text-[11px] font-bold" onClick={e => { e.stopPropagation(); setManagedJob(wo); }}>
@@ -466,7 +464,7 @@ export default function FieldIntelligencePage() {
                                                             </TableRow>
                                                         ))}
                                                         {techStats.myJobs.length === 0 && (
-                                                            <TableRow><TableCell colSpan={4} className="text-center text-text-muted text-[10px] py-8">No assignments found</TableCell></TableRow>
+                                                            <TableRow><TableCell colSpan={4} className="text-center text-text-muted text-[10px] py-8">No jobs yet</TableCell></TableRow>
                                                         )}
                                                     </TableBody>
                                                 </Table>
@@ -485,11 +483,11 @@ export default function FieldIntelligencePage() {
                                                                 <p className="text-[11px] text-text-muted">{log.items?.length || 0} job{(log.items?.length || 0) !== 1 ? 's' : ''}</p>
                                                             )}
                                                         </div>
-                                                        <Badge variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'scheduled' : 'onhold'} className="h-4 text-[10px]">{log.status}</Badge>
+                                                        <StatusBadge kind="log" value={log.status} />
                                                     </div>
                                                 ))}
                                                 {techStats.myLogs.length === 0 && (
-                                                    <p className="text-center text-text-muted text-[10px] py-8">No weekly logs found</p>
+                                                    <p className="text-center text-text-muted text-[10px] py-8">No weekly logs yet</p>
                                                 )}
                                                 <ListPager pager={techLogsPager} noun="logs" />
                                             </div>
@@ -518,7 +516,7 @@ export default function FieldIntelligencePage() {
                                                 <AvatarFallback className="text-[10px]">{(t.name || 'U').charAt(0)}</AvatarFallback>
                                             </Avatar>
                                             <div>
-                                                <p className="text-sm font-bold text-text-primary tracking-wide group-hover:text-brand-red transition-colors">{t.name || 'Unnamed Operative'}</p>
+                                                <p className="text-sm font-bold text-text-primary tracking-wide group-hover:text-brand-red transition-colors">{t.name || 'Unnamed technician'}</p>
                                                 <p className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">{t.email}</p>
                                             </div>
                                         </div>
@@ -545,7 +543,7 @@ export default function FieldIntelligencePage() {
 
                         {/* Tech Reliability Trends */}
                         <div className="lg:col-span-2 space-y-2">
-                            <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2">Tech Reliability Trends</h3>
+                            <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2">Technician reliability</h3>
                             {techReliability.length === 0 ? (
                                 <p className="text-[10px] text-text-muted py-4 text-center">No assignment data</p>
                             ) : (
@@ -638,7 +636,7 @@ export default function FieldIntelligencePage() {
                         {/* Top 10 Clients */}
                         <div className="lg:col-span-2 space-y-2">
                             <div className="border-b border-border-sub pb-2">
-                                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Top 10 Clients</h3>
+                                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Top 10 clients</h3>
                                 <p className="text-[11px] text-text-muted mt-1 leading-relaxed">
                                     Ranked by job volume. Same model as Financials: revenue = what each completed job pays into the app (its pay, or its paid invoice before tax) plus paid invoices not tied to a job;
                                     labor = the tech portion; gross profit = the Aaromach portion (revenue − labor − the 15.85% Field Nation fee on FN jobs).
@@ -657,7 +655,7 @@ export default function FieldIntelligencePage() {
                                                 <TableHead className="text-[11px] text-right">Completed</TableHead>
                                                 <TableHead className="text-[11px] text-right">Revenue</TableHead>
                                                 <TableHead className="text-[11px] text-right">Labor</TableHead>
-                                                <TableHead className="text-[11px] text-right">Gross Profit</TableHead>
+                                                <TableHead className="text-[11px] text-right">Gross profit</TableHead>
                                                 <TableHead className="text-[11px] text-right">Margin</TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -685,7 +683,7 @@ export default function FieldIntelligencePage() {
                         {/* Top 10 Cities */}
                         <div className="lg:col-span-2 space-y-2">
                             <div className="border-b border-border-sub pb-2">
-                                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Top 10 Cities</h3>
+                                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Top 10 cities</h3>
                                 <p className="text-[11px] text-text-muted mt-1">Where we work most, by job count (cancelled and archived jobs excluded).</p>
                             </div>
                             {topCityRows.length === 0 ? (
@@ -708,7 +706,7 @@ export default function FieldIntelligencePage() {
 
                         {/* Common Failure Patterns */}
                         <div className="lg:col-span-2 space-y-2">
-                            <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2">Common Failure Patterns (Revisits by Job Type)</h3>
+                            <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2">Common failures (revisits by job type)</h3>
                             {failurePatterns.length === 0 ? (
                                 <div className="flex items-center gap-2 py-3 text-text-green">
                                     <ShieldAlert size={14} />
@@ -739,7 +737,7 @@ export default function FieldIntelligencePage() {
                                     <SelectValue placeholder="All Techs" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-bg-elevated border-border-main">
-                                    <SelectItem value="all" className="text-[10px] font-bold">All Techs</SelectItem>
+                                    <SelectItem value="all" className="text-[10px] font-bold">All techs</SelectItem>
                                     {staffTechs.map(t => (
                                         <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold">{t.name}</SelectItem>
                                     ))}
@@ -750,10 +748,10 @@ export default function FieldIntelligencePage() {
                                     <SelectValue placeholder="All Events" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-bg-elevated border-border-main">
-                                    <SelectItem value="all" className="text-[10px] font-bold">All Events</SelectItem>
+                                    <SelectItem value="all" className="text-[10px] font-bold">All events</SelectItem>
                                     <SelectItem value="assignment" className="text-[10px] font-bold">Assignments</SelectItem>
-                                    <SelectItem value="work_order" className="text-[10px] font-bold">Work Orders</SelectItem>
-                                    <SelectItem value="log" className="text-[10px] font-bold">Weekly Logs</SelectItem>
+                                    <SelectItem value="work_order" className="text-[10px] font-bold">Work orders</SelectItem>
+                                    <SelectItem value="log" className="text-[10px] font-bold">Weekly logs</SelectItem>
                                     <SelectItem value="invoice" className="text-[10px] font-bold">Invoices</SelectItem>
                                 </SelectContent>
                             </Select>

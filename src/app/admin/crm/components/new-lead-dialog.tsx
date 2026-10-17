@@ -198,11 +198,11 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="bg-bg-secondary border-border-main sm:max-w-2xl max-h-[90vh] flex flex-col p-0">
         <DialogHeader className="p-6 pb-3">
-          <DialogTitle className="flex items-center gap-2 text-sm font-bold text-text-primary">
+          <DialogTitle className="flex items-center gap-2 text-base font-semibold text-text-primary">
             <Target size={16} className="text-brand-red" />
-            {editing ? 'Edit Lead' : 'New Lead'}
+            {editing ? 'Edit lead' : 'New lead'}
           </DialogTitle>
-          <DialogDescription className="text-[10px] text-text-muted uppercase tracking-wider">
+          <DialogDescription className="text-[12px] text-text-muted">
             {editing ? lead!.companyName : 'Add a prospect to the sales pipeline.'}
           </DialogDescription>
         </DialogHeader>
@@ -210,7 +210,7 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
         <ScrollArea className="flex-1 px-6">
           <div className="space-y-5 pb-4">
             {dupes.length > 0 && (
-              <div className="flex gap-2 p-3 rounded-lg border border-amber-400/30 bg-amber-400/10 text-[10px] text-amber-400">
+              <div className="flex gap-2 p-3 rounded-lg border border-accent-gold/30 bg-accent-gold/10 text-[10px] text-accent-gold">
                 <AlertTriangle size={13} className="shrink-0 mt-0.5" />
                 <div>
                   <p className="font-bold uppercase tracking-wider">Possible duplicate</p>
@@ -377,11 +377,11 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
       <AlertDialog open={confirmDelete} onOpenChange={v => !deleting && setConfirmDelete(v)}>
         <AlertDialogContent className="bg-bg-elevated border-border-main">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-[13px] font-bold">Delete {lead?.companyName}?</AlertDialogTitle>
+            <AlertDialogTitle className="text-base font-semibold">Delete {lead?.companyName}?</AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-text-muted space-y-2">
               <span className="block">This permanently removes the lead and its activity timeline and tasks. It can't be undone.</span>
               {(lead?.quoteIds?.length || lead?.projectId) ? (
-                <span className="block text-amber-400">
+                <span className="block text-accent-gold">
                   Its {[lead?.quoteIds?.length ? 'quotes' : '', lead?.projectId ? `ops project (${lead.projectId})` : ''].filter(Boolean).join(' and ')} will stay — delete those separately if needed.
                 </span>
               ) : null}

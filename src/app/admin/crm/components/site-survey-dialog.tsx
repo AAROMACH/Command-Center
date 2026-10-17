@@ -168,8 +168,8 @@ export function SiteSurveyDialog({ open, lead, survey, currentUserId, currentUse
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="bg-bg-secondary border-border-main sm:max-w-3xl max-h-[92vh] flex flex-col p-0">
         <DialogHeader className="p-5 pb-3 border-b border-border-sub">
-          <DialogTitle className="flex items-center gap-2 text-sm font-bold">
-            <ClipboardList size={15} className="text-brand-red" /> Site Survey
+          <DialogTitle className="flex items-center gap-2 text-base font-semibold">
+            <ClipboardList size={15} className="text-brand-red" /> Site survey
           </DialogTitle>
           <DialogDescription className="text-[10px] font-bold text-text-muted">
             {lead.companyName}{lead.address ? ` · ${lead.address}` : ''}
@@ -343,7 +343,7 @@ export function SiteSurveyDialog({ open, lead, survey, currentUserId, currentUse
                     <button onClick={() => removePhoto(i)} className="absolute top-1 right-1 p-0.5 rounded bg-black/60 text-white opacity-0 group-hover:opacity-100"><X size={11} /></button>
                     <input value={p.caption || ''} placeholder="Caption"
                       onChange={e => setD(prev => prev && ({ ...prev, photos: prev.photos.map((x, j) => j === i ? { ...x, caption: e.target.value } : x) }))}
-                      className="mt-1 w-full bg-transparent text-[11px] text-text-muted focus:outline-none focus:text-text-primary" />
+                      className="mt-1 w-full bg-transparent text-[12px] text-text-muted focus:outline-none focus:text-text-primary" />
                   </div>
                 ))}
               </div>

@@ -1,4 +1,6 @@
 'use client';
+import { PageHeader } from '@/components/page-header';
+import { EmptyState } from '@/components/empty-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useRef } from 'react';
@@ -293,7 +295,7 @@ export default function TechMessagingPage() {
 
   const ProjectListSection = ({ label, projects, labelColor }: { label: string; projects: Project[]; labelColor: string }) => (
     <>
-      <p className={cn('text-[10px] font-bold uppercase tracking-wider px-2 pt-3 pb-0.5', labelColor)}>{label}</p>
+      <p className={cn('text-[10px] font-semibold uppercase tracking-wider px-2 pt-3 pb-0.5', labelColor)}>{label}</p>
       {projects.map(p => {
         const lastMsg = getLastProjectMessage(p.id);
         const unread = getProjectUnread(p.id);
@@ -302,16 +304,16 @@ export default function TechMessagingPage() {
             key={p.id}
             onClick={() => { setSelectedProjectId(p.id); markProjectRead(p.id); }}
             className={cn(
-              'w-full text-left px-3 py-2.5 rounded-lg transition-colors',
+              'w-full text-left px-3 py-2.5 min-h-[44px] rounded-lg transition-colors',
               selectedProjectId === p.id ? 'bg-brand-red/10 text-brand-red' : 'text-text-muted hover:bg-bg-tertiary hover:text-text-primary'
             )}
           >
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-bold uppercase tracking-wide truncate flex-1">{p.name}</p>
+              <p className="text-[13px] font-semibold truncate flex-1">{p.name}</p>
               {unread > 0 && <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[10px] font-bold flex items-center justify-center shrink-0">{unread}</span>}
             </div>
-            <p className="text-[10px] text-text-muted truncate mt-0.5">{p.client}{p.location ? ` · ${p.location}` : ''}</p>
-            {lastMsg && <p className="text-[10px] text-text-muted/70 truncate mt-0.5 italic">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
+            <p className="text-[12px] text-text-muted truncate mt-0.5">{p.client}{p.location ? ` · ${p.location}` : ''}</p>
+            {lastMsg && <p className="text-[12px] text-text-muted/80 truncate mt-0.5">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
           </button>
         );
       })}
@@ -320,29 +322,20 @@ export default function TechMessagingPage() {
 
   return (
     <div className="space-y-5">
-      <header className="page-header">
-        <div className="text-left">
-          <p className="page-eyebrow flex items-center gap-2">
-            <MessageSquare size={12} />
-            Field Terminal
-          </p>
-          <h1 className="page-title">Messages</h1>
-          <p className="page-subtitle">Direct messages and project communications.</p>
-        </div>
-      </header>
+      <PageHeader eyebrow="Tech portal" icon={MessageSquare} title="Messages" subtitle="Direct messages, project threads and office announcements." />
 
       {/* Tabs */}
-      <div className="flex gap-0 border-b border-border-sub">
+      <div className="tabs !mb-0 flex-nowrap overflow-x-auto" role="tablist">
         {TABS.map(tab => (
           <button
             key={tab}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab}
             onClick={() => setActiveTab(tab)}
-            className={cn(
-              'text-[10px] font-bold uppercase tracking-wider px-5 py-3 border-b-2 transition-colors whitespace-nowrap',
-              activeTab === tab ? 'border-brand-red text-brand-red' : 'border-transparent text-text-muted hover:text-text-secondary'
-            )}
+            className={cn('tab whitespace-nowrap', activeTab === tab && 'active')}
           >
-            {tab}
+            {tab === 'Project Comms' ? 'Projects' : tab === 'Broadcasts' ? 'Announcements' : tab}
           </button>
         ))}
       </div>
@@ -351,11 +344,11 @@ export default function TechMessagingPage() {
       {activeTab === 'Messages' && (
         <div className="flex gap-4 h-[calc(100vh-220px)] min-h-[500px]">
           {/* Contacts sidebar */}
-          <div className={cn("w-full md:w-[200px] md:shrink-0 flex-col border border-border-sub rounded-xl bg-bg-secondary overflow-hidden", dmMobilePane === 'thread' ? "hidden md:flex" : "flex")}>
+          <div className={cn("w-full md:w-[200px] md:shrink-0 flex-col border border-border-main rounded-xl shadow-sm bg-bg-secondary overflow-hidden", dmMobilePane === 'thread' ? "hidden md:flex" : "flex")}>
             <div className="p-2 border-b border-border-sub shrink-0 space-y-1.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted px-1">Conversations</p>
+              <p className="section-label px-1">Conversations</p>
               <Select value={contactFilter} onValueChange={(v) => setContactFilter(v as typeof contactFilter)}>
-                <SelectTrigger className="h-7 text-[10px] font-bold uppercase tracking-wider bg-bg-tertiary border-border-sub">
+                <SelectTrigger className="h-10 sm:h-8 bg-bg-tertiary border-border-sub" aria-label="Show">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
@@ -372,36 +365,33 @@ export default function TechMessagingPage() {
                 key={id}
                 onClick={() => { setSelectedContactId(id); setDmMobilePane('thread'); markDMsRead(id); }}
                 className={cn(
-                  'flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-colors w-full',
+                  'flex items-center gap-2 px-2.5 py-2 min-h-[44px] rounded-lg text-left transition-colors w-full',
                   selectedContactId === id
                     ? 'bg-brand-red/10 text-brand-red'
                     : 'text-text-muted hover:bg-bg-tertiary hover:text-text-primary'
                 )}
               >
                 <User size={12} className="shrink-0" />
-                <span className="text-[10px] font-bold uppercase tracking-wider truncate">{getContactLabel(id)}</span>
+                <span className="text-[13px] font-medium truncate">{getContactLabel(id)}</span>
               </button>
             ))}
             </div>
           </div>
 
           {/* Thread panel */}
-          <div className={cn("flex-1 flex-col border border-border-sub rounded-xl overflow-hidden bg-bg-secondary", dmMobilePane === 'thread' ? "flex" : "hidden md:flex")}>
+          <div className={cn("flex-1 flex-col border border-border-main rounded-xl shadow-sm overflow-hidden bg-bg-secondary", dmMobilePane === 'thread' ? "flex" : "hidden md:flex")}>
             <div className="border-b border-border-sub px-4 py-2.5 flex items-center gap-2 bg-bg-tertiary/40 shrink-0">
-              <button onClick={() => setDmMobilePane('list')} className="md:hidden text-text-muted hover:text-text-primary shrink-0">
+              <button onClick={() => setDmMobilePane('list')} aria-label="Back to conversations" className="md:hidden -ml-2 flex h-10 w-10 items-center justify-center text-text-muted hover:text-text-primary shrink-0">
                 <ArrowLeft size={16} />
               </button>
               <MessageSquare size={12} className="text-brand-red" />
-              <span className="text-[11px] font-bold text-text-primary truncate">{getContactLabel(selectedContactId)}</span>
+              <span className="text-[14px] font-semibold text-text-primary truncate">{getContactLabel(selectedContactId)}</span>
             </div>
 
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-3">
                 {thread.length === 0 ? (
-                  <div className="py-16 text-center">
-                    <MessageSquare size={24} className="text-text-muted mx-auto mb-2" />
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">No messages yet</p>
-                  </div>
+                  <EmptyState compact icon={MessageSquare} title="No messages yet" description="Say hello below." className="border-0" />
                 ) : (
                   thread.map(msg => {
                     const isMe = msg.senderId === myId;
@@ -411,7 +401,7 @@ export default function TechMessagingPage() {
                           'max-w-[70%] px-3 py-2 rounded-xl',
                           isMe ? 'bg-brand-red text-white rounded-tr-sm' : 'bg-bg-tertiary border border-border-sub text-text-primary rounded-tl-sm'
                         )}>
-                          {msg.body && <p className="text-[11px] leading-relaxed">{msg.body}</p>}
+                          {msg.body && <p className="text-[13px] leading-relaxed">{msg.body}</p>}
                           {msg.imageUrls?.map((url, i) => (
                             <img key={i} src={url} alt="Attachment" className="mt-2 max-w-[200px] rounded-lg cursor-pointer" onClick={() => window.open(url, '_blank')} />
                           ))}
@@ -466,23 +456,23 @@ export default function TechMessagingPage() {
       {activeTab === 'Project Comms' && (
         <div className="flex gap-4 h-[calc(100vh-220px)] min-h-[500px]">
           {/* Project list */}
-          <div className={cn("w-full md:w-[220px] md:shrink-0 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex-col", selectedProjectId ? "hidden md:flex" : "flex")}>
+          <div className={cn("w-full md:w-[220px] md:shrink-0 border border-border-main rounded-xl shadow-sm overflow-hidden bg-bg-secondary flex-col", selectedProjectId ? "hidden md:flex" : "flex")}>
             <div className="px-3 py-2.5 border-b border-border-sub">
-              <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
-                <Briefcase size={10} /> My Projects
+              <p className="section-label flex items-center gap-2">
+                <Briefcase size={12} /> My projects
               </p>
             </div>
             <ScrollArea className="flex-1">
               <div className="p-1.5">
                 {myActiveProjects.length === 0 && myOnHoldProjects.length === 0 && myCompletedProjects.length === 0 ? (
-                  <p className="text-[10px] text-text-muted text-center py-6 uppercase tracking-wider">No projects assigned</p>
+                  <p className="text-[12px] text-text-muted text-center py-6">You're not on any projects yet</p>
                 ) : (
                   <>
                     {myActiveProjects.length > 0 && (
                       <ProjectListSection label="Active" projects={myActiveProjects} labelColor="text-brand-red" />
                     )}
                     {myOnHoldProjects.length > 0 && (
-                      <ProjectListSection label="On Hold" projects={myOnHoldProjects} labelColor="text-text-amber" />
+                      <ProjectListSection label="On hold" projects={myOnHoldProjects} labelColor="text-accent-gold" />
                     )}
                     {myCompletedProjects.length > 0 && (
                       <ProjectListSection label="Completed" projects={myCompletedProjects} labelColor="text-text-muted" />
@@ -494,32 +484,27 @@ export default function TechMessagingPage() {
           </div>
 
           {/* Project thread */}
-          <div className={cn("flex-1 flex-col border border-border-sub rounded-xl overflow-hidden bg-bg-secondary", selectedProjectId ? "flex" : "hidden md:flex")}>
+          <div className={cn("flex-1 flex-col border border-border-main rounded-xl shadow-sm overflow-hidden bg-bg-secondary", selectedProjectId ? "flex" : "hidden md:flex")}>
             {!selectedProjectId ? (
               <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <Briefcase size={28} className="text-text-muted mx-auto mb-3" />
-                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Select a project to view its thread</p>
-                </div>
+                <EmptyState compact icon={Briefcase} title="Pick a project" description="Its message thread opens here." className="border-0" />
               </div>
             ) : (
               <>
                 <div className="border-b border-border-sub px-4 py-2.5 bg-bg-tertiary/40 shrink-0 flex items-start gap-2">
-                  <button onClick={() => setSelectedProjectId(null)} className="md:hidden text-text-muted hover:text-text-primary shrink-0 mt-0.5">
+                  <button onClick={() => setSelectedProjectId(null)} aria-label="Back to projects" className="md:hidden -ml-2 -mt-1.5 flex h-10 w-10 items-center justify-center text-text-muted hover:text-text-primary shrink-0">
                     <ArrowLeft size={16} />
                   </button>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-text-primary truncate">{selectedProject?.name}</p>
-                    <p className="text-[11px] text-text-muted mt-0.5 truncate">{selectedProject?.client}{selectedProject?.location ? ` · ${selectedProject.location}` : ''}</p>
+                    <p className="text-[14px] font-semibold text-text-primary truncate">{selectedProject?.name}</p>
+                    <p className="text-[12px] text-text-muted mt-0.5 truncate">{selectedProject?.client}{selectedProject?.location ? ` · ${selectedProject.location}` : ''}</p>
                   </div>
                 </div>
 
                 <ScrollArea className="flex-1 p-4">
                   <div className="space-y-3">
                     {projectThread.length === 0 ? (
-                      <div className="py-16 text-center">
-                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">No messages yet — start the conversation!</p>
-                      </div>
+                      <EmptyState compact icon={MessageSquare} title="No messages yet" description="Start the conversation below." className="border-0" />
                     ) : (
                       projectThread.map(msg => {
                         const isMe = msg.senderId === myId;
@@ -531,7 +516,7 @@ export default function TechMessagingPage() {
                               'max-w-[70%] px-3 py-2 rounded-xl',
                               isMe ? 'bg-brand-red text-white rounded-tr-sm' : 'bg-bg-tertiary border border-border-sub text-text-primary rounded-tl-sm'
                             )}>
-                              {msg.body && <p className="text-[11px] leading-relaxed">{msg.body}</p>}
+                              {msg.body && <p className="text-[13px] leading-relaxed">{msg.body}</p>}
                               {msg.imageUrls?.map((url, i) => (
                                 <img key={i} src={url} alt="Attachment" className="mt-2 max-w-[200px] rounded-lg cursor-pointer" onClick={() => window.open(url, '_blank')} />
                               ))}
@@ -588,11 +573,7 @@ export default function TechMessagingPage() {
       {activeTab === 'Broadcasts' && (
         <div className="space-y-3">
           {broadcasts.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
-              <Radio size={32} className="text-text-muted mx-auto mb-3" />
-              <p className="text-[11px] font-bold text-text-muted">No broadcasts</p>
-              <p className="text-[10px] text-text-muted mt-1">Admin messages targeted to you will appear here.</p>
-            </div>
+            <EmptyState icon={Radio} title="No announcements" description="Messages from the office show up here." />
           ) : (
             broadcasts
               .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''))
@@ -624,19 +605,19 @@ export default function TechMessagingPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="text-[12px] font-bold text-text-primary tracking-wide truncate">{b.subject}</p>
+                          <p className="text-[14px] font-semibold text-text-primary truncate">{b.subject}</p>
                           {!isAcknowledged && (
                             <span className="h-2 w-2 rounded-full bg-brand-red shrink-0" />
                           )}
                         </div>
-                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider mt-0.5">
+                        <p className="text-[12px] text-text-muted mt-0.5">
                           {b.timestamp ? format(parseISO(b.timestamp), 'MMM d, yyyy h:mm a') : ''} · {b.senderName || 'Admin'}
                         </p>
                       </div>
                     </div>
-                    <p className="text-[11px] text-text-secondary leading-relaxed ml-9">{b.body}</p>
+                    <p className="text-[13px] text-text-secondary leading-relaxed ml-9">{b.body}</p>
                     {!isAcknowledged && (
-                      <p className="text-[10px] text-text-muted mt-2 ml-9 uppercase font-bold tracking-wider">Click to mark as read</p>
+                      <p className="text-[12px] text-text-muted mt-2 ml-9">Tap to mark as read</p>
                     )}
                   </div>
                 );

@@ -1,4 +1,7 @@
 'use client';
+import { PageHeader } from '@/components/page-header';
+import { SearchField } from '@/components/search-field';
+import { EmptyState } from '@/components/empty-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -23,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 const TABS = ['Broadcast', 'Direct Messages', 'Project Comms'] as const;
+const TAB_LABELS: Record<string, string> = { 'Broadcast': 'Announcements', 'Direct Messages': 'Direct messages', 'Project Comms': 'Project chat' };
 type Tab = typeof TABS[number];
 
 type DirectMessage = {
@@ -62,6 +66,7 @@ export default function AdminMessagingPage() {
     isLocked: false,
   });
   const [contactFilter, setContactFilter] = useState<'all' | 'admins' | 'techs' | 'clients'>('all');
+  const [contactSearch, setContactSearch] = useState('');
   const [dmImageUrl, setDmImageUrl] = useState<string | null>(null);
   const [projectImageUrl, setProjectImageUrl] = useState<string | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
@@ -206,7 +211,7 @@ export default function AdminMessagingPage() {
       await setDoc(doc(db, 'broadcasts', msg.id), { ...msg, revokedBy: [] });
       if (typeof window !== 'undefined') window.dispatchEvent(new Event('storage'));
 
-      toast({ title: 'Broadcast sent', description: 'Message transmitted to all target users.' });
+      toast({ title: 'Announcement sent', description: 'Everyone in the chosen group will see it.' });
       setIsBroadcasting(false);
       setNewMessage({ type: 'info', targetPortal: 'all', subject: '', body: '', isLocked: false });
     } catch (e: any) {
@@ -235,7 +240,7 @@ export default function AdminMessagingPage() {
     }
     updateDoc(doc(db, 'broadcasts', id), { revoked: true }).catch(() => {});
     if (typeof window !== 'undefined') window.dispatchEvent(new Event('storage'));
-    toast({ title: 'Broadcast revoked' });
+    toast({ title: 'Announcement removed' });
   }, [messages, toast]);
 
   const handleSendDM = async () => {
@@ -312,27 +317,25 @@ export default function AdminMessagingPage() {
     if (blockedClientIds.includes(t.id)) return false;
     return true;
   });
+  // Contact search (name, company, email) — narrows both groups.
+  const contactQuery = contactSearch.trim().toLowerCase();
+  const matchesContact = (t: Technician) => !contactQuery ||
+    [t.name, t.clientCompany, t.email].some(v => (v || '').toLowerCase().includes(contactQuery));
 
   return (
     <div className="space-y-5">
-      <header className="page-header">
-        <div className="text-left">
-          <p className="page-eyebrow flex items-center gap-2">
-            <MessageSquare size={12} />
-            Communications
-          </p>
-          <h1 className="page-title">Messaging</h1>
-          <p className="page-subtitle">Broadcast to all users or send direct messages.</p>
-        </div>
-        {activeTab === 'Broadcast' && (
-          <div className="page-header-right">
-            <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold uppercase tracking-wider" onClick={() => setIsBroadcasting(true)}>
-              <Radio size={12} className="mr-1.5" />
-              New Broadcast
-            </Button>
-          </div>
-        )}
-      </header>
+      <PageHeader
+        eyebrow="Messages"
+        icon={MessageSquare}
+        title="Messaging"
+        subtitle="Send announcements to everyone or message people directly."
+        actions={activeTab === 'Broadcast' ? (
+          <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setIsBroadcasting(true)}>
+            <Radio size={14} className="mr-1.5" />
+            New announcement
+          </Button>
+        ) : undefined}
+      />
 
       {/* Tabs */}
       <div className="flex gap-0 border-b border-border-sub">
@@ -341,13 +344,13 @@ export default function AdminMessagingPage() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={cn(
-              'text-[10px] font-bold uppercase tracking-wider px-5 py-3 border-b-2 transition-colors whitespace-nowrap',
+              'text-[13px] font-medium px-4 py-3 border-b-2 transition-colors whitespace-nowrap',
               activeTab === tab
                 ? 'border-brand-red text-brand-red'
                 : 'border-transparent text-text-muted hover:text-text-secondary'
             )}
           >
-            {tab}
+            {TAB_LABELS[tab] || tab}
           </button>
         ))}
       </div>
@@ -356,11 +359,7 @@ export default function AdminMessagingPage() {
       {activeTab === 'Broadcast' && (
         <div className="space-y-3">
           {messages.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
-              <Radio size={32} className="text-text-muted mx-auto mb-3" />
-              <p className="text-[11px] font-bold text-text-muted">No broadcasts sent</p>
-              <p className="text-[11px] text-text-muted mt-1">Broadcasts appear across all target user portals.</p>
-            </div>
+            <EmptyState icon={Radio} title="No announcements yet" description="Announcements show in the portals of everyone you send them to." />
           ) : (
             messages.map(msg => (
               <div key={msg.id} className="bg-bg-secondary border border-border-sub rounded-xl p-4 space-y-3">
@@ -380,21 +379,21 @@ export default function AdminMessagingPage() {
                         <p className="text-[12px] font-bold text-text-primary tracking-wide">{msg.subject}</p>
                         {msg.isLocked && <Lock size={11} className="text-brand-red" />}
                       </div>
-                      <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">
-                        {format(parseISO(msg.timestamp), 'MMM d, yyyy h:mm a')} · Target: {msg.targetPortal}
+                      <p className="text-[11px] text-text-muted">
+                        {format(parseISO(msg.timestamp), 'MMM d, yyyy h:mm a')} · To: {msg.targetPortal}
                         {msg.expiresAt && ` · Expires: ${format(parseISO(msg.expiresAt), 'MMM d, h:mm a')}`}
                       </p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-[10px] shrink-0">{msg.type}</Badge>
+                  <Badge variant={msg.type === 'critical' ? 'disputed' : msg.type === 'warning' ? 'inprogress' : msg.type === 'success' ? 'approved' : 'info'} className="text-[10px] font-semibold uppercase tracking-wide shrink-0">{msg.type}</Badge>
                 </div>
-                <p className="text-[11px] text-text-secondary leading-relaxed">{msg.body}</p>
+                <p className="text-[12px] text-text-secondary leading-relaxed">{msg.body}</p>
                 <div className="pt-3 border-t border-border-sub/30 flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <div className="h-4 w-4 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[10px] font-bold">
                       {(msg.senderName || 'A').charAt(0)}
                     </div>
-                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Sent by {msg.senderName}</span>
+                    <span className="text-[11px] text-text-muted">Sent by {msg.senderName}</span>
                   </div>
                   <Button variant="ghost" size="sm" className="h-7 text-[11px] font-bold text-text-muted hover:text-text-red" onClick={() => handleRevokeMessage(msg.id)}>
                     Revoke
@@ -413,16 +412,17 @@ export default function AdminMessagingPage() {
           <div className={cn("w-full md:w-56 md:shrink-0 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex-col", selectedUserId ? "hidden md:flex" : "flex")}>
             <div className="px-2 py-2 border-b border-border-sub shrink-0">
               <Select value={contactFilter} onValueChange={(v) => setContactFilter(v as typeof contactFilter)}>
-                <SelectTrigger className="h-7 text-[10px] font-bold uppercase tracking-wider bg-bg-tertiary border-border-sub">
-                  <SelectValue placeholder="All Contacts" />
+                <SelectTrigger className="h-9 bg-bg-tertiary border-border-sub" aria-label="Show">
+                  <SelectValue placeholder="All contacts" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="all">All contacts</SelectItem>
                   <SelectItem value="admins">Admins</SelectItem>
                   <SelectItem value="techs">Techs</SelectItem>
                   <SelectItem value="clients">Clients</SelectItem>
                 </SelectContent>
               </Select>
+              <SearchField className="mt-2" placeholder="Search contacts…" value={contactSearch} onChange={setContactSearch} />
             </div>
             <ScrollArea className="flex-1">
               <div className="p-1.5">
@@ -438,7 +438,7 @@ export default function AdminMessagingPage() {
                     if (contactFilter === 'techs') return t.roles?.includes('field_technician') || t.roles?.includes('project_lead') || t.roles?.includes('project_manager');
                     if (contactFilter === 'clients') return false;
                     return true;
-                  }).map(t => {
+                  }).filter(matchesContact).map(t => {
                     const hasUnread = directMessages.some(m => m.senderId === t.id && m.receiverId === currentUser?.id && !m.read);
                     return (
                       <button
@@ -454,21 +454,24 @@ export default function AdminMessagingPage() {
                         <div className="w-6 h-6 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center shrink-0">
                           <span className="text-[10px] font-bold">{(t.name || 'T').charAt(0)}</span>
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wide truncate flex-1">{t.name}</span>
+                        <span className="text-[13px] font-medium truncate flex-1">{t.name}</span>
                         {hasUnread && <div className="w-2 h-2 rounded-full bg-brand-red shrink-0" />}
                       </button>
                     );
                   })}
                 </div>
+                {contactQuery && ![...adminTechs, ...clientContacts].some(matchesContact) && (
+                  <p className="px-3 py-6 text-center text-[12px] text-text-muted">No contacts match “{contactSearch}”.</p>
+                )}
                 {/* Clients group */}
-                {clientContacts.length > 0 && (contactFilter === 'all' || contactFilter === 'clients') && (
+                {clientContacts.filter(matchesContact).length > 0 && (contactFilter === 'all' || contactFilter === 'clients') && (
                   <>
                     <div className="h-px bg-border-sub mx-2 mb-2" />
                     <div className="px-2 py-1.5">
                       <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Clients</p>
                     </div>
                     <div className="space-y-0.5">
-                      {clientContacts.map(t => {
+                      {clientContacts.filter(matchesContact).map(t => {
                         const hasUnread = directMessages.some(m => m.senderId === t.id && m.receiverId === currentUser?.id && !m.read);
                         return (
                           <button
@@ -484,7 +487,7 @@ export default function AdminMessagingPage() {
                             <div className="w-6 h-6 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center shrink-0">
                               <span className="text-[10px] font-bold">{(t.name || 'C').charAt(0)}</span>
                             </div>
-                            <span className="text-[10px] font-bold uppercase tracking-wide truncate flex-1">{t.name}</span>
+                            <span className="text-[13px] font-medium truncate flex-1">{t.name}</span>
                             {hasUnread && <div className="w-2 h-2 rounded-full bg-brand-red shrink-0" />}
                           </button>
                         );
@@ -502,7 +505,7 @@ export default function AdminMessagingPage() {
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
                   <Users size={32} className="text-text-muted mx-auto mb-3" />
-                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Select a contact to message</p>
+                  <p className="text-[13px] text-text-muted">Choose a contact to start a conversation</p>
                 </div>
               </div>
             ) : (
@@ -511,7 +514,7 @@ export default function AdminMessagingPage() {
                   <button onClick={() => setSelectedUserId(null)} className="md:hidden text-text-muted hover:text-text-primary shrink-0">
                     <ArrowLeft size={16} />
                   </button>
-                  <p className="text-[11px] font-bold text-text-primary truncate">
+                  <p className="text-[12px] font-bold text-text-primary truncate">
                     {[...adminTechs, ...clientContacts].find(t => t.id === selectedUserId)?.name || 'Unknown'}
                   </p>
                 </div>
@@ -605,7 +608,7 @@ export default function AdminMessagingPage() {
                                 {unread > 0 && <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[10px] font-bold flex items-center justify-center shrink-0">{unread}</span>}
                               </div>
                               <p className="text-[10px] text-text-muted truncate mt-0.5">{p.client}{p.location ? ` · ${p.location}` : ''}</p>
-                              {lastMsg && <p className="text-[10px] text-text-muted/70 truncate mt-0.5 italic">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
+                              {lastMsg && <p className="text-[10px] text-text-muted/70 truncate mt-0.5">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
                             </button>
                           );
                         })}
@@ -613,7 +616,7 @@ export default function AdminMessagingPage() {
                     )}
                     {onHoldProjects.length > 0 && (
                       <>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-amber px-2 pt-3 pb-0.5">On Hold</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-amber px-2 pt-3 pb-0.5">On hold</p>
                         {onHoldProjects.map(p => {
                           const lastMsg = getLastProjectMessage(p.id);
                           const unread = getProjectUnread(p.id);
@@ -624,7 +627,7 @@ export default function AdminMessagingPage() {
                                 {unread > 0 && <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[10px] font-bold flex items-center justify-center shrink-0">{unread}</span>}
                               </div>
                               <p className="text-[10px] text-text-muted truncate mt-0.5">{p.client}{p.location ? ` · ${p.location}` : ''}</p>
-                              {lastMsg && <p className="text-[10px] text-text-muted/70 truncate mt-0.5 italic">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
+                              {lastMsg && <p className="text-[10px] text-text-muted/70 truncate mt-0.5">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
                             </button>
                           );
                         })}
@@ -643,7 +646,7 @@ export default function AdminMessagingPage() {
                                 {unread > 0 && <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[10px] font-bold flex items-center justify-center shrink-0">{unread}</span>}
                               </div>
                               <p className="text-[10px] text-text-muted truncate mt-0.5">{p.client}{p.location ? ` · ${p.location}` : ''}</p>
-                              {lastMsg && <p className="text-[10px] text-text-muted/70 truncate mt-0.5 italic">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
+                              {lastMsg && <p className="text-[10px] text-text-muted/70 truncate mt-0.5">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
                             </button>
                           );
                         })}
@@ -671,8 +674,8 @@ export default function AdminMessagingPage() {
                     <ArrowLeft size={16} />
                   </button>
                   <div className="min-w-0">
-                  <p className="text-[11px] font-bold text-text-primary truncate">
-                    {selectedProject?.name || 'Unknown Project'}
+                  <p className="text-[12px] font-bold text-text-primary truncate">
+                    {selectedProject?.name || 'Unknown project'}
                   </p>
                   <p className="text-[11px] text-text-muted mt-0.5">
                     {selectedProject?.client}{selectedProject?.location ? ` · ${selectedProject.location}` : ''}
@@ -745,7 +748,7 @@ export default function AdminMessagingPage() {
           <DialogHeader>
             <div className="flex items-center gap-2">
               <Radio className="text-brand-red h-5 w-5" />
-              <DialogTitle className="text-[13px] font-bold">Compose Broadcast</DialogTitle>
+              <DialogTitle className="text-base font-semibold">New announcement</DialogTitle>
             </div>
             <DialogDescription className="text-[10px]">Send a message to all users in the selected portal.</DialogDescription>
           </DialogHeader>
@@ -756,10 +759,10 @@ export default function AdminMessagingPage() {
                 <Select value={newMessage.targetPortal} onValueChange={(v: any) => setNewMessage(m => ({ ...m, targetPortal: v }))}>
                   <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-bg-elevated border-border-main">
-                    <SelectItem value="all">All Users</SelectItem>
-                    <SelectItem value="tech">Technicians Only</SelectItem>
-                    <SelectItem value="client">Clients Only</SelectItem>
-                    <SelectItem value="admin">Admin Staff</SelectItem>
+                    <SelectItem value="all">Everyone</SelectItem>
+                    <SelectItem value="tech">Technicians only</SelectItem>
+                    <SelectItem value="client">Clients only</SelectItem>
+                    <SelectItem value="admin">Office staff</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -777,7 +780,7 @@ export default function AdminMessagingPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Expires After</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Expires after</Label>
               <Select value={durationHours} onValueChange={setDurationHours}>
                 <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-bg-elevated border-border-main">
@@ -791,7 +794,7 @@ export default function AdminMessagingPage() {
             </div>
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Subject *</Label>
-              <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Broadcast subject..." value={newMessage.subject} onChange={e => setNewMessage(m => ({ ...m, subject: e.target.value }))} />
+              <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Subject…" value={newMessage.subject} onChange={e => setNewMessage(m => ({ ...m, subject: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Message *</Label>
@@ -802,7 +805,7 @@ export default function AdminMessagingPage() {
             <Button variant="outline" size="sm" onClick={() => setIsBroadcasting(false)} className="text-[10px] font-bold">Cancel</Button>
             <Button size="sm" onClick={handleBroadcast} disabled={sending} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
               <Send size={12} className="mr-1.5" />
-              {sending ? 'Sending...' : 'Send Broadcast'}
+              {sending ? 'Sending…' : 'Send announcement'}
             </Button>
           </DialogFooter>
         </DialogContent>

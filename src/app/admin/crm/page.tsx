@@ -35,12 +35,21 @@ import {
 } from '@/lib/crm';
 import { changeLeadStage } from '@/lib/crm-actions';
 import { useCrmPaths } from '@/lib/crm-paths';
+import { PageHeader } from '@/components/page-header';
+import { StatCard } from '@/components/stat-card';
+import { SearchField } from '@/components/search-field';
+import { TONE_BADGE, TONE_TEXT, statusLabel, type Tone } from '@/lib/status-styles';
 
-const thCls = 'text-[10px] font-bold uppercase tracking-wider text-text-muted';
+const thCls = 'text-text-muted';
+
+// Stage → shared status tone (lib/status-styles.ts), so stage colors match the rest of the app.
+const STAGE_TONE: Record<Stage, Tone> = {
+  new: 'scheduled', contacted: 'info', qualified: 'progress', proposal_sent: 'progress', negotiating: 'progress', won: 'done', lost: 'problem',
+};
 
 function StageBadge({ stage }: { stage: Stage }) {
   const s = STAGES.find(x => x.key === stage);
-  return <Badge className={`text-[10px] h-5 uppercase border ${s?.bg} ${s?.color} border-current/20`}>{s?.label}</Badge>;
+  return <Badge variant={TONE_BADGE[STAGE_TONE[stage] || 'neutral']} className="h-5 text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap">{s?.label}</Badge>;
 }
 
 function LeadCard({ lead, onMoveNext, onOpen, onConvert }: {
@@ -64,7 +73,7 @@ function LeadCard({ lead, onMoveNext, onOpen, onConvert }: {
       {...attributes}
       className={cn(
         'rounded-lg border bg-bg-primary hover:border-border-main transition-colors cursor-grab active:cursor-grabbing group touch-none',
-        stale ? 'border-amber-400/40' : 'border-border-sub',
+        stale ? 'border-accent-gold/40' : 'border-border-sub',
         isDragging && 'opacity-60 shadow-xl z-50 relative',
       )}
       onClick={() => onOpen(lead)}
@@ -74,25 +83,25 @@ function LeadCard({ lead, onMoveNext, onOpen, onConvert }: {
           <div className="min-w-0">
             <p className="text-xs font-bold tracking-wide text-text-primary truncate leading-tight">{lead.companyName}</p>
             {lead.contactName && (
-              <p className="text-[10px] text-text-muted mt-0.5 flex items-center gap-1 truncate">
-                <User size={9} className="shrink-0" /> {lead.contactName}
+              <p className="text-[12px] text-text-muted mt-0.5 flex items-center gap-1 truncate">
+                <User size={11} className="shrink-0" /> {lead.contactName}
               </p>
             )}
           </div>
           {lead.estimatedValue > 0 && (
-            <span className="text-[10px] font-bold text-text-green shrink-0">{formatMoney(lead.estimatedValue, true)}</span>
+            <span className="text-[12px] font-semibold text-text-green shrink-0">{formatMoney(lead.estimatedValue, true)}</span>
           )}
         </div>
 
         {lead.nextStep && isOpen(lead) && (
-          <p className="text-[10px] text-text-secondary truncate flex items-center gap-1">
+          <p className="text-[12px] text-text-secondary truncate flex items-center gap-1">
             <ChevronRight size={9} className="shrink-0 text-brand-red" /> {lead.nextStep}
           </p>
         )}
 
         <div className="flex items-center gap-1.5 flex-wrap">
           {stale && (
-            <Badge className="text-[10px] h-4 bg-amber-400/10 text-amber-400 border border-amber-400/20">
+            <Badge className="text-[10px] h-4 bg-accent-gold/10 text-accent-gold border border-accent-gold/20">
               <AlertTriangle size={8} className="mr-0.5" /> {daysSince(lastTouch(lead))}d idle
             </Badge>
           )}
@@ -108,12 +117,12 @@ function LeadCard({ lead, onMoveNext, onOpen, onConvert }: {
       </div>
 
       <div className="border-t border-border-sub px-3 py-2 flex items-center justify-between gap-2">
-        <p className="text-[10px] text-text-muted uppercase tracking-wider truncate">
-          {lead.assignedToName || ''}{lead.expectedCloseDate ? ` · close ${lead.expectedCloseDate.slice(5)}` : ''}
+        <p className="text-[11px] text-text-muted truncate">
+          {lead.assignedToName || ''}{lead.expectedCloseDate ? ` · closes ${lead.expectedCloseDate.slice(5)}` : ''}
         </p>
         {hasNext && (
           <Button size="sm" variant="ghost"
-            className="h-6 px-2 text-[11px] font-bold opacity-0 group-hover:opacity-100 transition-opacity text-text-muted hover:text-text-primary"
+            className="h-6 px-2 text-[12px] font-bold opacity-0 group-hover:opacity-100 transition-opacity text-text-muted hover:text-text-primary"
             onPointerDown={e => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onMoveNext(lead); }}>
             <ChevronRight size={11} />
@@ -141,13 +150,13 @@ function StageColumn({ stage, leads, loading, children }: {
   const weighted = leads.reduce((s, l) => s + weightedValue(l), 0);
   return (
     <div ref={setNodeRef} className={cn('w-[250px] flex-shrink-0 space-y-3 rounded-lg transition-colors', isOver && 'bg-brand-red/5 ring-1 ring-brand-red/30')}>
-      <div className={cn('px-3 py-2 rounded-lg border border-border-sub', stage.bg)}>
+      <div className="px-3 py-2 rounded-lg border border-border-sub bg-bg-secondary">
         <div className="flex items-center justify-between">
-          <span className={cn('text-[10px] font-bold uppercase tracking-wider truncate', stage.color)}>{stage.label}</span>
-          <span className={cn('text-[10px] font-bold tabular-nums', stage.color)}>{leads.length}</span>
+          <span className={cn('text-[10px] font-bold uppercase tracking-wider truncate', TONE_TEXT[STAGE_TONE[stage.key]])}>{stage.label}</span>
+          <span className={cn('text-[12px] font-bold tabular-nums', TONE_TEXT[STAGE_TONE[stage.key]])}>{leads.length}</span>
         </div>
         <p className="text-[11px] text-text-muted font-bold tabular-nums mt-0.5">
-          {formatMoney(total, true)}{OPEN_STAGES.includes(stage.key) && total > 0 ? ` · ${formatMoney(weighted, true)} wtd` : ''}
+          {formatMoney(total, true)}{OPEN_STAGES.includes(stage.key) && total > 0 ? ` · ${formatMoney(weighted, true)} weighted` : ''}
         </p>
       </div>
       <div className="space-y-2 min-h-[100px]">
@@ -155,7 +164,7 @@ function StageColumn({ stage, leads, loading, children }: {
           <div className="h-20 rounded-lg bg-bg-tertiary border border-border-sub animate-pulse" />
         ) : leads.length === 0 ? (
           <div className="h-16 rounded-lg border border-dashed border-border-sub flex items-center justify-center">
-            <p className="text-[10px] text-text-muted uppercase tracking-wider">Drop here</p>
+            <p className="text-[12px] text-text-muted">Drop a lead here</p>
           </div>
         ) : children}
       </div>
@@ -163,25 +172,19 @@ function StageColumn({ stage, leads, loading, children }: {
   );
 }
 
-function Stat({ icon: Icon, label, value, sub, tone }: { icon: React.ElementType; label: string; value: string; sub?: string; tone?: string }) {
-  return (
-    <div className="rounded-xl border border-border-sub bg-bg-secondary p-4">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5"><Icon size={11} /> {label}</p>
-      <p className={cn('text-xl font-black tabular-nums mt-1', tone || 'text-text-primary')}>{value}</p>
-      {sub && <p className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">{sub}</p>}
-    </div>
-  );
+function Stat({ icon, label, value, sub, tone }: { icon: React.ComponentProps<typeof StatCard>['icon']; label: string; value: string; sub?: string; tone?: Tone }) {
+  return <StatCard icon={icon} label={label} value={value} sub={sub} tone={tone} />;
 }
 
 function BarRows({ rows }: { rows: { label: string; value: number; display: string; sub?: string }[] }) {
   const max = Math.max(1, ...rows.map(r => r.value));
-  if (rows.length === 0) return <p className="text-[10px] text-text-muted uppercase tracking-wider py-4">No data yet</p>;
+  if (rows.length === 0) return <p className="text-[12px] text-text-muted py-4">No data yet</p>;
   return (
     <div className="space-y-2">
       {rows.map(r => (
         <div key={r.label}>
-          <div className="flex justify-between text-[10px] mb-1">
-            <span className="font-bold uppercase tracking-wider text-text-secondary">{r.label}</span>
+          <div className="flex justify-between text-[12px] mb-1">
+            <span className="font-medium text-text-secondary">{r.label}</span>
             <span className="font-bold tabular-nums text-text-primary">{r.display}{r.sub ? <span className="text-text-muted font-bold"> · {r.sub}</span> : null}</span>
           </div>
           <div className="h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
@@ -486,94 +489,90 @@ export default function CRMPage() {
     </TableRow>
   );
   const emptyRow = (cols: number, text: string) => (
-    <TableRow><TableCell colSpan={cols} className="text-center py-12 text-[10px] text-text-muted uppercase tracking-wider">{text}</TableCell></TableRow>
+    <TableRow><TableCell colSpan={cols} className="text-center py-12 text-[13px] text-text-muted">{text}</TableCell></TableRow>
   );
 
-  const filterTrigger = 'h-9 w-[140px] bg-bg-primary border-border-main text-[10px] font-bold uppercase tracking-wider';
+  const filterTrigger = 'h-9 w-[150px] bg-bg-primary border-border-main';
 
   return (
     <div className="space-y-5 min-h-full">
-      <header className="page-header">
-        <div className="text-left">
-          <p className="page-eyebrow flex items-center gap-2"><Target size={12} /> Sales Intelligence</p>
-          <h1 className="page-title">CRM Pipeline</h1>
-          <p className="page-subtitle">Leads & opportunities from first contact to closed deal.</p>
-        </div>
-        <div className="page-header-right gap-2">
-          <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold uppercase tracking-wider border-border-main" onClick={exportCsv}>
-            <Download size={12} className="mr-1.5" /> Export
+      <PageHeader
+        eyebrow="Sales"
+        icon={Target}
+        title="CRM pipeline"
+        subtitle="Leads and deals from first contact to close."
+        actions={<>
+          <Button variant="outline" size="sm" className="h-9 border-border-main" onClick={exportCsv}>
+            <Download size={14} className="mr-1.5" /> Export CSV
           </Button>
           {canImportLeads && (
-            <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold uppercase tracking-wider border-border-main" onClick={() => setIsImportOpen(true)}>
-              <Upload size={12} className="mr-1.5" /> Import Leads
+            <Button variant="outline" size="sm" className="h-9 border-border-main" onClick={() => setIsImportOpen(true)}>
+              <Upload size={14} className="mr-1.5" /> Import leads
             </Button>
           )}
-          <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold uppercase tracking-wider border-border-main" onClick={() => router.push(paths.accounts)}>
-            <Users size={12} className="mr-1.5" /> Accounts
+          <Button variant="outline" size="sm" className="h-9 border-border-main" onClick={() => router.push(paths.accounts)}>
+            <Users size={14} className="mr-1.5" /> Accounts
           </Button>
           {paths.clients && (
-          <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold uppercase tracking-wider border-border-main" onClick={() => router.push(paths.clients!)}>
-            <Building2 size={12} className="mr-1.5" /> Go To Clients
+          <Button variant="outline" size="sm" className="h-9 border-border-main" onClick={() => router.push(paths.clients!)}>
+            <Building2 size={14} className="mr-1.5" /> Clients
           </Button>
           )}
-        </div>
-      </header>
+        </>}
+      />
 
       {/* KPI summary — always visible */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <Stat icon={DollarSign} label="Open Pipeline" value={formatMoney(totalValue, true)} sub={`${openLeads.length} deals`} />
-        <Stat icon={Percent} label="Weighted Forecast" value={formatMoney(weightedTotal, true)} sub="value × win %" />
-        <Stat icon={Trophy} label="Win Rate" value={`${insights.winRate}%`} sub={`${insights.wonCount} of ${insights.closedCount} closed`} tone="text-text-green" />
-        <Stat icon={CheckCircle2} label="Avg Deal Size" value={formatMoney(insights.avgDeal, true)} sub="won deals" />
-        <Stat icon={Clock} label="Avg Sales Cycle" value={`${insights.avgCycle}d`} sub="created → won" />
+        <Stat icon={DollarSign} label="Open pipeline" value={formatMoney(totalValue, true)} sub={`${openLeads.length} deals`} />
+        <Stat icon={Percent} label="Weighted forecast" value={formatMoney(weightedTotal, true)} sub="Value × win chance" />
+        <Stat icon={Trophy} label="Win rate" value={`${insights.winRate}%`} sub={`${insights.wonCount} of ${insights.closedCount} closed`} tone="done" />
+        <Stat icon={CheckCircle2} label="Average deal" value={formatMoney(insights.avgDeal, true)} sub="Won deals" />
+        <Stat icon={Clock} label="Average sales cycle" value={`${insights.avgCycle} days`} sub="Created → won" />
       </div>
 
       {/* Search / filter bar */}
-      <div className="bg-bg-secondary p-3 rounded-xl border border-border-sub flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[180px]">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-          <input
-            className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-main bg-bg-primary text-[11px] font-bold tracking-wide text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-red transition-colors"
-            placeholder="Search company, contact, phone, tag..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-          />
-        </div>
+      <div className="bg-bg-secondary p-3 rounded-xl border border-border-main shadow-sm flex items-center gap-2 flex-wrap">
+        <SearchField
+          className="flex-1 min-w-[200px]"
+          placeholder="Search company, contact, phone, tag…"
+          value={searchQuery}
+          onChange={setSearchQuery}
+        />
         <Select value={ownerFilter} onValueChange={(v: any) => setOwnerFilter(v)}>
           <SelectTrigger className={filterTrigger}><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all" className="text-[10px] font-bold">All Owners</SelectItem>
-            <SelectItem value="mine" className="text-[10px] font-bold">My Leads</SelectItem>
-            <SelectItem value="unassigned" className="text-[10px] font-bold">Unassigned</SelectItem>
+            <SelectItem value="all">All owners</SelectItem>
+            <SelectItem value="mine">My leads</SelectItem>
+            <SelectItem value="unassigned">Unassigned</SelectItem>
           </SelectContent>
         </Select>
         <Select value={sourceFilter} onValueChange={setSourceFilter}>
           <SelectTrigger className={filterTrigger}><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all" className="text-[10px] font-bold">All Sources</SelectItem>
-            {SOURCES.map(s => <SelectItem key={s.key} value={s.key} className="text-[10px] font-bold">{s.label}</SelectItem>)}
+            <SelectItem value="all">All sources</SelectItem>
+            {SOURCES.map(s => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={serviceFilter} onValueChange={setServiceFilter}>
           <SelectTrigger className={filterTrigger}><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all" className="text-[10px] font-bold">All Services</SelectItem>
-            {SERVICE_LINES.map(s => <SelectItem key={s} value={s} className="text-[10px] font-bold">{s}</SelectItem>)}
+            <SelectItem value="all">All services</SelectItem>
+            {SERVICE_LINES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
         </Select>
-        <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-text-muted cursor-pointer">
-          <Checkbox checked={staleOnly} onCheckedChange={v => setStaleOnly(!!v)} /> Stale {STALE_DAYS}d+
+        <label className="flex items-center gap-2 text-[12px] font-medium text-text-secondary cursor-pointer">
+          <Checkbox checked={staleOnly} onCheckedChange={v => setStaleOnly(!!v)} /> Idle {STALE_DAYS}+ days
         </label>
         <Select value={listSort.col} onValueChange={(v: any) => setListSort({ col: v, dir: defaultSortDir(v) })}>
           <SelectTrigger className={filterTrigger}>
             <div className="flex items-center gap-2"><ArrowUpDown size={12} className="text-text-muted" /><SelectValue /></div>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="updated" className="text-[10px] font-bold">Last Updated</SelectItem>
-            <SelectItem value="close" className="text-[10px] font-bold">Close Date</SelectItem>
-            <SelectItem value="stage" className="text-[10px] font-bold">By Stage</SelectItem>
-            <SelectItem value="value" className="text-[10px] font-bold">By Value</SelectItem>
-            <SelectItem value="company" className="text-[10px] font-bold">By Company</SelectItem>
+            <SelectItem value="updated">Last touch</SelectItem>
+            <SelectItem value="close">Close date</SelectItem>
+            <SelectItem value="stage">Stage</SelectItem>
+            <SelectItem value="value">Value</SelectItem>
+            <SelectItem value="company">Company</SelectItem>
           </SelectContent>
         </Select>
         <div className="flex items-center border border-border-main rounded-lg overflow-hidden h-9 bg-bg-primary">
@@ -585,8 +584,8 @@ export default function CRMPage() {
             <List size={13} />
           </button>
         </div>
-        <Button size="sm" className="h-9 ml-auto text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setIsNewLeadOpen(true)}>
-          <Plus size={12} className="mr-1.5" /> New Lead
+        <Button size="sm" className="h-9 ml-auto bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setIsNewLeadOpen(true)}>
+          <Plus size={14} className="mr-1.5" /> New lead
         </Button>
       </div>
 
@@ -594,7 +593,7 @@ export default function CRMPage() {
         <TabsList className="tabs border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-start mb-1 flex-wrap">
           <TabsTrigger value="pipeline" className="crm-tab-trigger">Pipeline</TabsTrigger>
           <TabsTrigger value="myday" className="crm-tab-trigger flex items-center gap-2">
-            My Day
+            My day
             {myDayCount > 0 && <span className="text-[10px] font-bold bg-brand-red text-white px-1.5 py-0.5 rounded">{myDayCount}</span>}
           </TabsTrigger>
           <TabsTrigger value="opportunities" className="crm-tab-trigger">Opportunities</TabsTrigger>
@@ -610,13 +609,13 @@ export default function CRMPage() {
         {/* ── Pipeline ── */}
         <TabsContent value="pipeline" className="m-0 pt-3 space-y-3">
           <div className="flex items-center gap-6 px-1 flex-wrap">
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted"><TrendingUp size={12} /> {openLeads.length} Active</span>
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted"><DollarSign size={12} /> {formatMoney(totalValue)} Pipeline</span>
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-text-primary"><Percent size={12} /> {formatMoney(weightedTotal)} Weighted</span>
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-text-green"><CheckCircle2 size={12} /> {formatMoney(wonValue)} Won</span>
+            <span className="flex items-center gap-1.5 text-[12px] font-medium text-text-muted"><TrendingUp size={12} /> {openLeads.length} active</span>
+            <span className="flex items-center gap-1.5 text-[12px] font-medium text-text-muted"><DollarSign size={12} /> {formatMoney(totalValue)} pipeline</span>
+            <span className="flex items-center gap-1.5 text-[12px] font-medium text-text-primary"><Percent size={12} /> {formatMoney(weightedTotal)} weighted</span>
+            <span className="flex items-center gap-1.5 text-[12px] font-medium text-text-green"><CheckCircle2 size={12} /> {formatMoney(wonValue)} won</span>
             {staleCount > 0 && (
-              <button onClick={() => setStaleOnly(true)} className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-400 hover:underline">
-                <AlertTriangle size={12} /> {staleCount} Stale
+              <button onClick={() => setStaleOnly(true)} className="flex items-center gap-1.5 text-[12px] font-medium text-accent-gold hover:underline">
+                <AlertTriangle size={12} /> {staleCount} idle
               </button>
             )}
           </div>
@@ -632,23 +631,23 @@ export default function CRMPage() {
                     <TableHead className={cn(thCls, 'cursor-pointer hover:text-text-primary')} onClick={() => toggleSort('value')}><span className="flex items-center gap-1.5">Value <ArrowUpDown size={10} /></span></TableHead>
                     <TableHead className={thCls}>Owner</TableHead>
                     <TableHead className={cn(thCls, 'cursor-pointer hover:text-text-primary')} onClick={() => toggleSort('close')}><span className="flex items-center gap-1.5">Close <ArrowUpDown size={10} /></span></TableHead>
-                    <TableHead className={cn(thCls, 'cursor-pointer hover:text-text-primary')} onClick={() => toggleSort('updated')}><span className="flex items-center gap-1.5">Last Touch <ArrowUpDown size={10} /></span></TableHead>
+                    <TableHead className={cn(thCls, 'cursor-pointer hover:text-text-primary')} onClick={() => toggleSort('updated')}><span className="flex items-center gap-1.5">Last touch <ArrowUpDown size={10} /></span></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {pager.items.map(lead => leadRow(lead, <>
-                    <TableCell className="font-bold text-[11px] text-text-primary">
-                      <span className="flex items-center gap-1.5">{isStale(lead) && <AlertTriangle size={10} className="text-amber-400" />}{lead.companyName}</span>
+                    <TableCell className="font-bold text-[12px] text-text-primary">
+                      <span className="flex items-center gap-1.5">{isStale(lead) && <AlertTriangle size={10} className="text-accent-gold" />}{lead.companyName}</span>
                     </TableCell>
-                    <TableCell className="text-[10px] text-text-muted">
+                    <TableCell className="text-[12px] text-text-muted">
                       <div>{lead.contactName}</div>
                       {lead.contactEmail && <div className="text-[11px] mt-0.5">{lead.contactEmail}</div>}
                     </TableCell>
                     <TableCell onClick={e => e.stopPropagation()}>
                       <Select value={lead.stage} onValueChange={v => handleSetStage(lead, v as Stage)}>
-                        <SelectTrigger className={cn('h-7 text-[11px] font-bold border-0 bg-transparent w-[140px]', STAGES.find(s => s.key === lead.stage)?.color)}><SelectValue /></SelectTrigger>
+                        <SelectTrigger className={cn('h-8 font-semibold border-0 bg-transparent w-[150px]', TONE_TEXT[STAGE_TONE[lead.stage] || 'neutral'])}><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-bg-elevated border-border-main">
-                          {STAGES.map(s => <SelectItem key={s.key} value={s.key} className={cn('text-[11px] font-bold', s.color)}>{s.label}</SelectItem>)}
+                          {STAGES.map(s => <SelectItem key={s.key} value={s.key} className={TONE_TEXT[STAGE_TONE[s.key]]}>{s.label}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </TableCell>
@@ -656,9 +655,9 @@ export default function CRMPage() {
                       {lead.estimatedValue > 0 ? formatMoney(lead.estimatedValue) : '—'}
                       {isOpen(lead) && lead.estimatedValue > 0 && <span className="block text-[11px] text-text-muted font-bold">{probabilityOf(lead)}%</span>}
                     </TableCell>
-                    <TableCell className="text-[10px] text-text-muted">{lead.assignedToName || '—'}</TableCell>
-                    <TableCell className="text-[10px] text-text-muted">{lead.expectedCloseDate || '—'}</TableCell>
-                    <TableCell className="text-[10px] text-text-muted">{(() => { const d = daysSince(lastTouch(lead)); return d === null ? '—' : d === 0 ? 'Today' : `${d}d ago`; })()}</TableCell>
+                    <TableCell className="text-[12px] text-text-muted">{lead.assignedToName || '—'}</TableCell>
+                    <TableCell className="text-[12px] text-text-muted">{lead.expectedCloseDate || '—'}</TableCell>
+                    <TableCell className="text-[12px] text-text-muted">{(() => { const d = daysSince(lastTouch(lead)); return d === null ? '—' : d === 0 ? 'Today' : `${d}d ago`; })()}</TableCell>
                   </>))}
                   {sortedListLeads.length === 0 && emptyRow(7, 'No leads found')}
                 </TableBody>
@@ -688,21 +687,21 @@ export default function CRMPage() {
         <TabsContent value="myday" className="m-0 pt-3">
           <div className="grid lg:grid-cols-2 gap-4">
             <div className="rounded-xl border border-border-sub overflow-hidden">
-              <p className="px-4 py-3 border-b border-border-sub text-[10px] font-bold uppercase tracking-wider text-text-primary flex items-center gap-2">
-                <Calendar size={12} className="text-brand-red" /> Follow-ups Due ({dueFollowUps.length})
+              <p className="px-4 py-3 border-b border-border-sub text-[13px] font-semibold text-text-primary flex items-center gap-2">
+                <Calendar size={12} className="text-brand-red" /> Follow-ups due ({dueFollowUps.length})
               </p>
               <Table>
                 <TableBody>
                   {dueFollowUps.map(lead => leadRow(lead, <>
-                    <TableCell className="font-bold text-[11px] text-text-primary">
+                    <TableCell className="font-bold text-[12px] text-text-primary">
                       {lead.companyName}
-                      {lead.nextStep && <span className="block text-[10px] normal-case font-normal text-text-muted">{lead.nextStep}</span>}
+                      {lead.nextStep && <span className="block text-[12px] font-normal text-text-muted">{lead.nextStep}</span>}
                     </TableCell>
-                    <TableCell className="text-[10px]">
+                    <TableCell className="text-[12px]">
                       {lead.contactPhone && <a href={`tel:${lead.contactPhone}`} onClick={e => e.stopPropagation()} className="flex items-center gap-1 text-text-muted hover:text-text-primary"><Phone size={9} />{lead.contactPhone}</a>}
                       {lead.contactEmail && <a href={`mailto:${lead.contactEmail}`} onClick={e => e.stopPropagation()} className="flex items-center gap-1 text-text-muted hover:text-text-primary"><Mail size={9} />{lead.contactEmail}</a>}
                     </TableCell>
-                    <TableCell className={cn('text-[10px] font-bold', lead.followUpDate! < today ? 'text-brand-red' : 'text-text-primary')}>
+                    <TableCell className={cn('text-[12px] font-semibold', lead.followUpDate! < today ? 'text-brand-red' : 'text-text-primary')}>
                       {lead.followUpDate! < today ? `Overdue · ${lead.followUpDate}` : 'Today'}
                     </TableCell>
                   </>, lead.followUpDate! < today ? 'bg-brand-red/5' : ''))}
@@ -712,8 +711,8 @@ export default function CRMPage() {
             </div>
 
             <div className="rounded-xl border border-border-sub overflow-hidden">
-              <p className="px-4 py-3 border-b border-border-sub text-[10px] font-bold uppercase tracking-wider text-text-primary flex items-center gap-2">
-                <ListTodo size={12} className="text-brand-red" /> Open Tasks ({openTasks.length})
+              <p className="px-4 py-3 border-b border-border-sub text-[13px] font-semibold text-text-primary flex items-center gap-2">
+                <ListTodo size={12} className="text-brand-red" /> Open tasks ({openTasks.length})
               </p>
               <Table>
                 <TableBody>
@@ -725,11 +724,11 @@ export default function CRMPage() {
                         <TableCell className="w-8" onClick={e => e.stopPropagation()}>
                           <Checkbox onCheckedChange={() => updateDoc(doc(db, 'leadActivities', t.id), { completedAt: new Date().toISOString() })} />
                         </TableCell>
-                        <TableCell className="text-[11px] text-text-secondary">
+                        <TableCell className="text-[12px] text-text-secondary">
                           {t.description}
                           <span className="block text-[11px] font-bold text-text-muted">{lead?.companyName}</span>
                         </TableCell>
-                        <TableCell className={cn('text-[10px] font-bold', overdue ? 'text-brand-red' : 'text-text-muted')}>{t.scheduledAt || '—'}</TableCell>
+                        <TableCell className={cn('text-[12px] font-semibold', overdue ? 'text-brand-red' : 'text-text-muted')}>{t.scheduledAt || '—'}</TableCell>
                       </TableRow>
                     );
                   })}
@@ -739,15 +738,15 @@ export default function CRMPage() {
             </div>
 
             <div className="rounded-xl border border-border-sub overflow-hidden">
-              <p className="px-4 py-3 border-b border-border-sub text-[10px] font-bold uppercase tracking-wider text-text-primary flex items-center gap-2">
-                <Clock size={12} className="text-text-muted" /> Upcoming Follow-ups
+              <p className="px-4 py-3 border-b border-border-sub text-[13px] font-semibold text-text-primary flex items-center gap-2">
+                <Clock size={12} className="text-text-muted" /> Upcoming follow-ups
               </p>
               <Table>
                 <TableBody>
                   {upcomingFollowUps.map(lead => leadRow(lead, <>
-                    <TableCell className="font-bold text-[11px] text-text-primary">{lead.companyName}</TableCell>
+                    <TableCell className="font-bold text-[12px] text-text-primary">{lead.companyName}</TableCell>
                     <TableCell><StageBadge stage={lead.stage} /></TableCell>
-                    <TableCell className="text-[10px] text-text-muted">{lead.followUpDate}</TableCell>
+                    <TableCell className="text-[12px] text-text-muted">{lead.followUpDate}</TableCell>
                   </>))}
                   {upcomingFollowUps.length === 0 && emptyRow(3, 'None scheduled')}
                 </TableBody>
@@ -755,16 +754,16 @@ export default function CRMPage() {
             </div>
 
             <div className="rounded-xl border border-border-sub overflow-hidden">
-              <p className="px-4 py-3 border-b border-border-sub text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
-                <AlertTriangle size={12} /> Needs Attention — stale or no next step
+              <p className="px-4 py-3 border-b border-border-sub text-[13px] font-semibold text-accent-gold flex items-center gap-2">
+                <AlertTriangle size={12} /> Needs attention — idle or no next step
               </p>
               <Table>
                 <TableBody>
                   {[...new Map([...openLeads.filter(isStale), ...noNextStep].map(l => [l.id, l])).values()].slice(0, 20).map(lead => leadRow(lead, <>
-                    <TableCell className="font-bold text-[11px] text-text-primary">{lead.companyName}</TableCell>
+                    <TableCell className="font-bold text-[12px] text-text-primary">{lead.companyName}</TableCell>
                     <TableCell><StageBadge stage={lead.stage} /></TableCell>
-                    <TableCell className="text-[10px] text-text-muted">
-                      {isStale(lead) ? `${daysSince(lastTouch(lead))}d idle` : 'No next step'}
+                    <TableCell className="text-[12px] text-text-muted">
+                      {isStale(lead) ? `Idle ${daysSince(lastTouch(lead))} days` : 'No next step'}
                     </TableCell>
                   </>))}
                   {openLeads.filter(isStale).length + noNextStep.length === 0 && emptyRow(3, 'Every deal has a next step')}
@@ -781,34 +780,34 @@ export default function CRMPage() {
               .sort((a, b) => (a.expectedCloseDate || '9').localeCompare(b.expectedCloseDate || '9'));
             return (
               <>
-                <div className="flex items-center gap-4 px-1 mb-4 text-[10px] font-bold uppercase tracking-wider text-text-muted">
-                  <TrendingUp size={12} className="text-amber-400" /> {opps.length} Active Opportunities
-                  <span>·</span> {formatMoney(opps.reduce((s, l) => s + (l.estimatedValue || 0), 0))} Pipeline
-                  <span>·</span> <span className="text-text-primary">{formatMoney(opps.reduce((s, l) => s + weightedValue(l), 0))} Weighted</span>
+                <div className="flex items-center gap-2 px-1 mb-4 text-[12px] font-medium text-text-muted flex-wrap">
+                  <TrendingUp size={12} className="text-accent-gold" /> {opps.length} active opportunities
+                  <span>·</span> {formatMoney(opps.reduce((s, l) => s + (l.estimatedValue || 0), 0))} pipeline
+                  <span>·</span> <span className="text-text-primary">{formatMoney(opps.reduce((s, l) => s + weightedValue(l), 0))} weighted</span>
                 </div>
                 <div className="rounded-xl border border-border-sub overflow-hidden">
                   <Table>
                     <TableHeader>
                       <TableRow className="border-border-sub">
                         <TableHead className={thCls}>Company</TableHead>
-                        <TableHead className={thCls}>Next Step</TableHead>
+                        <TableHead className={thCls}>Next step</TableHead>
                         <TableHead className={thCls}>Value</TableHead>
-                        <TableHead className={thCls}>Win %</TableHead>
+                        <TableHead className={thCls}>Win chance</TableHead>
                         <TableHead className={thCls}>Stage</TableHead>
-                        <TableHead className={thCls}>Expected Close</TableHead>
+                        <TableHead className={thCls}>Expected close</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {opps.map(lead => leadRow(lead, <>
-                        <TableCell className="font-bold text-[11px] text-text-primary">
+                        <TableCell className="font-bold text-[12px] text-text-primary">
                           {lead.companyName}
-                          <span className="block text-[11px] font-normal normal-case text-text-muted">{lead.contactName}</span>
+                          <span className="block text-[12px] font-normal text-text-muted">{lead.contactName}</span>
                         </TableCell>
-                        <TableCell className="text-[10px] text-text-muted max-w-[220px] truncate">{lead.nextStep || '—'}</TableCell>
+                        <TableCell className="text-[12px] text-text-muted max-w-[220px] truncate">{lead.nextStep || '—'}</TableCell>
                         <TableCell className="text-[11px] font-bold font-mono text-text-green">{lead.estimatedValue > 0 ? formatMoney(lead.estimatedValue) : '—'}</TableCell>
-                        <TableCell className="text-[10px] font-bold text-text-primary">{probabilityOf(lead)}%</TableCell>
+                        <TableCell className="text-[12px] font-bold text-text-primary">{probabilityOf(lead)}%</TableCell>
                         <TableCell><StageBadge stage={lead.stage} /></TableCell>
-                        <TableCell className={cn('text-[10px]', lead.expectedCloseDate && lead.expectedCloseDate < today ? 'text-brand-red font-bold' : 'text-text-muted')}>
+                        <TableCell className={cn('text-[12px]', lead.expectedCloseDate && lead.expectedCloseDate < today ? 'text-brand-red font-bold' : 'text-text-muted')}>
                           {lead.expectedCloseDate || '—'}
                         </TableCell>
                       </>))}
@@ -825,15 +824,15 @@ export default function CRMPage() {
         <TabsContent value="insights" className="m-0 pt-3 space-y-4">
           <div className="grid lg:grid-cols-2 gap-4">
             {([
-              ['Forecast by Expected Close (weighted)', insights.forecast],
-              ['Won Revenue by Source', insights.bySource],
-              ['Open Pipeline by Service Line', insights.byService],
-              ['Lost Reasons', insights.lostReasons],
-              ['By Owner', insights.byOwner],
-              ['Activity — Last 7 Days', insights.actRows],
+              ['Forecast by expected close (weighted)', insights.forecast],
+              ['Won revenue by source', insights.bySource],
+              ['Open pipeline by service line', insights.byService],
+              ['Lost reasons', insights.lostReasons],
+              ['By owner', insights.byOwner],
+              ['Activity — last 7 days', insights.actRows],
             ] as [string, any[]][]).map(([title, rows]) => (
               <div key={title} className="rounded-xl border border-border-sub bg-bg-secondary p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-text-primary mb-3">{title}</p>
+                <p className="text-[13px] font-semibold text-text-primary mb-3">{title}</p>
                 <BarRows rows={rows} />
               </div>
             ))}
@@ -857,18 +856,15 @@ export default function CRMPage() {
               <TableBody>
                 {[...quotes].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')).map(q => (
                   <TableRow key={q.id} className="border-border-sub hover:bg-bg-secondary cursor-pointer" onClick={() => router.push(paths.quotes)}>
-                    <TableCell className="font-bold text-[11px] text-text-primary">{q.title}</TableCell>
-                    <TableCell className="text-[10px] text-text-muted">{q.customerName}</TableCell>
+                    <TableCell className="font-bold text-[12px] text-text-primary">{q.title}</TableCell>
+                    <TableCell className="text-[12px] text-text-muted">{q.customerName}</TableCell>
                     <TableCell className="text-[11px] font-bold font-mono text-text-green">{formatMoney(q.total || 0)}</TableCell>
                     <TableCell>
-                      <Badge className={`text-[10px] h-5 uppercase border ${
-                        q.status === 'approved' ? 'bg-text-green/10 text-text-green border-text-green/20' :
-                        q.status === 'rejected' ? 'bg-text-red/10 text-text-red border-text-red/20' :
-                        'bg-amber-400/10 text-amber-400 border-amber-400/20'
-                      }`}>{q.status}</Badge>
+                      <Badge variant={q.status === 'approved' || q.status.startsWith('converted') ? 'approved' : q.status === 'rejected' || q.status === 'expired' ? 'disputed' : q.status === 'draft' || q.status === 'archived' ? 'draft' : 'inprogress'}
+                        className="h-5 text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap">{statusLabel(q.status)}</Badge>
                     </TableCell>
-                    <TableCell className="text-[10px] text-text-muted">{q.createdAt ? new Date(q.createdAt).toLocaleDateString() : '—'}</TableCell>
-                    <TableCell className="text-[10px] text-text-muted">{q.expirationDate ? new Date(q.expirationDate).toLocaleDateString() : '—'}</TableCell>
+                    <TableCell className="text-[12px] text-text-muted">{q.createdAt ? new Date(q.createdAt).toLocaleDateString() : '—'}</TableCell>
+                    <TableCell className="text-[12px] text-text-muted">{q.expirationDate ? new Date(q.expirationDate).toLocaleDateString() : '—'}</TableCell>
                   </TableRow>
                 ))}
                 {quotes.length === 0 && emptyRow(6, 'No quotes yet')}
@@ -884,10 +880,10 @@ export default function CRMPage() {
             return (
               <>
                 {won.length > 0 && (
-                  <div className="flex items-center gap-4 px-1 mb-4 text-[10px] font-bold uppercase tracking-wider">
+                  <div className="flex items-center gap-2 px-1 mb-4 text-[12px] font-medium">
                     <CheckCircle2 size={12} className="text-text-green" />
-                    <span className="text-text-green">{formatMoney(won.reduce((s, l) => s + (l.estimatedValue || 0), 0))} Total Won</span>
-                    <span className="text-text-muted">· {won.length} Deals</span>
+                    <span className="text-text-green">{formatMoney(won.reduce((s, l) => s + (l.estimatedValue || 0), 0))} won in total</span>
+                    <span className="text-text-muted">· {won.length} deals</span>
                   </div>
                 )}
                 <div className="rounded-xl border border-border-sub overflow-hidden">
@@ -896,7 +892,7 @@ export default function CRMPage() {
                       <TableRow className="border-border-sub">
                         <TableHead className={thCls}>Company</TableHead>
                         <TableHead className={thCls}>Contact</TableHead>
-                        <TableHead className={thCls}>Deal Value</TableHead>
+                        <TableHead className={thCls}>Deal value</TableHead>
                         <TableHead className={thCls}>Closed</TableHead>
                         <TableHead className={thCls}>Source</TableHead>
                         <TableHead className={thCls}>Client</TableHead>
@@ -904,15 +900,15 @@ export default function CRMPage() {
                     </TableHeader>
                     <TableBody>
                       {won.map(lead => leadRow(lead, <>
-                        <TableCell className="font-bold text-[11px] text-text-primary">{lead.companyName}</TableCell>
-                        <TableCell className="text-[10px] text-text-muted">{lead.contactName}</TableCell>
+                        <TableCell className="font-bold text-[12px] text-text-primary">{lead.companyName}</TableCell>
+                        <TableCell className="text-[12px] text-text-muted">{lead.contactName}</TableCell>
                         <TableCell className="text-[12px] font-bold font-mono text-text-green">{formatMoney(lead.estimatedValue || 0)}</TableCell>
-                        <TableCell className="text-[10px] text-text-muted">{new Date(lead.closedAt || lead.updatedAt).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-[10px] text-text-muted">{sourceLabel(lead.source)}</TableCell>
+                        <TableCell className="text-[12px] text-text-muted">{new Date(lead.closedAt || lead.updatedAt).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-[12px] text-text-muted">{sourceLabel(lead.source)}</TableCell>
                         <TableCell onClick={e => e.stopPropagation()}>
                           {lead.convertedToClient
                             ? <span className="text-[11px] font-bold text-text-green">Converted</span>
-                            : <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] font-bold" onClick={() => setConvertLead(lead)}><UserCheck size={9} className="mr-1" /> Convert</Button>}
+                            : <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => setConvertLead(lead)}><UserCheck size={12} className="mr-1" /> Convert</Button>}
                         </TableCell>
                       </>))}
                       {won.length === 0 && emptyRow(6, 'No won deals yet')}
@@ -931,7 +927,7 @@ export default function CRMPage() {
               <TableHeader>
                 <TableRow className="border-border-sub">
                   <TableHead className={thCls}>Company</TableHead>
-                  <TableHead className={thCls}>Est. Value</TableHead>
+                  <TableHead className={thCls}>Est. value</TableHead>
                   <TableHead className={thCls}>Reason</TableHead>
                   <TableHead className={thCls}>Details</TableHead>
                   <TableHead className={thCls}>Closed</TableHead>
@@ -939,11 +935,11 @@ export default function CRMPage() {
               </TableHeader>
               <TableBody>
                 {filteredLeads.filter(l => l.stage === 'lost').sort((a, b) => (b.closedAt || b.updatedAt || '').localeCompare(a.closedAt || a.updatedAt || '')).map(lead => leadRow(lead, <>
-                  <TableCell className="font-bold text-[11px] text-text-primary">{lead.companyName}</TableCell>
+                  <TableCell className="font-bold text-[12px] text-text-primary">{lead.companyName}</TableCell>
                   <TableCell className="text-[11px] font-bold font-mono text-text-muted">{lead.estimatedValue > 0 ? formatMoney(lead.estimatedValue) : '—'}</TableCell>
-                  <TableCell className="text-[10px] font-bold text-text-red">{lead.lostReasonCategory || '—'}</TableCell>
-                  <TableCell className="text-[10px] text-text-muted max-w-[220px] truncate">{lead.lostReason || '—'}</TableCell>
-                  <TableCell className="text-[10px] text-text-muted">{new Date(lead.closedAt || lead.updatedAt).toLocaleDateString()}</TableCell>
+                  <TableCell className="text-[12px] font-semibold text-text-red">{lead.lostReasonCategory || '—'}</TableCell>
+                  <TableCell className="text-[12px] text-text-muted max-w-[220px] truncate">{lead.lostReason || '—'}</TableCell>
+                  <TableCell className="text-[12px] text-text-muted">{new Date(lead.closedAt || lead.updatedAt).toLocaleDateString()}</TableCell>
                 </>, 'opacity-70 hover:opacity-100'))}
                 {filteredLeads.filter(l => l.stage === 'lost').length === 0 && emptyRow(5, 'No lost deals')}
               </TableBody>
@@ -994,17 +990,17 @@ export default function CRMPage() {
       <Dialog open={!!convertLead} onOpenChange={v => !v && setConvertLead(null)}>
         <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-[13px] font-bold flex items-center gap-2">
-              <UserCheck size={14} className="text-text-green" /> Convert to Client
+            <DialogTitle className="text-base font-semibold flex items-center gap-2">
+              <UserCheck size={14} className="text-text-green" /> Convert to client
             </DialogTitle>
           </DialogHeader>
           {convertLead && (
             <div className="space-y-3 py-2">
               <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub space-y-1">
-                <p className="text-[11px] font-bold text-text-primary">{convertLead.companyName}</p>
-                <p className="text-[10px] text-text-muted">{convertLead.contactName} · {convertLead.contactEmail}</p>
+                <p className="text-[12px] font-bold text-text-primary">{convertLead.companyName}</p>
+                <p className="text-[12px] text-text-muted">{convertLead.contactName} · {convertLead.contactEmail}</p>
               </div>
-              <p className="text-[10px] text-text-muted uppercase tracking-wider">This will create a new client account and mark the lead as converted.</p>
+              <p className="text-[12px] text-text-muted">This will create a new client account and mark the lead as converted.</p>
             </div>
           )}
           <DialogFooter className="gap-2">

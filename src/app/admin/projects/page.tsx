@@ -28,6 +28,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PageHeader } from '@/components/page-header';
+import { SearchField } from '@/components/search-field';
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
@@ -115,7 +117,7 @@ export default function ProjectsPage() {
     setActiveStatuses([]);
     setActiveClients([]);
     setSortBy('date');
-    toast({ title: "Filters Cleared", description: "Operational registry constraints removed." });
+    toast({ title: "Filters cleared" });
   };
 
   const filteredProjects = useMemo(() => {
@@ -176,35 +178,24 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="page-header">
-        <div className="text-left">
-          <p className="page-eyebrow flex items-center gap-2">
-            <FolderKanban size={12} />
-            Infrastructure Deployment Control
-          </p>
-          <h1 className="page-title">Projects</h1>
-          <p className="page-subtitle">Large-scale network and cabling deployments with phase-based job management.</p>
-        </div>
-        <div className="page-header-right items-center">
-            <div className="search-wrap">
-              <Search />
-              <input 
-                className="search-input !w-[220px]" 
-                placeholder="Search project folders..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+      <PageHeader
+        eyebrow="Jobs"
+        icon={FolderKanban}
+        title="Projects"
+        subtitle="Large network and cabling projects, managed in phases."
+        actions={
+        <div className="flex flex-wrap items-center gap-2">
+            <SearchField value={searchQuery} onChange={setSearchQuery} placeholder="Search projects…" className="w-full sm:w-[220px]" />
             
             <div className="flex items-center gap-2">
                 <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
                     <SelectTrigger className="w-[160px] h-10 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-wider">
-                        <SelectValue placeholder="Sort By" />
+                        <SelectValue placeholder="Sort by" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="date" className="text-[10px] font-bold">Start Date</SelectItem>
-                        <SelectItem value="name" className="text-[10px] font-bold">Project Name</SelectItem>
-                        <SelectItem value="client" className="text-[10px] font-bold">Client Entity</SelectItem>
+                        <SelectItem value="date" className="text-[10px] font-bold">Start date</SelectItem>
+                        <SelectItem value="name" className="text-[10px] font-bold">Project name</SelectItem>
+                        <SelectItem value="client" className="text-[10px] font-bold">Client</SelectItem>
                         <SelectItem value="progress" className="text-[10px] font-bold">Progress %</SelectItem>
                     </SelectContent>
                 </Select>
@@ -237,7 +228,7 @@ export default function ProjectsPage() {
                       </div>
                       <div className="p-4 space-y-6 text-left">
                         <div className="space-y-3">
-                          <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Status Audit</p>
+                          <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Status</p>
                           <div className="space-y-2">
                             {['active', 'on-hold', 'completed'].map(status => (
                               <div key={status} className="flex items-center space-x-2">
@@ -275,11 +266,12 @@ export default function ProjectsPage() {
 
                 <Button variant="default" size="default" onClick={() => setIsNewDialogOpen(true)}>
                     <Plus size={14} className="mr-2"/>
-                    New Project
+                    New project
                 </Button>
             </div>
         </div>
-      </header>
+        }
+      />
 
       <div className="w-full space-y-6">
         <ProjectsTabs

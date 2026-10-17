@@ -57,17 +57,17 @@ export function PricingTab({ settings, canEdit }: { settings: PricingSettings; c
   return (
     <div className="space-y-6 max-w-4xl">
       {!canEdit && (
-        <p className="text-[10px] text-amber-400">View only — payroll and super admins can change pricing.</p>
+        <p className="text-[10px] text-accent-gold">View only — payroll and super admins can change pricing.</p>
       )}
       <fieldset disabled={!canEdit} className="space-y-6">
         <Card className="bg-bg-secondary border-border-main">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Labor & Service Rates</CardTitle>
+            <CardTitle className="text-sm">Labor & service rates</CardTitle>
             <CardDescription className="text-xs">Rates offered on quotes and invoices. Plan discounts apply to hourly labor.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {draft.laborRates.length === 0 && (
-              <p className="text-[11px] text-text-muted py-2">No rates yet — add your labor and service charges.</p>
+              <p className="text-[12px] text-text-muted py-2">No rates yet — add your labor and service charges.</p>
             )}
             {draft.laborRates.map(r => (
               <div key={r.id} className="grid grid-cols-2 sm:grid-cols-[1.6fr,0.9fr,0.9fr,1.2fr,auto] gap-2 items-end p-2 rounded-lg border border-border-sub bg-bg-primary">
@@ -108,7 +108,7 @@ export function PricingTab({ settings, canEdit }: { settings: PricingSettings; c
 
         <Card className="bg-bg-secondary border-border-main">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Material Markup by Category</CardTitle>
+            <CardTitle className="text-sm">Material markup by category</CardTitle>
             <CardDescription className="text-xs">
               Sell price = cost × (1 + markup). Leave a category blank to use the default. Example on a $100 cost shown at right.
             </CardDescription>
@@ -143,7 +143,7 @@ export function PricingTab({ settings, canEdit }: { settings: PricingSettings; c
 
         <Card className="bg-bg-secondary border-border-main">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Sales Tax</CardTitle>
+            <CardTitle className="text-sm">Sales tax</CardTitle>
             <CardDescription className="text-xs">Charged on materials only. Labor, travel and plan fees are not taxed.</CardDescription>
           </CardHeader>
           <CardContent>

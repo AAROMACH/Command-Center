@@ -32,7 +32,7 @@ export function FontPreferenceSetting() {
     try {
       await updateDoc(doc(db, 'users', user.id), { uiFontPreference: value });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Save failed', description: e.message });
+      toast({ variant: 'destructive', title: 'Could not save font', description: e.message });
     }
   };
 
@@ -40,7 +40,7 @@ export function FontPreferenceSetting() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm">
-          <Type size={14} /> Display Font
+          <Type size={14} /> Display font
         </CardTitle>
         <CardDescription>
           Choose the font used across the app on your account. Applies only to you, on every device you sign into.
@@ -48,7 +48,7 @@ export function FontPreferenceSetting() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="p-4 rounded-lg border border-border-sub bg-bg-primary">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">
+          <p className="text-[12px] font-medium text-text-muted mb-2">
             Preview — {previewOpt.label}{!previewValue && ' (current)'}
           </p>
           <p className={cn('text-2xl tracking-wide text-text-primary mb-1', previewOpt.sample)}>0123456789</p>
@@ -68,18 +68,18 @@ export function FontPreferenceSetting() {
                 onFocus={() => setPreviewValue(opt.value)}
                 onBlur={() => setPreviewValue(null)}
                 className={cn(
-                  'text-left p-3 rounded-lg border transition-colors',
+                  'text-left p-3 rounded-md border transition-colors',
                   active
                     ? 'border-brand-red bg-brand-red-dim'
                     : 'border-border-sub bg-bg-secondary hover:border-border-main'
                 )}
               >
                 <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <span className={cn('text-xs font-bold', opt.sample)}>{opt.label}</span>
+                  <span className={cn('text-[13px] font-semibold', opt.sample)}>{opt.label}</span>
                   {active && <Check size={14} className="text-brand-red shrink-0" />}
                 </div>
                 <p className={cn('text-lg tracking-wide mb-1', opt.sample)}>0123456789</p>
-                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">{opt.description}</p>
+                <p className="text-[12px] text-text-muted">{opt.description}</p>
               </button>
             );
           })}

@@ -1,5 +1,8 @@
 'use client';
 
+import { PageHeader } from '@/components/page-header';
+import { EmptyState, PageLoading } from '@/components/empty-state';
+import { StatusBadge } from '@/components/status-badge';
 import { subscribeTechAssignments } from '@/lib/tech-assignments';
 import { statusTone, TONE_BADGE, TONE_DOT } from '@/lib/status-styles';
 import dynamic from 'next/dynamic';
@@ -32,7 +35,7 @@ const MapView = dynamic(() => import('./components/map-view'), {
     <div className="flex items-center justify-center h-full bg-bg-secondary rounded-lg border border-border-main">
       <div className="text-center space-y-3">
         <MapIcon size={32} className="mx-auto text-text-muted animate-pulse" />
-        <p className="text-xs text-text-muted font-bold">Loading map...</p>
+        <p className="text-[12px] text-text-muted">Loading map…</p>
       </div>
     </div>
   ),
@@ -111,38 +114,29 @@ export default function TechMapPage() {
 
   return (
     <div className="space-y-4">
-      <header className="page-header">
-        <div className="text-left">
-          <p className="page-eyebrow flex items-center gap-2">
-            <MapPin size={12} />
-            Field Map
-          </p>
-          <h1 className="page-title">Job Map</h1>
-          <p className="page-subtitle">Your upcoming assignments and site locations.</p>
-        </div>
-      </header>
+      <PageHeader eyebrow="Map" icon={MapPin} title="Job map" subtitle="Your upcoming jobs and where they are." />
 
       {/* Mobile tab switcher — hidden on lg+ where both panels show side by side */}
-      <div className="flex lg:hidden gap-1 p-1 bg-bg-secondary border border-border-main rounded-lg">
+      <div className="tabs !mb-0 flex-nowrap lg:hidden" role="tablist">
         <button
-          className={cn(
-            'flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors',
-            mobileTab === 'map' ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary'
-          )}
+          type="button"
+          role="tab"
+          aria-selected={mobileTab === 'map'}
+          className={cn('tab flex-1 inline-flex items-center justify-center gap-1.5', mobileTab === 'map' && 'active')}
           onClick={() => setMobileTab('map')}
         >
-          <MapIcon size={12} />
+          <MapIcon size={14} />
           Map
         </button>
         <button
-          className={cn(
-            'flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors',
-            mobileTab === 'jobs' ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary'
-          )}
+          type="button"
+          role="tab"
+          aria-selected={mobileTab === 'jobs'}
+          className={cn('tab flex-1 inline-flex items-center justify-center gap-1.5', mobileTab === 'jobs' && 'active')}
           onClick={() => setMobileTab('jobs')}
         >
-          <Calendar size={12} />
-          {todayJobs.length} Jobs
+          <Calendar size={14} />
+          {todayJobs.length} {todayJobs.length === 1 ? 'job' : 'jobs'}
         </button>
       </div>
 
@@ -151,29 +145,18 @@ export default function TechMapPage() {
         {/* Map Panel */}
         <div
           className={cn(
-            'lg:col-span-2 rounded-lg overflow-hidden border border-border-main',
+            'lg:col-span-2 rounded-xl overflow-hidden border border-border-main shadow-sm',
             mobileTab === 'jobs' ? 'hidden lg:block' : ''
           )}
           style={{ minHeight: '400px', height: '70vh' }}
         >
           {loading ? (
             <div className="flex items-center justify-center h-full bg-bg-secondary">
-              <div className="text-center space-y-3">
-                <MapPin size={32} className="mx-auto text-text-muted animate-pulse" />
-                <p className="text-xs text-text-muted font-bold">Loading assignments...</p>
-              </div>
+              <PageLoading label="Loading your jobs…" />
             </div>
           ) : todayJobs.length === 0 ? (
             <div className="flex items-center justify-center h-full bg-bg-secondary">
-              <div className="text-center space-y-4 px-8">
-                <div className="p-4 bg-bg-tertiary rounded-full w-fit mx-auto">
-                  <MapPin size={32} className="text-text-muted" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-bold text-text-primary tracking-wide">No upcoming jobs</p>
-                  <p className="text-xs text-text-muted">No upcoming assignments found in the registry.</p>
-                </div>
-              </div>
+              <EmptyState icon={MapPin} title="No upcoming jobs" description="Jobs assigned to you show up on the map." className="border-0" />
             </div>
           ) : (
             <MapView
@@ -193,12 +176,12 @@ export default function TechMapPage() {
           style={{ maxHeight: '70vh' }}
         >
           <div className="flex items-center justify-between">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
-              {todayJobs.length} Upcoming Job{todayJobs.length !== 1 ? 's' : ''}
+            <p className="section-label">
+              {todayJobs.length} upcoming job{todayJobs.length !== 1 ? 's' : ''}
             </p>
             {mappableJobs.length < todayJobs.length && (
-              <div className="flex items-center gap-1 text-[11px] text-accent-gold font-bold">
-                <AlertCircle size={10} />
+              <div className="flex items-center gap-1 text-[12px] text-accent-gold font-medium">
+                <AlertCircle size={12} />
                 {todayJobs.length - mappableJobs.length} unmapped
               </div>
             )}
@@ -207,18 +190,7 @@ export default function TechMapPage() {
           {loading ? (
             [1, 2, 3].map(i => <Skeleton key={i} className="h-28 rounded-lg" />)
           ) : todayJobs.length === 0 ? (
-            <Card className="bg-bg-secondary border-border-main">
-              <CardContent className="py-10 text-center space-y-2">
-                <Calendar size={24} className="mx-auto text-text-muted opacity-40" />
-                <p className="text-xs text-text-muted font-bold">No upcoming jobs</p>
-                <p className="text-[10px] text-text-muted">Check back when new assignments are dispatched.</p>
-                <Link href="/tech/assignments">
-                  <Button variant="outline" size="sm" className="h-7 text-[11px] font-bold mt-2">
-                    View All Assignments
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
+            <EmptyState compact icon={Calendar} title="No upcoming jobs" description="Check back when new jobs are assigned to you." action={<Link href="/tech/assignments"><Button variant="outline" className="h-10">See all my jobs</Button></Link>} />
           ) : (
             todayJobs.map((job, index) => {
               const isSelected = selectedJob?.id === job.id;
@@ -228,10 +200,10 @@ export default function TechMapPage() {
                 <div
                   key={job.id}
                   className={cn(
-                    'relative overflow-hidden rounded-lg border cursor-pointer transition-all',
+                    'relative overflow-hidden rounded-xl border cursor-pointer shadow-sm transition-all',
                     isSelected
                       ? 'border-brand-red bg-brand-red-dim/10 shadow-sm'
-                      : 'border-border-sub bg-bg-secondary hover:border-border-main hover:bg-bg-tertiary'
+                      : 'border-border-main bg-bg-secondary hover:bg-bg-tertiary'
                   )}
                   onClick={() => setSelectedJob(isSelected ? null : job)}
                 >
@@ -243,27 +215,25 @@ export default function TechMapPage() {
                         <span className="flex-shrink-0 h-5 w-5 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[11px] font-bold text-text-muted">
                           {index + 1}
                         </span>
-                        <p className="text-xs font-bold tracking-wide truncate text-text-primary">
+                        <p className="text-[14px] font-semibold truncate text-text-primary">
                           {job.title || job.description || `Job ${job.id.slice(0, 6).toUpperCase()}`}
                         </p>
                       </div>
-                      <Badge variant={getStatusVariant(job.status)} className="h-4 text-[10px] flex-shrink-0">
-                        {job.status}
-                      </Badge>
+                      <StatusBadge kind="job" value={job.status} className="flex-shrink-0" />
                     </div>
                   </div>
                   <div className="px-4 pb-4 space-y-3">
-                    <div className="space-y-1.5 text-[10px] text-text-muted">
+                    <div className="space-y-1.5 text-[12px] text-text-muted">
                       <div className="flex items-start gap-2">
-                        <MapPin size={10} className="text-brand-red mt-0.5 flex-shrink-0" />
+                        <MapPin size={12} className="text-brand-red mt-0.5 flex-shrink-0" />
                         <span className="break-words leading-tight">{job.location || 'Location TBD'}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Calendar size={10} className="flex-shrink-0" />
+                        <Calendar size={12} className="flex-shrink-0" />
                         <span>{formatScheduleDate(job.scheduleDate)}</span>
                         {job.scheduleTime && (
                           <>
-                            <Clock size={10} className="flex-shrink-0" />
+                            <Clock size={12} className="flex-shrink-0" />
                             <span>{job.scheduleTime}</span>
                           </>
                         )}
@@ -272,19 +242,17 @@ export default function TechMapPage() {
 
                     <div className="flex gap-2">
                       <Button
-                        size="sm"
                         variant="outline"
-                        className="h-8 flex-1 text-[11px] font-bold"
+                        className="h-10 flex-1"
                         onClick={(e) => { e.stopPropagation(); openDirections(job); }}
                       >
-                        <Navigation size={10} className="mr-1.5" />
+                        <Navigation size={14} className="mr-1.5" />
                         Directions
                       </Button>
-                      <Link href="/tech/assignments" onClick={(e) => e.stopPropagation()}>
+                      <Link href={`/tech/assignments/${job.id}`} onClick={(e) => e.stopPropagation()} aria-label="Open job">
                         <Button
-                          size="sm"
                           variant="ghost"
-                          className="h-8 text-[11px] font-bold px-2"
+                          className="h-10 w-10 p-0"
                         >
                           <ChevronRight size={14} />
                         </Button>
@@ -292,8 +260,8 @@ export default function TechMapPage() {
                     </div>
 
                     {!hasCoordsForMap && (
-                      <p className="text-[11px] text-text-muted font-bold opacity-60">
-                        · Not visible on map
+                      <p className="text-[12px] text-text-muted">
+                        Not shown on the map (no address match)
                       </p>
                     )}
                   </div>

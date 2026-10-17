@@ -10,7 +10,7 @@ import { SortControl, FiltersPopover, FilterSection, CheckboxFilter, DateRangeBu
 
 const MapView = dynamic(() => import('../map/components/map-view'), {
     ssr: false,
-    loading: () => <div className="flex items-center justify-center h-full bg-bg-secondary text-text-muted text-[10px] uppercase tracking-wider">Loading map...</div>,
+    loading: () => <div className="flex items-center justify-center h-full bg-bg-secondary text-text-muted text-[12px]">Loading map…</div>,
 });
 import type { WorkOrder, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
@@ -53,6 +53,9 @@ import { jobDateTimeValue, isArchivedJob, isAssignedTo } from '@/lib/jobs';
 import { Car, MoreVertical, Ban, XCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { LogTripDialog } from './components/log-trip-dialog';
+import { PageHeader } from '@/components/page-header';
+import { EmptyState, PageLoading } from '@/components/empty-state';
+import { StatusBadge } from '@/components/status-badge';
 import { techDisplayName } from '@/lib/utils';
 
 const formatDateStr = (dateStr: string) => {
@@ -275,7 +278,7 @@ export default function TechAssignmentsPage() {
     // did not perform it). Moves the job off the active board and flags it for
     // admin review — no payroll is generated.
     const handleMarkOutcome = async (woId: string, outcome: 'cancelled' | 'did_not_do') => {
-        const label = outcome === 'cancelled' ? 'Cancelled' : 'Did Not Do';
+        const label = outcome === 'cancelled' ? 'Cancelled' : 'Did not do';
         const now = format(new Date(), 'h:mm a');
         try {
             await updateDoc(doc(db, 'assignments', woId), {
@@ -290,68 +293,73 @@ export default function TechAssignmentsPage() {
                     { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Tech marked job as ${label} at ${now}.`, user: techDisplayName(currentTech) }
                 ]
             });
-            toast({ title: `Marked as ${label}`, description: "Removed from your active board and flagged for admin review." });
+            toast({ title: `Marked as ${label}`, description: "Removed from your active jobs and sent to an admin to review." });
         } catch (e: any) {
             toast({ variant: "destructive", title: "Save failed", description: e.message });
         }
     };
+
+    const filtersActive = !!deferredSearch.trim() || !!dateRange?.from || activePriorities.length > 0;
+    const resetFilters = () => { setSearchQuery(''); setDateRange(undefined); setActivePriorities([]); };
+    const noMatches = (what: string) => filtersActive
+        ? <EmptyState compact icon={Wrench} title={`No ${what} match these filters`} description="Try a different search, date or priority." action={<Button variant="outline" onClick={resetFilters}>Reset filters</Button>} />
+        : <EmptyState compact icon={Wrench} title={what === 'jobs' ? 'No active jobs' : 'No completed jobs yet'} description={what === 'jobs' ? 'New jobs show up here when dispatch assigns them to you.' : 'Jobs you complete show up here.'} />;
 
     const handleOpenDetail = (wo: WorkOrder) => {
         router.push('/tech/assignments/' + wo.id);
     };
 
     if (!mounted || !currentTechId) {
-        return <div className="p-8 text-center text-xs text-text-muted">Initializing Terminal...</div>;
+        return <PageLoading label="Loading your jobs…" />;
     }
 
     return (
         <div className="space-y-6">
             {newSinceLastVisit > 0 && (
-                <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-brand-red/5 border border-brand-red/20">
-                    <AlertCircle size={13} className="text-brand-red shrink-0" />
-                    <p className="text-[10px] font-bold text-brand-red uppercase tracking-wider">
-                        {newSinceLastVisit} assignment{newSinceLastVisit > 1 ? 's' : ''} updated since your last visit
+                <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-brand-red/5 border border-brand-red/20">
+                    <AlertCircle size={14} className="text-brand-red shrink-0" />
+                    <p className="text-[12px] font-medium text-brand-red">
+                        {newSinceLastVisit} job{newSinceLastVisit > 1 ? 's' : ''} updated since your last visit
                     </p>
                 </div>
             )}
-            <header className="page-header text-left">
-                <div className="text-left">
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <Wrench size={12} />
-                        Service Assignment Console
-                    </p>
-                    <h1 className="page-title">Assignments</h1>
-                    <p className="page-subtitle text-left">Manage tactical assignments and historical performance audit.</p>
-                </div>
-                <div className="page-header-right items-center gap-2">
-                    <div className="flex items-center rounded-md border border-border-main overflow-hidden shrink-0">
-                        <button
-                            className={cn("h-8 px-3 text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5", viewMode === 'list' ? "bg-brand-red text-white" : "bg-bg-primary text-text-muted hover:text-text-primary")}
+            <PageHeader
+                eyebrow="Jobs"
+                icon={Wrench}
+                title="My jobs"
+                subtitle="Your scheduled jobs and the ones you've finished."
+                actions={<>
+                    <div className="tabs !mb-0 flex-nowrap" role="tablist" aria-label="View">
+                        <button type="button" role="tab" aria-selected={viewMode === 'list'}
+                            className={cn('tab inline-flex items-center gap-1.5', viewMode === 'list' && 'active')}
                             onClick={() => setViewMode('list')}
                         >
-                            <LayoutList size={12} /> List
+                            <LayoutList size={14} /> List
                         </button>
-                        <button
-                            className={cn("h-8 px-3 text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 border-l border-border-main", viewMode === 'map' ? "bg-brand-red text-white" : "bg-bg-primary text-text-muted hover:text-text-primary")}
+                        <button type="button" role="tab" aria-selected={viewMode === 'map'}
+                            className={cn('tab inline-flex items-center gap-1.5', viewMode === 'map' && 'active')}
                             onClick={() => setViewMode('map')}
                         >
-                            <MapIcon size={12} /> Map
+                            <MapIcon size={14} /> Map
                         </button>
                     </div>
                     <Button
-                        size="sm"
                         variant="outline"
-                        className="h-8 text-[10px] font-bold uppercase tracking-wider border-border-main text-text-muted hover:text-text-primary shrink-0"
+                        className="h-10 sm:h-9 border-border-main text-text-secondary hover:text-text-primary shrink-0"
                         onClick={() => setIsTripDialogOpen(true)}
                     >
-                        <Car size={12} className="mr-1.5" />
-                        Log Trip
+                        <Car size={14} className="mr-1.5" />
+                        Log trip
                     </Button>
+                </>}
+            />
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <SearchField
                         value={searchQuery}
                         onChange={setSearchQuery}
-                        placeholder="Search assignments..."
-                        className="basis-full md:basis-auto md:w-[260px]"
+                        placeholder="Search job, WO #, client or city"
+                        className="sm:flex-1 md:max-w-[360px]"
                     />
                     <div className="flex w-full gap-2 sm:w-auto">
                         <SortControl
@@ -373,8 +381,7 @@ export default function TechAssignmentsPage() {
                         </FiltersPopover>
                         <DateRangeButton value={dateRange} onChange={setDateRange} />
                     </div>
-                </div>
-            </header>
+            </div>
 
             <LogTripDialog
                 open={isTripDialogOpen}
@@ -383,12 +390,12 @@ export default function TechAssignmentsPage() {
             />
 
             {hasActiveSession && (
-                <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex items-start gap-4 shadow-sm animate-pulse text-left mb-6">
+                <div className="p-4 rounded-xl border border-border-alert bg-brand-red/5 flex items-start gap-3 shadow-sm text-left">
                     <AlertCircle size={20} className="text-text-red shrink-0 mt-0.5" />
                     <div className="space-y-1 text-left">
-                        <p className="text-[11px] font-bold text-text-red tracking-wide text-left">Active Session lock</p>
-                        <p className="text-[10px] text-text-muted leading-relaxed font-medium text-left">
-                            You are currently checked into a mission. Only one active check-in session is permitted per operative. Check out of your active session to initiate another.
+                        <p className="text-[13px] font-semibold text-text-red text-left">You&apos;re checked in to a job</p>
+                        <p className="text-[12px] text-text-secondary leading-relaxed text-left">
+                            You can only be checked in to one job at a time. Check out of it before checking in to another.
                         </p>
                     </div>
                 </div>
@@ -408,16 +415,14 @@ export default function TechAssignmentsPage() {
             )}
 
             {viewMode === 'list' && <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <div className="flex items-center justify-between gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-lg border border-border-sub shadow-sm">
-                    <TabsList className="tabs !mb-0">
-                        <TabsTrigger value="active" className="tab">
-                            Active Assignments <span className="tab-count">({activeAssignments.length})</span>
-                        </TabsTrigger>
-                        <TabsTrigger value="history" className="tab">
-                            Assignment History <span className="tab-count">({completedAssignments.length})</span>
-                        </TabsTrigger>
-                    </TabsList>
-                </div>
+                <TabsList className="tabs mb-4 h-auto flex-nowrap justify-start bg-transparent p-0">
+                    <TabsTrigger value="active" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
+                        Active <span className="tab-count">({activeAssignments.length})</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="history" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
+                        History <span className="tab-count">({completedAssignments.length})</span>
+                    </TabsTrigger>
+                </TabsList>
                 
                 <TabsContent value="active" className="mt-0">
                     {/* Mobile: card view */}
@@ -425,7 +430,7 @@ export default function TechAssignmentsPage() {
                         {activePager.items.map((wo) => (
                             <div
                                 key={wo.id}
-                                className="rounded-xl border border-border-sub bg-bg-secondary p-4 shadow-sm cursor-pointer active:bg-bg-tertiary transition-colors"
+                                className="rounded-xl border border-border-main bg-bg-secondary p-4 shadow-sm cursor-pointer active:bg-bg-tertiary transition-colors"
                                 onClick={() => handleOpenDetail(wo)}
                             >
                                 <div className="flex items-start justify-between gap-3">
@@ -433,27 +438,16 @@ export default function TechAssignmentsPage() {
                                         <div className="flex items-center gap-1.5">
                                             <span className="cell-id">{displayWorkOrderNumber(wo)}</span>
                                             {wo.source === 'Imported' && (
-                                                <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
-                                                    <ExternalLink size={10} />
+                                                <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" aria-label="Open in Field Nation" className="-m-2 p-2 text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                    <ExternalLink size={12} />
                                                 </a>
                                             )}
                                         </div>
-                                        <div className="cell-desc-title break-words mt-1">{wo.title || wo.description}</div>
-                                        <div className="text-[10px] text-text-muted uppercase tracking-wider">{wo.clientName}</div>
+                                        <div className="mt-1 break-words text-[14px] font-semibold leading-snug text-text-primary">{wo.title || wo.description}</div>
+                                        {wo.clientName && <div className="mt-0.5 text-[12px] text-text-muted">{wo.clientName}</div>}
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
-                                        <Badge
-                                            variant={
-                                                wo.status === 'in-progress' ? 'inprogress' :
-                                                wo.status === 'on-my-way' ? 'pending' :
-                                                wo.status === 'confirmed' ? 'active' :
-                                                wo.status === 'checked-out' ? 'checked-out' :
-                                                'scheduled'
-                                            }
-                                            className="capitalize text-[10px] h-4 px-1.5"
-                                        >
-                                            {wo.status.replace(/-/g, ' ')}
-                                        </Badge>
+                                        <StatusBadge kind="job" value={wo.status} />
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 {/* A visible, thumb-sized button — the bare grey
@@ -461,29 +455,29 @@ export default function TechAssignmentsPage() {
                                                 <button
                                                     onClick={(e) => e.stopPropagation()}
                                                     aria-label="More actions"
-                                                    className="h-9 w-9 shrink-0 flex items-center justify-center rounded-lg border border-border-main bg-bg-tertiary text-text-primary shadow-sm active:bg-bg-secondary hover:border-text-muted transition-colors"
+                                                    className="h-10 w-10 shrink-0 flex items-center justify-center rounded-md border border-border-main bg-bg-tertiary text-text-primary shadow-sm active:bg-bg-secondary hover:border-text-muted transition-colors"
                                                 >
                                                     <MoreVertical size={18} strokeWidth={2.5} />
                                                 </button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                                                 <DropdownMenuItem
-                                                    className="text-[11px] font-bold tracking-wide"
+                                                    className="text-[13px]"
                                                     onClick={() => handleMarkOutcome(wo.id, 'cancelled')}
                                                 >
-                                                    <Ban size={13} className="mr-2 text-text-muted" /> Mark as Cancelled
+                                                    <Ban size={13} className="mr-2 text-text-muted" /> Mark as cancelled
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
-                                                    className="text-[11px] font-bold tracking-wide text-text-red focus:text-text-red"
+                                                    className="text-[13px] text-text-red focus:text-text-red"
                                                     onClick={() => handleMarkOutcome(wo.id, 'did_not_do')}
                                                 >
-                                                    <XCircle size={13} className="mr-2" /> Did Not Do
+                                                    <XCircle size={13} className="mr-2" /> Did not do
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </div>
                                 </div>
-                                <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-text-secondary">
+                                <div className="mt-3 grid grid-cols-2 gap-2 text-[12px] text-text-secondary">
                                     <div className="flex items-center gap-1.5 min-w-0">
                                         <MapPin className="h-3.5 w-3.5 text-text-muted shrink-0" />
                                         <span className="truncate">{formatCityState(wo.location)}</span>
@@ -493,38 +487,38 @@ export default function TechAssignmentsPage() {
                                         <span>{formatDateStr(wo.scheduleDate)}{wo.scheduleTime ? ` · ${wo.scheduleTime}` : ''}</span>
                                     </div>
                                 </div>
-                                <div className="mt-3 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                <div className="mt-3 flex flex-wrap items-center gap-2 empty:hidden" onClick={(e) => e.stopPropagation()}>
                                     {canConfirm(wo) && (
-                                        <Button variant="outline" size="sm" className="h-8 flex-1 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleConfirm(wo.id)}>
+                                        <Button variant="outline" size="sm" className="h-10 flex-1 border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleConfirm(wo.id)}>
                                             <Check size={14} className="mr-2"/> Confirm
                                         </Button>
                                     )}
                                     {canStartTrip(wo) && (
-                                        <Button variant="outline" size="sm" className="h-8 flex-1 !text-[10px] border-brand-red text-brand-red hover:bg-brand-red-dim" onClick={() => handleStartTrip(wo.id)}>
-                                            <Navigation size={14} className="mr-2"/> Start Trip
+                                        <Button variant="outline" size="sm" className="h-10 flex-1 border-brand-red text-brand-red hover:bg-brand-red-dim" onClick={() => handleStartTrip(wo.id)}>
+                                            <Navigation size={14} className="mr-2"/> Start trip
                                         </Button>
                                     )}
                                     {canCheckIn(wo) && (
-                                        <Button disabled={hasActiveSession} variant="outline" size="sm" className="h-8 flex-1 !text-[10px] border-text-green text-text-green hover:bg-green-dim disabled:opacity-50" onClick={() => handleCheckIn(wo.id)}>
-                                            <Play size={14} className="mr-2 fill-current"/> Check In
+                                        <Button disabled={hasActiveSession} variant="outline" size="sm" className="h-10 flex-1 border-text-green text-text-green hover:bg-green-dim disabled:opacity-50" onClick={() => handleCheckIn(wo.id)}>
+                                            <Play size={14} className="mr-2 fill-current"/> Check in
                                         </Button>
                                     )}
                                     {canCheckOut(wo) && (
-                                        <Button variant="outline" size="sm" className="h-8 flex-1 !text-[10px] border-text-red text-text-red hover:bg-brand-red-dim" onClick={() => handleCheckOut(wo.id)}>
-                                            <LogOut size={14} className="mr-2"/> Check Out
+                                        <Button variant="outline" size="sm" className="h-10 flex-1 border-text-red text-text-red hover:bg-brand-red-dim" onClick={() => handleCheckOut(wo.id)}>
+                                            <LogOut size={14} className="mr-2"/> Check out
                                         </Button>
                                     )}
                                     {canComplete(wo) && wo.status === 'in-progress' && (
-                                        <Button variant="default" size="sm" className="h-8 flex-1 !text-[10px] bg-text-green hover:bg-text-green/90" onClick={() => handleMarkComplete(wo.id)}>
+                                        <Button variant="default" size="sm" className="h-10 flex-1 bg-text-green hover:bg-text-green/90" onClick={() => handleMarkComplete(wo.id)}>
                                             <CheckCircle2 size={14} className="mr-2"/> Complete
                                         </Button>
                                     )}
                                     {wo.status === 'checked-out' && (
                                         <>
-                                            <Button disabled={hasActiveSession} variant="outline" size="sm" className="h-8 flex-1 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim disabled:opacity-50" onClick={() => handleCheckIn(wo.id)}>
+                                            <Button disabled={hasActiveSession} variant="outline" size="sm" className="h-10 flex-1 border-accent-gold text-accent-gold hover:bg-accent-gold-dim disabled:opacity-50" onClick={() => handleCheckIn(wo.id)}>
                                                 <RotateCcw size={14} className="mr-2"/> Check back in
                                             </Button>
-                                            <Button variant="default" size="sm" className="h-8 flex-1 !text-[10px] bg-text-green hover:bg-text-green/90" onClick={() => handleMarkComplete(wo.id)}>
+                                            <Button variant="default" size="sm" className="h-10 flex-1 bg-text-green hover:bg-text-green/90" onClick={() => handleMarkComplete(wo.id)}>
                                                 <CheckCircle2 size={14} className="mr-2"/> Complete
                                             </Button>
                                         </>
@@ -532,28 +526,26 @@ export default function TechAssignmentsPage() {
                                 </div>
                             </div>
                         ))}
-                        {activeAssignments.length === 0 && (
-                            <div className="text-center py-12 text-text-muted uppercase text-[10px] tracking-wider italic">No active assignments match your registry filters.</div>
-                        )}
+                        {activeAssignments.length === 0 && noMatches('jobs')}
                     </div>
                     {/* Desktop: table view */}
                     <div className="table-wrap hidden md:block">
                         <table className="tbl">
                             <thead>
                                 <tr>
-                                    <th className="text-center">Work Order / Status</th>
-                                    <th className="text-center">Assignment Identifier</th>
-                                    <th className="text-center">Site Location</th>
+                                    <th className="text-center">Work order</th>
+                                    <th className="text-center">Job</th>
+                                    <th className="text-center">Location</th>
                                     <th className="text-center">
                                         <button
                                             onClick={toggleDateSort}
                                             className="inline-flex items-center gap-1.5 hover:text-brand-red transition-colors"
                                             title="Sort by date"
                                         >
-                                            Schedule Window
+                                            Scheduled
                                             <ArrowUpDown size={11} className={cn("shrink-0", sortBy === 'date' ? "text-brand-red" : "text-text-muted opacity-50")} />
                                             {sortBy === 'date' && (
-                                                <span className="text-[10px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Earliest' : 'Latest'}</span>
+                                                <span className="text-[10px] font-semibold text-brand-red">{dateAsc ? 'Earliest' : 'Latest'}</span>
                                             )}
                                         </button>
                                     </th>
@@ -568,29 +560,18 @@ export default function TechAssignmentsPage() {
                                               <div className="flex items-center gap-1.5">
                                                 <div className="cell-id">{displayWorkOrderNumber(wo)}</div>
                                                 {wo.source === 'Imported' && (
-                                                  <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
-                                                    <ExternalLink size={10} />
+                                                  <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" aria-label="Open in Field Nation" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                    <ExternalLink size={12} />
                                                   </a>
                                                 )}
                                               </div>
-                                              <Badge 
-                                                variant={
-                                                    wo.status === 'in-progress' ? 'inprogress' : 
-                                                    wo.status === 'on-my-way' ? 'pending' : 
-                                                    wo.status === 'confirmed' ? 'active' :
-                                                    wo.status === 'checked-out' ? 'checked-out' :
-                                                    'scheduled'
-                                                } 
-                                                className="capitalize text-[10px] h-4 px-1.5"
-                                              >
-                                                {wo.status.replace(/-/g, ' ')}
-                                              </Badge>
+                                              <StatusBadge kind="job" value={wo.status} className="mt-1" />
                                             </div>
                                         </td>
                                         <td>
                                             <div className="flex flex-col items-center justify-center text-center">
-                                              <div className="cell-desc-title">{wo.title || wo.description}</div>
-                                              <div className="text-[10px] text-text-muted uppercase tracking-wider">{wo.clientName}</div>
+                                              <div className="cell-desc-title normal-case tracking-normal text-[13px]">{wo.title || wo.description}</div>
+                                              <div className="text-[12px] text-text-muted">{wo.clientName}</div>
                                             </div>
                                         </td>
                                         <td>
@@ -601,11 +582,11 @@ export default function TechAssignmentsPage() {
                                         </td>
                                         <td>
                                             <div className="cell-sched">
-                                                <div className="cell-sched-date">
+                                                <div className="cell-sched-date text-[12px]">
                                                     <CalendarIcon size={13}/>
                                                     <span>{formatDateStr(wo.scheduleDate)}</span>
                                                 </div>
-                                                <div className="cell-sched-time">
+                                                <div className="cell-sched-time text-[12px]">
                                                     <Clock size={13}/>
                                                     <span>{wo.scheduleTime}</span>
                                                 </div>
@@ -614,15 +595,15 @@ export default function TechAssignmentsPage() {
                                         <td>
                                             <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
                                               {canConfirm(wo) && (
-                                                  <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleConfirm(wo.id)}>
+                                                  <Button variant="outline" size="sm" className="h-9 border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleConfirm(wo.id)}>
                                                       <Check size={14} className="mr-2"/>
                                                       Confirm
                                                   </Button>
                                               )}
                                               {canStartTrip(wo) && (
-                                                  <Button variant="outline" size="sm" className="h-8 !text-[10px] border-brand-red text-brand-red hover:bg-brand-red-dim" onClick={() => handleStartTrip(wo.id)}>
+                                                  <Button variant="outline" size="sm" className="h-9 border-brand-red text-brand-red hover:bg-brand-red-dim" onClick={() => handleStartTrip(wo.id)}>
                                                       <Navigation size={14} className="mr-2"/>
-                                                      Start Trip
+                                                      Start trip
                                                   </Button>
                                               )}
                                               {canCheckIn(wo) && (
@@ -630,23 +611,23 @@ export default function TechAssignmentsPage() {
                                                     disabled={hasActiveSession}
                                                     variant="outline"
                                                     size="sm"
-                                                    className="h-8 !text-[10px] border-text-green text-text-green hover:bg-green-dim disabled:opacity-50"
+                                                    className="h-9 border-text-green text-text-green hover:bg-green-dim disabled:opacity-50"
                                                     onClick={() => handleCheckIn(wo.id)}
                                                   >
                                                       <Play size={14} className="mr-2 fill-current"/>
-                                                      Check In
+                                                      Check in
                                                   </Button>
                                               )}
                                               {canCheckOut(wo) && (
-                                                  <Button variant="outline" size="sm" className="h-8 !text-[10px] border-text-red text-text-red hover:bg-brand-red-dim" onClick={() => handleCheckOut(wo.id)}>
+                                                  <Button variant="outline" size="sm" className="h-9 border-text-red text-text-red hover:bg-brand-red-dim" onClick={() => handleCheckOut(wo.id)}>
                                                       <LogOut size={14} className="mr-2"/>
-                                                      Check Out
+                                                      Check out
                                                   </Button>
                                               )}
                                               {canComplete(wo) && wo.status === 'in-progress' && (
-                                                  <Button variant="default" size="sm" className="h-8 !text-[10px] bg-text-green hover:bg-text-green/90" onClick={() => handleMarkComplete(wo.id)}>
+                                                  <Button variant="default" size="sm" className="h-9 bg-text-green hover:bg-text-green/90" onClick={() => handleMarkComplete(wo.id)}>
                                                       <CheckCircle2 size={14} className="mr-2"/>
-                                                      Mark Complete
+                                                      Mark complete
                                                   </Button>
                                               )}
                                               {wo.status === 'checked-out' && (
@@ -655,7 +636,7 @@ export default function TechAssignmentsPage() {
                                                         disabled={hasActiveSession}
                                                         variant="outline" 
                                                         size="sm" 
-                                                        className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim disabled:opacity-50" 
+                                                        className="h-9 border-accent-gold text-accent-gold hover:bg-accent-gold-dim disabled:opacity-50" 
                                                         onClick={() => handleCheckIn(wo.id)}
                                                       >
                                                           <RotateCcw size={14} className="mr-2"/>
@@ -664,11 +645,11 @@ export default function TechAssignmentsPage() {
                                                       <Button 
                                                         variant="default" 
                                                         size="sm" 
-                                                        className="h-8 !text-[10px] bg-text-green hover:bg-text-green/90"
+                                                        className="h-9 bg-text-green hover:bg-text-green/90"
                                                         onClick={() => handleMarkComplete(wo.id)}
                                                       >
                                                           <CheckCircle2 size={14} className="mr-2"/>
-                                                          Mark Complete
+                                                          Mark complete
                                                       </Button>
                                                   </>
                                               )}
@@ -678,17 +659,17 @@ export default function TechAssignmentsPage() {
                                                           onClick={(e) => e.stopPropagation()}
                                                           aria-label="More actions"
                                                           title="More actions"
-                                                          className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg border border-border-main bg-bg-tertiary text-text-primary shadow-sm hover:border-text-muted hover:bg-bg-secondary transition-colors"
+                                                          className="h-9 w-9 shrink-0 flex items-center justify-center rounded-md border border-border-main bg-bg-tertiary text-text-primary shadow-sm hover:border-text-muted hover:bg-bg-secondary transition-colors"
                                                       >
                                                           <MoreVertical size={16} strokeWidth={2.5} />
                                                       </button>
                                                   </DropdownMenuTrigger>
                                                   <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                                      <DropdownMenuItem className="text-[11px] font-bold tracking-wide" onClick={() => handleMarkOutcome(wo.id, 'cancelled')}>
-                                                          <Ban size={13} className="mr-2 text-text-muted" /> Mark as Cancelled
+                                                      <DropdownMenuItem className="text-[13px]" onClick={() => handleMarkOutcome(wo.id, 'cancelled')}>
+                                                          <Ban size={13} className="mr-2 text-text-muted" /> Mark as cancelled
                                                       </DropdownMenuItem>
-                                                      <DropdownMenuItem className="text-[11px] font-bold tracking-wide text-text-red focus:text-text-red" onClick={() => handleMarkOutcome(wo.id, 'did_not_do')}>
-                                                          <XCircle size={13} className="mr-2" /> Did Not Do
+                                                      <DropdownMenuItem className="text-[13px] text-text-red focus:text-text-red" onClick={() => handleMarkOutcome(wo.id, 'did_not_do')}>
+                                                          <XCircle size={13} className="mr-2" /> Did not do
                                                       </DropdownMenuItem>
                                                   </DropdownMenuContent>
                                               </DropdownMenu>
@@ -697,8 +678,8 @@ export default function TechAssignmentsPage() {
                                     </tr>
                                 ))}
                                 {activeAssignments.length === 0 && (
-                                    <tr>
-                                        <td colSpan={5} className="text-center h-24 text-text-muted uppercase text-[10px] tracking-wider italic">No active assignments match your registry filters.</td>
+                                    <tr className="hover:bg-transparent">
+                                        <td colSpan={5} className="p-4">{noMatches('jobs')}</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -713,7 +694,7 @@ export default function TechAssignmentsPage() {
                         {historyPager.items.map((wo) => (
                             <div
                                 key={wo.id}
-                                className="rounded-xl border border-border-sub bg-bg-secondary p-4 shadow-sm cursor-pointer active:bg-bg-tertiary transition-colors"
+                                className="rounded-xl border border-border-main bg-bg-secondary p-4 shadow-sm cursor-pointer active:bg-bg-tertiary transition-colors"
                                 onClick={() => handleOpenDetail(wo)}
                             >
                                 <div className="flex items-start justify-between gap-3">
@@ -721,19 +702,17 @@ export default function TechAssignmentsPage() {
                                         <div className="flex items-center gap-1.5">
                                             <span className="cell-id">{displayWorkOrderNumber(wo)}</span>
                                             {wo.source === 'Imported' && (
-                                                <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
-                                                    <ExternalLink size={10} />
+                                                <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" aria-label="Open in Field Nation" className="-m-2 p-2 text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                    <ExternalLink size={12} />
                                                 </a>
                                             )}
                                         </div>
-                                        <div className="cell-desc-title break-words mt-1">{wo.title || wo.description}</div>
-                                        <div className="text-[10px] text-text-muted uppercase tracking-wider">{wo.clientName}</div>
+                                        <div className="mt-1 break-words text-[14px] font-semibold leading-snug text-text-primary">{wo.title || wo.description}</div>
+                                        {wo.clientName && <div className="mt-0.5 text-[12px] text-text-muted">{wo.clientName}</div>}
                                     </div>
-                                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-green shrink-0">
-                                        <CheckCircle2 size={12}/> DONE
-                                    </div>
+                                    <StatusBadge kind="job" value="completed" label="Done" className="shrink-0" />
                                 </div>
-                                <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-text-secondary">
+                                <div className="mt-3 grid grid-cols-2 gap-2 text-[12px] text-text-secondary">
                                     <div className="flex items-center gap-1.5 min-w-0">
                                         <MapPin className="h-3.5 w-3.5 text-text-muted shrink-0" />
                                         <span className="truncate">{formatCityState(wo.location)}</span>
@@ -744,38 +723,36 @@ export default function TechAssignmentsPage() {
                                     </div>
                                 </div>
                                 <div className="mt-3 flex items-center justify-between gap-2">
-                                    <Badge variant="active" className="text-[10px] h-3.5 px-1.5">
-                                        <FileCheck size={10} className="mr-1"/> Logged
+                                    <Badge variant="active" className="text-[10px] uppercase tracking-wide">
+                                        <FileCheck size={12} className="mr-1"/> Logged
                                     </Badge>
                                     <div onClick={(e) => e.stopPropagation()}>
-                                        <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleReopen(wo.id)}>
+                                        <Button variant="outline" size="sm" className="h-9 border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleReopen(wo.id)}>
                                             <RotateCcw size={14} className="mr-2"/> Reopen
                                         </Button>
                                     </div>
                                 </div>
                             </div>
                         ))}
-                        {completedAssignments.length === 0 && (
-                            <div className="text-center py-12 text-text-muted uppercase text-[10px] tracking-wider italic">History terminal clear. No assignments match your filters.</div>
-                        )}
+                        {completedAssignments.length === 0 && noMatches('completed jobs')}
                     </div>
                     {/* Desktop: table view */}
                     <div className="table-wrap hidden md:block">
                         <table className="tbl">
                             <thead>
                                 <tr>
-                                    <th className="text-center">Work Order</th>
-                                    <th className="text-center">Service Result</th>
-                                    <th className="text-center">Site Location</th>
+                                    <th className="text-center">Work order</th>
+                                    <th className="text-center">Job</th>
+                                    <th className="text-center">Location</th>
                                     <th className="text-center">
                                         <button
                                             onClick={toggleDateSort}
                                             className="inline-flex items-center gap-1.5 hover:text-brand-red transition-colors"
                                             title="Sort by date"
                                         >
-                                            Date Completed
-                                            <ArrowUpDown size={11} className="shrink-0 text-brand-red" />
-                                            <span className="text-[10px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Earliest' : 'Latest'}</span>
+                                            Date
+                                            <ArrowUpDown size={11} className={cn("shrink-0", sortBy === 'date' ? "text-brand-red" : "text-text-muted opacity-50")} />
+                                            {sortBy === 'date' && <span className="text-[10px] font-semibold text-brand-red">{dateAsc ? 'Earliest' : 'Latest'}</span>}
                                         </button>
                                     </th>
                                     <th className="text-center">Action</th>
@@ -790,24 +767,22 @@ export default function TechAssignmentsPage() {
                                                   <div className="flex items-center gap-1.5">
                                                     <div className="cell-id">{displayWorkOrderNumber(wo)}</div>
                                                     {wo.source === 'Imported' && (
-                                                      <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
-                                                        <ExternalLink size={10} />
+                                                      <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" aria-label="Open in Field Nation" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
+                                                        <ExternalLink size={12} />
                                                       </a>
                                                     )}
                                                   </div>
-                                                  <div className="text-[10px] text-text-muted uppercase tracking-wider">{wo.clientName}</div>
+                                                  <div className="text-[12px] text-text-muted">{wo.clientName}</div>
                                                 </div>
                                             </td>
                                             <td>
                                                 <div className="flex flex-col items-center justify-center text-center">
-                                                  <div className="cell-desc-title">{wo.title || wo.description}</div>
-                                                  <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-text-green mt-1">
-                                                      <CheckCircle2 size={12}/> COMPLETED
-                                                  </div>
+                                                  <div className="cell-desc-title normal-case tracking-normal text-[13px]">{wo.title || wo.description}</div>
+                                                  <StatusBadge kind="job" value="completed" className="mt-1" />
                                                 </div>
                                             </td>
                                             <td>
-                                                <div className="flex items-center justify-center gap-1.5 text-[10px] text-text-secondary text-center">
+                                                <div className="flex items-center justify-center gap-1.5 text-[12px] text-text-secondary text-center">
                                                     <MapPin className="h-3.5 w-3.5 text-text-muted shrink-0" />
                                                     <span className="max-w-[150px] truncate">{formatCityState(wo.location)}</span>
                                                 </div>
@@ -816,8 +791,8 @@ export default function TechAssignmentsPage() {
                                                 <div className="text-center">
                                                   <div className="text-xs text-text-secondary">{wo.scheduleDate}{wo.scheduleTime ? ` · ${wo.scheduleTime}` : ''}</div>
                                                   <div className="mt-1">
-                                                    <Badge variant="active" className="text-[10px] h-3.5 px-1.5">
-                                                        <FileCheck size={10} className="mr-1"/>
+                                                    <Badge variant="active" className="text-[10px] uppercase tracking-wide">
+                                                        <FileCheck size={12} className="mr-1"/>
                                                         Logged
                                                     </Badge>
                                                   </div>
@@ -825,7 +800,7 @@ export default function TechAssignmentsPage() {
                                             </td>
                                             <td>
                                                 <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-                                                    <Button variant="outline" size="sm" className="h-8 !text-[10px] border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleReopen(wo.id)}>
+                                                    <Button variant="outline" size="sm" className="h-9 border-accent-gold text-accent-gold hover:bg-accent-gold-dim" onClick={() => handleReopen(wo.id)}>
                                                         <RotateCcw size={14} className="mr-2"/>
                                                         Reopen
                                                     </Button>
@@ -835,8 +810,8 @@ export default function TechAssignmentsPage() {
                                     );
                                 })}
                                 {completedAssignments.length === 0 && (
-                                    <tr>
-                                        <td colSpan={5} className="text-center h-24 text-text-muted uppercase text-[10px] tracking-wider italic">History terminal clear. No assignments match your filters.</td>
+                                    <tr className="hover:bg-transparent">
+                                        <td colSpan={5} className="p-4">{noMatches('completed jobs')}</td>
                                     </tr>
                                 )}
                             </tbody>

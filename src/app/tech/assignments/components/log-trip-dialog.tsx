@@ -87,11 +87,11 @@ export function LogTripDialog({ open, onClose, technicianId, technicianName }: P
     <Dialog open={open} onOpenChange={v => !v && handleClose()}>
       <DialogContent className="bg-bg-secondary border-border-main max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-sm font-bold text-text-primary">
+          <DialogTitle className="flex items-center gap-2 text-base font-semibold text-text-primary">
             <Car size={16} className="text-brand-red" />
-            Log Trip
+            Log a trip
           </DialogTitle>
-          <DialogDescription className="text-[10px] text-text-muted uppercase tracking-wider">
+          <DialogDescription className="text-[12px] text-text-muted">
             Record mileage for reimbursement.
           </DialogDescription>
         </DialogHeader>
@@ -99,7 +99,7 @@ export function LogTripDialog({ open, onClose, technicianId, technicianName }: P
         <div className="space-y-4 py-2">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Date</Label>
+              <Label className="text-[12px] font-semibold text-text-muted">Date</Label>
               <Input
                 type="date"
                 value={form.date}
@@ -108,7 +108,7 @@ export function LogTripDialog({ open, onClose, technicianId, technicianName }: P
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Miles Driven</Label>
+              <Label className="text-[12px] font-semibold text-text-muted">Miles driven</Label>
               <Input
                 type="number"
                 min="0.1"
@@ -122,7 +122,7 @@ export function LogTripDialog({ open, onClose, technicianId, technicianName }: P
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+            <Label className="text-[12px] font-semibold text-text-muted flex items-center gap-1.5">
               <MapPin size={10} className="text-brand-red" />
               Start Location
             </Label>
@@ -135,7 +135,7 @@ export function LogTripDialog({ open, onClose, technicianId, technicianName }: P
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+            <Label className="text-[12px] font-semibold text-text-muted flex items-center gap-1.5">
               <MapPin size={10} className="text-text-green" />
               End Location / Job Site
             </Label>
@@ -148,7 +148,7 @@ export function LogTripDialog({ open, onClose, technicianId, technicianName }: P
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Purpose / Notes</Label>
+            <Label className="text-[12px] font-semibold text-text-muted">Purpose / notes</Label>
             <Input
               placeholder="e.g. Service call, supply pickup..."
               value={form.purpose}
@@ -164,24 +164,23 @@ export function LogTripDialog({ open, onClose, technicianId, technicianName }: P
               onCheckedChange={v => setForm(f => ({ ...f, reimbursable: !!v }))}
               className="border-border-main data-[state=checked]:bg-brand-red data-[state=checked]:border-brand-red"
             />
-            <Label htmlFor="reimbursable" className="text-[11px] font-bold tracking-wider text-text-muted cursor-pointer">
+            <Label htmlFor="reimbursable" className="text-[13px] font-medium text-text-secondary cursor-pointer">
               Request reimbursement
             </Label>
           </div>
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="ghost" size="sm" className="text-[10px] font-bold" onClick={handleClose} disabled={saving}>
+          <Button variant="ghost" className="h-10" onClick={handleClose} disabled={saving}>
             Cancel
           </Button>
           <Button
-            size="sm"
-            className="text-[10px] font-bold bg-brand-red hover:bg-brand-red/90 text-white"
+            className="h-10 bg-brand-red hover:bg-brand-red/90 text-white"
             onClick={handleSubmit}
             disabled={saving}
           >
             {saving ? <Loader2 size={12} className="animate-spin mr-1.5" /> : <Car size={12} className="mr-1.5" />}
-            {saving ? 'Saving...' : 'Log Trip'}
+            {saving ? 'Saving...' : 'Log trip'}
           </Button>
         </DialogFooter>
       </DialogContent>

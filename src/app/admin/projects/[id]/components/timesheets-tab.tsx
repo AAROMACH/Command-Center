@@ -30,12 +30,12 @@ const TimesheetLogDetails = ({ log }: { log: ProjectDailyLog }) => (
     <div className="space-y-4">
       <div className="space-y-1">
         <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Field Activity Report</div>
-        <p className="text-[11px] text-text-secondary leading-relaxed italic">&quot;{log.workSummary}&quot;</p>
+        <p className="text-[11px] text-text-secondary leading-relaxed ">&quot;{log.workSummary}&quot;</p>
       </div>
       
       <div className="flex flex-wrap gap-1">
         {(log.taskIdsCompleted || []).map((taskId) => (
-          <div key={taskId} className="inline-flex items-center gap-1 rounded-full bg-green-dim border border-green-border px-2 py-0.5 text-[10px] font-bold text-text-green uppercase tracking-tighter">
+          <div key={taskId} className="inline-flex items-center gap-1 rounded-full bg-green-dim border border-green-border px-2 py-0.5 text-[10px] font-bold text-text-green uppercase ">
             <Check size={10} /> Task Verified: {taskId.split('-')[1]}
           </div>
         ))}
@@ -80,7 +80,7 @@ const TimesheetCard = ({ log, tech, viewBy, onEdit }: { log: ProjectDailyLog; te
                 
                 <div className="flex-1 grid grid-cols-2 gap-6">
                     <div className="flex flex-col text-left">
-                        <span className="text-[10px] font-bold uppercase text-text-muted tracking-wider">Temporal Entry</span>
+                        <span className="text-[10px] font-bold uppercase text-text-muted tracking-wider">Time entry</span>
                         <span className="text-[11px] font-mono font-bold text-text-green">{log.date}</span>
                     </div>
                     <div className="flex flex-col text-left">
@@ -238,7 +238,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
                 });
             }
 
-            toast({ title: 'Saved', description: 'Timesheet parameters have been updated.' });
+            toast({ title: 'Saved', description: 'Timesheet entry updated.' });
             setIsEditLogOpen(false);
             setEditingLog(null);
         } catch (e: any) {
@@ -256,7 +256,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
             await updateDoc(projectRef, {
                 actualHours: Math.max(0, (project.actualHours || 0) - (logToDelete.hoursWorked || 0))
             });
-            toast({ title: 'Deleted', description: 'Timesheet entry removed from operational ledger.' });
+            toast({ title: 'Deleted', description: 'Timesheet entry removed.' });
             setIsEditLogOpen(false);
             setEditingLog(null);
         } catch (e: any) {
@@ -266,7 +266,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
 
     const handleExportTimesheets = () => {
         const rows = [
-            ['DATE', 'OPERATIVE', 'CHECK IN', 'CHECK OUT', 'HOURS', 'SUMMARY']
+            ['DATE', 'TECHNICIAN', 'CHECK IN', 'CHECK OUT', 'HOURS', 'SUMMARY']
         ];
         
         filteredTimesheets.forEach(log => {
@@ -290,7 +290,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast({ title: "Export Complete", description: "Timesheet manifest has been generated." });
+        toast({ title: "Export complete", description: "Timesheet CSV downloaded." });
     };
 
     return (
@@ -306,7 +306,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
                     </div>
                 </div>
                 <Button variant="outline" size="sm" className="h-9 px-6 text-[10px] font-bold uppercase tracking-wider border-border-sub" onClick={handleExportTimesheets}>
-                    <Download size={14} className="mr-1.5"/> Export Audit Manifest
+                    <Download size={14} className="mr-1.5"/> Export CSV
                 </Button>
             </div>
 
@@ -365,7 +365,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
                             onClick={() => !isReadOnly && setIsLogDialogOpen(true)}
                             disabled={isReadOnly}
                         >
-                            <Plus size={14} className="mr-1.5"/> {isReadOnly ? 'Registry Locked' : 'Log Session'}
+                            <Plus size={14} className="mr-1.5"/> {isReadOnly ? 'Read only' : 'Log session'}
                         </Button>
                     </div>
                 </div>
@@ -402,7 +402,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
             ) : (
                  <div className="p-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
                     <CalendarIcon size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                    <p className="text-xs font-bold text-text-muted italic">No temporal records match the current filter parameters.</p>
+                    <p className="text-xs font-bold text-text-muted ">No timesheet entries match these filters.</p>
                 </div>
             )}
 
@@ -497,7 +497,7 @@ function EditLogDialog({
                         <Pencil className="text-brand-red h-5 w-5" />
                         <DialogTitle className="text-lg font-bold">Edit Timesheet Log</DialogTitle>
                     </div>
-                    <DialogDescription className="text-xs font-bold text-text-muted">Modify mission duration and reporting details.</DialogDescription>
+                    <DialogDescription className="text-xs font-bold text-text-muted">Change the times and summary for this entry.</DialogDescription>
                 </DialogHeader>
 
                 <div className="p-6 space-y-6 text-left flex-1 overflow-y-auto">
@@ -526,11 +526,11 @@ function EditLogDialog({
                     <Separator className="bg-border-sub" />
 
                     <div className="space-y-6">
-                        <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider px-1">Current Log Parameters</h3>
+                        <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider px-1">Current entry</h3>
                         
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-bold text-text-muted ml-1">Operative</Label>
+                                <Label className="text-[10px] font-bold text-text-muted ml-1">Technician</Label>
                                 <Select value={formData.techId} onValueChange={(val) => setFormData({...formData, techId: val})}>
                                     <SelectTrigger className="h-10 bg-bg-primary text-xs font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent>

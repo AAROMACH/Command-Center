@@ -53,10 +53,10 @@ export default function LoginPage() {
     try {
       await applyPersistence();
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
-      toast({ title: "Approved", description: "Access granted." });
+      toast({ title: "Signed in", description: "Welcome back." });
       await handleRedirect(userCredential.user);
     } catch {
-      toast({ variant: "destructive", title: "Access Denied", description: "Invalid credentials. Please verify your email and password." });
+      toast({ variant: "destructive", title: "Could not sign in", description: "Check your email and password and try again." });
     } finally {
       setIsLoading(false);
     }
@@ -109,7 +109,7 @@ export default function LoginPage() {
         }
       }
 
-      toast({ title: "Google Sign-In Successful", description: "Access granted." });
+      toast({ title: "Signed in with Google", description: "Welcome back." });
       await handleRedirect(firebaseUser);
     } catch (err: any) {
       const code: string = err.code || "";
@@ -117,17 +117,17 @@ export default function LoginPage() {
       if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
         // User dismissed — no toast needed
       } else if (code === "auth/operation-not-allowed") {
-        toast({ variant: "destructive", title: "Google Sign-In Not Enabled", description: "Enable Google as a sign-in provider in Firebase Console → Authentication → Sign-in methods." });
+        toast({ variant: "destructive", title: "Google sign-in not enabled", description: "Enable Google as a sign-in provider in Firebase Console → Authentication → Sign-in methods." });
       } else if (code === "auth/popup-blocked") {
-        toast({ variant: "destructive", title: "Popup Blocked", description: "Allow popups for this site in your browser, then try again." });
+        toast({ variant: "destructive", title: "Pop-up blocked", description: "Allow popups for this site in your browser, then try again." });
       } else if (code.includes("requests-from-referer") || code === "auth/unauthorized-domain") {
-        toast({ variant: "destructive", title: "Domain Not Authorized", description: `Add "${window.location.hostname}" to Firebase Console → Authentication → Settings → Authorized Domains.` });
+        toast({ variant: "destructive", title: "Domain not authorized", description: `Add "${window.location.hostname}" to Firebase Console → Authentication → Settings → Authorized Domains.` });
       } else if (code === "auth/internal-error") {
-        toast({ variant: "destructive", title: "OAuth Not Configured", description: "Check Google Cloud Console: OAuth consent screen must be published and Google provider enabled in Firebase." });
+        toast({ variant: "destructive", title: "Google sign-in not configured", description: "Check Google Cloud Console: OAuth consent screen must be published and Google provider enabled in Firebase." });
       } else if (code === "auth/invalid-api-key") {
-        toast({ variant: "destructive", title: "Invalid API Key", description: "Update NEXT_PUBLIC_FIREBASE_API_KEY in Firebase App Hosting environment variables." });
+        toast({ variant: "destructive", title: "Invalid API key", description: "Update NEXT_PUBLIC_FIREBASE_API_KEY in Firebase App Hosting environment variables." });
       } else {
-        toast({ variant: "destructive", title: "Google Sign-In Failed", description: `[${code}] ${err.message || "Could not complete Google authentication."}` });
+        toast({ variant: "destructive", title: "Google sign-in failed", description: `[${code}] ${err.message || "Could not complete Google authentication."}` });
       }
       console.error("[google-auth]", code, err.message);
     } finally {
@@ -186,7 +186,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-primary p-4">
-      <Card className="w-full max-w-sm border-border-default bg-bg-secondary shadow-2xl overflow-hidden">
+      <Card className="w-full max-w-sm rounded-xl border-border-main bg-bg-secondary shadow-sm overflow-hidden">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
             {logo && (
@@ -194,29 +194,29 @@ export default function LoginPage() {
             )}
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold tracking-wider text-text-primary">Command Center</CardTitle>
-            <CardDescription className="text-text-muted uppercase font-bold text-[10px] tracking-wider">Tactical Operational Terminal</CardDescription>
+            <CardTitle className="text-2xl font-semibold text-text-primary">Command Center</CardTitle>
+            <CardDescription className="text-[13px] text-text-muted">Sign in to your account</CardDescription>
           </div>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-xs font-bold text-text-muted text-left block">Email</Label>
-              <Input id="email" type="email" disabled={isLoading || isGoogleLoading} placeholder="admin@aaromach.com" className="bg-bg-primary border-border-sub h-11 text-xs" {...register("email")} />
-              {errors.email && <p className="text-[10px] font-bold text-brand-red text-left">{errors.email.message}</p>}
+              <Label htmlFor="email" className="text-[12px] font-medium text-text-secondary text-left block">Email</Label>
+              <Input id="email" type="email" disabled={isLoading || isGoogleLoading} placeholder="you@company.com" className="bg-bg-primary border-border-main h-10" {...register("email")} />
+              {errors.email && <p className="text-[12px] text-text-red text-left">{errors.email.message}</p>}
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-xs font-bold text-text-muted">Password</Label>
-                <Link href="/forgot-password" className="text-[10px] font-bold uppercase text-brand-red hover:underline tracking-tighter">Forgot Password?</Link>
+                <Label htmlFor="password" className="text-[12px] font-medium text-text-secondary">Password</Label>
+                <Link href="/forgot-password" className="text-[12px] font-medium text-brand-red hover:underline">Forgot password?</Link>
               </div>
               <div className="relative">
-                <Input id="password" type={showPassword ? "text" : "password"} disabled={isLoading || isGoogleLoading} {...register("password")} placeholder="••••••••" className="bg-bg-primary border-border-sub pr-10 h-11 text-xs" />
+                <Input id="password" type={showPassword ? "text" : "password"} disabled={isLoading || isGoogleLoading} {...register("password")} placeholder="••••••••" className="bg-bg-primary border-border-main pr-10 h-10" />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary focus:outline-none transition-colors">
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              {errors.password && <p className="text-[10px] font-bold text-brand-red text-left">{errors.password.message}</p>}
+              {errors.password && <p className="text-[12px] text-text-red text-left">{errors.password.message}</p>}
             </div>
             <div className="flex items-center gap-2 pt-1">
               <Checkbox
@@ -226,19 +226,19 @@ export default function LoginPage() {
                 disabled={isLoading || isGoogleLoading}
                 className="border-border-main data-[state=checked]:bg-brand-red data-[state=checked]:border-brand-red"
               />
-              <Label htmlFor="rememberMe" className="text-[10px] font-bold uppercase tracking-wider text-text-muted cursor-pointer select-none">
-                Remember Me
+              <Label htmlFor="rememberMe" className="text-[13px] font-normal text-text-secondary cursor-pointer select-none">
+                Remember me
               </Label>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-3 pb-6">
-            <Button type="submit" disabled={isLoading || isGoogleLoading} className="w-full h-12 bg-brand-red hover:bg-brand-red-hover text-white font-bold text-xs">
-              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Synchronizing...</> : "Login"}
+            <Button type="submit" disabled={isLoading || isGoogleLoading} className="w-full h-10">
+              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing in…</> : "Sign in"}
             </Button>
 
             <div className="relative w-full flex items-center gap-3">
               <div className="flex-1 h-px bg-border-sub" />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">or</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">or</span>
               <div className="flex-1 h-px bg-border-sub" />
             </div>
 
@@ -247,7 +247,7 @@ export default function LoginPage() {
               variant="outline"
               disabled={isLoading || isGoogleLoading}
               onClick={onGoogleSignIn}
-              className="w-full h-12 border-border-main bg-bg-primary hover:bg-bg-tertiary font-bold text-xs flex items-center gap-3"
+              className="w-full h-10 border-border-main bg-bg-primary hover:bg-bg-tertiary flex items-center gap-3"
             >
               {isGoogleLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -263,21 +263,21 @@ export default function LoginPage() {
             </Button>
 
             <div className="w-full pt-1 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">Need an account?</p>
+              <p className="text-[12px] text-text-muted mb-2">Need an account?</p>
               <Link href="/get-access" className="block">
                 <Button
                   type="button"
                   variant="outline"
                   disabled={isLoading || isGoogleLoading}
-                  className="w-full h-11 border-brand-red/40 text-brand-red hover:bg-brand-red-dim font-bold text-xs flex items-center gap-2"
+                  className="w-full h-10 flex items-center gap-2"
                 >
                   <UserPlus size={15} className="shrink-0" />
-                  Get Access
+                  Request access
                 </Button>
               </Link>
             </div>
 
-            <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider text-center px-4 pt-1">Authorized personnel only. All access events are logged.</p>
+            <p className="text-[12px] text-text-muted text-center px-4 pt-1">For authorized users only. Sign-ins are logged.</p>
           </CardFooter>
         </form>
       </Card>

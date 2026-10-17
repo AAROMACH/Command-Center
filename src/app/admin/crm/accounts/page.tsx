@@ -1,4 +1,7 @@
 'use client';
+import { PageHeader } from '@/components/page-header';
+import { SearchField } from '@/components/search-field';
+import { TONE_BADGE, type Tone } from '@/lib/status-styles';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -27,7 +30,10 @@ import { INDUSTRIES, STAGES, isOpen, formatMoney } from '@/lib/crm';
 import { useCrmPaths } from '@/lib/crm-paths';
 import { CONTACT_ROLES, contactRoleLabel, saveCompany, saveContact, backfillAccountsFromLeads, findCompany } from '@/lib/crm-accounts';
 
-const thCls = 'text-[10px] font-bold uppercase tracking-wider text-text-muted';
+const thCls = 'text-text-muted';
+const STAGE_TONE: Record<string, Tone> = {
+  new: 'scheduled', contacted: 'info', qualified: 'progress', proposal_sent: 'progress', negotiating: 'progress', won: 'done', lost: 'problem',
+};
 const labelCls = 'text-[10px] font-bold uppercase tracking-wider text-text-muted';
 const inputCls = 'h-9 text-xs bg-bg-tertiary border-border-main';
 
@@ -170,55 +176,46 @@ export default function AccountsPage() {
 
   return (
     <div className="space-y-5 min-h-full">
-      <header className="page-header">
-        <div className="text-left">
-          <p className="page-eyebrow flex items-center gap-2"><Target size={12} /> Sales Intelligence</p>
-          <h1 className="page-title">Accounts</h1>
-          <p className="page-subtitle">Companies, their people, and every deal you've worked with them.</p>
-        </div>
-        <div className="page-header-right gap-2">
-          <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold uppercase tracking-wider border-border-main" onClick={() => router.push(paths.pipeline)}>
-            <ArrowLeft size={12} className="mr-1.5" /> Pipeline
+      <PageHeader
+        eyebrow="Sales"
+        icon={Target}
+        title="Accounts"
+        subtitle="Companies, their people, and every deal you've worked with them."
+        actions={<>
+          <Button variant="outline" size="sm" className="h-9 border-border-main" onClick={() => router.push(paths.pipeline)}>
+            <ArrowLeft size={14} className="mr-1.5" /> Pipeline
           </Button>
-          <Button size="sm" className="h-9 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setCompanyForm(EMPTY_COMPANY)}>
-            <Plus size={12} className="mr-1.5" /> New Account
+          <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setCompanyForm(EMPTY_COMPANY)}>
+            <Plus size={14} className="mr-1.5" /> New account
           </Button>
-        </div>
-      </header>
+        </>}
+      />
 
       {unlinkedLeads > 0 && (
-        <div className="flex items-center gap-3 p-3 rounded-xl border border-amber-400/30 bg-amber-400/10">
-          <DatabaseZap size={16} className="text-amber-400 shrink-0" />
-          <p className="text-[11px] text-text-secondary flex-1">
-            <span className="font-bold text-amber-400">{unlinkedLeads} deals</span> aren't attached to an account yet.
+        <div className="flex items-center gap-3 p-3 rounded-xl border border-accent-gold/30 bg-accent-gold/10">
+          <DatabaseZap size={16} className="text-accent-gold shrink-0" />
+          <p className="text-[12px] text-text-secondary flex-1">
+            <span className="font-bold text-accent-gold">{unlinkedLeads} deals</span> aren't attached to an account yet.
             Build accounts from them — deals with the same company name are grouped, and each contact is added once.
           </p>
-          <Button size="sm" onClick={runBackfill} disabled={backfilling} className="h-8 text-[10px] font-bold bg-amber-500 hover:bg-amber-500/90 text-white">
-            {backfilling ? <Loader2 size={12} className="animate-spin mr-1.5" /> : null} Build Accounts
+          <Button size="sm" onClick={runBackfill} disabled={backfilling} variant="outline" className="h-8 border-accent-gold/40 text-accent-gold">
+            {backfilling ? <Loader2 size={12} className="animate-spin mr-1.5" /> : null} Build accounts
           </Button>
         </div>
       )}
 
-      <div className="bg-bg-secondary p-3 rounded-xl border border-border-sub flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[180px]">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-          <input
-            className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-main bg-bg-primary text-[11px] font-bold tracking-wide text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-red"
-            placeholder="Search accounts or contacts..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
+      <div className="bg-bg-secondary p-3 rounded-xl border border-border-main shadow-sm flex items-center gap-2 flex-wrap">
+        <SearchField className="flex-1 min-w-[200px]" placeholder="Search accounts or contacts…" value={search} onChange={setSearch} />
         <Select value={sort} onValueChange={(v: any) => setSort(v)}>
-          <SelectTrigger className="h-9 w-[160px] bg-bg-primary border-border-main text-[10px] font-bold uppercase tracking-wider"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-9 w-[170px] bg-bg-primary border-border-main" aria-label="Sort by"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="pipeline" className="text-[10px] font-bold">Open Pipeline</SelectItem>
-            <SelectItem value="won" className="text-[10px] font-bold">Won Revenue</SelectItem>
-            <SelectItem value="recent" className="text-[10px] font-bold">Recent Activity</SelectItem>
-            <SelectItem value="name" className="text-[10px] font-bold">Name</SelectItem>
+            <SelectItem value="pipeline">Open pipeline</SelectItem>
+            <SelectItem value="won">Won revenue</SelectItem>
+            <SelectItem value="recent">Recent activity</SelectItem>
+            <SelectItem value="name">Name</SelectItem>
           </SelectContent>
         </Select>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted ml-auto">{companies.length} accounts · {contacts.length} contacts</span>
+        <span className="text-[12px] font-medium text-text-muted ml-auto">{companies.length} accounts · {contacts.length} contacts</span>
       </div>
 
       <div className="rounded-xl border border-border-sub overflow-hidden">
@@ -226,9 +223,9 @@ export default function AccountsPage() {
           <TableHeader>
             <TableRow className="border-border-sub">
               <TableHead className={thCls}>Account</TableHead>
-              <TableHead className={thCls}>Primary Contact</TableHead>
+              <TableHead className={thCls}>Primary contact</TableHead>
               <TableHead className={thCls}>Contacts</TableHead>
-              <TableHead className={thCls}>Open Deals</TableHead>
+              <TableHead className={thCls}>Open deals</TableHead>
               <TableHead className={thCls}>Pipeline</TableHead>
               <TableHead className={thCls}>Won</TableHead>
             </TableRow>
@@ -236,22 +233,22 @@ export default function AccountsPage() {
           <TableBody>
             {pager.items.map(r => (
               <TableRow key={r.company.id} className="border-border-sub hover:bg-bg-secondary cursor-pointer" onClick={() => setSelectedId(r.company.id)}>
-                <TableCell className="font-bold text-[11px] text-text-primary">
+                <TableCell className="font-bold text-[12px] text-text-primary">
                   {r.company.name}
-                  {r.company.industry && <span className="block text-[11px] font-normal normal-case text-text-muted">{r.company.industry}</span>}
+                  {r.company.industry && <span className="block text-[12px] font-normal text-text-muted">{r.company.industry}</span>}
                 </TableCell>
-                <TableCell className="text-[10px] text-text-muted">
+                <TableCell className="text-[12px] text-text-muted">
                   {r.primary ? <>{r.primary.name}{r.primary.title && <span className="block text-[11px]">{r.primary.title}</span>}</> : '—'}
                 </TableCell>
-                <TableCell className="text-[10px] font-bold text-text-primary">{r.contacts.length}</TableCell>
-                <TableCell className="text-[10px] font-bold text-text-primary">{r.openCount}</TableCell>
-                <TableCell className="text-[11px] font-bold font-mono text-text-primary">{r.pipeline ? formatMoney(r.pipeline) : '—'}</TableCell>
+                <TableCell className="text-[12px] font-bold text-text-primary">{r.contacts.length}</TableCell>
+                <TableCell className="text-[12px] font-bold text-text-primary">{r.openCount}</TableCell>
+                <TableCell className="text-[12px] font-bold font-mono text-text-primary">{r.pipeline ? formatMoney(r.pipeline) : '—'}</TableCell>
                 <TableCell className="text-[11px] font-bold font-mono text-text-green">{r.won ? formatMoney(r.won) : '—'}</TableCell>
               </TableRow>
             ))}
             {!loading && rows.length === 0 && (
-              <TableRow><TableCell colSpan={6} className="text-center py-12 text-[10px] text-text-muted uppercase tracking-wider">
-                {companies.length ? 'No matches' : 'No accounts yet'}
+              <TableRow><TableCell colSpan={6} className="text-center py-12 text-[13px] text-text-muted">
+                {companies.length ? 'No accounts match this search' : 'No accounts yet'}
               </TableCell></TableRow>
             )}
           </TableBody>
@@ -268,8 +265,8 @@ export default function AccountsPage() {
                 <div className="flex items-start gap-3">
                   <div className="p-2.5 bg-brand-red/10 rounded-lg shrink-0"><Building2 size={18} className="text-brand-red" /></div>
                   <div className="min-w-0 flex-1">
-                    <SheetTitle className="text-sm font-bold text-text-primary">{selected.company.name}</SheetTitle>
-                    <SheetDescription className="text-[10px] text-text-muted uppercase tracking-wider">
+                    <SheetTitle className="text-base font-semibold text-text-primary">{selected.company.name}</SheetTitle>
+                    <SheetDescription className="text-[12px] text-text-muted">
                       {[selected.company.industry, selected.company.ownerName && `Owner: ${selected.company.ownerName}`].filter(Boolean).join(' · ') || 'Account'}
                     </SheetDescription>
                   </div>
@@ -309,26 +306,26 @@ export default function AccountsPage() {
                       <Plus size={10} className="mr-1" /> Add Contact
                     </Button>
                   </div>
-                  {selected.contacts.length === 0 && <p className="text-[10px] text-text-muted uppercase tracking-wider">No contacts yet.</p>}
+                  {selected.contacts.length === 0 && <p className="text-[12px] text-text-muted">No contacts yet.</p>}
                   {[...selected.contacts].sort((a, b) => Number(!!b.isPrimary) - Number(!!a.isPrimary) || a.name.localeCompare(b.name)).map(c => (
                     <div key={c.id} className="rounded-lg border border-border-sub bg-bg-primary p-3 group">
                       <div className="flex items-start gap-2">
                         <div className="flex-1 min-w-0">
-                          <p className="text-[11px] font-bold text-text-primary flex items-center gap-1.5">
+                          <p className="text-[12px] font-bold text-text-primary flex items-center gap-1.5">
                             {c.name}
-                            {c.isPrimary && <Star size={10} className="text-amber-400 fill-amber-400" />}
+                            {c.isPrimary && <Star size={10} className="text-accent-gold fill-accent-gold" />}
                           </p>
                           <p className="text-[10px] text-text-muted">{[c.title, contactRoleLabel(c.role)].filter(Boolean).join(' · ')}</p>
                         </div>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {!c.isPrimary && <button title="Make primary" onClick={() => makePrimary(c)} className="p-1 text-text-muted hover:text-amber-400"><Star size={11} /></button>}
+                          {!c.isPrimary && <button title="Make primary" onClick={() => makePrimary(c)} className="p-1 text-text-muted hover:text-accent-gold"><Star size={11} /></button>}
                           <button title="Edit" onClick={() => setContactForm({ id: c.id, name: c.name, title: c.title || '', email: c.email || '', phone: c.phone || '', role: c.role || '', notes: c.notes || '' })} className="p-1 text-text-muted hover:text-text-primary"><Pencil size={11} /></button>
                           <button title="Remove" onClick={() => removeContact(c)} className="p-1 text-text-muted hover:text-text-red"><Trash2 size={11} /></button>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5">
-                        {c.phone && <a href={`tel:${c.phone}`} className="flex items-center gap-1 text-[10px] text-text-muted hover:text-text-primary"><Phone size={9} />{c.phone}</a>}
-                        {c.email && <a href={`mailto:${c.email}`} className="flex items-center gap-1 text-[10px] text-text-muted hover:text-text-primary"><Mail size={9} />{c.email}</a>}
+                        {c.phone && <a href={`tel:${c.phone}`} className="flex items-center gap-1 text-[12px] text-text-muted hover:text-text-primary"><Phone size={9} />{c.phone}</a>}
+                        {c.email && <a href={`mailto:${c.email}`} className="flex items-center gap-1 text-[12px] text-text-muted hover:text-text-primary"><Mail size={9} />{c.email}</a>}
                       </div>
                       {c.notes && <p className="text-[10px] text-text-muted mt-1">{c.notes}</p>}
                     </div>
@@ -349,11 +346,11 @@ export default function AccountsPage() {
                       <button key={d.id} onClick={() => router.push(`${paths.pipeline}?lead=${d.id}`)}
                         className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border-sub bg-bg-primary hover:border-border-main text-left">
                         <span className="flex-1 min-w-0">
-                          <span className="block text-[11px] font-bold text-text-primary truncate">{(d.serviceLines || []).join(' / ') || d.nextStep || 'Deal'}</span>
+                          <span className="block text-[12px] font-bold text-text-primary truncate">{(d.serviceLines || []).join(' / ') || d.nextStep || 'Deal'}</span>
                           <span className="block text-[11px] text-text-muted">{d.contactName}{d.createdAt ? ` · ${d.createdAt.slice(0, 10)}` : ''}</span>
                         </span>
                         <span className="text-[11px] font-bold tabular-nums text-text-green">{d.estimatedValue ? formatMoney(d.estimatedValue) : '—'}</span>
-                        <Badge className={cn('text-[10px] h-5 border border-current/20', s?.bg, s?.color)}>{s?.label}</Badge>
+                        <Badge variant={TONE_BADGE[STAGE_TONE[d.stage] || 'neutral']} className="h-5 text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap">{s?.label}</Badge>
                       </button>
                     );
                   })}
@@ -365,7 +362,7 @@ export default function AccountsPage() {
                     <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5"><FileText size={10} /> Quotes ({selectedQuotes.length})</p>
                     {selectedQuotes.map(q => (
                       <button key={q.id} onClick={() => router.push(paths.quotes)} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border-sub bg-bg-primary hover:border-border-main text-left">
-                        <span className="flex-1 min-w-0 text-[11px] font-bold text-text-primary truncate">{q.title}</span>
+                        <span className="flex-1 min-w-0 text-[12px] font-bold text-text-primary truncate">{q.title}</span>
                         <span className="text-[11px] font-bold tabular-nums text-text-green">{formatMoney(q.total || 0)}</span>
                         <span className="text-[10px] font-bold text-text-muted">{q.status.replace(/_/g, ' ')}</span>
                       </button>
@@ -381,7 +378,7 @@ export default function AccountsPage() {
       {/* Company form */}
       <Dialog open={!!companyForm} onOpenChange={v => !v && setCompanyForm(null)}>
         <DialogContent className="bg-bg-secondary border-border-main max-w-lg">
-          <DialogHeader><DialogTitle className="text-sm font-bold">{companyForm?.id ? 'Edit Account' : 'New Account'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-base font-semibold">{companyForm?.id ? 'Edit account' : 'New account'}</DialogTitle></DialogHeader>
           {companyForm && (
             <div className="space-y-3 py-2">
               <div className="space-y-1.5"><Label className={labelCls}>Company Name *</Label><Input value={companyForm.name} onChange={e => setCompanyForm({ ...companyForm, name: e.target.value })} className={inputCls} /></div>
@@ -412,7 +409,7 @@ export default function AccountsPage() {
       {/* Contact form */}
       <Dialog open={!!contactForm} onOpenChange={v => !v && setContactForm(null)}>
         <DialogContent className="bg-bg-secondary border-border-main max-w-lg">
-          <DialogHeader><DialogTitle className="text-sm font-bold">{contactForm?.id ? 'Edit Contact' : 'Add Contact'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-base font-semibold">{contactForm?.id ? 'Edit contact' : 'Add contact'}</DialogTitle></DialogHeader>
           {contactForm && (
             <div className="space-y-3 py-2">
               <div className="grid grid-cols-2 gap-3">

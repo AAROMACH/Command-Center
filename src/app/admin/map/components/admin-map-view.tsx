@@ -249,8 +249,8 @@ export default function AdminMapView({ jobs, selectedJob, onSelectJob, onResolve
         </div>
       )}
       {!geocoding && needsReview.length > 0 && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-amber-400/10 border border-amber-400/40 rounded-lg px-4 py-2 shadow-lg max-w-[90%]">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-accent-gold/10 border border-accent-gold/40 rounded-lg px-4 py-2 shadow-lg max-w-[90%]">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-accent-gold">
             {needsReview.length} location{needsReview.length !== 1 ? 's' : ''} need review — address could not be resolved
           </span>
         </div>

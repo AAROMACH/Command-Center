@@ -79,11 +79,11 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
 
     // Defensive Protocol: Handle referer or activation failures from Google Maps
     window.gm_authFailure = () => {
-      console.warn("Google Maps API Handshake Restricted.");
+      console.warn("Google Maps could not load.");
       toast({
         variant: "destructive",
         title: "Google Maps unavailable",
-        description: "Google Maps API referer or activation restriction active. Please authorize this workstation URL in your Cloud Console.",
+        description: "Address lookup is off on this site. Type the address manually.",
       });
     };
 
@@ -104,7 +104,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
           }
         });
       } catch (e) {
-        console.warn("Places Autocomplete Terminal Restricted.");
+        console.warn("Places autocomplete unavailable.");
       }
     };
 
@@ -115,7 +115,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
       script.async = true;
       script.onload = initAutocomplete;
       script.onerror = () => {
-        console.error("Registry script load failure.");
+        console.error("Maps script failed to load.");
       };
       document.head.appendChild(script);
     } else if (window.google) {
@@ -138,19 +138,19 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
           const place = results[0];
           setFormData(prev => ({ ...prev, location: place.formatted_address }));
           toast({
-            title: "Coordinate Match Verified",
-            description: `Registry updated to verified site: ${place.formatted_address}`,
+            title: "Address verified",
+            description: `Location set to ${place.formatted_address}`,
           });
         } else {
           toast({
             variant: "destructive",
-            title: "Resolution Failed",
-            description: "No verified coordinates found. Verify referer permissions in console.",
+            title: "Address not found",
+            description: "Google could not find that address. Check it and try again.",
           });
         }
       });
     } catch (e) {
-      console.error("Places Service Protocol Error:", e);
+      console.error("Places lookup failed:", e);
     }
   };
 
@@ -195,8 +195,8 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     if (!formData.title || !formData.description || !formData.location || !formData.clientName) {
       toast({
         variant: "destructive",
-        title: "Incomplete Request",
-        description: "Please populate all field-critical parameters.",
+        title: "Missing details",
+        description: "Fill in the required fields first.",
       });
       return;
     }
@@ -213,7 +213,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
       setIsOpen(false);
       handleReset();
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+      toast({ variant: 'destructive', title: 'Save failed', description: e.message });
     }
   };
 
@@ -249,7 +249,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     setIsRegistryOpen(false);
     toast({
         title: "Client selected",
-        description: `${name} has been linked to this dispatch entry.`,
+        description: `${name} is linked to this job.`,
     });
   };
 
@@ -257,8 +257,8 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     setFormData(prev => ({ ...prev, location: site.location }));
     setIsSiteRegistryOpen(false);
     toast({
-        title: "Site Coordinates Applied",
-        description: `Deployment target set to ${site.name}.`,
+        title: "Site selected",
+        description: `Location set to ${site.name}.`,
     });
   };
 
@@ -276,26 +276,26 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
             <DialogHeader className="p-6 pb-2 text-left">
               <div className="flex items-center gap-2 mb-1 text-left">
                 <Wrench className="text-brand-red h-5 w-5" />
-                <DialogTitle className="text-lg font-bold text-text-primary">New Service job</DialogTitle>
+                <DialogTitle className="text-lg font-bold text-text-primary">New job</DialogTitle>
               </div>
-              <DialogDescription className="text-left text-xs font-bold text-text-muted">Manual entry of a new low voltage field job.</DialogDescription>
+              <DialogDescription className="text-left text-xs font-bold text-text-muted">Enter the details for a new field job.</DialogDescription>
             </DialogHeader>
 
             <div className="px-6 py-4 space-y-6 text-left">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Job Title</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Job title</Label>
                   <Input 
-                    placeholder="e.g. Network Closet Cabling" 
+                    placeholder="e.g. Network closet cabling" 
                     value={formData.title}
                     onChange={(e) => setFormData({...formData, title: e.target.value})}
                     className="bg-bg-primary border-border-sub h-10 text-xs font-bold"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Scope of Work</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Scope of work</Label>
                   <Textarea 
-                    placeholder="Primary objective and detailed requirements..." 
+                    placeholder="What needs to be done…" 
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
                     className="bg-bg-primary border-border-sub h-24 text-xs font-medium"
@@ -305,10 +305,10 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client / Entity</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client</Label>
                     <div className="space-y-1.5">
                         <Input 
-                            placeholder="Type client name..." 
+                            placeholder="Client name…" 
                             value={formData.clientName}
                             onChange={(e) => setFormData({...formData, clientName: e.target.value})}
                             className="bg-bg-primary h-10 text-xs font-bold tracking-wide focus:border-brand-red transition-all"
@@ -320,18 +320,18 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                             className="h-6 text-[10px] uppercase font-bold tracking-wider text-brand-red hover:bg-brand-red/10 p-0 flex items-center gap-1.5"
                             onClick={() => setIsRegistryOpen(true)}
                         >
-                            <Search size={12}/> Search Registry
+                            <Search size={12}/> Find client
                         </Button>
                     </div>
                 </div>
 
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Site Location</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Location</Label>
                     <div className="space-y-1.5">
                         <div className="relative group">
                             <Input 
                                 ref={addressInputRef}
-                                placeholder="Full address or coordinates..." 
+                                placeholder="Full address…" 
                                 value={formData.location}
                                 onChange={(e) => setFormData({...formData, location: e.target.value})}
                                 className="bg-bg-primary h-10 text-xs focus:border-brand-red transition-all pr-10"
@@ -341,7 +341,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                                     onClick={resolveAddress}
                                     type="button"
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-brand-red transition-colors"
-                                    title="Verify Coordinates"
+                                    title="Verify address"
                                 >
                                     <SearchCode size={14} />
                                 </button>
@@ -368,7 +368,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Pay Model</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Pay type</Label>
                   <Select value={formData.payType} onValueChange={(val: any) => setFormData({...formData, payType: val})}>
                     <SelectTrigger className="bg-bg-primary h-10 text-xs font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -380,7 +380,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 </div>
                 {formData.payType !== 'blended' && (
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Labor Rate ($)</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Labor rate ($)</Label>
                     <Input 
                       type="number"
                       placeholder="0.00"
@@ -395,7 +395,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
               {formData.payType === 'blended' && (
                 <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50">
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Fixed Base ($)</Label>
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Fixed base ($)</Label>
                         <div className="relative">
                             <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
                             <Input 
@@ -411,7 +411,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Incl. Hours</Label>
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Incl. hours</Label>
                         <Input 
                             type="number"
                             placeholder="0"
@@ -421,7 +421,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Post Rate ($/hr)</Label>
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Then ($/hr)</Label>
                         <div className="relative">
                             <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
                             <Input 
@@ -433,13 +433,13 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                             />
                         </div>
                     </div>
-                    <p className="col-span-3 text-[10px] text-text-muted uppercase font-bold italic tracking-tighter">Fixed amount for specified hours, then hourly rate applies.</p>
+                    <p className="col-span-3 text-[10px] text-text-muted uppercase font-bold ">Fixed amount for the included hours, then the hourly rate applies.</p>
                 </div>
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Schedule Date</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Date</Label>
                   <Input 
                     type="date"
                     value={formData.scheduleDate}
@@ -448,7 +448,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Start Window</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Start time</Label>
                   <Input 
                     placeholder="e.g. 09:00 AM"
                     value={formData.scheduleTime}
@@ -475,7 +475,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                   </Select>
                 </div>
                  <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Service Category</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Service category</Label>
                   <Select value={formData.projectType} onValueChange={(val: any) => setFormData({...formData, projectType: val})}>
                     <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -492,7 +492,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">SLA Response Target (min)</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">SLA response target (min)</Label>
                   <Input
                     type="number"
                     min={0}
@@ -502,7 +502,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">SLA Resolution Target (hr)</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">SLA resolution target (hr)</Label>
                   <Input
                     type="number"
                     min={0}
@@ -529,15 +529,15 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 <DialogHeader className="p-6 pb-2 text-left">
                     <div className="flex items-center gap-2 mb-1">
                         <Users className="text-brand-red h-5 w-5" />
-                        <DialogTitle className="text-lg font-bold text-text-primary text-left">Client Registry</DialogTitle>
+                        <DialogTitle className="text-lg font-bold text-text-primary text-left">Select client</DialogTitle>
                     </div>
-                    <DialogDescription className="text-xs">Select existing client to link to this assignment.</DialogDescription>
+                    <DialogDescription className="text-xs">Pick an existing client for this job.</DialogDescription>
                 </DialogHeader>
                 <div className="px-6 py-2">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                         <Input 
-                            placeholder="Filter registry by name or ID..." 
+                            placeholder="Search clients by name or ID…" 
                             value={registrySearch}
                             onChange={(e) => setRegistrySearch(e.target.value)}
                             className="bg-bg-primary h-10 pl-10 text-xs font-bold"
@@ -559,7 +559,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                                 <div className="flex-1 overflow-hidden">
                                     <p className="text-xs font-bold text-text-primary truncate">{client.clientCompany || client.name}</p>
                                     {client.businessType && (
-                                        <p className="text-[10px] text-accent-gold uppercase font-bold tracking-tighter leading-none mt-0.5">{client.businessType}</p>
+                                        <p className="text-[10px] text-accent-gold uppercase font-bold leading-none mt-0.5">{client.businessType}</p>
                                     )}
                                     <p className="text-[10px] text-text-muted uppercase tracking-wider">ID: {client.id.toUpperCase()}</p>
                                 </div>
@@ -568,13 +568,13 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                         ))}
                         {filteredRegistry.length === 0 && (
                             <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
-                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider italic">No registry matches found</p>
+                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider ">No matching clients</p>
                             </div>
                         )}
                     </div>
                 </ScrollArea>
                 <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                    <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-wider h-9" onClick={() => setIsRegistryOpen(false)}>Close Registry</Button>
+                    <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-wider h-9" onClick={() => setIsRegistryOpen(false)}>Close</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -585,9 +585,9 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                 <DialogHeader className="p-6 pb-2 text-left">
                     <div className="flex items-center gap-2 mb-1">
                         <Navigation className="text-accent-gold h-5 w-5" />
-                        <DialogTitle className="text-lg font-bold text-text-primary">Site Registry</DialogTitle>
+                        <DialogTitle className="text-lg font-bold text-text-primary">Select site</DialogTitle>
                     </div>
-                    <DialogDescription className="text-xs">Select verified coordinates for <span className="text-text-primary font-bold">{formData.clientName}</span>.</DialogDescription>
+                    <DialogDescription className="text-xs">Pick a saved site for <span className="text-text-primary font-bold">{formData.clientName}</span>.</DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="flex-1 px-6 py-4">
                     <div className="space-y-1">
@@ -612,13 +612,13 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                         ))}
                         {(!selectedClient?.managedSites || selectedClient.managedSites.length === 0) && (
                             <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
-                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider italic">No verified sites on record for this client</p>
+                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider ">No saved sites for this client</p>
                             </div>
                         )}
                     </div>
                 </ScrollArea>
                 <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                    <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-wider h-9" onClick={() => setIsSiteRegistryOpen(false)}>Close Terminal</Button>
+                    <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-wider h-9" onClick={() => setIsSiteRegistryOpen(false)}>Close</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

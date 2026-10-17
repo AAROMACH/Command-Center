@@ -11,8 +11,12 @@ import { NewProjectDialog } from '@/app/admin/projects/components/new-project-di
 import type { Project } from '@/lib/types';
 import { Briefcase, Search, LayoutList, LayoutGrid, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { ProjectsClient } from './components/projects-client';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { PageHeader } from '@/components/page-header';
+import { PageLoading } from '@/components/empty-state';
+import { SearchField } from '@/components/search-field';
 
 export default function TechProjectsPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
@@ -70,84 +74,65 @@ export default function TechProjectsPage() {
     const completedProjects = techProjects.filter(p => p.status === 'completed');
 
     if (!currentTechId) {
-        return (
-            <div className="flex h-[400px] items-center justify-center">
-                <div className="text-center space-y-4">
-                    <div className="h-8 w-8 border-4 border-brand-red border-t-transparent rounded-full animate-spin mx-auto" />
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Loading...</p>
-                </div>
-            </div>
-        );
+        return <PageLoading label="Loading projects…" />;
     }
 
     return (
         <div className="space-y-6">
-            <header className="page-header text-left">
-                <div className="text-left">
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <Briefcase size={12} />
-                        Strategic Deployments
-                    </p>
-                    <h1 className="page-title">{isPM && scope === 'all' ? 'All Projects' : 'My Projects'}</h1>
-                    <p className="page-subtitle text-left">{isPM ? 'Create, staff and run every project.' : 'Manage your large-scale, multi-day deployments.'}</p>
-                </div>
-                <div className="page-header-right">
+            <PageHeader
+                eyebrow="Projects"
+                icon={Briefcase}
+                title={isPM && scope === 'all' ? 'All projects' : 'My projects'}
+                subtitle={isPM ? 'Create, staff and run every project.' : 'Your multi-day projects.'}
+                actions={<>
                     {isPM && (
                         <>
-                            <div className="flex items-center border border-border-main rounded-md overflow-hidden h-9">
-                                {(['all', 'mine'] as const).map((s, i) => (
-                                    <button key={s} onClick={() => setScope(s)}
-                                        className={`px-3 h-full text-[10px] font-bold uppercase tracking-widest transition-colors ${i ? 'border-l border-border-main' : ''} ${scope === s ? 'bg-brand-red text-white' : 'bg-bg-secondary text-text-muted hover:text-text-primary'}`}>
+                            <div className="tabs !mb-0 flex-nowrap" role="tablist" aria-label="Scope">
+                                {(['all', 'mine'] as const).map(s => (
+                                    <button key={s} type="button" role="tab" aria-selected={scope === s} onClick={() => setScope(s)}
+                                        className={cn('tab', scope === s && 'active')}>
                                         {s === 'all' ? 'All' : 'Mine'}
                                     </button>
                                 ))}
                             </div>
-                            <Button size="sm" className="h-9 text-[10px]" onClick={() => setNewOpen(true)}>
-                                <Plus size={13} className="mr-1.5" /> New Project
+                            <Button className="h-10 sm:h-9" onClick={() => setNewOpen(true)}>
+                                <Plus size={14} className="mr-1.5" /> New project
                             </Button>
                         </>
                     )}
-                    <div className="search-wrap">
-                        <Search />
-                        <input
-                            className="search-input !w-full md:!w-[250px]"
-                            placeholder="Search projects..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                    <div className="flex items-center border border-border-main rounded-md overflow-hidden h-9">
-                        <button onClick={() => setViewMode('grid')} className={`px-2.5 h-full flex items-center transition-colors ${viewMode === 'grid' ? 'bg-brand-red text-white' : 'bg-bg-secondary text-text-muted hover:text-text-primary'}`}>
-                            <LayoutGrid size={13} />
+                    <SearchField value={searchQuery} onChange={setSearchQuery} placeholder="Search projects" className="w-full sm:w-[250px]" />
+                    <div className="flex items-center border border-border-main rounded-md overflow-hidden h-10 sm:h-9">
+                        <button onClick={() => setViewMode('grid')} aria-label="Grid view" className={`w-10 h-full flex items-center justify-center transition-colors ${viewMode === 'grid' ? 'bg-brand-red text-white' : 'bg-bg-secondary text-text-muted hover:text-text-primary'}`}>
+                            <LayoutGrid size={14} />
                         </button>
-                        <button onClick={() => setViewMode('list')} className={`px-2.5 h-full flex items-center border-l border-border-main transition-colors ${viewMode === 'list' ? 'bg-brand-red text-white' : 'bg-bg-secondary text-text-muted hover:text-text-primary'}`}>
-                            <LayoutList size={13} />
+                        <button onClick={() => setViewMode('list')} aria-label="List view" className={`w-10 h-full flex items-center justify-center border-l border-border-main transition-colors ${viewMode === 'list' ? 'bg-brand-red text-white' : 'bg-bg-secondary text-text-muted hover:text-text-primary'}`}>
+                            <LayoutList size={14} />
                         </button>
                     </div>
-                </div>
-            </header>
+                </>}
+            />
 
             <Tabs defaultValue="active" className="w-full">
-                <TabsList className="tabs !mb-6">
-                    <TabsTrigger value="active" className="tab">
-                        Active Projects <span className="tab-count">({activeProjects.length})</span>
+                <TabsList className="tabs !mb-4 h-auto justify-start bg-transparent p-0">
+                    <TabsTrigger value="active" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
+                        Active <span className="tab-count">({activeProjects.length})</span>
                     </TabsTrigger>
-                    <TabsTrigger value="on-hold" className="tab">
-                        On Hold <span className="tab-count">({onHoldProjects.length})</span>
+                    <TabsTrigger value="on-hold" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
+                        On hold <span className="tab-count">({onHoldProjects.length})</span>
                     </TabsTrigger>
-                    <TabsTrigger value="completed" className="tab">
+                    <TabsTrigger value="completed" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
                         Completed <span className="tab-count">({completedProjects.length})</span>
                     </TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="active" className="mt-0">
-                    <ProjectsClient projects={activeProjects} technicians={technicians} viewMode={viewMode} />
+                    <ProjectsClient projects={activeProjects} technicians={technicians} viewMode={viewMode} filtered={!!searchQuery} />
                 </TabsContent>
                 <TabsContent value="on-hold" className="mt-0">
-                    <ProjectsClient projects={onHoldProjects} technicians={technicians} viewMode={viewMode} />
+                    <ProjectsClient projects={onHoldProjects} technicians={technicians} viewMode={viewMode} filtered={!!searchQuery} />
                 </TabsContent>
                 <TabsContent value="completed" className="mt-0">
-                    <ProjectsClient projects={completedProjects} technicians={technicians} viewMode={viewMode} />
+                    <ProjectsClient projects={completedProjects} technicians={technicians} viewMode={viewMode} filtered={!!searchQuery} />
                 </TabsContent>
             </Tabs>
             {isPM && <NewProjectDialog isOpen={newOpen} setIsOpen={setNewOpen} onSave={handleNewProject} />}

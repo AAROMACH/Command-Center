@@ -200,10 +200,10 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
               <TrendingUp size={18} className="text-brand-red" />
             </div>
             <div className="min-w-0 flex-1">
-              <SheetTitle className="text-sm font-bold text-text-primary leading-tight">
+              <SheetTitle className="text-base font-semibold text-text-primary leading-tight">
                 {lead.companyName}
               </SheetTitle>
-              <SheetDescription className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">
+              <SheetDescription className="text-[12px] text-text-muted mt-0.5">
                 {[lead.contactName, lead.contactTitle].filter(Boolean).join(', ') || 'No contact'}
                 {lead.industry ? ` · ${lead.industry}` : ''}
               </SheetDescription>
@@ -215,7 +215,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
               ● {STAGE_LABELS[lead.stage]}
             </span>
             {isStale(lead) && (
-              <Badge className="text-[10px] h-5 bg-amber-400/10 text-amber-400 border border-amber-400/20">
+              <Badge className="text-[10px] h-5 bg-accent-gold/10 text-accent-gold border border-accent-gold/20">
                 <AlertTriangle size={9} className="mr-1" /> Stale {touchDays}d
               </Badge>
             )}
@@ -304,13 +304,13 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
                 </a>
               )}
               {!lead.contactPhone && !lead.contactEmail && !lead.address && (
-                <p className="text-[10px] text-text-muted uppercase tracking-wider">No contact info — click Edit to add.</p>
+                <p className="text-[12px] text-text-muted">No contact info — click Edit to add.</p>
               )}
             </div>
             {(lead.serviceLines?.length ?? 0) > 0 && (
               <div className="flex flex-wrap gap-1 pt-1">
                 {lead.serviceLines!.map(s => (
-                  <Badge key={s} className="text-[10px] h-5 bg-bg-tertiary border-border-sub text-text-secondary">{s}</Badge>
+                  <Badge key={s} className="text-[12px] h-5 bg-bg-tertiary border-border-sub text-text-secondary">{s}</Badge>
                 ))}
               </div>
             )}
@@ -326,7 +326,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
                 </Button>
               </div>
               {contacts.filter(c => c.companyId === lead.companyId && c.id !== lead.contactId).length === 0 ? (
-                <p className="text-[10px] text-text-muted uppercase tracking-wider">No other contacts — add the IT lead, facilities, or AP on the account.</p>
+                <p className="text-[12px] text-text-muted">No other contacts — add the IT lead, facilities, or AP on the account.</p>
               ) : contacts.filter(c => c.companyId === lead.companyId && c.id !== lead.contactId).map(c => (
                 <div key={c.id} className="flex items-center gap-2 text-[10px]">
                   <span className="font-bold text-text-primary">{c.name}</span>
@@ -354,7 +354,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
               <div className="flex items-center gap-2">
                 <Calendar size={11} className={followUpOverdue ? 'text-brand-red' : 'text-text-muted'} />
                 <span className={cn('text-[10px] font-bold uppercase tracking-wider', followUpOverdue ? 'text-brand-red' : 'text-text-muted')}>
-                  Follow-up{followUpOverdue ? ' (overdue)' : ''}
+                  Follow-up{followUpOverdue ? '(overdue)' : ''}
                 </span>
                 <Input
                   type="date"
@@ -439,10 +439,10 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
                     className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border-sub bg-bg-primary hover:border-border-main text-left">
                     <Footprints size={12} className="text-brand-red shrink-0" />
                     <span className="flex-1 min-w-0">
-                      <span className="block text-[11px] font-bold text-text-primary truncate">{s.title}</span>
+                      <span className="block text-[12px] font-bold text-text-primary truncate">{s.title}</span>
                       <span className="block text-[11px] text-text-muted">{[s.surveyDate, s.surveyedBy, `${totalDrops(s)} drops`, `${s.photos.length} photos`].filter(Boolean).join(' · ')}</span>
                     </span>
-                    <Badge className={cn('text-[10px] h-5 border', s.status === 'complete' ? 'bg-text-green/10 text-text-green border-text-green/20' : 'bg-amber-400/10 text-amber-400 border-amber-400/20')}>{s.status}</Badge>
+                    <Badge className={cn('text-[10px] h-5 border', s.status === 'complete' ? 'bg-text-green/10 text-text-green border-text-green/20' : 'bg-accent-gold/10 text-accent-gold border-accent-gold/20')}>{s.status}</Badge>
                   </button>
                 ))}
               </div>
@@ -463,14 +463,14 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border-sub bg-bg-primary hover:border-border-main text-left">
                 <FileText size={12} className="text-brand-red shrink-0" />
                 <span className="flex-1 min-w-0">
-                  <span className="block text-[11px] font-bold text-text-primary truncate">{q.title}</span>
+                  <span className="block text-[12px] font-bold text-text-primary truncate">{q.title}</span>
                   <span className="block text-[11px] text-text-muted font-mono">{q.quoteNumber}</span>
                 </span>
                 <span className="text-[11px] font-bold text-text-green tabular-nums">{formatMoney(q.total || 0)}</span>
                 <Badge className={cn('text-[10px] h-5 border',
                   q.status === 'approved' || q.status.startsWith('converted') ? 'bg-text-green/10 text-text-green border-text-green/20'
                   : q.status === 'rejected' || q.status === 'expired' ? 'bg-text-red/10 text-text-red border-text-red/20'
-                  : 'bg-amber-400/10 text-amber-400 border-amber-400/20')}>
+                  : 'bg-accent-gold/10 text-accent-gold border-accent-gold/20')}>
                   {q.status.replace(/_/g, ' ')}
                 </Badge>
               </button>
@@ -555,7 +555,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
           <div className="space-y-3">
             <p className={sectionLabel}>Activity Timeline ({leadActivities.length})</p>
             {leadActivities.length === 0 ? (
-              <p className="text-[10px] text-text-muted uppercase tracking-wider">No activity logged yet.</p>
+              <p className="text-[12px] text-text-muted">No activity logged yet.</p>
             ) : (
               <div className="space-y-3">
                 {leadActivities.map((activity) => {
@@ -568,12 +568,12 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{activity.type.replace('_', ' ')}</span>
-                          {activity.outcome && <span className="text-[11px] font-bold text-blue-400">{activity.outcome}</span>}
+                          {activity.outcome && <span className="text-[11px] font-bold text-brand-blue">{activity.outcome}</span>}
                           <span className="text-[11px] text-text-muted flex items-center gap-1">
                             <Clock size={9} /> {safeFormat(activity.createdAt, 'MMM d, h:mm a')}
                           </span>
                         </div>
-                        <p className="text-[11px] text-text-secondary mt-0.5">{activity.description}</p>
+                        <p className="text-[12px] text-text-secondary mt-0.5">{activity.description}</p>
                       </div>
                     </div>
                   );
@@ -597,7 +597,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
         <Dialog open={isFullDetailOpen} onOpenChange={setIsFullDetailOpen}>
           <DialogContent className="bg-bg-elevated border-border-main sm:max-w-2xl max-h-[85vh] flex flex-col p-0">
             <DialogHeader className="p-6 pb-4 border-b border-border-sub">
-              <DialogTitle className="text-[13px] font-bold flex items-center gap-2">
+              <DialogTitle className="text-base font-semibold flex items-center gap-2">
                 <TrendingUp size={14} className="text-brand-red" /> {lead.companyName}
               </DialogTitle>
               <DialogDescription className="text-[10px] font-bold text-text-muted">
@@ -633,7 +633,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
                   ] as [string, string | undefined][]).filter(([, v]) => v).map(([label, value]) => (
                     <div key={label}>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{label}</p>
-                      <p className="text-[11px] text-text-primary mt-0.5 break-words">{value}</p>
+                      <p className="text-[12px] text-text-primary mt-0.5 break-words">{value}</p>
                     </div>
                   ))}
                 </div>
@@ -641,7 +641,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
                 {lead.notes && (
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5">Notes / Extracted Text</p>
-                    <p className="text-[11px] text-text-secondary leading-relaxed whitespace-pre-wrap rounded-lg border border-border-sub bg-bg-secondary p-3">{lead.notes}</p>
+                    <p className="text-[12px] text-text-secondary leading-relaxed whitespace-pre-wrap rounded-lg border border-border-sub bg-bg-secondary p-3">{lead.notes}</p>
                   </div>
                 )}
 
@@ -650,7 +650,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
                     <Paperclip size={9} /> Original Files ({lead.attachments?.length ?? 0})
                   </p>
                   {(lead.attachments?.length ?? 0) === 0 ? (
-                    <p className="text-[10px] text-text-muted uppercase tracking-wider">No files attached to this lead.</p>
+                    <p className="text-[12px] text-text-muted">No files attached to this lead.</p>
                   ) : (
                     <div className="space-y-1.5">
                       {lead.attachments!.map((att, i) => (
@@ -658,7 +658,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
                           className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border-sub bg-bg-secondary hover:border-brand-red/40 transition-colors group">
                           <FileText size={13} className="text-brand-red shrink-0" />
                           <span className="flex-1 min-w-0">
-                            <span className="block text-[11px] font-bold text-text-primary truncate group-hover:text-brand-red transition-colors">{att.fileName}</span>
+                            <span className="block text-[12px] font-bold text-text-primary truncate group-hover:text-brand-red transition-colors">{att.fileName}</span>
                             <span className="block text-[11px] text-text-muted">
                               {[att.contentType, att.sizeBytes ? `${(att.sizeBytes / 1024).toFixed(0)} KB` : null].filter(Boolean).join(' · ')}
                             </span>

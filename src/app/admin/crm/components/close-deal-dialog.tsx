@@ -82,9 +82,9 @@ export function CloseDealDialog({ lead, outcome, currentUserId, quotes = [], sur
     <Dialog open onOpenChange={v => !v && onClose()}>
       <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-[13px] font-bold flex items-center gap-2">
+          <DialogTitle className="text-base font-semibold flex items-center gap-2">
             {won ? <CheckCircle2 size={14} className="text-text-green" /> : <XCircle size={14} className="text-text-red" />}
-            {won ? 'Mark Won' : 'Mark Lost'}
+            {won ? 'Mark won' : 'Mark lost'}
           </DialogTitle>
           <DialogDescription className="text-[10px] font-bold text-text-muted">{lead.companyName}</DialogDescription>
         </DialogHeader>
@@ -126,7 +126,7 @@ export function CloseDealDialog({ lead, outcome, currentUserId, quotes = [], sur
             className={won ? 'bg-text-green hover:bg-text-green/90 text-white text-[10px] font-bold' : 'bg-text-red hover:bg-text-red/90 text-white text-[10px] font-bold'}
           >
             {saving && <Loader2 size={12} className="animate-spin mr-1.5" />}
-            {won ? 'Mark Won' : 'Mark Lost'}
+            {won ? 'Mark won' : 'Mark lost'}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/page-header';
 import { cn } from '@/lib/utils';
 import { parseLocalDate } from '@/lib/jobs';
 
@@ -81,29 +82,24 @@ export default function CompanyPlanningPage() {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
-            <header className="page-header">
-                <div>
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <Flag size={12} /> Internal Operations
-                    </p>
-                    <h1 className="page-title">Company Planning</h1>
-                    <p className="page-subtitle text-xs font-bold text-text-muted mt-1">
-                        Strategic goals, roadmap milestones, and recurring operational tasks.
-                    </p>
-                </div>
-            </header>
+            <PageHeader
+                eyebrow="Company"
+                icon={Flag}
+                title="Company planning"
+                subtitle="Goals, roadmap milestones and recurring company tasks."
+            />
 
             <Tabs defaultValue="goals" className="w-full">
-                <TabsList className="border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-start mb-1">
+                <TabsList className="tabs mb-4">
                     {[
                         { value: 'goals', label: 'Goals', count: goals.length },
                         { value: 'roadmap', label: 'Roadmap', count: milestones.length },
-                        { value: 'recurring', label: 'Recurring Tasks', count: recurringTasks.length },
+                        { value: 'recurring', label: 'Recurring tasks', count: recurringTasks.length },
                     ].map(t => (
-                        <TabsTrigger key={t.value} value={t.value} className="tab-trigger-plans flex items-center gap-2">
+                        <TabsTrigger key={t.value} value={t.value} className="tab flex items-center gap-2">
                             {t.label}
                             {t.count > 0 && (
-                                <span className="text-[10px] font-bold bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">{t.count}</span>
+                                <span className="tab-count">({t.count})</span>
                             )}
                         </TabsTrigger>
                     ))}
@@ -123,7 +119,7 @@ export default function CompanyPlanningPage() {
                         {goals.map(g => {
                             const statusColor =
                                 g.status === 'On Track' ? 'bg-text-green/10 text-text-green border-text-green/20' :
-                                g.status === 'At Risk' ? 'bg-amber-400/10 text-amber-400 border-amber-400/20' :
+                                g.status === 'At Risk' ? 'bg-accent-gold/10 text-accent-gold border-accent-gold/20' :
                                 'bg-brand-red/10 text-brand-red border-brand-red/20';
                             return (
                                 <div key={g.id} className="flex items-center justify-between p-3 rounded-lg border border-border-sub bg-bg-secondary">
@@ -181,7 +177,7 @@ export default function CompanyPlanningPage() {
                                 ) : qMilestones.map(m => {
                                     const statusColor =
                                         m.status === 'Completed' ? 'text-text-green' :
-                                        m.status === 'In Progress' ? 'text-amber-400' :
+                                        m.status === 'In Progress' ? 'text-accent-gold' :
                                         'text-text-muted';
                                     return (
                                         <div key={m.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border-sub bg-bg-secondary mb-2">
@@ -266,7 +262,7 @@ export default function CompanyPlanningPage() {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Goal Title</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Goal title</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={goalForm.title} onChange={e => setGoalForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Expand to 3 new markets" />
                         </div>
                         <div className="space-y-1">
@@ -274,7 +270,7 @@ export default function CompanyPlanningPage() {
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={goalForm.owner} onChange={e => setGoalForm(p => ({ ...p, owner: e.target.value }))} placeholder="Name or department" />
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Due Date</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Due date</Label>
                             <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={goalForm.dueDate} onChange={e => setGoalForm(p => ({ ...p, dueDate: e.target.value }))} />
                         </div>
                         <div className="space-y-1">
@@ -319,7 +315,7 @@ export default function CompanyPlanningPage() {
                             </Select>
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Target Date</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Target date</Label>
                             <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={milestoneForm.targetDate} onChange={e => setMilestoneForm(p => ({ ...p, targetDate: e.target.value }))} />
                         </div>
                         <div className="space-y-1">
@@ -346,7 +342,7 @@ export default function CompanyPlanningPage() {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Task Title</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Task title</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={taskForm.title} onChange={e => setTaskForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Weekly team standup" />
                         </div>
                         <div className="space-y-1">
@@ -361,7 +357,7 @@ export default function CompanyPlanningPage() {
                             </Select>
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Assigned To</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Assigned to</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={taskForm.assignedTo} onChange={e => setTaskForm(p => ({ ...p, assignedTo: e.target.value }))} placeholder="Name or team" />
                         </div>
                     </div>

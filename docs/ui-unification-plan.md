@@ -238,3 +238,23 @@ behavior changes; one portal per PR so review stays manageable.
 5. **Dark mode:** keep both themes first-class (recommended), or light-first?
 6. **Order:** Tech portal first (recommended — it's used on phones daily), or
    Admin first?
+
+## Status — all phases done (Oct 17, 2026)
+
+- **Phases 0–5 are complete** across the admin, tech, client, sales, public and login pages.
+- **`npm run lint:ui` passes with 0 issues** (the baseline was 315). Use `// ui-check-ignore` only for stored text that other code parses, or for icon names.
+- **List controls:**
+  - Admin Assignments and Requests have select-all ("Select all N matching") with bulk CSV; Assignments also has bulk archive.
+  - History tabs sort by clicking column headers.
+  - Quotes, Invoices (admin and client), Directory, Assets, CRM, Payroll, Client Billing, Tickets and Sites now have search, sort, filters and CSV where they apply.
+  - Pagers reset whenever any control changes.
+- **Shared fixes:**
+  - Tabs: `TabsTrigger` drops its default active style when a page uses `.tab`, `.tab-underline` or `.detail-tab`, so pill tabs highlight everywhere.
+  - Job titles are no longer forced to uppercase.
+  - The tech calendar reads MM-DD-YYYY dates.
+  - CRM stage colours come from theme tokens.
+- **Still open, because they need real data:**
+  - The "Visa ending in 4242" placeholder on the client profile.
+  - Hard-coded documents on the client site page.
+  - Inert download buttons on client billing.
+  - Inert "Call/Message client" buttons.

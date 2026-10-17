@@ -347,7 +347,7 @@ export function AppSidebar() {
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted/70 group-data-[collapsible=icon]:hidden">
                     {group.label}
                   </p>
-                  <div className="h-px bg-[#222] mt-1 group-data-[collapsible=icon]:hidden" />
+                  <div className="h-px bg-border-main mt-1 group-data-[collapsible=icon]:hidden" />
                 </div>
               )}
               <SidebarMenu>
@@ -370,7 +370,7 @@ export function AppSidebar() {
                           "h-9 text-[13px] font-medium rounded-md transition-colors",
                           active
                             ? "!bg-brand-red/10 !text-brand-red"
-                            : "text-[#888] hover:!bg-bg-tertiary hover:!text-text-primary"
+                            : "text-text-muted hover:!bg-bg-tertiary hover:!text-text-primary"
                         )}
                       >
                         <Link href={item.href}>

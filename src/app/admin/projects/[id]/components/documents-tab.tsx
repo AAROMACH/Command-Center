@@ -147,7 +147,7 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
     const handleDeleteDoc = async (id: string) => {
         try {
             await deleteDoc(doc(db, 'projectDocuments', id));
-            toast({ variant: "destructive", title: "Asset Deleted", description: "Document deleted." });
+            toast({ variant: "destructive", title: "File deleted", description: "Document deleted." });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Deletion Failed', description: e.message });
         }
@@ -170,7 +170,7 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
         
         toast({
             title: "Download Executed",
-            description: `${pendingDownload.name} successfully transmitted to device.`,
+            description: `${pendingDownload.name} downloaded.`,
         });
         
         setIsConfirmDownloadOpen(false);
@@ -209,7 +209,7 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
                                     <div className="min-w-0 text-left">
                                         <div className="text-[11px] font-bold text-text-primary truncate">{doc.name}</div>
                                         {hasAlias && (
-                                            <div className="text-[10px] text-text-muted font-medium truncate opacity-60 italic">{doc.originalName}</div>
+                                            <div className="text-[10px] text-text-muted font-medium truncate opacity-60 ">{doc.originalName}</div>
                                         )}
                                         <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-wider mt-0.5">
                                             <span>{doc.size}</span>
@@ -226,7 +226,7 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
                         )
                     }) : (
                         <div className="p-3 text-center">
-                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider italic">Registry Clear: No pre-site documents</p>
+                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider ">No pre-site documents yet</p>
                         </div>
                     )}
                 </div>
@@ -257,13 +257,13 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-2 mb-1">
                             <Type className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold">Asset Identification</DialogTitle>
+                            <DialogTitle className="text-lg font-bold">Name this file</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs font-bold text-text-muted">Optionally provide a descriptive identifier for this registry asset.</DialogDescription>
+                        <DialogDescription className="text-xs font-bold text-text-muted">Optionally give this file a descriptive name.</DialogDescription>
                     </DialogHeader>
                     <div className="p-6 space-y-4 text-left">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold text-text-muted ml-1">Asset Alias (Optional)</Label>
+                            <Label className="text-[10px] font-bold text-text-muted ml-1">File name (optional)</Label>
                             <Input 
                                 placeholder="e.g. Main Lobby Wiring Diagram" 
                                 value={customName}
@@ -281,7 +281,7 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
                         <Button variant="outline" onClick={() => setIsNamingOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider h-11">Discard</Button>
                         <Button onClick={handleExecuteUpload} disabled={isUploading} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider h-11 text-white">
                             {isUploading ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Upload size={16} className="mr-2" />}
-                            {isUploading ? 'Uploading...' : 'Commit Asset'}
+                            {isUploading ? 'Uploading...' : 'Upload'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -293,14 +293,14 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
                     <AlertDialogHeader className="text-left">
                         <AlertDialogTitle className="font-bold flex items-center gap-2">
                             <ShieldCheck className="text-text-green" size={18}/>
-                            Authorize Asset Transfer
+                            Download file?
                         </AlertDialogTitle>
                         <AlertDialogDescription className="text-xs leading-relaxed font-medium">
-                            Operational Action: This will transmit <span className="text-text-primary font-bold">{pendingDownload?.name}</span> from the project registry to your local device storage.
+                            This will download <span className="text-text-primary font-bold">{pendingDownload?.name}</span> to this device.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="gap-3">
-                        <AlertDialogCancel className="text-[10px] font-bold uppercase tracking-wider h-10 px-6">Abort</AlertDialogCancel>
+                        <AlertDialogCancel className="text-[10px] font-bold uppercase tracking-wider h-10 px-6">Cancel</AlertDialogCancel>
                         <AlertDialogAction onClick={executeDownload} className="bg-brand-red hover:bg-brand-red-hover text-[10px] font-bold uppercase tracking-wider h-10 px-8 text-white">
                             <Download size={14} className="mr-2"/> Confirm Download
                         </AlertDialogAction>
@@ -378,7 +378,7 @@ function MilestoneDocuments({
                                                             <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-1">
                                                                 <p className="text-[10px] text-white font-bold truncate">{photo.name}</p>
                                                                 {hasAlias && (
-                                                                    <p className="text-[10px] text-white/60 truncate italic leading-none">{photo.originalName}</p>
+                                                                    <p className="text-[10px] text-white/60 truncate leading-none">{photo.originalName}</p>
                                                                 )}
                                                                 <p className="text-[10px] text-text-muted flex items-center gap-0.5 mt-0.5"><User size={6}/> {photo.uploader}</p>
                                                                 <div className="flex gap-1 mt-0.5">
@@ -392,7 +392,7 @@ function MilestoneDocuments({
                                             </div>
                                         ) : (
                                             <div className="p-1.5 text-center border border-dashed border-border-sub rounded bg-bg-primary/20">
-                                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider italic">Awaiting evidence</p>
+                                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider ">Awaiting evidence</p>
                                             </div>
                                         )}
                                     </div>
@@ -406,7 +406,7 @@ function MilestoneDocuments({
 
                 <div className="pt-1.5 border-t border-border-sub/30">
                     <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Phase Assets</label>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Phase files</label>
                         <label className="cursor-pointer">
                             <Input 
                                 type="file" 
@@ -430,7 +430,7 @@ function MilestoneDocuments({
                                         <div className="min-w-0">
                                             <div className="text-[11px] font-bold text-text-primary truncate">{doc.name}</div>
                                             {hasAlias && (
-                                                <div className="text-[10px] text-text-muted truncate opacity-60 italic leading-none">{doc.originalName}</div>
+                                                <div className="text-[10px] text-text-muted truncate opacity-60 leading-none">{doc.originalName}</div>
                                             )}
                                             <div className="text-[10px] text-text-muted font-bold flex items-center gap-1.5 mt-0.5">
                                                 <span>{doc.size}</span>
@@ -446,7 +446,7 @@ function MilestoneDocuments({
                                 </div>
                             )
                         }) : (
-                             <p className="text-[10px] text-text-muted uppercase font-bold italic tracking-wider mb-1 px-1">No phase assets</p>
+                             <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider mb-1 px-1">No phase assets</p>
                         )}
                     </div>
                 </div>

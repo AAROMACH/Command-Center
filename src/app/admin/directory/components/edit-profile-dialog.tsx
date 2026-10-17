@@ -48,7 +48,8 @@ const ROLE_ICONS: Partial<Record<AppRole, typeof User>> = Object.fromEntries(
 
 const PORTAL_GROUPS: { portal: SubrolePortal; label: string; icon: typeof User; accent: string }[] = [
   { portal: 'admin', label: 'Admin Subroles', icon: ShieldCheck, accent: 'text-brand-red' },
-  { portal: 'sales', label: 'External Access', icon: Handshake, accent: 'text-amber-400' },
+  // ui-check-ignore: Handshake is the icon name
+  { portal: 'sales', label: 'External Access', icon: Handshake, accent: 'text-accent-gold' },
   { portal: 'tech', label: 'Tech Subroles', icon: Wrench, accent: 'text-brand-blue' },
   { portal: 'client', label: 'Client Subroles', icon: Building2, accent: 'text-brand-emerald' },
 ];
@@ -61,7 +62,7 @@ type AccountKinds = { tech: boolean; client: boolean; personnel: boolean };
 const SECTIONS = [
   { id: 'basic', label: 'Basic Info', icon: User, show: (_: AccountKinds) => true },
   { id: 'status', label: 'Status & Access', icon: Shield, show: (_: AccountKinds) => true },
-  { id: 'work', label: 'Work Info', icon: Briefcase, show: (k: AccountKinds) => k.personnel },
+  { id: 'work', label: 'Work info', icon: Briefcase, show: (k: AccountKinds) => k.personnel },
   { id: 'pay', label: 'Pay & Tax', icon: Landmark, show: (k: AccountKinds) => k.tech },
   { id: 'emergency', label: 'Emergency', icon: Heart, show: (k: AccountKinds) => k.personnel },
   { id: 'client', label: 'Billing & Tax', icon: Building2, show: (k: AccountKinds) => k.client },
@@ -377,9 +378,9 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
     <Dialog open={open} onOpenChange={v => { if (!v && !saving) onClose(); }}>
       <DialogContent className="bg-bg-elevated border-border-main max-w-3xl p-0 gap-0 overflow-hidden max-h-[90vh] flex flex-col">
         <DialogHeader className="px-5 pt-5 pb-4 border-b border-border-sub shrink-0">
-          <DialogTitle className="text-[13px] font-bold flex items-center gap-2">
+          <DialogTitle className="text-base font-semibold flex items-center gap-2">
             <User size={14} className="text-brand-red" />
-            Edit Profile — {person.name}
+            Edit profile — {person.name}
           </DialogTitle>
         </DialogHeader>
 
@@ -443,7 +444,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                         <Input className={cn(inputCls, 'pl-7')} value={form.email} onChange={e => set('email', e.target.value)} placeholder="user@example.com" />
                       </div>
                       {form.email.trim() !== (person.email || '') && (
-                        <p className="text-[11px] text-amber-400 normal-case tracking-normal">Contact email only — this does not change the address they sign in with.</p>
+                        <p className="text-[11px] text-accent-gold normal-case tracking-normal">Contact email only — this does not change the address they sign in with.</p>
                       )}
                     </div>
                     <div className="space-y-1">
@@ -485,9 +486,9 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                       <Select value={form.approvalStatus} onValueChange={v => set('approvalStatus', v as FormState['approvalStatus'])}>
                         <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-bg-elevated border-border-main">
-                          <SelectItem value="pending" className="text-[11px]">Pending</SelectItem>
-                          <SelectItem value="approved" className="text-[11px]">Approved</SelectItem>
-                          <SelectItem value="denied" className="text-[11px]">Denied</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="denied">Denied</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -497,7 +498,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                         <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-bg-elevated border-border-main">
                           {accountStatusOptions.map(s => (
-                            <SelectItem key={s} value={s} className="text-[11px]">{s.replace(/_/g, ' ')}</SelectItem>
+                            <SelectItem key={s} value={s}>{s.replace(/_/g, ' ')}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -511,7 +512,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                         Selecting a subrole unlocks its portal and applies its preset permissions. Removing the last subrole in a portal removes access to that portal.
                       </p>
                       {!canAccess && (
-                        <p className="text-[11px] text-amber-400 normal-case tracking-normal mt-1">Only a super admin can change subroles.</p>
+                        <p className="text-[11px] text-accent-gold normal-case tracking-normal mt-1">Only a super admin can change subroles.</p>
                       )}
                     </div>
 
@@ -590,7 +591,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                     >
                       <SelectTrigger className={inputCls}><SelectValue placeholder="Auto (first available)" /></SelectTrigger>
                       <SelectContent className="bg-bg-elevated border-border-main">
-                        <SelectItem value="__none__" className="text-[11px]">Auto (first available)</SelectItem>
+                        <SelectItem value="__none__">Auto (first available)</SelectItem>
                         {(['admin', 'sales', 'tech', 'client'] as SubrolePortal[])
                           .filter(portal => form.roles.some(r => SUBROLE_DEFINITIONS[r]?.portal === portal))
                           .map(portal => (
@@ -598,7 +599,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                           ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-[10px] text-text-muted uppercase tracking-wider">Only unlocked portals can be chosen. Primary Portal does not grant access.</p>
+                    <p className="text-[12px] text-text-muted">Only unlocked portals can be chosen. Primary Portal does not grant access.</p>
                   </div>
                 </div>
               </div>
@@ -681,7 +682,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
               <div>
                 <h3 className={sectionHeading}><Landmark size={11} /> Pay &amp; Tax</h3>
                 {!canPay && (
-                  <p className="text-[11px] text-amber-400 mb-3">Only payroll admins and super admins can change pay and tax details.</p>
+                  <p className="text-[11px] text-accent-gold mb-3">Only payroll admins and super admins can change pay and tax details.</p>
                 )}
                 <fieldset disabled={!canPay} className="space-y-4 disabled:opacity-60">
                   <div className="grid grid-cols-2 gap-3">
@@ -690,9 +691,9 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                       <Select value={form.workerType || '__unset__'} onValueChange={v => set('workerType', v === '__unset__' ? '' : v)}>
                         <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-bg-elevated border-border-main">
-                          <SelectItem value="__unset__" className="text-[11px]">Not set</SelectItem>
+                          <SelectItem value="__unset__">Not set</SelectItem>
                           {Object.entries(WORKER_TYPE_LABELS).map(([k, v]) => (
-                            <SelectItem key={k} value={k} className="text-[11px]">{v}</SelectItem>
+                            <SelectItem key={k} value={k}>{v}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -716,9 +717,9 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                         <Select value={form.payoutMethod || '__unset__'} onValueChange={v => set('payoutMethod', v === '__unset__' ? '' : v)}>
                           <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                           <SelectContent className="bg-bg-elevated border-border-main">
-                            <SelectItem value="__unset__" className="text-[11px]">Not on file</SelectItem>
+                            <SelectItem value="__unset__">Not on file</SelectItem>
                             {(PAYOUT_METHODS.includes(form.payoutMethod) || !form.payoutMethod ? PAYOUT_METHODS : [form.payoutMethod, ...PAYOUT_METHODS]).map(m => (
-                              <SelectItem key={m} value={m} className="text-[11px]">{m}</SelectItem>
+                              <SelectItem key={m} value={m}>{m}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -750,9 +751,9 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                           <Select value={form.taxIdType || '__unset__'} onValueChange={v => set('taxIdType', v === '__unset__' ? '' : v)}>
                             <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
-                              <SelectItem value="__unset__" className="text-[11px]">Not set</SelectItem>
-                              <SelectItem value="SSN" className="text-[11px]">SSN (individual)</SelectItem>
-                              <SelectItem value="EIN" className="text-[11px]">EIN (business)</SelectItem>
+                              <SelectItem value="__unset__">Not set</SelectItem>
+                              <SelectItem value="SSN">SSN (individual)</SelectItem>
+                              <SelectItem value="EIN">EIN (business)</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -831,7 +832,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                             <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
                               {['Net 15', 'Net 30', 'Net 60', 'Due on Receipt'].map(t => (
-                                <SelectItem key={t} value={t} className="text-[11px]">{t}</SelectItem>
+                                <SelectItem key={t} value={t}>{t}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -841,9 +842,9 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                           <Select value={form.billingDelivery} onValueChange={v => set('billingDelivery', v)}>
                             <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
-                              <SelectItem value="Email" className="text-[11px]">Email</SelectItem>
-                              <SelectItem value="Portal" className="text-[11px]">Portal</SelectItem>
-                              <SelectItem value="Both" className="text-[11px]">Email &amp; Portal</SelectItem>
+                              <SelectItem value="Email">Email</SelectItem>
+                              <SelectItem value="Portal">Portal</SelectItem>
+                              <SelectItem value="Both">Email &amp; Portal</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -869,9 +870,9 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                           <Select value={form.taxStatus || '__unset__'} onValueChange={v => set('taxStatus', (v === '__unset__' ? '' : v) as FormState['taxStatus'])}>
                             <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
-                              <SelectItem value="__unset__" className="text-[11px]">Not set</SelectItem>
-                              <SelectItem value="taxable" className="text-[11px]">Taxable</SelectItem>
-                              <SelectItem value="exempt" className="text-[11px]">Tax exempt</SelectItem>
+                              <SelectItem value="__unset__">Not set</SelectItem>
+                              <SelectItem value="taxable">Taxable</SelectItem>
+                              <SelectItem value="exempt">Tax exempt</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -902,7 +903,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                     value={form.adminNotes}
                     onChange={e => set('adminNotes', e.target.value)}
                   />
-                  <p className="text-[10px] text-text-muted uppercase tracking-wider">
+                  <p className="text-[12px] text-text-muted">
                     These notes are only visible to administrators and are never shown to the user.
                   </p>
                 </div>
@@ -912,7 +913,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
         </div>
 
         <DialogFooter className="px-5 py-3 border-t border-border-sub shrink-0 flex justify-between items-center">
-          <p className="text-[10px] text-text-muted uppercase tracking-wider">
+          <p className="text-[12px] text-text-muted">
             Changes saved to Firestore with audit log.
           </p>
           <div className="flex gap-2">

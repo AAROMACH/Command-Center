@@ -79,22 +79,22 @@ export default function GetAccessPage() {
         createdVia: "self_registration",
       });
 
-      toast({ title: "Access Requested", description: "Your account is pending admin approval." });
+      toast({ title: "Access requested", description: "An admin will review your account shortly." });
       router.push("/pending-approval");
     } catch (err: any) {
       const code: string = err.code || "";
       if (code === "auth/email-already-in-use") {
-        toast({ variant: "destructive", title: "Email Already Registered", description: "An account with this email already exists. Try logging in instead." });
+        toast({ variant: "destructive", title: "Email already registered", description: "An account with this email already exists. Try signing in instead." });
       } else if (code === "auth/weak-password") {
-        toast({ variant: "destructive", title: "Weak Password", description: "Choose a stronger password (at least 6 characters)." });
+        toast({ variant: "destructive", title: "Password too weak", description: "Choose a stronger password (at least 6 characters)." });
       } else if (code === "auth/invalid-email") {
-        toast({ variant: "destructive", title: "Invalid Email", description: "Please enter a valid email address." });
+        toast({ variant: "destructive", title: "Invalid email", description: "Please enter a valid email address." });
       } else if (code === "auth/operation-not-allowed") {
-        toast({ variant: "destructive", title: "Registration Disabled", description: "Enable Email/Password sign-in in Firebase Console → Authentication → Sign-in methods." });
+        toast({ variant: "destructive", title: "Sign-up disabled", description: "Enable Email/Password sign-in in Firebase Console → Authentication → Sign-in methods." });
       } else if (code === "auth/invalid-api-key") {
-        toast({ variant: "destructive", title: "Invalid API Key", description: "Update NEXT_PUBLIC_FIREBASE_API_KEY in Firebase App Hosting environment variables." });
+        toast({ variant: "destructive", title: "Invalid API key", description: "Update NEXT_PUBLIC_FIREBASE_API_KEY in Firebase App Hosting environment variables." });
       } else {
-        toast({ variant: "destructive", title: "Registration Failed", description: `[${code}] ${err.message || "Could not create your account."}` });
+        toast({ variant: "destructive", title: "Could not create account", description: `[${code}] ${err.message || "Could not create your account."}` });
       }
       console.error("[get-access]", code, err.message);
     } finally {
@@ -104,7 +104,7 @@ export default function GetAccessPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-primary p-4">
-      <Card className="w-full max-w-sm border-border-default bg-bg-secondary shadow-2xl overflow-hidden">
+      <Card className="w-full max-w-sm rounded-xl border-border-main bg-bg-secondary shadow-sm overflow-hidden">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
             {logo && (
@@ -112,52 +112,52 @@ export default function GetAccessPage() {
             )}
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold tracking-wider text-text-primary">Get Access</CardTitle>
-            <CardDescription className="text-text-muted uppercase font-bold text-[10px] tracking-wider">Request Terminal Credentials</CardDescription>
+            <CardTitle className="text-2xl font-semibold text-text-primary">Request access</CardTitle>
+            <CardDescription className="text-[13px] text-text-muted">Create an account. An admin approves new accounts.</CardDescription>
           </div>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-xs font-bold text-text-muted text-left block">Full Name</Label>
-              <Input id="name" type="text" disabled={isLoading} placeholder="Jane Operative" className="bg-bg-primary border-border-sub h-11 text-xs" {...register("name")} />
-              {errors.name && <p className="text-[10px] font-bold text-brand-red text-left">{errors.name.message}</p>}
+              <Label htmlFor="name" className="text-[12px] font-medium text-text-secondary text-left block">Full name</Label>
+              <Input id="name" type="text" disabled={isLoading} placeholder="Jane Smith" className="bg-bg-primary border-border-main h-10" {...register("name")} />
+              {errors.name && <p className="text-[12px] text-text-red text-left">{errors.name.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-xs font-bold text-text-muted text-left block">Email</Label>
-              <Input id="email" type="email" disabled={isLoading} placeholder="operative@aaromach.com" className="bg-bg-primary border-border-sub h-11 text-xs" {...register("email")} />
-              {errors.email && <p className="text-[10px] font-bold text-brand-red text-left">{errors.email.message}</p>}
+              <Label htmlFor="email" className="text-[12px] font-medium text-text-secondary text-left block">Email</Label>
+              <Input id="email" type="email" disabled={isLoading} placeholder="you@company.com" className="bg-bg-primary border-border-main h-10" {...register("email")} />
+              {errors.email && <p className="text-[12px] text-text-red text-left">{errors.email.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone" className="text-xs font-bold text-text-muted text-left block">Phone <span className="text-text-muted/60 normal-case tracking-normal">(optional)</span></Label>
-              <Input id="phone" type="tel" disabled={isLoading} placeholder="(555) 123-4567" className="bg-bg-primary border-border-sub h-11 text-xs" {...register("phone")} />
+              <Label htmlFor="phone" className="text-[12px] font-medium text-text-secondary text-left block">Phone <span className="font-normal text-text-muted">(optional)</span></Label>
+              <Input id="phone" type="tel" disabled={isLoading} placeholder="(555) 123-4567" className="bg-bg-primary border-border-main h-10" {...register("phone")} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-xs font-bold text-text-muted text-left block">Password</Label>
+              <Label htmlFor="password" className="text-[12px] font-medium text-text-secondary text-left block">Password</Label>
               <div className="relative">
-                <Input id="password" type={showPassword ? "text" : "password"} disabled={isLoading} {...register("password")} placeholder="••••••••" className="bg-bg-primary border-border-sub pr-10 h-11 text-xs" />
+                <Input id="password" type={showPassword ? "text" : "password"} disabled={isLoading} {...register("password")} placeholder="••••••••" className="bg-bg-primary border-border-main pr-10 h-10" />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary focus:outline-none transition-colors">
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              {errors.password && <p className="text-[10px] font-bold text-brand-red text-left">{errors.password.message}</p>}
+              {errors.password && <p className="text-[12px] text-text-red text-left">{errors.password.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-xs font-bold text-text-muted text-left block">Confirm Password</Label>
-              <Input id="confirmPassword" type={showPassword ? "text" : "password"} disabled={isLoading} {...register("confirmPassword")} placeholder="••••••••" className="bg-bg-primary border-border-sub h-11 text-xs" />
-              {errors.confirmPassword && <p className="text-[10px] font-bold text-brand-red text-left">{errors.confirmPassword.message}</p>}
+              <Label htmlFor="confirmPassword" className="text-[12px] font-medium text-text-secondary text-left block">Confirm password</Label>
+              <Input id="confirmPassword" type={showPassword ? "text" : "password"} disabled={isLoading} {...register("confirmPassword")} placeholder="••••••••" className="bg-bg-primary border-border-main h-10" />
+              {errors.confirmPassword && <p className="text-[12px] text-text-red text-left">{errors.confirmPassword.message}</p>}
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-3 pb-6">
-            <Button type="submit" disabled={isLoading} className="w-full h-12 bg-brand-red hover:bg-brand-red-hover text-white font-bold text-xs flex items-center gap-2">
-              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating Account...</> : <><UserPlus size={15} className="shrink-0" />Create Account</>}
+            <Button type="submit" disabled={isLoading} className="w-full h-10 flex items-center gap-2">
+              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating account…</> : <><UserPlus size={15} className="shrink-0" />Create account</>}
             </Button>
 
-            <Link href="/login" className="text-[10px] font-bold uppercase text-text-muted hover:text-text-primary transition-colors tracking-wider flex items-center justify-center gap-2 pt-1">
-              <ArrowLeft size={12} /> Back to Login
+            <Link href="/login" className="text-[13px] font-medium text-text-muted hover:text-text-primary transition-colors flex items-center justify-center gap-2 pt-1">
+              <ArrowLeft size={12} /> Back to sign in
             </Link>
 
-            <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider text-center px-4 pt-1">New accounts require admin approval before access is granted.</p>
+            <p className="text-[12px] text-text-muted text-center px-4 pt-1">New accounts need admin approval before you can sign in.</p>
           </CardFooter>
         </form>
       </Card>

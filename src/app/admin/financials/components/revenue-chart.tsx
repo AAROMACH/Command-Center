@@ -30,8 +30,8 @@ const chartConfig = {
 export function RevenueChart({ data }: RevenueChartProps) {
     if (!data || data.length === 0) {
         return (
-            <div className="flex items-center justify-center h-[300px] w-full text-xs text-text-muted font-bold italic opacity-40">
-                Awaiting Sufficient Registry Data for Analysis
+            <div className="flex items-center justify-center h-[300px] w-full text-[13px] text-text-muted">
+                Not enough data to chart yet
             </div>
         );
     }

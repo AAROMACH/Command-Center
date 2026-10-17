@@ -74,7 +74,7 @@ const EMPTY: FormState = {
 
 function FieldLabel({ label, required }: { label: string; required?: boolean }) {
   return (
-    <label className="block text-[11px] font-bold text-text-muted mb-1.5">
+    <label className="block text-[12px] font-medium text-text-secondary mb-1.5">
       {label}{required && <span className="text-brand-red ml-0.5">*</span>}
     </label>
   );
@@ -89,7 +89,7 @@ function Input({ value, onChange, type = 'text', placeholder, required, classNam
       placeholder={placeholder}
       required={required}
       className={cn(
-        'w-full h-11 px-3 rounded-lg border border-border-sub bg-bg-secondary text-[13px] text-text-primary placeholder:text-text-muted',
+        'w-full h-10 px-3 rounded-md border border-border-main bg-bg-primary text-[13px] text-text-primary placeholder:text-text-muted',
         'focus:outline-none focus:ring-2 focus:ring-brand-red/30 focus:border-brand-red/50 transition-colors',
         className,
       )}
@@ -105,7 +105,7 @@ function Textarea({ value, onChange, placeholder, rows = 4, required }: any) {
       placeholder={placeholder}
       rows={rows}
       required={required}
-      className="w-full px-3 py-2.5 rounded-lg border border-border-sub bg-bg-secondary text-[13px] text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-red/30 focus:border-brand-red/50 transition-colors resize-none"
+      className="w-full px-3 py-2.5 rounded-md border border-border-main bg-bg-primary text-[13px] text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-red/30 focus:border-brand-red/50 transition-colors resize-none"
     />
   );
 }
@@ -251,20 +251,20 @@ export default function PublicServiceRequestPage() {
             <Check size={32} className="text-text-green" />
           </div>
           <div>
-            <h1 className="text-[20px] font-black text-text-primary mb-2">Request Submitted</h1>
+            <h1 className="text-[20px] font-semibold text-text-primary mb-2">Request submitted</h1>
             <p className="text-[13px] text-text-secondary leading-relaxed">
               Your service request has been submitted. A member of Aaromach will review your request and contact you soon.
             </p>
           </div>
           <div className="rounded-xl border border-border-sub bg-bg-secondary p-4 text-left space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Your submission</p>
-            <p className="text-[12px] font-bold text-text-primary">{form.fullName}</p>
-            <p className="text-[11px] text-text-muted">{form.email}</p>
-            <p className="text-[11px] text-text-muted">Priority: <span className="capitalize">{form.priorityLevel}</span></p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Your submission</p>
+            <p className="text-[13px] font-semibold text-text-primary">{form.fullName}</p>
+            <p className="text-[12px] text-text-muted">{form.email}</p>
+            <p className="text-[12px] text-text-muted">Priority: <span className="capitalize">{form.priorityLevel}</span></p>
           </div>
           <button
             onClick={() => { setForm(EMPTY); setFiles([]); setStep(1); setSubmitted(false); }}
-            className="text-[11px] text-text-muted hover:text-text-primary underline transition-colors"
+            className="text-[13px] text-text-muted hover:text-text-primary underline transition-colors"
           >
             Submit another request
           </button>
@@ -279,8 +279,8 @@ export default function PublicServiceRequestPage() {
 
         {/* Header */}
         <div className="text-center space-y-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-brand-red">Aaromach</p>
-          <h1 className="text-[28px] font-black text-text-primary">Service Request</h1>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-red">Aaromach</p>
+          <h1 className="text-[26px] font-semibold text-text-primary">Service request</h1>
           <p className="text-[13px] text-text-secondary max-w-md mx-auto">
             Request a technician for structured cabling, fiber, security cameras, AV, network racks, phone systems or
             industrial controls — new installs, service calls and repairs. No account required.
@@ -292,13 +292,13 @@ export default function PublicServiceRequestPage() {
           {[1, 2].map(s => (
             <div key={s} className="flex items-center gap-2 flex-1">
               <div className={cn(
-                'w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0',
+                'w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-semibold shrink-0',
                 step > s ? 'bg-text-green text-white' : step === s ? 'bg-brand-red text-white' : 'bg-bg-secondary border border-border-sub text-text-muted',
               )}>
                 {step > s ? <Check size={13} /> : s}
               </div>
-              <span className={cn('text-[10px] font-bold uppercase tracking-wider', step === s ? 'text-text-primary' : 'text-text-muted')}>
-                {s === 1 ? 'Contact Info' : 'Service Details'}
+              <span className={cn('text-[10px] font-semibold uppercase tracking-wider', step === s ? 'text-text-primary' : 'text-text-muted')}>
+                {s === 1 ? 'Contact info' : 'Service details'}
               </span>
               {s < 2 && <div className="flex-1 h-px bg-border-sub" />}
             </div>
@@ -307,17 +307,17 @@ export default function PublicServiceRequestPage() {
 
         {/* Step 1: Contact Information */}
         {step === 1 && (
-          <div className="rounded-2xl border border-border-sub bg-bg-secondary p-6 space-y-5">
-            <h2 className="text-[15px] font-bold text-text-primary">Contact Information</h2>
+          <div className="rounded-xl border border-border-main bg-bg-secondary p-6 shadow-sm space-y-5">
+            <h2 className="text-[16px] font-semibold text-text-primary">Contact information</h2>
 
             <div>
-              <FieldLabel label="Email Address" required />
+              <FieldLabel label="Email" required />
               <Input type="email" value={form.email} onChange={(e: any) => set('email', e.target.value)} placeholder="you@company.com" />
-              {errors.email && <p className="text-[11px] text-brand-red mt-1">{errors.email}</p>}
+              {errors.email && <p className="text-[12px] text-text-red mt-1">{errors.email}</p>}
             </div>
 
             <div>
-              <FieldLabel label="Customer Type" required />
+              <FieldLabel label="Have you worked with us before?" required />
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { value: 'first_time', label: 'First-Time Customer' },
@@ -328,7 +328,7 @@ export default function PublicServiceRequestPage() {
                     type="button"
                     onClick={() => set('customerType', opt.value)}
                     className={cn(
-                      'px-3 py-2.5 rounded-lg border text-[11px] font-bold text-left transition-all',
+                      'px-3 py-2.5 rounded-md border text-[13px] font-medium text-left transition-all',
                       form.customerType === opt.value
                         ? 'border-brand-red bg-brand-red/10 text-brand-red'
                         : 'border-border-sub bg-bg-primary text-text-secondary hover:border-border-main',
@@ -336,29 +336,29 @@ export default function PublicServiceRequestPage() {
                   >{opt.label}</button>
                 ))}
               </div>
-              {errors.customerType && <p className="text-[11px] text-brand-red mt-1">{errors.customerType}</p>}
+              {errors.customerType && <p className="text-[12px] text-text-red mt-1">{errors.customerType}</p>}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <FieldLabel label="Full Name" required />
+                <FieldLabel label="Full name" required />
                 <Input value={form.fullName} onChange={(e: any) => set('fullName', e.target.value)} placeholder="Jane Smith" />
-                {errors.fullName && <p className="text-[11px] text-brand-red mt-1">{errors.fullName}</p>}
+                {errors.fullName && <p className="text-[12px] text-text-red mt-1">{errors.fullName}</p>}
               </div>
               <div>
-                <FieldLabel label="Phone Number" required />
+                <FieldLabel label="Phone" required />
                 <Input type="tel" value={form.phoneNumber} onChange={(e: any) => set('phoneNumber', e.target.value)} placeholder="+1 (555) 000-0000" />
-                {errors.phoneNumber && <p className="text-[11px] text-brand-red mt-1">{errors.phoneNumber}</p>}
+                {errors.phoneNumber && <p className="text-[12px] text-text-red mt-1">{errors.phoneNumber}</p>}
               </div>
             </div>
 
             <div>
-              <FieldLabel label="Company / Organization Name" />
+              <FieldLabel label="Company name" />
               <Input value={form.companyName} onChange={(e: any) => set('companyName', e.target.value)} placeholder="Acme Corp (optional)" />
             </div>
 
             <div>
-              <FieldLabel label="Preferred Contact Method" />
+              <FieldLabel label="Preferred contact method" />
               <div className="flex gap-2 flex-wrap">
                 {CONTACT_METHODS.map(m => (
                   <button
@@ -366,7 +366,7 @@ export default function PublicServiceRequestPage() {
                     type="button"
                     onClick={() => set('preferredContactMethod', form.preferredContactMethod === m ? '' : m)}
                     className={cn(
-                      'px-3 py-1.5 rounded-lg border text-[11px] font-bold transition-all',
+                      'px-3 py-1.5 rounded-md border text-[13px] font-medium transition-all',
                       form.preferredContactMethod === m
                         ? 'border-brand-red bg-brand-red/10 text-brand-red'
                         : 'border-border-sub bg-bg-primary text-text-secondary hover:border-border-main',
@@ -379,7 +379,7 @@ export default function PublicServiceRequestPage() {
             <button
               type="button"
               onClick={nextStep}
-              className="w-full h-12 rounded-xl bg-brand-red hover:bg-brand-red/90 text-white text-[12px] font-bold flex items-center justify-center gap-2 transition-colors"
+              className="w-full h-10 rounded-md bg-brand-red hover:bg-brand-red/90 text-white text-[13px] font-semibold flex items-center justify-center gap-2 transition-colors"
             >
               Next: Service Details <ChevronRight size={16} />
             </button>
@@ -388,11 +388,11 @@ export default function PublicServiceRequestPage() {
 
         {/* Step 2: Service Information */}
         {step === 2 && (
-          <div className="rounded-2xl border border-border-sub bg-bg-secondary p-6 space-y-5">
-            <h2 className="text-[15px] font-bold text-text-primary">Service Information</h2>
+          <div className="rounded-xl border border-border-main bg-bg-secondary p-6 shadow-sm space-y-5">
+            <h2 className="text-[16px] font-semibold text-text-primary">Service information</h2>
 
             <div>
-              <FieldLabel label="Types of Services Required" required />
+              <FieldLabel label="Services needed" required />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {SERVICE_TYPES.map(type => (
                   <label key={type} className="flex items-center gap-2.5 cursor-pointer group">
@@ -408,7 +408,7 @@ export default function PublicServiceRequestPage() {
                   </label>
                 ))}
               </div>
-              {errors.serviceTypes && <p className="text-[11px] text-brand-red mt-1">{errors.serviceTypes}</p>}
+              {errors.serviceTypes && <p className="text-[12px] text-text-red mt-1">{errors.serviceTypes}</p>}
 
               {form.serviceTypes.includes('Other') && (
                 <div className="mt-3">
@@ -419,13 +419,13 @@ export default function PublicServiceRequestPage() {
                     placeholder="Please describe..."
                     rows={2}
                   />
-                  {errors.otherServiceDetails && <p className="text-[11px] text-brand-red mt-1">{errors.otherServiceDetails}</p>}
+                  {errors.otherServiceDetails && <p className="text-[12px] text-text-red mt-1">{errors.otherServiceDetails}</p>}
                 </div>
               )}
             </div>
 
             <div>
-              <FieldLabel label="Priority Level" required />
+              <FieldLabel label="Priority" required />
               <div className="grid grid-cols-2 gap-2">
                 {PRIORITY_OPTIONS.map(opt => (
                   <button
@@ -439,18 +439,18 @@ export default function PublicServiceRequestPage() {
                         : 'border-border-sub bg-bg-primary hover:border-border-main',
                     )}
                   >
-                    <span className={cn('block text-[11px] font-bold mb-0.5',
-                      opt.value === 'critical' ? 'text-brand-red' : opt.value === 'high' ? 'text-orange-400' : opt.value === 'medium' ? 'text-amber-400' : 'text-text-muted',
+                    <span className={cn('block text-[13px] font-semibold mb-0.5',
+                      opt.value === 'critical' || opt.value === 'high' ? 'text-text-red' : opt.value === 'medium' ? 'text-accent-gold' : 'text-text-muted',
                     )}>{opt.label}</span>
-                    <span className="text-[10px] text-text-muted">{opt.desc}</span>
+                    <span className="text-[12px] text-text-muted">{opt.desc}</span>
                   </button>
                 ))}
               </div>
-              {errors.priorityLevel && <p className="text-[11px] text-brand-red mt-1">{errors.priorityLevel}</p>}
+              {errors.priorityLevel && <p className="text-[12px] text-text-red mt-1">{errors.priorityLevel}</p>}
             </div>
 
             <div>
-              <FieldLabel label="Service Location / Site Address" />
+              <FieldLabel label="Site address" />
               <Input
                 value={form.serviceLocation}
                 onChange={(e: any) => set('serviceLocation', e.target.value)}
@@ -459,7 +459,7 @@ export default function PublicServiceRequestPage() {
             </div>
 
             <div>
-              <FieldLabel label="Is this service onsite, remote, or either?" />
+              <FieldLabel label="Onsite, remote or either?" />
               <div className="flex gap-2">
                 {SERVICE_MODES.map(m => (
                   <button
@@ -467,7 +467,7 @@ export default function PublicServiceRequestPage() {
                     type="button"
                     onClick={() => set('serviceMode', form.serviceMode === m.value ? '' : m.value)}
                     className={cn(
-                      'px-3 py-1.5 rounded-lg border text-[11px] font-bold transition-all flex-1',
+                      'px-3 py-1.5 rounded-md border text-[13px] font-medium transition-all flex-1',
                       form.serviceMode === m.value
                         ? 'border-brand-red bg-brand-red/10 text-brand-red'
                         : 'border-border-sub bg-bg-primary text-text-secondary hover:border-border-main',
@@ -478,14 +478,14 @@ export default function PublicServiceRequestPage() {
             </div>
 
             <div>
-              <FieldLabel label="Detailed Description" required />
+              <FieldLabel label="Description" required />
               <Textarea
                 value={form.detailedDescription}
                 onChange={(e: any) => set('detailedDescription', e.target.value)}
                 placeholder="What needs to be done and where — e.g. 12 new Cat6 drops in the warehouse office, two cameras down on the north lot, clean up and label the main network rack..."
                 rows={5}
               />
-              {errors.detailedDescription && <p className="text-[11px] text-brand-red mt-1">{errors.detailedDescription}</p>}
+              {errors.detailedDescription && <p className="text-[12px] text-text-red mt-1">{errors.detailedDescription}</p>}
             </div>
 
             <div>
@@ -497,7 +497,7 @@ export default function PublicServiceRequestPage() {
                     type="button"
                     onClick={() => set('hasSupportingDocuments', v)}
                     className={cn(
-                      'px-6 py-2 rounded-lg border text-[11px] font-bold transition-all',
+                      'px-6 py-2 rounded-md border text-[13px] font-medium transition-all',
                       form.hasSupportingDocuments === v
                         ? 'border-brand-red bg-brand-red/10 text-brand-red'
                         : 'border-border-sub bg-bg-primary text-text-secondary hover:border-border-main',
@@ -505,7 +505,7 @@ export default function PublicServiceRequestPage() {
                   >{v === 'yes' ? 'Yes' : 'No, provide later'}</button>
                 ))}
               </div>
-              {errors.hasSupportingDocuments && <p className="text-[11px] text-brand-red mt-1">{errors.hasSupportingDocuments}</p>}
+              {errors.hasSupportingDocuments && <p className="text-[12px] text-text-red mt-1">{errors.hasSupportingDocuments}</p>}
             </div>
 
             {form.hasSupportingDocuments === 'yes' && (
@@ -519,7 +519,7 @@ export default function PublicServiceRequestPage() {
                 >
                   <Upload size={20} className="mx-auto mb-2 text-text-muted" />
                   <p className="text-[12px] text-text-secondary">Drop files here or click to upload</p>
-                  <p className="text-[10px] text-text-muted mt-1">Photos, floor plans, drawings (images, PDF, Word, CSV) · Max 5 files</p>
+                  <p className="text-[12px] text-text-muted mt-1">Photos, floor plans, drawings (images, PDF, Word, CSV) · Max 5 files</p>
                   <input ref={fileRef} type="file" multiple accept={ACCEPTED_TYPES.join(',')} className="hidden"
                     onChange={e => handleFiles(e.target.files)} />
                 </div>
@@ -542,17 +542,17 @@ export default function PublicServiceRequestPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <FieldLabel label="Desired Start Date" />
+                <FieldLabel label="Preferred start date" />
                 <Input type="date" value={form.desiredStartDate} onChange={(e: any) => set('desiredStartDate', e.target.value)} />
               </div>
               <div>
-                <FieldLabel label="Preferred Start Time" />
+                <FieldLabel label="Preferred start time" />
                 <Input type="time" value={form.desiredDeadlineTime} onChange={(e: any) => set('desiredDeadlineTime', e.target.value)} />
               </div>
             </div>
 
             <div>
-              <FieldLabel label="Best Availability Window" />
+              <FieldLabel label="Best time for the visit" />
               <Input
                 value={form.bestAvailability}
                 onChange={(e: any) => set('bestAvailability', e.target.value)}
@@ -572,20 +572,20 @@ export default function PublicServiceRequestPage() {
                   >
                     <Star
                       size={22}
-                      className={n <= form.formEaseRating ? 'text-amber-400 fill-amber-400' : 'text-border-sub'}
+                      className={n <= form.formEaseRating ? 'text-accent-gold fill-accent-gold' : 'text-border-sub'}
                     />
                   </button>
                 ))}
                 {form.formEaseRating > 0 && (
                   <span className="text-[11px] text-text-muted ml-1">
-                    {['', 'Very Difficult', 'Difficult', 'Neutral', 'Easy', 'Very Easy'][form.formEaseRating]}
+                    {['', 'Very difficult', 'Difficult', 'Neutral', 'Easy', 'Very easy'][form.formEaseRating]}
                   </span>
                 )}
               </div>
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-brand-red/10 border border-brand-red/30">
+              <div className="flex items-center gap-2 p-3 rounded-md bg-brand-red/10 border border-brand-red/30">
                 <AlertTriangle size={14} className="text-brand-red shrink-0" />
                 <p className="text-[12px] text-brand-red">{error}</p>
               </div>
@@ -595,7 +595,7 @@ export default function PublicServiceRequestPage() {
               <button
                 type="button"
                 onClick={() => { setStep(1); window.scrollTo(0, 0); }}
-                className="h-12 px-5 rounded-xl border border-border-main text-[11px] font-bold text-text-secondary hover:text-text-primary transition-colors flex items-center gap-2"
+                className="h-10 px-4 rounded-md border border-border-main text-[13px] font-medium text-text-secondary hover:text-text-primary transition-colors flex items-center gap-2"
               >
                 <ChevronLeft size={16} /> Back
               </button>
@@ -603,19 +603,19 @@ export default function PublicServiceRequestPage() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex-1 h-12 rounded-xl bg-brand-red hover:bg-brand-red/90 disabled:opacity-60 text-white text-[12px] font-bold flex items-center justify-center gap-2 transition-colors"
+                className="flex-1 h-10 rounded-md bg-brand-red hover:bg-brand-red/90 disabled:opacity-60 text-white text-[13px] font-semibold flex items-center justify-center gap-2 transition-colors"
               >
-                {submitting ? <><Loader2 size={16} className="animate-spin" />Submitting...</> : 'Submit Request'}
+                {submitting ? <><Loader2 size={16} className="animate-spin" />Submitting…</> : 'Submit request'}
               </button>
             </div>
           </div>
         )}
 
-        <p className="text-center text-[10px] text-text-muted">
+        <p className="text-center text-[12px] text-text-muted">
           Aaromach · Technical Field Services — Cabling, Cameras, AV &amp; Networks · This form is secure and confidential. ·{' '}
-          <a href="https://www.aaromach.com/about-us/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline hover:text-text-secondary">Privacy Policy</a>
+          <a href="https://www.aaromach.com/about-us/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline hover:text-text-secondary">Privacy policy</a>
           {' '}·{' '}
-          <a href="https://www.aaromach.com/about-us/terms-of-service" target="_blank" rel="noopener noreferrer" className="underline hover:text-text-secondary">Terms of Service</a>
+          <a href="https://www.aaromach.com/about-us/terms-of-service" target="_blank" rel="noopener noreferrer" className="underline hover:text-text-secondary">Terms of service</a>
         </p>
       </div>
     </div>

@@ -53,6 +53,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { PageHeader } from '@/components/page-header';
+import { SearchField } from '@/components/search-field';
+import { SortControl } from '@/components/list-toolbar';
+import { StatusBadge } from '@/components/status-badge';
+import { EmptyState } from '@/components/empty-state';
+import { usePaged, ListPager, PAGE_SIZES_SMALL } from '@/components/list-pager';
+import { requestMillis, formatRequestDate, requestKind } from '../_lib/requests';
 
 declare global {
   interface Window {
@@ -74,7 +81,7 @@ export default function ClientTicketsPage() {
     const [sortBy, setSortBy] = useState<SortOption>('newest');
     const [isNewTicketOpen, setIsNewTicketOpen] = useState(false);
     
-    // Site Registry State
+    // Saved sites picker
     const [isSiteRegistryOpen, setIsSiteRegistryOpen] = useState(false);
     const addressInputRef = useRef<HTMLInputElement>(null);
 
@@ -117,13 +124,13 @@ export default function ClientTicketsPage() {
     useEffect(() => {
       if (!isNewTicketOpen) return;
 
-      // Defensive Protocol: Handle referer or activation failures from Google Maps
+      // Handle referer or activation failures from Google Maps
       window.gm_authFailure = () => {
-        console.warn("Google Maps API Handshake Restricted.");
+        console.warn("Google Maps auth failed.");
         toast({
           variant: "destructive",
           title: "Google Maps unavailable",
-          description: "Google Maps API referer or activation restriction active.",
+          description: "Address suggestions are off. Type the address instead.",
         });
       };
 
@@ -145,7 +152,7 @@ export default function ClientTicketsPage() {
             }
           });
         } catch (e) {
-          console.warn("Places Autocomplete Terminal Restricted.");
+          console.warn("Places autocomplete unavailable.");
         }
       };
 
@@ -169,7 +176,8 @@ export default function ClientTicketsPage() {
             results = results.filter(r => 
                 (r.description || '').toLowerCase().includes(q) ||
                 (r.id || '').toLowerCase().includes(q) ||
-                (r.location || '').toLowerCase().includes(q)
+                (r.location || '').toLowerCase().includes(q) ||
+                requestKind(r).toLowerCase().includes(q)
             );
         }
 
@@ -178,11 +186,11 @@ export default function ClientTicketsPage() {
                 // Missing/unknown priorities rank last; ties fall back to newest.
                 const prio: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
                 return ((prio[a.priority as string] ?? 4) - (prio[b.priority as string] ?? 4))
-                    || (b.submittedDate || '').localeCompare(a.submittedDate || '');
+                    || requestMillis(b) - requestMillis(a);
             }
-            if (sortBy === 'oldest') return (a.submittedDate || '').localeCompare(b.submittedDate || '');
-            if (sortBy === 'type') return (a.requestType || '').localeCompare(b.requestType || '');
-            return (b.submittedDate || '').localeCompare(a.submittedDate || '');
+            if (sortBy === 'oldest') return requestMillis(a) - requestMillis(b);
+            if (sortBy === 'type') return requestKind(a).localeCompare(requestKind(b));
+            return requestMillis(b) - requestMillis(a);
         });
     }, [allRequests, searchQuery, sortBy]);
 
@@ -212,13 +220,13 @@ export default function ClientTicketsPage() {
             const ticketId = await createDocId(ID_PREFIXES.CLIENT_REQUEST);
             await setDoc(doc(db, 'clientRequests', ticketId), { ...newTicket, id: ticketId });
             toast({
-                title: "Request Transmitted",
-                description: "Service ticket has been added to the command intake queue.",
+                title: "Request sent",
+                description: "We'll review your request and follow up shortly.",
             });
             setIsNewTicketOpen(false);
             handleReset();
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Submission Failed", description: e.message });
+            toast({ variant: "destructive", title: "Could not send request", description: e.message });
         }
     };
 
@@ -231,7 +239,7 @@ export default function ClientTicketsPage() {
       if (!file) return;
 
       if (attachments.length >= 5) {
-          toast({ variant: 'destructive', title: 'Limit reached', description: 'Maximum 5 evidence assets authorized per request.' });
+          toast({ variant: 'destructive', title: 'Limit reached', description: 'You can attach up to 5 files per request.' });
           return;
       }
 
@@ -240,9 +248,9 @@ export default function ClientTicketsPage() {
           const storagePath = `ticketAttachments/pending/${Date.now()}-${file.name}`;
           const { url } = await uploadFile(storagePath, file);
           setAttachments(prev => [...prev, { name: file.name, type: isImage ? 'image' : 'doc', url }]);
-          toast({ title: "File ready", description: `${file.name} ready for intake.` });
+          toast({ title: "File ready", description: `${file.name} attached.` });
       } catch (err: any) {
-          toast({ variant: 'destructive', title: 'Upload Failed', description: err.message });
+          toast({ variant: 'destructive', title: 'Upload failed', description: err.message });
       } finally {
           e.target.value = '';
       }
@@ -257,8 +265,8 @@ export default function ClientTicketsPage() {
       if (locationInput) {
           locationInput.value = site.location;
           toast({
-              title: "Site Linked",
-              description: `Request anchored to verified coordinate: ${site.name}`,
+              title: "Site selected",
+              description: `Location set to ${site.name}.`,
           });
       }
       setIsSiteRegistryOpen(false);
@@ -268,16 +276,14 @@ export default function ClientTicketsPage() {
 
     return (
         <div className="space-y-8 text-left">
-            <header className="page-header text-left">
-                <div className="text-left">
-                    <p className="page-eyebrow flex items-center gap-2"><ClipboardList size={12} />Low Voltage Service Funnel</p>
-                    <h1 className="page-title text-left">Support Tickets</h1>
-                    <p className="page-subtitle text-left">Submit service requests and track administrative review status.</p>
-                </div>
-                <div className="page-header-right items-center gap-3">
+            <PageHeader
+                eyebrow="Client portal"
+                icon={ClipboardList}
+                title="Service requests"
+                subtitle="Send us a service request and follow its review status."
+                actions={<>
                     <Button
                         variant="outline"
-                        className="h-10 px-4 font-bold uppercase tracking-wider text-[10px]"
                         onClick={() => {
                             const params = new URLSearchParams({
                                 name: currentUser?.name || '',
@@ -288,59 +294,52 @@ export default function ClientTicketsPage() {
                             window.open(`/public/service-request?${params.toString()}`, '_blank', 'noopener');
                         }}
                     >
-                        <ExternalLink size={13} className="mr-2" />
-                        Go to Form
+                        <ExternalLink size={14} className="mr-2" />
+                        Open full form
                     </Button>
-                    <Button variant="default" onClick={() => setIsNewTicketOpen(true)} className="h-10 px-6 font-bold">
+                    <Button onClick={() => setIsNewTicketOpen(true)}>
                         <Plus size={16} className="mr-2"/>
-                        Create Ticket
+                        New request
                     </Button>
-                </div>
-            </header>
+                </>}
+            />
 
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-bg-secondary rounded-xl border border-border-sub shadow-sm text-left">
-                <div className="search-wrap flex-1 !mb-0 w-full md:w-auto text-left">
-                    <Search className="h-4 w-4 text-text-muted" />
-                    <input 
-                        className="search-input !h-10 !text-xs font-bold !w-full bg-bg-primary text-left" 
-                        placeholder="Search tickets by ID, site, or description..." 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
-
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                    <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                        <SelectTrigger className="w-[160px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-wider border-border-main">
-                            <SelectValue placeholder="Sort Registry" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="newest" className="text-[10px] font-bold">Newest First</SelectItem>
-                            <SelectItem value="oldest" className="text-[10px] font-bold">Earliest First</SelectItem>
-                            <SelectItem value="priority" className="text-[10px] font-bold">Priority Level</SelectItem>
-                            <SelectItem value="type" className="text-[10px] font-bold">Job Category</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <SearchField
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Search by ID, location, type or description"
+                    className="sm:max-w-md"
+                />
+                <SortControl
+                    value={sortBy === 'newest' || sortBy === 'oldest' ? 'date' : sortBy}
+                    onChange={v => setSortBy(v === 'date' ? 'newest' : v as SortOption)}
+                    options={[{ value: 'date', label: 'Date' }, { value: 'priority', label: 'Priority' }, { value: 'type', label: 'Type' }]}
+                    dateAsc={sortBy === 'oldest'}
+                    onToggleDirection={() => setSortBy(sortBy === 'oldest' ? 'newest' : 'oldest')}
+                />
             </div>
 
             <Tabs defaultValue="requested" className="w-full text-left">
-                <TabsList className="tabs !bg-bg-tertiary p-0 h-10 mb-8 text-left">
-                    <TabsTrigger value="requested" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">Requested</TabsTrigger>
-                    <TabsTrigger value="approved" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">Approved</TabsTrigger>
-                    <TabsTrigger value="closed" className="tab !px-8 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white">resolved/closed</TabsTrigger>
+                <TabsList className="tabs mb-4">
+                    <TabsTrigger value="requested" className="tab">Open</TabsTrigger>
+                    <TabsTrigger value="approved" className="tab">Approved</TabsTrigger>
+                    <TabsTrigger value="closed" className="tab">Closed</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="requested" className="space-y-4 mt-0">
-                    <TicketList requests={myRequests.filter(r => ['new', 'reviewed', 'pending_review'].includes(r.status as string))} />
+                <TabsContent value="requested" className="mt-0">
+                    <TicketList pagerKey="requested" searching={!!searchQuery} onClearSearch={() => setSearchQuery('')} resetKeys={[searchQuery, sortBy]}
+                        requests={myRequests.filter(r => ['new', 'reviewed', 'pending_review', 'pending'].includes(r.status as string))} />
                 </TabsContent>
                 
-                <TabsContent value="approved" className="space-y-4 mt-0">
-                    <TicketList requests={myRequests.filter(r => r.status === 'approved')} />
+                <TabsContent value="approved" className="mt-0">
+                    <TicketList pagerKey="approved" searching={!!searchQuery} onClearSearch={() => setSearchQuery('')} resetKeys={[searchQuery, sortBy]}
+                        requests={myRequests.filter(r => r.status === 'approved')} />
                 </TabsContent>
 
-                <TabsContent value="closed" className="space-y-4 mt-0">
-                    <TicketList requests={myRequests.filter(r => ['closed', 'rejected', 'denied', 'archived'].includes(r.status as string))} />
+                <TabsContent value="closed" className="mt-0">
+                    <TicketList pagerKey="closed" searching={!!searchQuery} onClearSearch={() => setSearchQuery('')} resetKeys={[searchQuery, sortBy]}
+                        requests={myRequests.filter(r => ['closed', 'rejected', 'denied', 'archived'].includes(r.status as string))} />
                 </TabsContent>
             </Tabs>
 
@@ -348,45 +347,45 @@ export default function ClientTicketsPage() {
                 <DialogContent className="sm:max-w-[650px] bg-bg-elevated border-border-default max-h-[90vh] overflow-y-auto p-0 shadow-2xl">
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-2 mb-1 text-left">
-                            <Plus className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold text-text-primary">New Service Intake</DialogTitle>
+                            <Plus className="text-text-muted h-5 w-5" />
+                            <DialogTitle className="text-lg font-semibold text-text-primary">New service request</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs font-bold text-text-muted text-left">Submit detailed job requirements for administrative audit and dispatch.</DialogDescription>
+                        <DialogDescription className="text-[13px] text-text-muted text-left">Tell us what you need. Our team will review it and schedule a technician.</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleCreateTicket}>
                         <div className="px-6 py-4 space-y-6 text-left">
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold text-text-muted">Issue Summary / Subject</Label>
-                                <Input name="description" placeholder="e.g., Network Closet Cabling Failure" className="bg-bg-primary h-11 text-xs" required />
+                                <Label className="text-[12px] font-medium text-text-secondary">What do you need?</Label>
+                                <Input name="description" placeholder="e.g., Network closet cabling failure" className="bg-bg-primary" required />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2 text-left">
-                                    <Label className="text-[10px] font-bold text-text-muted">Request Type</Label>
+                                    <Label className="text-[12px] font-medium text-text-secondary">Request type</Label>
                                     <Select name="type" defaultValue="Repair">
-                                        <SelectTrigger className="bg-bg-primary h-11 text-xs font-bold tracking-wider"><SelectValue /></SelectTrigger>
+                                        <SelectTrigger className="bg-bg-primary"><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Repair">Infrastructure Repair</SelectItem>
-                                            <SelectItem value="Installation">Low Voltage Install</SelectItem>
-                                            <SelectItem value="Maintenance">Preventive Maintenance</SelectItem>
-                                            <SelectItem value="Survey">Site Survey</SelectItem>
+                                            <SelectItem value="Repair">Repair</SelectItem>
+                                            <SelectItem value="Installation">Installation</SelectItem>
+                                            <SelectItem value="Maintenance">Preventive maintenance</SelectItem>
+                                            <SelectItem value="Survey">Site survey</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-2 text-left">
-                                    <Label className="text-[10px] font-bold text-text-muted">Priority Level</Label>
+                                    <Label className="text-[12px] font-medium text-text-secondary">Priority</Label>
                                     <Select name="priority" defaultValue="medium">
-                                        <SelectTrigger className="bg-bg-primary h-11 text-xs font-bold tracking-wider"><SelectValue /></SelectTrigger>
+                                        <SelectTrigger className="bg-bg-primary"><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="low">Low (Standard)</SelectItem>
+                                            <SelectItem value="low">Low (standard)</SelectItem>
                                             <SelectItem value="medium">Medium</SelectItem>
-                                            <SelectItem value="high">High (4h Target)</SelectItem>
-                                            <SelectItem value="critical">Critical (Emergency)</SelectItem>
+                                            <SelectItem value="high">High (4-hour target)</SelectItem>
+                                            <SelectItem value="critical">Critical (emergency)</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
                             </div>
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold text-text-muted">Site Location / Coordinates</Label>
+                                <Label className="text-[12px] font-medium text-text-secondary">Site address</Label>
                                 <div className="space-y-1.5">
                                     <div className="relative">
                                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
@@ -394,8 +393,8 @@ export default function ClientTicketsPage() {
                                             id="location-input"
                                             ref={addressInputRef}
                                             name="location" 
-                                            placeholder="Full address or site identifier..." 
-                                            className="bg-bg-primary h-11 text-xs pl-10" 
+                                            placeholder="Full address or site name" 
+                                            className="bg-bg-primary pl-10" 
                                             required 
                                         />
                                     </div>
@@ -403,31 +402,31 @@ export default function ClientTicketsPage() {
                                         type="button" 
                                         variant="ghost" 
                                         size="sm" 
-                                        className="h-6 text-[10px] uppercase font-bold tracking-wider text-accent-gold hover:bg-accent-gold/10 p-0 flex items-center gap-1.5"
+                                        className="h-7 px-2 text-[12px] font-medium text-text-secondary hover:text-text-primary flex items-center gap-1.5"
                                         onClick={() => setIsSiteRegistryOpen(true)}
                                     >
-                                        <MapPin size={12}/> Search Managed Sites
+                                        <MapPin size={12}/> Choose a saved site
                                     </Button>
                                 </div>
                             </div>
 
                             <div className="space-y-3 pt-4 border-t border-border-sub">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
-                                        <FileText size={14} className="text-brand-red" /> Site Evidence & Assets
+                                    <Label className="text-[12px] font-medium text-text-secondary flex items-center gap-2">
+                                        <FileText size={14} /> Photos and documents
                                     </Label>
-                                    <span className="text-[11px] font-mono text-text-muted">{attachments.length}/5 Assets</span>
+                                    <span className="text-[11px] font-mono text-text-muted">{attachments.length}/5 files</span>
                                 </div>
                                 
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                     {attachments.map((asset, i) => (
                                         <div key={i} className="relative aspect-video rounded-lg border border-border-sub overflow-hidden group bg-bg-primary flex flex-col items-center justify-center p-2">
                                             {asset.type === 'image' ? (
-                                                <img src={asset.url} alt={`Evidence ${i}`} className="w-full h-full object-cover rounded" />
+                                                <img src={asset.url} alt={`Attachment ${i + 1}`} className="w-full h-full object-cover rounded" />
                                             ) : (
                                                 <div className="flex flex-col items-center gap-1">
                                                     <FileText size={20} className="text-text-muted" />
-                                                    <span className="text-[10px] font-bold truncate max-w-full">{asset.name}</span>
+                                                    <span className="text-[11px] truncate max-w-full">{asset.name}</span>
                                                 </div>
                                             )}
                                             <button 
@@ -442,31 +441,31 @@ export default function ClientTicketsPage() {
                                     {attachments.length < 5 && (
                                         <label className="aspect-video rounded-lg border-2 border-dashed border-border-sub flex flex-col items-center justify-center gap-1 text-text-muted hover:border-brand-red transition-all cursor-pointer group">
                                             <Upload size={16} className="group-hover:text-brand-red" />
-                                            <span className="text-[10px] font-bold">Attach Evidence</span>
+                                            <span className="text-[12px]">Attach file</span>
                                             <input type="file" className="hidden" onChange={handleFileUpload} />
                                         </label>
                                     )}
                                 </div>
-                                <p className="text-[10px] text-text-muted uppercase font-bold italic tracking-tighter">Authorized formats: PDF, JPG, PNG, DOC (Max 10MB)</p>
+                                <p className="text-[12px] text-text-muted">PDF, JPG, PNG or DOC, up to 10 MB each.</p>
                             </div>
                         </div>
                         <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-2">
-                            <Button variant="outline" type="button" onClick={() => setIsNewTicketOpen(false)}>Cancel Submission</Button>
-                            <Button type="submit" className="bg-brand-red hover:bg-brand-red-hover px-10">Transmit Request</Button>
+                            <Button variant="outline" type="button" onClick={() => setIsNewTicketOpen(false)}>Cancel</Button>
+                            <Button type="submit">Send request</Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
             </Dialog>
 
-            {/* SITE REGISTRY POPUP */}
+            {/* Saved sites picker */}
             <Dialog open={isSiteRegistryOpen} onOpenChange={setIsSiteRegistryOpen}>
                 <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default p-0 flex flex-col max-h-[80vh] shadow-2xl">
                     <DialogHeader className="p-6 pb-2 text-left">
                         <div className="flex items-center gap-2 mb-1">
-                            <Navigation className="text-accent-gold h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold text-text-primary text-left">Site Registry</DialogTitle>
+                            <Navigation className="text-text-muted h-5 w-5" />
+                            <DialogTitle className="text-lg font-semibold text-text-primary text-left">Saved sites</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs text-left">Select verified coordinates for your organization.</DialogDescription>
+                        <DialogDescription className="text-[13px] text-left">Pick one of your sites to fill in the address.</DialogDescription>
                     </DialogHeader>
                     <ScrollArea className="flex-1 px-6 py-4">
                         <div className="space-y-1">
@@ -479,9 +478,9 @@ export default function ClientTicketsPage() {
                                 >
                                     <div className="flex justify-between items-start gap-3">
                                         <div className="space-y-0.5 text-left">
-                                            <p className="text-xs font-bold text-text-primary tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
-                                            <p className="text-[10px] text-text-muted flex items-center gap-1.5 text-left">
-                                                <MapPin size={10} className="text-brand-red shrink-0" />
+                                            <p className="text-[13px] font-semibold text-text-primary">{site.name}</p>
+                                            <p className="text-[12px] text-text-muted flex items-center gap-1.5 text-left">
+                                                <MapPin size={12} className="shrink-0" />
                                                 <span className="truncate">{site.location}</span>
                                             </p>
                                         </div>
@@ -490,14 +489,12 @@ export default function ClientTicketsPage() {
                                 </button>
                             ))}
                             {(!currentUser?.managedSites || currentUser.managedSites.length === 0) && (
-                                <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
-                                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider italic text-center">No verified sites on record for your organization</p>
-                                </div>
+                                <EmptyState compact icon={MapPin} title="No saved sites yet" />
                             )}
                         </div>
                     </ScrollArea>
                     <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                        <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-wider h-10" onClick={() => setIsSiteRegistryOpen(false)}>Close Registry</Button>
+                        <Button variant="outline" className="w-full" onClick={() => setIsSiteRegistryOpen(false)}>Close</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -505,33 +502,42 @@ export default function ClientTicketsPage() {
     );
 }
 
-function TicketList({ requests }: { requests: ServiceRequest[] }) {
+function TicketList({ requests, pagerKey, searching, onClearSearch, resetKeys }: {
+    requests: ServiceRequest[];
+    pagerKey: string;
+    searching: boolean;
+    onClearSearch: () => void;
+    resetKeys: unknown[];
+}) {
+    const pager = usePaged(requests, PAGE_SIZES_SMALL, `client-requests-${pagerKey}`, resetKeys);
     if (requests.length === 0) {
-        return (
-            <div className="p-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30 text-left">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-center">No tickets found in this registry</p>
-            </div>
-        );
+        return searching
+            ? <EmptyState icon={SearchCode} title="No requests match your search" action={<Button variant="outline" size="sm" onClick={onClearSearch}>Clear search</Button>} />
+            : <EmptyState icon={ClipboardList} title="No requests here yet" />;
     }
     return (
-        <div className="grid grid-cols-1 gap-4 text-left">
-            {requests.map(ticket => (
-                <Card key={ticket.id} className="bg-bg-secondary border-border-main hover:border-text-muted transition-all group">
-                    <CardContent className="min-h-24 p-5 flex items-center justify-between text-left">
-                        <div className="text-left space-y-1 flex-1">
-                            <div className="flex items-center gap-2 text-left">
-                                <span className="text-[11px] font-mono font-bold text-brand-red">{(ticket.id || '').toUpperCase()}</span>
-                                <Badge variant={ticket.priority === 'critical' ? 'high' : 'medium'} className="text-[10px] h-3.5 px-1">{ticket.priority}</Badge>
+        <div className="space-y-3 text-left">
+            {pager.items.map(ticket => (
+                <Card key={ticket.id} className="rounded-xl border-border-main bg-bg-secondary shadow-sm transition-colors hover:border-text-muted">
+                    <CardContent className="flex items-center justify-between gap-4 p-4 text-left">
+                        <div className="min-w-0 flex-1 space-y-1 text-left">
+                            <div className="flex items-center gap-2">
+                                <span className="font-mono text-[11px] font-semibold text-text-muted">{(ticket.id || '').toUpperCase()}</span>
+                                {ticket.priority && (
+                                    <Badge variant={ticket.priority === 'critical' || ticket.priority === 'high' ? 'high' : 'medium'} className="text-[10px] uppercase tracking-wide">{ticket.priority}</Badge>
+                                )}
                             </div>
-                            <h3 className="text-sm font-bold text-text-primary truncate max-w-[400px] text-left">{ticket.description}</h3>
-                            <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold uppercase tracking-wider text-left">
-                                <span className="flex items-center gap-1.5"><MapPin size={10} className="text-brand-red"/> {ticket.location}</span>
+                            <h3 className="truncate text-sm font-semibold text-text-primary">{ticket.description}</h3>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-text-muted">
+                                <span className="flex min-w-0 items-center gap-1.5"><MapPin size={12} className="shrink-0" /><span className="truncate">{ticket.location}</span></span>
+                                <span>{requestKind(ticket)} · {formatRequestDate(ticket)}</span>
                             </div>
                         </div>
-                        <Badge variant={ticket.status === 'new' ? 'pending' : 'active'} className="h-6 px-4">{ticket.status}</Badge>
+                        <StatusBadge kind="request" value={ticket.status} className="shrink-0" />
                     </CardContent>
                 </Card>
             ))}
+            <ListPager pager={pager} noun="requests" />
         </div>
     );
 }

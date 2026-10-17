@@ -6,6 +6,10 @@ import { db } from '@/lib/firebase';
 import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { WorkOrderId } from '@/components/work-order-id';
+import { PageHeader } from '@/components/page-header';
+import { EmptyState } from '@/components/empty-state';
+import { StatusBadge } from '@/components/status-badge';
+import { statusLabel } from '@/lib/status-styles';
 import { type JobWithSrc, jobTechId, isAssigned, isArchivedJob, mergeJobs } from '@/lib/jobs';
 import { assignJobToTechnician } from '@/lib/job-actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -37,7 +41,7 @@ const AdminMapView = dynamic(() => import('@/app/admin/map/components/admin-map-
 
 const PRIORITY_META: Record<string, { label: string; cls: string }> = {
   critical: { label: 'Critical', cls: 'text-brand-red bg-brand-red/10 border-brand-red/30' },
-  high:     { label: 'High',     cls: 'text-orange-400 bg-orange-400/10 border-orange-400/30' },
+  high:     { label: 'High',     cls: 'text-accent-gold bg-accent-gold/10 border-accent-gold/30' },
   medium:   { label: 'Medium',   cls: 'text-accent-gold bg-accent-gold/10 border-accent-gold/30' },
   low:      { label: 'Low',      cls: 'text-text-muted bg-bg-tertiary border-border-sub' },
 };
@@ -284,7 +288,7 @@ export default function AdminCalendarPage() {
           actorName: 'Admin', extraFields: fieldUpdates,
           onLogMove: r => {
             const note = describeSwapLogMove(r, technicians.find(x => x.id === prevTech)?.name || 'the previous tech', t?.name || 'the new tech');
-            if (note) toast({ variant: note.warn ? 'destructive' : undefined, title: 'Weekly Log', description: note.text });
+            if (note) toast({ variant: note.warn ? 'destructive' : undefined, title: 'Weekly log', description: note.text });
           },
         });
         if (moved) setDrawerJob(null); // its doc id changed — close the stale drawer
@@ -319,7 +323,7 @@ export default function AdminCalendarPage() {
         actorName: 'Admin',
         onLogMove: r => {
           const note = describeSwapLogMove(r, technicians.find(t => t.id === prevTech)?.name || 'the previous tech', tech?.name || 'the new tech');
-          if (note) toast({ variant: note.warn ? 'destructive' : undefined, title: 'Weekly Log', description: note.text });
+          if (note) toast({ variant: note.warn ? 'destructive' : undefined, title: 'Weekly log', description: note.text });
         },
       });
       setEditForm(f => ({ ...f, assignedTechnicianId: techId }));
@@ -384,12 +388,18 @@ export default function AdminCalendarPage() {
       onDragEnd={handleDragEnd}
       onDragStart={({ active }) => setActiveId(active.id as string)}
     >
-      {/* Mobile tab bar */}
-      <div className="md:hidden flex border-b border-border-sub -mx-4 mb-0">
+      <PageHeader
+        eyebrow="Schedule"
+        icon={CalendarIcon}
+        title="Calendar"
+        subtitle="Jobs by day. Drag a job onto a technician or another day to reschedule."
+      />
+
+      {/* Mobile view switcher */}
+      <div className="md:hidden tabs mb-4" role="tablist" aria-label="Calendar view">
         {(['calendar', 'map', 'list'] as const).map(t => (
-          <button key={t} onClick={() => setMobileTab(t)}
-            className={cn('flex-1 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors',
-              mobileTab === t ? 'border-b-2 border-brand-red text-brand-red' : 'text-text-muted hover:text-text-primary')}>
+          <button key={t} type="button" role="tab" aria-selected={mobileTab === t} onClick={() => setMobileTab(t)}
+            data-state={mobileTab === t ? 'active' : 'inactive'} className="tab flex-1 capitalize">
             {t}
           </button>
         ))}
@@ -426,21 +436,21 @@ export default function AdminCalendarPage() {
             <Select value={filterTech} onValueChange={setFilterTech}>
               <SelectTrigger className="h-7 text-[11px] w-[120px] bg-bg-primary border-border-sub">
                 <Users size={10} className="mr-1 text-text-muted shrink-0" />
-                <SelectValue placeholder="All Techs" />
+                <SelectValue placeholder="All techs" />
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
-                <SelectItem value="all">All Techs</SelectItem>
+                <SelectItem value="all">All techs</SelectItem>
                 {adminTechs.map(t => <SelectItem key={t.id} value={t.id}>{t.name || t.id}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className="h-7 text-[11px] w-[110px] bg-bg-primary border-border-sub">
                 <Filter size={10} className="mr-1 text-text-muted shrink-0" />
-                <SelectValue placeholder="All Statuses" />
+                <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
-                <SelectItem value="all">All Statuses</SelectItem>
-                {uniqueStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                <SelectItem value="all">All statuses</SelectItem>
+                {uniqueStatuses.map(s => <SelectItem key={s} value={s}>{statusLabel(s)}</SelectItem>)}
               </SelectContent>
             </Select>
             <button onClick={handleExportIcs}
@@ -593,10 +603,7 @@ export default function AdminCalendarPage() {
                   <div key={i} className="h-[72px] rounded-lg bg-bg-tertiary animate-pulse" />
                 ))
               ) : selectedDateJobs.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full gap-2">
-                  <CalendarIcon size={24} className="text-text-muted opacity-20" />
-                  <p className="text-[11px] text-text-muted">No jobs scheduled for this day</p>
-                </div>
+                <EmptyState compact icon={CalendarIcon} title="No jobs scheduled for this day" className="m-2" />
               ) : (
                 selectedDateJobs.map((wo, idx) => {
                   const assigned  = isAssigned(wo);
@@ -794,7 +801,7 @@ export default function AdminCalendarPage() {
 
                   {/* Editable: Notes/Scope */}
                   <div className="py-4">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5">Scope / Notes</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5">Scope / notes</p>
                     <textarea
                       rows={3}
                       value={editForm.notes}
@@ -811,10 +818,10 @@ export default function AdminCalendarPage() {
                       <div className="flex items-center gap-2 p-2 rounded-lg bg-bg-tertiary border border-border-sub">
                         <UserCheck size={12} className="text-text-green shrink-0" />
                         <span className="text-[11px] font-bold text-text-primary flex-1">{drawerAssignedTech.name}</span>
-                        <span className="text-[11px] text-text-muted capitalize">{drawerJob.status}</span>
+                        <StatusBadge kind="job" value={drawerJob.status} />
                       </div>
                     ) : (
-                      <p className="text-[11px] text-text-muted italic">No technician assigned</p>
+                      <p className="text-[11px] text-text-muted">No technician assigned</p>
                     )}
                   </div>
 
@@ -828,7 +835,7 @@ export default function AdminCalendarPage() {
                     >
                       {savingEdit
                         ? <><Loader2 size={11} className="animate-spin mr-1.5" />Saving...</>
-                        : <><Check size={11} className="mr-1.5" />Save Changes</>}
+                        : <><Check size={11} className="mr-1.5" />Save changes</>}
                     </Button>
                   </div>
                 </div>
@@ -855,7 +862,7 @@ export default function AdminCalendarPage() {
                           <button
                             key={t.id}
                             disabled={inactive}
-                            title={inactive ? 'Inactive technicians cannot be deployed' : undefined}
+                            title={inactive ? 'Inactive technicians cannot be assigned' : undefined}
                             onClick={() => !inactive && handleAssignTech(t.id)}
                             className={cn(
                               'w-full text-left px-3 py-2 text-[11px] transition-colors flex items-center gap-2',
@@ -892,7 +899,7 @@ export default function AdminCalendarPage() {
       <Dialog open={!!dismissTarget} onOpenChange={v => !v && setDismissTarget(null)}>
         <DialogContent className="bg-bg-secondary border-border-main max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold">Dismiss Job?</DialogTitle>
+            <DialogTitle className="text-sm font-bold">Dismiss job?</DialogTitle>
             <DialogDescription className="text-[11px] text-text-muted leading-relaxed">
               This will mark &ldquo;<span className="font-bold text-text-primary">
                 {dismissTarget?.title || dismissTarget?.description}

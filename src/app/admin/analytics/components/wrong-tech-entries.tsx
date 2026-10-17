@@ -115,7 +115,7 @@ export function WrongTechEntries({ entries, desynced, technicians, currentUser }
             history: arrayUnion({
                 type: 'note',
                 date: format(new Date(), 'MM-dd-yyyy'),
-                details: `Tech portal ownership synced from ${techName(job.techId)} to ${techName(to)} by ${adminName} (Intel → Flags → Wrong Tech).`,
+                details: `Tech portal ownership synced from ${techName(job.techId)} to ${techName(to)} by ${adminName} (Insights → Flags → Wrong tech).`,
                 user: adminName,
             }),
         });
@@ -183,7 +183,7 @@ export function WrongTechEntries({ entries, desynced, technicians, currentUser }
                                         <div key={rowKey(e)} className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 py-3">
                                             <div className="min-w-0 space-y-0.5">
                                                 <div className="flex flex-wrap items-center gap-2">
-                                                    <a href={`/admin/assignments/${e.job.id}`} className="text-[11px] font-bold font-mono text-blue-400 hover:underline">{e.job.id.toUpperCase()}</a>
+                                                    <a href={`/admin/assignments/${e.job.id}`} className="text-[11px] font-bold font-mono text-brand-blue hover:underline">{e.job.id.toUpperCase()}</a>
                                                     <span className="text-[10px] font-mono text-text-muted">WO {displayWorkOrderNumber(e.job)}</span>
                                                 </div>
                                                 <p className="text-[11px] font-bold text-text-primary truncate">{e.job.title || e.job.description || '—'}</p>
@@ -224,7 +224,7 @@ export function WrongTechEntries({ entries, desynced, technicians, currentUser }
                                     <div key={job.id} className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 py-3">
                                         <div className="min-w-0 space-y-0.5">
                                             <div className="flex flex-wrap items-center gap-2">
-                                                <a href={`/admin/assignments/${job.id}`} className="text-[11px] font-bold font-mono text-blue-400 hover:underline">{job.id.toUpperCase()}</a>
+                                                <a href={`/admin/assignments/${job.id}`} className="text-[11px] font-bold font-mono text-brand-blue hover:underline">{job.id.toUpperCase()}</a>
                                                 <span className="text-[10px] font-mono text-text-muted">WO {displayWorkOrderNumber(job)}</span>
                                             </div>
                                             <p className="text-[10px] text-text-secondary">

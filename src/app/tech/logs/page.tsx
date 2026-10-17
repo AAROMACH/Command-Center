@@ -6,7 +6,12 @@ import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Tech
 import { externalWorkOrderId, displayWorkOrderNumber, fieldNationUrl, isImported } from '@/lib/work-order-identity';
 import { hasPermission } from '@/lib/permissions';
 import { computeWeeklyLogSettlement, effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
-import { mergeJobs, weekOfValue } from '@/lib/jobs';
+import { mergeJobs, weekOfValue, parseLocalDate } from '@/lib/jobs';
+import { PageHeader } from '@/components/page-header';
+import { EmptyState } from '@/components/empty-state';
+import { StatusBadge } from '@/components/status-badge';
+import { SearchField } from '@/components/search-field';
+import { DateRangeButton } from '@/components/list-toolbar';
 import { useHelperLogSync } from '@/hooks/use-helper-log-sync';
 import { createDraftWeeklyLog } from '@/lib/weekly-log';
 import { weeklyLogAction } from '@/lib/weekly-log-api';
@@ -56,7 +61,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn, formatCityState, sanitize, formatDistance } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { format, parseISO, isSameDay, startOfDay, startOfWeek, isWithinInterval } from 'date-fns';
+import { format, parseISO, isSameDay, startOfDay, startOfWeek, addDays } from 'date-fns';
 import {
   Select,
   SelectContent,
@@ -279,12 +284,9 @@ export default function TechWeeklyLogPage() {
     const canAddReimbursement = useMemo(() => !!activeLog?.weekOf, [activeLog?.weekOf]);
 
     // 3. Registry Filtering & Sorting
-    const filteredAndSortedLogs = useMemo(() => {
+    // Search + date range first, so the status menu can show accurate counts.
+    const searchedLogs = useMemo(() => {
         let filtered = weeklyLogs;
-        
-        if (statusFilter !== 'all') {
-            filtered = filtered.filter(l => l.status === statusFilter);
-        }
 
         if (searchQuery) {
             // Week date, or any job on the log: ASMT id, WO#, title, city.
@@ -297,22 +299,30 @@ export default function TechWeeklyLogPage() {
         }
 
         if (dateRange?.from) {
+            // A week matches when ANY of its 7 days (Mon–Sun) falls inside
+            // the chosen range — not only its Monday.
+            const start = startOfDay(dateRange.from).getTime();
+            const end = startOfDay(dateRange.to ?? dateRange.from).getTime();
             filtered = filtered.filter(log => {
-                try {
-                    const parts = log.weekOf.split('-');
-                    let logDate;
-                    if (parts[2]?.length === 4) { 
-                        logDate = startOfDay(new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1])));
-                    } else { 
-                        logDate = startOfDay(parseISO(log.weekOf));
-                    }
-                    const start = startOfDay(dateRange.from!);
-                    const end = dateRange.to ? startOfDay(dateRange.to) : start;
-                    return isWithinInterval(logDate, { start, end });
-                } catch(e) { return true; }
+                const weekStart = parseLocalDate(log.weekOf);
+                if (!weekStart) return true;
+                const ws = startOfDay(weekStart);
+                return ws.getTime() <= end && addDays(ws, 6).getTime() >= start;
             });
         }
+        return filtered;
+    }, [weeklyLogs, searchQuery, dateRange, jobsById]);
 
+    const statusCounts = useMemo(() => {
+        const c: Record<string, number> = { all: searchedLogs.length };
+        for (const l of searchedLogs) c[l.status] = (c[l.status] || 0) + 1;
+        return c;
+    }, [searchedLogs]);
+    const filtersActive = !!searchQuery || statusFilter !== 'all' || !!dateRange?.from;
+    const resetFilters = () => { setSearchQuery(''); setStatusFilter('all'); setDateRange(undefined); };
+
+    const filteredAndSortedLogs = useMemo(() => {
+        const filtered = statusFilter === 'all' ? searchedLogs : searchedLogs.filter(l => l.status === statusFilter);
         return [...filtered].sort((a, b) => {
             if (sortBy === 'newest') return weekOfValue(b.weekOf) - weekOfValue(a.weekOf);
             if (sortBy === 'oldest') return weekOfValue(a.weekOf) - weekOfValue(b.weekOf);
@@ -320,7 +330,7 @@ export default function TechWeeklyLogPage() {
             if (sortBy === 'billing') return settlementOf(b) - settlementOf(a);
             return 0;
         });
-    }, [weeklyLogs, searchQuery, sortBy, statusFilter, dateRange, jobsById]);
+    }, [searchedLogs, sortBy, statusFilter, jobsById]);
 
     // Past (non-Draft) logs pile up week after week — page them; open Drafts always show.
     const pastLogsAll = useMemo(() => filteredAndSortedLogs.filter(l => l.status !== 'Draft'), [filteredAndSortedLogs]);
@@ -345,10 +355,10 @@ export default function TechWeeklyLogPage() {
                 toast({ variant: 'destructive', title: 'Save failed', description: `A log for the week of ${weekOf} already exists.` });
                 return;
             }
-            toast({ title: "Log Initialized", description: `Weekly manifest for ${weekOf} has been created.` });
+            toast({ title: "Log created", description: `Weekly log for the week of ${weekOf} created.` });
             setIsCreateLogOpen(false);
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Write Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Could not create log', description: e.message });
         }
     };
 
@@ -359,9 +369,9 @@ export default function TechWeeklyLogPage() {
         if (!activeLog || isLocked) return;
         try {
             await weeklyLogAction('confirmItem', { logId: activeLog.id, itemId });
-            toast({ title: "Assignment Verified", description: "Confirmation committed to cloud manifest." });
+            toast({ title: "Job confirmed", description: "Saved to your weekly log." });
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Connection failed", description: e.message });
+            toast({ variant: "destructive", title: "Could not confirm job", description: e.message });
         }
     };
 
@@ -369,9 +379,9 @@ export default function TechWeeklyLogPage() {
         if (!activeLog || isLocked) return;
         try {
             await weeklyLogAction('disputeItem', { logId: activeLog.id, itemId, reason, notes: notes || null });
-            toast({ title: "Discrepancy Logged", description: "Dispute parameters committed to audit folder." });
+            toast({ title: "Dispute saved", description: "Payroll will review this job." });
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Logging Failed", description: e.message });
+            toast({ variant: "destructive", title: "Could not save dispute", description: e.message });
         }
     };
 
@@ -385,9 +395,9 @@ export default function TechWeeklyLogPage() {
                 logId: activeLog.id, itemId: item.id,
                 amount: data.amount, description: data.description, note: data.note, receiptUrl: data.receiptUrl,
             });
-            toast({ title: 'Reimbursement Added', description: 'Pending payroll review — it will appear in the pay calculator.' });
+            toast({ title: 'Reimbursement added', description: 'Pending payroll review — it will appear in the pay calculator.' });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Could not add reimbursement', description: e.message });
         }
     };
 
@@ -395,9 +405,9 @@ export default function TechWeeklyLogPage() {
         if (!activeLog || isLocked) return;
         try {
             await weeklyLogAction('deleteReimbursement', { logId: activeLog.id, reimbId });
-            toast({ title: 'Reimbursement Removed' });
+            toast({ title: 'Reimbursement removed' });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Could not remove reimbursement', description: e.message });
         }
     };
 
@@ -405,9 +415,9 @@ export default function TechWeeklyLogPage() {
         if (!activeLog || isLocked) return;
         try {
             await weeklyLogAction('addMissingReport', { logId: activeLog.id, report });
-            toast({ title: "Discrepancy Transmitted", description: "Inquiry folder initialized for audit." });
+            toast({ title: "Missing job reported", description: "Payroll will look into it." });
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Report Failed", description: e.message });
+            toast({ variant: "destructive", title: "Could not send report", description: e.message });
         }
     };
 
@@ -434,17 +444,17 @@ export default function TechWeeklyLogPage() {
             });
             const disputeSubject = payrollDisputeWorkOrderId ? `job ${payrollDisputeWorkOrderId.toUpperCase()}` : 'a job';
             NotificationService.notifyPayrollAdmins(
-                "Payroll Dispute Filed",
+                "Payroll dispute filed",
                 `${currentUser?.name || 'A technician'} disputed ${disputeSubject} on the weekly log for ${activeLog.weekOf}. Reason: ${payrollDisputeReason.replace(/_/g, ' ')}.`,
             ).catch(() => {});
-            toast({ title: "Dispute Filed", description: "An admin will review this against your weekly log." });
+            toast({ title: "Dispute filed", description: "An admin will review this against your weekly log." });
             setIsPayrollDisputeOpen(false);
             setIsDisputeModeOn(false);
             setPayrollDisputeReason('');
             setPayrollDisputeWorkOrderId('');
             setPayrollDisputeNotes('');
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Could Not File Dispute", description: e.message });
+            toast({ variant: "destructive", title: "Could not file dispute", description: e.message });
         } finally {
             setPayrollDisputeSaving(false);
         }
@@ -456,7 +466,7 @@ export default function TechWeeklyLogPage() {
         if (!canSubmitActiveLog) {
             toast({
                 variant: "destructive",
-                title: "Submission Restricted",
+                title: "Can't submit yet",
                 description: "Current-week logs can only be submitted on Saturday or Sunday. Past week logs can be submitted anytime.",
             });
             return;
@@ -468,12 +478,12 @@ export default function TechWeeklyLogPage() {
         try {
             await weeklyLogAction('submit', { logId: activeLog.id });
             toast({
-                title: "Log Submitted",
-                description: "Weekly assignments manifest has been transmitted for audit.",
+                title: "Log submitted",
+                description: "Your weekly log was sent to payroll.",
             });
             setSelectedLogId(null);
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Submission Failed", description: e.message });
+            toast({ variant: "destructive", title: "Could not submit", description: e.message });
         }
     };
 
@@ -503,15 +513,15 @@ export default function TechWeeklyLogPage() {
         const dest = weeklyLogs.find(l => l.id === destLogId);
         if (!dest || dest.status !== 'Draft') return;
         if ((dest.items || []).some(i => i.workOrderId === moveItem.workOrderId)) {
-            toast({ variant: 'destructive', title: 'Already In That Log', description: 'This assignment already exists in the destination log.' });
+            toast({ variant: 'destructive', title: 'Already in that log', description: 'This job is already on the other log.' });
             return;
         }
         try {
             await weeklyLogAction('moveItem', { fromLogId: activeLog.id, toLogId: dest.id, itemId: moveItem.id });
-            toast({ title: 'Assignment Moved', description: `Moved to the week of ${dest.weekOf}.` });
+            toast({ title: 'Job moved', description: `Moved to the week of ${dest.weekOf}.` });
             setMoveItem(null);
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Move Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Could not move job', description: e.message });
         }
     };
 
@@ -519,10 +529,10 @@ export default function TechWeeklyLogPage() {
         if (!activeLog || !canUnsubmitOwnLog || !isUnsubmitEligible) return;
         try {
             await weeklyLogAction('unsubmit', { logId: activeLog.id });
-            toast({ title: 'Log Unsubmitted', description: 'Returned to Draft — assignments and entries are editable again.' });
+            toast({ title: 'Log unsubmitted', description: 'Back to draft — you can edit it again.' });
             setIsDirectUnsubmitOpen(false);
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Unsubmit Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Could not unsubmit', description: e.message });
         }
     };
 
@@ -531,13 +541,13 @@ export default function TechWeeklyLogPage() {
         try {
             await weeklyLogAction('requestUnsubmit', { logId: activeLog.id, reason: unsubmitReason.trim() });
             toast({
-                title: "Unsubmit Requested",
-                description: "Amendment request transmitted for administrative authorization.",
+                title: "Unsubmit requested",
+                description: "An admin will review your request.",
             });
             setIsUnsubmitDialogOpen(false);
             setUnsubmitReason("");
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Request Failed", description: e.message });
+            toast({ variant: "destructive", title: "Could not send request", description: e.message });
         }
     };
 
@@ -555,14 +565,14 @@ export default function TechWeeklyLogPage() {
     const canSubmit = counts.total > 0 && counts.pending === 0;
 
     const ViewTabs = () => (
-        <div className="flex items-center gap-1 rounded-lg border border-border-sub bg-bg-secondary p-1 w-max">
-            <button type="button" onClick={() => setLogView('work')}
-                className={cn('px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-colors', logView === 'work' ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary')}>
-                <LayoutList size={11} className="inline mr-1.5" />Work Logs
+        <div className="tabs !mb-0 flex-nowrap" role="tablist">
+            <button type="button" role="tab" aria-selected={logView === 'work'} onClick={() => setLogView('work')}
+                className={cn('tab inline-flex items-center', logView === 'work' && 'active')}>
+                <LayoutList size={14} className="mr-1.5" />Work logs
             </button>
-            <button type="button" onClick={() => setLogView('trips')}
-                className={cn('px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-colors', logView === 'trips' ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary')}>
-                <Car size={11} className="inline mr-1.5" />Mileage / Trips
+            <button type="button" role="tab" aria-selected={logView === 'trips'} onClick={() => setLogView('trips')}
+                className={cn('tab inline-flex items-center', logView === 'trips' && 'active')}>
+                <Car size={14} className="mr-1.5" />Mileage
             </button>
         </div>
     );
@@ -570,14 +580,13 @@ export default function TechWeeklyLogPage() {
     if (logView === 'trips') {
         return (
             <div className="space-y-6 text-left">
-                <header className="page-header text-left">
-                    <div className="text-left">
-                        <p className="page-eyebrow flex items-center gap-2"><Car size={12}/> Mileage Registry</p>
-                        <h1 className="page-title text-left">Trip Logs</h1>
-                        <p className="page-subtitle text-[11px] font-bold text-text-muted mt-1 text-left">Every trip you&apos;ve recorded — for reimbursement and year-end mileage review.</p>
-                    </div>
-                    <ViewTabs />
-                </header>
+                <PageHeader
+                    eyebrow="Mileage"
+                    icon={Car}
+                    title="Trip log"
+                    subtitle="Every trip you've recorded — for reimbursement and year-end mileage."
+                    actions={<ViewTabs />}
+                />
                 <TripLogsView tripLogs={tripLogs} workOrders={workOrders} mileageUnit={mileageUnit} />
             </div>
         );
@@ -586,55 +595,55 @@ export default function TechWeeklyLogPage() {
     if (!activeLog) {
         return (
             <div className="space-y-6 text-left">
-                <header className="page-header text-left">
-                    <div className="text-left">
-                        <p className="page-eyebrow flex items-center gap-2"><LayoutList size={12}/> Billing Audit</p>
-                        <h1 className="page-title text-left">Weekly Log Registry</h1>
-                        <p className="page-subtitle text-[11px] font-bold text-text-muted mt-1 text-left">Audit terminal for assignment verification and billing.</p>
-                    </div>
-                    <div className="flex items-center gap-3">
+                <PageHeader
+                    eyebrow="Weekly logs"
+                    icon={LayoutList}
+                    title="My weekly logs"
+                    subtitle="Confirm each week's jobs, add reimbursements and submit for pay."
+                    actions={<>
                         <ViewTabs />
-                        <Button onClick={() => setIsCreateLogOpen(true)} className="bg-brand-red hover:bg-brand-red-hover h-10 px-6 font-bold uppercase tracking-wider text-[10px]">
-                            <Plus size={16} className="mr-2" /> Initialize New Log
+                        <Button onClick={() => setIsCreateLogOpen(true)} className="bg-brand-red hover:bg-brand-red-hover h-10 px-4">
+                            <Plus size={16} className="mr-1.5" /> New log
                         </Button>
-                    </div>
-                </header>
+                    </>}
+                />
 
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-bg-secondary border border-border-sub shadow-sm max-w-6xl mx-auto mb-6 text-left">
-                    <div className="search-wrap flex-1 !mb-0 w-full md:w-auto text-left">
-                        <Search className="h-4 w-4" />
-                        <input 
-                            placeholder="Filter by week period (MM-DD)..." 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="search-input !w-full !bg-bg-primary h-10 text-xs font-bold text-left"
-                        />
-                    </div>
-                    
-                    <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="flex flex-col gap-2 rounded-xl border border-border-main bg-bg-secondary p-3 shadow-sm max-w-6xl mx-auto sm:flex-row sm:items-center">
+                    <SearchField
+                        value={searchQuery}
+                        onChange={setSearchQuery}
+                        placeholder="Search week, job, WO # or city"
+                        className="sm:flex-1"
+                    />
+                    <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[120px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-wider border-border-main">
+                            <SelectTrigger className="h-11 sm:h-9 sm:w-[160px] bg-bg-secondary border-border-main" aria-label="Status">
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all" className="text-[10px] font-bold">All Statuses</SelectItem>
-                                <SelectItem value="Draft" className="text-[10px] font-bold">Drafts</SelectItem>
-                                <SelectItem value="Submitted" className="text-[10px] font-bold">Submitted</SelectItem>
-                                <SelectItem value="Approved" className="text-[10px] font-bold">Approved</SelectItem>
+                                {([['all', 'All statuses'], ['Draft', 'Draft'], ['Submitted', 'Submitted'], ['Approved', 'Approved'], ['Rejected', 'Rejected']] as const).map(([v, label]) => (
+                                    <SelectItem key={v} value={v} className="text-[13px]">{label} ({statusCounts[v] || 0})</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
 
                         <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                            <SelectTrigger className="w-[140px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-wider border-border-main">
+                            <SelectTrigger className="h-11 sm:h-9 sm:w-[160px] bg-bg-secondary border-border-main" aria-label="Sort">
                                 <SelectValue placeholder="Sort" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="newest" className="text-[10px] font-bold">Newest First</SelectItem>
-                                <SelectItem value="oldest" className="text-[10px] font-bold">Earliest First</SelectItem>
-                                <SelectItem value="status" className="text-[10px] font-bold">By Status</SelectItem>
-                                <SelectItem value="billing" className="text-[10px] font-bold">By Settlement</SelectItem>
+                                <SelectItem value="newest" className="text-[13px]">Newest week first</SelectItem>
+                                <SelectItem value="oldest" className="text-[13px]">Oldest week first</SelectItem>
+                                <SelectItem value="status" className="text-[13px]">Status</SelectItem>
+                                <SelectItem value="billing" className="text-[13px]">Highest pay</SelectItem>
                             </SelectContent>
                         </Select>
+                        <DateRangeButton value={dateRange} onChange={setDateRange} className="col-span-2 sm:col-span-1" />
+                        {filtersActive && (
+                            <Button variant="ghost" onClick={resetFilters} className="col-span-2 h-11 sm:h-9 text-brand-red sm:col-span-1">
+                                <X size={14} className="mr-1" /> Reset
+                            </Button>
+                        )}
                     </div>
                 </div>
 
@@ -647,15 +656,15 @@ export default function TechWeeklyLogPage() {
                             <Card
                                 key={log.id || `log-list-${logIdx}`}
                                 className={cn(
-                                    "bg-bg-secondary hover:border-brand-red transition-all cursor-pointer group",
+                                    "rounded-xl bg-bg-secondary shadow-sm hover:border-brand-red transition-all cursor-pointer group",
                                     log.status === 'Draft' ? "border-accent-gold/30" :
                                     log.status === 'Approved' ? "border-green-border/30" :
                                     "border-border-sub"
                                 )}
                                 onClick={() => setSelectedLogId(log.id)}
                             >
-                                <CardContent className="p-4 flex items-center justify-between">
-                                    <div className="flex items-center gap-4 text-left">
+                                <CardContent className="p-4 flex items-center justify-between gap-3">
+                                    <div className="flex min-w-0 items-center gap-3 sm:gap-4 text-left">
                                         <div className={cn(
                                             "p-2.5 rounded-xl border",
                                             log.status === 'Draft' ? "bg-accent-gold-dim border-accent-gold/30 text-accent-gold" :
@@ -664,24 +673,22 @@ export default function TechWeeklyLogPage() {
                                         )}>
                                             <CalendarIcon size={16} />
                                         </div>
-                                        <div className="text-left">
-                                            <div className="flex items-center gap-3">
-                                                <p className="text-xs font-bold tracking-wide text-text-primary group-hover:text-brand-red transition-colors text-left">Week of {log.weekOf}</p>
+                                        <div className="min-w-0 text-left">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <p className="text-[14px] font-semibold text-text-primary group-hover:text-brand-red transition-colors text-left">Week of {log.weekOf}</p>
                                                 {log.unsubmitRequested && (
-                                                    <Badge variant="destructive" className="h-4 px-1.5 text-[10px] animate-pulse">Unsubmit Pending</Badge>
+                                                    <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">Unsubmit requested</Badge>
                                                 )}
                                             </div>
-                                            <div className="flex items-center gap-3 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-wider text-left">
-                                                <span>{(log.items || []).length} Assignments</span>
+                                            <div className="flex items-center gap-2 mt-0.5 text-[12px] text-text-muted text-left">
+                                                <span>{(log.items || []).length} {(log.items || []).length === 1 ? 'job' : 'jobs'}</span>
                                                 <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
                                                 <span className="text-text-green font-mono">${settlementOf(log).toFixed(2)}</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-4">
-                                        <Badge variant={log.status === 'Draft' ? 'onhold' : log.status === 'Approved' ? 'active' : 'pending'}>
-                                            {(log.status || '').toUpperCase()}
-                                        </Badge>
+                                    <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+                                        <StatusBadge kind="log" value={log.status} />
                                         <ChevronRight size={18} className="text-text-muted group-hover:text-text-primary transition-all" />
                                     </div>
                                 </CardContent>
@@ -693,8 +700,8 @@ export default function TechWeeklyLogPage() {
                                 {showDivider && (
                                     <div className="flex items-center gap-3 py-2">
                                         <div className="flex-1 h-px bg-border-sub" />
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-green flex items-center gap-1.5">
-                                            <History size={10} /> Past Logs
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+                                            <History size={12} /> Past logs
                                         </p>
                                         <div className="flex-1 h-px bg-border-sub" />
                                     </div>
@@ -704,19 +711,23 @@ export default function TechWeeklyLogPage() {
                             </>
                         );
                     })()}
-                    {filteredAndSortedLogs.length === 0 && (
-                        <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl opacity-40 bg-bg-secondary/30 text-left">
-                            <LayoutList size={48} className="mx-auto text-text-muted mb-2" />
-                            <p className="text-[10px] font-bold uppercase tracking-wider italic">Registry clear for these filters</p>
-                        </div>
-                    )}
+                    {filteredAndSortedLogs.length === 0 && (weeklyLogs.length === 0 || !filtersActive ? (
+                        <EmptyState icon={LayoutList} title="No weekly logs yet" description="Start a log for a week with New log." />
+                    ) : (
+                        <EmptyState
+                            icon={Search}
+                            title="No logs match these filters"
+                            description="Try a different search, status or date range."
+                            action={<Button variant="outline" onClick={resetFilters}>Reset filters</Button>}
+                        />
+                    ))}
                 </div>
 
                 <Dialog open={isCreateLogOpen} onOpenChange={setIsCreateLogOpen}>
                     <DialogContent className="sm:max-w-[400px] bg-bg-elevated border-border-default shadow-2xl">
                         <DialogHeader className="text-left">
-                            <DialogTitle className="font-bold">Initialize Weekly Log</DialogTitle>
-                            <DialogDescription className="text-xs text-left">Pick a date within the target week. Registry will anchor to that Monday.</DialogDescription>
+                            <DialogTitle className="text-base font-semibold">Start a weekly log</DialogTitle>
+                            <DialogDescription className="text-[12px] text-left">Pick any day in the week. The log starts on that week&apos;s Monday.</DialogDescription>
                         </DialogHeader>
                         <div className="py-6 flex justify-center border-y border-border-sub my-4 text-left">
                             <Calendar 
@@ -729,7 +740,7 @@ export default function TechWeeklyLogPage() {
                         </div>
                         <DialogFooter className="gap-3 flex-row">
                             <Button variant="outline" onClick={() => setIsCreateLogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider h-11">Cancel</Button>
-                            <Button onClick={handleCreateLog} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider h-11 text-white">Initialize Manifest</Button>
+                            <Button onClick={handleCreateLog} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider h-11 text-white">Create log</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
@@ -739,16 +750,14 @@ export default function TechWeeklyLogPage() {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 text-left">
-            <header className="flex items-center gap-4 mb-4 text-left">
-                <Button variant="ghost" size="sm" onClick={() => setSelectedLogId(null)} className="h-8 text-[10px] font-bold text-text-muted hover:text-text-primary text-left">
-                    <ArrowLeft size={14} className="mr-2"/> Back to Registry
+            <div className="text-left">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedLogId(null)} className="h-10 -ml-2 px-2 text-text-muted hover:text-text-primary">
+                    <ArrowLeft size={14} className="mr-1.5"/> All weekly logs
                 </Button>
-                <div className="h-4 w-px bg-border-sub" />
-                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-left">Auditing week of {activeLog.weekOf}</p>
-            </header>
+            </div>
 
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-bg-secondary p-6 rounded-2xl border border-border-sub shadow-2xl text-left">
-                <div className="flex items-center gap-6 text-left">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-bg-secondary p-4 sm:p-6 rounded-xl border border-border-main shadow-sm text-left">
+                <div className="flex items-center gap-4 sm:gap-6 text-left">
                     <div className={cn(
                         "p-3 rounded-xl border",
                         activeLog.status === 'Draft' ? "bg-accent-gold-dim border-accent-gold/30 text-accent-gold" : "bg-green-dim border-green-border/30 text-text-green"
@@ -757,20 +766,18 @@ export default function TechWeeklyLogPage() {
                     </div>
                     <div className="text-left">
                         <div className="flex items-center gap-3 text-left">
-                            <h2 className="text-xl font-bold tracking-wider text-text-primary text-left">Operational Audit</h2>
-                            <Badge variant={activeLog.status === 'Draft' ? 'onhold' : 'active'} className="h-5 uppercase text-[10px] tracking-wider">
-                                {activeLog.status}
-                            </Badge>
+                            <h1 className="text-lg sm:text-xl font-semibold text-text-primary text-left">Week of {activeLog.weekOf}</h1>
+                            <StatusBadge kind="log" value={activeLog.status} />
                         </div>
-                        <div className="flex items-center gap-4 mt-1 text-left">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-left">
                             <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-green uppercase tracking-wider text-left">
-                                <Check className="text-text-green h-3 w-3"/> {counts.confirmed} Confirmed
+                                <Check className="text-text-green h-3 w-3"/> {counts.confirmed} confirmed
                             </div>
                             <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-red uppercase tracking-wider text-left">
-                                <X className="text-text-red h-3 w-3"/> {counts.disputed} Disputed
+                                <X className="text-text-red h-3 w-3"/> {counts.disputed} disputed
                             </div>
                             <div className="flex items-center gap-1.5 text-[10px] font-bold text-accent-gold uppercase tracking-wider text-left">
-                                <Clock size={12} className="h-3 w-3"/> {counts.pending} Awaiting Action
+                                <Clock size={12} className="h-3 w-3"/> {counts.pending} to review
                             </div>
                         </div>
                     </div>
@@ -791,7 +798,7 @@ export default function TechWeeklyLogPage() {
                             ) : activeLog.unsubmitRequested ? (
                                 <div className="flex items-center gap-2 p-2 rounded-lg bg-bg-tertiary border border-border-sub text-accent-gold">
                                     <AlertCircle size={14} className="animate-pulse" />
-                                    <p className="text-[10px] font-bold uppercase tracking-wider">Unsubmit Pending Approval</p>
+                                    <p className="text-[12px] font-semibold">Unsubmit requested</p>
                                 </div>
                             ) : (
                                 <Button
@@ -804,7 +811,7 @@ export default function TechWeeklyLogPage() {
                                 </Button>
                             )}
                             <div className="text-right">
-                                <p className="text-[10px] font-bold text-text-green uppercase tracking-wider text-right">Registry Transmitted</p>
+                                <p className="text-[10px] font-semibold text-text-green uppercase tracking-wider text-right">Submitted</p>
                                 <p className="text-[11px] text-text-muted font-bold text-right">
                                   {activeLog.submittedAt
                                     ? `${format(parseISO(activeLog.submittedAt), 'MMM d, h:mm a')}${activeLog.submittedBy ? ` · ${activeLog.submittedBy}` : ''}`
@@ -814,7 +821,7 @@ export default function TechWeeklyLogPage() {
                         </div>
                     ) : isLocked ? (
                         <div className="flex flex-col items-end text-right">
-                            <p className="text-[10px] font-bold text-text-green uppercase tracking-wider text-right">Terminal Locked</p>
+                            <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-right">Locked · submitted</p>
                             <p className="text-[11px] text-text-muted font-bold text-right">
                               {activeLog.submittedAt
                                 ? `${format(parseISO(activeLog.submittedAt), 'MMM d, h:mm a')}${activeLog.submittedBy ? ` · ${activeLog.submittedBy}` : ''}`
@@ -826,12 +833,12 @@ export default function TechWeeklyLogPage() {
                             disabled={!canSubmit || !canSubmitActiveLog}
                             onClick={handleSubmit}
                             className={cn(
-                                "h-12 px-10 font-bold uppercase text-[10px] tracking-wider",
+                                "h-11 w-full md:w-auto px-6",
                                 canSubmit && canSubmitActiveLog ? "bg-brand-red hover:bg-brand-red-hover" : "bg-bg-tertiary text-text-muted border border-border-sub"
                             )}
                         >
                             <Send size={16} className="mr-2"/>
-                            {canSubmitActiveLog ? "Finalize & Submit Manifest" : "Weekend Submission Only"}
+                            {canSubmitActiveLog ? "Submit log" : "Submit on Sat or Sun"}
                         </Button>
                     )}
                 </div>
@@ -839,64 +846,64 @@ export default function TechWeeklyLogPage() {
 
             {/* UNSET REASONS WARNING */}
             {!isLocked && counts.pending > 0 && (
-                <div className="max-w-6xl mx-auto p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex items-start gap-4 shadow-sm animate-pulse text-left">
+                <div className="max-w-6xl mx-auto p-4 rounded-xl border border-border-alert bg-brand-red/5 flex items-start gap-3 shadow-sm text-left">
                     <ShieldAlert size={20} className="text-text-red shrink-0 mt-0.5" />
                     <div className="space-y-1 text-left">
-                        <p className="text-[11px] font-bold text-text-red tracking-wide text-left">Registry Verification Required</p>
-                        <p className="text-[10px] text-text-muted leading-relaxed text-left">
-                            You must confirm or dispute the remaining <span className="text-text-red font-bold">{counts.pending} assignments</span> before the manifest can be transmitted for billing.
+                        <p className="text-[13px] font-semibold text-text-red text-left">Review every job</p>
+                        <p className="text-[12px] text-text-secondary leading-relaxed text-left">
+                            Confirm or dispute the remaining <span className="text-text-red font-semibold">{counts.pending} {counts.pending === 1 ? 'job' : 'jobs'}</span> before you can submit this log.
                         </p>
                     </div>
                 </div>
             )}
 
             {!isLocked && !canSubmitActiveLog && (
-                <div className="max-w-6xl mx-auto p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-start gap-4 shadow-sm text-left">
+                <div className="max-w-6xl mx-auto p-4 rounded-xl border border-border-main bg-bg-secondary flex items-start gap-3 shadow-sm text-left">
                     <Info size={20} className="text-accent-gold shrink-0 mt-0.5" />
                     <div className="space-y-1 text-left">
-                        <p className="text-[11px] font-bold text-text-primary tracking-wide text-left">Audit Manifest Preparation</p>
-                        <p className="text-[10px] text-text-muted leading-relaxed font-medium text-left">
-                            You can continue verifying missions and logging expenses throughout the week. Current-week log submission is authorized on <span className="text-brand-red font-bold">Saturday and Sunday</span>. Past week logs can be submitted anytime.
+                        <p className="text-[13px] font-semibold text-text-primary text-left">When you can submit</p>
+                        <p className="text-[12px] text-text-secondary leading-relaxed text-left">
+                            Keep confirming jobs and adding expenses during the week. This week&apos;s log can be submitted on <span className="text-brand-red font-semibold">Saturday or Sunday</span>. Past weeks can be submitted any time.
                         </p>
                     </div>
                 </div>
             )}
 
             <div className="space-y-4 max-w-6xl mx-auto text-left">
-                <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1 text-left">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-sub pb-2 px-1 text-left">
                     <div className="flex items-center gap-2">
-                        <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-left">Tactical Assignment Registry</h3>
+                        <h2 className="section-label text-left">Jobs this week</h2>
                         {openDisputesForActiveLog.length > 0 && (
-                            <Badge variant="destructive" className="text-[10px] h-4 uppercase tracking-wider flex items-center gap-1 animate-pulse">
-                                <AlertTriangle size={9} /> Dispute Under Review
+                            <Badge variant="destructive" className="text-[10px] h-5 uppercase tracking-wider flex items-center gap-1">
+                                <AlertTriangle size={10} /> Dispute under review
                             </Badge>
                         )}
                     </div>
                     {!isLocked ? (
-                        <Button variant="ghost" size="sm" className="h-6 text-[11px] font-bold text-brand-red hover:bg-brand-red/10" onClick={() => setIsReportMissingOpen(true)}>
-                            <Search size={12} className="mr-1.5"/> Report Missing Assignment
+                        <Button variant="ghost" size="sm" className="h-10 sm:h-8 text-brand-red hover:bg-brand-red/10" onClick={() => setIsReportMissingOpen(true)}>
+                            <Search size={14} className="mr-1.5"/> Report missing job
                         </Button>
                     ) : activeLog.status === 'Approved' ? (
                         <Button
                             variant="ghost"
                             size="sm"
                             className={cn(
-                                "h-6 text-[11px] font-bold",
+                                "h-10 sm:h-8",
                                 isDisputeModeOn ? "text-text-primary hover:bg-bg-tertiary" : "text-brand-red hover:bg-brand-red/10"
                             )}
                             onClick={() => setIsDisputeModeOn(v => !v)}
                         >
-                            <AlertTriangle size={12} className="mr-1.5"/> {isDisputeModeOn ? 'Cancel Dispute' : 'Dispute This Log'}
+                            <AlertTriangle size={14} className="mr-1.5"/> {isDisputeModeOn ? 'Cancel dispute' : 'Dispute this log'}
                         </Button>
                     ) : null}
                 </div>
                 {isDisputeModeOn && (
-                    <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-brand-red/30 bg-brand-red-dim/5 text-left">
-                        <p className="text-[10px] font-bold text-text-red uppercase tracking-wider">
-                            Select the job below you want to dispute, or file a general issue.
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg border border-brand-red/30 bg-brand-red/5 text-left">
+                        <p className="text-[12px] font-medium text-text-red">
+                            Pick the job below you want to dispute, or file a general issue.
                         </p>
-                        <Button variant="outline" size="sm" className="h-7 shrink-0 text-[10px] uppercase font-bold tracking-wider" onClick={openGeneralDispute}>
-                            File General Dispute
+                        <Button variant="outline" size="sm" className="h-10 sm:h-8 shrink-0" onClick={openGeneralDispute}>
+                            File a general dispute
                         </Button>
                     </div>
                 )}
@@ -927,26 +934,23 @@ export default function TechWeeklyLogPage() {
                         />
                     ))}
                     {(activeLog.items || []).length === 0 && (
-                        <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30 text-left">
-                            <ActivityIcon size={48} className="mx-auto text-text-muted mb-2 opacity-20" />
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">No assignments synced to this weeklog</p>
-                        </div>
+                        <EmptyState icon={ActivityIcon} title="No jobs on this log yet" description="Jobs you complete this week show up here." />
                     )}
                     {/* Reported-missing jobs always trail the synced registry — they aren't
                         confirmed assignments yet, just a flag for payroll to investigate. */}
                     {(activeLog.missingAssignmentReports || []).map(report => (
-                        <Card key={report.id} className="bg-bg-secondary border-accent-gold/30 border-dashed overflow-hidden text-left">
-                            <CardContent className="p-4 flex items-center gap-6 text-left">
+                        <Card key={report.id} className="rounded-xl bg-bg-secondary border-accent-gold/30 border-dashed overflow-hidden text-left">
+                            <CardContent className="p-4 flex items-center gap-4 text-left">
                                 <div className="h-10 w-10 rounded-xl border border-accent-gold/30 bg-accent-gold/10 text-accent-gold flex items-center justify-center shrink-0 shadow-inner">
                                     <Search size={18}/>
                                 </div>
                                 <div className="min-w-0 text-left flex-1">
                                     <div className="flex flex-wrap items-center gap-2 text-left">
-                                        <h4 className="text-sm font-bold text-text-primary tracking-wide truncate max-w-[420px] text-left">{report.summary || 'Missing Assignment'}</h4>
-                                        <Badge variant="pending" className="text-[10px] h-3.5 uppercase tracking-tighter">Manually Added · Was Missing</Badge>
-                                        {report.jobType && <Badge variant="outline" className="text-[10px] h-3.5 uppercase tracking-tighter">{report.jobType}</Badge>}
+                                        <h3 className="text-[14px] font-semibold text-text-primary truncate max-w-[420px] text-left">{report.summary || 'Missing job'}</h3>
+                                        <Badge variant="pending" className="text-[10px] uppercase tracking-wide">Reported missing</Badge>
+                                        {report.jobType && <Badge variant="outline" className="text-[10px] uppercase tracking-wide">{report.jobType}</Badge>}
                                     </div>
-                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-wider text-left">
+                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-1 text-[12px] text-text-muted text-left">
                                         {report.clientName && <span>{report.clientName}</span>}
                                         {report.jobType === 'Imported' && report.externalWorkOrderId && (
                                             <a
@@ -976,30 +980,30 @@ export default function TechWeeklyLogPage() {
                 <DialogContent className="sm:max-w-[460px] bg-bg-elevated border-border-default shadow-2xl">
                     <DialogHeader className="text-left">
                         <div className="flex items-center gap-2 mb-1">
-                            <ArrowLeftRight className="text-blue-400 h-5 w-5" />
-                            <DialogTitle className="text-base font-bold">Move to Another Log</DialogTitle>
+                            <ArrowLeftRight className="text-brand-blue h-5 w-5" />
+                            <DialogTitle className="text-base font-semibold">Move to another log</DialogTitle>
                         </div>
-                        <p className="text-[11px] text-text-muted leading-relaxed">
-                            Moving from the week of <span className="text-text-primary font-bold">{activeLog?.weekOf}</span>. Choose a destination draft log — all notes, time, mileage, reimbursements, receipts, and payout stay with the assignment.
+                        <p className="text-[12px] text-text-muted leading-relaxed">
+                            Moving from the week of <span className="text-text-primary font-semibold">{activeLog?.weekOf}</span>. Choose a draft log to move it to — notes, time, mileage, reimbursements, receipts and pay stay with the job.
                         </p>
                     </DialogHeader>
                     <div className="space-y-2 max-h-[45vh] overflow-y-auto py-1">
                         {moveDestinations.length === 0 ? (
                             <div className="text-center py-6 space-y-1">
-                                <p className="text-[11px] text-text-muted font-bold">No other draft logs</p>
-                                <p className="text-[10px] text-text-muted/70 leading-relaxed px-4">You need a second draft weekly log to move this assignment into. Start a draft for another week first.</p>
+                                <p className="text-[13px] text-text-primary font-semibold">No other draft logs</p>
+                                <p className="text-[12px] text-text-muted leading-relaxed px-4">Start a draft log for another week first, then move this job into it.</p>
                             </div>
                         ) : moveDestinations.map(l => (
                             <button
                                 key={l.id}
                                 onClick={() => handleMoveItem(l.id)}
-                                className="w-full flex items-center justify-between gap-3 p-3 rounded-lg border border-border-sub bg-bg-secondary hover:border-blue-400/50 hover:bg-blue-400/5 transition-colors text-left"
+                                className="w-full flex items-center justify-between gap-3 p-3 rounded-lg border border-border-sub bg-bg-secondary hover:border-brand-blue/50 hover:bg-brand-blue/5 transition-colors text-left"
                             >
                                 <div>
-                                    <p className="text-[12px] font-bold text-text-primary">Week of {l.weekOf}</p>
-                                    <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">{l.status} · {(l.items || []).length} assignment{(l.items || []).length !== 1 ? 's' : ''}</p>
+                                    <p className="text-[13px] font-semibold text-text-primary">Week of {l.weekOf}</p>
+                                    <p className="text-[12px] text-text-muted">{l.status} · {(l.items || []).length} job{(l.items || []).length !== 1 ? 's' : ''}</p>
                                 </div>
-                                <ArrowLeftRight size={14} className="text-blue-400 shrink-0" />
+                                <ArrowLeftRight size={14} className="text-brand-blue shrink-0" />
                             </button>
                         ))}
                     </div>
@@ -1015,10 +1019,10 @@ export default function TechWeeklyLogPage() {
                     <DialogHeader className="text-left">
                         <div className="flex items-center gap-2 mb-1">
                             <Undo2 className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-base font-bold">Unsubmit Weekly Log</DialogTitle>
+                            <DialogTitle className="text-base font-semibold">Unsubmit weekly log</DialogTitle>
                         </div>
-                        <p className="text-[11px] text-text-muted leading-relaxed">
-                            Unsubmitting this weekly log will return it to Draft status and allow its assignments and entries to be edited. Continue?
+                        <p className="text-[12px] text-text-muted leading-relaxed">
+                            Unsubmitting this weekly log returns it to draft so you can edit its jobs and entries again. Continue?
                         </p>
                     </DialogHeader>
                     <DialogFooter className="gap-2">
@@ -1036,22 +1040,22 @@ export default function TechWeeklyLogPage() {
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-2 mb-1 text-left">
                             <Undo2 className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold">Unsubmit Request Terminal</DialogTitle>
+                            <DialogTitle className="text-lg font-semibold">Request to unsubmit</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs font-bold text-text-muted text-left">Request authorization to amend a previously submitted weekly manifest.</DialogDescription>
+                        <DialogDescription className="text-[12px] text-text-muted text-left">Ask an admin to reopen this submitted log so you can change it.</DialogDescription>
                     </DialogHeader>
                     <div className="p-6 space-y-4 text-left">
                         <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-2 text-left">
-                            <p className="text-[10px] font-bold text-brand-red uppercase tracking-wider flex items-center gap-2 text-left">
-                                <Info size={12}/> Amendment Policy
+                            <p className="text-[10px] font-semibold text-brand-red uppercase tracking-wider flex items-center gap-2 text-left">
+                                <Info size={12}/> Before you ask
                             </p>
-                            <p className="text-[10px] text-text-secondary leading-relaxed font-medium text-left">
-                                Unsubmitting a log will pause any active billing audits for this week. You must provide a specific tactical reason for this amendment request.
+                            <p className="text-[12px] text-text-secondary leading-relaxed text-left">
+                                Unsubmitting pauses payroll review for this week. Tell the admin exactly what you need to change.
                             </p>
                         </div>
                         <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-bold text-text-muted ml-1 flex items-center gap-1.5">
-                                <MessageSquare size={12} /> Amendment Justification
+                            <Label className="text-[12px] font-semibold text-text-muted ml-1 flex items-center gap-1.5">
+                                <MessageSquare size={12} /> Reason
                             </Label>
                             <Textarea 
                                 placeholder="e.g., Added missing materials reimbursement, need to dispute WO-18927..." 
@@ -1062,13 +1066,13 @@ export default function TechWeeklyLogPage() {
                         </div>
                     </div>
                     <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex gap-3">
-                        <Button variant="outline" onClick={() => setIsUnsubmitDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider h-11">Abort</Button>
+                        <Button variant="outline" onClick={() => setIsUnsubmitDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider h-11">Cancel</Button>
                         <Button 
                             disabled={!unsubmitReason.trim()}
                             onClick={handleRequestUnsubmit} 
                             className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider h-11 text-white shadow-lg"
                         >
-                            <Send size={16} className="mr-2" /> Transmit Request
+                            <Send size={16} className="mr-2" /> Send request
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -1086,11 +1090,11 @@ export default function TechWeeklyLogPage() {
                     <DialogHeader className="text-left">
                         <div className="flex items-center gap-2 mb-1 text-left">
                             <AlertTriangle className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold text-text-primary text-left">
-                                {payrollDisputeWorkOrderId ? 'Dispute This Job' : 'Dispute This Log'}
+                            <DialogTitle className="text-lg font-semibold text-text-primary text-left">
+                                {payrollDisputeWorkOrderId ? 'Dispute this job' : 'Dispute this log'}
                             </DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs font-bold text-text-muted text-left">
+                        <DialogDescription className="text-[12px] text-text-muted text-left">
                             {payrollDisputeWorkOrderId
                                 ? 'This log has already been submitted — the rest of it is unaffected. Flag just this job for admin review.'
                                 : 'This log has already been submitted. Flag an issue for admin review.'}
@@ -1098,16 +1102,16 @@ export default function TechWeeklyLogPage() {
                     </DialogHeader>
                     <div className="space-y-4 py-2 text-left">
                         <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-bold text-text-muted">Reason</Label>
+                            <Label className="text-[12px] font-semibold text-text-muted">Reason</Label>
                             <RadioGroup value={payrollDisputeReason} onValueChange={(v: any) => setPayrollDisputeReason(v)} className="space-y-2">
                                 {[
-                                    { value: 'incorrect_pay', label: 'Incorrect Pay' },
-                                    { value: 'missing_reimbursement', label: 'Missing Reimbursement' },
-                                    { value: 'missing_job', label: 'Missing Job' },
+                                    { value: 'incorrect_pay', label: 'Incorrect pay' },
+                                    { value: 'missing_reimbursement', label: 'Missing reimbursement' },
+                                    { value: 'missing_job', label: 'Missing job' },
                                 ].map(r => (
                                     <div key={r.value} className="flex items-center space-x-2 p-2 rounded hover:bg-bg-tertiary transition-colors cursor-pointer text-left">
                                         <RadioGroupItem value={r.value} id={`pap-${r.value}`} />
-                                        <Label htmlFor={`pap-${r.value}`} className="text-[10px] font-bold text-text-primary cursor-pointer flex-1 text-left">{r.label}</Label>
+                                        <Label htmlFor={`pap-${r.value}`} className="text-[13px] font-medium text-text-primary cursor-pointer flex-1 text-left">{r.label}</Label>
                                     </div>
                                 ))}
                             </RadioGroup>
@@ -1115,7 +1119,7 @@ export default function TechWeeklyLogPage() {
 
                         {(payrollDisputeReason === 'incorrect_pay' || payrollDisputeReason === 'missing_reimbursement') && (activeLog?.items?.length ?? 0) > 0 && (
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold text-text-muted">Which Job? (Optional)</Label>
+                                <Label className="text-[12px] font-semibold text-text-muted">Which job? (optional)</Label>
                                 <Select value={payrollDisputeWorkOrderId} onValueChange={setPayrollDisputeWorkOrderId}>
                                     <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs">
                                         <SelectValue placeholder="Select a job" />
@@ -1135,7 +1139,7 @@ export default function TechWeeklyLogPage() {
                         )}
 
                         <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-bold text-text-muted">Details</Label>
+                            <Label className="text-[12px] font-semibold text-text-muted">Details</Label>
                             <Textarea
                                 value={payrollDisputeNotes}
                                 onChange={e => setPayrollDisputeNotes(e.target.value)}
@@ -1182,7 +1186,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
 
     const submitReimbursement = async () => {
         if (!canAddReimbursement) {
-            reimbToast({ variant: 'destructive', title: 'Not Available', description: 'No active log to attach this reimbursement to.' });
+            reimbToast({ variant: 'destructive', title: 'Not available', description: 'There is no open log to add this reimbursement to.' });
             return;
         }
         const amount = parseFloat(reimbAmount);
@@ -1219,7 +1223,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
 
     return (
         <Card className={cn(
-            "bg-bg-secondary border-border-main overflow-hidden transition-all text-left",
+            "rounded-xl bg-bg-secondary border-border-main shadow-sm overflow-hidden transition-all text-left",
             isDisputed ? "border-brand-red shadow-[0_0_15px_color-mix(in_srgb,var(--brand-red)_5%,transparent)]" :
             isConfirmed ? "border-green-border bg-green-dim/5" : "hover:border-text-muted"
         )}>
@@ -1234,38 +1238,38 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                             {isDisputed ? <AlertTriangle size={20}/> : isConfirmed ? <CheckCircle2 size={20}/> : <Clock size={20}/>}
                         </div>
                         <div className="min-w-0 text-left flex-1">
-                            <div className="flex items-center gap-3 text-left">
-                                <h4 className="text-sm font-bold text-text-primary tracking-wide truncate max-w-[520px] text-left">{shown.title || shown.description}</h4>
-                                {item.isHelper && <Badge variant="outline" className="text-[10px] h-3.5 uppercase tracking-tighter">Helper</Badge>}
-                                {isConfirmed && <Badge variant="active" className="text-[10px] h-3.5 uppercase tracking-tighter">VERIFIED</Badge>}
-                                {isDisputed && <Badge variant="missed" className="text-[10px] h-3.5 uppercase tracking-tighter">DISPUTED</Badge>}
+                            <div className="flex flex-wrap items-center gap-2 text-left">
+                                <h3 className="text-[14px] font-semibold text-text-primary truncate max-w-[520px] text-left">{shown.title || shown.description}</h3>
+                                {item.isHelper && <Badge variant="outline" className="text-[10px] uppercase tracking-wide">Helper</Badge>}
+                                {isConfirmed && <StatusBadge kind="log" value="approved" label="Confirmed" />}
+                                {isDisputed && <StatusBadge kind="log" value="rejected" label="Disputed" />}
                                 {hasOpenPayrollDispute && (
-                                    <Badge variant="destructive" className="text-[10px] h-3.5 uppercase tracking-tighter flex items-center gap-1 animate-pulse">
-                                        <AlertTriangle size={9} /> Under Review
+                                    <Badge variant="destructive" className="text-[10px] uppercase tracking-wide flex items-center gap-1">
+                                        <AlertTriangle size={10} /> Under review
                                     </Badge>
                                 )}
                                 {settledReimbursement > 0 && (
-                                    <Badge variant="active" className="text-[10px] h-3.5 uppercase tracking-tighter flex items-center gap-1">
-                                        <DollarSign size={9} /> Reimbursement Pay · ${settledReimbursement.toFixed(2)}
+                                    <Badge variant="active" className="text-[10px] uppercase tracking-wide flex items-center gap-1">
+                                        <DollarSign size={10} /> Reimbursement · ${settledReimbursement.toFixed(2)}
                                     </Badge>
                                 )}
                                 {requestedReimbursement > 0 && (
-                                    <Badge variant="pending" className="text-[10px] h-3.5 uppercase tracking-tighter flex items-center gap-1">
-                                        <DollarSign size={9} /> Reimbursement Requested · ${requestedReimbursement.toFixed(2)}
+                                    <Badge variant="pending" className="text-[10px] uppercase tracking-wide flex items-center gap-1">
+                                        <DollarSign size={10} /> Requested · ${requestedReimbursement.toFixed(2)}
                                     </Badge>
                                 )}
                             </div>
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-wider text-left">
-                                <span className="flex items-center gap-1.5 text-left"><MapPin size={10} className="text-brand-red shrink-0"/> {formatCityState(shown.location)}</span>
-                                <span className="flex items-center gap-1.5 text-left"><CalendarIcon size={10} className="shrink-0"/> {shown.scheduleDate}{shown.scheduleTime ? ` · ${shown.scheduleTime}` : ''}</span>
-                                <span className="font-mono text-brand-red font-bold text-left">ASMT: {shown.id.toUpperCase()}</span>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-1 text-[12px] text-text-muted text-left">
+                                <span className="flex items-center gap-1.5 text-left"><MapPin size={12} className="text-brand-red shrink-0"/> {formatCityState(shown.location)}</span>
+                                <span className="flex items-center gap-1.5 text-left"><CalendarIcon size={12} className="shrink-0"/> {shown.scheduleDate}{shown.scheduleTime ? ` · ${shown.scheduleTime}` : ''}</span>
+                                <span className="id-text text-left">ASMT {shown.id.toUpperCase()}</span>
                                 {isImported(shown) && externalWorkOrderId(shown) && (
                                     <a
                                         href={fieldNationUrl(shown)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         onClick={e => e.stopPropagation()}
-                                        className="flex items-center gap-1 font-mono text-blue-400 font-bold hover:text-blue-300 hover:underline text-left"
+                                        className="id-external hover:underline text-left"
                                         title="Open in Field Nation"
                                     >
                                         WO# {displayWorkOrderNumber(shown)} <ExternalLink size={9} className="shrink-0" />
@@ -1275,15 +1279,15 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                         </div>
 
                         <div className="text-right px-4 border-l border-border-sub/30 min-w-[100px]">
-                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-right">{isDisputed ? 'Excluded (Disputed)' : 'Settlement'}</p>
+                            <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-right">{isDisputed ? 'Excluded (disputed)' : 'Pay'}</p>
                             <p className="text-sm font-mono font-bold text-text-green text-right">${(isDisputed ? 0 : effectiveJobPay(item, shown)).toFixed(2)}</p>
                         </div>
 
                         {itemReimbursements.length > 0 && (
                             <div className="text-right px-4 border-l border-border-sub/30 min-w-[100px]">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-right">Reimbursement Pay</p>
+                                <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-right">Reimbursement</p>
                                 <p className="text-sm font-mono font-bold text-accent-gold text-right">${settledReimbursement.toFixed(2)}</p>
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-right">
+                                <p className="text-[11px] text-text-muted text-right">
                                     {requestedReimbursement > 0 ? `$${requestedReimbursement.toFixed(2)} requested`
                                         : settledReimbursement > 0 ? 'Approved net of fee'
                                         : 'Rejected — excluded'}
@@ -1299,7 +1303,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                 <>
                                     <Button
                                         size="sm"
-                                        className="h-8 px-4 bg-text-green hover:bg-text-green/90 uppercase text-[10px] font-bold tracking-wider text-white"
+                                        className="h-10 sm:h-8 px-4 bg-text-green hover:bg-text-green/90 text-white"
                                         onClick={() => onConfirm(item.id)}
                                     >
                                         <Check size={14} className="mr-1.5"/> Confirm
@@ -1307,7 +1311,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="h-8 px-4 uppercase text-[10px] font-bold tracking-wider border-brand-red text-text-red hover:bg-brand-red-dim"
+                                        className="h-10 sm:h-8 px-4 border-brand-red text-text-red hover:bg-brand-red-dim"
                                         onClick={() => setIsDisputing(true)}
                                     >
                                         <X size={14} className="mr-1.5"/> Dispute
@@ -1317,19 +1321,19 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-8 px-3 text-[11px] font-bold text-text-muted hover:text-text-primary"
+                                    className="h-10 sm:h-8 px-3 text-text-muted hover:text-text-primary"
                                     onClick={() => setIsDisputing(!isDisputing)}
                                 >
-                                    <RotateCcw size={12} className="mr-1.5"/> Adjust Decision
+                                    <RotateCcw size={14} className="mr-1.5"/> Change answer
                                 </Button>
                             )}
                             <Button
                                 variant="outline"
                                 size="sm"
                                 disabled={!canAddReimbursement}
-                                title="Add Reimbursement"
-                                aria-label="Add Reimbursement"
-                                className="h-8 w-8 p-0 shrink-0 border-accent-gold/40 text-accent-gold hover:bg-accent-gold/10 disabled:opacity-40 disabled:cursor-not-allowed"
+                                title="Add reimbursement"
+                                aria-label="Add reimbursement"
+                                className="h-10 w-10 sm:h-8 sm:w-8 p-0 shrink-0 border-accent-gold/40 text-accent-gold hover:bg-accent-gold/10 disabled:opacity-40 disabled:cursor-not-allowed"
                                 onClick={() => setIsReimbursing(v => !v)}
                             >
                                 <DollarSign size={14}/>
@@ -1338,9 +1342,9 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    title="Move to Another Log"
-                                    aria-label="Move to Another Log"
-                                    className="h-8 w-8 p-0 shrink-0 border-blue-400/40 text-blue-400 hover:bg-blue-400/10"
+                                    title="Move to another log"
+                                    aria-label="Move to another log"
+                                    className="h-10 w-10 sm:h-8 sm:w-8 p-0 shrink-0 border-brand-blue/40 text-brand-blue hover:bg-brand-blue/10"
                                     onClick={onRequestMove}
                                 >
                                     <ArrowLeftRight size={14}/>
@@ -1355,10 +1359,10 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 px-4 uppercase text-[10px] font-bold tracking-wider border-brand-red/40 text-text-red hover:bg-brand-red-dim"
+                                className="h-10 sm:h-8 px-4 border-brand-red/40 text-text-red hover:bg-brand-red-dim"
                                 onClick={() => onDisputeJob(item)}
                             >
-                                <AlertTriangle size={12} className="mr-1.5"/> Dispute This Job
+                                <AlertTriangle size={14} className="mr-1.5"/> Dispute this job
                             </Button>
                         </div>
                     )}
@@ -1369,25 +1373,25 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                         {itemReimbursements.map(r => (
                             <div key={r.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-bg-primary/40 border border-accent-gold/20 text-left">
                                 <div className="min-w-0 text-left">
-                                    <p className="text-[10px] font-bold text-text-primary truncate text-left">{r.description}</p>
-                                    <p className="text-[10px] text-text-muted uppercase tracking-wider text-left">{r.date}</p>
+                                    <p className="text-[12px] font-medium text-text-primary truncate text-left">{r.description}</p>
+                                    <p className="text-[11px] text-text-muted text-left">{r.date}</p>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                     <span className="text-xs font-mono font-bold text-accent-gold">${(r.status === 'pending' || r.status === 'rejected' ? r.amount || 0 : netOfFieldNationFee(r.amount)).toFixed(2)}</span>
-                                    <Badge
-                                        variant={r.status === 'rejected' ? 'missed' : r.status === 'pending' ? 'pending' : 'active'}
-                                        className="text-[10px] h-3.5 uppercase tracking-tighter"
-                                    >
-                                        {r.status === 'pending' ? 'Requested' : r.status === 'rejected' ? 'Rejected' : 'Approved net'}
-                                    </Badge>
+                                    <StatusBadge
+                                        kind="log"
+                                        value={r.status === 'rejected' ? 'rejected' : r.status === 'pending' ? 'submitted' : 'approved'}
+                                        label={r.status === 'pending' ? 'Requested' : r.status === 'rejected' ? 'Rejected' : 'Approved net'}
+                                    />
                                     {!isLocked && (
                                         <button
                                             type="button"
                                             title="Remove reimbursement"
                                             onClick={() => onDeleteReimbursement(r.id)}
-                                            className="text-text-muted hover:text-brand-red transition-colors p-1 -m-1"
+                                            aria-label="Remove reimbursement"
+                                            className="flex h-10 w-10 sm:h-7 sm:w-7 items-center justify-center rounded-md text-text-muted hover:text-brand-red transition-colors"
                                         >
-                                            <Trash2 size={12} />
+                                            <Trash2 size={14} />
                                         </button>
                                     )}
                                 </div>
@@ -1400,8 +1404,8 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                     <div className="px-5 pb-5 pt-1 animate-in slide-in-from-top-2 duration-300 text-left">
                         <div className="p-4 rounded-xl bg-bg-primary/50 border border-accent-gold/30 space-y-3 text-left">
                             <div className="flex items-center justify-between">
-                                <p className="text-[10px] font-bold text-accent-gold uppercase tracking-wider">Add Reimbursement · WO# {displayWorkOrderNumber(shown)}</p>
-                                <button onClick={() => setIsReimbursing(false)} className="text-text-muted hover:text-text-primary"><X size={14}/></button>
+                                <p className="text-[10px] font-semibold text-accent-gold uppercase tracking-wider">Add reimbursement · WO# {displayWorkOrderNumber(shown)}</p>
+                                <button onClick={() => setIsReimbursing(false)} aria-label="Close" className="flex h-10 w-10 sm:h-7 sm:w-7 items-center justify-center text-text-muted hover:text-text-primary"><X size={16}/></button>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div className="space-y-1">
@@ -1422,8 +1426,8 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                     <input type="file" accept="image/*,application/pdf" className="hidden" onChange={e => setReimbFile(e.target.files?.[0] || null)} />
                                     <span className="px-3 py-1.5 rounded border border-border-main bg-bg-secondary hover:bg-bg-tertiary">{reimbFile ? reimbFile.name.slice(0, 24) : 'Attach receipt (optional)'}</span>
                                 </label>
-                                <Button size="sm" disabled={reimbSaving} onClick={submitReimbursement} className="h-9 px-6 bg-accent-gold hover:bg-accent-gold/90 text-black uppercase text-[10px] font-bold tracking-wider">
-                                    {reimbSaving ? <Loader2 size={13} className="animate-spin mr-1.5" /> : <Check size={13} className="mr-1.5" />}Submit for Review
+                                <Button size="sm" disabled={reimbSaving} onClick={submitReimbursement} className="h-10 sm:h-9 px-6 bg-accent-gold hover:bg-accent-gold/90 text-black">
+                                    {reimbSaving ? <Loader2 size={13} className="animate-spin mr-1.5" /> : <Check size={13} className="mr-1.5" />}Submit for review
                                 </Button>
                             </div>
                         </div>
@@ -1434,8 +1438,8 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                     <div className="px-5 pb-5 pt-1 animate-in slide-in-from-top-2 duration-300 text-left">
                         <div className="p-4 rounded-xl bg-bg-primary/50 border border-border-sub space-y-5 text-left">
                             <div className="flex items-center justify-between">
-                                <p className="text-[10px] font-bold text-brand-red uppercase tracking-wider text-left">Dispute Parameters</p>
-                                <button onClick={() => setIsDisputing(false)} className="text-text-muted hover:text-text-primary"><X size={14}/></button>
+                                <p className="text-[10px] font-semibold text-brand-red uppercase tracking-wider text-left">Why are you disputing this job?</p>
+                                <button onClick={() => setIsDisputing(false)} aria-label="Close" className="flex h-10 w-10 sm:h-7 sm:w-7 items-center justify-center text-text-muted hover:text-text-primary"><X size={16}/></button>
                             </div>
                             
                             <div className="space-y-4 text-left">
@@ -1447,31 +1451,31 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                     {DISPUTE_REASONS.map((r, idx) => (
                                         <div key={idx} className="flex items-center space-x-2 p-2 rounded hover:bg-bg-tertiary transition-colors cursor-pointer text-left">
                                             <RadioGroupItem value={r} id={`r-${item.id}-${idx}`} />
-                                            <Label htmlFor={`r-${item.id}-${idx}`} className="text-[10px] font-bold text-text-primary cursor-pointer flex-1 text-left">{r}</Label>
+                                            <Label htmlFor={`r-${item.id}-${idx}`} className="text-[13px] font-medium text-text-primary cursor-pointer flex-1 text-left">{r}</Label>
                                         </div>
                                     ))}
                                 </RadioGroup>
 
                                 <div className="space-y-2 text-left">
-                                    <Label className="text-[11px] font-bold text-text-muted ml-1 text-left">{reason === 'Other' ? 'Please specify (required)' : 'Additional Context (Optional)'}</Label>
+                                    <Label className="text-[12px] font-semibold text-text-muted ml-1 text-left">{reason === 'Other' ? 'Please explain (required)' : 'More detail (optional)'}</Label>
                                     <Textarea
                                         value={notes}
                                         onChange={e => setNotes(e.target.value)}
-                                        placeholder={reason === 'Other' ? "Describe the reason for this dispute..." : "Provide specific details for administrative audit..."}
+                                        placeholder={reason === 'Other' ? "Describe the reason for this dispute..." : "Add any details for payroll..."}
                                         className="bg-bg-secondary h-20 text-xs font-medium leading-relaxed text-left"
                                     />
                                 </div>
                             </div>
 
                             <div className="flex justify-end gap-2 pt-2">
-                                <Button variant="outline" size="sm" className="h-8 text-[11px] font-bold" onClick={() => setIsDisputing(false)}>Discard</Button>
+                                <Button variant="outline" size="sm" className="h-10 sm:h-8" onClick={() => setIsDisputing(false)}>Cancel</Button>
                                 <Button 
                                     size="sm" 
-                                    className="h-8 bg-brand-red hover:bg-brand-red-hover text-white uppercase text-[10px] font-bold tracking-wider"
+                                    className="h-10 sm:h-8 bg-brand-red hover:bg-brand-red-hover text-white"
                                     disabled={!reason || (reason === 'Other' && !notes.trim())}
                                     onClick={() => { onDispute(item.id, reason, notes); setIsDisputing(false); }}
                                 >
-                                    Commit Dispute
+                                    Save dispute
                                 </Button>
                             </div>
                         </div>
@@ -1481,11 +1485,11 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                 {isDisputed && (isLocked || !isDisputing) && (
                     <div className="px-4 pb-4 animate-in fade-in duration-300 text-left">
                          <div className="p-3 rounded-lg bg-brand-red-dim/10 border border-brand-red/10 text-left">
-                            <p className="text-[11px] font-bold text-brand-red mb-1 flex items-center gap-1.5 text-left">
-                                <ShieldAlert size={10}/> Reported Discrepancy: {item.disputeReason}
+                            <p className="text-[12px] font-semibold text-brand-red mb-1 flex items-center gap-1.5 text-left">
+                                <ShieldAlert size={12}/> Disputed: {item.disputeReason}
                             </p>
                             {item.disputeNotes && (
-                                <p className="text-[10px] text-text-secondary leading-relaxed italic font-medium text-left">
+                                <p className="text-[12px] text-text-secondary leading-relaxed text-left">
                                     &quot;{item.disputeNotes}&quot;
                                 </p>
                             )}
@@ -1527,14 +1531,14 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                 <DialogHeader className="text-left">
                     <div className="flex items-center gap-2 mb-1 text-left">
                         <Search className="text-brand-red h-5 w-5" />
-                        <DialogTitle className="text-lg font-bold text-text-primary text-left">Report Missing Assignment</DialogTitle>
+                        <DialogTitle className="text-lg font-semibold text-text-primary text-left">Report a missing job</DialogTitle>
                     </div>
-                    <DialogDescription className="text-xs font-bold text-text-muted text-left">Submit details for a mission that is absent from the weekly registry.</DialogDescription>
+                    <DialogDescription className="text-[12px] text-text-muted text-left">Tell payroll about a job that&apos;s missing from this weekly log.</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSave} className="space-y-4 py-4 text-left">
                     {/* Job type — decides how payroll settles it. */}
                     <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-bold text-text-muted">Job Type</Label>
+                        <Label className="text-[12px] font-semibold text-text-muted">Job type</Label>
                         <div className="grid grid-cols-2 gap-2">
                             {(['Imported', 'Manual'] as const).map(t => (
                                 <button
@@ -1542,7 +1546,7 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                                     type="button"
                                     onClick={() => setJobType(t)}
                                     className={cn(
-                                        "h-10 rounded-md border text-[10px] font-bold uppercase tracking-wider transition-colors",
+                                        "h-10 rounded-md border text-[13px] font-medium transition-colors",
                                         jobType === t ? "border-brand-red bg-brand-red/10 text-brand-red" : "border-border-sub bg-bg-primary text-text-muted hover:text-text-primary"
                                     )}
                                 >
@@ -1557,39 +1561,39 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                         </p>
                     </div>
                     <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-bold text-text-muted">Client Entity</Label>
+                        <Label className="text-[12px] font-semibold text-text-muted">Client</Label>
                         <Input name="clientName" className="bg-bg-primary h-10 text-xs font-bold" />
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-left">
                         {jobType === 'Imported' && (
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold text-text-muted">Work Order # (Field Nation)</Label>
+                                <Label className="text-[12px] font-semibold text-text-muted">Field Nation WO #</Label>
                                 <Input name="externalWorkOrderId" required placeholder="e.g. 18927456" className="bg-bg-primary h-10 text-xs font-bold" />
                             </div>
                         )}
                         <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-bold text-text-muted">{jobType === 'Imported' ? 'Job Pay (optional)' : 'Job Pay'}</Label>
+                            <Label className="text-[12px] font-semibold text-text-muted">{jobType === 'Imported' ? 'Job pay (optional)' : 'Job pay'}</Label>
                             <Input name="pay" type="number" step="0.01" required={jobType === 'Manual'} placeholder="0.00" className="bg-bg-primary h-10 text-xs font-mono" />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-left">
                         <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-bold text-text-muted">Work Date</Label>
+                            <Label className="text-[12px] font-semibold text-text-muted">Work date</Label>
                             <Input name="date" type="date" required className="bg-bg-primary h-10 text-xs" />
                         </div>
                         <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-bold text-text-muted">Location</Label>
+                            <Label className="text-[12px] font-semibold text-text-muted">Location</Label>
                             <AddressAutocompleteInput name="location" required className="bg-bg-primary h-10 text-xs" />
                         </div>
                     </div>
                     <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-bold text-text-muted">Summary</Label>
-                        <Textarea name="summary" required className="bg-bg-primary min-h-[120px] text-xs leading-relaxed font-medium text-left" placeholder="Document site activity and terminal outcomes..." />
+                        <Label className="text-[12px] font-semibold text-text-muted">Summary</Label>
+                        <Textarea name="summary" required className="bg-bg-primary min-h-[120px] text-xs leading-relaxed font-medium text-left" placeholder="What job was it and what did you do on site?" />
                     </div>
                     <DialogFooter className="pt-4 border-t border-border-sub flex-row gap-3">
                         <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider">Cancel</Button>
                         <Button type="submit" className="flex-1 bg-brand-red hover:bg-brand-red-hover h-11 uppercase font-bold text-[10px] tracking-wider text-white shadow-lg">
-                            <Send size={14} className="mr-2" /> Submit Inquiry
+                            <Send size={14} className="mr-2" /> Send report
                         </Button>
                     </DialogFooter>
                 </form>
@@ -1609,8 +1613,8 @@ function tripStatusLabel(t: TripLog): { label: string; cls: string } {
 
 const TRIP_SOURCE_LABEL: Record<string, string> = {
     manual: 'Manual',
-    start_trip: 'Start Trip',
-    check_in_flow: 'Check-In Flow',
+    start_trip: 'Start trip',
+    check_in_flow: 'Check-in',
 };
 
 function TripLogsView({ tripLogs, workOrders, mileageUnit }: { tripLogs: TripLog[]; workOrders: WorkOrder[]; mileageUnit: 'mi' | 'km' }) {
@@ -1619,33 +1623,29 @@ function TripLogsView({ tripLogs, workOrders, mileageUnit }: { tripLogs: TripLog
 
     if (sorted.length === 0) {
         return (
-            <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30">
-                <Car size={48} className="mx-auto text-text-muted mb-2 opacity-20" />
-                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">No trips recorded yet</p>
-                <p className="text-[10px] text-text-muted uppercase tracking-wider mt-1">Trips added from an assignment appear here for year-end mileage review.</p>
-            </div>
+            <EmptyState icon={Car} title="No trips recorded yet" description="Trips you add from a job show up here for year-end mileage." />
         );
     }
 
     return (
         <div className="space-y-4 max-w-5xl">
-            <div className="flex items-center gap-4 p-3 rounded-xl bg-bg-secondary border border-border-sub w-max">
+            <div className="flex items-center gap-4 p-3 rounded-xl bg-bg-secondary border border-border-main shadow-sm w-max">
                 <div>
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Total Trips</p>
+                    <p className="stat-label">Total trips</p>
                     <p className="text-lg font-mono font-bold text-text-primary leading-none">{sorted.length}</p>
                 </div>
                 <div className="border-l border-border-sub pl-4">
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Total {mileageUnit === 'km' ? 'Kilometers' : 'Miles'}</p>
+                    <p className="stat-label">Total {mileageUnit === 'km' ? 'kilometers' : 'miles'}</p>
                     <p className="text-lg font-mono font-bold text-text-green leading-none">{formatDistance(totalMiles, mileageUnit)}</p>
                 </div>
             </div>
 
-            <div className="rounded-xl border border-border-sub overflow-x-auto">
+            <div className="rounded-xl border border-border-main bg-bg-secondary shadow-sm overflow-x-auto">
                 <table className="w-full text-left">
                     <thead>
                         <tr className="bg-bg-tertiary/50 border-b border-border-sub">
-                            {['Date', 'Work Order', 'Job / Site', 'Route', 'Time', mileageUnit === 'km' ? 'KM' : 'Miles', 'Source', 'Status'].map(h => (
-                                <th key={h} className="text-[10px] font-bold uppercase tracking-wider text-text-muted px-3 py-2 whitespace-nowrap">{h}</th>
+                            {['Date', 'Work order', 'Job / site', 'Route', 'Time', mileageUnit === 'km' ? 'KM' : 'Miles', 'Source', 'Status'].map(h => (
+                                <th key={h} className="table-header px-3 py-2 whitespace-nowrap">{h}</th>
                             ))}
                         </tr>
                     </thead>
@@ -1659,15 +1659,15 @@ function TripLogsView({ tripLogs, workOrders, mileageUnit }: { tripLogs: TripLog
                             const st = tripStatusLabel(t);
                             return (
                                 <tr key={t.id} className="border-b border-border-sub last:border-0 hover:bg-bg-tertiary/30 transition-colors">
-                                    <td className="px-3 py-2.5 text-[10px] text-text-secondary whitespace-nowrap">{t.date || '—'}</td>
-                                    <td className="px-3 py-2.5 text-[10px] font-mono font-bold text-brand-red whitespace-nowrap">{woNum}</td>
-                                    <td className="px-3 py-2.5 text-[10px] text-text-primary max-w-[200px] truncate">{t.jobTitle || job?.title || job?.description || t.purpose || '—'}</td>
-                                    <td className="px-3 py-2.5 text-[11px] text-text-muted max-w-[220px] truncate">{[t.startLocation, t.endLocation].filter(Boolean).join(' → ') || '—'}</td>
-                                    <td className="px-3 py-2.5 text-[11px] text-text-muted whitespace-nowrap">{[t.startTime, t.endTime].filter(Boolean).join(' – ') || '—'}</td>
-                                    <td className="px-3 py-2.5 text-[10px] font-mono font-bold text-text-primary whitespace-nowrap">{miles ? formatDistance(miles, mileageUnit) : '—'}</td>
-                                    <td className="px-3 py-2.5 text-[11px] text-text-muted whitespace-nowrap">{TRIP_SOURCE_LABEL[t.source || 'manual'] || 'Manual'}</td>
+                                    <td className="px-3 py-2.5 text-[12px] text-text-secondary whitespace-nowrap">{t.date || '—'}</td>
+                                    <td className="px-3 py-2.5 id-text whitespace-nowrap">{woNum}</td>
+                                    <td className="px-3 py-2.5 text-[12px] text-text-primary max-w-[200px] truncate">{t.jobTitle || job?.title || job?.description || t.purpose || '—'}</td>
+                                    <td className="px-3 py-2.5 text-[12px] text-text-muted max-w-[220px] truncate">{[t.startLocation, t.endLocation].filter(Boolean).join(' → ') || '—'}</td>
+                                    <td className="px-3 py-2.5 text-[12px] text-text-muted whitespace-nowrap">{[t.startTime, t.endTime].filter(Boolean).join(' – ') || '—'}</td>
+                                    <td className="px-3 py-2.5 text-[12px] font-mono font-semibold text-text-primary whitespace-nowrap">{miles ? formatDistance(miles, mileageUnit) : '—'}</td>
+                                    <td className="px-3 py-2.5 text-[12px] text-text-muted whitespace-nowrap">{TRIP_SOURCE_LABEL[t.source || 'manual'] || 'Manual'}</td>
                                     <td className="px-3 py-2.5 whitespace-nowrap">
-                                        <span className={cn('inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border', st.cls)}>{st.label}</span>
+                                        <span className={cn('inline-block text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border', st.cls)}>{st.label}</span>
                                     </td>
                                 </tr>
                             );

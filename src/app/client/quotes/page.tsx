@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { db, auth } from "@/lib/firebase";
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import type { Quote, QuoteOptionalGroup } from '@/lib/types';
@@ -16,11 +16,20 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { FileText, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { isPast, parseISO, format } from 'date-fns';
+import { PageHeader } from '@/components/page-header';
+import { SearchField } from '@/components/search-field';
+import { SortControl } from '@/components/list-toolbar';
+import { EmptyState } from '@/components/empty-state';
+import { usePaged, ListPager, PAGE_SIZES_SMALL } from '@/components/list-pager';
+import { dateMillis } from '@/lib/request-intake';
+
+type QuoteSort = 'date' | 'total' | 'expires' | 'title';
+const quoteDate = (q: Quote) => dateMillis(q.sentAt ?? (q as Quote & { createdAt?: unknown }).createdAt);
 
 const STATUS_CONFIG: Record<string, { label: string; variant: any }> = {
-    sent:                      { label: 'Awaiting Review',  variant: 'onhold' },
-    viewed:                    { label: 'Under Review',     variant: 'onhold' },
-    changes_requested:         { label: 'Changes Requested', variant: 'high' },
+    sent:                      { label: 'Awaiting review',  variant: 'onhold' },
+    viewed:                    { label: 'Under review',     variant: 'onhold' },
+    changes_requested:         { label: 'Changes requested', variant: 'high' },
     approved:                  { label: 'Approved',         variant: 'active' },
     rejected:                  { label: 'Declined',         variant: 'missed' },
     expired:                   { label: 'Expired',          variant: 'outline' },
@@ -51,6 +60,9 @@ export default function ClientQuotesPage() {
     const [declineReason, setDeclineReason] = useState('');
     const [optionalChoices, setOptionalChoices] = useState<QuoteOptionalGroup[]>([]);
     const [saving, setSaving] = useState(false);
+    const [search, setSearch] = useState('');
+    const [sortBy, setSortBy] = useState<QuoteSort>('date');
+    const [dateAsc, setDateAsc] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -106,10 +118,10 @@ export default function ClientQuotesPage() {
                 approvalNote: approvalNote.trim() || null,
                 optionalChoices,
             });
-            toast({ title: 'Quote Accepted', description: 'Your approval has been recorded. We will be in touch shortly.' });
+            toast({ title: 'Quote accepted', description: 'Your approval has been recorded. We will be in touch shortly.' });
             setIsApproveDialogOpen(false);
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message });
+            toast({ variant: 'destructive', title: 'Could not accept quote', description: e.message });
         } finally {
             setSaving(false);
         }
@@ -120,10 +132,10 @@ export default function ClientQuotesPage() {
         setSaving(true);
         try {
             await respond({ quoteId: selectedQuote.id, action: 'reject', rejectReason: declineReason.trim() });
-            toast({ title: 'Quote Declined', description: 'Your response has been recorded.' });
+            toast({ title: 'Quote declined', description: 'Your response has been recorded.' });
             setIsDeclineDialogOpen(false);
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message });
+            toast({ variant: 'destructive', title: 'Could not decline quote', description: e.message });
         } finally {
             setSaving(false);
         }
@@ -160,10 +172,26 @@ export default function ClientQuotesPage() {
         return false;
     };
 
-    if (!mounted) return null;
+    const visibleQuotes = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        const rows = q
+            ? quotes.filter(x => [x.quoteNumber, x.title, x.scopeSummary, STATUS_CONFIG[x.status]?.label]
+                .some(v => (v || '').toLowerCase().includes(q)))
+            : quotes;
+        return [...rows].sort((a, b) => {
+            if (sortBy === 'total') return (b.total ?? 0) - (a.total ?? 0);
+            if (sortBy === 'title') return (a.title || '').localeCompare(b.title || '');
+            if (sortBy === 'expires') return (dateMillis(a.expirationDate) || Infinity) - (dateMillis(b.expirationDate) || Infinity);
+            const d = quoteDate(a) - quoteDate(b);
+            return dateAsc ? d : -d;
+        });
+    }, [quotes, search, sortBy, dateAsc]);
 
-    const activeQuotes = quotes.filter(q => q.status === 'sent' || q.status === 'viewed' || q.status === 'changes_requested');
-    const pastQuotes = quotes.filter(q => !['sent', 'viewed', 'changes_requested'].includes(q.status));
+    const activeQuotes = visibleQuotes.filter(q => q.status === 'sent' || q.status === 'viewed' || q.status === 'changes_requested');
+    const pastQuotes = visibleQuotes.filter(q => !['sent', 'viewed', 'changes_requested'].includes(q.status));
+    const pastPager = usePaged(pastQuotes, PAGE_SIZES_SMALL, 'client-quotes-past', [search, sortBy, dateAsc]);
+
+    if (!mounted) return null;
 
     const QuoteCard = ({ quote }: { quote: Quote }) => {
         const expired = isExpired(quote);
@@ -172,13 +200,13 @@ export default function ClientQuotesPage() {
         const actionable = isActionable(quote);
 
         return (
-            <Card className="bg-bg-secondary border-border-main">
-                <CardHeader className="border-b border-border-sub bg-bg-tertiary/30 text-left">
+            <Card className="rounded-xl bg-bg-secondary border-border-main shadow-sm">
+                <CardHeader className="border-b border-border-sub text-left">
                     <div className="flex items-start justify-between gap-4">
                         <div className="space-y-1 min-w-0">
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{quote.quoteNumber}</p>
-                            <CardTitle className="text-sm tracking-wide truncate">{quote.title}</CardTitle>
-                            <CardDescription className="text-[10px]">
+                            <p className="font-mono text-[11px] font-semibold text-text-muted">{quote.quoteNumber}</p>
+                            <CardTitle className="text-base font-semibold truncate">{quote.title}</CardTitle>
+                            <CardDescription className="text-[12px]">
                                 {quote.expirationDate
                                     ? (expired ? `Expired ${fmtDate(quote.expirationDate)}` : `Valid until ${fmtDate(quote.expirationDate)}`)
                                     : null}
@@ -193,7 +221,7 @@ export default function ClientQuotesPage() {
                 </CardHeader>
                 <CardContent className="p-5 space-y-4 text-left">
                     {quote.scopeSummary && (
-                        <p className="text-xs text-text-secondary leading-relaxed">{quote.scopeSummary}</p>
+                        <p className="text-[13px] text-text-secondary leading-relaxed">{quote.scopeSummary}</p>
                     )}
 
                     {quote.lineItems && quote.lineItems.length > 0 && (
@@ -201,11 +229,11 @@ export default function ClientQuotesPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow className="hover:bg-transparent border-border-sub">
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider">Item</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider">Description</TableHead>
-                                        <TableHead className="text-center text-[10px] uppercase font-bold tracking-wider">Qty</TableHead>
-                                        <TableHead className="text-right text-[10px] uppercase font-bold tracking-wider">Unit Price</TableHead>
-                                        <TableHead className="text-right text-[10px] uppercase font-bold tracking-wider">Total</TableHead>
+                                        <TableHead>Item</TableHead>
+                                        <TableHead>Description</TableHead>
+                                        <TableHead className="text-center">Qty</TableHead>
+                                        <TableHead className="text-right">Unit price</TableHead>
+                                        <TableHead className="text-right">Total</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -220,18 +248,18 @@ export default function ClientQuotesPage() {
                                     ))}
                                     {(quote.discountAmount ?? 0) > 0 && (
                                         <TableRow className="border-border-sub hover:bg-transparent">
-                                            <TableCell colSpan={4} className="text-right text-[10px] font-bold uppercase tracking-wider text-text-muted">Discount</TableCell>
+                                            <TableCell colSpan={4} className="text-right text-[10px] font-semibold uppercase tracking-wider text-text-muted">Discount</TableCell>
                                             <TableCell className="text-right font-mono text-xs text-text-muted">-{fmtCurrency(quote.discountAmount ?? 0)}</TableCell>
                                         </TableRow>
                                     )}
                                     {(quote.taxAmount ?? 0) > 0 && (
                                         <TableRow className="border-border-sub hover:bg-transparent">
-                                            <TableCell colSpan={4} className="text-right text-[10px] font-bold uppercase tracking-wider text-text-muted">Tax</TableCell>
+                                            <TableCell colSpan={4} className="text-right text-[10px] font-semibold uppercase tracking-wider text-text-muted">Tax</TableCell>
                                             <TableCell className="text-right font-mono text-xs text-text-muted">{fmtCurrency(quote.taxAmount ?? 0)}</TableCell>
                                         </TableRow>
                                     )}
                                     <TableRow className="border-t-2 border-border-main hover:bg-transparent">
-                                        <TableCell colSpan={4} className="text-right text-[10px] font-bold uppercase tracking-wider">Total</TableCell>
+                                        <TableCell colSpan={4} className="text-right text-[10px] font-semibold uppercase tracking-wider">Total</TableCell>
                                         <TableCell className="text-right font-mono font-bold text-text-primary">{fmtCurrency(quote.total ?? 0)}</TableCell>
                                     </TableRow>
                                 </TableBody>
@@ -241,19 +269,19 @@ export default function ClientQuotesPage() {
 
                     {quote.optionalChoices && quote.optionalChoices.length > 0 && (
                         <div className="space-y-3 pt-2 border-t border-border-sub">
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Optional Add-Ons</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Optional add-ons</p>
                             {quote.optionalChoices.map(group => (
                                 <div key={group.id} className="space-y-1.5">
                                     <p className="text-xs font-semibold text-text-primary">{group.title}</p>
-                                    {group.description && <p className="text-[10px] text-text-muted">{group.description}</p>}
+                                    {group.description && <p className="text-[12px] text-text-muted">{group.description}</p>}
                                     <div className="space-y-1">
                                         {group.options.map(opt => (
-                                            <div key={opt.id} className="flex items-center gap-2 text-[10px] text-text-secondary">
-                                                <span className={opt.selected ? 'text-text-green font-bold' : ''}>{opt.label}</span>
+                                            <div key={opt.id} className="flex items-center gap-2 text-[12px] text-text-secondary">
+                                                <span className={opt.selected ? 'text-text-green font-semibold' : ''}>{opt.label}</span>
                                                 {opt.priceAdjustment !== 0 && (
                                                     <span className="text-text-muted">(+{fmtCurrency(opt.priceAdjustment)})</span>
                                                 )}
-                                                {opt.selected && <CheckCircle2 size={10} className="text-text-green" />}
+                                                {opt.selected && <CheckCircle2 size={12} className="text-text-green" />}
                                             </div>
                                         ))}
                                     </div>
@@ -264,15 +292,15 @@ export default function ClientQuotesPage() {
 
                     {quote.terms && (
                         <div className="pt-2 border-t border-border-sub">
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1">Terms & Conditions</p>
-                            <p className="text-[10px] text-text-muted leading-relaxed">{quote.terms}</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-1">Terms and conditions</p>
+                            <p className="text-[12px] text-text-muted leading-relaxed">{quote.terms}</p>
                         </div>
                     )}
 
                     {quote.status === 'approved' && (
                         <div className="flex items-center gap-2 pt-2 border-t border-border-sub">
                             <CheckCircle2 size={13} className="text-text-green shrink-0" />
-                            <p className="text-[10px] text-text-green font-bold">
+                            <p className="text-[12px] text-text-green font-semibold">
                                 Approved by {quote.approvedByName} on {fmtDate(quote.approvedAt)}
                             </p>
                         </div>
@@ -280,9 +308,9 @@ export default function ClientQuotesPage() {
 
                     {quote.status === 'rejected' && (
                         <div className="space-y-1 pt-2 border-t border-border-sub">
-                            <p className="text-[10px] font-bold text-text-red uppercase tracking-wider">Declined</p>
+                            <p className="text-[10px] font-semibold text-text-red uppercase tracking-wider">Declined</p>
                             {quote.rejectionReason && (
-                                <p className="text-[10px] text-text-muted">{quote.rejectionReason}</p>
+                                <p className="text-[12px] text-text-muted">{quote.rejectionReason}</p>
                             )}
                         </div>
                     )}
@@ -290,14 +318,14 @@ export default function ClientQuotesPage() {
                     {actionable && (
                         <div className="flex items-center gap-3 pt-2 border-t border-border-sub">
                             <Button
-                                className="h-9 px-6 bg-text-green hover:bg-text-green/90 text-white uppercase font-bold text-[10px] tracking-wider"
+                                className="bg-text-green hover:bg-text-green/90 text-white"
                                 onClick={() => openApprove(quote)}
                             >
-                                <CheckCircle2 size={14} className="mr-2" /> Accept Quote
+                                <CheckCircle2 size={14} className="mr-2" /> Accept quote
                             </Button>
                             <Button
                                 variant="outline"
-                                className="h-9 px-6 border-brand-red text-text-red hover:bg-brand-red-dim uppercase font-bold text-[10px] tracking-wider"
+                                className="border-brand-red text-text-red hover:bg-brand-red-dim"
                                 onClick={() => openDecline(quote)}
                             >
                                 <XCircle size={14} className="mr-2" /> Decline
@@ -308,7 +336,7 @@ export default function ClientQuotesPage() {
                     {expired && (quote.status === 'sent' || quote.status === 'viewed') && (
                         <div className="flex items-center gap-2 pt-2 border-t border-border-sub">
                             <AlertCircle size={13} className="text-text-muted shrink-0" />
-                            <p className="text-[10px] text-text-muted">This quote has expired. Contact Aaromach to request an updated proposal.</p>
+                            <p className="text-[12px] text-text-muted">This quote has expired. Contact Aaromach for an updated quote.</p>
                         </div>
                     )}
                 </CardContent>
@@ -318,37 +346,50 @@ export default function ClientQuotesPage() {
 
     return (
         <div className="space-y-8">
-            <header className="page-header">
-                <div className="text-left">
-                    <p className="page-eyebrow flex items-center gap-2"><FileText size={12} />Client Portal</p>
-                    <h1 className="page-title">Quotes</h1>
-                    <p className="page-subtitle">Review and respond to service proposals from Aaromach.</p>
-                </div>
-            </header>
+            <PageHeader
+                eyebrow="Client portal"
+                icon={FileText}
+                title="Quotes"
+                subtitle="Review and respond to quotes from Aaromach."
+            />
 
             {quotes.length === 0 ? (
-                <Card>
-                    <CardContent className="py-24 text-center space-y-3">
-                        <FileText size={32} className="mx-auto text-text-muted opacity-30" />
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">No quotes on file.</p>
-                        <p className="text-[11px] text-text-muted">Contact Aaromach to request a service proposal.</p>
-                    </CardContent>
-                </Card>
+                <EmptyState icon={FileText} title="No quotes yet" description="Contact Aaromach to request a quote." />
             ) : (
-                <div className="space-y-8">
+                <div className="space-y-6">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <SearchField value={search} onChange={setSearch} placeholder="Search by quote #, title or scope" className="sm:max-w-md" />
+                        <SortControl
+                            value={sortBy}
+                            onChange={v => setSortBy(v as QuoteSort)}
+                            options={[
+                                { value: 'date', label: 'Date sent' },
+                                { value: 'total', label: 'Total' },
+                                { value: 'expires', label: 'Expires soonest' },
+                                { value: 'title', label: 'Title' },
+                            ]}
+                            dateAsc={dateAsc}
+                            onToggleDirection={() => setDateAsc(v => !v)}
+                        />
+                    </div>
+                    {visibleQuotes.length === 0 && (
+                        <EmptyState icon={FileText} title="No quotes match your search"
+                            action={<Button variant="outline" size="sm" onClick={() => setSearch('')}>Clear search</Button>} />
+                    )}
                     {activeQuotes.length > 0 && (
                         <section className="space-y-4">
                             <div className="flex items-center gap-2">
                                 <Clock size={12} className="text-text-muted" />
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Awaiting Your Response</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Waiting for your response</p>
                             </div>
                             {activeQuotes.map(q => <QuoteCard key={q.id} quote={q} />)}
                         </section>
                     )}
                     {pastQuotes.length > 0 && (
                         <section className="space-y-4">
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Past Quotes</p>
-                            {pastQuotes.map(q => <QuoteCard key={q.id} quote={q} />)}
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Past quotes</p>
+                            {pastPager.items.map(q => <QuoteCard key={q.id} quote={q} />)}
+                            <ListPager pager={pastPager} noun="quotes" />
                         </section>
                     )}
                 </div>
@@ -358,19 +399,19 @@ export default function ClientQuotesPage() {
             <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
                 <DialogContent className="sm:max-w-[520px] bg-bg-elevated border-border-default">
                     <DialogHeader>
-                        <DialogTitle className="font-bold">Accept Quote</DialogTitle>
+                        <DialogTitle className="text-lg font-semibold">Accept quote</DialogTitle>
                         <DialogDescription>
-                            Confirm your name and email to approve this proposal.
+                            Confirm your name and email to approve this quote.
                             {selectedQuote && ` Quote total: ${fmtCurrency(selectedQuote.total + optionsTotal(optionalChoices))}`}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4 space-y-4">
                         {selectedQuote?.optionalChoices && selectedQuote.optionalChoices.length > 0 && (
                             <div className="space-y-3 pb-4 border-b border-border-sub">
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Select Optional Add-Ons</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Choose optional add-ons</p>
                                 {optionalChoices.map(group => (
                                     <div key={group.id} className="space-y-2">
-                                        <p className="text-xs font-semibold text-text-primary">{group.title}</p>
+                                        <p className="text-[13px] font-semibold text-text-primary">{group.title}</p>
                                         {group.options.map(opt => (
                                             <div key={opt.id} className="flex items-center gap-2">
                                                 <Checkbox
@@ -378,7 +419,7 @@ export default function ClientQuotesPage() {
                                                     checked={opt.selected}
                                                     onCheckedChange={() => toggleOption(group.id, opt.id)}
                                                 />
-                                                <Label htmlFor={`opt-${opt.id}`} className="text-xs cursor-pointer">
+                                                <Label htmlFor={`opt-${opt.id}`} className="text-[13px] cursor-pointer">
                                                     {opt.label}
                                                     {opt.priceAdjustment !== 0 && (
                                                         <span className="ml-1 text-text-muted">(+{fmtCurrency(opt.priceAdjustment)})</span>
@@ -392,27 +433,27 @@ export default function ClientQuotesPage() {
                         )}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-text-muted">Your Name *</Label>
+                                <Label className="text-[12px] font-medium text-text-secondary">Your name *</Label>
                                 <Input
                                     value={approverName}
                                     onChange={e => setApproverName(e.target.value)}
                                     placeholder="Full name"
-                                    className="h-8 text-xs bg-bg-primary"
+                                    className="bg-bg-primary"
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-text-muted">Your Email *</Label>
+                                <Label className="text-[12px] font-medium text-text-secondary">Your email *</Label>
                                 <Input
                                     type="email"
                                     value={approverEmail}
                                     onChange={e => setApproverEmail(e.target.value)}
                                     placeholder="you@company.com"
-                                    className="h-8 text-xs bg-bg-primary"
+                                    className="bg-bg-primary"
                                 />
                             </div>
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold text-text-muted">Note (optional)</Label>
+                            <Label className="text-[12px] font-medium text-text-secondary">Note (optional)</Label>
                             <Textarea
                                 value={approvalNote}
                                 onChange={e => setApprovalNote(e.target.value)}
@@ -422,16 +463,16 @@ export default function ClientQuotesPage() {
                         </div>
                     </div>
                     <DialogFooter className="gap-3 flex-row">
-                        <Button variant="outline" onClick={() => setIsApproveDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider">
+                        <Button variant="outline" onClick={() => setIsApproveDialogOpen(false)} className="flex-1">
                             Cancel
                         </Button>
                         <Button
                             disabled={!approverName.trim() || !approverEmail.trim() || saving}
-                            className="flex-1 bg-text-green hover:bg-text-green/90 uppercase font-bold text-[10px] tracking-wider text-white"
+                            className="flex-1 bg-text-green hover:bg-text-green/90 text-white"
                             onClick={handleApprove}
                         >
                             <CheckCircle2 size={13} className="mr-1.5" />
-                            {saving ? 'Confirming...' : 'Confirm Acceptance'}
+                            {saving ? 'Saving…' : 'Accept quote'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -441,11 +482,11 @@ export default function ClientQuotesPage() {
             <Dialog open={isDeclineDialogOpen} onOpenChange={setIsDeclineDialogOpen}>
                 <DialogContent className="sm:max-w-[440px] bg-bg-elevated border-border-default">
                     <DialogHeader>
-                        <DialogTitle className="font-bold">Decline Quote</DialogTitle>
-                        <DialogDescription>Please provide a reason for declining this proposal.</DialogDescription>
+                        <DialogTitle className="text-lg font-semibold">Decline quote</DialogTitle>
+                        <DialogDescription>Let us know why you are declining this quote.</DialogDescription>
                     </DialogHeader>
                     <div className="py-4 space-y-2">
-                        <Label className="text-[10px] font-bold text-text-muted">Reason *</Label>
+                        <Label className="text-[12px] font-medium text-text-secondary">Reason *</Label>
                         <Textarea
                             value={declineReason}
                             onChange={e => setDeclineReason(e.target.value)}
@@ -454,15 +495,15 @@ export default function ClientQuotesPage() {
                         />
                     </div>
                     <DialogFooter className="gap-3 flex-row">
-                        <Button variant="outline" onClick={() => setIsDeclineDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider">
+                        <Button variant="outline" onClick={() => setIsDeclineDialogOpen(false)} className="flex-1">
                             Cancel
                         </Button>
                         <Button
                             disabled={!declineReason.trim() || saving}
-                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider text-white"
+                            className="flex-1"
                             onClick={handleDecline}
                         >
-                            {saving ? 'Saving...' : 'Confirm Decline'}
+                            {saving ? 'Saving…' : 'Decline quote'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

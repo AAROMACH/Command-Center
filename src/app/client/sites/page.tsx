@@ -34,6 +34,9 @@ import { AddressAutocompleteInput } from '@/components/ui/address-autocomplete-i
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { ViewToggle, useViewMode } from '@/components/view-toggle';
+import { PageHeader } from '@/components/page-header';
+import { SearchField } from '@/components/search-field';
+import { EmptyState } from '@/components/empty-state';
 
 export default function ClientSitesPage() {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -117,9 +120,10 @@ export default function ClientSitesPage() {
                 submittedDate: req.submittedDate
             }));
 
+        const q = searchQuery.trim().toLowerCase();
         return [...authorized, ...pending].filter(s =>
-            s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            s.location.toLowerCase().includes(searchQuery.toLowerCase())
+            (s.name || '').toLowerCase().includes(q) ||
+            (s.location || '').toLowerCase().includes(q)
         );
     }, [currentUser, searchQuery, workOrders, siteRequests, firestoreSites]);
 
@@ -134,7 +138,7 @@ export default function ClientSitesPage() {
             siteRequests.some(r => r.location.toLowerCase() === newLocation);
 
         if (isDuplicate) {
-            setDuplicateError('A site at this address is already registered or pending.');
+            setDuplicateError('A site at this address is already on file or waiting for approval.');
             return;
         }
 
@@ -155,12 +159,12 @@ export default function ClientSitesPage() {
             const siteReqId = await createDocId(ID_PREFIXES.SITE_REQUEST);
             await setDoc(doc(db, 'siteRequests', siteReqId), { ...newRequest, id: siteReqId });
             toast({
-                title: "Registration Transmitted",
-                description: "New site coordinate has been submitted for administrative audit.",
+                title: "Site submitted",
+                description: "We'll review the new site and add it to your account.",
             });
             setIsAddSiteOpen(false);
         } catch (err: any) {
-            toast({ variant: "destructive", title: "Submission Failed", description: err.message });
+            toast({ variant: "destructive", title: "Could not submit site", description: err.message });
         } finally {
             setSubmitting(false);
         }
@@ -169,37 +173,42 @@ export default function ClientSitesPage() {
     if (!mounted || !currentUserId) return null;
 
     return (
-        <div className="space-y-8">
-            <header className="page-header">
-                <div className="text-left">
-                    <p className="page-eyebrow flex items-center gap-2"><MapPin size={12} />Enterprise Registry</p>
-                    <h1 className="page-title">Service Sites</h1>
-                    <p className="page-subtitle">Real-time status tracking and operational intelligence for all managed properties.</p>
-                </div>
-                <div className="page-header-right gap-2 items-center">
-                    <ViewToggle value={viewMode} onChange={setViewMode} />
-                    <Button onClick={() => setIsAddSiteOpen(true)}><Plus size={14} className="mr-2"/> Register new site</Button>
-                </div>
-            </header>
+        <div className="space-y-6">
+            <PageHeader
+                eyebrow="Client portal"
+                icon={MapPin}
+                title="Sites"
+                subtitle="Your service locations and the work happening at each."
+                actions={<Button onClick={() => setIsAddSiteOpen(true)}><Plus size={14} className="mr-2"/> Add site</Button>}
+            />
 
-            {viewMode === 'list' ? (
+            <div className="flex items-center justify-between gap-3">
+                <SearchField value={searchQuery} onChange={setSearchQuery} placeholder="Search by site name or address" className="sm:max-w-md" />
+                <ViewToggle value={viewMode} onChange={setViewMode} />
+            </div>
+
+            {sitesData.length === 0 ? (
+                searchQuery
+                    ? <EmptyState icon={MapPin} title="No sites match your search" action={<Button variant="outline" size="sm" onClick={() => setSearchQuery('')}>Clear search</Button>} />
+                    : <EmptyState icon={MapPin} title="No sites yet" description="Add a site so we know where to send technicians." />
+            ) : viewMode === 'list' ? (
             <div className="space-y-1">
                 {sitesData.map(site => (
                     <div key={site.id}
                         onClick={() => site.status === 'authorized' && router.push(`/client/sites/${site.id}`)}
                         className={cn("flex items-center gap-3 px-4 py-2.5 rounded-lg border bg-bg-secondary transition-all group",
                             site.status === 'authorized' ? "border-border-sub hover:border-text-muted cursor-pointer" : "border-dashed border-border-sub opacity-80 cursor-default")}>
-                        <MapPin size={13} className="text-brand-red shrink-0" />
+                        <MapPin size={14} className="text-text-muted shrink-0" />
                         <div className="flex-1 min-w-0">
-                            <p className="text-[12px] font-bold text-text-primary tracking-wide truncate group-hover:text-brand-red transition-colors">{site.name}</p>
+                            <p className="text-[13px] font-semibold text-text-primary truncate">{site.name}</p>
                             <p className="text-[11px] text-text-muted truncate">{site.location}</p>
                         </div>
-                        <span className="hidden md:block text-[10px] text-text-muted shrink-0">
-                            {site.activeAssignments.length > 0 ? `${site.activeAssignments.length} active` : 'No active missions'}
+                        <span className="hidden md:block text-[12px] text-text-muted shrink-0">
+                            {site.activeAssignments.length > 0 ? `${site.activeAssignments.length} open job${site.activeAssignments.length === 1 ? '' : 's'}` : 'No open jobs'}
                         </span>
                         {site.status === 'authorized'
                             ? <Eye size={16} className="text-text-muted shrink-0" />
-                            : <Badge variant="onhold" className="shrink-0">PENDING</Badge>}
+                            : <Badge variant="onhold" className="shrink-0 text-[10px] uppercase tracking-wide">Pending approval</Badge>}
                     </div>
                 ))}
             </div>
@@ -208,31 +217,31 @@ export default function ClientSitesPage() {
                 {sitesData.map(site => (
                     <Card key={site.id} 
                         onClick={() => site.status === 'authorized' && router.push(`/client/sites/${site.id}`)}
-                        className={cn("bg-bg-secondary border-border-main hover:border-text-muted transition-all cursor-pointer group", site.status === 'pending' && "opacity-80 border-dashed cursor-default")}>
-                        <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub pb-4 text-left">
+                        className={cn("rounded-xl bg-bg-secondary border-border-main shadow-sm hover:border-text-muted transition-all cursor-pointer group", site.status === 'pending' && "opacity-80 border-dashed cursor-default")}>
+                        <CardHeader className="border-b border-border-sub pb-4 text-left">
                             <div className="flex justify-between items-start">
                                 <div className="space-y-1">
-                                    <h3 className="text-base font-bold text-text-primary tracking-wide group-hover:text-brand-red transition-colors">{site.name}</h3>
-                                    <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider flex items-center gap-1.5">
-                                        <MapPin size={12} className="text-brand-red"/> {site.location}
+                                    <h3 className="text-base font-semibold text-text-primary">{site.name}</h3>
+                                    <p className="text-[12px] text-text-muted flex items-center gap-1.5">
+                                        <MapPin size={12}/> {site.location}
                                     </p>
                                 </div>
-                                {site.status === 'authorized' ? <Eye size={18} className="text-text-muted"/> : <Badge variant="onhold">PENDING</Badge>}
+                                {site.status === 'authorized' ? <Eye size={18} className="text-text-muted"/> : <Badge variant="onhold" className="text-[10px] uppercase tracking-wide">Pending approval</Badge>}
                             </div>
                         </CardHeader>
                         <CardContent className="p-5 flex-1 space-y-4 text-left">
                             <div className="space-y-2">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Active Activity</p>
+                                <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Open jobs</p>
                                 {site.activeAssignments.length > 0 ? (
                                     <div className="space-y-1">
                                         {site.activeAssignments.slice(0, 2).map(wo => (
-                                            <div key={wo.id} className="text-[11px] font-bold text-text-primary flex items-center gap-2">
-                                                <div className="h-1 w-1 rounded-full bg-brand-red" /> {wo.description}
+                                            <div key={wo.id} className="text-[13px] text-text-primary flex items-center gap-2">
+                                                <div className="h-1.5 w-1.5 rounded-full bg-accent-gold" /> {wo.description}
                                             </div>
                                         ))}
-                                        {site.activeAssignments.length > 2 && <p className="text-[11px] text-text-muted font-bold">+{site.activeAssignments.length - 2} More Assignments</p>}
+                                        {site.activeAssignments.length > 2 && <p className="text-[12px] text-text-muted">+{site.activeAssignments.length - 2} more</p>}
                                     </div>
-                                ) : <p className="text-[10px] text-text-muted italic">No active missions</p>}
+                                ) : <p className="text-[12px] text-text-muted">No open jobs</p>}
                             </div>
                         </CardContent>
                     </Card>
@@ -243,30 +252,30 @@ export default function ClientSitesPage() {
             <Dialog open={isAddSiteOpen} onOpenChange={setIsAddSiteOpen}>
                 <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default">
                     <DialogHeader className="text-left">
-                        <DialogTitle className="font-bold">Site Registration</DialogTitle>
-                        <DialogDescription>Submit coordinates for a new operational facility to the command registry.</DialogDescription>
+                        <DialogTitle className="text-lg font-semibold">Add a site</DialogTitle>
+                        <DialogDescription>Tell us about the new location. We&apos;ll confirm it and add it to your account.</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleAddSite} className="space-y-6 py-4 text-left" onChange={() => setDuplicateError(null)}>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold text-text-muted">Site Identifier / Name</Label>
-                            <Input name="siteName" placeholder="e.g., Gotham Data Center" className="bg-bg-primary" required />
+                            <Label className="text-[12px] font-medium text-text-secondary">Site name</Label>
+                            <Input name="siteName" placeholder="e.g., Downtown data center" className="bg-bg-primary" required />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold text-text-muted">Address / Coordinates</Label>
-                            <AddressAutocompleteInput name="location" placeholder="Full address..." className="bg-bg-primary" required />
+                            <Label className="text-[12px] font-medium text-text-secondary">Address</Label>
+                            <AddressAutocompleteInput name="location" placeholder="Full street address" className="bg-bg-primary" required />
                             {duplicateError && (
-                                <p className="text-[10px] text-brand-red font-bold flex items-center gap-1.5">
+                                <p className="text-[12px] text-text-red flex items-center gap-1.5">
                                     <AlertCircle size={12} /> {duplicateError}
                                 </p>
                             )}
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold text-text-muted">On-Site Manager</Label>
+                            <Label className="text-[12px] font-medium text-text-secondary">On-site manager</Label>
                             <Input name="managerName" placeholder="Name" className="bg-bg-primary" />
                         </div>
                         <DialogFooter>
-                            <Button type="submit" disabled={submitting} className="bg-brand-red hover:bg-brand-red-hover w-full">
-                                {submitting ? 'Submitting...' : 'Request Registry'}
+                            <Button type="submit" disabled={submitting} className="w-full">
+                                {submitting ? 'Submitting…' : 'Submit site'}
                             </Button>
                         </DialogFooter>
                     </form>

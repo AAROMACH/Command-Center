@@ -202,7 +202,7 @@ export function RoutesView({ routes, allJobPool, technicians, onWorkOrdersChange
       });
       onWorkOrdersChange(jobsToPromote);
       onRoutesChange([]);
-      toast({ title: 'Routes Dispatched', description: `${jobsToPromote.length} job(s) sent to assigned technicians.` });
+      toast({ title: 'Routes assigned', description: `${jobsToPromote.length} job(s) sent to assigned technicians.` });
     } finally {
       setSending(false);
     }
@@ -319,10 +319,10 @@ export function RoutesView({ routes, allJobPool, technicians, onWorkOrdersChange
 
                       <Select value={route.technicianId || 'unassigned'} onValueChange={(val) => handleAssignTech(route.id, val)}>
                         <SelectTrigger className="bg-bg-primary h-9 text-[10px] font-bold">
-                          <SelectValue placeholder="Assign Technician" />
+                          <SelectValue placeholder="Assign technician" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-wider text-[10px]">UNASSIGNED</SelectItem>
+                          <SelectItem value="unassigned" className="text-brand-red font-bold text-[12px]">Unassigned</SelectItem>
                           {assignableTechs.map(tech => (
                             <SelectItem key={tech.id} value={tech.id} disabled={isInactiveTechnician(tech)} className="text-[10px] font-bold">
                               {tech.name}{isInactiveTechnician(tech) ? ' · Inactive' : ''}
@@ -355,7 +355,7 @@ export function RoutesView({ routes, allJobPool, technicians, onWorkOrdersChange
       <Dialog open={isNewRouteOpen} onOpenChange={setIsNewRouteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New Route</DialogTitle>
+            <DialogTitle>New route</DialogTitle>
             <DialogDescription>Name this route to start grouping jobs into it.</DialogDescription>
           </DialogHeader>
           <Input
@@ -381,7 +381,7 @@ export function RoutesView({ routes, allJobPool, technicians, onWorkOrdersChange
             <DialogDescription>Only unrouted jobs are shown — a job can belong to one route at a time.</DialogDescription>
           </DialogHeader>
           <Input
-            placeholder="Search unrouted jobs..."
+            placeholder="Search unrouted jobs…"
             value={addJobsSearch}
             onChange={e => setAddJobsSearch(e.target.value)}
           />

@@ -73,6 +73,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { cn, formatCityState, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment, sanitize } from "@/lib/utils";
 import { JobDetailDialog } from "@/components/job-detail-dialog";
+import { StatusBadge } from '@/components/status-badge';
 import { WorkOrderId } from "@/components/work-order-id";
 import { isPayAdmin } from "@/lib/permissions";
 import { archiveJobRecord, toUnassignedWorkOrder } from "@/lib/jobs";
@@ -247,10 +248,10 @@ export const WorkOrdersTable = React.memo(({
 
       setIsDialogOpen(false);
       setSelectedOrder(null);
-      toast({ title: "Dispatch Confirmed", description: `Assignment ${assignmentId.toUpperCase()} initialized in deployment registry.` });
+      toast({ title: "Job assigned", description: `Job ${assignmentId.toUpperCase()} was assigned.` });
     } catch (e: any) {
       console.error("Assign Update Error:", e);
-      toast({ variant: "destructive", title: "Dispatch Failed", description: e.message });
+      toast({ variant: "destructive", title: "Assignment failed", description: e.message });
     }
   }, [selectedOrder, technicians, currentUser, toast]);
 
@@ -271,7 +272,7 @@ export const WorkOrdersTable = React.memo(({
         requestedBy: currentUser?.id || 'unknown',
         requestedAt: new Date().toISOString()
       };
-      toast({ title: "Pay Change Requested", description: "Financial modifications require authorization." });
+      toast({ title: "Pay change requested", description: "Pay changes need approval from a pay admin." });
     }
 
     const today = format(new Date(), 'MM-dd-yyyy');
@@ -302,7 +303,7 @@ export const WorkOrdersTable = React.memo(({
       } as any);
     }
 
-    history.push({ type: 'note', date: today, details: `Registry parameters adjusted.`, user: currentUser?.name || 'Admin' });
+    history.push({ type: 'note', date: today, details: `Job details edited.`, user: currentUser?.name || 'Admin' });
     finalUpdate.history = history;
 
     const runAudit = (collectionName: string) => {
@@ -337,7 +338,7 @@ export const WorkOrdersTable = React.memo(({
         .then(() => runAudit('assignments'))
         .catch((e: any) => {
           console.error("Unassign Error:", e);
-          toast({ variant: "destructive", title: "Save Failed", description: e.message });
+          toast({ variant: "destructive", title: "Save failed", description: e.message });
         });
     } else if (!wasInAssignments && !nowUnassigned) {
       (async () => {
@@ -354,7 +355,7 @@ export const WorkOrdersTable = React.memo(({
           runAudit('workOrders');
         } catch (e: any) {
           console.error("Assign Error:", e);
-          toast({ variant: "destructive", title: "Save Failed", description: e.message });
+          toast({ variant: "destructive", title: "Save failed", description: e.message });
         }
       })();
     } else {
@@ -365,18 +366,18 @@ export const WorkOrdersTable = React.memo(({
         if (collectionName === 'assignments' && newTechId !== prevTechId) {
           const moved = await moveJobLogOnSwap({ job: finalUpdate as WorkOrder, fromTechIds: [prevTechId, selectedOrder.assignedTechnicianId], toTechId: newTechId });
           const note = describeSwapLogMove(moved, technicians.find(t => t.id === prevTechId)?.name || 'the previous tech', technicians.find(t => t.id === newTechId)?.name || 'the new tech');
-          if (note) toast({ variant: note.warn ? 'destructive' : undefined, title: 'Weekly Log', description: note.text });
+          if (note) toast({ variant: note.warn ? 'destructive' : undefined, title: 'Weekly log', description: note.text });
         }
       }).catch((e: any) => {
           console.error("Save Changes Error:", e);
-          toast({ variant: "destructive", title: "Save Failed", description: e.message });
+          toast({ variant: "destructive", title: "Save failed", description: e.message });
       });
     }
 
     setIsEditDialogOpen(false);
     setSelectedOrder(null);
     setEditedOrder(null);
-    toast({ title: "Saved", description: "Job entry synchronized." });
+    toast({ title: "Saved", description: "Job updated." });
   };
 
   const handleDeleteOrder = () => {
@@ -413,7 +414,7 @@ export const WorkOrdersTable = React.memo(({
           archiveReason: `Archived from Dispatch Hub`,
           techName: technicians.find(t => t.id === (order.assignedTechnicianId || order.techId))?.name,
         });
-        toast({ title: `${label} Archived`, description: "Moved to Archives — recoverable from the Archives page." });
+        toast({ title: `${label} archived`, description: "Moved to History — you can restore it from there." });
       } catch (e: any) {
         console.error("Archive Error:", e);
         toast({ variant: "destructive", title: "Archive failed", description: e?.message || "Could not archive. Please try again." });
@@ -436,8 +437,8 @@ export const WorkOrdersTable = React.memo(({
         <table className="tbl min-w-[700px]">
           <thead>
             <tr className="bg-bg-tertiary">
-              <th className="text-center w-[160px] pl-0">Status & ID</th>
-              <th className="text-left pl-0 min-w-[260px]">Assignment Title</th>
+              <th className="text-center w-[160px] pl-0">Status &amp; ID</th>
+              <th className="text-left pl-0 min-w-[260px]">Job</th>
               <th className="text-center w-[160px]">
                 {onToggleDateSort ? (
                   <button
@@ -453,8 +454,8 @@ export const WorkOrdersTable = React.memo(({
                   </button>
                 ) : 'Schedule'}
               </th>
-              <th className="text-left pl-0 w-[250px]">Site Coordinates</th>
-              <th className="text-center w-[180px]">{mode === 'scheduled' || mode === 'assigned' ? 'Operative' : 'Labor Rate'}</th>
+              <th className="text-left pl-0 w-[250px]">Location</th>
+              <th className="text-center w-[180px]">{mode === 'scheduled' || mode === 'assigned' ? 'Technician' : 'Labor rate'}</th>
               <th className="text-center w-[120px]"></th>
             </tr>
           </thead>
@@ -468,13 +469,13 @@ export const WorkOrdersTable = React.memo(({
                 <tr key={order.id} className="group hover:bg-bg-tertiary transition-colors cursor-pointer" onClick={() => handleOpenDetail(order)}>
                   <td className="pl-0 py-4">
                     <div className="flex flex-col items-center justify-center gap-1.5">
-                      <Badge variant={order.status === 'unassigned' ? 'pending' : order.status === 'completed' ? 'completed' : order.status === 'checked-out' ? 'checked-out' : order.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="capitalize text-[10px] h-4 px-1.5 tracking-widest">{order.status}</Badge>
+                      <StatusBadge kind="job" value={order.status} />
                       <WorkOrderId wo={order} className="!text-[10px]" />
                       {order.status !== 'completed' && (() => {
                         const sla = computeSla(order);
                         if (sla.status === 'on-track') return null;
                         return (
-                          <div className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest ${slaStatusColor(sla.status)}`}>
+                          <div className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider ${slaStatusColor(sla.status)}`}>
                             <Timer size={8} />
                             {sla.status === 'breached' ? 'SLA Breached' : sla.status === 'at-risk' ? `SLA ${formatSlaCountdown(sla.hoursUntilResolutionBreach)}` : ''}
                           </div>
@@ -570,12 +571,12 @@ export const WorkOrdersTable = React.memo(({
                                 ) : order.payType === 'hourly' ? (
                                     <>
                                         <span className="font-mono text-xs font-bold text-text-green text-left">${order.pay.toFixed(2)}/hr</span>
-                                        <span className="text-[10px] uppercase font-bold tracking-wider text-text-muted mt-0.5 text-left">hourly labor rate</span>
+                                        <span className="text-[10px] uppercase font-bold tracking-wider text-text-muted mt-0.5 text-left">hourly rate</span>
                                     </>
                                 ) : (
                                     <>
                                         <span className="font-mono text-xs font-bold text-text-green text-left">${order.pay.toFixed(2)}</span>
-                                        <span className="text-[10px] uppercase font-bold tracking-wider text-text-muted mt-0.5 text-left">fixed labor rate</span>
+                                        <span className="text-[10px] uppercase font-bold tracking-wider text-text-muted mt-0.5 text-left">fixed rate</span>
                                     </>
                                 )}
                             </div>
@@ -610,7 +611,7 @@ export const WorkOrdersTable = React.memo(({
               );
             })}
              {workOrders.length === 0 && (
-                <tr><td colSpan={6} className="text-center py-12 text-text-muted italic font-bold text-xs opacity-40">Job pool clear. Awaiting further intake.</td></tr>
+                <tr><td colSpan={6} className="text-center py-12 text-text-muted font-bold text-xs opacity-40">No jobs here.</td></tr>
             )}
           </tbody>
         </table>
@@ -679,9 +680,9 @@ export const WorkOrdersTable = React.memo(({
                 <div className="text-left">
                     <DialogTitle className="text-xl font-bold flex items-center gap-2">
                         <UserPlus className="text-brand-red" size={20} />
-                        Dispatch Terminal
+                        Assign technician
                     </DialogTitle>
-                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider mt-1">Manual operative allocation: <span className="text-text-primary font-bold">{(selectedOrder?.id || '').toUpperCase()}</span></p>
+                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider mt-1">Pick a technician for job <span className="text-text-primary font-bold">{(selectedOrder?.id || '').toUpperCase()}</span></p>
                 </div>
                 <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-[10px] bg-bg-primary border-border-sub px-2 h-4">{selectedOrder?.projectType}</Badge>
@@ -693,19 +694,19 @@ export const WorkOrdersTable = React.memo(({
           <div className="flex-1 overflow-hidden px-6 pb-6 space-y-6 mt-4">
              <div className="space-y-4 text-left">
                 <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-1.5 flex items-center gap-2">
-                    <Target size={14} className="text-brand-red"/> Mission Parameters
+                    <Target size={14} className="text-brand-red"/> Job details
                 </h3>
                 <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub shadow-inner">
                     <div className="space-y-1">
-                        <p className="text-[10px] font-bold text-text-muted">Required Credentials</p>
+                        <p className="text-[10px] font-bold text-text-muted">Required skills</p>
                         <div className="flex flex-wrap gap-1.5">
                             {selectedOrder?.requiredSkills?.map(skill => (
                                 <Badge key={skill} variant="outline" className="text-[10px] font-bold bg-bg-primary">{skill}</Badge>
-                            )) || <span className="text-[11px] text-text-muted italic">No skill constraints logged</span>}
+                            )) || <span className="text-[11px] text-text-muted ">No required skills</span>}
                         </div>
                     </div>
                     <div className="space-y-1 pt-2">
-                        <p className="text-[10px] font-bold text-text-muted">Tactical Objective</p>
+                        <p className="text-[10px] font-bold text-text-muted">Scope</p>
                         <p className="text-[11px] font-bold text-text-primary leading-tight line-clamp-2">
                             {selectedOrder?.title || selectedOrder?.description}
                         </p>
@@ -718,12 +719,12 @@ export const WorkOrdersTable = React.memo(({
              <div className="space-y-3 text-left">
                 <div className="flex items-center justify-between px-1">
                     <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
-                        <Users size={14} className="text-brand-red"/> Field Operative Registry
+                        <Users size={14} className="text-brand-red"/> Technicians
                     </h3>
                     <div className="relative w-[240px]">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
                         <Input 
-                            placeholder="Filter registry..." 
+                            placeholder="Search technicians…" 
                             value={techSearchQuery}
                             onChange={(e) => setTechSearchQuery(e.target.value)}
                             className="bg-bg-primary h-8 pl-8 text-[10px] uppercase font-bold tracking-wide"
@@ -763,11 +764,11 @@ export const WorkOrdersTable = React.memo(({
                                     <Button
                                         size="sm"
                                         disabled={inactive}
-                                        title={inactive ? 'Inactive technicians cannot be deployed' : undefined}
+                                        title={inactive ? 'Inactive technicians cannot be assigned' : undefined}
                                         onClick={() => handleAssign(tech.id)}
                                         className="h-9 text-[10px] px-8 uppercase font-bold tracking-wider bg-bg-tertiary text-text-muted hover:bg-brand-red hover:text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-bg-tertiary disabled:hover:text-text-muted"
                                     >
-                                        Deploy
+                                        Assign
                                     </Button>
                                 </div>
                             )
@@ -778,7 +779,7 @@ export const WorkOrdersTable = React.memo(({
           </div>
 
           <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default shrink-0">
-             <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="w-full h-11 uppercase font-bold text-[10px] tracking-wider">Abort Dispatch</Button>
+             <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="w-full h-11 uppercase font-bold text-[10px] tracking-wider">Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -789,7 +790,7 @@ export const WorkOrdersTable = React.memo(({
                 <div className="flex items-center justify-between">
                     <div className="space-y-1 text-left">
                         <DialogTitle className="text-lg font-bold text-text-primary">Edit Job</DialogTitle>
-                        <p className="text-xs text-text-muted text-left">Adjust manual parameters for record <span className="font-bold text-text-primary">{selectedOrder?.id.toUpperCase()}</span></p>
+                        <p className="text-xs text-text-muted text-left">Update the details for job <span className="font-bold text-text-primary">{selectedOrder?.id.toUpperCase()}</span></p>
                     </div>
                 </div>
             </DialogHeader>
@@ -806,30 +807,30 @@ export const WorkOrdersTable = React.memo(({
                                 <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
                                   <Type size={12} className="text-brand-red"/> Job Title
                                 </Label>
-                                <Input placeholder="e.g. Network Audit" value={editedOrder.title || ''} onChange={(e) => setEditedOrder({...editedOrder, title: e.target.value})} className="bg-bg-primary border-border-sub h-10 text-xs font-bold" />
+                                <Input placeholder="e.g. Network audit" value={editedOrder.title || ''} onChange={(e) => setEditedOrder({...editedOrder, title: e.target.value})} className="bg-bg-primary border-border-sub h-10 text-xs font-bold" />
                             </div>
                             <div className="space-y-2 text-left">
                                 <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
                                   <FileText size={12} className="text-accent-gold"/> Scope of Work
                                 </Label>
-                                <Textarea placeholder="Detailed requirements..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-24 text-xs" />
+                                <Textarea placeholder="What needs to be done…" value={editedOrder.description || ''} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-24 text-xs" />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client / Entity</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client</Label>
                                 <Input value={editedOrder.clientName || ''} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold" />
                             </div>
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Site Location</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Location</Label>
                                 <Input value={editedOrder.location || ''} onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})} className="bg-bg-primary h-10 text-xs" />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Service Category</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Service category</Label>
                                 <Select value={editedOrder.projectType} onValueChange={(val) => setEditedOrder({...editedOrder, projectType: val})}>
                                     <SelectTrigger className="h-10 bg-bg-primary text-xs font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent>
@@ -842,7 +843,7 @@ export const WorkOrdersTable = React.memo(({
                                 </Select>
                             </div>
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Priority Level</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Priority</Label>
                                 <Select value={editedOrder.priority} onValueChange={(val: any) => setEditedOrder({...editedOrder, priority: val})}>
                                     <SelectTrigger className="h-10 bg-bg-primary text-xs font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent>
@@ -857,18 +858,18 @@ export const WorkOrdersTable = React.memo(({
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Schedule Date</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Date</Label>
                                 <Input type="date" value={editedOrder.scheduleDate || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleDate: e.target.value})} className="h-10 bg-bg-primary text-xs" />
                             </div>
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Start Window</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Start time</Label>
                                 <Input placeholder="e.g. 10:00 AM EST" value={editedOrder.scheduleTime || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleTime: e.target.value})} className="h-10 bg-bg-primary h-10 text-xs" />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Pay Model</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Pay type</Label>
                                 <Select value={editedOrder.payType} onValueChange={(val: any) => setEditedOrder({...editedOrder, payType: val})}>
                                     <SelectTrigger className="h-10 bg-bg-primary text-xs font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent>
@@ -880,7 +881,7 @@ export const WorkOrdersTable = React.memo(({
                             </div>
                             {editedOrder.payType !== 'blended' && (
                                 <div className="space-y-2 text-left">
-                                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Labor Rate ($)</Label>
+                                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Labor rate ($)</Label>
                                   <Input type="number" value={editedOrder.pay || 0} onChange={(e) => setEditedOrder({...editedOrder, pay: parseFloat(e.target.value) || 0})} className="bg-bg-primary h-10 text-xs font-mono text-text-green" />
                                 </div>
                             )}
@@ -889,7 +890,7 @@ export const WorkOrdersTable = React.memo(({
                         {editedOrder.payType === 'blended' && (
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50 text-left">
                                 <div className="space-y-2 text-left">
-                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Fixed Base ($)</Label>
+                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Fixed base ($)</Label>
                                     <div className="relative">
                                         <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
                                         <Input 
@@ -904,7 +905,7 @@ export const WorkOrdersTable = React.memo(({
                                     </div>
                                 </div>
                                 <div className="space-y-2 text-left">
-                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Incl. Hours</Label>
+                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Incl. hours</Label>
                                     <Input 
                                         type="number"
                                         value={editedOrder.blendedIncludedHours || ''}
@@ -913,7 +914,7 @@ export const WorkOrdersTable = React.memo(({
                                     />
                                 </div>
                                 <div className="space-y-2 text-left">
-                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Post Rate ($/hr)</Label>
+                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Then ($/hr)</Label>
                                     <div className="relative">
                                         <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
                                         <Input 
@@ -924,7 +925,7 @@ export const WorkOrdersTable = React.memo(({
                                         />
                                     </div>
                                 </div>
-                                <p className="sm:col-span-3 text-[10px] text-text-muted uppercase font-bold italic tracking-tighter text-left">Fixed amount for specified hours, then hourly rate applies.</p>
+                                <p className="sm:col-span-3 text-[10px] text-text-muted uppercase font-bold text-left">Fixed amount for the included hours, then the hourly rate applies.</p>
                             </div>
                         )}
 
@@ -932,30 +933,30 @@ export const WorkOrdersTable = React.memo(({
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label>
+                                <Label className="text-[10px] font-bold text-text-muted ml-1 text-center block">Technician</Label>
                                 <Select value={editedOrder.assignedTechnicianId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? null : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
                                     <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red text-xs">
-                                        <SelectValue placeholder="Select Technician" />
+                                        <SelectValue placeholder="Select technician" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="unassigned" className="text-brand-red font-bold">UNASSIGNED</SelectItem>
+                                        <SelectItem value="unassigned" className="text-brand-red font-bold">Unassigned</SelectItem>
                                         {sortTechniciansForDeployment(technicians.filter(isAssignableTechnician)).map(tech => <SelectItem key={tech.id} value={tech.id} disabled={isInactiveTechnician(tech)} className="text-xs font-bold">{tech.name}{isInactiveTechnician(tech) ? ' · Inactive' : ''}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold text-text-muted ml-1 text-center block">Operational Status</Label>
+                                <Label className="text-[10px] font-bold text-text-muted ml-1 text-center block">Status</Label>
                                 <Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}>
                                     <SelectTrigger className="bg-bg-primary h-11 font-bold tracking-wider focus:ring-brand-red text-xs">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="unassigned" className="text-xs font-bold">UNASSIGNED</SelectItem>
-                                        <SelectItem value="assigned" className="text-xs font-bold">ASSIGNED</SelectItem>
-                                        <SelectItem value="confirmed" className="text-xs font-bold">CONFIRMED</SelectItem>
-                                        <SelectItem value="on-my-way" className="text-xs font-bold">ON MY WAY</SelectItem>
-                                        <SelectItem value="in-progress" className="text-xs font-bold">IN PROGRESS</SelectItem>
-                                        <SelectItem value="completed" className="text-xs font-bold">COMPLETED</SelectItem>
+                                        <SelectItem value="unassigned" className="text-xs font-bold">Unassigned</SelectItem>
+                                        <SelectItem value="assigned" className="text-xs font-bold">Assigned</SelectItem>
+                                        <SelectItem value="confirmed" className="text-xs font-bold">Confirmed</SelectItem>
+                                        <SelectItem value="on-my-way" className="text-xs font-bold">On my way</SelectItem>
+                                        <SelectItem value="in-progress" className="text-xs font-bold">In progress</SelectItem>
+                                        <SelectItem value="completed" className="text-xs font-bold">Completed</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -983,9 +984,9 @@ export const WorkOrdersTable = React.memo(({
       <AlertDialog open={isDeleteConfirmOpen} onOpenChange={open => { if (!open) { setIsDeleteConfirmOpen(false); setOrderToDelete(null); } }}>
         <AlertDialogContent className="bg-bg-elevated border-border-main">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-text-primary font-bold tracking-wide text-sm">Move to Archives?</AlertDialogTitle>
+            <AlertDialogTitle className="text-text-primary font-bold tracking-wide text-sm">Archive this job?</AlertDialogTitle>
             <AlertDialogDescription className="text-text-muted text-[11px]">
-              <span className="font-bold text-text-primary">{((orderToDelete as any)?.externalWorkOrderId || orderToDelete?.id || '').toString().toUpperCase()}</span> will be removed from the Dispatch Hub and moved to Archives. You can restore it later from the Archives page.
+              <span className="font-bold text-text-primary">{((orderToDelete as any)?.externalWorkOrderId || orderToDelete?.id || '').toString().toUpperCase()}</span> will be removed from Dispatch and moved to History. You can restore it from there later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -994,7 +995,7 @@ export const WorkOrdersTable = React.memo(({
               className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold"
               onClick={executeDeleteOrder}
             >
-              <ArchiveIcon size={12} className="mr-1.5" />Move to Archives
+              <ArchiveIcon size={12} className="mr-1.5" />Archive
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

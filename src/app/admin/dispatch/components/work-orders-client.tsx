@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyState } from '@/components/empty-state';
 import React, { useCallback, useState } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import type { WorkOrder, Technician } from "@/lib/types";
@@ -93,14 +94,14 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
 
   return (
     <div className="space-y-4">
-      {/* Desktop view: Tactical Table */}
+      {/* Desktop view: table */}
       <div className="hidden md:block">
         <WorkOrdersTable {...props}
           mobileAssignOrder={mobileAssignOrder} onMobileAssignOrderHandled={clearMobileAssignOrder}
           mobileEditOrder={mobileEditOrder} onMobileEditOrderHandled={clearMobileEditOrder} />
       </div>
 
-      {/* Mobile view: Tactical Cards */}
+      {/* Mobile view: cards */}
       <div className="grid grid-cols-1 gap-4 md:hidden">
         {mobilePager.items.map((wo) => {
           const tech = technicians.find(t => t.id === wo.assignedTechnicianId);
@@ -136,7 +137,7 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
                     {wo.title || wo.description}
                   </p>
                 </div>
-                <Badge variant={wo.priority === 'critical' ? 'high' : wo.priority === 'high' ? 'high' : 'outline'} className="text-[10px] h-3 px-1 uppercase tracking-tighter shrink-0">
+                <Badge variant={wo.priority === 'critical' ? 'high' : wo.priority === 'high' ? 'high' : 'outline'} className="text-[10px] h-3 px-1 uppercase shrink-0">
                     {wo.priority}
                 </Badge>
               </div>
@@ -183,9 +184,7 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
           )
         })}
         {workOrders.length === 0 && (
-          <div className="p-24 text-center border-2 border-dashed border-border-main rounded-xl bg-bg-secondary/30">
-            <p className="text-xs font-bold text-text-muted italic">No missions found in this terminal category.</p>
-          </div>
+          <EmptyState title="No jobs here" description="Jobs that match this tab and your filters show up here." />
         )}
       </div>
       <div className="md:hidden"><ListPager pager={mobilePager} noun="jobs" /></div>

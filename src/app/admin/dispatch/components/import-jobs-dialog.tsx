@@ -240,8 +240,8 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
     setIsOpen(false);
     handleReset();
     toast({
-      title: 'Integration Complete',
-      description: `${finalOrders.length} job${finalOrders.length !== 1 ? 's' : ''} synced.${skipped > 0 ? ` ${skipped} skipped / flagged.` : ''}`,
+      title: 'Import complete',
+      description: `${finalOrders.length} job${finalOrders.length !== 1 ? 's' : ''} imported.${skipped > 0 ? ` ${skipped} skipped / flagged.` : ''}`,
     });
   };
 
@@ -283,13 +283,13 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
           <div className="flex items-center gap-2 mb-1">
             <ImportIcon className="text-brand-red h-5 w-5" />
             <DialogTitle className="text-lg font-bold text-text-primary">
-              {step === 'input' ? 'Job Integration Terminal' : 'Import Audit'}
+              {step === 'input' ? 'Import jobs' : 'Review import'}
             </DialogTitle>
           </div>
           <DialogDescription className="text-xs font-bold text-text-muted">
             {step === 'input'
-              ? 'Paste unstructured job blocks to convert them into field-ready missions.'
-              : `Reviewing ${rows.length} parsed records. Skip, remove, or approve before import. Double-click a field to edit.`}
+              ? 'Paste job details (one value per line) to turn them into jobs.'
+              : `Reviewing ${rows.length} jobs. Skip, remove or approve each before importing. Double-click a field to edit.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -298,7 +298,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
             <div className="space-y-4 h-full min-h-0 flex flex-col">
               <div className="space-y-2 flex-1 min-h-0">
                 <div className="flex items-center justify-between gap-2">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Data Input Buffer</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Job details</label>
                   <Button
                     size="sm"
                     variant="outline"
@@ -341,7 +341,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
                   {counts.duplicate > 0 && <span className="text-brand-red">· {counts.duplicate} duplicate</span>}
                   {counts.review > 0 && <span className="text-accent-gold">· {counts.review} review</span>}
                   {counts.skipped > 0 && <span className="text-text-muted">· {counts.skipped} skipped</span>}
-                  {counts.override > 0 && <span className="text-blue-400">· {counts.override} override</span>}
+                  {counts.override > 0 && <span className="text-brand-blue">· {counts.override} override</span>}
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" onClick={() => setReviewOnly(v => !v)}>
@@ -445,9 +445,9 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
                             ) : (
                               <>
                                 {isDup && (
-                                  <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold border-blue-400/40 text-blue-400 hover:bg-blue-400/5"
+                                  <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold border-brand-blue/40 text-brand-blue hover:bg-brand-blue/5"
                                     onClick={() => setRowStatus(job.rowKey, 'approved_override', { overrideBy: currentUserName, overrideAt: new Date().toISOString() })}>
-                                    <ShieldAlert size={10} className="mr-1" />Import Anyway
+                                    <ShieldAlert size={10} className="mr-1" />Import anyway
                                   </Button>
                                 )}
                                 <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" onClick={() => setRowStatus(job.rowKey, 'skipped')}>

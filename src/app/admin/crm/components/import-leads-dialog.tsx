@@ -249,8 +249,8 @@ export function ImportLeadsDialog({ open, onClose, currentUserId, currentUserNam
     <Dialog open={open} onOpenChange={v => !v && handleClose()}>
       <DialogContent className="bg-bg-elevated border-border-main sm:max-w-2xl max-h-[85vh] flex flex-col p-0">
         <DialogHeader className="p-6 pb-4 border-b border-border-sub">
-          <DialogTitle className="text-[13px] font-bold flex items-center gap-2">
-            <Upload size={14} className="text-brand-red" /> Import Leads
+          <DialogTitle className="text-base font-semibold flex items-center gap-2">
+            <Upload size={14} className="text-brand-red" /> Import leads
           </DialogTitle>
           <DialogDescription className="text-[10px] font-bold text-text-muted">
             PDF (first page), CSV or Excel — including Apollo exports. One deal per company; every person is saved to the account.
@@ -290,7 +290,7 @@ export function ImportLeadsDialog({ open, onClose, currentUserId, currentUserNam
               {files.map(f => {
                 const Icon = fileKindIcon(f.name);
                 return (
-                  <span key={f.name} className="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-border-sub bg-bg-secondary text-[10px] font-bold text-text-secondary">
+                  <span key={f.name} className="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-border-sub bg-bg-secondary text-[12px] font-bold text-text-secondary">
                     <Icon size={11} className="text-brand-red" />{f.name}
                   </span>
                 );
@@ -300,9 +300,9 @@ export function ImportLeadsDialog({ open, onClose, currentUserId, currentUserNam
 
           {/* Parse errors */}
           {parseErrors.length > 0 && (
-            <div className="rounded-lg border border-amber-400/30 bg-amber-400/5 p-3 space-y-1">
+            <div className="rounded-lg border border-accent-gold/30 bg-accent-gold/5 p-3 space-y-1">
               {parseErrors.map((err, i) => (
-                <p key={i} className="text-[10px] text-amber-400 flex items-start gap-1.5">
+                <p key={i} className="text-[10px] text-accent-gold flex items-start gap-1.5">
                   <AlertTriangle size={11} className="shrink-0 mt-0.5" />{err}
                 </p>
               ))}
@@ -341,10 +341,10 @@ export function ImportLeadsDialog({ open, onClose, currentUserId, currentUserNam
                         {c.include && <CheckCircle2 size={10} className="text-white" />}
                       </button>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-bold text-text-primary truncate flex items-center gap-2">
+                        <p className="text-[12px] font-bold text-text-primary truncate flex items-center gap-2">
                           {c.companyName || '(no company)'}
                           {c.duplicateOf && (
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 rounded shrink-0">Already in CRM</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-accent-gold border border-accent-gold/30 bg-accent-gold/10 px-1.5 py-0.5 rounded shrink-0">Already in CRM</span>
                           )}
                           {findCompany(companies, c.companyName) && !c.duplicateOf && (
                             <span className="text-[10px] font-bold uppercase tracking-wider text-text-green border border-text-green/30 bg-text-green/10 px-1.5 py-0.5 rounded shrink-0">Existing account</span>
@@ -357,12 +357,12 @@ export function ImportLeadsDialog({ open, onClose, currentUserId, currentUserNam
                           <p className="text-[10px] text-text-muted truncate">{[c.industry, c.address].filter(Boolean).join(' · ')}</p>
                         )}
                         {c.otherContacts.length > 0 && (
-                          <p className="text-[10px] text-text-secondary truncate">
+                          <p className="text-[12px] text-text-secondary truncate">
                             +{c.otherContacts.length} more: {c.otherContacts.map(o => [o.name, o.title].filter(Boolean).join(' – ')).join('; ')}
                           </p>
                         )}
                         {c.estimatedValue > 0 && <p className="text-[10px] text-text-green font-mono">${c.estimatedValue.toLocaleString()}</p>}
-                        <p className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">{c.sourceFile}</p>
+                        <p className="text-[12px] text-text-muted mt-0.5">{c.sourceFile}</p>
                       </div>
                       <button
                         type="button"

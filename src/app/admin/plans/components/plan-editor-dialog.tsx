@@ -78,7 +78,7 @@ export function PlanEditorDialog({
     <Dialog open={open} onOpenChange={v => { if (!v && !saving) onClose(); }}>
       <DialogContent className="sm:max-w-[640px] max-h-[90vh] p-0 flex flex-col bg-bg-elevated border-border-main">
         <DialogHeader className="p-4 sm:p-6 pb-3 border-b border-border-sub text-left">
-          <DialogTitle className="text-[13px] font-bold">{plan?.id ? 'Edit Plan' : 'New Plan'}</DialogTitle>
+          <DialogTitle className="text-base font-semibold">{plan?.id ? 'Edit plan' : 'New plan'}</DialogTitle>
           <DialogDescription className="text-xs">
             Prices and benefits here are what clients are billed and what the app enforces (response time, labor discount).
           </DialogDescription>

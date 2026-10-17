@@ -1,4 +1,8 @@
 'use client';
+import { PageHeader } from '@/components/page-header';
+import { PageLoading, EmptyState } from '@/components/empty-state';
+import { StatusBadge } from '@/components/status-badge';
+import { statusLabel } from '@/lib/status-styles';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -174,51 +178,38 @@ export default function SiteDetailPage() {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="h-16 w-16 rounded-full bg-bg-secondary animate-pulse mx-auto" />
-            </div>
-        );
+        return <PageLoading label="Loading site…" />;
     }
 
     if (!site) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-                <AlertTriangle size={32} className="text-text-red" />
-                <p className="text-[11px] font-bold text-text-muted">Site not found</p>
-                <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/clients/${id}`)} className="text-[10px] font-bold">
-                    <ArrowLeft size={14} className="mr-2" /> Back to Client
-                </Button>
-            </div>
+            <EmptyState icon={AlertTriangle} title="Site not found" description="This site may have been removed."
+                action={<Button variant="outline" size="sm" onClick={() => router.push(`/admin/clients/${id}`)}><ArrowLeft size={14} className="mr-2" /> Back to client</Button>} />
         );
     }
 
     return (
         <div className="space-y-6">
-            {/* Breadcrumb */}
-            <div className="flex items-center gap-2 text-[10px] text-text-muted">
-                <button onClick={() => router.push('/admin/sites')} className="hover:text-text-primary transition-colors font-bold">Clients</button>
-                <span>/</span>
-                <button onClick={() => router.push(`/admin/clients/${id}`)} className="hover:text-text-primary transition-colors font-bold">{clientName || 'Client'}</button>
-                <span>/</span>
-                <span className="text-text-primary font-bold">{site.name}</span>
-            </div>
+            <PageHeader
+                back={{ href: `/admin/clients/${id}`, label: clientName || 'Client' }}
+                eyebrow="Site"
+                icon={MapPin}
+                title={<span className="inline-flex flex-wrap items-center gap-3">{site.name}
+                    <Badge variant={site.status === 'active' || !site.status ? 'approved' : 'draft'} className="text-[10px] h-5 font-semibold uppercase tracking-wide">{site.status || 'active'}</Badge></span>}
+                subtitle={site.location || undefined}
+            />
 
             {/* Site hero */}
-            <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary">
+            <div className="p-5 rounded-xl border border-border-main bg-bg-secondary shadow-sm">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div className="space-y-2">
-                        <div className="flex items-center gap-3 flex-wrap">
-                            <h1 className="text-2xl font-black tracking-tight text-text-primary">{site.name}</h1>
-                            <Badge variant={site.status === 'active' ? 'active' : 'completed'} className="text-[10px] h-5">{site.status || 'active'}</Badge>
-                        </div>
                         {site.location && (
-                            <p className="flex items-center gap-2 text-[11px] text-text-secondary">
+                            <p className="flex items-center gap-2 text-[12px] text-text-secondary">
                                 <MapPin size={12} className="text-text-muted" />{site.location}
                             </p>
                         )}
                         {site.managerName && (
-                            <p className="flex items-center gap-2 text-[11px] text-text-secondary">
+                            <p className="flex items-center gap-2 text-[12px] text-text-secondary">
                                 <User size={12} className="text-text-muted" />{site.managerName}
                                 {site.managerPhone && <span className="flex items-center gap-1"><Phone size={11} />{site.managerPhone}</span>}
                             </p>
@@ -226,11 +217,11 @@ export default function SiteDetailPage() {
                     </div>
                     <div className="flex gap-3">
                         <div className="p-3 rounded-lg bg-bg-primary border border-border-sub text-center min-w-[64px]">
-                            <p className={cn('text-[18px] font-black font-mono', openJobs.length > 0 ? 'text-text-amber' : 'text-text-muted')}>{openJobs.length}</p>
-                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Open Jobs</p>
+                            <p className={cn('text-[18px] font-bold tabular-nums', openJobs.length > 0 ? 'text-text-amber' : 'text-text-muted')}>{openJobs.length}</p>
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Open jobs</p>
                         </div>
                         <div className="p-3 rounded-lg bg-bg-primary border border-border-sub text-center min-w-[64px]">
-                            <p className="text-[18px] font-black font-mono text-text-secondary">{completedJobs.length}</p>
+                            <p className="text-[18px] font-bold tabular-nums text-text-secondary">{completedJobs.length}</p>
                             <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Done</p>
                         </div>
                     </div>
@@ -243,18 +234,18 @@ export default function SiteDetailPage() {
                     <section>
                         <div className="flex items-center justify-between border-b border-border-sub pb-2 mb-4">
                             <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
-                                <Briefcase size={11} /> Open Jobs ({openJobs.length})
+                                <Briefcase size={11} /> Open jobs ({openJobs.length})
                             </p>
                         </div>
                         {openJobs.length === 0
-                            ? <p className="text-[10px] text-text-muted py-4 text-center">No open jobs</p>
+                            ? <p className="text-[12px] text-text-muted py-4 text-center">No open jobs</p>
                             : openJobs.map(wo => (
                                 <Link key={wo.id} href={`/admin/assignments/${wo.id}`} className="flex items-center justify-between p-3 rounded-xl border border-border-sub bg-bg-secondary hover:border-brand-red/30 transition-colors mb-2 group">
                                     <div className="min-w-0">
-                                        <p className="text-[11px] font-bold text-text-primary truncate group-hover:text-brand-red transition-colors">{wo.title || wo.description}</p>
+                                        <p className="text-[12px] font-bold text-text-primary truncate group-hover:text-brand-red transition-colors">{wo.title || wo.description}</p>
                                         <p className="text-[11px] text-text-muted">{wo.scheduleDate} · {wo.projectType}</p>
                                     </div>
-                                    <Badge variant={wo.status === 'unassigned' ? 'destructive' : 'scheduled'} className="text-[10px] h-4 shrink-0 ml-2">{wo.status}</Badge>
+                                    <StatusBadge kind="job" value={wo.status} className="ml-2" />
                                 </Link>
                             ))}
                     </section>
@@ -267,14 +258,14 @@ export default function SiteDetailPage() {
                             </p>
                         </div>
                         {completedJobs.length === 0
-                            ? <p className="text-[10px] text-text-muted py-4 text-center">No completed jobs</p>
+                            ? <p className="text-[12px] text-text-muted py-4 text-center">No completed jobs</p>
                             : completedJobs.slice(0, 10).map(wo => (
                                 <Link key={wo.id} href={`/admin/assignments/${wo.id}`} className="flex items-center justify-between p-2.5 rounded-lg border border-border-sub bg-bg-secondary/50 hover:bg-bg-secondary transition-colors mb-1.5 group">
                                     <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-text-secondary truncate group-hover:text-brand-red transition-colors">{wo.title || wo.description}</p>
+                                        <p className="text-[12px] font-bold text-text-secondary truncate group-hover:text-brand-red transition-colors">{wo.title || wo.description}</p>
                                         <p className="text-[11px] text-text-muted">{wo.scheduleDate}</p>
                                     </div>
-                                    <Badge variant="active" className="text-[10px] h-4 shrink-0">Done</Badge>
+                                    <StatusBadge kind="job" value="completed" label="Done" />
                                 </Link>
                             ))}
                     </section>
@@ -298,10 +289,10 @@ export default function SiteDetailPage() {
                             </Button>
                         </div>
                         {siteNotes.length === 0
-                            ? <p className="text-[10px] text-text-muted py-3 text-center">No notes for this site</p>
+                            ? <p className="text-[12px] text-text-muted py-3 text-center">No notes for this site</p>
                             : siteNotes.map(note => (
                                 <div key={note.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary mb-2">
-                                    <p className="text-[11px] text-text-primary">{note.text}</p>
+                                    <p className="text-[12px] text-text-primary">{note.text}</p>
                                     <p className="text-[10px] text-text-muted mt-1.5 font-mono">
                                         {note.createdBy} · {note.createdAt ? format(parseISO(note.createdAt), 'MMM d, yyyy h:mm a') : ''}
                                     </p>
@@ -320,14 +311,14 @@ export default function SiteDetailPage() {
                             </Button>
                         </div>
                         {siteDocs.length === 0
-                            ? <p className="text-[10px] text-text-muted py-3 text-center">No documents for this site</p>
+                            ? <p className="text-[12px] text-text-muted py-3 text-center">No documents for this site</p>
                             : siteDocs.map(d => {
                                 const daysLeft = d.expirationDate ? differenceInDays(new Date(d.expirationDate), new Date()) : null;
                                 const expired = daysLeft !== null && daysLeft < 0;
                                 return (
                                     <div key={d.id} className={cn('flex items-center justify-between p-3 rounded-lg border bg-bg-secondary mb-2', expired ? 'border-text-red/30' : 'border-border-sub')}>
                                         <div>
-                                            <p className="text-[10px] font-bold text-text-primary">{d.name}</p>
+                                            <p className="text-[12px] font-bold text-text-primary">{d.name}</p>
                                             <p className="text-[10px] text-text-muted">{CDOC_TYPE_LABELS[d.documentType] || d.documentType} · {d.uploadedAt ? format(new Date(d.uploadedAt), 'MM/dd/yyyy') : ''}</p>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -385,9 +376,9 @@ export default function SiteDetailPage() {
                                         ? <p className="text-[10px] text-text-muted text-center py-2">No access info. Click Edit.</p>
                                         : (
                                             <div className="space-y-2">
-                                                {site.gateCode && <div><p className="text-[11px] font-bold text-text-muted">Gate Code</p><p className="text-[11px] text-text-primary font-mono">{site.gateCode}</p></div>}
-                                                {site.lockboxCode && <div><p className="text-[11px] font-bold text-text-muted">Lockbox</p><p className="text-[11px] text-text-primary font-mono">{site.lockboxCode}</p></div>}
-                                                {site.accessInstructions && <div><p className="text-[11px] font-bold text-text-muted">Instructions</p><p className="text-[11px] text-text-primary">{site.accessInstructions}</p></div>}
+                                                {site.gateCode && <div><p className="text-[11px] font-bold text-text-muted">Gate Code</p><p className="text-[12px] text-text-primary font-mono">{site.gateCode}</p></div>}
+                                                {site.lockboxCode && <div><p className="text-[11px] font-bold text-text-muted">Lockbox</p><p className="text-[12px] text-text-primary font-mono">{site.lockboxCode}</p></div>}
+                                                {site.accessInstructions && <div><p className="text-[11px] font-bold text-text-muted">Instructions</p><p className="text-[12px] text-text-primary">{site.accessInstructions}</p></div>}
                                             </div>
                                         )}
                                 </>
@@ -406,14 +397,11 @@ export default function SiteDetailPage() {
                             {siteQuotes.slice(0, 5).map(q => (
                                 <div key={q.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border-sub bg-bg-secondary mb-1.5">
                                     <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-text-primary truncate">{q.title}</p>
-                                        <p className="text-[10px] text-text-muted">${q.total}</p>
+                                        <p className="text-[12px] font-bold text-text-primary truncate">{q.title}</p>
+                                        <p className="text-[12px] text-text-muted">${q.total}</p>
                                     </div>
-                                    <Badge className={cn('text-[10px] h-4 border shrink-0',
-                                        q.status === 'approved' ? 'bg-text-green/10 text-text-green border-text-green/20' :
-                                        q.status === 'rejected' ? 'bg-text-red/10 text-text-red border-text-red/20' :
-                                        'bg-amber-400/10 text-amber-400 border-amber-400/20'
-                                    )}>{q.status}</Badge>
+                                    <Badge variant={q.status === 'approved' || q.status.startsWith('converted') ? 'approved' : q.status === 'rejected' || q.status === 'expired' ? 'disputed' : q.status === 'draft' || q.status === 'archived' ? 'draft' : 'inprogress'}
+                                        className="h-5 text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap shrink-0">{statusLabel(q.status)}</Badge>
                                 </div>
                             ))}
                         </section>
@@ -430,12 +418,12 @@ export default function SiteDetailPage() {
                             {siteInvoices.slice(0, 5).map(inv => (
                                 <div key={inv.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border-sub bg-bg-secondary mb-1.5">
                                     <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-text-primary">{inv.invoiceNumber}</p>
+                                        <p className="text-[12px] font-bold text-text-primary">{inv.invoiceNumber}</p>
                                         <p className="text-[10px] text-text-muted">Due {inv.dueDate}</p>
                                     </div>
                                     <div className="text-right shrink-0">
                                         <p className={cn('text-[10px] font-bold font-mono', inv.status === 'paid' ? 'text-text-green' : inv.status === 'overdue' ? 'text-text-red' : 'text-text-primary')}>${inv.total}</p>
-                                        <Badge variant={inv.status === 'paid' ? 'active' : inv.status === 'overdue' ? 'destructive' : 'onhold'} className="text-[10px] h-3">{inv.status}</Badge>
+                                        <StatusBadge kind="invoice" value={inv.status} />
                                     </div>
                                 </div>
                             ))}
@@ -448,7 +436,7 @@ export default function SiteDetailPage() {
             <Dialog open={docOpen} onOpenChange={setDocOpen}>
                 <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
                     <DialogHeader>
-                        <DialogTitle className="text-[13px] font-bold flex items-center gap-2">
+                        <DialogTitle className="text-base font-semibold flex items-center gap-2">
                             <Upload size={14} className="text-brand-red" /> Upload Site Document
                         </DialogTitle>
                     </DialogHeader>
@@ -463,7 +451,7 @@ export default function SiteDetailPage() {
                                 <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue /></SelectTrigger>
                                 <SelectContent className="bg-bg-elevated border-border-main">
                                     {Object.entries(CDOC_TYPE_LABELS).map(([k, v]) => (
-                                        <SelectItem key={k} value={k} className="text-[11px]">{v}</SelectItem>
+                                        <SelectItem key={k} value={k}>{v}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>

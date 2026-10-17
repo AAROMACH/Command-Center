@@ -200,7 +200,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
             onsiteContactPhone: project.onsiteContactPhone,
             siteAccessInstructions: project.siteAccessInstructions
         });
-        toast({ title: "Changes Discarded", description: "Project briefing remains at last authorized state." });
+        toast({ title: "Changes discarded", description: "The project details were not changed." });
     }
     
     return (
@@ -208,10 +208,10 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="lg:col-span-2 space-y-4 text-left">
                     <div className="field-group">
-                        <h3 className="field-group-title font-bold"><FileText className="text-brand-red h-4 w-4"/> Site Briefing</h3>
+                        <h3 className="field-group-title font-bold"><FileText className="text-brand-red h-4 w-4"/> Site notes</h3>
                         
                         <div className="field-row">
-                            <label className="field-label">Scope of Work</label>
+                            <label className="field-label">Scope of work</label>
                             <Textarea 
                                 disabled={isReadOnly}
                                 className="field-textarea" 
@@ -265,7 +265,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                                     <div className="flex items-center gap-1.5 bg-bg-tertiary p-1 rounded-md border border-border-sub animate-in fade-in zoom-in-95 duration-200">
                                         <Input 
                                             className="h-6 text-[10px] w-32 bg-bg-primary border-none focus:ring-0 px-2" 
-                                            placeholder="Enter site intel..." 
+                                            placeholder="Site access, contacts, notes…" 
                                             value={newNoteText}
                                             autoFocus
                                             onChange={e => setNewNoteText(e.target.value)}
@@ -497,7 +497,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                                 )
                             })}
                             {(project.team || []).length === 0 && (
-                                <p className="text-[10px] text-text-muted font-bold text-center py-8 border border-dashed border-border-sub rounded-md italic">No personnel assigned</p>
+                                <p className="text-[10px] text-text-muted font-bold text-center py-8 border border-dashed border-border-sub rounded-md ">No personnel assigned</p>
                             )}
                         </div>
                     </div>

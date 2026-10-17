@@ -1,6 +1,7 @@
 
 'use client';
 
+import { PageLoading } from '@/components/empty-state';
 import { useState, useEffect } from 'react';
 import { db } from "@/lib/firebase";
 import { doc, onSnapshot, collection, query, where, orderBy } from 'firebase/firestore';
@@ -13,7 +14,7 @@ import { canLeadProject, canManageProjects, isOnProject } from '@/lib/project-ac
 import type { Project, Technician, ProjectDailyLog, ProjectDocument } from '@/lib/types';
 
 /**
- * @fileOverview Field Terminal for Assigned Project Oversight.
+ * @fileOverview Tech view of an assigned project.
  */
 export default function TechProjectDetailPage() {
   const params = useParams();
@@ -61,14 +62,7 @@ export default function TechProjectDetailPage() {
 
   // Wait for the signed-in user too: lead/PM tools depend on who it is.
   if (loading || authLoading) {
-      return (
-          <div className="flex h-[400px] items-center justify-center">
-              <div className="text-center space-y-4">
-                  <div className="h-8 w-8 border-4 border-brand-red border-t-transparent rounded-full animate-spin mx-auto" />
-                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Loading project...</p>
-              </div>
-          </div>
-      );
+      return <PageLoading label="Loading project…" />;
   }
   
   if (!project) {
@@ -79,11 +73,11 @@ export default function TechProjectDetailPage() {
   const onCrew = isOnProject(project, user?.id);
   const switcher = isPM && onCrew && (
     <div className="flex justify-end mb-3">
-      <div className="flex items-center border border-border-main rounded-md overflow-hidden h-8">
-        {(['manage', 'field'] as const).map((v, i) => (
-          <button key={v} onClick={() => setView(v)}
-            className={`px-3 h-full text-[10px] font-bold uppercase tracking-widest transition-colors ${i ? 'border-l border-border-main' : ''} ${view === v ? 'bg-brand-red text-white' : 'bg-bg-secondary text-text-muted hover:text-text-primary'}`}>
-            {v === 'manage' ? 'Manage' : 'Field View'}
+      <div className="tabs !mb-0 flex-nowrap" role="tablist">
+        {(['manage', 'field'] as const).map(v => (
+          <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)}
+            className={`tab ${view === v ? 'active' : ''}`}>
+            {v === 'manage' ? 'Manage' : 'Field view'}
           </button>
         ))}
       </div>

@@ -115,8 +115,8 @@ function JobLinesTable({ rows, techName }: { rows: JobLine[]; techName: (id: str
                     {pager.items.map(l => (
                         <TableRow key={l.job.id}>
                             <TableCell className="text-[10px]">
-                                <a href={`/admin/assignments/${l.job.id}`} className="font-mono text-blue-400 hover:underline">{l.job.id.toUpperCase()}</a>
-                                <span className="block text-text-muted truncate max-w-[160px]">{l.job.clientName || '—'}{l.invoice ? ` · inv ${l.invoice.invoiceNumber || l.invoice.id}` : l.imported ? ' · FN' : ''}</span>
+                                <a href={`/admin/assignments/${l.job.id}`} className="font-mono text-brand-blue hover:underline">{l.job.id.toUpperCase()}</a>
+                                <span className="block text-text-muted truncate max-w-[160px]">{l.job.clientName || '—'}{l.invoice ? ` · inv ${l.invoice.invoiceNumber || l.invoice.id}` : l.imported ? '· FN' : ''}</span>
                             </TableCell>
                             <TableCell className="text-[10px]">{techName(jobTechId(l.job) || '') || '—'}</TableCell>
                             <TableCell className="text-[10px] font-mono text-right">{usd(l.revenue)}</TableCell>
@@ -321,7 +321,7 @@ export function MetricBreakdownSheet({
                         <SheetHeader className="text-left space-y-2">
                             <SheetTitle className="text-[11px] font-bold text-text-muted">{content.title}</SheetTitle>
                             <p className="text-3xl font-mono font-bold tabular-nums text-text-primary">{content.value}</p>
-                            <SheetDescription className="text-[11px] leading-relaxed text-text-secondary">
+                            <SheetDescription className="text-[12px] leading-relaxed text-text-secondary">
                                 <span className="font-bold text-text-primary">How it’s calculated: </span>{content.how}
                             </SheetDescription>
                         </SheetHeader>

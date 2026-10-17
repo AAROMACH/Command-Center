@@ -358,7 +358,7 @@ export default function FinancialsPage() {
                     </TabsList>
                     <button
                         onClick={() => router.push('/admin/payroll/audit')}
-                        className="tab !px-8 !py-4 rounded-lg border border-border-main text-[10px] font-black uppercase tracking-widest transition-colors bg-bg-tertiary text-text-muted hover:text-text-primary hover:bg-bg-primary"
+                        className="tab !px-8 !py-4 rounded-lg border border-border-main text-[10px] font-bold uppercase tracking-wider transition-colors bg-bg-tertiary text-text-muted hover:text-text-primary hover:bg-bg-primary"
                     >
                         PAYROLL AUDIT ↗
                     </button>
@@ -379,7 +379,7 @@ export default function FinancialsPage() {
                                 >
                                     <CardHeader className="pb-4">
                                         <div className="flex justify-between items-start">
-                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">{metric.title}</span>
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{metric.title}</span>
                                             <metric.TrendIcon size={16} className={cn(
                                                 metric.trendType === 'positive' ? 'text-text-green' :
                                                 metric.trendType === 'negative' ? 'text-text-red' :
@@ -395,12 +395,12 @@ export default function FinancialsPage() {
                                         )}>
                                             {metric.value}
                                         </p>
-                                        <p className={cn("text-[9px] font-black tracking-widest uppercase mt-3",
+                                        <p className={cn("text-[10px] font-bold tracking-wider uppercase mt-3",
                                             metric.trendType === 'positive' ? 'text-text-green' : 'text-text-muted'
                                         )}>
                                             {metric.trend}
                                         </p>
-                                        <p className="text-[8px] font-bold uppercase tracking-widest text-text-muted mt-2">View breakdown →</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mt-2">View breakdown →</p>
                                     </CardContent>
                                 </Card>
                             ))}
@@ -418,9 +418,9 @@ export default function FinancialsPage() {
                                 <div className="flex items-center justify-between">
                                     <div className="text-left">
                                         <CardTitle className="text-base">Strategic Cash Flow Analysis</CardTitle>
-                                        <CardDescription className="text-[10px] uppercase font-bold text-text-muted">Monthly comparison of realized revenue vs field operational expenses.</CardDescription>
+                                        <CardDescription className="text-[10px] font-bold text-text-muted">Monthly comparison of realized revenue vs field operational expenses.</CardDescription>
                                     </div>
-                                    <Badge variant="outline" className="bg-bg-primary text-[8px] uppercase tracking-widest">Rolling 6-Month Audit</Badge>
+                                    <Badge variant="outline" className="bg-bg-primary text-[10px] uppercase tracking-wider">Rolling 6-Month Audit</Badge>
                                 </div>
                             </CardHeader>
                             <CardContent className="p-8">
@@ -442,22 +442,22 @@ export default function FinancialsPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="hover:bg-transparent border-border-sub">
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-6">Invoice #</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Client</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Due Date</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Total</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-wider pl-6">Invoice #</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-wider">Client</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-wider">Due Date</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-wider">Total</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-wider">Status</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {invoicePager.items.map((invoice) => (
                                             <TableRow key={invoice.id} onClick={() => { setSelectedInvoice(invoice); setIsInvoiceEditorOpen(true); }} className="cursor-pointer border-border-sub hover:bg-bg-tertiary transition-colors text-left">
                                                 <TableCell className="font-mono font-bold text-brand-red text-xs pl-6">{invoice.invoiceNumber}</TableCell>
-                                                <TableCell className="text-sm font-semibold uppercase">{invoice.clientName}</TableCell>
+                                                <TableCell className="text-sm font-semibold">{invoice.clientName}</TableCell>
                                                 <TableCell className="text-xs text-text-muted">{invoice.dueDate}</TableCell>
                                                 <TableCell className="font-mono text-sm font-bold text-text-primary tabular-nums">${(Number(invoice.total) || 0).toFixed(2)}</TableCell>
                                                 <TableCell>
-                                                    <Badge variant={invoice.status === 'paid' ? 'active' : invoice.status === 'sent' ? 'onhold' : 'pending'} className="capitalize text-[8px] h-4">{invoice.status}</Badge>
+                                                    <Badge variant={invoice.status === 'paid' ? 'active' : invoice.status === 'sent' ? 'onhold' : 'pending'} className="capitalize text-[10px] h-4">{invoice.status}</Badge>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -478,7 +478,7 @@ export default function FinancialsPage() {
                                         <button
                                             key={v}
                                             onClick={() => setReimTypeFilter(v)}
-                                            className={cn('px-3 h-full text-[10px] font-bold uppercase tracking-widest transition-colors', reimTypeFilter === v ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
+                                            className={cn('px-3 h-full text-[10px] font-bold uppercase tracking-wider transition-colors', reimTypeFilter === v ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
                                         >{v === 'all' ? 'All Types' : v === 'receipt' ? 'Receipt' : 'Mileage'}</button>
                                     </>
                                 ))}
@@ -490,12 +490,12 @@ export default function FinancialsPage() {
                                         <button
                                             key={v}
                                             onClick={() => setReimStatusFilter(v)}
-                                            className={cn('px-3 h-full text-[10px] font-bold uppercase tracking-widest transition-colors', reimStatusFilter === v ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
+                                            className={cn('px-3 h-full text-[10px] font-bold uppercase tracking-wider transition-colors', reimStatusFilter === v ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
                                         >{v === 'all' ? 'All Status' : v}</button>
                                     </>
                                 ))}
                             </div>
-                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-auto">
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider ml-auto">
                                 Mileage rate: <span className="text-text-primary">${mileageRate.toFixed(2)}/mi</span>
                             </p>
                         </div>
@@ -509,44 +509,44 @@ export default function FinancialsPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="hover:bg-transparent border-border-sub">
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-6">Date</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Technician</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Type</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Details</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Amount</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-wider pl-6">Date</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-wider">Technician</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-wider">Type</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-wider">Details</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-wider">Amount</TableHead>
+                                            <TableHead className="text-[10px] uppercase font-bold tracking-wider">Status</TableHead>
                                             <TableHead className="text-right pr-6"></TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {reimbPager.total === 0 ? (
                                                 <TableRow>
-                                                    <TableCell colSpan={7} className="text-center py-12 text-xs text-text-muted uppercase tracking-widest">
+                                                    <TableCell colSpan={7} className="text-center py-12 text-xs text-text-muted">
                                                         No reimbursements match the current filters.
                                                     </TableCell>
                                                 </TableRow>
                                         ) : reimbPager.items.map(row => (
                                                 <TableRow key={`${row.source}-${row.id}`} className="border-border-sub hover:bg-bg-tertiary transition-colors text-left">
                                                     <TableCell className="text-xs text-text-muted pl-6">{row.date}</TableCell>
-                                                    <TableCell className="text-sm font-semibold uppercase">{row.techName}</TableCell>
+                                                    <TableCell className="text-sm font-semibold">{row.techName}</TableCell>
                                                     <TableCell>
                                                         <Badge
                                                             variant={row.type === 'mileage' ? 'onhold' : 'default'}
-                                                            className="text-[8px] h-4 uppercase flex items-center gap-1 w-fit"
+                                                            className="text-[10px] h-4 flex items-center gap-1 w-fit"
                                                         >
                                                             {row.type === 'mileage' ? <><Car size={8} />&nbsp;Mileage</> : 'Receipt'}
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="font-bold text-text-primary text-xs uppercase truncate max-w-[200px]">{row.details}</div>
+                                                        <div className="font-bold text-text-primary text-xs truncate max-w-[200px]">{row.details}</div>
                                                         {row.sub && <div className="text-[10px] text-text-muted uppercase font-bold tracking-tight">{row.sub}</div>}
-                                                        {row.notes && <div className="text-[9px] text-text-muted italic mt-0.5 truncate max-w-[200px]">{row.notes}</div>}
+                                                        {row.notes && <div className="text-[11px] text-text-muted italic mt-0.5 truncate max-w-[200px]">{row.notes}</div>}
                                                     </TableCell>
                                                     <TableCell className="font-mono text-sm font-bold text-text-primary tabular-nums">${row.amount.toFixed(2)}</TableCell>
                                                     <TableCell>
                                                         <Badge
                                                             variant={row.status === 'approved' || row.status === 'paid' ? 'active' : row.status === 'pending' ? 'onhold' : 'missed'}
-                                                            className="text-[8px] h-4 uppercase"
+                                                            className="text-[10px] h-4"
                                                         >
                                                             {row.status}
                                                         </Badge>
@@ -554,7 +554,7 @@ export default function FinancialsPage() {
                                                     <TableCell className="text-right pr-6">
                                                         {row.status === 'pending' && (
                                                             <div className="flex gap-2 justify-end">
-                                                                <Button size="sm" variant="destructive-outline" className="h-7 text-[9px]"
+                                                                <Button size="sm" variant="destructive-outline" className="h-7 text-[11px]"
                                                                     onClick={async () => {
                                                                         try {
                                                                             if (row.source === 'expense') {
@@ -566,7 +566,7 @@ export default function FinancialsPage() {
                                                                         } catch { toast({ variant: 'destructive', title: 'Error' }); }
                                                                     }}
                                                                 >Deny</Button>
-                                                                <Button size="sm" className="h-7 text-[9px] bg-brand-red hover:bg-brand-red/90 text-white"
+                                                                <Button size="sm" className="h-7 text-[11px] bg-brand-red hover:bg-brand-red/90 text-white"
                                                                     onClick={async () => {
                                                                         try {
                                                                             if (row.source === 'expense') {
@@ -581,7 +581,7 @@ export default function FinancialsPage() {
                                                             </div>
                                                         )}
                                                         {row.status === 'approved' && row.source === 'reimbursement' && (
-                                                            <Button size="sm" className="h-7 text-[9px] bg-text-green/10 text-text-green border border-text-green/20 hover:bg-text-green hover:text-white"
+                                                            <Button size="sm" className="h-7 text-[11px] bg-text-green/10 text-text-green border border-text-green/20 hover:bg-text-green hover:text-white"
                                                                 onClick={async () => {
                                                                     try {
                                                                         await updateDoc(doc(db, 'reimbursements', row.id), { status: 'paid', paidAt: new Date().toISOString() });
@@ -608,7 +608,7 @@ export default function FinancialsPage() {
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-2 mb-1">
                             <ShieldAlert className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">
+                            <DialogTitle className="text-lg font-bold">
                                 {userIsSuperAdmin ? "Authorize Fiscal Closure" : "Request Period Closure"}
                             </DialogTitle>
                         </div>
@@ -618,24 +618,24 @@ export default function FinancialsPage() {
                     </DialogHeader>
                     <div className="p-6 space-y-6">
                         <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 space-y-2 text-left">
-                            <p className="text-[10px] font-black text-brand-red uppercase tracking-widest mb-1">Safety Lock Required</p>
-                            <p className="text-[11px] text-text-secondary leading-relaxed uppercase font-medium">Closing the period transitions all financial records to read-only archival state.</p>
+                            <p className="text-[10px] font-bold text-brand-red uppercase tracking-wider mb-1">Safety Lock Required</p>
+                            <p className="text-[11px] text-text-secondary leading-relaxed font-medium">Closing the period transitions all financial records to read-only archival state.</p>
                         </div>
                         {userIsSuperAdmin ? (
                             <div className="space-y-3 pt-2 text-left">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Type <span className="text-text-primary">CLOSE</span> to confirm terminal lock</Label>
-                                <Input placeholder="Type 'CLOSE'..." value={confirmationText} onChange={(e) => setConfirmationText(e.target.value)} className="h-11 bg-bg-primary text-center font-mono text-sm tracking-widest uppercase font-bold" />
+                                <Label className="text-[10px] font-bold text-text-muted">Type <span className="text-text-primary">CLOSE</span> to confirm terminal lock</Label>
+                                <Input placeholder="Type 'CLOSE'..." value={confirmationText} onChange={(e) => setConfirmationText(e.target.value)} className="h-11 bg-bg-primary text-center font-mono text-sm font-bold" />
                             </div>
                         ) : (
                             <div className="flex items-center gap-3 p-4 rounded-lg bg-bg-secondary border border-border-sub">
                                 <Info size={16} className="text-text-muted" />
-                                <p className="text-[10px] text-text-muted uppercase font-bold leading-tight">Your account level requires external sign-off from a Super Admin to finalize closure.</p>
+                                <p className="text-[10px] text-text-muted font-bold leading-tight">Your account level requires external sign-off from a Super Admin to finalize closure.</p>
                             </div>
                         )}
                     </div>
                     <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex gap-3">
-                        <Button variant="outline" onClick={() => { setIsClosePeriodOpen(false); setConfirmationText(""); }} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Cancel</Button>
-                        <Button onClick={() => { toast({ title: userIsSuperAdmin ? "Period Finalized" : "Request Sent" }); setIsClosePeriodOpen(false); }} disabled={userIsSuperAdmin && confirmationText !== "CLOSE"} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11">
+                        <Button variant="outline" onClick={() => { setIsClosePeriodOpen(false); setConfirmationText(""); }} className="flex-1 uppercase font-bold text-[10px] tracking-wider h-11">Cancel</Button>
+                        <Button onClick={() => { toast({ title: userIsSuperAdmin ? "Period Finalized" : "Request Sent" }); setIsClosePeriodOpen(false); }} disabled={userIsSuperAdmin && confirmationText !== "CLOSE"} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider h-11">
                             {userIsSuperAdmin ? "Execute Global Lock" : "Submit Request"}
                         </Button>
                     </DialogFooter>
@@ -648,23 +648,23 @@ export default function FinancialsPage() {
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-2 mb-1">
                             <Download className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">General Ledger Export</DialogTitle>
+                            <DialogTitle className="text-lg font-bold">General Ledger Export</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs uppercase font-bold text-text-muted">Configure the parameters for your financial data extraction.</DialogDescription>
+                        <DialogDescription className="text-xs font-bold text-text-muted">Configure the parameters for your financial data extraction.</DialogDescription>
                     </DialogHeader>
                     <div className="p-6 space-y-6 text-left">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">From Date</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">From Date</Label>
                                 <Input type="date" value={exportConfig.from} onChange={e => setExportConfig({...exportConfig, from: e.target.value})} className="h-10 bg-bg-primary text-xs" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">To Date</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">To Date</Label>
                                 <Input type="date" value={exportConfig.to} onChange={e => setExportConfig({...exportConfig, to: e.target.value})} className="h-10 bg-bg-primary text-xs" />
                             </div>
                         </div>
                         <div className="space-y-3">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted">Manifest Categories</Label>
+                            <Label className="text-[10px] font-bold text-text-muted">Manifest Categories</Label>
                             <div className="space-y-2">
                                 {[
                                     { id: 'invoices', label: 'Client Invoices' },
@@ -678,15 +678,15 @@ export default function FinancialsPage() {
                                         }));
                                     }}>
                                         <Checkbox checked={exportConfig.types.includes(type.id)} className="h-4 w-4" />
-                                        <span className="text-xs font-bold uppercase tracking-wide text-text-primary">{type.label}</span>
+                                        <span className="text-xs font-bold tracking-wide text-text-primary">{type.label}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     </div>
                     <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex gap-3">
-                        <Button variant="outline" onClick={() => setIsExportDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Abort</Button>
-                        <Button onClick={handleExecuteExport} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white">Execute Export</Button>
+                        <Button variant="outline" onClick={() => setIsExportDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider h-11">Abort</Button>
+                        <Button onClick={handleExecuteExport} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider h-11 text-white">Execute Export</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

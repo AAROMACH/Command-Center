@@ -549,12 +549,12 @@ export function DispatchPageClient() {
             </div>
             <div className="flex items-center gap-3">
                 {activeMasterTab === 'requests' && (
-                  <Button variant="outline" onClick={() => setIsNewRequestOpen(true)} className="h-10 px-4 text-[10px] uppercase font-bold tracking-widest border-border-main">+ New Service Request</Button>
+                  <Button variant="outline" onClick={() => setIsNewRequestOpen(true)} className="h-10 px-4 text-[10px] uppercase font-bold tracking-wider border-border-main">+ New Service Request</Button>
                 )}
                 {activeMasterTab !== 'requests' && (
                   <>
-                    <Button variant="outline" onClick={() => setIsImportDialogOpen(true)} className="h-10 px-4 text-[10px] uppercase font-bold tracking-widest border-border-main"><ImportIcon size={14} className="mr-2"/>Import Jobs</Button>
-                    <Button variant="default" onClick={() => setIsNewDispatchOpen(true)} className="h-10 px-4 text-[10px] uppercase font-bold tracking-widest">+ New Dispatch Entry</Button>
+                    <Button variant="outline" onClick={() => setIsImportDialogOpen(true)} className="h-10 px-4 text-[10px] uppercase font-bold tracking-wider border-border-main"><ImportIcon size={14} className="mr-2"/>Import Jobs</Button>
+                    <Button variant="default" onClick={() => setIsNewDispatchOpen(true)} className="h-10 px-4 text-[10px] uppercase font-bold tracking-wider">+ New Dispatch Entry</Button>
                   </>
                 )}
             </div>

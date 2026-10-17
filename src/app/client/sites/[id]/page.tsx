@@ -139,7 +139,7 @@ export default function SiteDetailPage() {
     if (!mounted) return null;
     if (!siteData) return (
         <div className="p-24 text-center">
-            <p className="text-text-muted uppercase font-bold tracking-widest">Site Coordinate Not Found</p>
+            <p className="text-text-muted font-bold">Site Coordinate Not Found</p>
             <Button variant="link" onClick={() => router.push('/client/sites')} className="mt-4">Return to Registry</Button>
         </div>
     );
@@ -175,23 +175,23 @@ export default function SiteDetailPage() {
                                 ></iframe>
                              ) : (
                                 <div className="absolute inset-0 flex items-center justify-center bg-bg-tertiary">
-                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">MAPS_API_KEY Restricted</p>
+                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">MAPS_API_KEY Restricted</p>
                                 </div>
                              )}
                         </div>
                         <CardContent className="p-5 space-y-4">
                             <div className="space-y-1 text-left">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Address</p>
-                                <p className="text-sm font-bold text-text-primary uppercase tracking-tight">{siteData.location}</p>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Address</p>
+                                <p className="text-sm font-bold text-text-primary tracking-tight">{siteData.location}</p>
                             </div>
                             <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-sub">
                                 <div className="space-y-1 text-left">
-                                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5"><Phone size={10}/> Site Contact</p>
-                                    <p className="text-[10px] font-bold text-text-primary uppercase">{siteData.contact}</p>
+                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5"><Phone size={10}/> Site Contact</p>
+                                    <p className="text-[10px] font-bold text-text-primary">{siteData.contact}</p>
                                 </div>
                                 <div className="space-y-1 text-right">
-                                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5 justify-end"><ShieldCheck size={10}/> Access Tier</p>
-                                    <p className="text-[10px] font-bold text-text-primary uppercase">Tier 1 Internal</p>
+                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5 justify-end"><ShieldCheck size={10}/> Access Tier</p>
+                                    <p className="text-[10px] font-bold text-text-primary">Tier 1 Internal</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -199,28 +199,28 @@ export default function SiteDetailPage() {
 
                     <Card className="bg-bg-tertiary/30 border-border-sub">
                         <CardHeader className="pb-3 text-left">
-                            <CardTitle className="text-[10px] uppercase tracking-widest flex items-center gap-2">
+                            <CardTitle className="text-[10px] uppercase tracking-wider flex items-center gap-2">
                                 <Activity size={14} className="text-brand-red"/> Operational Pulse
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Total Visits</p>
+                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Total Visits</p>
                                     <p className="text-2xl font-bold text-text-primary">{siteData.historicalAssignments.length + siteData.activeAssignments.length}</p>
-                                    <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">all time</p>
+                                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">all time</p>
                                 </div>
                                 <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Open Tickets</p>
+                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Open Tickets</p>
                                     <p className="text-2xl font-bold text-text-primary">{siteData.activeAssignments.length}</p>
-                                    <p className={cn("text-[8px] uppercase font-bold tracking-widest", siteData.activeAssignments.length > 0 ? "text-accent-gold" : "text-text-green")}>
+                                    <p className={cn("text-[10px] uppercase font-bold tracking-wider", siteData.activeAssignments.length > 0 ? "text-accent-gold" : "text-text-green")}>
                                         {siteData.activeAssignments.length > 0 ? 'Active Queue' : 'Clean'}
                                     </p>
                                 </div>
                                 <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Uptime Tier</p>
+                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Uptime Tier</p>
                                     <p className="text-2xl font-bold text-text-primary">99.9%</p>
-                                    <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">Contract SLA</p>
+                                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">Contract SLA</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -230,14 +230,14 @@ export default function SiteDetailPage() {
                 <div className="lg:col-span-2">
                     <Tabs defaultValue="activity" className="w-full">
                         <TabsList className="tabs !p-0 !bg-bg-tertiary mb-6">
-                            <TabsTrigger value="activity" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white uppercase font-bold text-[11px] tracking-widest">Active Activity</TabsTrigger>
-                            <TabsTrigger value="history" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white uppercase font-bold text-[11px] tracking-widest">Job History</TabsTrigger>
-                            <TabsTrigger value="documents" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white uppercase font-bold text-[11px] tracking-widest">Documents</TabsTrigger>
+                            <TabsTrigger value="activity" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white font-bold text-[11px]">Active Activity</TabsTrigger>
+                            <TabsTrigger value="history" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white font-bold text-[11px]">Job History</TabsTrigger>
+                            <TabsTrigger value="documents" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white font-bold text-[11px]">Documents</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="activity" className="space-y-6 mt-0">
                             <div className="space-y-3">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] text-left">Active Assignment Registry</p>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-left">Active Assignment Registry</p>
                                 <div className="space-y-2">
                                     {siteData.activeAssignments.length > 0 ? siteData.activeAssignments.map(wo => (
                                         <Card 
@@ -251,24 +251,24 @@ export default function SiteDetailPage() {
                                                         <Wrench size={16} />
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
+                                                        <p className="text-xs font-bold text-text-primary tracking-wide">{wo.description}</p>
                                                         <div className="flex items-center gap-3 mt-1">
-                                                            <span className="text-[9px] text-brand-red font-mono font-bold">ID: {wo.id.toUpperCase()}</span>
+                                                            <span className="text-[11px] text-brand-red font-mono font-bold">ID: {wo.id.toUpperCase()}</span>
                                                             <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
-                                                            <span className="text-[9px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1">
+                                                            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider flex items-center gap-1">
                                                                 <Clock size={10}/> Scheduled: {wo.scheduleTime}
                                                             </span>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="uppercase h-5 text-[8px] tracking-widest">
+                                                <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="uppercase h-5 text-[10px] tracking-wider">
                                                     {wo.status}
                                                 </Badge>
                                             </CardContent>
                                         </Card>
                                     )) : (
                                         <div className="p-12 text-center bg-bg-secondary/30 rounded-lg border-2 border-dashed border-border-main">
-                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest italic">Awaiting further dispatch</p>
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider italic">Awaiting further dispatch</p>
                                         </div>
                                     )}
                                 </div>
@@ -288,16 +288,16 @@ export default function SiteDetailPage() {
                                                 <CheckCircle2 size={16} />
                                             </div>
                                             <div>
-                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
-                                                <p className="text-[9px] text-text-muted uppercase tracking-widest mt-0.5">Completed: {formatDateDisplay(wo.scheduleDate)} • {wo.id.toUpperCase()}</p>
+                                                <p className="text-xs font-bold text-text-primary tracking-wide">{wo.description}</p>
+                                                <p className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">Completed: {formatDateDisplay(wo.scheduleDate)} • {wo.id.toUpperCase()}</p>
                                             </div>
                                         </div>
-                                        <Badge variant="active" className="text-[9px]">FINALIZED</Badge>
+                                        <Badge variant="active" className="text-[11px]">FINALIZED</Badge>
                                     </div>
                                 )) : (
                                     <div className="p-24 text-center bg-bg-secondary/30 rounded-lg border-2 border-dashed border-border-main">
                                         <History size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No historical records found for this coordinate.</p>
+                                        <p className="text-xs font-bold text-text-muted italic">No historical records found for this coordinate.</p>
                                     </div>
                                 )}
                             </div>
@@ -312,8 +312,8 @@ export default function SiteDetailPage() {
                                                 <FileText size={18} />
                                             </div>
                                             <div className="text-left">
-                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{doc.name}</p>
-                                                <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">{doc.size} • Uploaded {doc.date}</p>
+                                                <p className="text-sm font-bold text-text-primary tracking-wide">{doc.name}</p>
+                                                <p className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">{doc.size} • Uploaded {doc.date}</p>
                                             </div>
                                         </div>
                                         <Button variant="ghost" size="icon" className="text-text-muted hover:text-text-primary">

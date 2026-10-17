@@ -53,7 +53,7 @@ export function ThemeToggleSetting() {
           <button
             onClick={() => toggleTheme('dark')}
             className={cn(
-              'px-6 h-9 rounded transition-colors text-[10px] font-bold uppercase tracking-widest',
+              'px-6 h-9 rounded transition-colors text-[10px] font-bold uppercase tracking-wider',
               theme === 'dark' ? 'bg-brand-red text-white' : 'hover:bg-bg-secondary text-text-muted'
             )}
           >
@@ -62,7 +62,7 @@ export function ThemeToggleSetting() {
           <button
             onClick={() => toggleTheme('light')}
             className={cn(
-              'px-6 h-9 rounded transition-colors text-[10px] font-bold uppercase tracking-widest',
+              'px-6 h-9 rounded transition-colors text-[10px] font-bold uppercase tracking-wider',
               theme === 'light' ? 'bg-brand-red text-white' : 'hover:bg-bg-secondary text-text-muted'
             )}
           >

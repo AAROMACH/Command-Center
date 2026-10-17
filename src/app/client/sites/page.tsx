@@ -191,8 +191,8 @@ export default function ClientSitesPage() {
                             site.status === 'authorized' ? "border-border-sub hover:border-text-muted cursor-pointer" : "border-dashed border-border-sub opacity-80 cursor-default")}>
                         <MapPin size={13} className="text-brand-red shrink-0" />
                         <div className="flex-1 min-w-0">
-                            <p className="text-[12px] font-bold text-text-primary uppercase tracking-wide truncate group-hover:text-brand-red transition-colors">{site.name}</p>
-                            <p className="text-[9px] text-text-muted uppercase truncate">{site.location}</p>
+                            <p className="text-[12px] font-bold text-text-primary tracking-wide truncate group-hover:text-brand-red transition-colors">{site.name}</p>
+                            <p className="text-[11px] text-text-muted truncate">{site.location}</p>
                         </div>
                         <span className="hidden md:block text-[10px] text-text-muted shrink-0">
                             {site.activeAssignments.length > 0 ? `${site.activeAssignments.length} active` : 'No active missions'}
@@ -212,8 +212,8 @@ export default function ClientSitesPage() {
                         <CardHeader className="bg-bg-tertiary/30 border-b border-border-sub pb-4 text-left">
                             <div className="flex justify-between items-start">
                                 <div className="space-y-1">
-                                    <h3 className="text-base font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{site.name}</h3>
-                                    <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5">
+                                    <h3 className="text-base font-bold text-text-primary tracking-wide group-hover:text-brand-red transition-colors">{site.name}</h3>
+                                    <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider flex items-center gap-1.5">
                                         <MapPin size={12} className="text-brand-red"/> {site.location}
                                     </p>
                                 </div>
@@ -222,15 +222,15 @@ export default function ClientSitesPage() {
                         </CardHeader>
                         <CardContent className="p-5 flex-1 space-y-4 text-left">
                             <div className="space-y-2">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Active Activity</p>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Active Activity</p>
                                 {site.activeAssignments.length > 0 ? (
                                     <div className="space-y-1">
                                         {site.activeAssignments.slice(0, 2).map(wo => (
-                                            <div key={wo.id} className="text-[11px] font-bold text-text-primary uppercase flex items-center gap-2">
+                                            <div key={wo.id} className="text-[11px] font-bold text-text-primary flex items-center gap-2">
                                                 <div className="h-1 w-1 rounded-full bg-brand-red" /> {wo.description}
                                             </div>
                                         ))}
-                                        {site.activeAssignments.length > 2 && <p className="text-[9px] text-text-muted font-bold">+{site.activeAssignments.length - 2} More Assignments</p>}
+                                        {site.activeAssignments.length > 2 && <p className="text-[11px] text-text-muted font-bold">+{site.activeAssignments.length - 2} More Assignments</p>}
                                     </div>
                                 ) : <p className="text-[10px] text-text-muted italic">No active missions</p>}
                             </div>
@@ -243,16 +243,16 @@ export default function ClientSitesPage() {
             <Dialog open={isAddSiteOpen} onOpenChange={setIsAddSiteOpen}>
                 <DialogContent className="sm:max-w-[500px] bg-bg-elevated border-border-default">
                     <DialogHeader className="text-left">
-                        <DialogTitle className="uppercase tracking-widest font-bold">Site Registration</DialogTitle>
+                        <DialogTitle className="font-bold">Site Registration</DialogTitle>
                         <DialogDescription>Submit coordinates for a new operational facility to the command registry.</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleAddSite} className="space-y-6 py-4 text-left" onChange={() => setDuplicateError(null)}>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase text-text-muted">Site Identifier / Name</Label>
+                            <Label className="text-[10px] font-bold text-text-muted">Site Identifier / Name</Label>
                             <Input name="siteName" placeholder="e.g., Gotham Data Center" className="bg-bg-primary" required />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase text-text-muted">Address / Coordinates</Label>
+                            <Label className="text-[10px] font-bold text-text-muted">Address / Coordinates</Label>
                             <AddressAutocompleteInput name="location" placeholder="Full address..." className="bg-bg-primary" required />
                             {duplicateError && (
                                 <p className="text-[10px] text-brand-red font-bold flex items-center gap-1.5">
@@ -261,7 +261,7 @@ export default function ClientSitesPage() {
                             )}
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase text-text-muted">On-Site Manager</Label>
+                            <Label className="text-[10px] font-bold text-text-muted">On-Site Manager</Label>
                             <Input name="managerName" placeholder="Name" className="bg-bg-primary" />
                         </div>
                         <DialogFooter>

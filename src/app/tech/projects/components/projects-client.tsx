@@ -37,7 +37,7 @@ export function ProjectsClient({ projects, technicians, viewMode = 'grid' }: Pro
     if (projects.length === 0) {
         return (
             <div className="table-wrap">
-                <div className="empty-state !py-12 text-center text-text-muted italic uppercase text-[10px] font-bold tracking-widest">
+                <div className="empty-state !py-12 text-center text-text-muted italic uppercase text-[10px] font-bold tracking-wider">
                     You are not assigned to any active projects.
                 </div>
             </div>
@@ -64,11 +64,11 @@ export function ProjectsClient({ projects, technicians, viewMode = 'grid' }: Pro
                             return (
                                 <tr key={project.id} onClick={() => router.push(`/tech/projects/${project.id}`)} className="cursor-pointer hover:bg-bg-tertiary/50 transition-colors border-b border-border-sub">
                                     <td className="pl-0 py-3">
-                                        <p className="text-[11px] font-bold text-text-primary uppercase truncate">{project.name}</p>
-                                        {project.location && <p className="text-[9px] text-text-muted uppercase truncate mt-0.5">{project.location}</p>}
+                                        <p className="text-[11px] font-bold text-text-primary truncate">{project.name}</p>
+                                        {project.location && <p className="text-[11px] text-text-muted truncate mt-0.5">{project.location}</p>}
                                     </td>
                                     <td className="pl-0">
-                                        <p className="text-[10px] font-bold text-text-secondary uppercase truncate">{project.client}</p>
+                                        <p className="text-[10px] font-bold text-text-secondary truncate">{project.client}</p>
                                     </td>
                                     <td className="text-center">
                                         <p className={cn('text-[11px] font-mono font-bold', progressColor)}>{Math.round(progress)}%</p>
@@ -77,7 +77,7 @@ export function ProjectsClient({ projects, technicians, viewMode = 'grid' }: Pro
                                         <p className="text-[10px] font-mono text-text-muted">{project.startDate || '—'}</p>
                                     </td>
                                     <td className="pl-0">
-                                        <Badge variant={project.status} className="text-[8px] h-4 px-1.5 capitalize">{project.status}</Badge>
+                                        <Badge variant={project.status} className="text-[10px] h-4 px-1.5 capitalize">{project.status}</Badge>
                                     </td>
                                 </tr>
                             );
@@ -109,10 +109,10 @@ export function ProjectsClient({ projects, technicians, viewMode = 'grid' }: Pro
                         <div className="flex flex-col flex-1 p-4 gap-3">
                             {/* Top row: status + lead */}
                             <div className="flex items-start justify-between gap-2">
-                                <Badge variant={project.status} className="capitalize text-[8px] h-4 px-1.5 tracking-widest shrink-0">
+                                <Badge variant={project.status} className="capitalize text-[10px] h-4 px-1.5 tracking-widest shrink-0">
                                     {project.status}
                                 </Badge>
-                                <div className="flex items-center gap-1 text-[9px] text-text-muted font-bold uppercase tracking-widest">
+                                <div className="flex items-center gap-1 text-[10px] text-text-muted font-bold uppercase tracking-wider">
                                     <User className="h-3 w-3 shrink-0" />
                                     <span className="truncate max-w-[120px]">Project Lead: {lead ? lead.name : 'Unassigned'}</span>
                                 </div>
@@ -120,15 +120,15 @@ export function ProjectsClient({ projects, technicians, viewMode = 'grid' }: Pro
 
                             {/* Project name + client */}
                             <div>
-                                <p className="text-[13px] font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors">
+                                <p className="text-[13px] font-bold text-text-primary tracking-wide leading-tight group-hover:text-brand-red transition-colors">
                                     {project.name}
                                 </p>
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-0.5">{project.client}</p>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-0.5">{project.client}</p>
                             </div>
 
                             {/* Location */}
                             {project.location && (
-                                <div className="flex items-center gap-1.5 text-[10px] text-text-secondary font-bold uppercase">
+                                <div className="flex items-center gap-1.5 text-[10px] text-text-secondary font-bold">
                                     <MapPin size={11} className="text-brand-red shrink-0" />
                                     <span className="truncate">{formatCityState(project.location)}</span>
                                 </div>
@@ -137,13 +137,13 @@ export function ProjectsClient({ projects, technicians, viewMode = 'grid' }: Pro
                             {/* Dates */}
                             <div className="flex items-center gap-4">
                                 {project.startDate && (
-                                    <div className="flex items-center gap-1.5 text-[9px] text-text-secondary font-mono">
+                                    <div className="flex items-center gap-1.5 text-[11px] text-text-secondary font-mono">
                                         <Calendar size={10} className="text-text-muted shrink-0" />
                                         <span>{project.startDate}</span>
                                     </div>
                                 )}
                                 {project.estimatedDuration && (
-                                    <div className="flex items-center gap-1.5 text-[9px] text-text-muted font-bold uppercase">
+                                    <div className="flex items-center gap-1.5 text-[11px] text-text-muted font-bold">
                                         <Timer size={10} className="text-accent-gold shrink-0" />
                                         <span>{project.estimatedDuration}</span>
                                     </div>
@@ -160,11 +160,11 @@ export function ProjectsClient({ projects, technicians, viewMode = 'grid' }: Pro
                                         style={{ width: `${progress}%` }}
                                     />
                                 </div>
-                                <span className={cn('text-[9px] font-mono font-bold shrink-0', `text-${progressColor}`)}>
+                                <span className={cn('text-[11px] font-mono font-bold shrink-0', `text-${progressColor}`)}>
                                     {Math.round(progress)}%
                                 </span>
                             </div>
-                            <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest mt-1">
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-1">
                                 {completedTasks} / {totalTasks} targets
                             </p>
                         </div>

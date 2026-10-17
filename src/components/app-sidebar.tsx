@@ -331,8 +331,8 @@ export function AppSidebar() {
               />
             )}
             <div className="flex flex-col min-w-0 group-data-[collapsible=icon]:hidden">
-              <span className="font-mono text-[13px] font-bold uppercase tracking-tight text-white leading-none truncate">Aaromach</span>
-              <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-brand-red truncate">{portalLabel}</span>
+              <span className="font-mono text-[13px] font-bold tracking-tight text-white leading-none truncate">Aaromach</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-brand-red truncate">{portalLabel}</span>
             </div>
           </Link>
         </div>
@@ -344,7 +344,7 @@ export function AppSidebar() {
             <div key={gi}>
               {group.label && (
                 <div className={cn("px-2 pb-1", gi > 0 ? "pt-4" : "pt-1")}>
-                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#555] group-data-[collapsible=icon]:hidden">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted/70 group-data-[collapsible=icon]:hidden">
                     {group.label}
                   </p>
                   <div className="h-px bg-[#222] mt-1 group-data-[collapsible=icon]:hidden" />
@@ -367,7 +367,7 @@ export function AppSidebar() {
                         isActive={active}
                         tooltip={item.label}
                         className={cn(
-                          "h-9 text-[10px] font-bold uppercase tracking-widest rounded-md transition-colors",
+                          "h-9 text-[13px] font-medium rounded-md transition-colors",
                           active
                             ? "!bg-brand-red/10 !text-brand-red"
                             : "text-[#888] hover:!bg-bg-tertiary hover:!text-text-primary"
@@ -379,7 +379,7 @@ export function AppSidebar() {
                           {isAdminPortal && item.href === "/admin/dispatch" && <NewArrivalPing count={dispatchPing} className="group-data-[collapsible=icon]:hidden" />}
                           {isAdminPortal && item.href === "/admin/assignments" && <NewArrivalPing count={assignmentsPing} className="group-data-[collapsible=icon]:hidden" />}
                           {badge > 0 && (
-                            <span className="ml-auto text-[8px] font-black bg-brand-red text-white rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 group-data-[collapsible=icon]:hidden">
+                            <span className="ml-auto text-[10px] font-bold bg-brand-red text-white rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 group-data-[collapsible=icon]:hidden">
                               {badge > 99 ? "99+" : badge}
                             </span>
                           )}

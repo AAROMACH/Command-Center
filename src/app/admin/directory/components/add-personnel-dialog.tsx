@@ -355,20 +355,20 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
           <section className="space-y-4">
              <div className="flex items-center gap-2 text-brand-red mb-4">
                 <Users size={16} />
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Identity Credentials</h3>
+                <h3 className="text-[10px] font-bold uppercase tracking-wider">Identity Credentials</h3>
              </div>
              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 text-left">
-                    <Label htmlFor="fullName" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Full Legal Name</Label>
+                    <Label htmlFor="fullName" className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Full Legal Name</Label>
                     <Input id="fullName" value={formData.name || ''} onChange={(e) => setFormData({...formData, name: e.target.value})} className="bg-bg-primary h-9 text-xs font-bold" />
                 </div>
                 <div className="space-y-2 text-left">
-                    <Label htmlFor="email" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Email</Label>
+                    <Label htmlFor="email" className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Email</Label>
                     <Input id="email" type="email" value={formData.email || ''} onChange={(e) => setFormData({...formData, email: e.target.value})} className="bg-bg-primary h-9 text-xs" />
                 </div>
              </div>
              <div className="space-y-2 text-left">
-                <Label htmlFor="existingUid" className="text-[10px] uppercase font-bold tracking-widest text-text-muted flex items-center gap-2">
+                <Label htmlFor="existingUid" className="text-[10px] uppercase font-bold tracking-wider text-text-muted flex items-center gap-2">
                     <Lock size={10} className="text-text-muted" />
                     Firebase UID <span className="text-text-muted font-normal normal-case tracking-normal">(optional — paste if auth account already exists)</span>
                 </Label>
@@ -382,11 +382,11 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
              </div>
              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 text-left">
-                    <Label htmlFor="phone" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Phone Number</Label>
+                    <Label htmlFor="phone" className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Phone Number</Label>
                     <Input id="phone" type="tel" value={formData.phone || ''} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="bg-bg-primary h-9 text-xs" />
                 </div>
                 <div className="space-y-2 text-left">
-                    <Label htmlFor="address" className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Home Base Address</Label>
+                    <Label htmlFor="address" className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Home Base Address</Label>
                     <div className="relative group">
                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
                         <Input 
@@ -416,11 +416,11 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-brand-red mb-2">
                     <Lock size={16} />
-                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Authorization Grid</h3>
+                    <h3 className="text-[10px] font-bold uppercase tracking-wider">Authorization Grid</h3>
                 </div>
                 {isFieldTech && canEditUserPay(technicians.find(t => t.id === auth.currentUser?.uid)) && (
                     <div className="space-y-1 text-right">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted">Project Base Rate ($/hr)</Label>
+                        <Label className="text-[10px] font-bold text-text-muted">Project Base Rate ($/hr)</Label>
                         <div className="relative w-32 ml-auto">
                             <DollarSign size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-green" />
                             <Input 
@@ -438,7 +438,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {(Object.keys(ROLE_DATA) as Array<keyof typeof ROLE_DATA>).map((category) => (
                     <div key={category} className="space-y-4">
-                        <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1 text-left">{ROLE_GROUP_LABELS[category]}</h4>
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-text-muted border-b border-border-sub pb-1 text-left">{ROLE_GROUP_LABELS[category]}</h4>
                         <div className="space-y-2">
                             {ROLE_DATA[category].map(role => {
                                 const isSelected = (formData.roles || []).includes(role.id);
@@ -472,11 +472,11 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                     <div className="flex items-center justify-between border-b border-border-sub pb-4">
                         <div className="flex items-center gap-2 text-text-green">
                             <CircleCheck size={16} />
-                            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Authorized Permissions</h3>
+                            <h3 className="text-[10px] font-bold uppercase tracking-wider">Authorized Permissions</h3>
                         </div>
                         <div className="flex flex-wrap gap-1">
                             {formData.roles?.map(r => (
-                                <Badge key={r} variant="secondary" className="text-[8px] uppercase">{r.replace(/_/g, ' ')}</Badge>
+                                <Badge key={r} variant="secondary" className="text-[10px]">{r.replace(/_/g, ' ')}</Badge>
                             ))}
                         </div>
                     </div>
@@ -494,7 +494,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                         {isClientRole && (
                             <div className="space-y-2 text-left">
                                 <div className="flex items-center justify-between">
-                                    <Label htmlFor="company" className="text-[10px] uppercase font-bold tracking-widest text-text-muted flex items-center gap-2">
+                                    <Label htmlFor="company" className="text-[10px] uppercase font-bold tracking-wider text-text-muted flex items-center gap-2">
                                         <Info size={12}/> Associated Organization / Client Entity
                                     </Label>
                                     <button 
@@ -503,7 +503,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                                             setIsNewCompany(!isNewCompany);
                                             setFormData(prev => ({ ...prev, clientCompany: '' }));
                                         }}
-                                        className="text-[9px] font-black text-brand-red uppercase tracking-tighter hover:underline"
+                                        className="text-[10px] font-bold text-brand-red uppercase tracking-tighter hover:underline"
                                     >
                                         {isNewCompany ? "Select Existing" : "Create New Entity"}
                                     </button>
@@ -526,7 +526,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                                         </SelectTrigger>
                                         <SelectContent>
                                             {existingCompanies.map(c => (
-                                                <SelectItem key={c} value={c} className="text-xs uppercase font-bold">{c}</SelectItem>
+                                                <SelectItem key={c} value={c} className="text-xs font-bold">{c}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -540,8 +540,8 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         </div>
 
         <DialogFooter className="bg-bg-tertiary/50 -mx-6 -mb-6 p-6 border-t border-border-default">
-          <Button variant="outline" onClick={() => setIsOpen(false)} className="px-8 font-bold text-[10px] uppercase tracking-widest">Cancel Enrollment</Button>
-          <Button onClick={handleSave} className="px-10 font-bold text-[10px] uppercase tracking-widest bg-brand-red hover:bg-brand-red-hover group">
+          <Button variant="outline" onClick={() => setIsOpen(false)} className="px-8 font-bold text-[10px] uppercase tracking-wider">Cancel Enrollment</Button>
+          <Button onClick={handleSave} className="px-10 font-bold text-[10px] uppercase tracking-wider bg-brand-red hover:bg-brand-red-hover group">
             Finalize Enrollment
             <ChevronRight size={14} className="ml-2 group-hover:translate-x-1 transition-transform" />
           </Button>

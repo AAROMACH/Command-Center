@@ -276,27 +276,27 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
           <DialogHeader className="p-6 pb-2 text-left">
             <div className="flex items-center gap-2 mb-1 text-left">
               <ClipboardList className="text-brand-red h-5 w-5" />
-              <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">New Service Intake</DialogTitle>
+              <DialogTitle className="text-lg font-bold text-text-primary">New Service Intake</DialogTitle>
             </div>
-            <DialogDescription className="text-left text-xs uppercase font-bold text-text-muted">Initialize a new client request in the intake funnel.</DialogDescription>
+            <DialogDescription className="text-left text-xs font-bold text-text-muted">Initialize a new client request in the intake funnel.</DialogDescription>
           </DialogHeader>
 
           <div className="px-6 py-4 space-y-6 text-left">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client / Entity</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client / Entity</Label>
                 <div className="space-y-1.5">
                   <Input 
                     placeholder="Name or Organization"
                     value={formData.clientName}
                     onChange={(e) => setFormData({...formData, clientName: e.target.value})}
-                    className="bg-bg-primary border-border-sub h-10 text-xs font-bold uppercase"
+                    className="bg-bg-primary border-border-sub h-10 text-xs font-bold"
                   />
                   <Button 
                     type="button" 
                     variant="ghost" 
                     size="sm" 
-                    className="h-6 text-[9px] uppercase font-bold tracking-widest text-brand-red hover:bg-brand-red/10 p-0 flex items-center gap-1.5"
+                    className="h-6 text-[10px] uppercase font-bold tracking-wider text-brand-red hover:bg-brand-red/10 p-0 flex items-center gap-1.5"
                     onClick={() => setIsRegistryOpen(true)}
                   >
                     <Search size={12}/> Search Registry
@@ -304,7 +304,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Site Location</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Site Location</Label>
                 <div className="space-y-1.5">
                     <div className="relative group">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
@@ -332,7 +332,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                         size="sm" 
                         disabled={!selectedClient?.managedSites || selectedClient.managedSites.length === 0}
                         className={cn(
-                            "h-6 text-[9px] uppercase font-bold tracking-widest p-0 flex items-center gap-1.5",
+                            "h-6 text-[10px] uppercase font-bold tracking-wider p-0 flex items-center gap-1.5",
                             (!selectedClient?.managedSites || selectedClient.managedSites.length === 0) 
                                 ? "text-text-muted opacity-50 cursor-not-allowed" 
                                 : "text-accent-gold hover:bg-accent-gold/10"
@@ -347,51 +347,51 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Service Category</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Service Category</Label>
                 <Select value={formData.requestType} onValueChange={(val: any) => setFormData({...formData, requestType: val})}>
-                  <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Installation" className="text-xs font-bold uppercase">Installation</SelectItem>
-                    <SelectItem value="Troubleshooting" className="text-xs font-bold uppercase">Troubleshooting</SelectItem>
-                    <SelectItem value="Maintenance" className="text-xs font-bold uppercase">Maintenance</SelectItem>
-                    <SelectItem value="Survey" className="text-xs font-bold uppercase">Survey</SelectItem>
-                    <SelectItem value="Repair" className="text-xs font-bold uppercase">Repair</SelectItem>
-                    <SelectItem value="Decommission" className="text-xs font-bold uppercase">Decommission</SelectItem>
+                    <SelectItem value="Installation" className="text-xs font-bold">Installation</SelectItem>
+                    <SelectItem value="Troubleshooting" className="text-xs font-bold">Troubleshooting</SelectItem>
+                    <SelectItem value="Maintenance" className="text-xs font-bold">Maintenance</SelectItem>
+                    <SelectItem value="Survey" className="text-xs font-bold">Survey</SelectItem>
+                    <SelectItem value="Repair" className="text-xs font-bold">Repair</SelectItem>
+                    <SelectItem value="Decommission" className="text-xs font-bold">Decommission</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Priority</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Priority</Label>
                 <Select value={formData.priority} onValueChange={(val: any) => setFormData({...formData, priority: val})}>
-                  <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs uppercase font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs font-bold tracking-wider focus:ring-brand-red"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low" className="text-xs font-bold uppercase">Low (Standard)</SelectItem>
-                    <SelectItem value="medium" className="text-xs font-bold uppercase">Medium (Nominal)</SelectItem>
-                    <SelectItem value="high" className="text-xs font-bold uppercase">High (4h Target)</SelectItem>
-                    <SelectItem value="critical" className="text-xs font-bold uppercase">Critical (Emergency)</SelectItem>
+                    <SelectItem value="low" className="text-xs font-bold">Low (Standard)</SelectItem>
+                    <SelectItem value="medium" className="text-xs font-bold">Medium (Nominal)</SelectItem>
+                    <SelectItem value="high" className="text-xs font-bold">High (4h Target)</SelectItem>
+                    <SelectItem value="critical" className="text-xs font-bold">Critical (Emergency)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Scope of Request</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Scope of Request</Label>
               <Textarea 
                 placeholder="Provide detailed job parameters and client requirements..." 
                 value={formData.description}
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
-                className="bg-bg-primary border-border-sub h-24 text-xs font-medium uppercase leading-relaxed"
+                className="bg-bg-primary border-border-sub h-24 text-xs font-medium leading-relaxed"
               />
             </div>
 
             <div className="space-y-4 pt-2">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
                     <Camera size={14} className="text-brand-red" />
                     Site Evidence (Max 3)
                   </Label>
-                  <span className="text-[9px] font-mono text-text-muted">{images.length}/3</span>
+                  <span className="text-[11px] font-mono text-text-muted">{images.length}/3</span>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   {images.map((img, i) => (
@@ -421,7 +421,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                         className="aspect-video rounded border-2 border-dashed border-border-sub flex flex-col items-center justify-center gap-1 text-text-muted hover:text-brand-red transition-all"
                       >
                         <Plus size={16} />
-                        <span className="text-[8px] font-bold uppercase">Add Photo</span>
+                        <span className="text-[10px] font-bold">Add Photo</span>
                       </button>
                     </>
                   )}
@@ -430,11 +430,11 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
                     <FileText size={14} className="text-accent-gold" />
                     Technical Docs (Max 2)
                   </Label>
-                  <span className="text-[9px] font-mono text-text-muted">{docs.length}/2</span>
+                  <span className="text-[11px] font-mono text-text-muted">{docs.length}/2</span>
                 </div>
                 <div className="space-y-2">
                   {docs.map((docName, i) => (
@@ -462,7 +462,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                         className="w-full py-3 rounded border-2 border-dashed border-border-sub hover:border-accent-gold hover:bg-accent-gold-dim/5 transition-all flex items-center justify-center gap-2 text-text-muted hover:text-accent-gold"
                       >
                         <Upload size={14} />
-                        <span className="text-[9px] font-bold uppercase">Attach SOW / Blueprint</span>
+                        <span className="text-[11px] font-bold">Attach SOW / Blueprint</span>
                       </button>
                     </>
                   )}
@@ -472,13 +472,13 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
           </div>
 
           <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 flex flex-row items-end gap-4">
-            <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest shrink-0">
+            <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-wider shrink-0">
               <X size={14} className="mr-2"/> Cancel Intake
             </Button>
             <div className="flex-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted mb-2 text-center md:text-left">Authorize Deployment Path:</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2 text-center md:text-left">Authorize Deployment Path:</p>
               <div className="grid grid-cols-1">
-                <Button type="button" onClick={handleSave} className="h-11 text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover shadow-lg">
+                <Button type="button" onClick={handleSave} className="h-11 text-[10px] uppercase font-bold tracking-wider bg-brand-red hover:bg-brand-red-hover shadow-lg">
                   <SquarePlus size={14} className="mr-2" /> Create request
                 </Button>
               </div>
@@ -493,7 +493,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
               <DialogHeader className="p-6 pb-2 text-left">
                   <div className="flex items-center gap-2 mb-1">
                       <Users className="text-brand-red h-5 w-5" />
-                      <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary text-left">Client Registry</DialogTitle>
+                      <DialogTitle className="text-lg font-bold text-text-primary text-left">Client Registry</DialogTitle>
                   </div>
                   <DialogDescription className="text-xs text-left">Select existing client to link to this service request.</DialogDescription>
               </DialogHeader>
@@ -504,7 +504,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                           placeholder="Filter registry by name or ID..." 
                           value={registrySearch}
                           onChange={(e) => setRegistrySearch(e.target.value)}
-                          className="bg-bg-primary h-10 pl-10 text-xs font-bold uppercase"
+                          className="bg-bg-primary h-10 pl-10 text-xs font-bold"
                       />
                   </div>
               </div>
@@ -521,24 +521,24 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                                   <Building2 size={16} />
                               </div>
                               <div className="flex-1 overflow-hidden">
-                                  <p className="text-xs font-bold text-text-primary uppercase truncate">{client.clientCompany || client.name}</p>
+                                  <p className="text-xs font-bold text-text-primary truncate">{client.clientCompany || client.name}</p>
                                   {client.businessType && (
-                                      <p className="text-[8px] text-accent-gold uppercase font-black tracking-tighter leading-none mt-0.5">{client.businessType}</p>
+                                      <p className="text-[10px] text-accent-gold uppercase font-bold tracking-tighter leading-none mt-0.5">{client.businessType}</p>
                                   )}
-                                  <p className="text-[9px] text-text-muted uppercase tracking-widest">ID: {client.id.toUpperCase()}</p>
+                                  <p className="text-[10px] text-text-muted uppercase tracking-wider">ID: {client.id.toUpperCase()}</p>
                               </div>
                               <Check size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity" />
                           </button>
                       ))}
                       {filteredRegistry.length === 0 && (
                           <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
-                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No registry matches found</p>
+                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider italic">No registry matches found</p>
                           </div>
                       )}
                   </div>
               </ScrollArea>
               <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                  <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-9" onClick={() => setIsRegistryOpen(false)}>Close Registry</Button>
+                  <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-wider h-9" onClick={() => setIsRegistryOpen(false)}>Close Registry</Button>
               </DialogFooter>
           </DialogContent>
       </Dialog>
@@ -549,7 +549,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
               <DialogHeader className="p-6 pb-2 text-left">
                   <div className="flex items-center gap-2 mb-1">
                       <Navigation className="text-accent-gold h-5 w-5" />
-                      <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Site Registry</DialogTitle>
+                      <DialogTitle className="text-lg font-bold text-text-primary">Site Registry</DialogTitle>
                   </div>
                   <DialogDescription className="text-xs text-left">Select verified coordinates for <span className="text-text-primary font-bold">{formData.clientName}</span>.</DialogDescription>
               </DialogHeader>
@@ -564,7 +564,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                           >
                               <div className="flex justify-between items-start gap-3">
                                   <div className="space-y-0.5 text-left">
-                                      <p className="text-xs font-bold text-text-primary uppercase tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
+                                      <p className="text-xs font-bold text-text-primary tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
                                       <p className="text-[10px] text-text-muted flex items-center gap-1.5">
                                           <MapPin size={10} className="text-brand-red shrink-0" />
                                           <span className="truncate">{site.location}</span>
@@ -576,13 +576,13 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                       ))}
                       {(!selectedClient?.managedSites || selectedClient.managedSites.length === 0) && (
                           <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
-                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No verified sites on record for this client</p>
+                              <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider italic">No verified sites on record for this client</p>
                           </div>
                       )}
                   </div>
               </ScrollArea>
               <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                  <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-10" onClick={() => setIsSiteRegistryOpen(false)}>Close Terminal</Button>
+                  <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-wider h-10" onClick={() => setIsSiteRegistryOpen(false)}>Close Terminal</Button>
               </DialogFooter>
           </DialogContent>
       </Dialog>

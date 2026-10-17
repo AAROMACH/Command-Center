@@ -152,7 +152,7 @@ export default function PendingApprovalPage() {
 
         {/* Heading */}
         <div className="space-y-3">
-          <h1 className="text-2xl font-black uppercase tracking-wide text-text-primary">
+          <h1 className="text-2xl font-black tracking-wide text-text-primary">
             {isDenied ? 'Access Denied' : 'Account Waiting for Approval'}
           </h1>
 
@@ -172,11 +172,11 @@ export default function PendingApprovalPage() {
         {/* Status badge */}
         <div className="flex justify-center">
           {isDenied ? (
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-brand-red/40 bg-brand-red/10 text-brand-red text-[10px] font-black uppercase tracking-widest">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-brand-red/40 bg-brand-red/10 text-brand-red text-[10px] font-bold uppercase tracking-wider">
               <ShieldOff size={10} /> Access Denied
             </span>
           ) : (
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-accent-gold/40 bg-accent-gold/10 text-accent-gold text-[10px] font-black uppercase tracking-widest">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-accent-gold/40 bg-accent-gold/10 text-accent-gold text-[10px] font-bold uppercase tracking-wider">
               <Clock size={10} /> Pending Approval
             </span>
           )}
@@ -185,7 +185,7 @@ export default function PendingApprovalPage() {
         {/* Denial reason */}
         {isDenied && denialReason && (
           <div className="rounded-lg border border-brand-red/20 bg-brand-red/5 px-4 py-3">
-            <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">Reason</p>
+            <p className="text-[11px] font-bold text-text-muted mb-1">Reason</p>
             <p className="text-sm text-text-secondary">{denialReason}</p>
           </div>
         )}
@@ -193,7 +193,7 @@ export default function PendingApprovalPage() {
         {/* Signed-in as */}
         {userEmail && (
           <div className="rounded-lg border border-border-sub bg-bg-secondary px-4 py-3">
-            <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-1">Signed in as</p>
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">Signed in as</p>
             {userName && <p className="text-sm font-bold text-text-primary">{userName}</p>}
             <p className="text-[11px] text-text-muted">{userEmail}</p>
           </div>
@@ -209,7 +209,7 @@ export default function PendingApprovalPage() {
                 const fbUser = auth.currentUser;
                 if (fbUser) checkStatus(fbUser.uid);
               }}
-              className="w-full h-11 border-border-main bg-bg-secondary hover:bg-bg-tertiary font-bold uppercase tracking-widest text-xs"
+              className="w-full h-11 border-border-main bg-bg-secondary hover:bg-bg-tertiary font-bold text-xs"
             >
               {checking ? (
                 <><RefreshCw size={14} className="mr-2 animate-spin" /> Checking...</>
@@ -221,13 +221,13 @@ export default function PendingApprovalPage() {
           <Button
             variant="ghost"
             onClick={handleSignOut}
-            className="w-full h-11 font-bold uppercase tracking-widest text-xs text-text-muted hover:text-text-primary"
+            className="w-full h-11 font-bold text-xs text-text-muted hover:text-text-primary"
           >
             <LogOut size={14} className="mr-2" /> Sign Out
           </Button>
         </div>
 
-        <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">
+        <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">
           Aaromach Command Center · Authorized Access Only
         </p>
       </div>

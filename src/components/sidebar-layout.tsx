@@ -84,7 +84,7 @@ function TechBottomNav() {
             }`}
           >
             <Icon />
-            <span className="text-[9px] font-semibold uppercase tracking-wide leading-none">{label}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wide leading-none">{label}</span>
           </a>
         ))}
       </div>

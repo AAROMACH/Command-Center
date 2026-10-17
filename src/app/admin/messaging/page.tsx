@@ -326,7 +326,7 @@ export default function AdminMessagingPage() {
         </div>
         {activeTab === 'Broadcast' && (
           <div className="page-header-right">
-            <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase tracking-widest" onClick={() => setIsBroadcasting(true)}>
+            <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold uppercase tracking-wider" onClick={() => setIsBroadcasting(true)}>
               <Radio size={12} className="mr-1.5" />
               New Broadcast
             </Button>
@@ -341,7 +341,7 @@ export default function AdminMessagingPage() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={cn(
-              'text-[10px] font-black uppercase tracking-widest px-5 py-3 border-b-2 transition-colors whitespace-nowrap',
+              'text-[10px] font-bold uppercase tracking-wider px-5 py-3 border-b-2 transition-colors whitespace-nowrap',
               activeTab === tab
                 ? 'border-brand-red text-brand-red'
                 : 'border-transparent text-text-muted hover:text-text-secondary'
@@ -358,8 +358,8 @@ export default function AdminMessagingPage() {
           {messages.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
               <Radio size={32} className="text-text-muted mx-auto mb-3" />
-              <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">No broadcasts sent</p>
-              <p className="text-[9px] text-text-muted mt-1">Broadcasts appear across all target user portals.</p>
+              <p className="text-[11px] font-bold text-text-muted">No broadcasts sent</p>
+              <p className="text-[11px] text-text-muted mt-1">Broadcasts appear across all target user portals.</p>
             </div>
           ) : (
             messages.map(msg => (
@@ -377,26 +377,26 @@ export default function AdminMessagingPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <p className="text-[12px] font-bold text-text-primary uppercase tracking-wide">{msg.subject}</p>
+                        <p className="text-[12px] font-bold text-text-primary tracking-wide">{msg.subject}</p>
                         {msg.isLocked && <Lock size={11} className="text-brand-red" />}
                       </div>
-                      <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">
+                      <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">
                         {format(parseISO(msg.timestamp), 'MMM d, yyyy h:mm a')} · Target: {msg.targetPortal}
                         {msg.expiresAt && ` · Expires: ${format(parseISO(msg.expiresAt), 'MMM d, h:mm a')}`}
                       </p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-[8px] uppercase shrink-0">{msg.type}</Badge>
+                  <Badge variant="outline" className="text-[10px] shrink-0">{msg.type}</Badge>
                 </div>
                 <p className="text-[11px] text-text-secondary leading-relaxed">{msg.body}</p>
                 <div className="pt-3 border-t border-border-sub/30 flex justify-between items-center">
                   <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[7px] font-bold">
+                    <div className="h-4 w-4 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[10px] font-bold">
                       {(msg.senderName || 'A').charAt(0)}
                     </div>
-                    <span className="text-[8px] text-text-muted font-bold uppercase tracking-widest">Sent by {msg.senderName}</span>
+                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Sent by {msg.senderName}</span>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-7 text-[9px] uppercase font-bold text-text-muted hover:text-text-red" onClick={() => handleRevokeMessage(msg.id)}>
+                  <Button variant="ghost" size="sm" className="h-7 text-[11px] font-bold text-text-muted hover:text-text-red" onClick={() => handleRevokeMessage(msg.id)}>
                     Revoke
                   </Button>
                 </div>
@@ -413,7 +413,7 @@ export default function AdminMessagingPage() {
           <div className={cn("w-full md:w-56 md:shrink-0 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex-col", selectedUserId ? "hidden md:flex" : "flex")}>
             <div className="px-2 py-2 border-b border-border-sub shrink-0">
               <Select value={contactFilter} onValueChange={(v) => setContactFilter(v as typeof contactFilter)}>
-                <SelectTrigger className="h-7 text-[9px] font-bold uppercase tracking-widest bg-bg-tertiary border-border-sub">
+                <SelectTrigger className="h-7 text-[10px] font-bold uppercase tracking-wider bg-bg-tertiary border-border-sub">
                   <SelectValue placeholder="All Contacts" />
                 </SelectTrigger>
                 <SelectContent>
@@ -429,7 +429,7 @@ export default function AdminMessagingPage() {
                 {/* Team group */}
                 {(contactFilter === 'all' || contactFilter === 'admins' || contactFilter === 'techs') && (
                 <div className="px-2 py-1.5">
-                  <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Team</p>
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Team</p>
                 </div>
                 )}
                 <div className="space-y-0.5 mb-2">
@@ -452,7 +452,7 @@ export default function AdminMessagingPage() {
                         )}
                       >
                         <div className="w-6 h-6 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center shrink-0">
-                          <span className="text-[8px] font-black">{(t.name || 'T').charAt(0)}</span>
+                          <span className="text-[10px] font-bold">{(t.name || 'T').charAt(0)}</span>
                         </div>
                         <span className="text-[10px] font-bold uppercase tracking-wide truncate flex-1">{t.name}</span>
                         {hasUnread && <div className="w-2 h-2 rounded-full bg-brand-red shrink-0" />}
@@ -465,7 +465,7 @@ export default function AdminMessagingPage() {
                   <>
                     <div className="h-px bg-border-sub mx-2 mb-2" />
                     <div className="px-2 py-1.5">
-                      <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Clients</p>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Clients</p>
                     </div>
                     <div className="space-y-0.5">
                       {clientContacts.map(t => {
@@ -482,7 +482,7 @@ export default function AdminMessagingPage() {
                             )}
                           >
                             <div className="w-6 h-6 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center shrink-0">
-                              <span className="text-[8px] font-black">{(t.name || 'C').charAt(0)}</span>
+                              <span className="text-[10px] font-bold">{(t.name || 'C').charAt(0)}</span>
                             </div>
                             <span className="text-[10px] font-bold uppercase tracking-wide truncate flex-1">{t.name}</span>
                             {hasUnread && <div className="w-2 h-2 rounded-full bg-brand-red shrink-0" />}
@@ -502,7 +502,7 @@ export default function AdminMessagingPage() {
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
                   <Users size={32} className="text-text-muted mx-auto mb-3" />
-                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Select a contact to message</p>
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Select a contact to message</p>
                 </div>
               </div>
             ) : (
@@ -511,14 +511,14 @@ export default function AdminMessagingPage() {
                   <button onClick={() => setSelectedUserId(null)} className="md:hidden text-text-muted hover:text-text-primary shrink-0">
                     <ArrowLeft size={16} />
                   </button>
-                  <p className="text-[11px] font-black uppercase tracking-widest text-text-primary truncate">
+                  <p className="text-[11px] font-bold text-text-primary truncate">
                     {[...adminTechs, ...clientContacts].find(t => t.id === selectedUserId)?.name || 'Unknown'}
                   </p>
                 </div>
                 <ScrollArea className="flex-1 p-4">
                   <div className="space-y-3">
                     {threadMessages.length === 0 ? (
-                      <p className="text-[10px] text-text-muted text-center py-8 uppercase tracking-widest">No messages yet — say something!</p>
+                      <p className="text-[10px] text-text-muted text-center py-8 uppercase tracking-wider">No messages yet — say something!</p>
                     ) : (
                       threadMessages.map(m => {
                         const isMine = m.senderId === currentUser?.id;
@@ -534,7 +534,7 @@ export default function AdminMessagingPage() {
                               {m.imageUrls?.map((url, i) => (
                                 <img key={i} src={url} alt="Attachment" className="mt-2 max-w-[200px] rounded-lg cursor-pointer" onClick={() => window.open(url, '_blank')} />
                               ))}
-                              <p className="text-[8px] text-text-muted mt-1 font-bold uppercase tracking-wider">
+                              <p className="text-[10px] text-text-muted mt-1 font-bold uppercase tracking-wider">
                                 {format(parseISO(m.timestamp || m.createdAt || new Date().toISOString()), 'h:mm a')}
                               </p>
                             </div>
@@ -582,30 +582,30 @@ export default function AdminMessagingPage() {
           {/* Project List */}
           <div className={cn("w-full md:w-64 md:shrink-0 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex-col", selectedProjectId ? "hidden md:flex" : "flex")}>
             <div className="px-3 py-2.5 border-b border-border-sub">
-              <p className="text-[9px] font-black text-text-muted uppercase tracking-widest flex items-center gap-2">
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
                 <Briefcase size={10} /> Projects
               </p>
             </div>
             <ScrollArea className="flex-1">
               <div className="p-1.5">
                 {allProjects.length === 0 ? (
-                  <p className="text-[9px] text-text-muted text-center py-6 uppercase tracking-widest">No projects yet</p>
+                  <p className="text-[10px] text-text-muted text-center py-6 uppercase tracking-wider">No projects yet</p>
                 ) : (
                   <>
                     {activeProjects.length > 0 && (
                       <>
-                        <p className="text-[8px] font-black uppercase tracking-widest text-brand-red px-2 pt-2 pb-0.5">Active</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-brand-red px-2 pt-2 pb-0.5">Active</p>
                         {activeProjects.map(p => {
                           const lastMsg = getLastProjectMessage(p.id);
                           const unread = getProjectUnread(p.id);
                           return (
                             <button key={p.id} onClick={() => { setSelectedProjectId(p.id); markProjectRead(p.id); }} className={cn('w-full text-left px-3 py-2.5 rounded-lg transition-colors', selectedProjectId === p.id ? 'bg-brand-red/10 text-brand-red' : 'hover:bg-bg-tertiary text-text-muted hover:text-text-primary')}>
                               <div className="flex items-center justify-between gap-2">
-                                <p className="text-[9px] font-black uppercase tracking-wide truncate flex-1">{p.name}</p>
-                                {unread > 0 && <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[8px] font-black flex items-center justify-center shrink-0">{unread}</span>}
+                                <p className="text-[10px] font-bold uppercase tracking-wide truncate flex-1">{p.name}</p>
+                                {unread > 0 && <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[10px] font-bold flex items-center justify-center shrink-0">{unread}</span>}
                               </div>
-                              <p className="text-[8px] text-text-muted truncate mt-0.5">{p.client}{p.location ? ` · ${p.location}` : ''}</p>
-                              {lastMsg && <p className="text-[8px] text-text-muted/70 truncate mt-0.5 italic">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
+                              <p className="text-[10px] text-text-muted truncate mt-0.5">{p.client}{p.location ? ` · ${p.location}` : ''}</p>
+                              {lastMsg && <p className="text-[10px] text-text-muted/70 truncate mt-0.5 italic">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
                             </button>
                           );
                         })}
@@ -613,18 +613,18 @@ export default function AdminMessagingPage() {
                     )}
                     {onHoldProjects.length > 0 && (
                       <>
-                        <p className="text-[8px] font-black uppercase tracking-widest text-text-amber px-2 pt-3 pb-0.5">On Hold</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-amber px-2 pt-3 pb-0.5">On Hold</p>
                         {onHoldProjects.map(p => {
                           const lastMsg = getLastProjectMessage(p.id);
                           const unread = getProjectUnread(p.id);
                           return (
                             <button key={p.id} onClick={() => { setSelectedProjectId(p.id); markProjectRead(p.id); }} className={cn('w-full text-left px-3 py-2.5 rounded-lg transition-colors', selectedProjectId === p.id ? 'bg-brand-red/10 text-brand-red' : 'hover:bg-bg-tertiary text-text-muted hover:text-text-primary')}>
                               <div className="flex items-center justify-between gap-2">
-                                <p className="text-[9px] font-black uppercase tracking-wide truncate flex-1">{p.name}</p>
-                                {unread > 0 && <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[8px] font-black flex items-center justify-center shrink-0">{unread}</span>}
+                                <p className="text-[10px] font-bold uppercase tracking-wide truncate flex-1">{p.name}</p>
+                                {unread > 0 && <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[10px] font-bold flex items-center justify-center shrink-0">{unread}</span>}
                               </div>
-                              <p className="text-[8px] text-text-muted truncate mt-0.5">{p.client}{p.location ? ` · ${p.location}` : ''}</p>
-                              {lastMsg && <p className="text-[8px] text-text-muted/70 truncate mt-0.5 italic">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
+                              <p className="text-[10px] text-text-muted truncate mt-0.5">{p.client}{p.location ? ` · ${p.location}` : ''}</p>
+                              {lastMsg && <p className="text-[10px] text-text-muted/70 truncate mt-0.5 italic">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
                             </button>
                           );
                         })}
@@ -632,18 +632,18 @@ export default function AdminMessagingPage() {
                     )}
                     {completedProjects.length > 0 && (
                       <>
-                        <p className="text-[8px] font-black uppercase tracking-widest text-text-muted px-2 pt-3 pb-0.5">Completed</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted px-2 pt-3 pb-0.5">Completed</p>
                         {completedProjects.map(p => {
                           const lastMsg = getLastProjectMessage(p.id);
                           const unread = getProjectUnread(p.id);
                           return (
                             <button key={p.id} onClick={() => { setSelectedProjectId(p.id); markProjectRead(p.id); }} className={cn('w-full text-left px-3 py-2.5 rounded-lg transition-colors', selectedProjectId === p.id ? 'bg-brand-red/10 text-brand-red' : 'hover:bg-bg-tertiary text-text-muted hover:text-text-primary')}>
                               <div className="flex items-center justify-between gap-2">
-                                <p className="text-[9px] font-black uppercase tracking-wide truncate flex-1">{p.name}</p>
-                                {unread > 0 && <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[8px] font-black flex items-center justify-center shrink-0">{unread}</span>}
+                                <p className="text-[10px] font-bold uppercase tracking-wide truncate flex-1">{p.name}</p>
+                                {unread > 0 && <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[10px] font-bold flex items-center justify-center shrink-0">{unread}</span>}
                               </div>
-                              <p className="text-[8px] text-text-muted truncate mt-0.5">{p.client}{p.location ? ` · ${p.location}` : ''}</p>
-                              {lastMsg && <p className="text-[8px] text-text-muted/70 truncate mt-0.5 italic">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
+                              <p className="text-[10px] text-text-muted truncate mt-0.5">{p.client}{p.location ? ` · ${p.location}` : ''}</p>
+                              {lastMsg && <p className="text-[10px] text-text-muted/70 truncate mt-0.5 italic">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
                             </button>
                           );
                         })}
@@ -661,7 +661,7 @@ export default function AdminMessagingPage() {
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
                   <Briefcase size={32} className="text-text-muted mx-auto mb-3" />
-                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Select a project to view its thread</p>
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Select a project to view its thread</p>
                 </div>
               </div>
             ) : (
@@ -671,10 +671,10 @@ export default function AdminMessagingPage() {
                     <ArrowLeft size={16} />
                   </button>
                   <div className="min-w-0">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-text-primary truncate">
+                  <p className="text-[11px] font-bold text-text-primary truncate">
                     {selectedProject?.name || 'Unknown Project'}
                   </p>
-                  <p className="text-[9px] text-text-muted uppercase mt-0.5">
+                  <p className="text-[11px] text-text-muted mt-0.5">
                     {selectedProject?.client}{selectedProject?.location ? ` · ${selectedProject.location}` : ''}
                   </p>
                   </div>
@@ -682,14 +682,14 @@ export default function AdminMessagingPage() {
                 <ScrollArea className="flex-1 p-4">
                   <div className="space-y-3">
                     {projectMessages.length === 0 ? (
-                      <p className="text-[10px] text-text-muted text-center py-8 uppercase tracking-widest">No messages yet — start the conversation!</p>
+                      <p className="text-[10px] text-text-muted text-center py-8 uppercase tracking-wider">No messages yet — start the conversation!</p>
                     ) : (
                       projectMessages.map(m => {
                         const isMine = m.senderId === currentUser?.id;
                         const senderName = m.senderName || technicians.find(t => t.id === m.senderId)?.name || 'Unknown';
                         return (
                           <div key={m.id} className={cn('flex flex-col', isMine ? 'items-end' : 'items-start')}>
-                            {!isMine && <p className="text-[8px] font-bold text-text-muted uppercase mb-0.5 ml-1">{senderName}</p>}
+                            {!isMine && <p className="text-[10px] font-bold text-text-muted mb-0.5 ml-1">{senderName}</p>}
                             <div className={cn('max-w-[70%] rounded-xl px-3 py-2.5 text-[11px] leading-relaxed',
                               isMine ? 'bg-brand-red/10 border border-brand-red/20 text-text-primary' : 'bg-bg-tertiary border border-border-sub text-text-secondary'
                             )}>
@@ -697,7 +697,7 @@ export default function AdminMessagingPage() {
                               {m.imageUrls?.map((url, i) => (
                                 <img key={i} src={url} alt="Attachment" className="mt-2 max-w-[200px] rounded-lg cursor-pointer" onClick={() => window.open(url, '_blank')} />
                               ))}
-                              <p className="text-[8px] text-text-muted mt-1 font-bold uppercase tracking-wider">
+                              <p className="text-[10px] text-text-muted mt-1 font-bold uppercase tracking-wider">
                                 {format(parseISO(m.timestamp || m.createdAt || new Date().toISOString()), 'h:mm a')}
                               </p>
                             </div>
@@ -745,14 +745,14 @@ export default function AdminMessagingPage() {
           <DialogHeader>
             <div className="flex items-center gap-2">
               <Radio className="text-brand-red h-5 w-5" />
-              <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Compose Broadcast</DialogTitle>
+              <DialogTitle className="text-[13px] font-bold">Compose Broadcast</DialogTitle>
             </div>
             <DialogDescription className="text-[10px]">Send a message to all users in the selected portal.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Target</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Target</Label>
                 <Select value={newMessage.targetPortal} onValueChange={(v: any) => setNewMessage(m => ({ ...m, targetPortal: v }))}>
                   <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-bg-elevated border-border-main">
@@ -764,7 +764,7 @@ export default function AdminMessagingPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Priority</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Priority</Label>
                 <Select value={newMessage.type} onValueChange={(v: any) => setNewMessage(m => ({ ...m, type: v }))}>
                   <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-bg-elevated border-border-main">
@@ -777,7 +777,7 @@ export default function AdminMessagingPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Expires After</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Expires After</Label>
               <Select value={durationHours} onValueChange={setDurationHours}>
                 <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-bg-elevated border-border-main">
@@ -790,17 +790,17 @@ export default function AdminMessagingPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Subject *</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Subject *</Label>
               <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Broadcast subject..." value={newMessage.subject} onChange={e => setNewMessage(m => ({ ...m, subject: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Message *</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Message *</Label>
               <Textarea className="min-h-[100px] text-[11px] bg-bg-secondary border-border-main resize-none" placeholder="Message body..." value={newMessage.body} onChange={e => setNewMessage(m => ({ ...m, body: e.target.value }))} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setIsBroadcasting(false)} className="text-[10px] font-black uppercase">Cancel</Button>
-            <Button size="sm" onClick={handleBroadcast} disabled={sending} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+            <Button variant="outline" size="sm" onClick={() => setIsBroadcasting(false)} className="text-[10px] font-bold">Cancel</Button>
+            <Button size="sm" onClick={handleBroadcast} disabled={sending} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
               <Send size={12} className="mr-1.5" />
               {sending ? 'Sending...' : 'Send Broadcast'}
             </Button>

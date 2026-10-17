@@ -293,7 +293,7 @@ export default function TechMessagingPage() {
 
   const ProjectListSection = ({ label, projects, labelColor }: { label: string; projects: Project[]; labelColor: string }) => (
     <>
-      <p className={cn('text-[8px] font-black uppercase tracking-widest px-2 pt-3 pb-0.5', labelColor)}>{label}</p>
+      <p className={cn('text-[10px] font-bold uppercase tracking-wider px-2 pt-3 pb-0.5', labelColor)}>{label}</p>
       {projects.map(p => {
         const lastMsg = getLastProjectMessage(p.id);
         const unread = getProjectUnread(p.id);
@@ -307,11 +307,11 @@ export default function TechMessagingPage() {
             )}
           >
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[9px] font-black uppercase tracking-wide truncate flex-1">{p.name}</p>
-              {unread > 0 && <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[8px] font-black flex items-center justify-center shrink-0">{unread}</span>}
+              <p className="text-[10px] font-bold uppercase tracking-wide truncate flex-1">{p.name}</p>
+              {unread > 0 && <span className="h-4 w-4 rounded-full bg-brand-red text-white text-[10px] font-bold flex items-center justify-center shrink-0">{unread}</span>}
             </div>
-            <p className="text-[8px] text-text-muted truncate mt-0.5">{p.client}{p.location ? ` · ${p.location}` : ''}</p>
-            {lastMsg && <p className="text-[8px] text-text-muted/70 truncate mt-0.5 italic">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
+            <p className="text-[10px] text-text-muted truncate mt-0.5">{p.client}{p.location ? ` · ${p.location}` : ''}</p>
+            {lastMsg && <p className="text-[10px] text-text-muted/70 truncate mt-0.5 italic">{lastMsg.body?.slice(0, 40) || (lastMsg.imageUrls?.length ? '📷 Image' : '')}</p>}
           </button>
         );
       })}
@@ -338,7 +338,7 @@ export default function TechMessagingPage() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={cn(
-              'text-[10px] font-black uppercase tracking-widest px-5 py-3 border-b-2 transition-colors whitespace-nowrap',
+              'text-[10px] font-bold uppercase tracking-wider px-5 py-3 border-b-2 transition-colors whitespace-nowrap',
               activeTab === tab ? 'border-brand-red text-brand-red' : 'border-transparent text-text-muted hover:text-text-secondary'
             )}
           >
@@ -353,9 +353,9 @@ export default function TechMessagingPage() {
           {/* Contacts sidebar */}
           <div className={cn("w-full md:w-[200px] md:shrink-0 flex-col border border-border-sub rounded-xl bg-bg-secondary overflow-hidden", dmMobilePane === 'thread' ? "hidden md:flex" : "flex")}>
             <div className="p-2 border-b border-border-sub shrink-0 space-y-1.5">
-              <p className="text-[8px] font-black uppercase tracking-widest text-text-muted px-1">Conversations</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted px-1">Conversations</p>
               <Select value={contactFilter} onValueChange={(v) => setContactFilter(v as typeof contactFilter)}>
-                <SelectTrigger className="h-7 text-[9px] font-bold uppercase tracking-widest bg-bg-tertiary border-border-sub">
+                <SelectTrigger className="h-7 text-[10px] font-bold uppercase tracking-wider bg-bg-tertiary border-border-sub">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
@@ -392,7 +392,7 @@ export default function TechMessagingPage() {
                 <ArrowLeft size={16} />
               </button>
               <MessageSquare size={12} className="text-brand-red" />
-              <span className="text-[11px] font-black uppercase tracking-widest text-text-primary truncate">{getContactLabel(selectedContactId)}</span>
+              <span className="text-[11px] font-bold text-text-primary truncate">{getContactLabel(selectedContactId)}</span>
             </div>
 
             <ScrollArea className="flex-1 p-4">
@@ -400,7 +400,7 @@ export default function TechMessagingPage() {
                 {thread.length === 0 ? (
                   <div className="py-16 text-center">
                     <MessageSquare size={24} className="text-text-muted mx-auto mb-2" />
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">No messages yet</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">No messages yet</p>
                   </div>
                 ) : (
                   thread.map(msg => {
@@ -415,7 +415,7 @@ export default function TechMessagingPage() {
                           {msg.imageUrls?.map((url, i) => (
                             <img key={i} src={url} alt="Attachment" className="mt-2 max-w-[200px] rounded-lg cursor-pointer" onClick={() => window.open(url, '_blank')} />
                           ))}
-                          <p className={cn('text-[8px] mt-1 font-mono', isMe ? 'text-white/60' : 'text-text-muted')}>
+                          <p className={cn('text-[10px] mt-1 font-mono', isMe ? 'text-white/60' : 'text-text-muted')}>
                             {msg.timestamp || msg.createdAt ? format(parseISO(msg.timestamp || msg.createdAt!), 'MMM d, h:mm a') : ''}
                           </p>
                         </div>
@@ -468,14 +468,14 @@ export default function TechMessagingPage() {
           {/* Project list */}
           <div className={cn("w-full md:w-[220px] md:shrink-0 border border-border-sub rounded-xl overflow-hidden bg-bg-secondary flex-col", selectedProjectId ? "hidden md:flex" : "flex")}>
             <div className="px-3 py-2.5 border-b border-border-sub">
-              <p className="text-[9px] font-black text-text-muted uppercase tracking-widest flex items-center gap-2">
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
                 <Briefcase size={10} /> My Projects
               </p>
             </div>
             <ScrollArea className="flex-1">
               <div className="p-1.5">
                 {myActiveProjects.length === 0 && myOnHoldProjects.length === 0 && myCompletedProjects.length === 0 ? (
-                  <p className="text-[9px] text-text-muted text-center py-6 uppercase tracking-widest">No projects assigned</p>
+                  <p className="text-[10px] text-text-muted text-center py-6 uppercase tracking-wider">No projects assigned</p>
                 ) : (
                   <>
                     {myActiveProjects.length > 0 && (
@@ -499,7 +499,7 @@ export default function TechMessagingPage() {
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
                   <Briefcase size={28} className="text-text-muted mx-auto mb-3" />
-                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Select a project to view its thread</p>
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Select a project to view its thread</p>
                 </div>
               </div>
             ) : (
@@ -509,8 +509,8 @@ export default function TechMessagingPage() {
                     <ArrowLeft size={16} />
                   </button>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-black uppercase tracking-widest text-text-primary truncate">{selectedProject?.name}</p>
-                    <p className="text-[9px] text-text-muted mt-0.5 truncate">{selectedProject?.client}{selectedProject?.location ? ` · ${selectedProject.location}` : ''}</p>
+                    <p className="text-[11px] font-bold text-text-primary truncate">{selectedProject?.name}</p>
+                    <p className="text-[11px] text-text-muted mt-0.5 truncate">{selectedProject?.client}{selectedProject?.location ? ` · ${selectedProject.location}` : ''}</p>
                   </div>
                 </div>
 
@@ -518,7 +518,7 @@ export default function TechMessagingPage() {
                   <div className="space-y-3">
                     {projectThread.length === 0 ? (
                       <div className="py-16 text-center">
-                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">No messages yet — start the conversation!</p>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">No messages yet — start the conversation!</p>
                       </div>
                     ) : (
                       projectThread.map(msg => {
@@ -526,7 +526,7 @@ export default function TechMessagingPage() {
                         const senderName = msg.senderName || technicians.find(t => t.id === msg.senderId)?.name || 'Admin';
                         return (
                           <div key={msg.id} className={cn('flex flex-col', isMe ? 'items-end' : 'items-start')}>
-                            {!isMe && <p className="text-[8px] font-bold text-text-muted uppercase mb-0.5 ml-1">{senderName}</p>}
+                            {!isMe && <p className="text-[10px] font-bold text-text-muted mb-0.5 ml-1">{senderName}</p>}
                             <div className={cn(
                               'max-w-[70%] px-3 py-2 rounded-xl',
                               isMe ? 'bg-brand-red text-white rounded-tr-sm' : 'bg-bg-tertiary border border-border-sub text-text-primary rounded-tl-sm'
@@ -535,7 +535,7 @@ export default function TechMessagingPage() {
                               {msg.imageUrls?.map((url, i) => (
                                 <img key={i} src={url} alt="Attachment" className="mt-2 max-w-[200px] rounded-lg cursor-pointer" onClick={() => window.open(url, '_blank')} />
                               ))}
-                              <p className={cn('text-[8px] mt-1 font-mono', isMe ? 'text-white/60' : 'text-text-muted')}>
+                              <p className={cn('text-[10px] mt-1 font-mono', isMe ? 'text-white/60' : 'text-text-muted')}>
                                 {msg.timestamp || msg.createdAt ? format(parseISO(msg.timestamp || msg.createdAt!), 'MMM d, h:mm a') : ''}
                               </p>
                             </div>
@@ -590,7 +590,7 @@ export default function TechMessagingPage() {
           {broadcasts.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
               <Radio size={32} className="text-text-muted mx-auto mb-3" />
-              <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">No broadcasts</p>
+              <p className="text-[11px] font-bold text-text-muted">No broadcasts</p>
               <p className="text-[10px] text-text-muted mt-1">Admin messages targeted to you will appear here.</p>
             </div>
           ) : (
@@ -624,19 +624,19 @@ export default function TechMessagingPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="text-[12px] font-bold text-text-primary uppercase tracking-wide truncate">{b.subject}</p>
+                          <p className="text-[12px] font-bold text-text-primary tracking-wide truncate">{b.subject}</p>
                           {!isAcknowledged && (
                             <span className="h-2 w-2 rounded-full bg-brand-red shrink-0" />
                           )}
                         </div>
-                        <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
+                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider mt-0.5">
                           {b.timestamp ? format(parseISO(b.timestamp), 'MMM d, yyyy h:mm a') : ''} · {b.senderName || 'Admin'}
                         </p>
                       </div>
                     </div>
                     <p className="text-[11px] text-text-secondary leading-relaxed ml-9">{b.body}</p>
                     {!isAcknowledged && (
-                      <p className="text-[8px] text-text-muted mt-2 ml-9 uppercase font-bold tracking-widest">Click to mark as read</p>
+                      <p className="text-[10px] text-text-muted mt-2 ml-9 uppercase font-bold tracking-wider">Click to mark as read</p>
                     )}
                   </div>
                 );

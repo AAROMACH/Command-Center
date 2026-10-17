@@ -176,8 +176,8 @@ export default function ClientQuotesPage() {
                 <CardHeader className="border-b border-border-sub bg-bg-tertiary/30 text-left">
                     <div className="flex items-start justify-between gap-4">
                         <div className="space-y-1 min-w-0">
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">{quote.quoteNumber}</p>
-                            <CardTitle className="text-sm uppercase tracking-wide truncate">{quote.title}</CardTitle>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{quote.quoteNumber}</p>
+                            <CardTitle className="text-sm tracking-wide truncate">{quote.title}</CardTitle>
                             <CardDescription className="text-[10px]">
                                 {quote.expirationDate
                                     ? (expired ? `Expired ${fmtDate(quote.expirationDate)}` : `Valid until ${fmtDate(quote.expirationDate)}`)
@@ -201,11 +201,11 @@ export default function ClientQuotesPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow className="hover:bg-transparent border-border-sub">
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Item</TableHead>
-                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Description</TableHead>
-                                        <TableHead className="text-center text-[10px] uppercase font-bold tracking-widest">Qty</TableHead>
-                                        <TableHead className="text-right text-[10px] uppercase font-bold tracking-widest">Unit Price</TableHead>
-                                        <TableHead className="text-right text-[10px] uppercase font-bold tracking-widest">Total</TableHead>
+                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider">Item</TableHead>
+                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider">Description</TableHead>
+                                        <TableHead className="text-center text-[10px] uppercase font-bold tracking-wider">Qty</TableHead>
+                                        <TableHead className="text-right text-[10px] uppercase font-bold tracking-wider">Unit Price</TableHead>
+                                        <TableHead className="text-right text-[10px] uppercase font-bold tracking-wider">Total</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -220,19 +220,19 @@ export default function ClientQuotesPage() {
                                     ))}
                                     {(quote.discountAmount ?? 0) > 0 && (
                                         <TableRow className="border-border-sub hover:bg-transparent">
-                                            <TableCell colSpan={4} className="text-right text-[10px] font-bold uppercase tracking-widest text-text-muted">Discount</TableCell>
+                                            <TableCell colSpan={4} className="text-right text-[10px] font-bold uppercase tracking-wider text-text-muted">Discount</TableCell>
                                             <TableCell className="text-right font-mono text-xs text-text-muted">-{fmtCurrency(quote.discountAmount ?? 0)}</TableCell>
                                         </TableRow>
                                     )}
                                     {(quote.taxAmount ?? 0) > 0 && (
                                         <TableRow className="border-border-sub hover:bg-transparent">
-                                            <TableCell colSpan={4} className="text-right text-[10px] font-bold uppercase tracking-widest text-text-muted">Tax</TableCell>
+                                            <TableCell colSpan={4} className="text-right text-[10px] font-bold uppercase tracking-wider text-text-muted">Tax</TableCell>
                                             <TableCell className="text-right font-mono text-xs text-text-muted">{fmtCurrency(quote.taxAmount ?? 0)}</TableCell>
                                         </TableRow>
                                     )}
                                     <TableRow className="border-t-2 border-border-main hover:bg-transparent">
-                                        <TableCell colSpan={4} className="text-right text-[10px] font-black uppercase tracking-widest">Total</TableCell>
-                                        <TableCell className="text-right font-mono font-black text-text-primary">{fmtCurrency(quote.total ?? 0)}</TableCell>
+                                        <TableCell colSpan={4} className="text-right text-[10px] font-bold uppercase tracking-wider">Total</TableCell>
+                                        <TableCell className="text-right font-mono font-bold text-text-primary">{fmtCurrency(quote.total ?? 0)}</TableCell>
                                     </TableRow>
                                 </TableBody>
                             </Table>
@@ -241,7 +241,7 @@ export default function ClientQuotesPage() {
 
                     {quote.optionalChoices && quote.optionalChoices.length > 0 && (
                         <div className="space-y-3 pt-2 border-t border-border-sub">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Optional Add-Ons</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Optional Add-Ons</p>
                             {quote.optionalChoices.map(group => (
                                 <div key={group.id} className="space-y-1.5">
                                     <p className="text-xs font-semibold text-text-primary">{group.title}</p>
@@ -264,7 +264,7 @@ export default function ClientQuotesPage() {
 
                     {quote.terms && (
                         <div className="pt-2 border-t border-border-sub">
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted mb-1">Terms & Conditions</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1">Terms & Conditions</p>
                             <p className="text-[10px] text-text-muted leading-relaxed">{quote.terms}</p>
                         </div>
                     )}
@@ -280,7 +280,7 @@ export default function ClientQuotesPage() {
 
                     {quote.status === 'rejected' && (
                         <div className="space-y-1 pt-2 border-t border-border-sub">
-                            <p className="text-[10px] font-bold text-text-red uppercase tracking-widest">Declined</p>
+                            <p className="text-[10px] font-bold text-text-red uppercase tracking-wider">Declined</p>
                             {quote.rejectionReason && (
                                 <p className="text-[10px] text-text-muted">{quote.rejectionReason}</p>
                             )}
@@ -290,14 +290,14 @@ export default function ClientQuotesPage() {
                     {actionable && (
                         <div className="flex items-center gap-3 pt-2 border-t border-border-sub">
                             <Button
-                                className="h-9 px-6 bg-text-green hover:bg-text-green/90 text-white uppercase font-bold text-[10px] tracking-widest"
+                                className="h-9 px-6 bg-text-green hover:bg-text-green/90 text-white uppercase font-bold text-[10px] tracking-wider"
                                 onClick={() => openApprove(quote)}
                             >
                                 <CheckCircle2 size={14} className="mr-2" /> Accept Quote
                             </Button>
                             <Button
                                 variant="outline"
-                                className="h-9 px-6 border-brand-red text-text-red hover:bg-brand-red-dim uppercase font-bold text-[10px] tracking-widest"
+                                className="h-9 px-6 border-brand-red text-text-red hover:bg-brand-red-dim uppercase font-bold text-[10px] tracking-wider"
                                 onClick={() => openDecline(quote)}
                             >
                                 <XCircle size={14} className="mr-2" /> Decline
@@ -330,8 +330,8 @@ export default function ClientQuotesPage() {
                 <Card>
                     <CardContent className="py-24 text-center space-y-3">
                         <FileText size={32} className="mx-auto text-text-muted opacity-30" />
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No quotes on file.</p>
-                        <p className="text-[9px] text-text-muted">Contact Aaromach to request a service proposal.</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">No quotes on file.</p>
+                        <p className="text-[11px] text-text-muted">Contact Aaromach to request a service proposal.</p>
                     </CardContent>
                 </Card>
             ) : (
@@ -340,14 +340,14 @@ export default function ClientQuotesPage() {
                         <section className="space-y-4">
                             <div className="flex items-center gap-2">
                                 <Clock size={12} className="text-text-muted" />
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Awaiting Your Response</p>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Awaiting Your Response</p>
                             </div>
                             {activeQuotes.map(q => <QuoteCard key={q.id} quote={q} />)}
                         </section>
                     )}
                     {pastQuotes.length > 0 && (
                         <section className="space-y-4">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Past Quotes</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Past Quotes</p>
                             {pastQuotes.map(q => <QuoteCard key={q.id} quote={q} />)}
                         </section>
                     )}
@@ -358,7 +358,7 @@ export default function ClientQuotesPage() {
             <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
                 <DialogContent className="sm:max-w-[520px] bg-bg-elevated border-border-default">
                     <DialogHeader>
-                        <DialogTitle className="uppercase tracking-widest font-bold">Accept Quote</DialogTitle>
+                        <DialogTitle className="font-bold">Accept Quote</DialogTitle>
                         <DialogDescription>
                             Confirm your name and email to approve this proposal.
                             {selectedQuote && ` Quote total: ${fmtCurrency(selectedQuote.total + optionsTotal(optionalChoices))}`}
@@ -367,7 +367,7 @@ export default function ClientQuotesPage() {
                     <div className="py-4 space-y-4">
                         {selectedQuote?.optionalChoices && selectedQuote.optionalChoices.length > 0 && (
                             <div className="space-y-3 pb-4 border-b border-border-sub">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Select Optional Add-Ons</p>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Select Optional Add-Ons</p>
                                 {optionalChoices.map(group => (
                                     <div key={group.id} className="space-y-2">
                                         <p className="text-xs font-semibold text-text-primary">{group.title}</p>
@@ -392,7 +392,7 @@ export default function ClientQuotesPage() {
                         )}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Your Name *</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">Your Name *</Label>
                                 <Input
                                     value={approverName}
                                     onChange={e => setApproverName(e.target.value)}
@@ -401,7 +401,7 @@ export default function ClientQuotesPage() {
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Your Email *</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">Your Email *</Label>
                                 <Input
                                     type="email"
                                     value={approverEmail}
@@ -412,7 +412,7 @@ export default function ClientQuotesPage() {
                             </div>
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted">Note (optional)</Label>
+                            <Label className="text-[10px] font-bold text-text-muted">Note (optional)</Label>
                             <Textarea
                                 value={approvalNote}
                                 onChange={e => setApprovalNote(e.target.value)}
@@ -422,12 +422,12 @@ export default function ClientQuotesPage() {
                         </div>
                     </div>
                     <DialogFooter className="gap-3 flex-row">
-                        <Button variant="outline" onClick={() => setIsApproveDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest">
+                        <Button variant="outline" onClick={() => setIsApproveDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider">
                             Cancel
                         </Button>
                         <Button
                             disabled={!approverName.trim() || !approverEmail.trim() || saving}
-                            className="flex-1 bg-text-green hover:bg-text-green/90 uppercase font-bold text-[10px] tracking-widest text-white"
+                            className="flex-1 bg-text-green hover:bg-text-green/90 uppercase font-bold text-[10px] tracking-wider text-white"
                             onClick={handleApprove}
                         >
                             <CheckCircle2 size={13} className="mr-1.5" />
@@ -441,11 +441,11 @@ export default function ClientQuotesPage() {
             <Dialog open={isDeclineDialogOpen} onOpenChange={setIsDeclineDialogOpen}>
                 <DialogContent className="sm:max-w-[440px] bg-bg-elevated border-border-default">
                     <DialogHeader>
-                        <DialogTitle className="uppercase tracking-widest font-bold">Decline Quote</DialogTitle>
+                        <DialogTitle className="font-bold">Decline Quote</DialogTitle>
                         <DialogDescription>Please provide a reason for declining this proposal.</DialogDescription>
                     </DialogHeader>
                     <div className="py-4 space-y-2">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted">Reason *</Label>
+                        <Label className="text-[10px] font-bold text-text-muted">Reason *</Label>
                         <Textarea
                             value={declineReason}
                             onChange={e => setDeclineReason(e.target.value)}
@@ -454,12 +454,12 @@ export default function ClientQuotesPage() {
                         />
                     </div>
                     <DialogFooter className="gap-3 flex-row">
-                        <Button variant="outline" onClick={() => setIsDeclineDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest">
+                        <Button variant="outline" onClick={() => setIsDeclineDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider">
                             Cancel
                         </Button>
                         <Button
                             disabled={!declineReason.trim() || saving}
-                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white"
+                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider text-white"
                             onClick={handleDecline}
                         >
                             {saving ? 'Saving...' : 'Confirm Decline'}

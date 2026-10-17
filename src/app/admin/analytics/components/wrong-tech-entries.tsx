@@ -162,17 +162,17 @@ export function WrongTechEntries({ entries, desynced, technicians, currentUser }
             {nothing ? (
                 <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
                     <CheckCircle size={28} className="text-text-green mx-auto mb-3" />
-                    <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">Every log entry is on the assigned tech</p>
+                    <p className="text-[11px] font-bold text-text-muted">Every log entry is on the assigned tech</p>
                 </div>
             ) : (
                 <>
                     {entries.length > 0 && (
                         <div className="space-y-2">
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
                                     On the wrong tech&apos;s log · {entries.length}{entries.length !== fixable.length ? ` (${entries.length - fixable.length} on settled logs)` : ''}
                                 </p>
-                                <Button size="sm" className="h-8 text-[9px] uppercase font-black tracking-widest bg-brand-red hover:bg-brand-red/90 text-white" disabled={fixable.length === 0 || fixingAll} onClick={() => setConfirmAll(true)}>
+                                <Button size="sm" className="h-8 text-[10px] uppercase font-bold tracking-wider bg-brand-red hover:bg-brand-red/90 text-white" disabled={fixable.length === 0 || fixingAll} onClick={() => setConfirmAll(true)}>
                                     {fixingAll ? <Loader2 size={11} className="mr-1 animate-spin" /> : null} Fix All Open ({fixable.length})
                                 </Button>
                             </div>
@@ -194,9 +194,9 @@ export function WrongTechEntries({ entries, desynced, technicians, currentUser }
                                             </div>
                                             <div className="shrink-0">
                                                 {e.locked ? (
-                                                    <span className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-text-muted"><Lock size={11} /> Settled — adjust in payroll</span>
+                                                    <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted"><Lock size={11} /> Settled — adjust in payroll</span>
                                                 ) : (
-                                                    <Button size="sm" className="h-8 text-[9px] uppercase font-black tracking-widest bg-text-green hover:bg-text-green/90 text-white" disabled={isBusy} onClick={() => handleFix(e)}>
+                                                    <Button size="sm" className="h-8 text-[10px] uppercase font-bold tracking-wider bg-text-green hover:bg-text-green/90 text-white" disabled={isBusy} onClick={() => handleFix(e)}>
                                                         {busy.has(rowKey(e)) ? <Loader2 size={11} className="animate-spin" /> : e.kind === 'stale_helper' ? 'Remove Entry' : `Move to ${techName(e.assignedTechId)}`}
                                                     </Button>
                                                 )}
@@ -212,10 +212,10 @@ export function WrongTechEntries({ entries, desynced, technicians, currentUser }
                     {desynced.length > 0 && (
                         <div className="space-y-2">
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
                                     Out of sync (hidden from the old tech&apos;s portal, but not yet synced) · {desynced.length}
                                 </p>
-                                <Button size="sm" variant="outline" className="h-8 text-[9px] uppercase font-black tracking-widest" disabled={syncingAll} onClick={handleSyncAll}>
+                                <Button size="sm" variant="outline" className="h-8 text-[10px] uppercase font-bold tracking-wider" disabled={syncingAll} onClick={handleSyncAll}>
                                     {syncingAll ? <Loader2 size={11} className="mr-1 animate-spin" /> : null} Sync All ({desynced.length})
                                 </Button>
                             </div>
@@ -231,7 +231,7 @@ export function WrongTechEntries({ entries, desynced, technicians, currentUser }
                                                 Assigned to <span className="font-bold text-text-primary">{techName(job.assignedTechnicianId)}</span>; old owner field still points at <span className="font-bold">{techName(job.techId)}</span>
                                             </p>
                                         </div>
-                                        <Button size="sm" variant="outline" className="h-8 shrink-0 text-[9px] uppercase font-black tracking-widest" disabled={busy.has(`sync:${job.id}`)} onClick={() => handleSync(job)}>
+                                        <Button size="sm" variant="outline" className="h-8 shrink-0 text-[10px] uppercase font-bold tracking-wider" disabled={busy.has(`sync:${job.id}`)} onClick={() => handleSync(job)}>
                                             {busy.has(`sync:${job.id}`) ? <Loader2 size={11} className="animate-spin" /> : `Sync to ${techName(job.assignedTechnicianId)}`}
                                         </Button>
                                     </div>

@@ -181,7 +181,7 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
         <div className="space-y-6">
             <div>
                 <div className="flex items-center justify-between mb-2 px-1">
-                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-red flex items-center gap-2">
+                    <h3 className="text-[10px] font-bold uppercase tracking-wider text-brand-red flex items-center gap-2">
                         <FileText size={14}/>
                         Pre-Site Documents
                     </h3>
@@ -191,7 +191,7 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
                             className="hidden" 
                             onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
                         />
-                        <div className="inline-flex h-6 items-center gap-1 rounded border border-border-sub bg-bg-secondary px-2 text-[8px] font-bold uppercase tracking-widest hover:bg-bg-tertiary transition-colors">
+                        <div className="inline-flex h-6 items-center gap-1 rounded border border-border-sub bg-bg-secondary px-2 text-[10px] font-bold uppercase tracking-wider hover:bg-bg-tertiary transition-colors">
                             <Plus size={10} className="mr-1"/> Add Document
                         </div>
                     </label>
@@ -207,11 +207,11 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
                                         <DocIcon type={doc.type} />
                                     </div>
                                     <div className="min-w-0 text-left">
-                                        <div className="text-[11px] font-bold text-text-primary uppercase truncate">{doc.name}</div>
+                                        <div className="text-[11px] font-bold text-text-primary truncate">{doc.name}</div>
                                         {hasAlias && (
-                                            <div className="text-[8px] text-text-muted font-medium truncate opacity-60 italic">{doc.originalName}</div>
+                                            <div className="text-[10px] text-text-muted font-medium truncate opacity-60 italic">{doc.originalName}</div>
                                         )}
-                                        <div className="flex items-center gap-2 text-[7px] text-text-muted font-bold uppercase tracking-widest mt-0.5">
+                                        <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-wider mt-0.5">
                                             <span>{doc.size}</span>
                                             <span className="flex items-center gap-0.5"><User size={7}/> {doc.uploader}</span>
                                             <span>{doc.uploadDate}</span>
@@ -226,14 +226,14 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
                         )
                     }) : (
                         <div className="p-3 text-center">
-                            <p className="text-[8px] text-text-muted uppercase font-bold tracking-[0.2em] italic">Registry Clear: No pre-site documents</p>
+                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider italic">Registry Clear: No pre-site documents</p>
                         </div>
                     )}
                 </div>
             </div>
 
             <div className="space-y-3">
-                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-red flex items-center gap-2 px-1">
+                 <h3 className="text-[10px] font-bold uppercase tracking-wider text-brand-red flex items-center gap-2 px-1">
                     <Milestone size={14}/>
                     Phase Verification
                  </h3>
@@ -257,29 +257,29 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-2 mb-1">
                             <Type className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Asset Identification</DialogTitle>
+                            <DialogTitle className="text-lg font-bold">Asset Identification</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs uppercase font-bold text-text-muted">Optionally provide a descriptive identifier for this registry asset.</DialogDescription>
+                        <DialogDescription className="text-xs font-bold text-text-muted">Optionally provide a descriptive identifier for this registry asset.</DialogDescription>
                     </DialogHeader>
                     <div className="p-6 space-y-4 text-left">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase text-text-muted ml-1">Asset Alias (Optional)</Label>
+                            <Label className="text-[10px] font-bold text-text-muted ml-1">Asset Alias (Optional)</Label>
                             <Input 
                                 placeholder="e.g. Main Lobby Wiring Diagram" 
                                 value={customName}
                                 onChange={e => setCustomName(e.target.value)}
-                                className="bg-bg-primary h-11 text-xs uppercase font-bold tracking-wide"
+                                className="bg-bg-primary h-11 text-xs font-bold tracking-wide"
                                 autoFocus
                             />
                         </div>
                         <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub space-y-1">
-                            <p className="text-[8px] font-black text-text-muted uppercase">Original Filename</p>
+                            <p className="text-[10px] font-bold text-text-muted">Original Filename</p>
                             <p className="text-[10px] font-mono text-text-primary truncate">{pendingUpload?.file.name}</p>
                         </div>
                     </div>
                     <DialogFooter className="p-6 border-t border-border-default bg-bg-tertiary/30 gap-3">
-                        <Button variant="outline" onClick={() => setIsNamingOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Discard</Button>
-                        <Button onClick={handleExecuteUpload} disabled={isUploading} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white">
+                        <Button variant="outline" onClick={() => setIsNamingOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider h-11">Discard</Button>
+                        <Button onClick={handleExecuteUpload} disabled={isUploading} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider h-11 text-white">
                             {isUploading ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Upload size={16} className="mr-2" />}
                             {isUploading ? 'Uploading...' : 'Commit Asset'}
                         </Button>
@@ -291,17 +291,17 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
             <AlertDialog open={isConfirmDownloadOpen} onOpenChange={setIsConfirmDownloadOpen}>
                 <AlertDialogContent className="bg-bg-elevated border-border-default shadow-2xl">
                     <AlertDialogHeader className="text-left">
-                        <AlertDialogTitle className="uppercase tracking-widest font-bold flex items-center gap-2">
+                        <AlertDialogTitle className="font-bold flex items-center gap-2">
                             <ShieldCheck className="text-text-green" size={18}/>
                             Authorize Asset Transfer
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-xs leading-relaxed uppercase font-medium">
+                        <AlertDialogDescription className="text-xs leading-relaxed font-medium">
                             Operational Action: This will transmit <span className="text-text-primary font-bold">{pendingDownload?.name}</span> from the project registry to your local device storage.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="gap-3">
-                        <AlertDialogCancel className="text-[10px] font-bold uppercase tracking-widest h-10 px-6">Abort</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDownload} className="bg-brand-red hover:bg-brand-red-hover text-[10px] font-bold uppercase tracking-widest h-10 px-8 text-white">
+                        <AlertDialogCancel className="text-[10px] font-bold uppercase tracking-wider h-10 px-6">Abort</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDownload} className="bg-brand-red hover:bg-brand-red-hover text-[10px] font-bold uppercase tracking-wider h-10 px-8 text-white">
                             <Download size={14} className="mr-2"/> Confirm Download
                         </AlertDialogAction>
                     </AlertDialogFooter>
@@ -336,14 +336,14 @@ function MilestoneDocuments({
         <div className="field-group !p-0 overflow-hidden border border-border-sub bg-bg-secondary/50">
              <header className="bg-bg-tertiary/50 !py-1.5 !px-3 border-b border-border-sub flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <div className="h-3.5 w-3.5 rounded-full bg-brand-red text-[7px] font-bold text-white flex items-center justify-center">{phase.phaseNumber}</div>
-                    <h4 className="text-[9px] font-bold text-text-primary uppercase tracking-wider truncate max-w-[120px]">{phase.name}</h4>
+                    <div className="h-3.5 w-3.5 rounded-full bg-brand-red text-[10px] font-bold text-white flex items-center justify-center">{phase.phaseNumber}</div>
+                    <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider truncate max-w-[120px]">{phase.name}</h4>
                 </div>
-                <span className="text-[7px] font-bold text-text-muted uppercase tracking-widest">{requiredPhotoTasks.length} Targets</span>
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{requiredPhotoTasks.length} Targets</span>
              </header>
              <div className="p-3 space-y-3">
                 <div className="space-y-2">
-                    <label className="text-[8px] font-bold uppercase tracking-widest text-text-muted block border-b border-border-sub/30 pb-0.5">Field Documentation Feed</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted block border-b border-border-sub/30 pb-0.5">Field Documentation Feed</label>
                     {requiredPhotoTasks.length > 0 ? (
                         <div className="space-y-3">
                             {requiredPhotoTasks.map(task => {
@@ -353,7 +353,7 @@ function MilestoneDocuments({
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-1.5">
                                                 <div className={cn("h-1 w-1 rounded-full", task.isCompleted ? "bg-text-green" : "bg-text-muted")} />
-                                                <span className={cn("text-[9px] font-bold uppercase tracking-tight", task.isCompleted ? 'text-text-primary' : 'text-text-muted')}>{task.name}</span>
+                                                <span className={cn("text-[10px] font-bold uppercase tracking-tight", task.isCompleted ? 'text-text-primary' : 'text-text-muted')}>{task.name}</span>
                                             </div>
                                             <label className="cursor-pointer">
                                                 <Input 
@@ -362,7 +362,7 @@ function MilestoneDocuments({
                                                     onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0], phase.id, task.id)}
                                                     accept="image/*"
                                                 />
-                                                <div className="inline-flex h-5 items-center gap-1 rounded border border-border-sub bg-bg-primary px-1.5 text-[7px] font-bold uppercase tracking-widest hover:bg-bg-tertiary transition-colors">
+                                                <div className="inline-flex h-5 items-center gap-1 rounded border border-border-sub bg-bg-primary px-1.5 text-[10px] font-bold uppercase tracking-wider hover:bg-bg-tertiary transition-colors">
                                                     <Plus size={8} className="mr-0.5"/> Photo
                                                 </div>
                                             </label>
@@ -376,11 +376,11 @@ function MilestoneDocuments({
                                                         <div key={photo.id} className="group relative aspect-video rounded border border-border-sub bg-bg-primary overflow-hidden">
                                                             <Image src={photo.url || ''} alt={photo.name} fill className="object-cover transition-transform group-hover:scale-110" />
                                                             <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-1">
-                                                                <p className="text-[6px] text-white font-bold uppercase truncate">{photo.name}</p>
+                                                                <p className="text-[10px] text-white font-bold truncate">{photo.name}</p>
                                                                 {hasAlias && (
-                                                                    <p className="text-[5px] text-white/60 truncate italic leading-none">{photo.originalName}</p>
+                                                                    <p className="text-[10px] text-white/60 truncate italic leading-none">{photo.originalName}</p>
                                                                 )}
-                                                                <p className="text-[5px] text-text-muted flex items-center gap-0.5 mt-0.5"><User size={6}/> {photo.uploader}</p>
+                                                                <p className="text-[10px] text-text-muted flex items-center gap-0.5 mt-0.5"><User size={6}/> {photo.uploader}</p>
                                                                 <div className="flex gap-1 mt-0.5">
                                                                     <button className="p-0.5 rounded bg-white/10 hover:bg-white/20 text-white" onClick={() => onDownload(photo)}><Download size={6}/></button>
                                                                     <button className="p-0.5 rounded bg-brand-red/20 hover:bg-brand-red/40 text-brand-red" onClick={() => onDelete(photo.id)}><Trash2 size={6}/></button>
@@ -392,7 +392,7 @@ function MilestoneDocuments({
                                             </div>
                                         ) : (
                                             <div className="p-1.5 text-center border border-dashed border-border-sub rounded bg-bg-primary/20">
-                                                <p className="text-[7px] text-text-muted uppercase font-bold tracking-widest italic">Awaiting evidence</p>
+                                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider italic">Awaiting evidence</p>
                                             </div>
                                         )}
                                     </div>
@@ -400,20 +400,20 @@ function MilestoneDocuments({
                             })}
                         </div>
                     ) : (
-                         <div className="p-2 text-center border border-dashed border-border-sub rounded text-[8px] text-text-muted font-bold uppercase tracking-widest opacity-60">No documentation targets</div>
+                         <div className="p-2 text-center border border-dashed border-border-sub rounded text-[10px] text-text-muted font-bold uppercase tracking-wider opacity-60">No documentation targets</div>
                     )}
                 </div>
 
                 <div className="pt-1.5 border-t border-border-sub/30">
                     <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-[8px] font-bold uppercase tracking-widest text-text-muted">Phase Assets</label>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Phase Assets</label>
                         <label className="cursor-pointer">
                             <Input 
                                 type="file" 
                                 className="hidden" 
                                 onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0], phase.id)}
                             />
-                            <div className="inline-flex h-5 items-center gap-1 rounded border border-border-sub bg-bg-primary px-1.5 text-[7px] font-bold uppercase tracking-widest hover:bg-bg-tertiary transition-colors">
+                            <div className="inline-flex h-5 items-center gap-1 rounded border border-border-sub bg-bg-primary px-1.5 text-[10px] font-bold uppercase tracking-wider hover:bg-bg-tertiary transition-colors">
                                 Upload
                             </div>
                         </label>
@@ -428,11 +428,11 @@ function MilestoneDocuments({
                                             <DocIcon type={doc.type} />
                                         </div>
                                         <div className="min-w-0">
-                                            <div className="text-[9px] font-bold text-text-primary uppercase truncate">{doc.name}</div>
+                                            <div className="text-[11px] font-bold text-text-primary truncate">{doc.name}</div>
                                             {hasAlias && (
-                                                <div className="text-[7px] text-text-muted truncate opacity-60 italic leading-none">{doc.originalName}</div>
+                                                <div className="text-[10px] text-text-muted truncate opacity-60 italic leading-none">{doc.originalName}</div>
                                             )}
-                                            <div className="text-[7px] text-text-muted font-bold flex items-center gap-1.5 mt-0.5">
+                                            <div className="text-[10px] text-text-muted font-bold flex items-center gap-1.5 mt-0.5">
                                                 <span>{doc.size}</span>
                                                 <span>•</span>
                                                 <span className="truncate">{doc.uploader}</span>
@@ -446,7 +446,7 @@ function MilestoneDocuments({
                                 </div>
                             )
                         }) : (
-                             <p className="text-[7px] text-text-muted uppercase font-bold italic tracking-widest mb-1 px-1">No phase assets</p>
+                             <p className="text-[10px] text-text-muted uppercase font-bold italic tracking-wider mb-1 px-1">No phase assets</p>
                         )}
                     </div>
                 </div>

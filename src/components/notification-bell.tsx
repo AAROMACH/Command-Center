@@ -198,11 +198,11 @@ export function NotificationBell() {
               : 'text-text-muted',
           )} />
           <span className="min-w-0 flex flex-col leading-tight">
-            <span className="text-[9px] font-black uppercase tracking-wide text-text-primary truncate">{latest.subject}</span>
-            <span className="text-[8px] text-text-muted uppercase tracking-widest truncate">{latest.body}</span>
+            <span className="text-[10px] font-bold uppercase tracking-wide text-text-primary truncate">{latest.subject}</span>
+            <span className="text-[10px] text-text-muted uppercase tracking-wider truncate">{latest.body}</span>
           </span>
           {messages.length > 1 && (
-            <span className="shrink-0 ml-0.5 h-4 min-w-4 px-1 rounded-full bg-bg-primary border border-border-sub text-[8px] font-mono font-bold text-text-muted flex items-center justify-center">
+            <span className="shrink-0 ml-0.5 h-4 min-w-4 px-1 rounded-full bg-bg-primary border border-border-sub text-[10px] font-mono font-bold text-text-muted flex items-center justify-center">
               +{messages.length - 1}
             </span>
           )}
@@ -217,7 +217,7 @@ export function NotificationBell() {
           className="relative h-10 gap-2 border-border-main bg-bg-secondary px-3 group"
         >
           <Bell size={18} className="text-text-muted group-hover:text-brand-red transition-colors" aria-hidden="true" />
-          <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-text-muted group-hover:text-text-primary">
+          <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider text-text-muted group-hover:text-text-primary">
             Alerts
           </span>
           {messages.length > 0 && (
@@ -230,8 +230,8 @@ export function NotificationBell() {
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
         <div className="p-4 border-b border-border-sub bg-bg-tertiary flex items-center justify-between">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-primary">Operational Message Center</h3>
-            <Badge variant="outline" className="text-[8px] bg-bg-primary border-border-sub font-mono">{messages.length} Active</Badge>
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-primary">Operational Message Center</h3>
+            <Badge variant="outline" className="text-[10px] bg-bg-primary border-border-sub font-mono">{messages.length} Active</Badge>
         </div>
         <ScrollArea className="max-h-[350px]">
             {messages.length > 0 ? (
@@ -258,14 +258,14 @@ export function NotificationBell() {
                                                 <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide leading-tight line-clamp-1">{msg.subject}</p>
                                                 {msg.isLocked && <Lock size={10} className="text-brand-red" />}
                                             </div>
-                                            <span className="text-[8px] text-text-muted font-mono whitespace-nowrap">{format(parseISO(msg.timestamp), 'h:mm a')}</span>
+                                            <span className="text-[10px] text-text-muted font-mono whitespace-nowrap">{format(parseISO(msg.timestamp), 'h:mm a')}</span>
                                         </div>
-                                        <p className="text-[9px] text-text-secondary leading-relaxed uppercase font-medium line-clamp-2 text-left">{msg.body}</p>
+                                        <p className="text-[11px] text-text-secondary leading-relaxed font-medium line-clamp-2 text-left">{msg.body}</p>
                                         <div className="flex items-center gap-1.5 pt-1.5 opacity-60">
-                                            <div className="h-4 w-4 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[7px] font-bold">
+                                            <div className="h-4 w-4 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[10px] font-bold">
                                                 {(msg.senderName || 'A').charAt(0)}
                                             </div>
-                                            <span className="text-[8px] text-text-muted font-bold uppercase tracking-widest">Admin: {msg.senderName}</span>
+                                            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Admin: {msg.senderName}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -293,13 +293,13 @@ export function NotificationBell() {
             ) : (
                 <div className="p-12 text-center space-y-2">
                     <CheckCircle2 size={24} className="mx-auto text-text-green opacity-20" />
-                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em]">All directives acknowledged</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">All directives acknowledged</p>
                 </div>
             )}
         </ScrollArea>
         {messages.length > 3 && (
             <div className="p-2.5 border-t border-border-sub bg-bg-tertiary/50 text-center">
-                <p className="text-[8px] font-bold text-text-muted uppercase tracking-[0.2em]">
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
                     Showing 3 most recent · {messages.length - 3} more active
                 </p>
             </div>

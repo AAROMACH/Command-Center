@@ -191,7 +191,7 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
             <div className="rounded-lg border border-border-main bg-bg-secondary p-5 overflow-hidden shadow-sm">
                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-border-main">
                     <div>
-                        <h3 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2 text-left">
+                        <h3 className="text-xs font-bold text-text-muted flex items-center gap-2 text-left">
                             <CalendarIcon size={14} className="text-brand-red"/>
                             Operational Schedule
                         </h3>
@@ -209,7 +209,7 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                 <div className="cal-controls !mb-6">
                     <div className="cal-nav">
                         <button className="nav-btn" onClick={handlePrev}><ChevronLeft size={16}/></button>
-                        <span className="cal-period !min-w-[140px] !text-xs uppercase tracking-widest text-center font-bold">
+                        <span className="cal-period !min-w-[140px] !text-xs text-center font-bold">
                             {viewMode === 'week' 
                                 ? `${format(startOfWeek(currentDate, { weekStartsOn: 0 }), 'MMM d')} – ${format(endOfWeek(currentDate, { weekStartsOn: 0 }), 'MMM d')}`
                                 : format(currentDate, 'MMMM yyyy')
@@ -221,14 +221,14 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                             size="sm" 
                             onClick={handleSeeAllToggle} 
                             className={cn(
-                                "h-6 text-[9px] uppercase font-bold tracking-widest ml-2 px-2 border border-border-sub hover:bg-bg-tertiary transition-all",
+                                "h-6 text-[10px] uppercase font-bold tracking-wider ml-2 px-2 border border-border-sub hover:bg-bg-tertiary transition-all",
                                 isAllSelected && "bg-brand-red text-white border-brand-red hover:bg-brand-red-hover"
                             )}
                         >
                             {isAllSelected ? 'Reset View' : 'See All'}
                         </Button>
                     </div>
-                    <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+                    <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
                        {selectedDates.length === 1 ? format(selectedDates[0], 'EEEE, MMM d') : `${selectedDates.length} Dates Selected`}
                     </div>
                 </div>
@@ -294,11 +294,11 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                                     <div className="job-body !p-3">
                                         <div className="job-left text-left">
                                             <div className="flex items-center gap-2 mb-1 w-full justify-start text-left">
-                                                <Badge variant="outline" className="text-[7px] uppercase h-3.5 px-1 bg-bg-tertiary">
+                                                <Badge variant="outline" className="text-[10px] h-3.5 px-1 bg-bg-tertiary">
                                                     {wo.projectType === 'Project' ? <Briefcase size={8} className="mr-1"/> : <Wrench size={8} className="mr-1"/>}
                                                     {wo.projectType}
                                                 </Badge>
-                                                <span className="job-wo !text-[9px] !px-1.5">{displayWorkOrderNumber(wo)}</span>
+                                                <span className="job-wo !text-[11px] !px-1.5">{displayWorkOrderNumber(wo)}</span>
                                             </div>
                                             <div className="job-title-row !mb-1 !justify-start text-left">
                                                 <span className="job-title !text-[11px] text-left truncate w-full">{wo.title || wo.description}</span>
@@ -312,20 +312,20 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                                         </div>
                                         <div className="job-right shrink-0">
                                             {wo.status === 'completed' ? (
-                                                <div className="text-[10px] font-bold text-text-green flex items-center gap-1 uppercase"><CircleCheck size={12}/> Done</div>
+                                                <div className="text-[10px] font-bold text-text-green flex items-center gap-1"><CircleCheck size={12}/> Done</div>
                                             ) : wo.status === 'in-progress' ? (
                                                 isImported(wo) ? (
-                                                    <button className="h-7 px-3 rounded bg-text-green text-white text-[10px] uppercase font-bold hover:bg-text-green/90" onClick={(e) => handleComplete(e, wo.id)}>
+                                                    <button className="h-7 px-3 rounded bg-text-green text-white text-[10px] font-bold hover:bg-text-green/90" onClick={(e) => handleComplete(e, wo.id)}>
                                                         DONE
                                                     </button>
                                                 ) : (
-                                                    <button className="h-7 px-3 rounded bg-bg-primary border border-border-sub text-[10px] text-text-red uppercase font-bold hover:bg-brand-red-dim" onClick={(e) => handleCheckOut(e, wo.id)}>
+                                                    <button className="h-7 px-3 rounded bg-bg-primary border border-border-sub text-[10px] text-text-red font-bold hover:bg-brand-red-dim" onClick={(e) => handleCheckOut(e, wo.id)}>
                                                         OUT
                                                     </button>
                                                 )
                                             ) : (
                                                 <button 
-                                                    className="h-7 px-3 rounded bg-brand-red text-white text-[10px] uppercase font-bold hover:bg-brand-red-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="h-7 px-3 rounded bg-brand-red text-white text-[10px] font-bold hover:bg-brand-red-hover disabled:opacity-50 disabled:cursor-not-allowed"
                                                     disabled={!!activeSession}
                                                     onClick={(e) => handleCheckIn(e, wo.id)}
                                                 >
@@ -339,7 +339,7 @@ export function ScheduleBox({ workOrders, onStatusTransition }: ScheduleBoxProps
                         ))
                     ) : (
                         <div className="p-8 text-center border border-dashed border-border-main rounded-md">
-                            <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted italic">No missions scheduled for selected coordinates</div>
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted italic">No missions scheduled for selected coordinates</div>
                         </div>
                     )}
                 </div>

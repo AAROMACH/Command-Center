@@ -17,7 +17,7 @@ import {
 } from '@/lib/billing';
 import { approveRequest, createSubscription, updateSubscription } from '@/lib/billing-actions';
 
-const labelCls = 'text-[10px] font-black uppercase tracking-widest text-text-muted';
+const labelCls = 'text-[10px] font-bold uppercase tracking-wider text-text-muted';
 const inputCls = 'h-10 text-xs bg-bg-secondary border-border-main';
 
 export type SubscriptionDialogMode =
@@ -113,7 +113,7 @@ export function SubscriptionDialog({
     <Dialog open={!!mode} onOpenChange={v => { if (!v && !saving) onClose(); }}>
       <DialogContent className="sm:max-w-[520px] max-h-[90vh] p-0 flex flex-col bg-bg-elevated border-border-main">
         <DialogHeader className="p-4 sm:p-6 pb-3 border-b border-border-sub text-left">
-          <DialogTitle className="text-[13px] font-black uppercase tracking-widest">{title}</DialogTitle>
+          <DialogTitle className="text-[13px] font-bold">{title}</DialogTitle>
           <DialogDescription className="text-xs">
             Billed by invoice from the app until Stripe is connected; then Stripe charges automatically.
           </DialogDescription>
@@ -181,7 +181,7 @@ export function SubscriptionDialog({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-[9px] text-text-muted">Use Cancel on the subscription to end it.</p>
+              <p className="text-[11px] text-text-muted">Use Cancel on the subscription to end it.</p>
             </div>
           )}
           <div className="space-y-1">
@@ -191,8 +191,8 @@ export function SubscriptionDialog({
           </div>
         </div>
         <DialogFooter className="p-4 sm:p-6 border-t border-border-sub flex flex-col-reverse sm:flex-row gap-2">
-          <Button variant="outline" onClick={onClose} disabled={saving} className="h-10 w-full sm:w-auto text-[10px] font-black uppercase">Cancel</Button>
-          <Button onClick={handleSave} disabled={saving} className="h-10 w-full sm:w-auto bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+          <Button variant="outline" onClick={onClose} disabled={saving} className="h-10 w-full sm:w-auto text-[10px] font-bold">Cancel</Button>
+          <Button onClick={handleSave} disabled={saving} className="h-10 w-full sm:w-auto bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
             {saving && <Loader2 size={12} className="mr-1.5 animate-spin" />}
             {mode?.kind === 'approve' ? 'Approve & Start' : mode?.kind === 'create' ? 'Start Subscription' : 'Save'}
           </Button>

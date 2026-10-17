@@ -208,7 +208,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="lg:col-span-2 space-y-4 text-left">
                     <div className="field-group">
-                        <h3 className="field-group-title uppercase font-bold tracking-widest"><FileText className="text-brand-red h-4 w-4"/> Site Briefing</h3>
+                        <h3 className="field-group-title font-bold"><FileText className="text-brand-red h-4 w-4"/> Site Briefing</h3>
                         
                         <div className="field-row">
                             <label className="field-label">Scope of Work</label>
@@ -295,13 +295,13 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                      {showMoney && (
                      <div className="field-group !pb-2">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="field-group-title !mb-0 font-bold uppercase tracking-widest"><DollarSign className="text-brand-red h-4 w-4"/> Project Economics</h3>
+                            <h3 className="field-group-title !mb-0 font-bold"><DollarSign className="text-brand-red h-4 w-4"/> Project Economics</h3>
                             <Badge 
                                 variant={
                                     projectEconomics.budgetStatus === 'Over Budget' ? 'missed' : 
                                     projectEconomics.budgetStatus === 'Near Limit' ? 'onhold' : 'active'
                                 }
-                                className="text-[9px] uppercase tracking-widest px-3 h-5"
+                                className="text-[10px] uppercase tracking-wider px-3 h-5"
                             >
                                 {projectEconomics.budgetStatus}
                             </Badge>
@@ -309,31 +309,31 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                         
                         <div className="grid grid-cols-5 gap-px bg-border-sub border border-border-sub rounded-lg overflow-hidden mb-4">
                             <div className="bg-bg-primary p-3 space-y-1">
-                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Master Budget</p>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Master Budget</p>
                                 <p className="text-xs font-mono font-bold text-text-primary">
                                     {project.projectBudget ? formatCurrency(project.projectBudget) : 'TBD'}
                                 </p>
                             </div>
                             <div className="bg-bg-primary p-3 space-y-1">
-                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Est. Hours</p>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Est. Hours</p>
                                 <p className="text-xs font-mono font-bold text-text-primary">
                                     {projectEconomics.estimatedHours ? `${projectEconomics.estimatedHours}h` : 'TBD'}
                                 </p>
                             </div>
                             <div className="bg-bg-primary p-3 space-y-1">
-                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Logged Hours</p>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Logged Hours</p>
                                 <p className={cn("text-xs font-mono font-bold", projectEconomics.loggedHours > 0 ? "text-accent-gold" : "text-text-muted")}>
                                     {projectEconomics.loggedHours.toFixed(1)}h
                                 </p>
                             </div>
                             <div className="bg-bg-primary p-3 space-y-1">
-                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Remaining</p>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Remaining</p>
                                 <p className={cn("text-xs font-mono font-bold", projectEconomics.remainingBudget < 0 ? "text-text-red" : "text-text-green")}>
                                     {project.projectBudget ? formatCurrency(projectEconomics.remainingBudget) : 'TBD'}
                                 </p>
                             </div>
                             <div className="bg-bg-primary p-3 space-y-1">
-                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
                                     {projectEconomics.isActualProfit ? 'Actual Profit' : 'Est. Profit'}
                                 </p>
                                 <p className="text-xs font-mono font-bold text-text-primary">
@@ -347,7 +347,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                             <div className="space-y-3 mb-4 px-0.5">
                                 {projectEconomics.estimatedHours > 0 && (
                                     <div className="space-y-1">
-                                        <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-text-muted">
+                                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-text-muted">
                                             <span>Hours Burn Rate</span>
                                             <span className={cn(
                                                 projectEconomics.loggedHours > projectEconomics.estimatedHours ? 'text-text-red' :
@@ -370,7 +370,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                                 )}
                                 {project.projectBudget && projectEconomics.actualCost > 0 && (
                                     <div className="space-y-1">
-                                        <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-text-muted">
+                                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-text-muted">
                                             <span>Budget Consumed</span>
                                             <span className={cn(
                                                 projectEconomics.actualCost > project.projectBudget ? 'text-text-red' :
@@ -397,7 +397,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                         <Collapsible open={isEconomicDetailsOpen} onOpenChange={setIsEconomicDetailsOpen}>
                             <CollapsibleTrigger asChild>
                                 <Button variant="ghost" className="w-full h-8 flex items-center justify-center gap-2 hover:bg-bg-tertiary transition-colors group">
-                                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em] group-hover:text-text-primary">View Economic details</p>
+                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider group-hover:text-text-primary">View Economic details</p>
                                     {isEconomicDetailsOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                                 </Button>
                             </CollapsibleTrigger>
@@ -405,30 +405,30 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-3">
                                         <div className="flex items-center justify-between border-b border-border-sub/50 pb-1.5 px-1">
-                                            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Cost Breakdown</p>
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Cost Breakdown</p>
                                             <Activity size={12} className="text-brand-red opacity-50" />
                                         </div>
                                         <div className="space-y-2">
                                             <div className="flex justify-between items-center px-1">
-                                                <span className="text-[10px] font-bold text-text-secondary uppercase">Field Labor</span>
+                                                <span className="text-[10px] font-bold text-text-secondary">Field Labor</span>
                                                 <span className={cn("text-[10px] font-mono font-bold", projectEconomics.rateMissing ? "text-text-red" : "text-text-primary")}>
                                                     {projectEconomics.rateMissing ? 'Rate Missing' : formatCurrency(projectEconomics.laborCost)}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between items-center px-1">
-                                                <span className="text-[10px] font-bold text-text-secondary uppercase">Materials & Parts</span>
+                                                <span className="text-[10px] font-bold text-text-secondary">Materials & Parts</span>
                                                 <span className="text-[10px] font-mono font-bold text-text-primary">
                                                     {projectEconomics.materialCost > 0 ? formatCurrency(projectEconomics.materialCost) : '$0.00'}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between items-center px-1">
-                                                <span className="text-[10px] font-bold text-text-secondary uppercase">Incidentals</span>
+                                                <span className="text-[10px] font-bold text-text-secondary">Incidentals</span>
                                                 <span className="text-[10px] font-mono font-bold text-text-primary">
                                                     {projectEconomics.otherExpenses > 0 ? formatCurrency(projectEconomics.otherExpenses) : '$0.00'}
                                                 </span>
                                             </div>
                                             <div className="pt-1 border-t border-border-sub mt-1 flex justify-between items-center px-1">
-                                                <span className="text-[10px] font-black text-text-primary uppercase tracking-widest">Actual Cost</span>
+                                                <span className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Actual Cost</span>
                                                 <span className="text-xs font-mono font-bold text-text-red">{formatCurrency(projectEconomics.actualCost)}</span>
                                             </div>
                                         </div>
@@ -436,23 +436,23 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
 
                                     <div className="space-y-3">
                                         <div className="flex items-center justify-between border-b border-border-sub/50 pb-1.5 px-1">
-                                            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Profit Analysis</p>
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Profit Analysis</p>
                                             <TrendingUp size={12} className="text-text-green opacity-50" />
                                         </div>
                                         <div className="space-y-2">
                                             <div className="flex justify-between items-center px-1">
-                                                <span className="text-[10px] font-bold text-text-secondary uppercase">Projected Revenue</span>
+                                                <span className="text-[10px] font-bold text-text-secondary">Projected Revenue</span>
                                                 <span className="text-[10px] font-mono font-bold text-text-primary">{formatCurrency(projectEconomics.revenue)}</span>
                                             </div>
                                             <div className="flex justify-between items-center px-1">
-                                                <span className="text-[10px] font-bold text-text-secondary uppercase">Profit Margin</span>
+                                                <span className="text-[10px] font-bold text-text-secondary">Profit Margin</span>
                                                 <span className={cn("text-[10px] font-mono font-bold", projectEconomics.margin > 20 ? "text-text-green" : "text-accent-gold")}>
                                                     {project.projectBudget ? `${projectEconomics.margin.toFixed(1)}%` : 'TBD'}
                                                 </span>
                                             </div>
                                             <div className="p-3 mt-2 rounded bg-bg-primary border border-border-sub flex items-start gap-2">
                                                 <Info size={12} className="text-text-muted shrink-0 mt-0.5" />
-                                                <p className="text-[9px] text-text-muted leading-relaxed uppercase text-left">
+                                                <p className="text-[11px] text-text-muted leading-relaxed text-left">
                                                     Economics are aggregated from project-linked work orders, time logs, and finalized invoices.
                                                 </p>
                                             </div>
@@ -468,13 +468,13 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                 <div className="lg:col-span-1 space-y-4">
                     <div className="field-group">
                          <div className="flex justify-between items-center mb-4">
-                            <h3 className="field-group-title !mb-0 font-bold uppercase tracking-widest"><Users size={14} className="text-brand-red h-4 w-4"/> Project Team</h3>
+                            <h3 className="field-group-title !mb-0 font-bold"><Users size={14} className="text-brand-red h-4 w-4"/> Project Team</h3>
                             <Button 
                                 variant="outline" 
                                 size="sm" 
                                 onClick={() => !isReadOnly && setIsTeamDialogOpen(true)}
                                 disabled={isReadOnly}
-                                className="h-8 !text-[10px] uppercase font-bold tracking-widest"
+                                className="h-8 !text-[10px] uppercase font-bold tracking-wider"
                             >
                                 Manage Team
                             </Button>
@@ -490,14 +490,14 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                                             <AvatarFallback>{tech.name.split(' ').map(n=>n[0]).join('')}</AvatarFallback>
                                         </Avatar>
                                         <div className="flex-1 text-left overflow-hidden">
-                                            <p className="font-bold text-xs text-text-primary uppercase truncate text-left">{tech.name}</p>
-                                            <p className="text-xs text-text-muted uppercase font-bold text-[9px] tracking-widest text-left">{member.role}</p>
+                                            <p className="font-bold text-xs text-text-primary truncate text-left">{tech.name}</p>
+                                            <p className="text-xs text-text-muted uppercase font-bold text-[10px] tracking-wider text-left">{member.role}</p>
                                         </div>
                                     </div>
                                 )
                             })}
                             {(project.team || []).length === 0 && (
-                                <p className="text-[10px] text-text-muted uppercase font-bold text-center py-8 border border-dashed border-border-sub rounded-md italic">No personnel assigned</p>
+                                <p className="text-[10px] text-text-muted font-bold text-center py-8 border border-dashed border-border-sub rounded-md italic">No personnel assigned</p>
                             )}
                         </div>
                     </div>
@@ -506,8 +506,8 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
 
             {!isReadOnly && isDirty && (
                 <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-border-sub animate-in fade-in slide-in-from-top-2 duration-300">
-                    <Button variant="outline" className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest" onClick={handleCancelChanges}>Discard Changes</Button>
-                    <Button variant="default" className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover" onClick={handleSaveChanges}>Commit Updates</Button>
+                    <Button variant="outline" className="h-10 px-8 uppercase font-bold text-[10px] tracking-wider" onClick={handleCancelChanges}>Discard Changes</Button>
+                    <Button variant="default" className="h-10 px-10 uppercase font-bold text-[10px] tracking-wider bg-brand-red hover:bg-brand-red-hover" onClick={handleSaveChanges}>Commit Updates</Button>
                 </div>
             )}
             

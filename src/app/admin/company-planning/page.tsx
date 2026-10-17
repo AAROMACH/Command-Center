@@ -87,7 +87,7 @@ export default function CompanyPlanningPage() {
                         <Flag size={12} /> Internal Operations
                     </p>
                     <h1 className="page-title">Company Planning</h1>
-                    <p className="page-subtitle text-xs font-bold text-text-muted uppercase tracking-widest mt-1">
+                    <p className="page-subtitle text-xs font-bold text-text-muted mt-1">
                         Strategic goals, roadmap milestones, and recurring operational tasks.
                     </p>
                 </div>
@@ -103,7 +103,7 @@ export default function CompanyPlanningPage() {
                         <TabsTrigger key={t.value} value={t.value} className="tab-trigger-plans flex items-center gap-2">
                             {t.label}
                             {t.count > 0 && (
-                                <span className="text-[8px] font-black bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">{t.count}</span>
+                                <span className="text-[10px] font-bold bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">{t.count}</span>
                             )}
                         </TabsTrigger>
                     ))}
@@ -112,10 +112,10 @@ export default function CompanyPlanningPage() {
                 {/* Goals */}
                 <TabsContent value="goals" className="m-0 pt-4">
                     <div className="flex items-center justify-between mb-4">
-                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
                             {goals.length} Strategic Goal{goals.length !== 1 ? 's' : ''}
                         </p>
-                        <Button size="sm" className="h-8 text-[10px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setGoalDialogOpen(true)}>
+                        <Button size="sm" className="h-8 text-[10px] font-bold bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setGoalDialogOpen(true)}>
                             <Plus size={11} className="mr-1.5" /> Add Goal
                         </Button>
                     </div>
@@ -130,14 +130,14 @@ export default function CompanyPlanningPage() {
                                     <div className="flex items-center gap-3 min-w-0">
                                         <Flag size={12} className="text-brand-red shrink-0" />
                                         <div className="min-w-0">
-                                            <p className="text-[11px] font-bold text-text-primary uppercase truncate">{g.title}</p>
-                                            {g.owner && <p className="text-[9px] text-text-muted">{g.owner}</p>}
+                                            <p className="text-[11px] font-bold text-text-primary truncate">{g.title}</p>
+                                            {g.owner && <p className="text-[11px] text-text-muted">{g.owner}</p>}
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3 shrink-0">
-                                        {g.dueDate && <p className="text-[9px] text-text-muted">{parseLocalDate(g.dueDate)?.toLocaleDateString() ?? g.dueDate}</p>}
+                                        {g.dueDate && <p className="text-[11px] text-text-muted">{parseLocalDate(g.dueDate)?.toLocaleDateString() ?? g.dueDate}</p>}
                                         <Select value={g.status} onValueChange={v => handleUpdateGoalStatus(g.id, v)}>
-                                            <SelectTrigger className={cn('h-6 text-[8px] font-black uppercase border px-2 rounded w-auto gap-1', statusColor)}>
+                                            <SelectTrigger className={cn('h-6 text-[10px] font-bold border px-2 rounded w-auto gap-1', statusColor)}>
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -149,7 +149,7 @@ export default function CompanyPlanningPage() {
                             );
                         })}
                         {goals.length === 0 && (
-                            <div className="text-center py-12 text-[10px] text-text-muted uppercase tracking-widest border border-dashed border-border-sub rounded-xl">
+                            <div className="text-center py-12 text-[10px] text-text-muted uppercase tracking-wider border border-dashed border-border-sub rounded-xl">
                                 No strategic goals defined
                             </div>
                         )}
@@ -159,10 +159,10 @@ export default function CompanyPlanningPage() {
                 {/* Roadmap */}
                 <TabsContent value="roadmap" className="m-0 pt-4">
                     <div className="flex items-center justify-between mb-4">
-                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
                             {milestones.length} Milestone{milestones.length !== 1 ? 's' : ''}
                         </p>
-                        <Button size="sm" className="h-8 text-[10px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setMilestoneDialogOpen(true)}>
+                        <Button size="sm" className="h-8 text-[10px] font-bold bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setMilestoneDialogOpen(true)}>
                             <Plus size={11} className="mr-1.5" /> Add Milestone
                         </Button>
                     </div>
@@ -171,13 +171,13 @@ export default function CompanyPlanningPage() {
                         return (
                             <div key={q} className="mb-4">
                                 <div className="flex items-center gap-3 mb-2">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-text-muted bg-bg-tertiary border border-border-sub px-2 py-0.5 rounded">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted bg-bg-tertiary border border-border-sub px-2 py-0.5 rounded">
                                         {q} {new Date().getFullYear()}
                                     </span>
                                     <div className="flex-1 h-px bg-border-sub" />
                                 </div>
                                 {qMilestones.length === 0 ? (
-                                    <p className="text-[9px] text-text-muted uppercase text-center py-3">No milestones</p>
+                                    <p className="text-[11px] text-text-muted text-center py-3">No milestones</p>
                                 ) : qMilestones.map(m => {
                                     const statusColor =
                                         m.status === 'Completed' ? 'text-text-green' :
@@ -188,14 +188,14 @@ export default function CompanyPlanningPage() {
                                             <div className="flex items-center gap-2 min-w-0">
                                                 <Milestone size={11} className={statusColor} />
                                                 <div className="min-w-0">
-                                                    <p className="text-[11px] font-bold text-text-primary uppercase truncate">{m.title}</p>
-                                                    {m.owner && <p className="text-[9px] text-text-muted">{m.owner}</p>}
+                                                    <p className="text-[11px] font-bold text-text-primary truncate">{m.title}</p>
+                                                    {m.owner && <p className="text-[11px] text-text-muted">{m.owner}</p>}
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-3 shrink-0">
-                                                {m.targetDate && <p className="text-[9px] text-text-muted">{new Date(m.targetDate).toLocaleDateString()}</p>}
+                                                {m.targetDate && <p className="text-[11px] text-text-muted">{new Date(m.targetDate).toLocaleDateString()}</p>}
                                                 <Select value={m.status} onValueChange={v => handleUpdateMilestoneStatus(m.id, v)}>
-                                                    <SelectTrigger className={cn('h-6 text-[8px] font-black uppercase w-auto gap-1', statusColor)}>
+                                                    <SelectTrigger className={cn('h-6 text-[10px] font-bold w-auto gap-1', statusColor)}>
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -214,10 +214,10 @@ export default function CompanyPlanningPage() {
                 {/* Recurring Tasks */}
                 <TabsContent value="recurring" className="m-0 pt-4">
                     <div className="flex items-center justify-between mb-4">
-                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
                             {recurringTasks.length} Recurring Task{recurringTasks.length !== 1 ? 's' : ''}
                         </p>
-                        <Button size="sm" className="h-8 text-[10px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setTaskDialogOpen(true)}>
+                        <Button size="sm" className="h-8 text-[10px] font-bold bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setTaskDialogOpen(true)}>
                             <Plus size={11} className="mr-1.5" /> Add Task
                         </Button>
                     </div>
@@ -230,16 +230,16 @@ export default function CompanyPlanningPage() {
                                     <div className="flex items-center gap-3 min-w-0">
                                         <RefreshCw size={11} className={isOverdue ? 'text-brand-red' : 'text-text-muted'} />
                                         <div className="min-w-0">
-                                            <p className="text-[11px] font-bold text-text-primary uppercase truncate">{t.title}</p>
-                                            <p className="text-[9px] text-text-muted capitalize">{t.frequency} · {t.assignedTo || 'Unassigned'}</p>
+                                            <p className="text-[11px] font-bold text-text-primary truncate">{t.title}</p>
+                                            <p className="text-[11px] text-text-muted capitalize">{t.frequency} · {t.assignedTo || 'Unassigned'}</p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3 shrink-0">
                                         {t.lastCompleted && (
-                                            <p className="text-[9px] text-text-muted">Done: {new Date(t.lastCompleted).toLocaleDateString()}</p>
+                                            <p className="text-[11px] text-text-muted">Done: {new Date(t.lastCompleted).toLocaleDateString()}</p>
                                         )}
                                         {nextDue && (
-                                            <span className={cn('text-[8px] font-black uppercase', isOverdue ? 'text-brand-red' : 'text-text-muted')}>
+                                            <span className={cn('text-[10px] font-bold', isOverdue ? 'text-brand-red' : 'text-text-muted')}>
                                                 Due: {nextDue.toLocaleDateString()}
                                             </span>
                                         )}
@@ -248,7 +248,7 @@ export default function CompanyPlanningPage() {
                             );
                         })}
                         {recurringTasks.length === 0 && (
-                            <div className="text-center py-12 text-[10px] text-text-muted uppercase tracking-widest border border-dashed border-border-sub rounded-xl">
+                            <div className="text-center py-12 text-[10px] text-text-muted uppercase tracking-wider border border-dashed border-border-sub rounded-xl">
                                 No recurring tasks configured
                             </div>
                         )}
@@ -260,25 +260,25 @@ export default function CompanyPlanningPage() {
             <Dialog open={goalDialogOpen} onOpenChange={setGoalDialogOpen}>
                 <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
                     <DialogHeader>
-                        <DialogTitle className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+                        <DialogTitle className="text-[13px] font-bold flex items-center gap-2">
                             <Flag size={14} className="text-brand-red" /> Add Strategic Goal
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Goal Title</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Goal Title</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={goalForm.title} onChange={e => setGoalForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Expand to 3 new markets" />
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Owner</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Owner</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={goalForm.owner} onChange={e => setGoalForm(p => ({ ...p, owner: e.target.value }))} placeholder="Name or department" />
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Due Date</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Due Date</Label>
                             <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={goalForm.dueDate} onChange={e => setGoalForm(p => ({ ...p, dueDate: e.target.value }))} />
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Status</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Status</Label>
                             <Select value={goalForm.status} onValueChange={v => setGoalForm(p => ({ ...p, status: v }))}>
                                 <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue /></SelectTrigger>
                                 <SelectContent>
@@ -288,8 +288,8 @@ export default function CompanyPlanningPage() {
                         </div>
                     </div>
                     <DialogFooter className="gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setGoalDialogOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
-                        <Button size="sm" disabled={!goalForm.title || saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase" onClick={handleAddGoal}>
+                        <Button variant="outline" size="sm" onClick={() => setGoalDialogOpen(false)} className="text-[10px] font-bold">Cancel</Button>
+                        <Button size="sm" disabled={!goalForm.title || saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold" onClick={handleAddGoal}>
                             {saving ? 'Saving...' : 'Add Goal'}
                         </Button>
                     </DialogFooter>
@@ -300,17 +300,17 @@ export default function CompanyPlanningPage() {
             <Dialog open={milestoneDialogOpen} onOpenChange={setMilestoneDialogOpen}>
                 <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
                     <DialogHeader>
-                        <DialogTitle className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+                        <DialogTitle className="text-[13px] font-bold flex items-center gap-2">
                             <Milestone size={14} className="text-brand-red" /> Add Milestone
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Title</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Title</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={milestoneForm.title} onChange={e => setMilestoneForm(p => ({ ...p, title: e.target.value }))} placeholder="Milestone name" />
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Quarter</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Quarter</Label>
                             <Select value={milestoneForm.quarter} onValueChange={v => setMilestoneForm(p => ({ ...p, quarter: v }))}>
                                 <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue /></SelectTrigger>
                                 <SelectContent>
@@ -319,17 +319,17 @@ export default function CompanyPlanningPage() {
                             </Select>
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Target Date</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Target Date</Label>
                             <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={milestoneForm.targetDate} onChange={e => setMilestoneForm(p => ({ ...p, targetDate: e.target.value }))} />
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Owner</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Owner</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={milestoneForm.owner} onChange={e => setMilestoneForm(p => ({ ...p, owner: e.target.value }))} placeholder="Name or department" />
                         </div>
                     </div>
                     <DialogFooter className="gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setMilestoneDialogOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
-                        <Button size="sm" disabled={!milestoneForm.title || saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase" onClick={handleAddMilestone}>
+                        <Button variant="outline" size="sm" onClick={() => setMilestoneDialogOpen(false)} className="text-[10px] font-bold">Cancel</Button>
+                        <Button size="sm" disabled={!milestoneForm.title || saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold" onClick={handleAddMilestone}>
                             {saving ? 'Saving...' : 'Add Milestone'}
                         </Button>
                     </DialogFooter>
@@ -340,17 +340,17 @@ export default function CompanyPlanningPage() {
             <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
                 <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
                     <DialogHeader>
-                        <DialogTitle className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+                        <DialogTitle className="text-[13px] font-bold flex items-center gap-2">
                             <RefreshCw size={14} className="text-brand-red" /> Add Recurring Task
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Task Title</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Task Title</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={taskForm.title} onChange={e => setTaskForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Weekly team standup" />
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Frequency</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Frequency</Label>
                             <Select value={taskForm.frequency} onValueChange={v => setTaskForm(p => ({ ...p, frequency: v }))}>
                                 <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue /></SelectTrigger>
                                 <SelectContent>
@@ -361,24 +361,19 @@ export default function CompanyPlanningPage() {
                             </Select>
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Assigned To</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Assigned To</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={taskForm.assignedTo} onChange={e => setTaskForm(p => ({ ...p, assignedTo: e.target.value }))} placeholder="Name or team" />
                         </div>
                     </div>
                     <DialogFooter className="gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setTaskDialogOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
-                        <Button size="sm" disabled={!taskForm.title || saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase" onClick={handleAddTask}>
+                        <Button variant="outline" size="sm" onClick={() => setTaskDialogOpen(false)} className="text-[10px] font-bold">Cancel</Button>
+                        <Button size="sm" disabled={!taskForm.title || saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold" onClick={handleAddTask}>
                             {saving ? 'Saving...' : 'Add Task'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            <style jsx global>{`
-                .tab-trigger-plans {
-                    @apply px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
-                }
-            `}</style>
         </div>
     );
 }

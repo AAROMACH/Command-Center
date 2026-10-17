@@ -36,11 +36,11 @@ import {
 import { changeLeadStage } from '@/lib/crm-actions';
 import { useCrmPaths } from '@/lib/crm-paths';
 
-const thCls = 'text-[9px] font-black uppercase tracking-widest text-text-muted';
+const thCls = 'text-[10px] font-bold uppercase tracking-wider text-text-muted';
 
 function StageBadge({ stage }: { stage: Stage }) {
   const s = STAGES.find(x => x.key === stage);
-  return <Badge className={`text-[8px] h-5 uppercase border ${s?.bg} ${s?.color} border-current/20`}>{s?.label}</Badge>;
+  return <Badge className={`text-[10px] h-5 uppercase border ${s?.bg} ${s?.color} border-current/20`}>{s?.label}</Badge>;
 }
 
 function LeadCard({ lead, onMoveNext, onOpen, onConvert }: {
@@ -72,7 +72,7 @@ function LeadCard({ lead, onMoveNext, onOpen, onConvert }: {
       <div className="p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-wide text-text-primary truncate leading-tight">{lead.companyName}</p>
+            <p className="text-xs font-bold tracking-wide text-text-primary truncate leading-tight">{lead.companyName}</p>
             {lead.contactName && (
               <p className="text-[10px] text-text-muted mt-0.5 flex items-center gap-1 truncate">
                 <User size={9} className="shrink-0" /> {lead.contactName}
@@ -80,7 +80,7 @@ function LeadCard({ lead, onMoveNext, onOpen, onConvert }: {
             )}
           </div>
           {lead.estimatedValue > 0 && (
-            <span className="text-[10px] font-black text-text-green shrink-0">{formatMoney(lead.estimatedValue, true)}</span>
+            <span className="text-[10px] font-bold text-text-green shrink-0">{formatMoney(lead.estimatedValue, true)}</span>
           )}
         </div>
 
@@ -92,28 +92,28 @@ function LeadCard({ lead, onMoveNext, onOpen, onConvert }: {
 
         <div className="flex items-center gap-1.5 flex-wrap">
           {stale && (
-            <Badge className="text-[8px] h-4 uppercase bg-amber-400/10 text-amber-400 border border-amber-400/20">
+            <Badge className="text-[10px] h-4 bg-amber-400/10 text-amber-400 border border-amber-400/20">
               <AlertTriangle size={8} className="mr-0.5" /> {daysSince(lastTouch(lead))}d idle
             </Badge>
           )}
           {followUpDue && (
-            <Badge className="text-[8px] h-4 uppercase bg-brand-red/10 text-brand-red border border-brand-red/20">
+            <Badge className="text-[10px] h-4 bg-brand-red/10 text-brand-red border border-brand-red/20">
               <Calendar size={8} className="mr-0.5" /> Follow-up
             </Badge>
           )}
           {(lead.serviceLines || []).slice(0, 2).map(s => (
-            <Badge key={s} className="text-[8px] h-4 uppercase bg-bg-tertiary border-border-sub text-text-muted">{s}</Badge>
+            <Badge key={s} className="text-[10px] h-4 bg-bg-tertiary border-border-sub text-text-muted">{s}</Badge>
           ))}
         </div>
       </div>
 
       <div className="border-t border-border-sub px-3 py-2 flex items-center justify-between gap-2">
-        <p className="text-[9px] text-text-muted uppercase tracking-wider truncate">
+        <p className="text-[10px] text-text-muted uppercase tracking-wider truncate">
           {lead.assignedToName || ''}{lead.expectedCloseDate ? ` · close ${lead.expectedCloseDate.slice(5)}` : ''}
         </p>
         {hasNext && (
           <Button size="sm" variant="ghost"
-            className="h-6 px-2 text-[9px] font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity text-text-muted hover:text-text-primary"
+            className="h-6 px-2 text-[11px] font-bold opacity-0 group-hover:opacity-100 transition-opacity text-text-muted hover:text-text-primary"
             onPointerDown={e => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onMoveNext(lead); }}>
             <ChevronRight size={11} />
@@ -121,7 +121,7 @@ function LeadCard({ lead, onMoveNext, onOpen, onConvert }: {
         )}
         {lead.stage === 'won' && !lead.convertedToClient && (
           <Button size="sm"
-            className="h-6 px-2 text-[8px] font-bold uppercase bg-text-green/10 text-text-green border border-text-green/20 hover:bg-text-green hover:text-white transition-colors"
+            className="h-6 px-2 text-[10px] font-bold bg-text-green/10 text-text-green border border-text-green/20 hover:bg-text-green hover:text-white transition-colors"
             onPointerDown={e => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onConvert(lead); }}>
             <UserCheck size={9} className="mr-1" /> Convert
@@ -143,10 +143,10 @@ function StageColumn({ stage, leads, loading, children }: {
     <div ref={setNodeRef} className={cn('w-[250px] flex-shrink-0 space-y-3 rounded-lg transition-colors', isOver && 'bg-brand-red/5 ring-1 ring-brand-red/30')}>
       <div className={cn('px-3 py-2 rounded-lg border border-border-sub', stage.bg)}>
         <div className="flex items-center justify-between">
-          <span className={cn('text-[9px] font-black uppercase tracking-widest truncate', stage.color)}>{stage.label}</span>
-          <span className={cn('text-[10px] font-black tabular-nums', stage.color)}>{leads.length}</span>
+          <span className={cn('text-[10px] font-bold uppercase tracking-wider truncate', stage.color)}>{stage.label}</span>
+          <span className={cn('text-[10px] font-bold tabular-nums', stage.color)}>{leads.length}</span>
         </div>
-        <p className="text-[9px] text-text-muted font-bold tabular-nums mt-0.5">
+        <p className="text-[11px] text-text-muted font-bold tabular-nums mt-0.5">
           {formatMoney(total, true)}{OPEN_STAGES.includes(stage.key) && total > 0 ? ` · ${formatMoney(weighted, true)} wtd` : ''}
         </p>
       </div>
@@ -155,7 +155,7 @@ function StageColumn({ stage, leads, loading, children }: {
           <div className="h-20 rounded-lg bg-bg-tertiary border border-border-sub animate-pulse" />
         ) : leads.length === 0 ? (
           <div className="h-16 rounded-lg border border-dashed border-border-sub flex items-center justify-center">
-            <p className="text-[9px] text-text-muted uppercase tracking-wider">Drop here</p>
+            <p className="text-[10px] text-text-muted uppercase tracking-wider">Drop here</p>
           </div>
         ) : children}
       </div>
@@ -166,9 +166,9 @@ function StageColumn({ stage, leads, loading, children }: {
 function Stat({ icon: Icon, label, value, sub, tone }: { icon: React.ElementType; label: string; value: string; sub?: string; tone?: string }) {
   return (
     <div className="rounded-xl border border-border-sub bg-bg-secondary p-4">
-      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-1.5"><Icon size={11} /> {label}</p>
+      <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5"><Icon size={11} /> {label}</p>
       <p className={cn('text-xl font-black tabular-nums mt-1', tone || 'text-text-primary')}>{value}</p>
-      {sub && <p className="text-[9px] text-text-muted uppercase tracking-wider mt-0.5">{sub}</p>}
+      {sub && <p className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -182,7 +182,7 @@ function BarRows({ rows }: { rows: { label: string; value: number; display: stri
         <div key={r.label}>
           <div className="flex justify-between text-[10px] mb-1">
             <span className="font-bold uppercase tracking-wider text-text-secondary">{r.label}</span>
-            <span className="font-black tabular-nums text-text-primary">{r.display}{r.sub ? <span className="text-text-muted font-bold"> · {r.sub}</span> : null}</span>
+            <span className="font-bold tabular-nums text-text-primary">{r.display}{r.sub ? <span className="text-text-muted font-bold"> · {r.sub}</span> : null}</span>
           </div>
           <div className="h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
             <div className="h-full bg-brand-red rounded-full" style={{ width: `${(r.value / max) * 100}%` }} />
@@ -486,10 +486,10 @@ export default function CRMPage() {
     </TableRow>
   );
   const emptyRow = (cols: number, text: string) => (
-    <TableRow><TableCell colSpan={cols} className="text-center py-12 text-[10px] text-text-muted uppercase tracking-widest">{text}</TableCell></TableRow>
+    <TableRow><TableCell colSpan={cols} className="text-center py-12 text-[10px] text-text-muted uppercase tracking-wider">{text}</TableCell></TableRow>
   );
 
-  const filterTrigger = 'h-9 w-[140px] bg-bg-primary border-border-main text-[10px] font-bold uppercase tracking-widest';
+  const filterTrigger = 'h-9 w-[140px] bg-bg-primary border-border-main text-[10px] font-bold uppercase tracking-wider';
 
   return (
     <div className="space-y-5 min-h-full">
@@ -533,7 +533,7 @@ export default function CRMPage() {
         <div className="relative flex-1 min-w-[180px]">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
-            className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-main bg-bg-primary text-[11px] font-bold uppercase tracking-wide text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-red transition-colors"
+            className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-main bg-bg-primary text-[11px] font-bold tracking-wide text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-red transition-colors"
             placeholder="Search company, contact, phone, tag..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
@@ -542,26 +542,26 @@ export default function CRMPage() {
         <Select value={ownerFilter} onValueChange={(v: any) => setOwnerFilter(v)}>
           <SelectTrigger className={filterTrigger}><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all" className="text-[10px] uppercase font-bold">All Owners</SelectItem>
-            <SelectItem value="mine" className="text-[10px] uppercase font-bold">My Leads</SelectItem>
-            <SelectItem value="unassigned" className="text-[10px] uppercase font-bold">Unassigned</SelectItem>
+            <SelectItem value="all" className="text-[10px] font-bold">All Owners</SelectItem>
+            <SelectItem value="mine" className="text-[10px] font-bold">My Leads</SelectItem>
+            <SelectItem value="unassigned" className="text-[10px] font-bold">Unassigned</SelectItem>
           </SelectContent>
         </Select>
         <Select value={sourceFilter} onValueChange={setSourceFilter}>
           <SelectTrigger className={filterTrigger}><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all" className="text-[10px] uppercase font-bold">All Sources</SelectItem>
-            {SOURCES.map(s => <SelectItem key={s.key} value={s.key} className="text-[10px] uppercase font-bold">{s.label}</SelectItem>)}
+            <SelectItem value="all" className="text-[10px] font-bold">All Sources</SelectItem>
+            {SOURCES.map(s => <SelectItem key={s.key} value={s.key} className="text-[10px] font-bold">{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={serviceFilter} onValueChange={setServiceFilter}>
           <SelectTrigger className={filterTrigger}><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all" className="text-[10px] uppercase font-bold">All Services</SelectItem>
-            {SERVICE_LINES.map(s => <SelectItem key={s} value={s} className="text-[10px] uppercase font-bold">{s}</SelectItem>)}
+            <SelectItem value="all" className="text-[10px] font-bold">All Services</SelectItem>
+            {SERVICE_LINES.map(s => <SelectItem key={s} value={s} className="text-[10px] font-bold">{s}</SelectItem>)}
           </SelectContent>
         </Select>
-        <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-text-muted cursor-pointer">
+        <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-text-muted cursor-pointer">
           <Checkbox checked={staleOnly} onCheckedChange={v => setStaleOnly(!!v)} /> Stale {STALE_DAYS}d+
         </label>
         <Select value={listSort.col} onValueChange={(v: any) => setListSort({ col: v, dir: defaultSortDir(v) })}>
@@ -569,11 +569,11 @@ export default function CRMPage() {
             <div className="flex items-center gap-2"><ArrowUpDown size={12} className="text-text-muted" /><SelectValue /></div>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="updated" className="text-[10px] uppercase font-bold">Last Updated</SelectItem>
-            <SelectItem value="close" className="text-[10px] uppercase font-bold">Close Date</SelectItem>
-            <SelectItem value="stage" className="text-[10px] uppercase font-bold">By Stage</SelectItem>
-            <SelectItem value="value" className="text-[10px] uppercase font-bold">By Value</SelectItem>
-            <SelectItem value="company" className="text-[10px] uppercase font-bold">By Company</SelectItem>
+            <SelectItem value="updated" className="text-[10px] font-bold">Last Updated</SelectItem>
+            <SelectItem value="close" className="text-[10px] font-bold">Close Date</SelectItem>
+            <SelectItem value="stage" className="text-[10px] font-bold">By Stage</SelectItem>
+            <SelectItem value="value" className="text-[10px] font-bold">By Value</SelectItem>
+            <SelectItem value="company" className="text-[10px] font-bold">By Company</SelectItem>
           </SelectContent>
         </Select>
         <div className="flex items-center border border-border-main rounded-lg overflow-hidden h-9 bg-bg-primary">
@@ -595,13 +595,13 @@ export default function CRMPage() {
           <TabsTrigger value="pipeline" className="crm-tab-trigger">Pipeline</TabsTrigger>
           <TabsTrigger value="myday" className="crm-tab-trigger flex items-center gap-2">
             My Day
-            {myDayCount > 0 && <span className="text-[8px] font-black bg-brand-red text-white px-1.5 py-0.5 rounded">{myDayCount}</span>}
+            {myDayCount > 0 && <span className="text-[10px] font-bold bg-brand-red text-white px-1.5 py-0.5 rounded">{myDayCount}</span>}
           </TabsTrigger>
           <TabsTrigger value="opportunities" className="crm-tab-trigger">Opportunities</TabsTrigger>
           <TabsTrigger value="insights" className="crm-tab-trigger">Insights</TabsTrigger>
           <TabsTrigger value="quotes" className="crm-tab-trigger flex items-center gap-2">
             Quotes
-            {quotes.length > 0 && <span className="text-[8px] font-black bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">{quotes.length}</span>}
+            {quotes.length > 0 && <span className="text-[10px] font-bold bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">{quotes.length}</span>}
           </TabsTrigger>
           <TabsTrigger value="won" className="crm-tab-trigger">Won</TabsTrigger>
           <TabsTrigger value="lost" className="crm-tab-trigger">Lost</TabsTrigger>
@@ -610,12 +610,12 @@ export default function CRMPage() {
         {/* ── Pipeline ── */}
         <TabsContent value="pipeline" className="m-0 pt-3 space-y-3">
           <div className="flex items-center gap-6 px-1 flex-wrap">
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-text-muted"><TrendingUp size={12} /> {openLeads.length} Active</span>
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-text-muted"><DollarSign size={12} /> {formatMoney(totalValue)} Pipeline</span>
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-text-primary"><Percent size={12} /> {formatMoney(weightedTotal)} Weighted</span>
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-text-green"><CheckCircle2 size={12} /> {formatMoney(wonValue)} Won</span>
+            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted"><TrendingUp size={12} /> {openLeads.length} Active</span>
+            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted"><DollarSign size={12} /> {formatMoney(totalValue)} Pipeline</span>
+            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-text-primary"><Percent size={12} /> {formatMoney(weightedTotal)} Weighted</span>
+            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-text-green"><CheckCircle2 size={12} /> {formatMoney(wonValue)} Won</span>
             {staleCount > 0 && (
-              <button onClick={() => setStaleOnly(true)} className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-400 hover:underline">
+              <button onClick={() => setStaleOnly(true)} className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-400 hover:underline">
                 <AlertTriangle size={12} /> {staleCount} Stale
               </button>
             )}
@@ -637,24 +637,24 @@ export default function CRMPage() {
                 </TableHeader>
                 <TableBody>
                   {pager.items.map(lead => leadRow(lead, <>
-                    <TableCell className="font-bold text-[11px] uppercase text-text-primary">
+                    <TableCell className="font-bold text-[11px] text-text-primary">
                       <span className="flex items-center gap-1.5">{isStale(lead) && <AlertTriangle size={10} className="text-amber-400" />}{lead.companyName}</span>
                     </TableCell>
                     <TableCell className="text-[10px] text-text-muted">
                       <div>{lead.contactName}</div>
-                      {lead.contactEmail && <div className="text-[9px] mt-0.5">{lead.contactEmail}</div>}
+                      {lead.contactEmail && <div className="text-[11px] mt-0.5">{lead.contactEmail}</div>}
                     </TableCell>
                     <TableCell onClick={e => e.stopPropagation()}>
                       <Select value={lead.stage} onValueChange={v => handleSetStage(lead, v as Stage)}>
-                        <SelectTrigger className={cn('h-7 text-[9px] font-black uppercase border-0 bg-transparent w-[140px]', STAGES.find(s => s.key === lead.stage)?.color)}><SelectValue /></SelectTrigger>
+                        <SelectTrigger className={cn('h-7 text-[11px] font-bold border-0 bg-transparent w-[140px]', STAGES.find(s => s.key === lead.stage)?.color)}><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-bg-elevated border-border-main">
-                          {STAGES.map(s => <SelectItem key={s.key} value={s.key} className={cn('text-[9px] font-bold uppercase', s.color)}>{s.label}</SelectItem>)}
+                          {STAGES.map(s => <SelectItem key={s.key} value={s.key} className={cn('text-[11px] font-bold', s.color)}>{s.label}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </TableCell>
-                    <TableCell className="text-[11px] font-black font-mono text-text-green">
+                    <TableCell className="text-[11px] font-bold font-mono text-text-green">
                       {lead.estimatedValue > 0 ? formatMoney(lead.estimatedValue) : '—'}
-                      {isOpen(lead) && lead.estimatedValue > 0 && <span className="block text-[9px] text-text-muted font-bold">{probabilityOf(lead)}%</span>}
+                      {isOpen(lead) && lead.estimatedValue > 0 && <span className="block text-[11px] text-text-muted font-bold">{probabilityOf(lead)}%</span>}
                     </TableCell>
                     <TableCell className="text-[10px] text-text-muted">{lead.assignedToName || '—'}</TableCell>
                     <TableCell className="text-[10px] text-text-muted">{lead.expectedCloseDate || '—'}</TableCell>
@@ -688,13 +688,13 @@ export default function CRMPage() {
         <TabsContent value="myday" className="m-0 pt-3">
           <div className="grid lg:grid-cols-2 gap-4">
             <div className="rounded-xl border border-border-sub overflow-hidden">
-              <p className="px-4 py-3 border-b border-border-sub text-[10px] font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
+              <p className="px-4 py-3 border-b border-border-sub text-[10px] font-bold uppercase tracking-wider text-text-primary flex items-center gap-2">
                 <Calendar size={12} className="text-brand-red" /> Follow-ups Due ({dueFollowUps.length})
               </p>
               <Table>
                 <TableBody>
                   {dueFollowUps.map(lead => leadRow(lead, <>
-                    <TableCell className="font-bold text-[11px] uppercase text-text-primary">
+                    <TableCell className="font-bold text-[11px] text-text-primary">
                       {lead.companyName}
                       {lead.nextStep && <span className="block text-[10px] normal-case font-normal text-text-muted">{lead.nextStep}</span>}
                     </TableCell>
@@ -712,7 +712,7 @@ export default function CRMPage() {
             </div>
 
             <div className="rounded-xl border border-border-sub overflow-hidden">
-              <p className="px-4 py-3 border-b border-border-sub text-[10px] font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
+              <p className="px-4 py-3 border-b border-border-sub text-[10px] font-bold uppercase tracking-wider text-text-primary flex items-center gap-2">
                 <ListTodo size={12} className="text-brand-red" /> Open Tasks ({openTasks.length})
               </p>
               <Table>
@@ -727,7 +727,7 @@ export default function CRMPage() {
                         </TableCell>
                         <TableCell className="text-[11px] text-text-secondary">
                           {t.description}
-                          <span className="block text-[9px] uppercase font-bold text-text-muted">{lead?.companyName}</span>
+                          <span className="block text-[11px] font-bold text-text-muted">{lead?.companyName}</span>
                         </TableCell>
                         <TableCell className={cn('text-[10px] font-bold', overdue ? 'text-brand-red' : 'text-text-muted')}>{t.scheduledAt || '—'}</TableCell>
                       </TableRow>
@@ -739,13 +739,13 @@ export default function CRMPage() {
             </div>
 
             <div className="rounded-xl border border-border-sub overflow-hidden">
-              <p className="px-4 py-3 border-b border-border-sub text-[10px] font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
+              <p className="px-4 py-3 border-b border-border-sub text-[10px] font-bold uppercase tracking-wider text-text-primary flex items-center gap-2">
                 <Clock size={12} className="text-text-muted" /> Upcoming Follow-ups
               </p>
               <Table>
                 <TableBody>
                   {upcomingFollowUps.map(lead => leadRow(lead, <>
-                    <TableCell className="font-bold text-[11px] uppercase text-text-primary">{lead.companyName}</TableCell>
+                    <TableCell className="font-bold text-[11px] text-text-primary">{lead.companyName}</TableCell>
                     <TableCell><StageBadge stage={lead.stage} /></TableCell>
                     <TableCell className="text-[10px] text-text-muted">{lead.followUpDate}</TableCell>
                   </>))}
@@ -755,13 +755,13 @@ export default function CRMPage() {
             </div>
 
             <div className="rounded-xl border border-border-sub overflow-hidden">
-              <p className="px-4 py-3 border-b border-border-sub text-[10px] font-black uppercase tracking-widest text-amber-400 flex items-center gap-2">
+              <p className="px-4 py-3 border-b border-border-sub text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
                 <AlertTriangle size={12} /> Needs Attention — stale or no next step
               </p>
               <Table>
                 <TableBody>
                   {[...new Map([...openLeads.filter(isStale), ...noNextStep].map(l => [l.id, l])).values()].slice(0, 20).map(lead => leadRow(lead, <>
-                    <TableCell className="font-bold text-[11px] uppercase text-text-primary">{lead.companyName}</TableCell>
+                    <TableCell className="font-bold text-[11px] text-text-primary">{lead.companyName}</TableCell>
                     <TableCell><StageBadge stage={lead.stage} /></TableCell>
                     <TableCell className="text-[10px] text-text-muted">
                       {isStale(lead) ? `${daysSince(lastTouch(lead))}d idle` : 'No next step'}
@@ -781,7 +781,7 @@ export default function CRMPage() {
               .sort((a, b) => (a.expectedCloseDate || '9').localeCompare(b.expectedCloseDate || '9'));
             return (
               <>
-                <div className="flex items-center gap-4 px-1 mb-4 text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                <div className="flex items-center gap-4 px-1 mb-4 text-[10px] font-bold uppercase tracking-wider text-text-muted">
                   <TrendingUp size={12} className="text-amber-400" /> {opps.length} Active Opportunities
                   <span>·</span> {formatMoney(opps.reduce((s, l) => s + (l.estimatedValue || 0), 0))} Pipeline
                   <span>·</span> <span className="text-text-primary">{formatMoney(opps.reduce((s, l) => s + weightedValue(l), 0))} Weighted</span>
@@ -800,12 +800,12 @@ export default function CRMPage() {
                     </TableHeader>
                     <TableBody>
                       {opps.map(lead => leadRow(lead, <>
-                        <TableCell className="font-bold text-[11px] uppercase text-text-primary">
+                        <TableCell className="font-bold text-[11px] text-text-primary">
                           {lead.companyName}
-                          <span className="block text-[9px] font-normal normal-case text-text-muted">{lead.contactName}</span>
+                          <span className="block text-[11px] font-normal normal-case text-text-muted">{lead.contactName}</span>
                         </TableCell>
                         <TableCell className="text-[10px] text-text-muted max-w-[220px] truncate">{lead.nextStep || '—'}</TableCell>
-                        <TableCell className="text-[11px] font-black font-mono text-text-green">{lead.estimatedValue > 0 ? formatMoney(lead.estimatedValue) : '—'}</TableCell>
+                        <TableCell className="text-[11px] font-bold font-mono text-text-green">{lead.estimatedValue > 0 ? formatMoney(lead.estimatedValue) : '—'}</TableCell>
                         <TableCell className="text-[10px] font-bold text-text-primary">{probabilityOf(lead)}%</TableCell>
                         <TableCell><StageBadge stage={lead.stage} /></TableCell>
                         <TableCell className={cn('text-[10px]', lead.expectedCloseDate && lead.expectedCloseDate < today ? 'text-brand-red font-bold' : 'text-text-muted')}>
@@ -833,7 +833,7 @@ export default function CRMPage() {
               ['Activity — Last 7 Days', insights.actRows],
             ] as [string, any[]][]).map(([title, rows]) => (
               <div key={title} className="rounded-xl border border-border-sub bg-bg-secondary p-4">
-                <p className="text-[10px] font-black uppercase tracking-widest text-text-primary mb-3">{title}</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-primary mb-3">{title}</p>
                 <BarRows rows={rows} />
               </div>
             ))}
@@ -857,11 +857,11 @@ export default function CRMPage() {
               <TableBody>
                 {[...quotes].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')).map(q => (
                   <TableRow key={q.id} className="border-border-sub hover:bg-bg-secondary cursor-pointer" onClick={() => router.push(paths.quotes)}>
-                    <TableCell className="font-bold text-[11px] uppercase text-text-primary">{q.title}</TableCell>
+                    <TableCell className="font-bold text-[11px] text-text-primary">{q.title}</TableCell>
                     <TableCell className="text-[10px] text-text-muted">{q.customerName}</TableCell>
-                    <TableCell className="text-[11px] font-black font-mono text-text-green">{formatMoney(q.total || 0)}</TableCell>
+                    <TableCell className="text-[11px] font-bold font-mono text-text-green">{formatMoney(q.total || 0)}</TableCell>
                     <TableCell>
-                      <Badge className={`text-[8px] h-5 uppercase border ${
+                      <Badge className={`text-[10px] h-5 uppercase border ${
                         q.status === 'approved' ? 'bg-text-green/10 text-text-green border-text-green/20' :
                         q.status === 'rejected' ? 'bg-text-red/10 text-text-red border-text-red/20' :
                         'bg-amber-400/10 text-amber-400 border-amber-400/20'
@@ -884,7 +884,7 @@ export default function CRMPage() {
             return (
               <>
                 {won.length > 0 && (
-                  <div className="flex items-center gap-4 px-1 mb-4 text-[10px] font-bold uppercase tracking-widest">
+                  <div className="flex items-center gap-4 px-1 mb-4 text-[10px] font-bold uppercase tracking-wider">
                     <CheckCircle2 size={12} className="text-text-green" />
                     <span className="text-text-green">{formatMoney(won.reduce((s, l) => s + (l.estimatedValue || 0), 0))} Total Won</span>
                     <span className="text-text-muted">· {won.length} Deals</span>
@@ -904,15 +904,15 @@ export default function CRMPage() {
                     </TableHeader>
                     <TableBody>
                       {won.map(lead => leadRow(lead, <>
-                        <TableCell className="font-bold text-[11px] uppercase text-text-primary">{lead.companyName}</TableCell>
+                        <TableCell className="font-bold text-[11px] text-text-primary">{lead.companyName}</TableCell>
                         <TableCell className="text-[10px] text-text-muted">{lead.contactName}</TableCell>
-                        <TableCell className="text-[12px] font-black font-mono text-text-green">{formatMoney(lead.estimatedValue || 0)}</TableCell>
+                        <TableCell className="text-[12px] font-bold font-mono text-text-green">{formatMoney(lead.estimatedValue || 0)}</TableCell>
                         <TableCell className="text-[10px] text-text-muted">{new Date(lead.closedAt || lead.updatedAt).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-[10px] text-text-muted uppercase">{sourceLabel(lead.source)}</TableCell>
+                        <TableCell className="text-[10px] text-text-muted">{sourceLabel(lead.source)}</TableCell>
                         <TableCell onClick={e => e.stopPropagation()}>
                           {lead.convertedToClient
-                            ? <span className="text-[9px] font-bold uppercase text-text-green">Converted</span>
-                            : <Button size="sm" variant="outline" className="h-6 px-2 text-[8px] font-bold uppercase" onClick={() => setConvertLead(lead)}><UserCheck size={9} className="mr-1" /> Convert</Button>}
+                            ? <span className="text-[11px] font-bold text-text-green">Converted</span>
+                            : <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] font-bold" onClick={() => setConvertLead(lead)}><UserCheck size={9} className="mr-1" /> Convert</Button>}
                         </TableCell>
                       </>))}
                       {won.length === 0 && emptyRow(6, 'No won deals yet')}
@@ -939,8 +939,8 @@ export default function CRMPage() {
               </TableHeader>
               <TableBody>
                 {filteredLeads.filter(l => l.stage === 'lost').sort((a, b) => (b.closedAt || b.updatedAt || '').localeCompare(a.closedAt || a.updatedAt || '')).map(lead => leadRow(lead, <>
-                  <TableCell className="font-bold text-[11px] uppercase text-text-primary">{lead.companyName}</TableCell>
-                  <TableCell className="text-[11px] font-black font-mono text-text-muted">{lead.estimatedValue > 0 ? formatMoney(lead.estimatedValue) : '—'}</TableCell>
+                  <TableCell className="font-bold text-[11px] text-text-primary">{lead.companyName}</TableCell>
+                  <TableCell className="text-[11px] font-bold font-mono text-text-muted">{lead.estimatedValue > 0 ? formatMoney(lead.estimatedValue) : '—'}</TableCell>
                   <TableCell className="text-[10px] font-bold text-text-red">{lead.lostReasonCategory || '—'}</TableCell>
                   <TableCell className="text-[10px] text-text-muted max-w-[220px] truncate">{lead.lostReason || '—'}</TableCell>
                   <TableCell className="text-[10px] text-text-muted">{new Date(lead.closedAt || lead.updatedAt).toLocaleDateString()}</TableCell>
@@ -994,33 +994,28 @@ export default function CRMPage() {
       <Dialog open={!!convertLead} onOpenChange={v => !v && setConvertLead(null)}>
         <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+            <DialogTitle className="text-[13px] font-bold flex items-center gap-2">
               <UserCheck size={14} className="text-text-green" /> Convert to Client
             </DialogTitle>
           </DialogHeader>
           {convertLead && (
             <div className="space-y-3 py-2">
               <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub space-y-1">
-                <p className="text-[11px] font-black uppercase text-text-primary">{convertLead.companyName}</p>
+                <p className="text-[11px] font-bold text-text-primary">{convertLead.companyName}</p>
                 <p className="text-[10px] text-text-muted">{convertLead.contactName} · {convertLead.contactEmail}</p>
               </div>
-              <p className="text-[10px] text-text-muted uppercase tracking-widest">This will create a new client account and mark the lead as converted.</p>
+              <p className="text-[10px] text-text-muted uppercase tracking-wider">This will create a new client account and mark the lead as converted.</p>
             </div>
           )}
           <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => setConvertLead(null)} className="text-[10px] font-black uppercase">Cancel</Button>
-            <Button size="sm" onClick={handleConvertToClient} disabled={savingClient} className="bg-text-green hover:bg-text-green/90 text-white text-[10px] font-black uppercase">
+            <Button variant="outline" size="sm" onClick={() => setConvertLead(null)} className="text-[10px] font-bold">Cancel</Button>
+            <Button size="sm" onClick={handleConvertToClient} disabled={savingClient} className="bg-text-green hover:bg-text-green/90 text-white text-[10px] font-bold">
               {savingClient ? 'Converting...' : 'Convert to Client'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <style jsx global>{`
-        .crm-tab-trigger {
-          @apply px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
-        }
-      `}</style>
     </div>
   );
 }

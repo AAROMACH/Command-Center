@@ -103,7 +103,7 @@ export default function ClientBillingPage() {
                                     ))}
                                     {myInvoices.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={5} className="h-32 text-center text-text-muted uppercase text-[10px] tracking-[0.2em] italic">No transaction history found.</TableCell>
+                                            <TableCell colSpan={5} className="h-32 text-center text-text-muted uppercase text-[10px] tracking-wider italic">No transaction history found.</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
@@ -129,8 +129,8 @@ export default function ClientBillingPage() {
                         <CardContent className="space-y-5">
                             <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-4">
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Billing Contact</p>
-                                    <p className="text-xs font-bold text-text-primary uppercase">{currentUser?.billingDetails?.contactName || 'Awaiting Entry'}</p>
+                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Billing Contact</p>
+                                    <p className="text-xs font-bold text-text-primary">{currentUser?.billingDetails?.contactName || 'Awaiting Entry'}</p>
                                     <div className="flex items-center gap-2 text-[10px] text-text-muted">
                                         <Mail size={10} />
                                         <span>{currentUser?.billingDetails?.email || 'No email registered'}</span>
@@ -139,25 +139,25 @@ export default function ClientBillingPage() {
                                 
                                 <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-sub/50">
                                     <div className="space-y-1">
-                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Payment Terms</p>
-                                        <div className="flex items-center gap-1.5 text-xs font-bold text-text-primary uppercase">
+                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Payment Terms</p>
+                                        <div className="flex items-center gap-1.5 text-xs font-bold text-text-primary">
                                             <Clock size={10} className="text-accent-gold" />
                                             {currentUser?.billingDetails?.terms || 'Net 30'}
                                         </div>
                                     </div>
                                     <div className="space-y-1 text-right">
-                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Delivery</p>
-                                        <p className="text-xs font-bold text-text-primary uppercase">{currentUser?.billingDetails?.deliveryMethod || 'Portal'}</p>
+                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Delivery</p>
+                                        <p className="text-xs font-bold text-text-primary">{currentUser?.billingDetails?.deliveryMethod || 'Portal'}</p>
                                     </div>
                                 </div>
 
                                 <div className="pt-2 flex justify-between items-center">
-                                    <Badge variant="active" className="text-[8px] h-4">Verified</Badge>
+                                    <Badge variant="active" className="text-[10px] h-4">Verified</Badge>
                                     <ShieldCheck size={14} className="text-text-green" />
                                 </div>
                             </div>
 
-                            <Button variant="outline" className="w-full h-10 uppercase font-bold text-[10px] tracking-widest" onClick={() => router.push('/client/profile')}>
+                            <Button variant="outline" className="w-full h-10 uppercase font-bold text-[10px] tracking-wider" onClick={() => router.push('/client/profile')}>
                                 Update Registry
                             </Button>
                         </CardContent>

@@ -81,7 +81,7 @@ export default function ClientSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Bell size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">{TERMINOLOGY.CONFIG.NOTIFICATIONS}</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{TERMINOLOGY.CONFIG.NOTIFICATIONS}</h3>
                     </div>
                     <Card>
                         <CardHeader className="text-left">
@@ -96,8 +96,8 @@ export default function ClientSettingsPage() {
                             ].map((item) => (
                                 <div key={item.id} className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary/50 border border-border-sub hover:border-text-muted transition-all">
                                     <div className="space-y-0.5 text-left">
-                                        <p className="text-xs font-bold uppercase tracking-wider">{item.label}</p>
-                                        <p className="text-[10px] text-text-muted uppercase font-medium">{item.desc}</p>
+                                        <p className="text-xs font-bold tracking-wider">{item.label}</p>
+                                        <p className="text-[10px] text-text-muted font-medium">{item.desc}</p>
                                     </div>
                                     <Switch 
                                         checked={resolveNotificationPrefs(currentUser?.notificationPreferences)[item.id as keyof NotificationPreferences]} 
@@ -113,7 +113,7 @@ export default function ClientSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Type size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Display</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Display</h3>
                     </div>
                     <ThemeToggleSetting />
                     <FontPreferenceSetting />
@@ -123,7 +123,7 @@ export default function ClientSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Building2 size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Strategic Identity</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Strategic Identity</h3>
                     </div>
                     <Card>
                         <CardHeader className="text-left">
@@ -132,8 +132,8 @@ export default function ClientSettingsPage() {
                         <CardContent>
                             <div className="p-6 rounded-lg bg-bg-secondary/50 border border-border-sub flex items-center justify-between">
                                 <div className="text-left space-y-1">
-                                    <p className="text-sm font-bold uppercase text-text-primary">{currentUser?.clientCompany || 'Independent Account'}</p>
-                                    <p className="text-[10px] text-text-muted uppercase tracking-widest">Client account</p>
+                                    <p className="text-sm font-bold text-text-primary">{currentUser?.clientCompany || 'Independent Account'}</p>
+                                    <p className="text-[10px] text-text-muted uppercase tracking-wider">Client account</p>
                                 </div>
                                 {(() => {
                                     const pending = currentUser?.approvalStatus === 'pending';
@@ -141,7 +141,7 @@ export default function ClientSettingsPage() {
                                     return (
                                         <div className={`flex items-center gap-2 px-4 py-2 rounded border ${pending || inactive ? 'bg-accent-gold-dim border-accent-gold/40 text-accent-gold' : 'bg-green-dim border-green-border text-text-green'}`}>
                                             <ShieldCheck size={18} />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">{pending ? 'Pending approval' : inactive ? 'On hold' : 'Active'}</span>
+                                            <span className="text-[10px] font-bold uppercase tracking-wider">{pending ? 'Pending approval' : inactive ? 'On hold' : 'Active'}</span>
                                         </div>
                                     );
                                 })()}

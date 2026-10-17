@@ -131,7 +131,7 @@ export default function ClientProfilePage() {
         }
     };
 
-    if (!mounted) return <div className="p-8 text-center text-[10px] uppercase tracking-widest text-text-muted">Loading...</div>;
+    if (!mounted) return <div className="p-8 text-center text-[10px] uppercase tracking-wider text-text-muted">Loading...</div>;
 
     return (
         <div className="max-w-5xl mx-auto space-y-8 text-left">
@@ -154,7 +154,7 @@ export default function ClientProfilePage() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <Button onClick={handleSave} disabled={isSaving} className="h-10 px-6 font-bold uppercase tracking-widest text-[10px]">
+                    <Button onClick={handleSave} disabled={isSaving} className="h-10 px-6 font-bold uppercase tracking-wider text-[10px]">
                         {isSaving && <Loader2 size={14} className="mr-2 animate-spin" />}
                         Commit Changes
                     </Button>
@@ -196,22 +196,22 @@ export default function ClientProfilePage() {
                                 </div>
                             </div>
                             <div className="space-y-1 text-center">
-                                <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide text-center">{currentUser?.name || '—'}</h2>
-                                <p className="text-xs text-brand-red font-bold uppercase tracking-widest text-center">{currentUser?.role || 'Client'}</p>
+                                <h2 className="text-xl font-bold text-text-primary tracking-wide text-center">{currentUser?.name || '—'}</h2>
+                                <p className="text-xs text-brand-red font-bold text-center">{currentUser?.role || 'Client'}</p>
                             </div>
                         </CardContent>
                     </Card>
 
                     <Card className="bg-bg-tertiary/30 border-border-sub text-left">
                         <CardHeader className="pb-3 text-left">
-                            <CardTitle className="text-[10px] uppercase tracking-widest flex items-center gap-2 text-left">
+                            <CardTitle className="text-[10px] uppercase tracking-wider flex items-center gap-2 text-left">
                                 <ShieldCheck size={14} className="text-text-green"/> Authorization Level
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="p-3 rounded bg-bg-primary border border-border-sub space-y-1 text-left">
-                                <p className="text-[10px] font-bold text-text-muted uppercase text-left">Portal Access</p>
-                                <p className="text-xs font-bold text-text-primary uppercase tracking-tight text-left">Full Strategic Visibility</p>
+                                <p className="text-[10px] font-bold text-text-muted text-left">Portal Access</p>
+                                <p className="text-xs font-bold text-text-primary tracking-tight text-left">Full Strategic Visibility</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -222,7 +222,7 @@ export default function ClientProfilePage() {
                             <CardDescription>Manage credentials and portal access keys.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <Button variant="outline" className="w-full h-10 text-[10px] font-bold uppercase tracking-widest" onClick={() => setIsPasswordDialogOpen(true)}>
+                            <Button variant="outline" className="w-full h-10 text-[10px] font-bold uppercase tracking-wider" onClick={() => setIsPasswordDialogOpen(true)}>
                                 <Key size={14} className="mr-2"/> Change Access Key
                             </Button>
                         </CardContent>
@@ -246,21 +246,21 @@ export default function ClientProfilePage() {
                                 <CardContent className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Full Name</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted">Full Name</Label>
                                             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" className="bg-bg-primary h-11 text-xs" />
                                         </div>
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Preferred Name</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted">Preferred Name</Label>
                                             <Input value={preferredName} onChange={(e) => setPreferredName(e.target.value)} placeholder="Goes by..." className="bg-bg-primary h-11 text-xs" />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Verified Email</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted">Verified Email</Label>
                                             <Input value={currentUser?.email || ''} readOnly className="bg-bg-primary h-11 text-xs opacity-60 cursor-not-allowed" />
                                         </div>
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Direct Line</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted">Direct Line</Label>
                                             <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-bg-primary h-11 text-xs" />
                                         </div>
                                     </div>
@@ -277,9 +277,9 @@ export default function ClientProfilePage() {
                                             <Building2 size={32} />
                                         </div>
                                         <div className="space-y-1 text-left">
-                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Affiliated Organization</p>
-                                            <h3 className="text-xl font-bold text-text-primary uppercase tracking-wide text-left">{currentUser?.clientCompany || 'Independent'}</h3>
-                                            <p className="text-xs text-accent-gold font-black uppercase tracking-widest text-left">{currentUser?.businessType || 'Service Partner'}</p>
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Affiliated Organization</p>
+                                            <h3 className="text-xl font-bold text-text-primary tracking-wide text-left">{currentUser?.clientCompany || 'Independent'}</h3>
+                                            <p className="text-xs text-accent-gold font-bold text-left">{currentUser?.businessType || 'Service Partner'}</p>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -298,16 +298,16 @@ export default function ClientProfilePage() {
                                 <CardContent className="space-y-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Billing Contact Name</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted">Billing Contact Name</Label>
                                             <Input
                                                 placeholder="Accounts Payable / Name"
                                                 value={billingContactName}
                                                 onChange={(e) => setBillingContactName(e.target.value)}
-                                                className="bg-bg-primary h-11 text-xs uppercase font-bold"
+                                                className="bg-bg-primary h-11 text-xs font-bold"
                                             />
                                         </div>
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Billing Email Address</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted">Billing Email Address</Label>
                                             <div className="relative">
                                                 <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                                                 <Input
@@ -319,14 +319,14 @@ export default function ClientProfilePage() {
                                             </div>
                                         </div>
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Payment Terms</Label>
-                                            <Input value={billingTerms || 'Not set'} readOnly disabled className="bg-bg-primary h-11 text-xs uppercase font-bold" />
-                                            <p className="text-[9px] text-text-muted">Set by Aaromach. Contact us to change your terms.</p>
+                                            <Label className="text-[10px] font-bold text-text-muted">Payment Terms</Label>
+                                            <Input value={billingTerms || 'Not set'} readOnly disabled className="bg-bg-primary h-11 text-xs font-bold" />
+                                            <p className="text-[11px] text-text-muted">Set by Aaromach. Contact us to change your terms.</p>
                                         </div>
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Invoice Delivery Mode</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted">Invoice Delivery Mode</Label>
                                             <Select value={billingDelivery} onValueChange={setBillingDelivery}>
-                                                <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold">
+                                                <SelectTrigger className="bg-bg-primary h-11 text-xs font-bold">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -352,15 +352,15 @@ export default function ClientProfilePage() {
                                                 <CreditCard size={18} />
                                             </div>
                                             <div className="text-left">
-                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide text-left">Visa ending in 4242</p>
-                                                <p className="text-[9px] text-text-muted uppercase tracking-widest text-left">Expires 12/2026</p>
+                                                <p className="text-xs font-bold text-text-primary tracking-wide text-left">Visa ending in 4242</p>
+                                                <p className="text-[10px] text-text-muted uppercase tracking-wider text-left">Expires 12/2026</p>
                                             </div>
                                         </div>
-                                        <Badge variant="active" className="text-[8px] h-5">Primary</Badge>
+                                        <Badge variant="active" className="text-[10px] h-5">Primary</Badge>
                                     </div>
                                     <Button
                                         variant="outline"
-                                        className="w-full h-11 uppercase font-bold text-[10px] tracking-widest"
+                                        className="w-full h-11 uppercase font-bold text-[10px] tracking-wider"
                                         onClick={() => router.push('/client/billing')}
                                     >
                                         Manage Methods in Billing Terminal

@@ -10,7 +10,7 @@ import { SortControl, FiltersPopover, FilterSection, CheckboxFilter, DateRangeBu
 
 const MapView = dynamic(() => import('../map/components/map-view'), {
     ssr: false,
-    loading: () => <div className="flex items-center justify-center h-full bg-bg-secondary text-text-muted text-[10px] uppercase tracking-widest">Loading map...</div>,
+    loading: () => <div className="flex items-center justify-center h-full bg-bg-secondary text-text-muted text-[10px] uppercase tracking-wider">Loading map...</div>,
 });
 import type { WorkOrder, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
@@ -301,7 +301,7 @@ export default function TechAssignmentsPage() {
     };
 
     if (!mounted || !currentTechId) {
-        return <div className="p-8 text-center text-xs uppercase tracking-widest text-text-muted">Initializing Terminal...</div>;
+        return <div className="p-8 text-center text-xs text-text-muted">Initializing Terminal...</div>;
     }
 
     return (
@@ -309,7 +309,7 @@ export default function TechAssignmentsPage() {
             {newSinceLastVisit > 0 && (
                 <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-brand-red/5 border border-brand-red/20">
                     <AlertCircle size={13} className="text-brand-red shrink-0" />
-                    <p className="text-[10px] font-bold text-brand-red uppercase tracking-widest">
+                    <p className="text-[10px] font-bold text-brand-red uppercase tracking-wider">
                         {newSinceLastVisit} assignment{newSinceLastVisit > 1 ? 's' : ''} updated since your last visit
                     </p>
                 </div>
@@ -386,8 +386,8 @@ export default function TechAssignmentsPage() {
                 <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex items-start gap-4 shadow-sm animate-pulse text-left mb-6">
                     <AlertCircle size={20} className="text-text-red shrink-0 mt-0.5" />
                     <div className="space-y-1 text-left">
-                        <p className="text-[11px] font-bold text-text-red uppercase tracking-wide text-left">Active Session lock</p>
-                        <p className="text-[10px] text-text-muted leading-relaxed uppercase font-medium text-left">
+                        <p className="text-[11px] font-bold text-text-red tracking-wide text-left">Active Session lock</p>
+                        <p className="text-[10px] text-text-muted leading-relaxed font-medium text-left">
                             You are currently checked into a mission. Only one active check-in session is permitted per operative. Check out of your active session to initiate another.
                         </p>
                     </div>
@@ -439,7 +439,7 @@ export default function TechAssignmentsPage() {
                                             )}
                                         </div>
                                         <div className="cell-desc-title break-words mt-1">{wo.title || wo.description}</div>
-                                        <div className="text-[10px] text-text-muted uppercase tracking-widest">{wo.clientName}</div>
+                                        <div className="text-[10px] text-text-muted uppercase tracking-wider">{wo.clientName}</div>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
                                         <Badge
@@ -450,7 +450,7 @@ export default function TechAssignmentsPage() {
                                                 wo.status === 'checked-out' ? 'checked-out' :
                                                 'scheduled'
                                             }
-                                            className="capitalize text-[8px] h-4 px-1.5"
+                                            className="capitalize text-[10px] h-4 px-1.5"
                                         >
                                             {wo.status.replace(/-/g, ' ')}
                                         </Badge>
@@ -468,13 +468,13 @@ export default function TechAssignmentsPage() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                                                 <DropdownMenuItem
-                                                    className="text-[11px] uppercase font-bold tracking-wide"
+                                                    className="text-[11px] font-bold tracking-wide"
                                                     onClick={() => handleMarkOutcome(wo.id, 'cancelled')}
                                                 >
                                                     <Ban size={13} className="mr-2 text-text-muted" /> Mark as Cancelled
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
-                                                    className="text-[11px] uppercase font-bold tracking-wide text-text-red focus:text-text-red"
+                                                    className="text-[11px] font-bold tracking-wide text-text-red focus:text-text-red"
                                                     onClick={() => handleMarkOutcome(wo.id, 'did_not_do')}
                                                 >
                                                     <XCircle size={13} className="mr-2" /> Did Not Do
@@ -533,7 +533,7 @@ export default function TechAssignmentsPage() {
                             </div>
                         ))}
                         {activeAssignments.length === 0 && (
-                            <div className="text-center py-12 text-text-muted uppercase text-[10px] tracking-widest italic">No active assignments match your registry filters.</div>
+                            <div className="text-center py-12 text-text-muted uppercase text-[10px] tracking-wider italic">No active assignments match your registry filters.</div>
                         )}
                     </div>
                     {/* Desktop: table view */}
@@ -547,13 +547,13 @@ export default function TechAssignmentsPage() {
                                     <th className="text-center">
                                         <button
                                             onClick={toggleDateSort}
-                                            className="inline-flex items-center gap-1.5 uppercase tracking-widest hover:text-brand-red transition-colors"
+                                            className="inline-flex items-center gap-1.5 hover:text-brand-red transition-colors"
                                             title="Sort by date"
                                         >
                                             Schedule Window
                                             <ArrowUpDown size={11} className={cn("shrink-0", sortBy === 'date' ? "text-brand-red" : "text-text-muted opacity-50")} />
                                             {sortBy === 'date' && (
-                                                <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Earliest' : 'Latest'}</span>
+                                                <span className="text-[10px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Earliest' : 'Latest'}</span>
                                             )}
                                         </button>
                                     </th>
@@ -581,7 +581,7 @@ export default function TechAssignmentsPage() {
                                                     wo.status === 'checked-out' ? 'checked-out' :
                                                     'scheduled'
                                                 } 
-                                                className="capitalize text-[8px] h-4 px-1.5"
+                                                className="capitalize text-[10px] h-4 px-1.5"
                                               >
                                                 {wo.status.replace(/-/g, ' ')}
                                               </Badge>
@@ -590,7 +590,7 @@ export default function TechAssignmentsPage() {
                                         <td>
                                             <div className="flex flex-col items-center justify-center text-center">
                                               <div className="cell-desc-title">{wo.title || wo.description}</div>
-                                              <div className="text-[10px] text-text-muted uppercase tracking-widest">{wo.clientName}</div>
+                                              <div className="text-[10px] text-text-muted uppercase tracking-wider">{wo.clientName}</div>
                                             </div>
                                         </td>
                                         <td>
@@ -684,10 +684,10 @@ export default function TechAssignmentsPage() {
                                                       </button>
                                                   </DropdownMenuTrigger>
                                                   <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                                      <DropdownMenuItem className="text-[11px] uppercase font-bold tracking-wide" onClick={() => handleMarkOutcome(wo.id, 'cancelled')}>
+                                                      <DropdownMenuItem className="text-[11px] font-bold tracking-wide" onClick={() => handleMarkOutcome(wo.id, 'cancelled')}>
                                                           <Ban size={13} className="mr-2 text-text-muted" /> Mark as Cancelled
                                                       </DropdownMenuItem>
-                                                      <DropdownMenuItem className="text-[11px] uppercase font-bold tracking-wide text-text-red focus:text-text-red" onClick={() => handleMarkOutcome(wo.id, 'did_not_do')}>
+                                                      <DropdownMenuItem className="text-[11px] font-bold tracking-wide text-text-red focus:text-text-red" onClick={() => handleMarkOutcome(wo.id, 'did_not_do')}>
                                                           <XCircle size={13} className="mr-2" /> Did Not Do
                                                       </DropdownMenuItem>
                                                   </DropdownMenuContent>
@@ -698,7 +698,7 @@ export default function TechAssignmentsPage() {
                                 ))}
                                 {activeAssignments.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="text-center h-24 text-text-muted uppercase text-[10px] tracking-widest italic">No active assignments match your registry filters.</td>
+                                        <td colSpan={5} className="text-center h-24 text-text-muted uppercase text-[10px] tracking-wider italic">No active assignments match your registry filters.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -727,7 +727,7 @@ export default function TechAssignmentsPage() {
                                             )}
                                         </div>
                                         <div className="cell-desc-title break-words mt-1">{wo.title || wo.description}</div>
-                                        <div className="text-[10px] text-text-muted uppercase tracking-widest">{wo.clientName}</div>
+                                        <div className="text-[10px] text-text-muted uppercase tracking-wider">{wo.clientName}</div>
                                     </div>
                                     <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-green shrink-0">
                                         <CheckCircle2 size={12}/> DONE
@@ -744,7 +744,7 @@ export default function TechAssignmentsPage() {
                                     </div>
                                 </div>
                                 <div className="mt-3 flex items-center justify-between gap-2">
-                                    <Badge variant="active" className="uppercase text-[7px] h-3.5 px-1.5">
+                                    <Badge variant="active" className="text-[10px] h-3.5 px-1.5">
                                         <FileCheck size={10} className="mr-1"/> Logged
                                     </Badge>
                                     <div onClick={(e) => e.stopPropagation()}>
@@ -756,7 +756,7 @@ export default function TechAssignmentsPage() {
                             </div>
                         ))}
                         {completedAssignments.length === 0 && (
-                            <div className="text-center py-12 text-text-muted uppercase text-[10px] tracking-widest italic">History terminal clear. No assignments match your filters.</div>
+                            <div className="text-center py-12 text-text-muted uppercase text-[10px] tracking-wider italic">History terminal clear. No assignments match your filters.</div>
                         )}
                     </div>
                     {/* Desktop: table view */}
@@ -770,12 +770,12 @@ export default function TechAssignmentsPage() {
                                     <th className="text-center">
                                         <button
                                             onClick={toggleDateSort}
-                                            className="inline-flex items-center gap-1.5 uppercase tracking-widest hover:text-brand-red transition-colors"
+                                            className="inline-flex items-center gap-1.5 hover:text-brand-red transition-colors"
                                             title="Sort by date"
                                         >
                                             Date Completed
                                             <ArrowUpDown size={11} className="shrink-0 text-brand-red" />
-                                            <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Earliest' : 'Latest'}</span>
+                                            <span className="text-[10px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Earliest' : 'Latest'}</span>
                                         </button>
                                     </th>
                                     <th className="text-center">Action</th>
@@ -795,7 +795,7 @@ export default function TechAssignmentsPage() {
                                                       </a>
                                                     )}
                                                   </div>
-                                                  <div className="text-[10px] text-text-muted uppercase tracking-widest">{wo.clientName}</div>
+                                                  <div className="text-[10px] text-text-muted uppercase tracking-wider">{wo.clientName}</div>
                                                 </div>
                                             </td>
                                             <td>
@@ -816,7 +816,7 @@ export default function TechAssignmentsPage() {
                                                 <div className="text-center">
                                                   <div className="text-xs text-text-secondary">{wo.scheduleDate}{wo.scheduleTime ? ` · ${wo.scheduleTime}` : ''}</div>
                                                   <div className="mt-1">
-                                                    <Badge variant="active" className="uppercase text-[7px] h-3.5 px-1.5">
+                                                    <Badge variant="active" className="text-[10px] h-3.5 px-1.5">
                                                         <FileCheck size={10} className="mr-1"/>
                                                         Logged
                                                     </Badge>
@@ -836,7 +836,7 @@ export default function TechAssignmentsPage() {
                                 })}
                                 {completedAssignments.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="text-center h-24 text-text-muted uppercase text-[10px] tracking-widest italic">History terminal clear. No assignments match your filters.</td>
+                                        <td colSpan={5} className="text-center h-24 text-text-muted uppercase text-[10px] tracking-wider italic">History terminal clear. No assignments match your filters.</td>
                                     </tr>
                                 )}
                             </tbody>

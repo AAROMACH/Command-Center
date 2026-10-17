@@ -210,7 +210,7 @@ export default function AdminClientsPage() {
                 ].map(s => (
                     <div key={s.label} className="p-3 rounded-xl border border-border-sub bg-bg-secondary text-center">
                         <p className={cn('text-[22px] font-black font-mono', s.color)}>{s.value}</p>
-                        <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mt-0.5">{s.label}</p>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-0.5">{s.label}</p>
                     </div>
                 ))}
             </div>
@@ -228,29 +228,29 @@ export default function AdminClientsPage() {
                         />
                     </div>
                     <div className="flex items-center gap-2 bg-bg-primary px-3 h-9 rounded-md border border-border-sub shrink-0">
-                        <p className="text-[9px] font-black text-text-muted uppercase tracking-widest whitespace-nowrap">Status:</p>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider whitespace-nowrap">Status:</p>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-24 h-7 bg-transparent text-[10px] font-bold uppercase border-none shadow-none focus:ring-0">
+                            <SelectTrigger className="w-24 h-7 bg-transparent text-[10px] font-bold border-none shadow-none focus:ring-0">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
-                                <SelectItem value="all" className="text-[10px] font-bold uppercase">All</SelectItem>
+                                <SelectItem value="all" className="text-[10px] font-bold">All</SelectItem>
                                 {ACCOUNT_STATUS_OPTIONS.map(o => (
-                                    <SelectItem key={o.value} value={o.value} className="text-[10px] font-bold uppercase">{o.label}</SelectItem>
+                                    <SelectItem key={o.value} value={o.value} className="text-[10px] font-bold">{o.label}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
                     </div>
                     <div className="flex items-center gap-2 bg-bg-primary px-3 h-9 rounded-md border border-border-sub shrink-0">
-                        <p className="text-[9px] font-black text-text-muted uppercase tracking-widest whitespace-nowrap">Sort:</p>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider whitespace-nowrap">Sort:</p>
                         <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-                            <SelectTrigger className="w-20 h-7 bg-transparent text-[10px] font-bold uppercase border-none shadow-none focus:ring-0">
+                            <SelectTrigger className="w-20 h-7 bg-transparent text-[10px] font-bold border-none shadow-none focus:ring-0">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
-                                <SelectItem value="name" className="text-[10px] font-bold uppercase">Name</SelectItem>
-                                <SelectItem value="status" className="text-[10px] font-bold uppercase">Status</SelectItem>
-                                <SelectItem value="jobs" className="text-[10px] font-bold uppercase">Open Jobs</SelectItem>
+                                <SelectItem value="name" className="text-[10px] font-bold">Name</SelectItem>
+                                <SelectItem value="status" className="text-[10px] font-bold">Status</SelectItem>
+                                <SelectItem value="jobs" className="text-[10px] font-bold">Open Jobs</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -258,7 +258,7 @@ export default function AdminClientsPage() {
                 <div className="flex items-center gap-2 w-full md:w-auto justify-end">
                     <div className="flex items-center gap-2 px-3 py-1 bg-bg-primary rounded-full border border-border-sub">
                         <Building2 size={12} className="text-text-muted" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{filtered.length} client{filtered.length !== 1 ? 's' : ''}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{filtered.length} client{filtered.length !== 1 ? 's' : ''}</span>
                     </div>
                     <div className="flex items-center gap-1 bg-bg-primary rounded-md border border-border-sub p-0.5">
                         <button onClick={() => setViewMode('grid')} className={cn('h-7 w-8 flex items-center justify-center rounded transition-colors', viewMode === 'grid' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}>
@@ -268,7 +268,7 @@ export default function AdminClientsPage() {
                             <List size={12} />
                         </button>
                     </div>
-                    <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase tracking-widest" onClick={() => setIsNewOpen(true)}>
+                    <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold uppercase tracking-wider" onClick={() => setIsNewOpen(true)}>
                         <Plus size={12} className="mr-1.5" />
                         Add Client
                     </Button>
@@ -285,11 +285,11 @@ export default function AdminClientsPage() {
             ) : filtered.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
                     <Building2 size={32} className="text-text-muted mx-auto mb-3" />
-                    <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">
+                    <p className="text-[11px] font-bold text-text-muted">
                         {search || statusFilter !== 'all' ? 'No clients match your filters' : 'No clients yet'}
                     </p>
                     {!search && statusFilter === 'all' && (
-                        <Button size="sm" variant="outline" className="mt-4 text-[10px] font-black uppercase tracking-wider" onClick={() => setIsNewOpen(true)}>
+                        <Button size="sm" variant="outline" className="mt-4 text-[10px] font-bold uppercase tracking-wider" onClick={() => setIsNewOpen(true)}>
                             <Plus size={11} className="mr-1.5" />
                             Add First Client
                         </Button>
@@ -309,9 +309,9 @@ export default function AdminClientsPage() {
                                 <div className="bg-bg-tertiary/50 border-b border-border-sub px-4 py-2.5 flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-2 min-w-0">
                                         <Building2 size={12} className="text-brand-red shrink-0" />
-                                        <p className="text-[11px] font-black uppercase text-text-primary group-hover:text-brand-red transition-colors truncate">{company}</p>
+                                        <p className="text-[11px] font-bold text-text-primary group-hover:text-brand-red transition-colors truncate">{company}</p>
                                     </div>
-                                    <Badge className={cn('text-[7px] uppercase border h-4 shrink-0', ACCOUNT_STATUS_COLORS[status] || ACCOUNT_STATUS_COLORS.active)}>
+                                    <Badge className={cn('text-[10px] border h-4 shrink-0', ACCOUNT_STATUS_COLORS[status] || ACCOUNT_STATUS_COLORS.active)}>
                                         {status.replace(/_/g, ' ')}
                                     </Badge>
                                 </div>
@@ -347,15 +347,15 @@ export default function AdminClientsPage() {
                                         { icon: Receipt, value: openInvoices, label: 'Inv', color: openInvoices > 0 ? 'text-text-red' : '' },
                                     ].map(m => (
                                         <div key={m.label} className="text-center">
-                                            <p className={cn('text-[13px] font-black font-mono', m.color || 'text-text-secondary')}>{m.value}</p>
-                                            <p className="text-[7px] font-bold text-text-muted uppercase tracking-widest">{m.label}</p>
+                                            <p className={cn('text-[13px] font-bold font-mono', m.color || 'text-text-secondary')}>{m.value}</p>
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{m.label}</p>
                                         </div>
                                     ))}
                                 </div>
 
                                 {/* Footer */}
                                 <div className="bg-bg-tertiary/20 border-t border-border-sub px-4 py-2 flex items-center justify-between">
-                                    <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">
+                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
                                         {lastJob ? `Last job: ${lastJob}` : 'No completed jobs'}
                                     </p>
                                     <ChevronRight size={12} className="text-text-muted group-hover:text-text-primary transition-colors" />
@@ -369,7 +369,7 @@ export default function AdminClientsPage() {
                 <div className="rounded-xl border border-border-sub overflow-hidden">
                     <div className="grid grid-cols-[1fr_60px_80px_60px_60px_24px] gap-0 bg-bg-tertiary/50 border-b border-border-sub px-4 py-2">
                         {['Company', 'Sites', 'Open Jobs', 'Quotes', 'Inv', ''].map(h => (
-                            <p key={h} className="text-[9px] font-black uppercase tracking-widest text-text-muted">{h}</p>
+                            <p key={h} className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{h}</p>
                         ))}
                     </div>
                     {pager.items.map(({ client, company, siteCount, openJobs, activeQuotes, openInvoices }) => {
@@ -382,12 +382,12 @@ export default function AdminClientsPage() {
                             >
                                 <div className="min-w-0 pr-4">
                                     <div className="flex items-center gap-2">
-                                        <p className="text-[11px] font-bold uppercase text-text-primary group-hover:text-brand-red transition-colors truncate">{company}</p>
-                                        <Badge className={cn('text-[7px] uppercase border h-4 shrink-0', ACCOUNT_STATUS_COLORS[status] || ACCOUNT_STATUS_COLORS.active)}>
+                                        <p className="text-[11px] font-bold text-text-primary group-hover:text-brand-red transition-colors truncate">{company}</p>
+                                        <Badge className={cn('text-[10px] border h-4 shrink-0', ACCOUNT_STATUS_COLORS[status] || ACCOUNT_STATUS_COLORS.active)}>
                                             {status.replace(/_/g, ' ')}
                                         </Badge>
                                     </div>
-                                    {client.email && <p className="text-[9px] text-text-muted truncate mt-0.5">{client.email}</p>}
+                                    {client.email && <p className="text-[11px] text-text-muted truncate mt-0.5">{client.email}</p>}
                                 </div>
                                 <p className="text-[11px] font-mono text-text-secondary text-center">{siteCount}</p>
                                 <p className={cn('text-[11px] font-mono text-center', openJobs > 0 ? 'text-text-amber font-bold' : 'text-text-muted')}>{openJobs}</p>
@@ -406,32 +406,32 @@ export default function AdminClientsPage() {
             <Dialog open={isNewOpen} onOpenChange={setIsNewOpen}>
                 <DialogContent className="bg-bg-elevated border-border-main max-w-md">
                     <DialogHeader>
-                        <DialogTitle className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+                        <DialogTitle className="text-[13px] font-bold flex items-center gap-2">
                             <Building2 size={14} className="text-brand-red" /> New Client
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Company Name *</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Company Name *</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="e.g. Acme Corporation" value={form.clientCompany} onChange={e => setForm(f => ({ ...f, clientCompany: e.target.value }))} />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Primary Contact Name *</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Primary Contact Name *</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Full name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Email</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Email</Label>
                                 <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="email@company.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Phone</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Phone</Label>
                                 <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="555-000-0000" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Account Status</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Account Status</Label>
                                 <Select value={form.accountStatus} onValueChange={v => setForm(f => ({ ...f, accountStatus: v }))}>
                                     <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main">
                                         <SelectValue />
@@ -444,7 +444,7 @@ export default function AdminClientsPage() {
                                 </Select>
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Billing Terms</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Billing Terms</Label>
                                 <Select value={form.billingTerms} onValueChange={v => setForm(f => ({ ...f, billingTerms: v }))}>
                                     <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main">
                                         <SelectValue />
@@ -459,8 +459,8 @@ export default function AdminClientsPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" size="sm" onClick={() => setIsNewOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
-                        <Button size="sm" onClick={handleCreate} disabled={saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+                        <Button variant="outline" size="sm" onClick={() => setIsNewOpen(false)} className="text-[10px] font-bold">Cancel</Button>
+                        <Button size="sm" onClick={handleCreate} disabled={saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
                             {saving ? 'Creating...' : 'Create Client'}
                         </Button>
                     </DialogFooter>

@@ -58,7 +58,7 @@ export default function DirectoryPage() {
         </div>
       </header>
 
-      <Suspense fallback={<div className="p-8 text-center text-text-muted text-[10px] uppercase tracking-widest">Loading Registry...</div>}>
+      <Suspense fallback={<div className="p-8 text-center text-text-muted text-[10px] uppercase tracking-wider">Loading Registry...</div>}>
         <DirectoryClient
           technicians={technicians}
           timeOffRequests={timeOffRequests}

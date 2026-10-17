@@ -113,12 +113,12 @@ export default function AdminSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Globe size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">General</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">General</h3>
                     </div>
                     <Card>
                         <CardContent className="p-4 flex items-center justify-between gap-4">
                             <div className="space-y-1 text-left">
-                                <h4 className="text-xs font-bold uppercase text-text-primary">Business Time Zone</h4>
+                                <h4 className="text-xs font-bold text-text-primary">Business Time Zone</h4>
                                 <p className="text-[10px] text-text-muted">Weekly logs, pay weeks and schedules use this time zone.</p>
                             </div>
                             <span className="text-[11px] font-mono font-bold text-text-primary">{BUSINESS_TIME_ZONE.replace('_', ' ')}</span>
@@ -130,7 +130,7 @@ export default function AdminSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Bell size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">{TERMINOLOGY.CONFIG.NOTIFICATIONS}</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{TERMINOLOGY.CONFIG.NOTIFICATIONS}</h3>
                     </div>
                     <Card>
                         <CardHeader className="text-left">
@@ -145,8 +145,8 @@ export default function AdminSettingsPage() {
                             ].map((item) => (
                                 <div key={item.id} className="flex items-center justify-between p-4 rounded-lg border border-border-sub bg-bg-primary">
                                     <div className="space-y-1 text-left">
-                                        <h4 className="text-xs font-bold uppercase text-text-primary">{item.label}</h4>
-                                        <p className="text-[10px] text-text-muted uppercase">{item.desc}</p>
+                                        <h4 className="text-xs font-bold text-text-primary">{item.label}</h4>
+                                        <p className="text-[10px] text-text-muted">{item.desc}</p>
                                     </div>
                                     <Switch 
                                         checked={resolveNotificationPrefs(currentUser?.notificationPreferences)[item.id as keyof NotificationPreferences]} 
@@ -162,7 +162,7 @@ export default function AdminSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Type size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Display</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Display</h3>
                     </div>
                     <ThemeToggleSetting />
                     <FontPreferenceSetting />
@@ -173,7 +173,7 @@ export default function AdminSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Banknote size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Finance & Payroll</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Finance & Payroll</h3>
                     </div>
                     <Card>
                         <CardHeader className="text-left">
@@ -194,12 +194,12 @@ export default function AdminSettingsPage() {
                                         placeholder="0.67"
                                     />
                                 </div>
-                                <span className="text-[10px] font-bold uppercase text-text-muted tracking-widest shrink-0">per mile</span>
+                                <span className="text-[10px] font-bold uppercase text-text-muted tracking-wider shrink-0">per mile</span>
                                 <Button
                                     size="sm"
                                     onClick={handleSaveMileageRate}
                                     disabled={savingMileageRate}
-                                    className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase tracking-widest shrink-0"
+                                    className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold uppercase tracking-wider shrink-0"
                                 >
                                     {savingMileageRate ? 'Saving...' : 'Save Rate'}
                                 </Button>
@@ -213,7 +213,7 @@ export default function AdminSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Activity size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">{TERMINOLOGY.CONFIG.INTEGRATIONS}</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{TERMINOLOGY.CONFIG.INTEGRATIONS}</h3>
                     </div>
                     <Card className="bg-bg-secondary border-border-main">
                         <CardContent className="p-6">
@@ -223,11 +223,11 @@ export default function AdminSettingsPage() {
                                 </div>
                                 <div className="flex-1 min-w-0 text-left">
                                     <div className="flex items-center gap-2 mb-1">
-                                        <p className="text-sm font-black uppercase tracking-wide text-text-primary">Google Maps Platform</p>
-                                        <Badge variant={mapsConfigured ? 'active' : 'outline'} className="text-[8px] h-4 px-2">{mapsConfigured ? 'Configured' : 'Not configured'}</Badge>
+                                        <p className="text-sm font-bold tracking-wide text-text-primary">Google Maps Platform</p>
+                                        <Badge variant={mapsConfigured ? 'active' : 'outline'} className="text-[10px] h-4 px-2">{mapsConfigured ? 'Configured' : 'Not configured'}</Badge>
                                     </div>
-                                    <p className="text-[10px] text-text-muted uppercase font-medium">Address lookup, job maps and routing</p>
-                                    <p className="text-[9px] text-text-muted mt-1">{mapsConfigured ? 'API key is set for this deployment.' : 'Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in the hosting environment.'}</p>
+                                    <p className="text-[10px] text-text-muted font-medium">Address lookup, job maps and routing</p>
+                                    <p className="text-[11px] text-text-muted mt-1">{mapsConfigured ? 'API key is set for this deployment.' : 'Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in the hosting environment.'}</p>
                                 </div>
                                 {mapsConfigured && (
                                 <div className="shrink-0 text-right hidden sm:block">

@@ -169,13 +169,13 @@ export default function ClientsPage() {
         <div className="relative flex-1 min-w-[180px]">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
-            className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-main bg-bg-primary text-[11px] font-bold uppercase tracking-wide text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-red transition-colors"
+            className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-main bg-bg-primary text-[11px] font-bold tracking-wide text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-red transition-colors"
             placeholder="Search clients..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-text-muted tracking-widest shrink-0">
+        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-text-muted tracking-wider shrink-0">
           <UserCheck size={12} />
           {clients.length} client{clients.length !== 1 ? 's' : ''}
         </div>
@@ -186,7 +186,7 @@ export default function ClientsPage() {
       {pendingSiteReqs > 0 && (
         <div className="flex items-center gap-3 p-3 rounded-lg bg-accent-gold/5 border border-accent-gold/20">
           <MapPin size={14} className="text-accent-gold shrink-0" />
-          <p className="text-[10px] font-bold text-accent-gold uppercase tracking-widest">
+          <p className="text-[10px] font-bold text-accent-gold uppercase tracking-wider">
             {pendingSiteReqs} pending site request{pendingSiteReqs > 1 ? 's' : ''} awaiting review
           </p>
         </div>
@@ -196,7 +196,7 @@ export default function ClientsPage() {
       {filteredClients.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
           <UserCheck size={32} className="text-text-muted mx-auto mb-3" />
-          <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">
+          <p className="text-[11px] font-bold text-text-muted">
             {searchQuery ? 'No clients match your search' : 'No clients yet'}
           </p>
           {!searchQuery && (
@@ -211,14 +211,14 @@ export default function ClientsPage() {
               <div key={client.id} onClick={() => setSelectedClient(client)} className="rounded-xl border border-border-sub bg-bg-secondary hover:bg-bg-tertiary hover:border-brand-red transition-all p-4 space-y-3 cursor-pointer">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-[13px] font-black uppercase tracking-tight text-text-primary truncate">
+                    <p className="text-[13px] font-bold tracking-tight text-text-primary truncate">
                       {client.clientCompany || client.name}
                     </p>
                     {client.clientCompany && client.name !== client.clientCompany && (
                       <p className="text-[10px] font-bold text-text-muted mt-0.5 truncate">{client.name}</p>
                     )}
                   </div>
-                  <span className="text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded border text-text-green bg-text-green/10 border-text-green/20 shrink-0">Active</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border text-text-green bg-text-green/10 border-text-green/20 shrink-0">Active</span>
                 </div>
                 <div className="space-y-1.5">
                   {client.email && (
@@ -252,7 +252,7 @@ export default function ClientsPage() {
               <div key={client.id} onClick={() => setSelectedClient(client)}
                 className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border-sub bg-bg-secondary hover:bg-bg-tertiary hover:border-brand-red transition-all cursor-pointer">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-black uppercase tracking-tight text-text-primary truncate">{client.clientCompany || client.name}</p>
+                  <p className="text-[12px] font-bold tracking-tight text-text-primary truncate">{client.clientCompany || client.name}</p>
                   {client.clientCompany && client.name !== client.clientCompany && (
                     <p className="text-[10px] font-bold text-text-muted truncate">{client.name}</p>
                   )}
@@ -272,7 +272,7 @@ export default function ClientsPage() {
                     <MapPin size={10} className="shrink-0" />{clientSiteReqs.length}
                   </span>
                 )}
-                <span className="text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded border text-text-green bg-text-green/10 border-text-green/20 shrink-0">Active</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border text-text-green bg-text-green/10 border-text-green/20 shrink-0">Active</span>
               </div>
             );
           })}
@@ -299,7 +299,7 @@ export default function ClientsPage() {
                       <Building2 size={16} className="text-brand-red" />
                     </div>
                     <div>
-                      <DialogTitle className="text-[14px] font-black uppercase tracking-wide">{selectedClient.clientCompany || selectedClient.name}</DialogTitle>
+                      <DialogTitle className="text-[14px] font-bold tracking-wide">{selectedClient.clientCompany || selectedClient.name}</DialogTitle>
                       {selectedClient.clientCompany && selectedClient.name !== selectedClient.clientCompany && (
                         <p className="text-[10px] text-text-muted mt-0.5">{selectedClient.name}</p>
                       )}
@@ -324,40 +324,40 @@ export default function ClientsPage() {
                   </div>
                   {/* Active projects */}
                   <div>
-                    <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 flex items-center gap-1.5">
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
                       <Briefcase size={10} /> Active Projects ({clientProjects.filter(p => p.status === 'active').length})
                     </p>
                     {clientProjects.filter(p => p.status === 'active').length === 0 ? (
-                      <p className="text-[9px] text-text-muted uppercase py-1">No active projects</p>
+                      <p className="text-[11px] text-text-muted py-1">No active projects</p>
                     ) : clientProjects.filter(p => p.status === 'active').map(p => (
                       <div key={p.id} className="flex items-center justify-between py-1.5 border-b border-border-sub last:border-0">
-                        <p className="text-[10px] font-bold text-text-primary uppercase truncate">{p.name}</p>
-                        <Badge variant="active" className="text-[7px] uppercase h-4 shrink-0">Active</Badge>
+                        <p className="text-[10px] font-bold text-text-primary truncate">{p.name}</p>
+                        <Badge variant="active" className="text-[10px] h-4 shrink-0">Active</Badge>
                       </div>
                     ))}
                   </div>
                   {/* Site requests */}
                   {clientReqs.length > 0 && (
                     <div>
-                      <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-2 flex items-center gap-1.5">
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
                         <MapPin size={10} /> Site Requests ({clientReqs.length})
                       </p>
                       {clientReqs.slice(0, 5).map(r => (
                         <div key={r.id} className="flex items-center justify-between py-1.5 border-b border-border-sub last:border-0">
-                          <p className="text-[10px] font-bold text-text-primary uppercase truncate">{r.siteName}</p>
-                          <Badge variant={r.status === 'approved' ? 'active' : r.status === 'pending' ? 'onhold' : 'completed'} className="text-[7px] uppercase h-4 shrink-0">{r.status}</Badge>
+                          <p className="text-[10px] font-bold text-text-primary truncate">{r.siteName}</p>
+                          <Badge variant={r.status === 'approved' ? 'active' : r.status === 'pending' ? 'onhold' : 'completed'} className="text-[10px] h-4 shrink-0">{r.status}</Badge>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
                 <DialogFooter className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setSelectedClient(null)} className="text-[10px] font-black uppercase">Close</Button>
-                  <Button variant="outline" size="sm" onClick={() => openEditClient(selectedClient)} className="text-[10px] font-black uppercase">
+                  <Button variant="outline" size="sm" onClick={() => setSelectedClient(null)} className="text-[10px] font-bold">Close</Button>
+                  <Button variant="outline" size="sm" onClick={() => openEditClient(selectedClient)} className="text-[10px] font-bold">
                     <PenLine size={11} className="mr-1.5" /> Edit
                   </Button>
                   <Link href={`/admin/clients/${selectedClient.id}`}>
-                    <Button size="sm" className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+                    <Button size="sm" className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
                       <ExternalLink size={11} className="mr-1.5" /> View Full Profile
                     </Button>
                   </Link>
@@ -372,29 +372,29 @@ export default function ClientsPage() {
       <Dialog open={isAddClientOpen} onOpenChange={setIsAddClientOpen}>
         <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Add Client</DialogTitle>
+            <DialogTitle className="text-[13px] font-bold">Add Client</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Company Name</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Company Name</Label>
               <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Acme Corp" value={newClientForm.company} onChange={e => setNewClientForm(f => ({ ...f, company: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Contact Name</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Contact Name</Label>
               <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Jane Smith" value={newClientForm.name} onChange={e => setNewClientForm(f => ({ ...f, name: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Email</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Email</Label>
               <Input type="email" className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="jane@acme.com" value={newClientForm.email} onChange={e => setNewClientForm(f => ({ ...f, email: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Phone</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Phone</Label>
               <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="555-000-0000" value={newClientForm.phone} onChange={e => setNewClientForm(f => ({ ...f, phone: e.target.value }))} />
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => setIsAddClientOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
-            <Button size="sm" onClick={handleAddClient} disabled={saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+            <Button variant="outline" size="sm" onClick={() => setIsAddClientOpen(false)} className="text-[10px] font-bold">Cancel</Button>
+            <Button size="sm" onClick={handleAddClient} disabled={saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
               {saving ? 'Adding...' : 'Add Client'}
             </Button>
           </DialogFooter>
@@ -405,29 +405,29 @@ export default function ClientsPage() {
       <Dialog open={isEditClientOpen} onOpenChange={setIsEditClientOpen}>
         <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Edit Client</DialogTitle>
+            <DialogTitle className="text-[13px] font-bold">Edit Client</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Company Name</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Company Name</Label>
               <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Acme Corp" value={editClientForm.company} onChange={e => setEditClientForm(f => ({ ...f, company: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Contact Name</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Contact Name</Label>
               <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Jane Smith" value={editClientForm.name} onChange={e => setEditClientForm(f => ({ ...f, name: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Email</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Email</Label>
               <Input type="email" className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="jane@acme.com" value={editClientForm.email} onChange={e => setEditClientForm(f => ({ ...f, email: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Phone</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Phone</Label>
               <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="555-000-0000" value={editClientForm.phone} onChange={e => setEditClientForm(f => ({ ...f, phone: e.target.value }))} />
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => setIsEditClientOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
-            <Button size="sm" onClick={handleEditClient} disabled={editSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+            <Button variant="outline" size="sm" onClick={() => setIsEditClientOpen(false)} className="text-[10px] font-bold">Cancel</Button>
+            <Button size="sm" onClick={handleEditClient} disabled={editSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
               {editSaving ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogFooter>

@@ -48,7 +48,7 @@ export function FontPreferenceSetting() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="p-4 rounded-lg border border-border-sub bg-bg-primary">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted mb-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">
             Preview — {previewOpt.label}{!previewValue && ' (current)'}
           </p>
           <p className={cn('text-2xl tracking-wide text-text-primary mb-1', previewOpt.sample)}>0123456789</p>
@@ -79,7 +79,7 @@ export function FontPreferenceSetting() {
                   {active && <Check size={14} className="text-brand-red shrink-0" />}
                 </div>
                 <p className={cn('text-lg tracking-wide mb-1', opt.sample)}>0123456789</p>
-                <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">{opt.description}</p>
+                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">{opt.description}</p>
               </button>
             );
           })}

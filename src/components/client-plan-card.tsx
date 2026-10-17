@@ -82,8 +82,8 @@ export function ClientPlanCard({ client }: { client: Technician | null | undefin
             <>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-bold text-text-primary uppercase tracking-tight">{plan?.name || 'Your plan'}</h3>
-                  {current.status !== 'active' && <Badge variant="destructive" className="text-[8px] h-4 uppercase">{SUBSCRIPTION_STATUS_LABELS[current.status]}</Badge>}
+                  <h3 className="text-xl font-bold text-text-primary tracking-tight">{plan?.name || 'Your plan'}</h3>
+                  {current.status !== 'active' && <Badge variant="destructive" className="text-[10px] h-4">{SUBSCRIPTION_STATUS_LABELS[current.status]}</Badge>}
                 </div>
                 <p className="text-xs text-text-muted mt-1 font-bold">
                   {formatMoney(subscriptionAmount(current, plan))} · {INTERVAL_LABELS[current.interval]}
@@ -99,13 +99,13 @@ export function ClientPlanCard({ client }: { client: Technician | null | undefin
           {pending && (
             <div className="p-2.5 rounded-lg border border-accent-gold/40 bg-accent-gold/5 text-[11px] flex items-center justify-between gap-2">
               <span>Requested: <b>{pendingPlan?.name || 'a plan change'}</b> ({INTERVAL_LABELS[pending.interval].toLowerCase()}) — awaiting approval.</span>
-              <button onClick={withdraw} className="text-[10px] font-bold uppercase text-text-muted hover:text-text-primary shrink-0">Withdraw</button>
+              <button onClick={withdraw} className="text-[10px] font-bold text-text-muted hover:text-text-primary shrink-0">Withdraw</button>
             </div>
           )}
         </CardContent>
         {offered.length > 0 && !pending && (
           <CardFooter className="pt-0">
-            <Button variant="outline" className="w-full h-9 text-[10px] font-black uppercase tracking-widest"
+            <Button variant="outline" className="w-full h-9 text-[10px] font-bold uppercase tracking-wider"
               onClick={() => { setChoice(null); setNotes(''); setOpen(true); }}>
               {current ? 'Change Plan' : 'Choose a Plan'}
             </Button>
@@ -116,7 +116,7 @@ export function ClientPlanCard({ client }: { client: Technician | null | undefin
       <Dialog open={open} onOpenChange={v => { if (!v && !sending) setOpen(false); }}>
         <DialogContent className="sm:max-w-[760px] max-h-[90vh] p-0 flex flex-col bg-bg-elevated border-border-main">
           <DialogHeader className="p-4 sm:p-6 pb-3 border-b border-border-sub text-left">
-            <DialogTitle className="text-[13px] font-black uppercase tracking-widest">{current ? 'Change Plan' : 'Choose a Plan'}</DialogTitle>
+            <DialogTitle className="text-[13px] font-bold">{current ? 'Change Plan' : 'Choose a Plan'}</DialogTitle>
             <DialogDescription className="text-xs">Pick a plan and billing option. Your account manager confirms before anything changes.</DialogDescription>
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -124,8 +124,8 @@ export function ClientPlanCard({ client }: { client: Technician | null | undefin
               <div key={p.id} className={cn('p-4 rounded-lg border flex flex-col gap-2',
                 choice?.planId === p.id ? 'border-brand-red ring-1 ring-brand-red bg-brand-red/5' : 'border-border-sub bg-bg-primary')}>
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-black uppercase">{p.name}</p>
-                  {current?.planId === p.id && <Badge variant="outline" className="text-[8px] h-4">Current</Badge>}
+                  <p className="text-sm font-bold">{p.name}</p>
+                  {current?.planId === p.id && <Badge variant="outline" className="text-[10px] h-4">Current</Badge>}
                 </div>
                 {p.description && <p className="text-[11px] text-text-muted">{p.description}</p>}
                 <PlanBenefitList plan={p} />
@@ -137,7 +137,7 @@ export function ClientPlanCard({ client }: { client: Technician | null | undefin
                         className={cn('w-full flex items-center justify-between px-3 py-2 rounded-md border text-left text-xs transition-colors',
                           selected ? 'border-brand-red bg-brand-red/10' : 'border-border-sub hover:border-text-muted')}>
                         <span className="font-mono font-bold">{formatMoney(pr.amount)}</span>
-                        <span className="flex items-center gap-1 text-[10px] text-text-muted uppercase">{INTERVAL_LABELS[pr.interval]}{selected && <Check size={12} className="text-brand-red" />}</span>
+                        <span className="flex items-center gap-1 text-[10px] text-text-muted">{INTERVAL_LABELS[pr.interval]}{selected && <Check size={12} className="text-brand-red" />}</span>
                       </button>
                     );
                   })}
@@ -146,15 +146,15 @@ export function ClientPlanCard({ client }: { client: Technician | null | undefin
               </div>
             ))}
             <div className="md:col-span-3 space-y-1">
-              <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Note (optional)</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Note (optional)</p>
               <Textarea value={notes} onChange={e => setNotes(e.target.value)} className="text-xs min-h-[60px] resize-none"
                 placeholder="Anything we should know — sites to cover, start date…" />
             </div>
           </div>
           <DialogFooter className="p-4 sm:p-6 border-t border-border-sub flex flex-col-reverse sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={sending} className="h-10 w-full sm:w-auto text-[10px] font-black uppercase">Cancel</Button>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={sending} className="h-10 w-full sm:w-auto text-[10px] font-bold">Cancel</Button>
             <Button onClick={submit} disabled={!choice || sending || (choice.planId === current?.planId && choice.interval === current?.interval)}
-              className="h-10 w-full sm:w-auto bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+              className="h-10 w-full sm:w-auto bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
               {sending && <Loader2 size={12} className="mr-1.5 animate-spin" />}
               {choice ? `Request ${offered.find(p => p.id === choice.planId)?.name} · ${formatMoney(planPrice(offered.find(p => p.id === choice.planId), choice.interval) || 0)}` : 'Pick a billing option'}
             </Button>

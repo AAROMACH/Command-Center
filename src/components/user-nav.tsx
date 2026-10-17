@@ -92,10 +92,10 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative flex h-auto items-center gap-3 px-2 py-1 hover:bg-bg-tertiary rounded-md group">
           <div className="flex flex-col items-end text-right hidden sm:flex">
-             <span className="text-[11px] font-bold uppercase tracking-wider text-white leading-tight">
+             <span className="text-[11px] font-bold tracking-wider text-white leading-tight">
                 {displayName}
              </span>
-             <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest leading-none mt-0.5">
+             <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider leading-none mt-0.5">
                 {activePortalId === 'admin' ? 'Administrator' : activePortalId === 'tech' ? 'Field Technician' : 'Client Lead'}
              </span>
           </div>
@@ -111,7 +111,7 @@ export function UserNav() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal border-b border-border-sub bg-bg-tertiary/20 pb-4">
           <div className="flex flex-col space-y-1.5">
-            <p className="text-sm font-bold uppercase tracking-wide text-text-primary truncate">{displayName}</p>
+            <p className="text-sm font-bold tracking-wide text-text-primary truncate">{displayName}</p>
             <p className="text-[10px] font-mono font-bold text-brand-red uppercase tracking-tighter truncate opacity-70">
               {email}
             </p>

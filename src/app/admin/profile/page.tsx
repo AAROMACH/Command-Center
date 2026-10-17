@@ -111,7 +111,7 @@ export default function ProfilePage() {
         }
     };
 
-    if (!mounted) return <div className="p-8 text-center text-[10px] uppercase tracking-widest text-text-muted">Loading...</div>;
+    if (!mounted) return <div className="p-8 text-center text-[10px] uppercase tracking-wider text-text-muted">Loading...</div>;
 
     return (
         <div className="space-y-6">

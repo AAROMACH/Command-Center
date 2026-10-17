@@ -372,7 +372,7 @@ export default function TechEarningsPage() {
     const calculatedMileageAmount = distanceMilesNum * mileageRate;
 
     if (!mounted || !currentTechId) {
-        return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Accessing Financial Vault...</div>;
+        return <div className="p-8 text-center text-text-muted text-xs">Accessing Financial Vault...</div>;
     }
 
     return (
@@ -388,21 +388,21 @@ export default function TechEarningsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-border-main border border-border-main rounded-lg overflow-hidden shadow-sm">
                 <div className="bg-bg-secondary p-6">
                     <div className="flex justify-between items-start mb-2">
-                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Total Settled (YTD)</p>
+                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Total Settled (YTD)</p>
                         <CheckCircle2 className="h-4 w-4 text-text-green" />
                     </div>
                     <p className="text-3xl font-mono font-bold text-text-green">${metrics.settled.toFixed(2)}</p>
                 </div>
                 <div className="bg-bg-secondary p-6">
                     <div className="flex justify-between items-start mb-2">
-                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Pending Audit</p>
+                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Pending Audit</p>
                         <ArrowUpRight className="h-4 w-4 text-accent-gold" />
                     </div>
                     <p className="text-3xl font-mono font-bold text-accent-gold">${metrics.pending.toFixed(2)}</p>
                 </div>
                 <div className="bg-bg-secondary p-6">
                     <div className="flex justify-between items-start mb-2">
-                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Pending Reimbursements</p>
+                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Pending Reimbursements</p>
                         <Receipt className="h-4 w-4 text-text-primary" />
                     </div>
                     <p className="text-3xl font-mono font-bold text-text-primary">${metrics.pendingReim.toFixed(2)}</p>
@@ -420,23 +420,23 @@ export default function TechEarningsPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent border-border-sub">
-                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-4">Project</TableHead>
-                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Role</TableHead>
-                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Type</TableHead>
-                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Amount</TableHead>
-                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
-                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Notes</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-wider pl-4">Project</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-wider">Role</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-wider">Type</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-wider">Amount</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-wider">Status</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-wider">Notes</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {projectPayouts.map((pp: any) => (
                                     <TableRow key={pp.id} className="hover:bg-bg-tertiary transition-colors border-border-sub">
-                                        <TableCell className="text-xs font-bold uppercase pl-4">{pp.projectId?.slice(0, 8)}</TableCell>
+                                        <TableCell className="text-xs font-bold pl-4">{pp.projectId?.slice(0, 8)}</TableCell>
                                         <TableCell className="text-xs text-text-muted capitalize">{pp.role}</TableCell>
                                         <TableCell className="text-xs text-text-muted capitalize">{pp.payType?.replace('_', ' ')}</TableCell>
                                         <TableCell className="font-mono text-sm font-bold tabular-nums">${(pp.amount || 0).toFixed(2)}</TableCell>
                                         <TableCell>
-                                            <Badge variant={pp.status === 'paid' ? 'completed' : pp.status === 'approved' ? 'active' : 'scheduled'} className="text-[8px] h-4 uppercase">
+                                            <Badge variant={pp.status === 'paid' ? 'completed' : pp.status === 'approved' ? 'active' : 'scheduled'} className="text-[10px] h-4">
                                                 {pp.status}
                                             </Badge>
                                         </TableCell>
@@ -471,7 +471,7 @@ export default function TechEarningsPage() {
                                             dateRange?.from && "border-brand-red ring-1 ring-brand-red"
                                         )}>
                                             <CalendarIcon size={12} className={cn("mr-2", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
-                                            <span className={cn("text-[10px] font-bold uppercase tracking-widest", dateRange?.from ? "text-text-primary" : "text-text-muted")}>
+                                            <span className={cn("text-[10px] font-bold uppercase tracking-wider", dateRange?.from ? "text-text-primary" : "text-text-muted")}>
                                                 {dateRange?.from ? (dateRange.to ? `${format(dateRange.from, "MM-dd")} – ${format(dateRange.to, "MM-dd")}` : format(dateRange.from, "MM-dd")) : "Pick Period"}
                                             </span>
                                         </div>
@@ -481,18 +481,18 @@ export default function TechEarningsPage() {
                                     </PopoverContent>
                                 </Popover>
                                 <Select value={logSortBy} onValueChange={(v) => setLogSortBy(v as LogSortOption)}>
-                                    <SelectTrigger className="h-9 w-[140px] bg-bg-primary border-border-main text-[10px] font-bold uppercase tracking-widest">
+                                    <SelectTrigger className="h-9 w-[140px] bg-bg-primary border-border-main text-[10px] font-bold uppercase tracking-wider">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="date-desc" className="text-[10px] uppercase font-bold">Newest</SelectItem>
-                                        <SelectItem value="date-asc" className="text-[10px] uppercase font-bold">Oldest</SelectItem>
-                                        <SelectItem value="payout-desc" className="text-[10px] uppercase font-bold">Highest Pay</SelectItem>
+                                        <SelectItem value="date-desc" className="text-[10px] font-bold">Newest</SelectItem>
+                                        <SelectItem value="date-asc" className="text-[10px] font-bold">Oldest</SelectItem>
+                                        <SelectItem value="payout-desc" className="text-[10px] font-bold">Highest Pay</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <div className="search-wrap !mb-0 w-[180px]">
                                     <Search className="h-3.5 w-3.5" />
-                                    <input className="search-input !w-full !h-9 !text-[10px] font-bold uppercase" placeholder="Filter records..." value={logSearchQuery} onChange={(e) => setLogSearchQuery(e.target.value)} />
+                                    <input className="search-input !w-full !h-9 !text-[10px] font-bold" placeholder="Filter records..." value={logSearchQuery} onChange={(e) => setLogSearchQuery(e.target.value)} />
                                 </div>
                             </div>
                         </CardHeader>
@@ -500,9 +500,9 @@ export default function TechEarningsPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow className="hover:bg-transparent border-border-sub">
-                                        <TableHead className="text-center text-[10px] uppercase font-bold tracking-widest">Week Period</TableHead>
-                                        <TableHead className="text-center text-[10px] uppercase font-bold tracking-widest">Audit Status</TableHead>
-                                        <TableHead className="text-right text-[10px] uppercase font-bold tracking-widest">Settlement</TableHead>
+                                        <TableHead className="text-center text-[10px] uppercase font-bold tracking-wider">Week Period</TableHead>
+                                        <TableHead className="text-center text-[10px] uppercase font-bold tracking-wider">Audit Status</TableHead>
+                                        <TableHead className="text-right text-[10px] uppercase font-bold tracking-wider">Settlement</TableHead>
                                         <TableHead className="w-[110px]" />
                                     </TableRow>
                                 </TableHeader>
@@ -532,7 +532,7 @@ export default function TechEarningsPage() {
                                                         return next;
                                                     })}
                                                 >
-                                                    <TableCell className="font-bold uppercase text-xs text-center">
+                                                    <TableCell className="font-bold text-xs text-center">
                                                         <span className="inline-flex items-center gap-1.5">
                                                             {isExpanded ? <ChevronDown size={12} className="text-text-muted" /> : <ChevronRight size={12} className="text-text-muted" />}
                                                             Week of {log.weekOf}
@@ -542,7 +542,7 @@ export default function TechEarningsPage() {
                                                         <div className="flex items-center justify-center gap-1.5 flex-wrap">
                                                             <Badge variant={getStatusVariant(log.status)}>{(log.status || '').toUpperCase()}</Badge>
                                                             {hasOpenDispute && (
-                                                                <Badge variant="destructive" className="text-[7px] h-4 uppercase tracking-widest animate-pulse">
+                                                                <Badge variant="destructive" className="text-[10px] h-4 uppercase tracking-wider animate-pulse">
                                                                     Dispute Under Review
                                                                 </Badge>
                                                             )}
@@ -552,13 +552,13 @@ export default function TechEarningsPage() {
                                                     <TableCell className="text-right">
                                                         {isApproved ? (
                                                             <button
-                                                                className="text-[9px] text-text-muted hover:text-text-primary uppercase font-bold border border-border-sub rounded px-2 py-1 hover:border-border-main transition-colors"
+                                                                className="text-[11px] text-text-muted hover:text-text-primary font-bold border border-border-sub rounded px-2 py-1 hover:border-border-main transition-colors"
                                                                 onClick={(e) => { e.stopPropagation(); downloadPaystub(log, tech || undefined, currentTechId || '', jobsById); }}
                                                             >
                                                                 <Download size={9} className="inline mr-1" /> Stub
                                                             </button>
                                                         ) : (
-                                                            <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest">Pending approval</span>
+                                                            <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider">Pending approval</span>
                                                         )}
                                                     </TableCell>
                                                 </TableRow>
@@ -566,7 +566,7 @@ export default function TechEarningsPage() {
                                                     <TableRow key={`${log.id}-detail`} className="hover:bg-transparent border-border-sub">
                                                         <TableCell colSpan={4} className="bg-bg-primary/40 p-0">
                                                             {verifiedItems.length === 0 ? (
-                                                                <p className="text-center py-6 text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No verified jobs in this log.</p>
+                                                                <p className="text-center py-6 text-[10px] font-bold text-text-muted uppercase tracking-wider italic">No verified jobs in this log.</p>
                                                             ) : (
                                                                 <div className="divide-y divide-border-sub">
                                                                     {verifiedItems.map(item => {
@@ -575,8 +575,8 @@ export default function TechEarningsPage() {
                                                                         return (
                                                                             <div key={item.id} className="flex items-center justify-between gap-4 px-6 py-3 text-left">
                                                                                 <div className="min-w-0">
-                                                                                    <p className="text-xs font-bold text-text-primary uppercase truncate">{job?.title || job?.description || 'Untitled Job'}</p>
-                                                                                    <p className="text-[9px] text-text-muted font-mono uppercase mt-0.5">
+                                                                                    <p className="text-xs font-bold text-text-primary truncate">{job?.title || job?.description || 'Untitled Job'}</p>
+                                                                                    <p className="text-[11px] text-text-muted font-mono mt-0.5">
                                                                                         ASMT: {item.workOrderId?.toUpperCase()}
                                                                                         {job && ` · WO# ${displayWorkOrderNumber(job)}`}
                                                                                         {job?.scheduleDate && ` · ${job.scheduleDate}`}
@@ -593,8 +593,8 @@ export default function TechEarningsPage() {
                                                                 <div className="flex items-center justify-between gap-4 px-6 py-3 border-t border-border-sub bg-bg-secondary/40">
                                                                     <div className="flex items-center gap-2">
                                                                         <Receipt size={12} className="text-accent-gold" />
-                                                                        <span className="text-xs font-bold text-text-primary uppercase">Reimbursements</span>
-                                                                        <Badge variant={isApproved ? 'active' : 'onhold'} className="text-[7px] h-3.5 uppercase">
+                                                                        <span className="text-xs font-bold text-text-primary">Reimbursements</span>
+                                                                        <Badge variant={isApproved ? 'active' : 'onhold'} className="text-[10px] h-3.5">
                                                                             {isApproved ? 'Approved' : 'Pending'}
                                                                         </Badge>
                                                                     </div>
@@ -609,7 +609,7 @@ export default function TechEarningsPage() {
                                     })}
                                     {filteredLogs.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={4} className="text-center py-12 text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No billing records found in current registry window.</TableCell>
+                                            <TableCell colSpan={4} className="text-center py-12 text-[10px] font-bold text-text-muted uppercase tracking-wider italic">No billing records found in current registry window.</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
@@ -628,14 +628,14 @@ export default function TechEarningsPage() {
                                     <CardTitle>Reimbursements</CardTitle>
                                     <CardDescription>Submit receipt or mileage reimbursements. Approved entries are processed in payroll.</CardDescription>
                                 </div>
-                                <Button size="sm" onClick={() => { setReimType('receipt'); setIsReimDialogOpen(true); }} className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest">
+                                <Button size="sm" onClick={() => { setReimType('receipt'); setIsReimDialogOpen(true); }} className="h-8 px-4 text-[10px] font-bold uppercase tracking-wider">
                                     <Plus size={12} className="mr-1.5" /> Submit Reimbursement
                                 </Button>
                             </div>
                         </CardHeader>
                         <CardContent className="p-0">
                             {reimbursementWeeks.length === 0 ? (
-                                <p className="text-center py-12 text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No reimbursement requests on file.</p>
+                                <p className="text-center py-12 text-[10px] font-bold text-text-muted uppercase tracking-wider italic">No reimbursement requests on file.</p>
                             ) : reimbursementWeeks.map(({ weekOf, items, total }) => {
                                 const [m, d, y] = weekOf.split('-').map(Number);
                                 const weekStart = new Date(y, m - 1, d);
@@ -650,10 +650,10 @@ export default function TechEarningsPage() {
                                         >
                                             <div className="flex items-center gap-2 min-w-0">
                                                 {isCollapsed ? <ChevronRight size={14} className="text-text-muted shrink-0" /> : <ChevronDown size={14} className="text-text-muted shrink-0" />}
-                                                <span className="text-[11px] font-bold uppercase tracking-widest text-text-primary truncate">
+                                                <span className="text-[11px] font-bold text-text-primary truncate">
                                                     Week of {format(weekStart, 'MMM d')} – {format(weekEnd, 'MMM d, yyyy')}
                                                 </span>
-                                                <span className="text-[10px] text-text-muted font-bold uppercase shrink-0">({items.length})</span>
+                                                <span className="text-[10px] text-text-muted font-bold shrink-0">({items.length})</span>
                                             </div>
                                             <span className="text-xs font-mono font-bold text-text-green shrink-0">${total.toFixed(2)}</span>
                                         </button>
@@ -661,21 +661,21 @@ export default function TechEarningsPage() {
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow className="hover:bg-transparent border-border-sub">
-                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-4">Date</TableHead>
-                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Type</TableHead>
-                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Details</TableHead>
-                                                        <TableHead className="text-right text-[10px] uppercase font-bold tracking-widest">Amount</TableHead>
-                                                        <TableHead className="text-center text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
+                                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider pl-4">Date</TableHead>
+                                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider">Type</TableHead>
+                                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider">Details</TableHead>
+                                                        <TableHead className="text-right text-[10px] uppercase font-bold tracking-wider">Amount</TableHead>
+                                                        <TableHead className="text-center text-[10px] uppercase font-bold tracking-wider">Status</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
                                                     {items.map(item => (
                                                         <TableRow key={`${item.source}-${item.id}`} className="hover:bg-bg-tertiary transition-colors border-border-sub">
-                                                            <TableCell className="text-xs font-bold uppercase pl-4">{item.date}</TableCell>
+                                                            <TableCell className="text-xs font-bold pl-4">{item.date}</TableCell>
                                                             <TableCell>
                                                                 <Badge
                                                                     variant={item.type === 'mileage' ? 'onhold' : item.type === 'job' ? 'outline' : 'default'}
-                                                                    className="text-[8px] h-4 uppercase flex items-center gap-1 w-fit"
+                                                                    className="text-[10px] h-4 flex items-center gap-1 w-fit"
                                                                 >
                                                                     {item.type === 'mileage' ? <><Car size={8} />&nbsp;Mileage</> : item.type === 'job' ? <><Wrench size={8} />&nbsp;Job Reimb.</> : 'Receipt'}
                                                                 </Badge>
@@ -685,7 +685,7 @@ export default function TechEarningsPage() {
                                                                 {item.sub && <div className="text-[10px] text-text-muted">{item.sub}</div>}
                                                                 {item.receiptPhotoUrls?.[0] && (
                                                                     <button
-                                                                        className="text-[9px] text-brand-red hover:underline mt-0.5"
+                                                                        className="text-[11px] text-brand-red hover:underline mt-0.5"
                                                                         onClick={() => window.open(item.receiptPhotoUrls![0], '_blank')}
                                                                     >
                                                                         View receipt
@@ -694,7 +694,7 @@ export default function TechEarningsPage() {
                                                             </TableCell>
                                                             <TableCell className="text-right font-mono text-sm font-bold">${item.amount.toFixed(2)}</TableCell>
                                                             <TableCell className="text-center">
-                                                                <Badge variant={getStatusVariant(item.status)} className="text-[8px] h-4 uppercase">
+                                                                <Badge variant={getStatusVariant(item.status)} className="text-[10px] h-4">
                                                                     {item.status}
                                                                 </Badge>
                                                             </TableCell>
@@ -715,7 +715,7 @@ export default function TechEarningsPage() {
             <Dialog open={isReimDialogOpen} onOpenChange={setIsReimDialogOpen}>
                 <DialogContent className="sm:max-w-[520px] bg-bg-elevated border-border-default">
                     <DialogHeader>
-                        <DialogTitle className="uppercase tracking-widest font-bold text-sm flex items-center gap-2">
+                        <DialogTitle className="font-bold text-sm flex items-center gap-2">
                             <Receipt size={16} className="text-brand-red" /> Submit Reimbursement
                         </DialogTitle>
                         <DialogDescription>Choose the type of reimbursement to submit.</DialogDescription>
@@ -726,7 +726,7 @@ export default function TechEarningsPage() {
                         <button
                             onClick={() => setReimType('receipt')}
                             className={cn(
-                                'flex-1 py-2.5 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-colors',
+                                'flex-1 py-2.5 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wider transition-colors',
                                 reimType === 'receipt' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary bg-bg-secondary'
                             )}
                         >
@@ -736,7 +736,7 @@ export default function TechEarningsPage() {
                         <button
                             onClick={() => setReimType('mileage')}
                             className={cn(
-                                'flex-1 py-2.5 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-colors',
+                                'flex-1 py-2.5 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wider transition-colors',
                                 reimType === 'mileage' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary bg-bg-secondary'
                             )}
                         >
@@ -749,24 +749,24 @@ export default function TechEarningsPage() {
                         <div className="space-y-4 pt-1">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Purchase Date *</Label>
+                                    <Label className="text-[10px] font-bold text-text-muted">Purchase Date *</Label>
                                     <Input type="date" value={receiptForm.purchaseDate} onChange={e => setReceiptForm(p => ({ ...p, purchaseDate: e.target.value }))} className="h-10 text-xs" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Amount ($) *</Label>
+                                    <Label className="text-[10px] font-bold text-text-muted">Amount ($) *</Label>
                                     <Input type="number" step="0.01" min="0" value={receiptForm.amount} onChange={e => setReceiptForm(p => ({ ...p, amount: e.target.value }))} className="h-10 text-xs font-mono" placeholder="0.00" />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Vendor Name</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">Vendor Name</Label>
                                 <Input value={receiptForm.vendorName} onChange={e => setReceiptForm(p => ({ ...p, vendorName: e.target.value }))} className="h-10 text-xs" placeholder="Store or vendor" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Description *</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">Description *</Label>
                                 <Input value={receiptForm.description} onChange={e => setReceiptForm(p => ({ ...p, description: e.target.value }))} className="h-10 text-xs" placeholder="What was purchased?" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Related Job (optional)</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">Related Job (optional)</Label>
                                 <Select value={receiptForm.relatedJobId} onValueChange={v => setReceiptForm(p => ({ ...p, relatedJobId: v === '__none__' ? '' : v }))}>
                                     <SelectTrigger className="h-10 text-xs bg-bg-primary border-border-main">
                                         <SelectValue placeholder="Select a job..." />
@@ -782,19 +782,19 @@ export default function TechEarningsPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Notes</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">Notes</Label>
                                 <Input value={receiptForm.notes} onChange={e => setReceiptForm(p => ({ ...p, notes: e.target.value }))} className="h-10 text-xs" placeholder="Optional notes" />
                             </div>
                             {/* Receipt photo upload */}
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Receipt Photo (optional)</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">Receipt Photo (optional)</Label>
                                 <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleReceiptPhotoSelect} />
                                 {receiptPhotoUrl ? (
                                     <div className="flex items-center gap-3 p-2 rounded-lg border border-border-sub bg-bg-secondary">
                                         <img src={receiptPhotoUrl} alt="Receipt" className="h-12 w-12 rounded object-cover shrink-0 cursor-pointer" onClick={() => window.open(receiptPhotoUrl, '_blank')} />
                                         <div className="flex-1 min-w-0">
                                             <p className="text-[10px] font-bold text-text-primary">Receipt uploaded</p>
-                                            <p className="text-[9px] text-text-muted">Click image to view</p>
+                                            <p className="text-[11px] text-text-muted">Click image to view</p>
                                         </div>
                                         <button onClick={() => setReceiptPhotoUrl(null)} className="text-text-muted hover:text-text-primary p-1">
                                             <X size={14} />
@@ -804,7 +804,7 @@ export default function TechEarningsPage() {
                                     <button
                                         onClick={() => fileInputRef.current?.click()}
                                         disabled={uploading}
-                                        className="w-full h-16 rounded-lg border border-dashed border-border-main flex items-center justify-center gap-2 text-[10px] font-bold uppercase text-text-muted hover:text-text-primary hover:border-brand-red transition-colors"
+                                        className="w-full h-16 rounded-lg border border-dashed border-border-main flex items-center justify-center gap-2 text-[10px] font-bold text-text-muted hover:text-text-primary hover:border-brand-red transition-colors"
                                     >
                                         {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
                                         {uploading ? 'Uploading...' : 'Upload Receipt Photo'}
@@ -819,24 +819,24 @@ export default function TechEarningsPage() {
                         <div className="space-y-4 pt-1">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Date Driven *</Label>
+                                    <Label className="text-[10px] font-bold text-text-muted">Date Driven *</Label>
                                     <Input type="date" value={mileageForm.dateDriven} onChange={e => setMileageForm(p => ({ ...p, dateDriven: e.target.value }))} className="h-10 text-xs" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Distance (miles) *</Label>
+                                    <Label className="text-[10px] font-bold text-text-muted">Distance (miles) *</Label>
                                     <Input type="number" step="0.1" min="0" value={mileageForm.distanceMiles} onChange={e => setMileageForm(p => ({ ...p, distanceMiles: e.target.value }))} className="h-10 text-xs font-mono" placeholder="0.0" />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">From Location *</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">From Location *</Label>
                                 <AddressAutocompleteInput value={mileageForm.fromLocation} onChange={v => setMileageForm(p => ({ ...p, fromLocation: v }))} className="h-10 text-xs" placeholder="Starting address or location" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">To Location *</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">To Location *</Label>
                                 <AddressAutocompleteInput value={mileageForm.toLocation} onChange={v => setMileageForm(p => ({ ...p, toLocation: v }))} className="h-10 text-xs" placeholder="Destination address or location" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Related Job (optional)</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">Related Job (optional)</Label>
                                 <Select value={mileageForm.relatedJobId} onValueChange={v => setMileageForm(p => ({ ...p, relatedJobId: v === '__none__' ? '' : v }))}>
                                     <SelectTrigger className="h-10 text-xs bg-bg-primary border-border-main">
                                         <SelectValue placeholder="Select a job..." />
@@ -852,7 +852,7 @@ export default function TechEarningsPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Notes (optional)</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">Notes (optional)</Label>
                                 <Input value={mileageForm.notes} onChange={e => setMileageForm(p => ({ ...p, notes: e.target.value }))} className="h-10 text-xs" placeholder="Purpose of trip" />
                             </div>
                             {/* Calculated amount preview */}
@@ -860,7 +860,7 @@ export default function TechEarningsPage() {
                                 <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-center gap-3">
                                     <Navigation size={14} className="text-brand-red shrink-0" />
                                     <div>
-                                        <p className="text-[10px] font-bold uppercase text-text-muted tracking-widest">Calculated Reimbursement</p>
+                                        <p className="text-[10px] font-bold uppercase text-text-muted tracking-wider">Calculated Reimbursement</p>
                                         <p className="text-sm font-mono font-bold text-text-primary">
                                             {distanceMilesNum.toFixed(1)} mi × ${mileageRate.toFixed(2)}/mi = <span className="text-text-green">${calculatedMileageAmount.toFixed(2)}</span>
                                         </p>
@@ -874,7 +874,7 @@ export default function TechEarningsPage() {
                         <Button
                             variant="outline"
                             onClick={() => setIsReimDialogOpen(false)}
-                            className="flex-1 uppercase font-bold text-[10px] tracking-widest"
+                            className="flex-1 uppercase font-bold text-[10px] tracking-wider"
                         >
                             Cancel
                         </Button>
@@ -884,7 +884,7 @@ export default function TechEarningsPage() {
                                 ? !receiptForm.purchaseDate || !receiptForm.amount || !receiptForm.description
                                 : !mileageForm.dateDriven || !mileageForm.fromLocation || !mileageForm.toLocation || !mileageForm.distanceMiles
                             )}
-                            className="flex-1 bg-brand-red hover:bg-brand-red/90 uppercase font-bold text-[10px] tracking-widest text-white"
+                            className="flex-1 bg-brand-red hover:bg-brand-red/90 uppercase font-bold text-[10px] tracking-wider text-white"
                         >
                             {submitting ? 'Submitting...' : reimType === 'receipt' ? 'Submit Receipt' : 'Submit Mileage'}
                         </Button>

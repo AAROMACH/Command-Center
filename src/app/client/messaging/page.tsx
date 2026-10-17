@@ -203,12 +203,12 @@ export default function ClientMessagingPage() {
         {/* Contact & project list */}
         <div className="w-60 shrink-0 flex flex-col gap-4 overflow-y-auto pr-1">
           <div>
-            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted mb-2 flex items-center gap-1.5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2 flex items-center gap-1.5">
               <Users size={9} className="text-brand-red" /> Contacts
             </p>
             <div className="space-y-0.5">
               {contacts.length === 0 && (
-                <p className="text-[9px] text-text-muted italic px-1 py-2">No contacts yet</p>
+                <p className="text-[11px] text-text-muted italic px-1 py-2">No contacts yet</p>
               )}
               {contacts.map(contact => {
                 const thread: ThreadKey = {
@@ -234,7 +234,7 @@ export default function ClientMessagingPage() {
                     <div className="relative shrink-0">
                       <Avatar className="h-7 w-7 border border-border-sub">
                         <AvatarImage src={contact.avatarUrl} />
-                        <AvatarFallback className="text-[9px]">{(contact.name || '?').charAt(0)}</AvatarFallback>
+                        <AvatarFallback className="text-[11px]">{(contact.name || '?').charAt(0)}</AvatarFallback>
                       </Avatar>
                       {isAdmin && (
                         <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-brand-red rounded-full flex items-center justify-center">
@@ -244,10 +244,10 @@ export default function ClientMessagingPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={cn('text-[10px] font-bold uppercase tracking-tight truncate leading-tight', active ? 'text-brand-red' : 'text-text-primary')}>{contact.name}</p>
-                      <p className="text-[8px] text-text-muted uppercase tracking-widest">{isAdmin ? 'Admin' : 'Team Member'}</p>
+                      <p className="text-[10px] text-text-muted uppercase tracking-wider">{isAdmin ? 'Admin' : 'Team Member'}</p>
                     </div>
                     {unread > 0 && (
-                      <span className="text-[8px] font-black bg-brand-red text-white rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shrink-0">
+                      <span className="text-[10px] font-bold bg-brand-red text-white rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shrink-0">
                         {unread > 99 ? '99+' : unread}
                       </span>
                     )}
@@ -259,7 +259,7 @@ export default function ClientMessagingPage() {
 
           {companyProjects.length > 0 && (
             <div>
-              <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted mb-2 flex items-center gap-1.5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2 flex items-center gap-1.5">
                 <Briefcase size={9} className="text-brand-red" /> Active Projects
               </p>
               <div className="space-y-0.5">
@@ -287,10 +287,10 @@ export default function ClientMessagingPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={cn('text-[10px] font-bold uppercase tracking-tight truncate leading-tight', active ? 'text-brand-red' : 'text-text-primary')}>{project.name}</p>
-                        <p className="text-[8px] text-text-muted uppercase tracking-widest">{project.status}</p>
+                        <p className="text-[10px] text-text-muted uppercase tracking-wider">{project.status}</p>
                       </div>
                       {unread > 0 && (
-                        <span className="text-[8px] font-black bg-brand-red text-white rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shrink-0">
+                        <span className="text-[10px] font-bold bg-brand-red text-white rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shrink-0">
                           {unread > 99 ? '99+' : unread}
                         </span>
                       )}
@@ -307,7 +307,7 @@ export default function ClientMessagingPage() {
           {!selectedThread ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8">
               <MessageSquare size={32} className="text-text-muted" />
-              <p className="text-[10px] font-black uppercase tracking-widest text-text-muted text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-center">
                 Select a contact or project to start messaging
               </p>
             </div>
@@ -319,9 +319,9 @@ export default function ClientMessagingPage() {
                   <>
                     <Avatar className="h-7 w-7 border border-border-sub">
                       <AvatarImage src={selectedThread.contactAvatar} />
-                      <AvatarFallback className="text-[9px]">{(selectedThread.contactName || '?').charAt(0)}</AvatarFallback>
+                      <AvatarFallback className="text-[11px]">{(selectedThread.contactName || '?').charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <p className="text-[11px] font-black uppercase tracking-widest text-text-primary">{selectedThread.contactName}</p>
+                    <p className="text-[11px] font-bold text-text-primary">{selectedThread.contactName}</p>
                   </>
                 ) : (
                   <>
@@ -329,12 +329,12 @@ export default function ClientMessagingPage() {
                       <Briefcase size={12} className="text-brand-red" />
                     </div>
                     <div>
-                      <p className="text-[11px] font-black uppercase tracking-widest text-text-primary">{selectedThread.projectName}</p>
-                      <p className="text-[8px] text-text-muted uppercase tracking-widest">Project Thread</p>
+                      <p className="text-[11px] font-bold text-text-primary">{selectedThread.projectName}</p>
+                      <p className="text-[10px] text-text-muted uppercase tracking-wider">Project Thread</p>
                     </div>
                   </>
                 )}
-                <span className="ml-auto text-[8px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-green)' }}>Active</span>
+                <span className="ml-auto text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-green)' }}>Active</span>
               </div>
 
               {/* Messages */}
@@ -343,7 +343,7 @@ export default function ClientMessagingPage() {
                   {threadMessages.length === 0 ? (
                     <div className="py-16 text-center">
                       <MessageSquare size={24} className="text-text-muted mx-auto mb-2" />
-                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">No messages yet — start the conversation</p>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">No messages yet — start the conversation</p>
                     </div>
                   ) : (
                     threadMessages.map(msg => {
@@ -356,9 +356,9 @@ export default function ClientMessagingPage() {
                             <div className="flex items-center gap-1.5 px-1">
                               <Avatar className="h-5 w-5">
                                 <AvatarImage src={sender?.avatarUrl} />
-                                <AvatarFallback className="text-[7px]">{senderName.charAt(0)}</AvatarFallback>
+                                <AvatarFallback className="text-[10px]">{senderName.charAt(0)}</AvatarFallback>
                               </Avatar>
-                              <p className="text-[8px] font-black uppercase tracking-widest text-brand-red">{senderName}</p>
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-brand-red">{senderName}</p>
                             </div>
                           )}
                           <div className={cn(
@@ -371,7 +371,7 @@ export default function ClientMessagingPage() {
                               <img key={i} src={u} alt="attachment" className="max-w-full rounded-lg mb-2 max-h-48 object-contain" />
                             ))}
                             {msg.body && <p className="text-[11px] leading-relaxed">{msg.body}</p>}
-                            <p className={cn('text-[8px] mt-1 font-mono', isMe ? 'text-white/60' : 'text-text-muted')}>
+                            <p className={cn('text-[10px] mt-1 font-mono', isMe ? 'text-white/60' : 'text-text-muted')}>
                               {msg.timestamp ? format(parseISO(msg.timestamp), 'MMM d, h:mm a') : ''}
                             </p>
                           </div>

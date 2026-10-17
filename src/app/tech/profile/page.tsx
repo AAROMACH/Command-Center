@@ -307,7 +307,7 @@ export default function TechProfilePage() {
         setTimeOffForm({ type: 'Vacation', startDate: '', endDate: '', reason: '' });
     };
 
-    if (!mounted) return <div className="p-8 text-center text-[10px] uppercase tracking-widest text-text-muted">Loading...</div>;
+    if (!mounted) return <div className="p-8 text-center text-[10px] uppercase tracking-wider text-text-muted">Loading...</div>;
 
     return (
         <div className="space-y-6">
@@ -366,8 +366,8 @@ export default function TechProfilePage() {
                                 />
                             </div>
                             <div className="space-y-1 text-center">
-                                <h2 className="text-xl font-bold text-text-primary uppercase tracking-wide">{tech?.name || '—'}</h2>
-                                <p className="text-xs text-brand-red font-bold uppercase tracking-widest">{roleLabel}</p>
+                                <h2 className="text-xl font-bold text-text-primary tracking-wide">{tech?.name || '—'}</h2>
+                                <p className="text-xs text-brand-red font-bold">{roleLabel}</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -378,7 +378,7 @@ export default function TechProfilePage() {
                             <CardDescription>Manage your access credentials.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <Button variant="outline" className="w-full h-10 text-[10px] font-bold uppercase tracking-widest" onClick={() => setIsPasswordDialogOpen(true)}>
+                            <Button variant="outline" className="w-full h-10 text-[10px] font-bold uppercase tracking-wider" onClick={() => setIsPasswordDialogOpen(true)}>
                                 <Key size={14} className="mr-2" /> Change Password
                             </Button>
                         </CardContent>
@@ -410,29 +410,29 @@ export default function TechProfilePage() {
                                 <CardContent className="space-y-4">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><User size={10} /> Full Name</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted flex items-center gap-1"><User size={10} /> Full Name</Label>
                                             <Input value={name} onChange={(e) => setName(e.target.value)} className="h-11 text-xs" />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><User size={10} /> Preferred Name</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted flex items-center gap-1"><User size={10} /> Preferred Name</Label>
                                             <Input value={preferredName} onChange={(e) => setPreferredName(e.target.value)} className="h-11 text-xs" placeholder="Goes by..." />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><Mail size={10} /> Email</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted flex items-center gap-1"><Mail size={10} /> Email</Label>
                                             <Input type="email" value={email} readOnly disabled className="h-11 text-xs" />
-                                            <p className="text-[9px] text-text-muted">Ask an admin to change your email.</p>
+                                            <p className="text-[11px] text-text-muted">Ask an admin to change your email.</p>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><Phone size={10} /> Phone</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted flex items-center gap-1"><Phone size={10} /> Phone</Label>
                                             <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="h-11 text-xs" />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] uppercase font-bold text-text-muted flex items-center gap-1"><MapPin size={10} /> Working Location</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted flex items-center gap-1"><MapPin size={10} /> Working Location</Label>
                                             <AddressAutocompleteInput value={location} onChange={setLocation} types={['(cities)']} className="h-11 text-xs" placeholder="e.g. Detroit, MI" />
-                                            <p className="text-[9px] text-text-muted">Your city/region for job dispatching</p>
+                                            <p className="text-[11px] text-text-muted">Your city/region for job dispatching</p>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Mailing Address</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted">Mailing Address</Label>
                                             <AddressAutocompleteInput value={address} onChange={setAddress} className="h-11 text-xs" placeholder="Full street address" />
                                         </div>
                                     </div>
@@ -453,15 +453,15 @@ export default function TechProfilePage() {
                                 <CardContent className="space-y-4">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Name</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted">Name</Label>
                                             <Input value={ecName} onChange={(e) => setEcName(e.target.value)} className="h-11 text-xs" placeholder="Contact name" />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Relation</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted">Relation</Label>
                                             <Input value={ecRelation} onChange={(e) => setEcRelation(e.target.value)} className="h-11 text-xs" placeholder="e.g. Spouse" />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] uppercase font-bold text-text-muted">Phone</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted">Phone</Label>
                                             <Input value={ecPhone} onChange={(e) => setEcPhone(e.target.value)} className="h-11 text-xs" placeholder="+1 (555) 000-0000" />
                                         </div>
                                     </div>
@@ -476,14 +476,14 @@ export default function TechProfilePage() {
                                 <CardContent className="space-y-4">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-xs font-bold uppercase tracking-widest text-text-primary">Email Alerts</p>
+                                            <p className="text-xs font-bold text-text-primary">Email Alerts</p>
                                             <p className="text-[10px] text-text-muted">Get emailed when assigned to a new job</p>
                                         </div>
                                         <Switch checked={alertPrefs.email} onCheckedChange={v => handleToggleAlert('email', v)} />
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-xs font-bold uppercase tracking-widest text-text-primary">SMS Alerts</p>
+                                            <p className="text-xs font-bold text-text-primary">SMS Alerts</p>
                                             <p className="text-[10px] text-text-muted">Get a text message when assigned to a new job</p>
                                         </div>
                                         <Switch checked={alertPrefs.sms} onCheckedChange={v => handleToggleAlert('sms', v)} />
@@ -503,7 +503,7 @@ export default function TechProfilePage() {
                                             return (
                                                 <div key={day} className="flex flex-wrap items-center gap-3 py-1.5 border-b border-border-sub last:border-none">
                                                     <Switch checked={slot.on} onCheckedChange={v => setDay(day, { on: v })} aria-label={`Available ${day}`} />
-                                                    <span className="w-24 text-[11px] font-bold uppercase tracking-wider text-text-primary">{day}</span>
+                                                    <span className="w-24 text-[11px] font-bold tracking-wider text-text-primary">{day}</span>
                                                     {slot.on ? (
                                                         <div className="flex items-center gap-2">
                                                             <Input type="time" value={slot.start} onChange={e => setDay(day, { start: e.target.value })} className="h-8 w-28 text-xs" />
@@ -511,7 +511,7 @@ export default function TechProfilePage() {
                                                             <Input type="time" value={slot.end} onChange={e => setDay(day, { end: e.target.value })} className="h-8 w-28 text-xs" />
                                                         </div>
                                                     ) : (
-                                                        <span className="text-[10px] text-text-muted uppercase">Off</span>
+                                                        <span className="text-[10px] text-text-muted">Off</span>
                                                     )}
                                                 </div>
                                             );
@@ -534,17 +534,17 @@ export default function TechProfilePage() {
                                     </CardHeader>
                                     <CardContent className="space-y-2 text-xs">
                                         <div className="flex justify-between gap-4">
-                                            <span className="text-[10px] uppercase font-bold text-text-muted">Payout Method</span>
+                                            <span className="text-[10px] font-bold text-text-muted">Payout Method</span>
                                             <span className="text-text-primary">{tech?.payoutPreferences?.method || 'Not on file'}</span>
                                         </div>
                                         <div className="flex justify-between gap-4">
-                                            <span className="text-[10px] uppercase font-bold text-text-muted">W-9</span>
+                                            <span className="text-[10px] font-bold text-text-muted">W-9</span>
                                             <span className={cn(w9OnFile ? 'text-text-green' : 'text-amber-400')}>
                                                 {w9OnFile ? 'On file' : w9Pending ? 'Submitted — awaiting review' : 'Missing'}
                                             </span>
                                         </div>
                                         {!w9OnFile && !w9Pending && (
-                                            <Button variant="outline" size="sm" className="w-full mt-2 h-8 text-[10px] font-bold uppercase"
+                                            <Button variant="outline" size="sm" className="w-full mt-2 h-8 text-[10px] font-bold"
                                                 onClick={() => { setDocType('w9'); setDocName('W-9'); setUploadDocOpen(true); }}>
                                                 <Upload size={12} className="mr-1.5" /> Upload your W-9
                                             </Button>
@@ -561,7 +561,7 @@ export default function TechProfilePage() {
                                 <CardContent className="space-y-4">
                                     <div className="flex flex-wrap gap-2 min-h-[2rem]">
                                         {(tech?.skills || []).map(skill => (
-                                            <Badge key={skill} variant="outline" className="text-[10px] uppercase tracking-widest flex items-center gap-1.5 pr-1.5">
+                                            <Badge key={skill} variant="outline" className="text-[10px] uppercase tracking-wider flex items-center gap-1.5 pr-1.5">
                                                 {skill}
                                                 <button
                                                     onClick={() => handleRemoveSkill(skill)}
@@ -577,14 +577,14 @@ export default function TechProfilePage() {
                                     </div>
                                     <div className="flex gap-2">
                                         <Select value={selectedSkill} onValueChange={setSelectedSkill}>
-                                            <SelectTrigger className="h-9 text-[10px] uppercase font-bold tracking-widest flex-1">
+                                            <SelectTrigger className="h-9 text-[10px] uppercase font-bold tracking-wider flex-1">
                                                 <SelectValue placeholder="Add a skill..." />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {predefinedSkills
                                                     .filter(s => !(tech?.skills || []).includes(s))
                                                     .map(s => (
-                                                        <SelectItem key={s} value={s} className="text-[10px] uppercase font-bold">{s}</SelectItem>
+                                                        <SelectItem key={s} value={s} className="text-[10px] font-bold">{s}</SelectItem>
                                                     ))
                                                 }
                                             </SelectContent>
@@ -592,7 +592,7 @@ export default function TechProfilePage() {
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className="h-9 px-4 text-[10px] font-bold uppercase tracking-widest"
+                                            className="h-9 px-4 text-[10px] font-bold uppercase tracking-wider"
                                             onClick={() => handleAddSkill(selectedSkill)}
                                             disabled={!selectedSkill}
                                         >
@@ -617,7 +617,7 @@ export default function TechProfilePage() {
                                     {myReliabilityEvents.length === 0 ? (
                                         <div className="py-12 text-center space-y-2">
                                             <CheckCircle2 size={32} className="mx-auto text-text-green opacity-50" />
-                                            <p className="text-xs text-text-muted uppercase tracking-widest">No reliability events on record.</p>
+                                            <p className="text-xs text-text-muted">No reliability events on record.</p>
                                         </div>
                                     ) : (
                                         <ScrollArea className="h-[400px]">
@@ -629,13 +629,13 @@ export default function TechProfilePage() {
                                                         </div>
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex items-center justify-between gap-2">
-                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate">{event.eventType.replace(/_/g, ' ')}</p>
-                                                                <span className={cn("text-sm font-black shrink-0", event.scoreChange >= 0 ? "text-text-green" : "text-brand-red")}>
+                                                                <p className="text-xs font-bold text-text-primary tracking-wide truncate">{event.eventType.replace(/_/g, ' ')}</p>
+                                                                <span className={cn("text-sm font-bold shrink-0", event.scoreChange >= 0 ? "text-text-green" : "text-brand-red")}>
                                                                     {event.scoreChange > 0 ? '+' : ''}{event.scoreChange}
                                                                 </span>
                                                             </div>
                                                             <p className="text-[10px] text-text-muted mt-1">{event.reason}</p>
-                                                            <p className="text-[9px] text-text-muted uppercase tracking-widest mt-2">
+                                                            <p className="text-[10px] text-text-muted uppercase tracking-wider mt-2">
                                                                 {format(parseISO(event.createdAt), 'MMM d, yyyy')}
                                                             </p>
                                                         </div>
@@ -655,7 +655,7 @@ export default function TechProfilePage() {
                                     <p className="text-sm font-bold text-text-primary">My Documents</p>
                                     <p className="text-[10px] text-text-muted mt-0.5">Submitted documents are reviewed by administrators. They appear in your directory profile.</p>
                                 </div>
-                                <Button size="sm" onClick={() => setUploadDocOpen(true)} className="h-8 text-[10px] font-black uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white">
+                                <Button size="sm" onClick={() => setUploadDocOpen(true)} className="h-8 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white">
                                     <Upload size={11} className="mr-1.5" /> Upload
                                 </Button>
                             </div>
@@ -672,12 +672,12 @@ export default function TechProfilePage() {
                                                 <FileText size={14} className="text-text-muted shrink-0" />
                                                 <div className="min-w-0">
                                                     <p className="text-[11px] font-bold text-text-primary truncate">{d.name}</p>
-                                                    <p className="text-[9px] text-text-muted uppercase">{DOC_TYPE_LABELS[d.type] || d.type}</p>
+                                                    <p className="text-[11px] text-text-muted">{DOC_TYPE_LABELS[d.type] || d.type}</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0 ml-2">
                                                 <span className={cn(
-                                                    'text-[8px] font-black uppercase px-2 py-0.5 rounded border',
+                                                    'text-[10px] font-bold px-2 py-0.5 rounded border',
                                                     d.approvalStatus === 'approved' ? 'bg-text-green/10 text-text-green border-text-green/20' :
                                                     d.approvalStatus === 'rejected' ? 'bg-brand-red/10 text-brand-red border-brand-red/20' :
                                                     'bg-amber-400/10 text-amber-400 border-amber-400/20'
@@ -685,7 +685,7 @@ export default function TechProfilePage() {
                                                     {d.approvalStatus || 'pending'}
                                                 </span>
                                                 {d.url && d.url !== '#' && (
-                                                    <a href={d.url} target="_blank" rel="noopener noreferrer" className="text-[9px] text-text-muted hover:text-text-primary uppercase font-bold">View</a>
+                                                    <a href={d.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-text-muted hover:text-text-primary font-bold">View</a>
                                                 )}
                                             </div>
                                         </div>
@@ -698,11 +698,11 @@ export default function TechProfilePage() {
                         <TabsContent value="timeoff" className="m-0 space-y-6">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-sm font-bold uppercase tracking-widest text-text-primary">Time-Off Requests</h3>
-                                    <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">Submit and track your leave requests.</p>
+                                    <h3 className="text-sm font-bold text-text-primary">Time-Off Requests</h3>
+                                    <p className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">Submit and track your leave requests.</p>
                                 </div>
                                 <Button
-                                    className="h-9 px-4 text-[10px] font-bold uppercase tracking-widest"
+                                    className="h-9 px-4 text-[10px] font-bold uppercase tracking-wider"
                                     onClick={() => setIsTimeOffDialogOpen(true)}
                                 >
                                     <Plus size={14} className="mr-2" /> New Request
@@ -713,7 +713,7 @@ export default function TechProfilePage() {
                                 <Card>
                                     <CardContent className="py-16 text-center space-y-2">
                                         <CalendarIcon size={32} className="mx-auto text-text-muted opacity-40" />
-                                        <p className="text-xs text-text-muted uppercase tracking-widest">No time-off requests on file.</p>
+                                        <p className="text-xs text-text-muted">No time-off requests on file.</p>
                                     </CardContent>
                                 </Card>
                             ) : (
@@ -727,7 +727,7 @@ export default function TechProfilePage() {
                                                             <CalendarIcon size={16} />
                                                         </div>
                                                         <div>
-                                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{req.type}</p>
+                                                            <p className="text-xs font-bold text-text-primary tracking-wide">{req.type}</p>
                                                             <p className="text-[10px] text-text-muted mt-0.5">
                                                                 {format(parseISO(req.startDate), 'MMM d')} — {format(parseISO(req.endDate), 'MMM d, yyyy')}
                                                             </p>
@@ -736,7 +736,7 @@ export default function TechProfilePage() {
                                                     </div>
                                                     <Badge
                                                         variant={req.status === 'approved' ? 'active' : req.status === 'denied' ? 'high' : req.status === 'cancelled' ? 'outline' : 'onhold'}
-                                                        className="text-[9px] uppercase tracking-widest shrink-0"
+                                                        className="text-[10px] uppercase tracking-wider shrink-0"
                                                     >
                                                         {req.status}
                                                     </Badge>
@@ -757,12 +757,12 @@ export default function TechProfilePage() {
                                         </svg>
                                     </div>
                                     <div>
-                                        <p className="text-xs font-black uppercase tracking-widest text-text-primary">Google Calendar Sync</p>
+                                        <p className="text-xs font-bold text-text-primary">Google Calendar Sync</p>
                                         <p className="text-[10px] text-text-muted mt-0.5">Sync your schedule, PTO, and job assignments with Google Calendar.</p>
                                     </div>
                                 </div>
                                 <div className="rounded-lg border border-dashed border-blue-400/30 bg-blue-400/5 p-4 text-center">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-1">Coming Soon</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-blue-400 mb-1">Coming Soon</p>
                                     <p className="text-[10px] text-text-muted leading-relaxed">
                                         Google Calendar integration is in development. Once enabled, your assigned jobs, scheduled PTO, and calendar events will sync automatically.
                                     </p>
@@ -787,45 +787,45 @@ export default function TechProfilePage() {
             <Dialog open={uploadDocOpen} onOpenChange={setUploadDocOpen}>
                 <DialogContent className="sm:max-w-[460px] bg-bg-elevated border-border-default">
                     <DialogHeader>
-                        <DialogTitle className="uppercase tracking-widest text-sm font-bold flex items-center gap-2">
+                        <DialogTitle className="text-sm font-bold flex items-center gap-2">
                             <FileText size={16} className="text-brand-red" /> Upload Document
                         </DialogTitle>
                         <DialogDescription className="text-xs">Documents are submitted for admin review and appear in your directory profile.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold uppercase text-text-muted">Document Name</Label>
+                            <Label className="text-[10px] font-bold text-text-muted">Document Name</Label>
                             <Input value={docName} onChange={e => setDocName(e.target.value)} placeholder="e.g. Liability Insurance 2025" className="h-10 text-xs" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold uppercase text-text-muted">Type</Label>
+                            <Label className="text-[10px] font-bold text-text-muted">Type</Label>
                             <Select value={docType} onValueChange={setDocType}>
-                                <SelectTrigger className="h-10 text-xs font-bold uppercase">
+                                <SelectTrigger className="h-10 text-xs font-bold">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {Object.entries(DOC_TYPE_LABELS).map(([value, label]) => (
-                                        <SelectItem key={value} value={value} className="text-xs uppercase font-bold">{label}</SelectItem>
+                                        <SelectItem key={value} value={value} className="text-xs font-bold">{label}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold uppercase text-text-muted">Expiry Date (optional)</Label>
+                            <Label className="text-[10px] font-bold text-text-muted">Expiry Date (optional)</Label>
                             <Input type="date" value={docExpiry} onChange={e => setDocExpiry(e.target.value)} className="h-10 text-xs" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold uppercase text-text-muted">File</Label>
+                            <Label className="text-[10px] font-bold text-text-muted">File</Label>
                             <input type="file" ref={docFileInputRef} className="hidden" onChange={e => setDocFile(e.target.files?.[0] || null)} />
-                            <Button variant="outline" onClick={() => docFileInputRef.current?.click()} className="w-full h-10 text-[10px] font-bold uppercase border-dashed">
+                            <Button variant="outline" onClick={() => docFileInputRef.current?.click()} className="w-full h-10 text-[10px] font-bold border-dashed">
                                 <Upload size={12} className="mr-2" />
                                 {docFile ? docFile.name : 'Choose File'}
                             </Button>
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setUploadDocOpen(false)} className="text-[10px] uppercase font-bold">Cancel</Button>
-                        <Button onClick={handleUploadDocument} disabled={!docName.trim() || !docFile || docUploading} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] uppercase font-bold">
+                        <Button variant="outline" onClick={() => setUploadDocOpen(false)} className="text-[10px] font-bold">Cancel</Button>
+                        <Button onClick={handleUploadDocument} disabled={!docName.trim() || !docFile || docUploading} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
                             {docUploading ? <><Loader2 size={12} className="mr-2 animate-spin" />Uploading...</> : 'Submit'}
                         </Button>
                     </DialogFooter>
@@ -836,16 +836,16 @@ export default function TechProfilePage() {
             <Dialog open={isTimeOffDialogOpen} onOpenChange={setIsTimeOffDialogOpen}>
                 <DialogContent className="sm:max-w-[440px] bg-bg-elevated border-border-default">
                     <DialogHeader>
-                        <DialogTitle className="uppercase tracking-widest text-sm font-bold flex items-center gap-2">
+                        <DialogTitle className="text-sm font-bold flex items-center gap-2">
                             <CalendarIcon size={16} className="text-brand-red" /> New Time-Off Request
                         </DialogTitle>
                         <DialogDescription className="text-xs">Submit a leave request for admin review.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
                         <div className="space-y-2">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted">Type</Label>
+                            <Label className="text-[10px] font-bold text-text-muted">Type</Label>
                             <Select value={timeOffForm.type} onValueChange={(v) => setTimeOffForm(p => ({ ...p, type: v as TimeOffRequest['type'] }))}>
-                                <SelectTrigger className="h-11 text-xs font-bold uppercase">
+                                <SelectTrigger className="h-11 text-xs font-bold">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -858,16 +858,16 @@ export default function TechProfilePage() {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Start Date</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">Start Date</Label>
                                 <Input type="date" value={timeOffForm.startDate} onChange={(e) => setTimeOffForm(p => ({ ...p, startDate: e.target.value }))} className="h-11 text-xs" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">End Date</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">End Date</Label>
                                 <Input type="date" value={timeOffForm.endDate} onChange={(e) => setTimeOffForm(p => ({ ...p, endDate: e.target.value }))} className="h-11 text-xs" />
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted">Reason</Label>
+                            <Label className="text-[10px] font-bold text-text-muted">Reason</Label>
                             <Textarea
                                 placeholder="Brief explanation..."
                                 value={timeOffForm.reason}

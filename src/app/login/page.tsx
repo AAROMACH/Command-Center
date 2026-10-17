@@ -194,21 +194,21 @@ export default function LoginPage() {
             )}
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold uppercase tracking-wider text-text-primary">Command Center</CardTitle>
-            <CardDescription className="text-text-muted uppercase font-bold text-[10px] tracking-widest">Tactical Operational Terminal</CardDescription>
+            <CardTitle className="text-2xl font-bold tracking-wider text-text-primary">Command Center</CardTitle>
+            <CardDescription className="text-text-muted uppercase font-bold text-[10px] tracking-wider">Tactical Operational Terminal</CardDescription>
           </div>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-text-muted text-left block">Email</Label>
+              <Label htmlFor="email" className="text-xs font-bold text-text-muted text-left block">Email</Label>
               <Input id="email" type="email" disabled={isLoading || isGoogleLoading} placeholder="admin@aaromach.com" className="bg-bg-primary border-border-sub h-11 text-xs" {...register("email")} />
-              {errors.email && <p className="text-[10px] font-bold text-brand-red uppercase text-left">{errors.email.message}</p>}
+              {errors.email && <p className="text-[10px] font-bold text-brand-red text-left">{errors.email.message}</p>}
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-xs font-bold uppercase tracking-widest text-text-muted">Password</Label>
-                <Link href="/forgot-password" className="text-[9px] font-black uppercase text-brand-red hover:underline tracking-tighter">Forgot Password?</Link>
+                <Label htmlFor="password" className="text-xs font-bold text-text-muted">Password</Label>
+                <Link href="/forgot-password" className="text-[10px] font-bold uppercase text-brand-red hover:underline tracking-tighter">Forgot Password?</Link>
               </div>
               <div className="relative">
                 <Input id="password" type={showPassword ? "text" : "password"} disabled={isLoading || isGoogleLoading} {...register("password")} placeholder="••••••••" className="bg-bg-primary border-border-sub pr-10 h-11 text-xs" />
@@ -216,7 +216,7 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              {errors.password && <p className="text-[10px] font-bold text-brand-red uppercase text-left">{errors.password.message}</p>}
+              {errors.password && <p className="text-[10px] font-bold text-brand-red text-left">{errors.password.message}</p>}
             </div>
             <div className="flex items-center gap-2 pt-1">
               <Checkbox
@@ -226,19 +226,19 @@ export default function LoginPage() {
                 disabled={isLoading || isGoogleLoading}
                 className="border-border-main data-[state=checked]:bg-brand-red data-[state=checked]:border-brand-red"
               />
-              <Label htmlFor="rememberMe" className="text-[10px] font-bold uppercase tracking-widest text-text-muted cursor-pointer select-none">
+              <Label htmlFor="rememberMe" className="text-[10px] font-bold uppercase tracking-wider text-text-muted cursor-pointer select-none">
                 Remember Me
               </Label>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-3 pb-6">
-            <Button type="submit" disabled={isLoading || isGoogleLoading} className="w-full h-12 bg-brand-red hover:bg-brand-red-hover text-white font-bold uppercase tracking-widest text-xs">
+            <Button type="submit" disabled={isLoading || isGoogleLoading} className="w-full h-12 bg-brand-red hover:bg-brand-red-hover text-white font-bold text-xs">
               {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Synchronizing...</> : "Login"}
             </Button>
 
             <div className="relative w-full flex items-center gap-3">
               <div className="flex-1 h-px bg-border-sub" />
-              <span className="text-[9px] font-bold uppercase tracking-widest text-text-muted">or</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">or</span>
               <div className="flex-1 h-px bg-border-sub" />
             </div>
 
@@ -247,7 +247,7 @@ export default function LoginPage() {
               variant="outline"
               disabled={isLoading || isGoogleLoading}
               onClick={onGoogleSignIn}
-              className="w-full h-12 border-border-main bg-bg-primary hover:bg-bg-tertiary font-bold uppercase tracking-widest text-xs flex items-center gap-3"
+              className="w-full h-12 border-border-main bg-bg-primary hover:bg-bg-tertiary font-bold text-xs flex items-center gap-3"
             >
               {isGoogleLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -263,13 +263,13 @@ export default function LoginPage() {
             </Button>
 
             <div className="w-full pt-1 text-center">
-              <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted mb-2">Need an account?</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">Need an account?</p>
               <Link href="/get-access" className="block">
                 <Button
                   type="button"
                   variant="outline"
                   disabled={isLoading || isGoogleLoading}
-                  className="w-full h-11 border-brand-red/40 text-brand-red hover:bg-brand-red-dim font-bold uppercase tracking-widest text-xs flex items-center gap-2"
+                  className="w-full h-11 border-brand-red/40 text-brand-red hover:bg-brand-red-dim font-bold text-xs flex items-center gap-2"
                 >
                   <UserPlus size={15} className="shrink-0" />
                   Get Access
@@ -277,7 +277,7 @@ export default function LoginPage() {
               </Link>
             </div>
 
-            <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest text-center px-4 pt-1">Authorized personnel only. All access events are logged.</p>
+            <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider text-center px-4 pt-1">Authorized personnel only. All access events are logged.</p>
           </CardFooter>
         </form>
       </Card>

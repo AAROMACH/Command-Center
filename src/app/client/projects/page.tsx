@@ -156,7 +156,7 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians
         return (
             <div className="p-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
                 <Briefcase size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No job folders found in this category.</p>
+                <p className="text-xs font-bold text-text-muted italic">No job folders found in this category.</p>
             </div>
         );
     }
@@ -170,17 +170,17 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians
                     return (
                         <div key={project.id} className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border-sub bg-bg-secondary">
                             <div className="flex-1 min-w-0">
-                                <p className="text-[12px] font-bold text-text-primary uppercase tracking-wide truncate">{project.name}</p>
-                                <p className="text-[9px] text-text-muted uppercase truncate">
+                                <p className="text-[12px] font-bold text-text-primary tracking-wide truncate">{project.name}</p>
+                                <p className="text-[11px] text-text-muted truncate">
                                     <span className="font-mono">{(project.id || '').toUpperCase()}</span>
                                     {project.location ? ` · ${project.location}` : ''} · {phaseCount} phase{phaseCount !== 1 ? 's' : ''}
                                 </p>
                             </div>
                             <div className="hidden md:flex items-center gap-2 w-32 shrink-0">
                                 <Progress value={progress} className="h-1.5 flex-1" />
-                                <span className="text-[9px] font-mono text-text-muted w-8 text-right">{progress}%</span>
+                                <span className="text-[11px] font-mono text-text-muted w-8 text-right">{progress}%</span>
                             </div>
-                            <Badge variant={project.status} className="h-5 uppercase shrink-0">{project.status}</Badge>
+                            <Badge variant={project.status} className="h-5 shrink-0">{project.status}</Badge>
                         </div>
                     );
                 })}
@@ -201,20 +201,20 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians
                             <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 text-left">
                                 <div className="space-y-1 text-left">
                                     <div className="flex items-center gap-3 text-left">
-                                        <span className="text-[10px] font-bold text-brand-red uppercase tracking-widest font-mono">ID: {(project.id || '').toUpperCase()}</span>
-                                        <Badge variant={project.status} className="h-5 uppercase">
+                                        <span className="text-[10px] font-bold text-brand-red uppercase tracking-wider font-mono">ID: {(project.id || '').toUpperCase()}</span>
+                                        <Badge variant={project.status} className="h-5">
                                             {project.status}
                                         </Badge>
                                     </div>
-                                    <CardTitle className="text-2xl font-bold text-text-primary uppercase tracking-wide text-left">{project.name}</CardTitle>
-                                    <div className="flex items-center gap-4 text-[11px] text-text-muted font-bold uppercase tracking-widest text-left mt-2">
+                                    <CardTitle className="text-2xl font-bold text-text-primary tracking-wide text-left">{project.name}</CardTitle>
+                                    <div className="flex items-center gap-4 text-[11px] text-text-muted font-bold text-left mt-2">
                                         <span className="flex items-center gap-1.5"><MapPin size={12} className="text-brand-red"/> {project.location}</span>
                                         <span className="flex items-center gap-1.5"><Calendar size={12}/> Started {formatDateStr(project.startDate)}</span>
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-3 w-full md:flex-1 md:max-w-[480px]">
                                     <div className="text-right">
-                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-1">Deployment Readiness</p>
+                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">Deployment Readiness</p>
                                         <p className="text-3xl font-mono font-bold text-text-primary">{progress}%</p>
                                     </div>
                                     <Progress value={progress} className="relative overflow-hidden rounded-full w-full h-4 bg-bg-primary border border-border-sub shadow-inner" />
@@ -225,7 +225,7 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians
                             <Accordion type="single" collapsible className="w-full">
                                 <AccordionItem value="phases" className="border-none">
                                     <AccordionTrigger className="px-6 py-4 hover:bg-bg-tertiary transition-colors hover:no-underline border-b border-border-sub">
-                                        <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-widest">
+                                        <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider">
                                             <History size={14} className="text-brand-red"/> Phase Breakdown & Tasks
                                         </div>
                                     </AccordionTrigger>
@@ -237,7 +237,7 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians
                                                         <div className="h-6 w-6 rounded-full bg-brand-red text-white flex items-center justify-center text-[10px] font-bold">
                                                             {phase.phaseNumber}
                                                         </div>
-                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide text-left">{phase.name}</p>
+                                                        <p className="text-xs font-bold text-text-primary tracking-wide text-left">{phase.name}</p>
                                                     </div>
                                                     <div className="space-y-2 border-l border-border-sub pl-6 ml-3 text-left">
                                                         {(phase.tasks || []).map(task => (
@@ -262,22 +262,22 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians
 
                             <div className="px-6 py-4 bg-bg-tertiary/20 border-t border-border-sub flex flex-wrap items-center justify-between gap-4">
                                 <div className="flex items-center gap-4 text-left">
-                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Project Lead</p>
+                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-left">Project Lead</p>
                                     {leadTech ? (
                                         <div className="flex items-center gap-2 bg-bg-secondary px-3 py-1.5 rounded-lg border border-border-sub shadow-sm text-left">
                                             <Avatar className="h-6 w-6 border border-border-main">
                                                 <AvatarImage src={leadTech.avatarUrl} />
                                                 <AvatarFallback className="text-[10px] font-bold">{leadTech.name.charAt(0)}</AvatarFallback>
                                             </Avatar>
-                                            <span className="text-[11px] font-bold text-text-primary uppercase tracking-tight text-left">{leadTech.name}</span>
+                                            <span className="text-[11px] font-bold text-text-primary tracking-tight text-left">{leadTech.name}</span>
                                         </div>
                                     ) : leadMember ? (
-                                        <Badge variant="outline" className="text-[8px] uppercase tracking-widest bg-bg-tertiary">Assigned</Badge>
+                                        <Badge variant="outline" className="text-[10px] uppercase tracking-wider bg-bg-tertiary">Assigned</Badge>
                                     ) : (
-                                        <Badge variant="outline" className="text-[8px] uppercase tracking-widest bg-bg-tertiary">Unallocated</Badge>
+                                        <Badge variant="outline" className="text-[10px] uppercase tracking-wider bg-bg-tertiary">Unallocated</Badge>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-6 text-[9px] font-bold text-text-muted uppercase tracking-widest text-left">
+                                <div className="flex items-center gap-6 text-[10px] font-bold text-text-muted uppercase tracking-wider text-left">
                                     <span className="flex items-center gap-1.5 text-left"><Clock size={12} className="text-accent-gold"/> Est: {project.estimatedDuration}</span>
                                     <span className="flex items-center gap-1.5 text-left"><ShieldCheck size={12} className="text-text-green"/> SOW Verified</span>
                                 </div>

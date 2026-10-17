@@ -115,7 +115,7 @@ const ProximityDisplay = ({ lat, lng, project, label, size = 'default' }: { lat?
         }
     }, [lat, lng]);
 
-    if (!lat || !lng) return <span className="text-[8px] text-text-muted italic uppercase">GPS Unavailable</span>;
+    if (!lat || !lng) return <span className="text-[10px] text-text-muted italic">GPS Unavailable</span>;
 
     let status = "";
     
@@ -129,11 +129,11 @@ const ProximityDisplay = ({ lat, lng, project, label, size = 'default' }: { lat?
     const iconSize = size === 'large' ? 14 : 12;
 
     return (
-        <span className={cn("flex items-center gap-2 font-black uppercase tracking-tight", textClass)}>
+        <span className={cn("flex items-center gap-2 font-bold uppercase tracking-tight", textClass)}>
             <MapPin size={iconSize} className="text-brand-red shrink-0" />
             <span className="text-text-primary">{label}: {cityName || `${lat.toFixed(4)}, ${lng.toFixed(4)}`}</span>
             {status && (
-                <Badge variant={status.includes('Onsite') ? 'active' : 'missed'} className={cn("px-2 font-black uppercase tracking-widest", size === 'large' ? 'h-5 text-[9px]' : 'h-4 text-[8px]')}>
+                <Badge variant={status.includes('Onsite') ? 'active' : 'missed'} className={cn("px-2 font-bold", size === 'large' ? 'h-5 text-[11px]' : 'h-4 text-[10px]')}>
                     {status}
                 </Badge>
             )}
@@ -182,7 +182,7 @@ const PhaseBlock = ({
                                 disabled={isReadOnly}
                             />
                             <span className={cn("task-name", task.isCompleted && "line-through text-text-muted")}>{task.name}</span>
-                            {task.assignedTechId && <span className="text-[8px] font-bold uppercase tracking-wider text-brand-red border border-brand-red/30 bg-brand-red/10 rounded px-1.5 py-0.5 whitespace-nowrap">{nameOf(task.assignedTechId)}</span>}
+                            {task.assignedTechId && <span className="text-[10px] font-bold uppercase tracking-wider text-brand-red border border-brand-red/30 bg-brand-red/10 rounded px-1.5 py-0.5 whitespace-nowrap">{nameOf(task.assignedTechId)}</span>}
                             {task.requiresPhoto && <Camera size={12} className="text-text-muted" />}
                         </div>
                     ))}
@@ -232,7 +232,7 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                     <h3 className="field-group-title"><FileText size={14}/> Operational Scope</h3>
                     <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-4 text-left">
                         <div className="space-y-1 text-left">
-                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">Primary Objective</p>
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-left">Primary Objective</p>
                             <Textarea 
                                 disabled={isReadOnly}
                                 className="field-textarea h-24" 
@@ -248,7 +248,7 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3 text-left">
                             <div className="space-y-1 text-left">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">Access Instructions</p>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-left">Access Instructions</p>
                                 <Textarea 
                                     disabled={isReadOnly}
                                     className="field-textarea h-20" 
@@ -259,10 +259,10 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                         </div>
                         <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3 text-left">
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">On-Site Contact</Label>
+                                <Label className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-left">On-Site Contact</Label>
                                 <Input 
                                     disabled={isReadOnly}
-                                    className="h-8 text-xs font-bold uppercase"
+                                    className="h-8 text-xs font-bold"
                                     value={localProjectData.onsiteContactName || ''}
                                     onChange={e => setLocalProjectData({...localProjectData, onsiteContactName: e.target.value})}
                                 />
@@ -279,13 +279,13 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
 
                 {isDirty && !isReadOnly && (
                     <div className="flex justify-end gap-3 pt-2">
-                        <Button variant="outline" className="h-9 px-6 uppercase text-[10px] font-bold tracking-widest" onClick={() => setLocalProjectData({
+                        <Button variant="outline" className="h-9 px-6 uppercase text-[10px] font-bold tracking-wider" onClick={() => setLocalProjectData({
                             scope: project.scope,
                             onsiteContactName: project.onsiteContactName,
                             onsiteContactPhone: project.onsiteContactPhone,
                             siteAccessInstructions: project.siteAccessInstructions
                         })}>Discard Changes</Button>
-                        <Button className="h-9 px-8 uppercase text-[10px] font-bold tracking-widest bg-brand-red" onClick={handleSaveChanges}>Commit Updates</Button>
+                        <Button className="h-9 px-8 uppercase text-[10px] font-bold tracking-wider bg-brand-red" onClick={handleSaveChanges}>Commit Updates</Button>
                     </div>
                 )}
             </div>
@@ -303,8 +303,8 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                                         <AvatarFallback>{t?.name?.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                     <div className="min-w-0 text-left">
-                                        <p className="text-xs font-bold text-text-primary uppercase truncate text-left">{t?.name}</p>
-                                        <p className="text-[9px] text-text-muted uppercase tracking-widest text-left">{member.role}</p>
+                                        <p className="text-xs font-bold text-text-primary truncate text-left">{t?.name}</p>
+                                        <p className="text-[10px] text-text-muted uppercase tracking-wider text-left">{member.role}</p>
                                     </div>
                                 </div>
                             )
@@ -320,7 +320,7 @@ const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => {
     return (
         <div className="space-y-4 animate-in fade-in duration-300">
              <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Project Asset Registry</h3>
+                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-left">Project Asset Registry</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {documents.map(doc => (
@@ -330,8 +330,8 @@ const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => {
                                 <FileText size={18} />
                             </div>
                             <div className="text-left">
-                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide text-left">{doc.name}</p>
-                                <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5 text-left">{doc.size} · Uploaded {doc.uploadDate}</p>
+                                <p className="text-sm font-bold text-text-primary tracking-wide text-left">{doc.name}</p>
+                                <p className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5 text-left">{doc.size} · Uploaded {doc.uploadDate}</p>
                             </div>
                         </div>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-primary">
@@ -342,7 +342,7 @@ const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => {
                 {documents.length === 0 && (
                     <div className="col-span-full py-24 text-center border-2 border-dashed border-border-sub rounded-2xl opacity-40 bg-bg-secondary/30">
                         <FolderOpen size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                        <p className="text-[11px] font-bold uppercase tracking-widest text-center italic">No technical assets found in project folder</p>
+                        <p className="text-[11px] font-bold text-center italic">No technical assets found in project folder</p>
                     </div>
                 )}
             </div>
@@ -354,8 +354,8 @@ const MilestonesTab = ({ project, onTaskToggle, isReadOnly, nameOf }: { project:
     return (
         <div className="space-y-4 animate-in fade-in duration-300">
              <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Mission Objectives</h3>
-                <Badge variant="outline" className="text-[8px] uppercase tracking-widest bg-bg-tertiary">{(project.phases || []).length} PHASES</Badge>
+                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-left">Mission Objectives</h3>
+                <Badge variant="outline" className="text-[10px] uppercase tracking-wider bg-bg-tertiary">{(project.phases || []).length} PHASES</Badge>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
                 {(project.phases || []).map(phase => (
@@ -495,10 +495,10 @@ const TimesheetsTab = ({
                             {activeSession ? <Activity size={20} className="animate-pulse" /> : <Timer size={20} />}
                         </div>
                         <div className="text-left">
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-primary text-left">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-primary text-left">
                                 {activeSession ? "Mission Recording Active" : "Field Session Terminal"}
                             </p>
-                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mt-0.5 text-left">
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-0.5 text-left">
                                 {activeSession ? `ID: ${activeSession.id?.split('-').pop()?.toUpperCase() || 'LIVE'} · Handshake Verified` : "Awaiting Site Arrival"}
                             </p>
                         </div>
@@ -507,18 +507,18 @@ const TimesheetsTab = ({
                     <div className="flex items-center gap-6">
                         {activeSession && (
                             <div className="flex flex-col items-end">
-                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Active Duration</p>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Active Duration</p>
                                 <p className="text-3xl font-mono font-bold text-text-primary tabular-nums tracking-tighter">{elapsedTime}</p>
                             </div>
                         )}
                         {isReadOnly ? (
-                            <Badge variant="outline" className="h-6 px-4 uppercase font-black text-[9px] tracking-widest">REGISTRY LOCKED</Badge>
+                            <Badge variant="outline" className="h-6 px-4 uppercase font-bold text-[10px] tracking-wider">REGISTRY LOCKED</Badge>
                         ) : !activeSession ? (
-                            <Button onClick={onCheckIn} className="bg-brand-red hover:bg-brand-red-hover h-11 px-10 text-[10px] font-black uppercase tracking-[0.2em] shadow-lg">
+                            <Button onClick={onCheckIn} className="bg-brand-red hover:bg-brand-red-hover h-11 px-10 text-[10px] font-bold uppercase tracking-wider shadow-lg">
                                 <Play size={16} className="mr-2 fill-current" /> Check In
                             </Button>
                         ) : (
-                            <Button variant="destructive" onClick={() => onCheckOut(activeSession.id)} className="h-11 px-10 text-[10px] font-black uppercase tracking-[0.2em] shadow-lg">
+                            <Button variant="destructive" onClick={() => onCheckOut(activeSession.id)} className="h-11 px-10 text-[10px] font-bold uppercase tracking-wider shadow-lg">
                                 <LogOut size={16} className="mr-2" /> Check Out
                             </Button>
                         )}
@@ -530,12 +530,12 @@ const TimesheetsTab = ({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                              <div className="space-y-2 text-left">
                                 <div className="flex items-center justify-between px-1">
-                                    <Label className="text-[10px] font-black uppercase text-text-muted tracking-widest flex items-center gap-2">
+                                    <Label className="text-[10px] font-bold uppercase text-text-muted tracking-wider flex items-center gap-2">
                                         <FileText size={14} className="text-brand-red"/> Field Activity Notes
                                     </Label>
                                     <div className="flex items-center gap-2">
                                          {isSavingNotes && <Loader2 size={10} className="animate-spin text-accent-gold"/>}
-                                         <p className="text-[8px] text-text-muted font-bold uppercase tracking-tighter">Autosave Enabled</p>
+                                         <p className="text-[10px] text-text-muted font-bold uppercase tracking-tighter">Autosave Enabled</p>
                                     </div>
                                 </div>
                                 <div className="relative group/live-note">
@@ -544,7 +544,7 @@ const TimesheetsTab = ({
                                         onChange={e => setLiveNotes(e.target.value)}
                                         onBlur={() => handleSaveLiveNotes(activeSession.id, liveNotes)}
                                         placeholder="Document site conditions, task completion details, and field obstacles..."
-                                        className="min-h-[24px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[8px] uppercase font-medium leading-relaxed italic resize-none p-0 text-left"
+                                        className="min-h-[24px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[10px] font-medium leading-relaxed italic resize-none p-0 text-left"
                                     />
                                     <Pencil size={10} className="absolute top-0 right-0 text-text-muted opacity-30 group-hover/live-note:opacity-100 transition-opacity pointer-events-none" />
                                 </div>
@@ -552,25 +552,25 @@ const TimesheetsTab = ({
                              <div className="space-y-4">
                                 <div className="p-4 rounded-xl bg-bg-primary border border-border-sub shadow-inner space-y-4">
                                     <div className="flex items-center justify-between border-b border-border-sub/50 pb-2">
-                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Session Metadata</p>
+                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Session Metadata</p>
                                         <ShieldCheck size={14} className="text-text-green" />
                                     </div>
                                     <div className="grid grid-cols-1 gap-4">
                                         <div className="space-y-1 text-left">
-                                            <p className="text-[8px] font-black text-text-muted uppercase text-left">Verified Site Presence</p>
+                                            <p className="text-[10px] font-bold text-text-muted text-left">Verified Site Presence</p>
                                             <ProximityDisplay lat={activeSession.checkInLat} lng={activeSession.checkInLng} project={project} label="Check-In" size="large" />
                                         </div>
                                         <div className="space-y-1 text-left">
-                                            <p className="text-[8px] font-black text-text-muted uppercase text-left">Handshake Verification</p>
+                                            <p className="text-[10px] font-bold text-text-muted text-left">Handshake Verification</p>
                                             <div className="flex items-center gap-2 text-text-primary">
                                                 <Clock size={16} className="text-brand-red" />
-                                                <p className="text-2xl font-mono font-bold uppercase tracking-tight">{displayTime(activeSession.checkInTime)}</p>
+                                                <p className="text-2xl font-mono font-bold tracking-tight">{displayTime(activeSession.checkInTime)}</p>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="p-4 rounded-xl border border-dashed border-border-sub bg-bg-tertiary/20 text-center">
-                                     <p className="text-[9px] text-text-muted uppercase font-bold leading-relaxed italic text-left">
+                                     <p className="text-[11px] text-text-muted font-bold leading-relaxed italic text-left">
                                          Terminal Note: All field notes are synchronized with the Command Center in real-time. Finalize all Milestones before checking out.
                                      </p>
                                 </div>
@@ -582,8 +582,8 @@ const TimesheetsTab = ({
 
             <section className="space-y-2">
                 <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
-                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Historical Session Ledger</h3>
-                    <Button variant="ghost" size="sm" className="h-5 text-[8px] uppercase font-bold text-text-muted hover:text-brand-red" onClick={handleExportTimesheets}>
+                    <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-left">Historical Session Ledger</h3>
+                    <Button variant="ghost" size="sm" className="h-5 text-[10px] font-bold text-text-muted hover:text-brand-red" onClick={handleExportTimesheets}>
                         <Download size={10} className="mr-1"/> Export Audit manifest
                     </Button>
                 </div>
@@ -596,10 +596,10 @@ const TimesheetsTab = ({
                                         <div className="p-1.5 bg-bg-primary rounded text-brand-red border border-border-sub">
                                             <CalendarIcon size={16} />
                                         </div>
-                                        <span className="text-sm font-black uppercase tracking-widest text-text-primary">{group.date}</span>
-                                        <Badge variant="outline" className="text-[8px] bg-bg-primary h-4 px-2 tracking-tighter">{(group.logs || []).length} SESSION(S)</Badge>
+                                        <span className="text-sm font-bold text-text-primary">{group.date}</span>
+                                        <Badge variant="outline" className="text-[10px] bg-bg-primary h-4 px-2 tracking-tighter">{(group.logs || []).length} SESSION(S)</Badge>
                                     </div>
-                                    <span className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mr-6">Daily Tally: <span className="text-text-primary font-mono text-sm">{group.total.toFixed(1)}h</span></span>
+                                    <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider mr-6">Daily Tally: <span className="text-text-primary font-mono text-sm">{group.total.toFixed(1)}h</span></span>
                                 </AccordionTrigger>
                                 <AccordionContent className="p-2 bg-bg-primary/10">
                                     <div className="space-y-2">
@@ -620,11 +620,11 @@ const TimesheetsTab = ({
                                                             </Avatar>
                                                             <div className="text-left space-y-1">
                                                                 <div className="flex items-center gap-2 text-left">
-                                                                    <p className="text-[11px] font-black uppercase text-text-primary tracking-tight text-left">{tech?.name}</p>
-                                                                    {isLive && <Badge variant="active" className="h-3.5 px-1.5 text-[7px] animate-pulse uppercase font-black">RECORDING</Badge>}
+                                                                    <p className="text-[11px] font-bold text-text-primary tracking-tight text-left">{tech?.name}</p>
+                                                                    {isLive && <Badge variant="active" className="h-3.5 px-1.5 text-[10px] animate-pulse font-bold">RECORDING</Badge>}
                                                                 </div>
                                                                 <div className="flex flex-col gap-2 text-left">
-                                                                    <span className="text-[13px] text-text-primary font-black uppercase tracking-widest flex items-center gap-2 text-left">
+                                                                    <span className="text-[13px] text-text-primary font-bold flex items-center gap-2 text-left">
                                                                         <Clock size={14} className="text-brand-red"/>
                                                                         {displayTime(log.checkInTime)} — {log.checkOutTime ? displayTime(log.checkOutTime) : 'Session Active'}
                                                                     </span>
@@ -639,27 +639,27 @@ const TimesheetsTab = ({
                                                             <p className={cn("text-2xl font-mono font-bold leading-none tracking-tighter", isLive ? "text-brand-red" : "text-text-green")}>
                                                                 {isLive ? 'LIVE' : (log.totalHours || `${(log.hoursWorked || 0).toFixed(1)}h`)}
                                                             </p>
-                                                            <p className="text-[8px] font-black text-text-muted uppercase mt-1">Registry Log</p>
+                                                            <p className="text-[10px] font-bold text-text-muted mt-1">Registry Log</p>
                                                         </div>
                                                     </div>
                                                     <div className="space-y-1.5 text-left border-t border-border-sub/30 pt-3">
                                                         <div className="flex items-center gap-2 text-text-muted mb-1 text-left">
                                                             <FileText size={12}/>
-                                                            <p className="text-[9px] font-black uppercase tracking-widest text-left">Field Activity Report</p>
+                                                            <p className="text-[10px] font-bold uppercase tracking-wider text-left">Field Activity Report</p>
                                                         </div>
                                                         {canEditNotes ? (
                                                             <div className="relative group/hist-note text-left">
                                                                 <Textarea 
                                                                     defaultValue={log.workSummary}
                                                                     onBlur={(e) => handleSaveLiveNotes(log.id, e.target.value)}
-                                                                    className="min-h-[24px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[8px] uppercase font-medium leading-relaxed italic resize-none p-0 text-left"
+                                                                    className="min-h-[24px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[10px] font-medium leading-relaxed italic resize-none p-0 text-left"
                                                                     placeholder="Click to add field notes..."
                                                                 />
                                                                 <Pencil size={10} className="absolute top-0 right-0 text-text-muted opacity-30 group-hover/hist-note:opacity-100 transition-opacity pointer-events-none" />
                                                             </div>
                                                         ) : (
                                                             <div className="p-3 rounded-lg bg-bg-primary/50 border border-border-sub/50 text-left">
-                                                                <p className="text-[9px] text-text-secondary leading-relaxed uppercase font-medium italic text-left">
+                                                                <p className="text-[11px] text-text-secondary leading-relaxed font-medium italic text-left">
                                                                     {log.workSummary || 'No activity summary provided.'}
                                                                 </p>
                                                             </div>
@@ -676,7 +676,7 @@ const TimesheetsTab = ({
                 ) : (
                     <div className="p-24 text-center border-2 border-dashed border-border-sub rounded-2xl opacity-40 bg-bg-secondary/30">
                         <History size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                        <p className="text-[11px] font-bold uppercase tracking-widest text-center italic">Session ledger clear for this mission registry</p>
+                        <p className="text-[11px] font-bold text-center italic">Session ledger clear for this mission registry</p>
                     </div>
                 )}
             </section>

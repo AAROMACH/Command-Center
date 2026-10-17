@@ -557,11 +557,11 @@ export default function TechWeeklyLogPage() {
     const ViewTabs = () => (
         <div className="flex items-center gap-1 rounded-lg border border-border-sub bg-bg-secondary p-1 w-max">
             <button type="button" onClick={() => setLogView('work')}
-                className={cn('px-3 py-1.5 rounded text-[9px] font-black uppercase tracking-widest transition-colors', logView === 'work' ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary')}>
+                className={cn('px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-colors', logView === 'work' ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary')}>
                 <LayoutList size={11} className="inline mr-1.5" />Work Logs
             </button>
             <button type="button" onClick={() => setLogView('trips')}
-                className={cn('px-3 py-1.5 rounded text-[9px] font-black uppercase tracking-widest transition-colors', logView === 'trips' ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary')}>
+                className={cn('px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-colors', logView === 'trips' ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary')}>
                 <Car size={11} className="inline mr-1.5" />Mileage / Trips
             </button>
         </div>
@@ -574,7 +574,7 @@ export default function TechWeeklyLogPage() {
                     <div className="text-left">
                         <p className="page-eyebrow flex items-center gap-2"><Car size={12}/> Mileage Registry</p>
                         <h1 className="page-title text-left">Trip Logs</h1>
-                        <p className="page-subtitle text-[11px] uppercase font-bold text-text-muted tracking-widest mt-1 text-left">Every trip you&apos;ve recorded — for reimbursement and year-end mileage review.</p>
+                        <p className="page-subtitle text-[11px] font-bold text-text-muted mt-1 text-left">Every trip you&apos;ve recorded — for reimbursement and year-end mileage review.</p>
                     </div>
                     <ViewTabs />
                 </header>
@@ -590,11 +590,11 @@ export default function TechWeeklyLogPage() {
                     <div className="text-left">
                         <p className="page-eyebrow flex items-center gap-2"><LayoutList size={12}/> Billing Audit</p>
                         <h1 className="page-title text-left">Weekly Log Registry</h1>
-                        <p className="page-subtitle text-[11px] uppercase font-bold text-text-muted tracking-widest mt-1 text-left">Audit terminal for assignment verification and billing.</p>
+                        <p className="page-subtitle text-[11px] font-bold text-text-muted mt-1 text-left">Audit terminal for assignment verification and billing.</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <ViewTabs />
-                        <Button onClick={() => setIsCreateLogOpen(true)} className="bg-brand-red hover:bg-brand-red-hover h-10 px-6 font-bold uppercase tracking-widest text-[10px]">
+                        <Button onClick={() => setIsCreateLogOpen(true)} className="bg-brand-red hover:bg-brand-red-hover h-10 px-6 font-bold uppercase tracking-wider text-[10px]">
                             <Plus size={16} className="mr-2" /> Initialize New Log
                         </Button>
                     </div>
@@ -607,32 +607,32 @@ export default function TechWeeklyLogPage() {
                             placeholder="Filter by week period (MM-DD)..." 
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="search-input !w-full !bg-bg-primary h-10 text-xs font-bold uppercase text-left"
+                            className="search-input !w-full !bg-bg-primary h-10 text-xs font-bold text-left"
                         />
                     </div>
                     
                     <div className="flex items-center gap-3 w-full md:w-auto">
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[120px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
+                            <SelectTrigger className="w-[120px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-wider border-border-main">
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all" className="text-[10px] uppercase font-bold">All Statuses</SelectItem>
-                                <SelectItem value="Draft" className="text-[10px] uppercase font-bold">Drafts</SelectItem>
-                                <SelectItem value="Submitted" className="text-[10px] uppercase font-bold">Submitted</SelectItem>
-                                <SelectItem value="Approved" className="text-[10px] uppercase font-bold">Approved</SelectItem>
+                                <SelectItem value="all" className="text-[10px] font-bold">All Statuses</SelectItem>
+                                <SelectItem value="Draft" className="text-[10px] font-bold">Drafts</SelectItem>
+                                <SelectItem value="Submitted" className="text-[10px] font-bold">Submitted</SelectItem>
+                                <SelectItem value="Approved" className="text-[10px] font-bold">Approved</SelectItem>
                             </SelectContent>
                         </Select>
 
                         <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                            <SelectTrigger className="w-[140px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
+                            <SelectTrigger className="w-[140px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-wider border-border-main">
                                 <SelectValue placeholder="Sort" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="newest" className="text-[10px] uppercase font-bold">Newest First</SelectItem>
-                                <SelectItem value="oldest" className="text-[10px] uppercase font-bold">Earliest First</SelectItem>
-                                <SelectItem value="status" className="text-[10px] uppercase font-bold">By Status</SelectItem>
-                                <SelectItem value="billing" className="text-[10px] uppercase font-bold">By Settlement</SelectItem>
+                                <SelectItem value="newest" className="text-[10px] font-bold">Newest First</SelectItem>
+                                <SelectItem value="oldest" className="text-[10px] font-bold">Earliest First</SelectItem>
+                                <SelectItem value="status" className="text-[10px] font-bold">By Status</SelectItem>
+                                <SelectItem value="billing" className="text-[10px] font-bold">By Settlement</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -666,12 +666,12 @@ export default function TechWeeklyLogPage() {
                                         </div>
                                         <div className="text-left">
                                             <div className="flex items-center gap-3">
-                                                <p className="text-xs font-bold uppercase tracking-wide text-text-primary group-hover:text-brand-red transition-colors text-left">Week of {log.weekOf}</p>
+                                                <p className="text-xs font-bold tracking-wide text-text-primary group-hover:text-brand-red transition-colors text-left">Week of {log.weekOf}</p>
                                                 {log.unsubmitRequested && (
-                                                    <Badge variant="destructive" className="h-4 px-1.5 text-[7px] uppercase animate-pulse">Unsubmit Pending</Badge>
+                                                    <Badge variant="destructive" className="h-4 px-1.5 text-[10px] animate-pulse">Unsubmit Pending</Badge>
                                                 )}
                                             </div>
-                                            <div className="flex items-center gap-3 mt-0.5 text-[9px] text-text-muted font-bold uppercase tracking-widest text-left">
+                                            <div className="flex items-center gap-3 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-wider text-left">
                                                 <span>{(log.items || []).length} Assignments</span>
                                                 <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
                                                 <span className="text-text-green font-mono">${settlementOf(log).toFixed(2)}</span>
@@ -693,7 +693,7 @@ export default function TechWeeklyLogPage() {
                                 {showDivider && (
                                     <div className="flex items-center gap-3 py-2">
                                         <div className="flex-1 h-px bg-border-sub" />
-                                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-green flex items-center gap-1.5">
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-green flex items-center gap-1.5">
                                             <History size={10} /> Past Logs
                                         </p>
                                         <div className="flex-1 h-px bg-border-sub" />
@@ -707,7 +707,7 @@ export default function TechWeeklyLogPage() {
                     {filteredAndSortedLogs.length === 0 && (
                         <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl opacity-40 bg-bg-secondary/30 text-left">
                             <LayoutList size={48} className="mx-auto text-text-muted mb-2" />
-                            <p className="text-[10px] font-bold uppercase tracking-widest italic">Registry clear for these filters</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider italic">Registry clear for these filters</p>
                         </div>
                     )}
                 </div>
@@ -715,7 +715,7 @@ export default function TechWeeklyLogPage() {
                 <Dialog open={isCreateLogOpen} onOpenChange={setIsCreateLogOpen}>
                     <DialogContent className="sm:max-w-[400px] bg-bg-elevated border-border-default shadow-2xl">
                         <DialogHeader className="text-left">
-                            <DialogTitle className="uppercase tracking-widest font-bold">Initialize Weekly Log</DialogTitle>
+                            <DialogTitle className="font-bold">Initialize Weekly Log</DialogTitle>
                             <DialogDescription className="text-xs text-left">Pick a date within the target week. Registry will anchor to that Monday.</DialogDescription>
                         </DialogHeader>
                         <div className="py-6 flex justify-center border-y border-border-sub my-4 text-left">
@@ -728,8 +728,8 @@ export default function TechWeeklyLogPage() {
                             />
                         </div>
                         <DialogFooter className="gap-3 flex-row">
-                            <Button variant="outline" onClick={() => setIsCreateLogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Cancel</Button>
-                            <Button onClick={handleCreateLog} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white">Initialize Manifest</Button>
+                            <Button variant="outline" onClick={() => setIsCreateLogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider h-11">Cancel</Button>
+                            <Button onClick={handleCreateLog} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider h-11 text-white">Initialize Manifest</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
@@ -740,11 +740,11 @@ export default function TechWeeklyLogPage() {
     return (
         <div className="space-y-8 animate-in fade-in duration-500 text-left">
             <header className="flex items-center gap-4 mb-4 text-left">
-                <Button variant="ghost" size="sm" onClick={() => setSelectedLogId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted hover:text-text-primary text-left">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedLogId(null)} className="h-8 text-[10px] font-bold text-text-muted hover:text-text-primary text-left">
                     <ArrowLeft size={14} className="mr-2"/> Back to Registry
                 </Button>
                 <div className="h-4 w-px bg-border-sub" />
-                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-left">Auditing week of {activeLog.weekOf}</p>
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-left">Auditing week of {activeLog.weekOf}</p>
             </header>
 
             <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-bg-secondary p-6 rounded-2xl border border-border-sub shadow-2xl text-left">
@@ -757,19 +757,19 @@ export default function TechWeeklyLogPage() {
                     </div>
                     <div className="text-left">
                         <div className="flex items-center gap-3 text-left">
-                            <h2 className="text-xl font-bold uppercase tracking-wider text-text-primary text-left">Operational Audit</h2>
-                            <Badge variant={activeLog.status === 'Draft' ? 'onhold' : 'active'} className="h-5 uppercase text-[9px] tracking-widest">
+                            <h2 className="text-xl font-bold tracking-wider text-text-primary text-left">Operational Audit</h2>
+                            <Badge variant={activeLog.status === 'Draft' ? 'onhold' : 'active'} className="h-5 uppercase text-[10px] tracking-wider">
                                 {activeLog.status}
                             </Badge>
                         </div>
                         <div className="flex items-center gap-4 mt-1 text-left">
-                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-green uppercase tracking-widest text-left">
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-green uppercase tracking-wider text-left">
                                 <Check className="text-text-green h-3 w-3"/> {counts.confirmed} Confirmed
                             </div>
-                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-red uppercase tracking-widest text-left">
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-red uppercase tracking-wider text-left">
                                 <X className="text-text-red h-3 w-3"/> {counts.disputed} Disputed
                             </div>
-                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-accent-gold uppercase tracking-widest text-left">
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-accent-gold uppercase tracking-wider text-left">
                                 <Clock size={12} className="h-3 w-3"/> {counts.pending} Awaiting Action
                             </div>
                         </div>
@@ -783,7 +783,7 @@ export default function TechWeeklyLogPage() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-9 px-6 text-[10px] font-bold uppercase tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim"
+                                    className="h-9 px-6 text-[10px] font-bold uppercase tracking-wider border-brand-red text-text-red hover:bg-brand-red-dim"
                                     onClick={() => setIsDirectUnsubmitOpen(true)}
                                 >
                                     <Undo2 size={14} className="mr-2" /> Unsubmit Log
@@ -791,21 +791,21 @@ export default function TechWeeklyLogPage() {
                             ) : activeLog.unsubmitRequested ? (
                                 <div className="flex items-center gap-2 p-2 rounded-lg bg-bg-tertiary border border-border-sub text-accent-gold">
                                     <AlertCircle size={14} className="animate-pulse" />
-                                    <p className="text-[9px] font-black uppercase tracking-widest">Unsubmit Pending Approval</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider">Unsubmit Pending Approval</p>
                                 </div>
                             ) : (
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-9 px-6 text-[10px] font-bold uppercase tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim"
+                                    className="h-9 px-6 text-[10px] font-bold uppercase tracking-wider border-brand-red text-text-red hover:bg-brand-red-dim"
                                     onClick={() => setIsUnsubmitDialogOpen(true)}
                                 >
                                     <Undo2 size={14} className="mr-2" /> Request Unsubmit
                                 </Button>
                             )}
                             <div className="text-right">
-                                <p className="text-[10px] font-black text-text-green uppercase tracking-widest text-right">Registry Transmitted</p>
-                                <p className="text-[9px] text-text-muted uppercase font-bold text-right">
+                                <p className="text-[10px] font-bold text-text-green uppercase tracking-wider text-right">Registry Transmitted</p>
+                                <p className="text-[11px] text-text-muted font-bold text-right">
                                   {activeLog.submittedAt
                                     ? `${format(parseISO(activeLog.submittedAt), 'MMM d, h:mm a')}${activeLog.submittedBy ? ` · ${activeLog.submittedBy}` : ''}`
                                     : 'N/A'}
@@ -814,8 +814,8 @@ export default function TechWeeklyLogPage() {
                         </div>
                     ) : isLocked ? (
                         <div className="flex flex-col items-end text-right">
-                            <p className="text-[10px] font-black text-text-green uppercase tracking-widest text-right">Terminal Locked</p>
-                            <p className="text-[9px] text-text-muted uppercase font-bold text-right">
+                            <p className="text-[10px] font-bold text-text-green uppercase tracking-wider text-right">Terminal Locked</p>
+                            <p className="text-[11px] text-text-muted font-bold text-right">
                               {activeLog.submittedAt
                                 ? `${format(parseISO(activeLog.submittedAt), 'MMM d, h:mm a')}${activeLog.submittedBy ? ` · ${activeLog.submittedBy}` : ''}`
                                 : 'N/A'}
@@ -826,7 +826,7 @@ export default function TechWeeklyLogPage() {
                             disabled={!canSubmit || !canSubmitActiveLog}
                             onClick={handleSubmit}
                             className={cn(
-                                "h-12 px-10 font-bold uppercase text-[10px] tracking-[0.2em]",
+                                "h-12 px-10 font-bold uppercase text-[10px] tracking-wider",
                                 canSubmit && canSubmitActiveLog ? "bg-brand-red hover:bg-brand-red-hover" : "bg-bg-tertiary text-text-muted border border-border-sub"
                             )}
                         >
@@ -842,9 +842,9 @@ export default function TechWeeklyLogPage() {
                 <div className="max-w-6xl mx-auto p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex items-start gap-4 shadow-sm animate-pulse text-left">
                     <ShieldAlert size={20} className="text-text-red shrink-0 mt-0.5" />
                     <div className="space-y-1 text-left">
-                        <p className="text-[11px] font-bold text-text-red uppercase tracking-wide text-left">Registry Verification Required</p>
-                        <p className="text-[10px] text-text-muted leading-relaxed uppercase text-left">
-                            You must confirm or dispute the remaining <span className="text-text-red font-black">{counts.pending} assignments</span> before the manifest can be transmitted for billing.
+                        <p className="text-[11px] font-bold text-text-red tracking-wide text-left">Registry Verification Required</p>
+                        <p className="text-[10px] text-text-muted leading-relaxed text-left">
+                            You must confirm or dispute the remaining <span className="text-text-red font-bold">{counts.pending} assignments</span> before the manifest can be transmitted for billing.
                         </p>
                     </div>
                 </div>
@@ -854,8 +854,8 @@ export default function TechWeeklyLogPage() {
                 <div className="max-w-6xl mx-auto p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-start gap-4 shadow-sm text-left">
                     <Info size={20} className="text-accent-gold shrink-0 mt-0.5" />
                     <div className="space-y-1 text-left">
-                        <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide text-left">Audit Manifest Preparation</p>
-                        <p className="text-[10px] text-text-muted leading-relaxed uppercase font-medium text-left">
+                        <p className="text-[11px] font-bold text-text-primary tracking-wide text-left">Audit Manifest Preparation</p>
+                        <p className="text-[10px] text-text-muted leading-relaxed font-medium text-left">
                             You can continue verifying missions and logging expenses throughout the week. Current-week log submission is authorized on <span className="text-brand-red font-bold">Saturday and Sunday</span>. Past week logs can be submitted anytime.
                         </p>
                     </div>
@@ -865,15 +865,15 @@ export default function TechWeeklyLogPage() {
             <div className="space-y-4 max-w-6xl mx-auto text-left">
                 <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1 text-left">
                     <div className="flex items-center gap-2">
-                        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Tactical Assignment Registry</h3>
+                        <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-left">Tactical Assignment Registry</h3>
                         {openDisputesForActiveLog.length > 0 && (
-                            <Badge variant="destructive" className="text-[7px] h-4 uppercase tracking-widest flex items-center gap-1 animate-pulse">
+                            <Badge variant="destructive" className="text-[10px] h-4 uppercase tracking-wider flex items-center gap-1 animate-pulse">
                                 <AlertTriangle size={9} /> Dispute Under Review
                             </Badge>
                         )}
                     </div>
                     {!isLocked ? (
-                        <Button variant="ghost" size="sm" className="h-6 text-[9px] uppercase font-bold text-brand-red hover:bg-brand-red/10" onClick={() => setIsReportMissingOpen(true)}>
+                        <Button variant="ghost" size="sm" className="h-6 text-[11px] font-bold text-brand-red hover:bg-brand-red/10" onClick={() => setIsReportMissingOpen(true)}>
                             <Search size={12} className="mr-1.5"/> Report Missing Assignment
                         </Button>
                     ) : activeLog.status === 'Approved' ? (
@@ -881,7 +881,7 @@ export default function TechWeeklyLogPage() {
                             variant="ghost"
                             size="sm"
                             className={cn(
-                                "h-6 text-[9px] uppercase font-bold",
+                                "h-6 text-[11px] font-bold",
                                 isDisputeModeOn ? "text-text-primary hover:bg-bg-tertiary" : "text-brand-red hover:bg-brand-red/10"
                             )}
                             onClick={() => setIsDisputeModeOn(v => !v)}
@@ -892,10 +892,10 @@ export default function TechWeeklyLogPage() {
                 </div>
                 {isDisputeModeOn && (
                     <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-brand-red/30 bg-brand-red-dim/5 text-left">
-                        <p className="text-[10px] font-bold text-text-red uppercase tracking-widest">
+                        <p className="text-[10px] font-bold text-text-red uppercase tracking-wider">
                             Select the job below you want to dispute, or file a general issue.
                         </p>
-                        <Button variant="outline" size="sm" className="h-7 shrink-0 text-[9px] uppercase font-bold tracking-widest" onClick={openGeneralDispute}>
+                        <Button variant="outline" size="sm" className="h-7 shrink-0 text-[10px] uppercase font-bold tracking-wider" onClick={openGeneralDispute}>
                             File General Dispute
                         </Button>
                     </div>
@@ -929,7 +929,7 @@ export default function TechWeeklyLogPage() {
                     {(activeLog.items || []).length === 0 && (
                         <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30 text-left">
                             <ActivityIcon size={48} className="mx-auto text-text-muted mb-2 opacity-20" />
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No assignments synced to this weeklog</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">No assignments synced to this weeklog</p>
                         </div>
                     )}
                     {/* Reported-missing jobs always trail the synced registry — they aren't
@@ -942,11 +942,11 @@ export default function TechWeeklyLogPage() {
                                 </div>
                                 <div className="min-w-0 text-left flex-1">
                                     <div className="flex flex-wrap items-center gap-2 text-left">
-                                        <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[420px] text-left">{report.summary || 'Missing Assignment'}</h4>
-                                        <Badge variant="pending" className="text-[7px] h-3.5 uppercase tracking-tighter">Manually Added · Was Missing</Badge>
-                                        {report.jobType && <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter">{report.jobType}</Badge>}
+                                        <h4 className="text-sm font-bold text-text-primary tracking-wide truncate max-w-[420px] text-left">{report.summary || 'Missing Assignment'}</h4>
+                                        <Badge variant="pending" className="text-[10px] h-3.5 uppercase tracking-tighter">Manually Added · Was Missing</Badge>
+                                        {report.jobType && <Badge variant="outline" className="text-[10px] h-3.5 uppercase tracking-tighter">{report.jobType}</Badge>}
                                     </div>
-                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
+                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-wider text-left">
                                         {report.clientName && <span>{report.clientName}</span>}
                                         {report.jobType === 'Imported' && report.externalWorkOrderId && (
                                             <a
@@ -977,7 +977,7 @@ export default function TechWeeklyLogPage() {
                     <DialogHeader className="text-left">
                         <div className="flex items-center gap-2 mb-1">
                             <ArrowLeftRight className="text-blue-400 h-5 w-5" />
-                            <DialogTitle className="text-base font-bold uppercase tracking-widest">Move to Another Log</DialogTitle>
+                            <DialogTitle className="text-base font-bold">Move to Another Log</DialogTitle>
                         </div>
                         <p className="text-[11px] text-text-muted leading-relaxed">
                             Moving from the week of <span className="text-text-primary font-bold">{activeLog?.weekOf}</span>. Choose a destination draft log — all notes, time, mileage, reimbursements, receipts, and payout stay with the assignment.
@@ -986,7 +986,7 @@ export default function TechWeeklyLogPage() {
                     <div className="space-y-2 max-h-[45vh] overflow-y-auto py-1">
                         {moveDestinations.length === 0 ? (
                             <div className="text-center py-6 space-y-1">
-                                <p className="text-[11px] text-text-muted uppercase tracking-widest font-bold">No other draft logs</p>
+                                <p className="text-[11px] text-text-muted font-bold">No other draft logs</p>
                                 <p className="text-[10px] text-text-muted/70 leading-relaxed px-4">You need a second draft weekly log to move this assignment into. Start a draft for another week first.</p>
                             </div>
                         ) : moveDestinations.map(l => (
@@ -997,14 +997,14 @@ export default function TechWeeklyLogPage() {
                             >
                                 <div>
                                     <p className="text-[12px] font-bold text-text-primary">Week of {l.weekOf}</p>
-                                    <p className="text-[9px] text-text-muted uppercase tracking-widest font-bold">{l.status} · {(l.items || []).length} assignment{(l.items || []).length !== 1 ? 's' : ''}</p>
+                                    <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">{l.status} · {(l.items || []).length} assignment{(l.items || []).length !== 1 ? 's' : ''}</p>
                                 </div>
                                 <ArrowLeftRight size={14} className="text-blue-400 shrink-0" />
                             </button>
                         ))}
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" className="h-9 text-[10px] font-bold uppercase tracking-widest" onClick={() => setMoveItem(null)}>Cancel</Button>
+                        <Button variant="outline" className="h-9 text-[10px] font-bold uppercase tracking-wider" onClick={() => setMoveItem(null)}>Cancel</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -1015,15 +1015,15 @@ export default function TechWeeklyLogPage() {
                     <DialogHeader className="text-left">
                         <div className="flex items-center gap-2 mb-1">
                             <Undo2 className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-base font-bold uppercase tracking-widest">Unsubmit Weekly Log</DialogTitle>
+                            <DialogTitle className="text-base font-bold">Unsubmit Weekly Log</DialogTitle>
                         </div>
                         <p className="text-[11px] text-text-muted leading-relaxed">
                             Unsubmitting this weekly log will return it to Draft status and allow its assignments and entries to be edited. Continue?
                         </p>
                     </DialogHeader>
                     <DialogFooter className="gap-2">
-                        <Button variant="outline" className="h-9 text-[10px] font-bold uppercase tracking-widest" onClick={() => setIsDirectUnsubmitOpen(false)}>Cancel</Button>
-                        <Button className="h-9 text-[10px] font-bold uppercase tracking-widest bg-brand-red hover:bg-brand-red-hover text-white" onClick={handleDirectUnsubmit}>
+                        <Button variant="outline" className="h-9 text-[10px] font-bold uppercase tracking-wider" onClick={() => setIsDirectUnsubmitOpen(false)}>Cancel</Button>
+                        <Button className="h-9 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red-hover text-white" onClick={handleDirectUnsubmit}>
                             <Undo2 size={14} className="mr-2" /> Unsubmit Log
                         </Button>
                     </DialogFooter>
@@ -1036,37 +1036,37 @@ export default function TechWeeklyLogPage() {
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-2 mb-1 text-left">
                             <Undo2 className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Unsubmit Request Terminal</DialogTitle>
+                            <DialogTitle className="text-lg font-bold">Unsubmit Request Terminal</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Request authorization to amend a previously submitted weekly manifest.</DialogDescription>
+                        <DialogDescription className="text-xs font-bold text-text-muted text-left">Request authorization to amend a previously submitted weekly manifest.</DialogDescription>
                     </DialogHeader>
                     <div className="p-6 space-y-4 text-left">
                         <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-2 text-left">
-                            <p className="text-[9px] font-black text-brand-red uppercase tracking-widest flex items-center gap-2 text-left">
+                            <p className="text-[10px] font-bold text-brand-red uppercase tracking-wider flex items-center gap-2 text-left">
                                 <Info size={12}/> Amendment Policy
                             </p>
-                            <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium text-left">
+                            <p className="text-[10px] text-text-secondary leading-relaxed font-medium text-left">
                                 Unsubmitting a log will pause any active billing audits for this week. You must provide a specific tactical reason for this amendment request.
                             </p>
                         </div>
                         <div className="space-y-2 text-left">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center gap-1.5">
+                            <Label className="text-[10px] font-bold text-text-muted ml-1 flex items-center gap-1.5">
                                 <MessageSquare size={12} /> Amendment Justification
                             </Label>
                             <Textarea 
                                 placeholder="e.g., Added missing materials reimbursement, need to dispute WO-18927..." 
                                 value={unsubmitReason}
                                 onChange={e => setUnsubmitReason(e.target.value)}
-                                className="bg-bg-primary border-border-sub min-h-[120px] text-xs leading-relaxed uppercase font-medium"
+                                className="bg-bg-primary border-border-sub min-h-[120px] text-xs leading-relaxed font-medium"
                             />
                         </div>
                     </div>
                     <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex gap-3">
-                        <Button variant="outline" onClick={() => setIsUnsubmitDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Abort</Button>
+                        <Button variant="outline" onClick={() => setIsUnsubmitDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider h-11">Abort</Button>
                         <Button 
                             disabled={!unsubmitReason.trim()}
                             onClick={handleRequestUnsubmit} 
-                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white shadow-lg"
+                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider h-11 text-white shadow-lg"
                         >
                             <Send size={16} className="mr-2" /> Transmit Request
                         </Button>
@@ -1086,11 +1086,11 @@ export default function TechWeeklyLogPage() {
                     <DialogHeader className="text-left">
                         <div className="flex items-center gap-2 mb-1 text-left">
                             <AlertTriangle className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary text-left">
+                            <DialogTitle className="text-lg font-bold text-text-primary text-left">
                                 {payrollDisputeWorkOrderId ? 'Dispute This Job' : 'Dispute This Log'}
                             </DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">
+                        <DialogDescription className="text-xs font-bold text-text-muted text-left">
                             {payrollDisputeWorkOrderId
                                 ? 'This log has already been submitted — the rest of it is unaffected. Flag just this job for admin review.'
                                 : 'This log has already been submitted. Flag an issue for admin review.'}
@@ -1098,7 +1098,7 @@ export default function TechWeeklyLogPage() {
                     </DialogHeader>
                     <div className="space-y-4 py-2 text-left">
                         <div className="space-y-2 text-left">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted">Reason</Label>
+                            <Label className="text-[10px] font-bold text-text-muted">Reason</Label>
                             <RadioGroup value={payrollDisputeReason} onValueChange={(v: any) => setPayrollDisputeReason(v)} className="space-y-2">
                                 {[
                                     { value: 'incorrect_pay', label: 'Incorrect Pay' },
@@ -1107,7 +1107,7 @@ export default function TechWeeklyLogPage() {
                                 ].map(r => (
                                     <div key={r.value} className="flex items-center space-x-2 p-2 rounded hover:bg-bg-tertiary transition-colors cursor-pointer text-left">
                                         <RadioGroupItem value={r.value} id={`pap-${r.value}`} />
-                                        <Label htmlFor={`pap-${r.value}`} className="text-[10px] uppercase font-bold text-text-primary cursor-pointer flex-1 text-left">{r.label}</Label>
+                                        <Label htmlFor={`pap-${r.value}`} className="text-[10px] font-bold text-text-primary cursor-pointer flex-1 text-left">{r.label}</Label>
                                     </div>
                                 ))}
                             </RadioGroup>
@@ -1115,7 +1115,7 @@ export default function TechWeeklyLogPage() {
 
                         {(payrollDisputeReason === 'incorrect_pay' || payrollDisputeReason === 'missing_reimbursement') && (activeLog?.items?.length ?? 0) > 0 && (
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Which Job? (Optional)</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">Which Job? (Optional)</Label>
                                 <Select value={payrollDisputeWorkOrderId} onValueChange={setPayrollDisputeWorkOrderId}>
                                     <SelectTrigger className="bg-bg-primary border-border-sub h-10 text-xs">
                                         <SelectValue placeholder="Select a job" />
@@ -1135,7 +1135,7 @@ export default function TechWeeklyLogPage() {
                         )}
 
                         <div className="space-y-2 text-left">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted">Details</Label>
+                            <Label className="text-[10px] font-bold text-text-muted">Details</Label>
                             <Textarea
                                 value={payrollDisputeNotes}
                                 onChange={e => setPayrollDisputeNotes(e.target.value)}
@@ -1145,11 +1145,11 @@ export default function TechWeeklyLogPage() {
                         </div>
                     </div>
                     <DialogFooter className="gap-3 flex-row">
-                        <Button variant="outline" onClick={() => setIsPayrollDisputeOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Cancel</Button>
+                        <Button variant="outline" onClick={() => setIsPayrollDisputeOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider h-11">Cancel</Button>
                         <Button
                             disabled={!payrollDisputeReason || !payrollDisputeNotes.trim() || payrollDisputeSaving}
                             onClick={handleSubmitPayrollDispute}
-                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white shadow-lg"
+                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider h-11 text-white shadow-lg"
                         >
                             <Send size={16} className="mr-2" /> {payrollDisputeSaving ? 'Filing...' : 'File Dispute'}
                         </Button>
@@ -1235,27 +1235,27 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                         </div>
                         <div className="min-w-0 text-left flex-1">
                             <div className="flex items-center gap-3 text-left">
-                                <h4 className="text-sm font-bold text-text-primary uppercase tracking-wide truncate max-w-[520px] text-left">{shown.title || shown.description}</h4>
-                                {item.isHelper && <Badge variant="outline" className="text-[7px] h-3.5 uppercase tracking-tighter">Helper</Badge>}
-                                {isConfirmed && <Badge variant="active" className="text-[7px] h-3.5 uppercase tracking-tighter">VERIFIED</Badge>}
-                                {isDisputed && <Badge variant="missed" className="text-[7px] h-3.5 uppercase tracking-tighter">DISPUTED</Badge>}
+                                <h4 className="text-sm font-bold text-text-primary tracking-wide truncate max-w-[520px] text-left">{shown.title || shown.description}</h4>
+                                {item.isHelper && <Badge variant="outline" className="text-[10px] h-3.5 uppercase tracking-tighter">Helper</Badge>}
+                                {isConfirmed && <Badge variant="active" className="text-[10px] h-3.5 uppercase tracking-tighter">VERIFIED</Badge>}
+                                {isDisputed && <Badge variant="missed" className="text-[10px] h-3.5 uppercase tracking-tighter">DISPUTED</Badge>}
                                 {hasOpenPayrollDispute && (
-                                    <Badge variant="destructive" className="text-[7px] h-3.5 uppercase tracking-tighter flex items-center gap-1 animate-pulse">
+                                    <Badge variant="destructive" className="text-[10px] h-3.5 uppercase tracking-tighter flex items-center gap-1 animate-pulse">
                                         <AlertTriangle size={9} /> Under Review
                                     </Badge>
                                 )}
                                 {settledReimbursement > 0 && (
-                                    <Badge variant="active" className="text-[7px] h-3.5 uppercase tracking-tighter flex items-center gap-1">
+                                    <Badge variant="active" className="text-[10px] h-3.5 uppercase tracking-tighter flex items-center gap-1">
                                         <DollarSign size={9} /> Reimbursement Pay · ${settledReimbursement.toFixed(2)}
                                     </Badge>
                                 )}
                                 {requestedReimbursement > 0 && (
-                                    <Badge variant="pending" className="text-[7px] h-3.5 uppercase tracking-tighter flex items-center gap-1">
+                                    <Badge variant="pending" className="text-[10px] h-3.5 uppercase tracking-tighter flex items-center gap-1">
                                         <DollarSign size={9} /> Reimbursement Requested · ${requestedReimbursement.toFixed(2)}
                                     </Badge>
                                 )}
                             </div>
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-bold uppercase tracking-wider text-left">
                                 <span className="flex items-center gap-1.5 text-left"><MapPin size={10} className="text-brand-red shrink-0"/> {formatCityState(shown.location)}</span>
                                 <span className="flex items-center gap-1.5 text-left"><CalendarIcon size={10} className="shrink-0"/> {shown.scheduleDate}{shown.scheduleTime ? ` · ${shown.scheduleTime}` : ''}</span>
                                 <span className="font-mono text-brand-red font-bold text-left">ASMT: {shown.id.toUpperCase()}</span>
@@ -1275,15 +1275,15 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                         </div>
 
                         <div className="text-right px-4 border-l border-border-sub/30 min-w-[100px]">
-                            <p className="text-[8px] font-black text-text-muted uppercase tracking-widest text-right">{isDisputed ? 'Excluded (Disputed)' : 'Settlement'}</p>
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-right">{isDisputed ? 'Excluded (Disputed)' : 'Settlement'}</p>
                             <p className="text-sm font-mono font-bold text-text-green text-right">${(isDisputed ? 0 : effectiveJobPay(item, shown)).toFixed(2)}</p>
                         </div>
 
                         {itemReimbursements.length > 0 && (
                             <div className="text-right px-4 border-l border-border-sub/30 min-w-[100px]">
-                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest text-right">Reimbursement Pay</p>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-right">Reimbursement Pay</p>
                                 <p className="text-sm font-mono font-bold text-accent-gold text-right">${settledReimbursement.toFixed(2)}</p>
-                                <p className="text-[7px] font-bold uppercase tracking-widest text-text-muted text-right">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-right">
                                     {requestedReimbursement > 0 ? `$${requestedReimbursement.toFixed(2)} requested`
                                         : settledReimbursement > 0 ? 'Approved net of fee'
                                         : 'Rejected — excluded'}
@@ -1299,7 +1299,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                 <>
                                     <Button
                                         size="sm"
-                                        className="h-8 px-4 bg-text-green hover:bg-text-green/90 uppercase text-[9px] font-bold tracking-widest text-white"
+                                        className="h-8 px-4 bg-text-green hover:bg-text-green/90 uppercase text-[10px] font-bold tracking-wider text-white"
                                         onClick={() => onConfirm(item.id)}
                                     >
                                         <Check size={14} className="mr-1.5"/> Confirm
@@ -1307,7 +1307,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="h-8 px-4 uppercase text-[9px] font-bold tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim"
+                                        className="h-8 px-4 uppercase text-[10px] font-bold tracking-wider border-brand-red text-text-red hover:bg-brand-red-dim"
                                         onClick={() => setIsDisputing(true)}
                                     >
                                         <X size={14} className="mr-1.5"/> Dispute
@@ -1317,7 +1317,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-8 px-3 text-[9px] font-bold uppercase text-text-muted hover:text-text-primary"
+                                    className="h-8 px-3 text-[11px] font-bold text-text-muted hover:text-text-primary"
                                     onClick={() => setIsDisputing(!isDisputing)}
                                 >
                                     <RotateCcw size={12} className="mr-1.5"/> Adjust Decision
@@ -1355,7 +1355,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 px-4 uppercase text-[9px] font-bold tracking-widest border-brand-red/40 text-text-red hover:bg-brand-red-dim"
+                                className="h-8 px-4 uppercase text-[10px] font-bold tracking-wider border-brand-red/40 text-text-red hover:bg-brand-red-dim"
                                 onClick={() => onDisputeJob(item)}
                             >
                                 <AlertTriangle size={12} className="mr-1.5"/> Dispute This Job
@@ -1369,14 +1369,14 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                         {itemReimbursements.map(r => (
                             <div key={r.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-bg-primary/40 border border-accent-gold/20 text-left">
                                 <div className="min-w-0 text-left">
-                                    <p className="text-[10px] font-bold text-text-primary uppercase truncate text-left">{r.description}</p>
-                                    <p className="text-[8px] text-text-muted uppercase tracking-widest text-left">{r.date}</p>
+                                    <p className="text-[10px] font-bold text-text-primary truncate text-left">{r.description}</p>
+                                    <p className="text-[10px] text-text-muted uppercase tracking-wider text-left">{r.date}</p>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                     <span className="text-xs font-mono font-bold text-accent-gold">${(r.status === 'pending' || r.status === 'rejected' ? r.amount || 0 : netOfFieldNationFee(r.amount)).toFixed(2)}</span>
                                     <Badge
                                         variant={r.status === 'rejected' ? 'missed' : r.status === 'pending' ? 'pending' : 'active'}
-                                        className="text-[7px] h-3.5 uppercase tracking-tighter"
+                                        className="text-[10px] h-3.5 uppercase tracking-tighter"
                                     >
                                         {r.status === 'pending' ? 'Requested' : r.status === 'rejected' ? 'Rejected' : 'Approved net'}
                                     </Badge>
@@ -1400,29 +1400,29 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                     <div className="px-5 pb-5 pt-1 animate-in slide-in-from-top-2 duration-300 text-left">
                         <div className="p-4 rounded-xl bg-bg-primary/50 border border-accent-gold/30 space-y-3 text-left">
                             <div className="flex items-center justify-between">
-                                <p className="text-[9px] font-black text-accent-gold uppercase tracking-[0.2em]">Add Reimbursement · WO# {displayWorkOrderNumber(shown)}</p>
+                                <p className="text-[10px] font-bold text-accent-gold uppercase tracking-wider">Add Reimbursement · WO# {displayWorkOrderNumber(shown)}</p>
                                 <button onClick={() => setIsReimbursing(false)} className="text-text-muted hover:text-text-primary"><X size={14}/></button>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div className="space-y-1">
-                                    <label className="text-[8px] font-black uppercase tracking-widest text-text-muted">Amount ($)</label>
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Amount ($)</label>
                                     <Input type="number" min="0" step="0.01" value={reimbAmount} onChange={e => setReimbAmount(e.target.value)} placeholder="0.00" className="h-9 text-xs bg-bg-secondary border-border-main font-mono" />
                                 </div>
                                 <div className="space-y-1 sm:col-span-2">
-                                    <label className="text-[8px] font-black uppercase tracking-widest text-text-muted">Description / Reason</label>
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Description / Reason</label>
                                     <Input value={reimbDesc} onChange={e => setReimbDesc(e.target.value)} placeholder="e.g. Parking, materials, tolls" className="h-9 text-xs bg-bg-secondary border-border-main" />
                                 </div>
                             </div>
                             <div className="space-y-1">
-                                <label className="text-[8px] font-black uppercase tracking-widest text-text-muted">Note (optional)</label>
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Note (optional)</label>
                                 <Input value={reimbNote} onChange={e => setReimbNote(e.target.value)} placeholder="Additional detail" className="h-9 text-xs bg-bg-secondary border-border-main" />
                             </div>
                             <div className="flex items-center justify-between gap-3 flex-wrap">
-                                <label className="text-[9px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2 cursor-pointer">
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2 cursor-pointer">
                                     <input type="file" accept="image/*,application/pdf" className="hidden" onChange={e => setReimbFile(e.target.files?.[0] || null)} />
                                     <span className="px-3 py-1.5 rounded border border-border-main bg-bg-secondary hover:bg-bg-tertiary">{reimbFile ? reimbFile.name.slice(0, 24) : 'Attach receipt (optional)'}</span>
                                 </label>
-                                <Button size="sm" disabled={reimbSaving} onClick={submitReimbursement} className="h-9 px-6 bg-accent-gold hover:bg-accent-gold/90 text-black uppercase text-[9px] font-bold tracking-widest">
+                                <Button size="sm" disabled={reimbSaving} onClick={submitReimbursement} className="h-9 px-6 bg-accent-gold hover:bg-accent-gold/90 text-black uppercase text-[10px] font-bold tracking-wider">
                                     {reimbSaving ? <Loader2 size={13} className="animate-spin mr-1.5" /> : <Check size={13} className="mr-1.5" />}Submit for Review
                                 </Button>
                             </div>
@@ -1434,7 +1434,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                     <div className="px-5 pb-5 pt-1 animate-in slide-in-from-top-2 duration-300 text-left">
                         <div className="p-4 rounded-xl bg-bg-primary/50 border border-border-sub space-y-5 text-left">
                             <div className="flex items-center justify-between">
-                                <p className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em] text-left">Dispute Parameters</p>
+                                <p className="text-[10px] font-bold text-brand-red uppercase tracking-wider text-left">Dispute Parameters</p>
                                 <button onClick={() => setIsDisputing(false)} className="text-text-muted hover:text-text-primary"><X size={14}/></button>
                             </div>
                             
@@ -1447,27 +1447,27 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                     {DISPUTE_REASONS.map((r, idx) => (
                                         <div key={idx} className="flex items-center space-x-2 p-2 rounded hover:bg-bg-tertiary transition-colors cursor-pointer text-left">
                                             <RadioGroupItem value={r} id={`r-${item.id}-${idx}`} />
-                                            <Label htmlFor={`r-${item.id}-${idx}`} className="text-[10px] uppercase font-bold text-text-primary cursor-pointer flex-1 text-left">{r}</Label>
+                                            <Label htmlFor={`r-${item.id}-${idx}`} className="text-[10px] font-bold text-text-primary cursor-pointer flex-1 text-left">{r}</Label>
                                         </div>
                                     ))}
                                 </RadioGroup>
 
                                 <div className="space-y-2 text-left">
-                                    <Label className="text-[9px] uppercase font-black text-text-muted ml-1 text-left">{reason === 'Other' ? 'Please specify (required)' : 'Additional Context (Optional)'}</Label>
+                                    <Label className="text-[11px] font-bold text-text-muted ml-1 text-left">{reason === 'Other' ? 'Please specify (required)' : 'Additional Context (Optional)'}</Label>
                                     <Textarea
                                         value={notes}
                                         onChange={e => setNotes(e.target.value)}
                                         placeholder={reason === 'Other' ? "Describe the reason for this dispute..." : "Provide specific details for administrative audit..."}
-                                        className="bg-bg-secondary h-20 text-xs font-medium uppercase leading-relaxed text-left"
+                                        className="bg-bg-secondary h-20 text-xs font-medium leading-relaxed text-left"
                                     />
                                 </div>
                             </div>
 
                             <div className="flex justify-end gap-2 pt-2">
-                                <Button variant="outline" size="sm" className="h-8 text-[9px] uppercase font-bold" onClick={() => setIsDisputing(false)}>Discard</Button>
+                                <Button variant="outline" size="sm" className="h-8 text-[11px] font-bold" onClick={() => setIsDisputing(false)}>Discard</Button>
                                 <Button 
                                     size="sm" 
-                                    className="h-8 bg-brand-red hover:bg-brand-red-hover text-white uppercase text-[9px] font-bold tracking-widest"
+                                    className="h-8 bg-brand-red hover:bg-brand-red-hover text-white uppercase text-[10px] font-bold tracking-wider"
                                     disabled={!reason || (reason === 'Other' && !notes.trim())}
                                     onClick={() => { onDispute(item.id, reason, notes); setIsDisputing(false); }}
                                 >
@@ -1481,11 +1481,11 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                 {isDisputed && (isLocked || !isDisputing) && (
                     <div className="px-4 pb-4 animate-in fade-in duration-300 text-left">
                          <div className="p-3 rounded-lg bg-brand-red-dim/10 border border-brand-red/10 text-left">
-                            <p className="text-[9px] font-black text-brand-red uppercase mb-1 flex items-center gap-1.5 text-left">
+                            <p className="text-[11px] font-bold text-brand-red mb-1 flex items-center gap-1.5 text-left">
                                 <ShieldAlert size={10}/> Reported Discrepancy: {item.disputeReason}
                             </p>
                             {item.disputeNotes && (
-                                <p className="text-[10px] text-text-secondary leading-relaxed italic uppercase font-medium text-left">
+                                <p className="text-[10px] text-text-secondary leading-relaxed italic font-medium text-left">
                                     &quot;{item.disputeNotes}&quot;
                                 </p>
                             )}
@@ -1527,14 +1527,14 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                 <DialogHeader className="text-left">
                     <div className="flex items-center gap-2 mb-1 text-left">
                         <Search className="text-brand-red h-5 w-5" />
-                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary text-left">Report Missing Assignment</DialogTitle>
+                        <DialogTitle className="text-lg font-bold text-text-primary text-left">Report Missing Assignment</DialogTitle>
                     </div>
-                    <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Submit details for a mission that is absent from the weekly registry.</DialogDescription>
+                    <DialogDescription className="text-xs font-bold text-text-muted text-left">Submit details for a mission that is absent from the weekly registry.</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSave} className="space-y-4 py-4 text-left">
                     {/* Job type — decides how payroll settles it. */}
                     <div className="space-y-2 text-left">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted">Job Type</Label>
+                        <Label className="text-[10px] font-bold text-text-muted">Job Type</Label>
                         <div className="grid grid-cols-2 gap-2">
                             {(['Imported', 'Manual'] as const).map(t => (
                                 <button
@@ -1542,7 +1542,7 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                                     type="button"
                                     onClick={() => setJobType(t)}
                                     className={cn(
-                                        "h-10 rounded-md border text-[10px] font-bold uppercase tracking-widest transition-colors",
+                                        "h-10 rounded-md border text-[10px] font-bold uppercase tracking-wider transition-colors",
                                         jobType === t ? "border-brand-red bg-brand-red/10 text-brand-red" : "border-border-sub bg-bg-primary text-text-muted hover:text-text-primary"
                                     )}
                                 >
@@ -1550,45 +1550,45 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
                                 </button>
                             ))}
                         </div>
-                        <p className="text-[9px] text-text-muted normal-case tracking-normal">
+                        <p className="text-[11px] text-text-muted normal-case tracking-normal">
                             {jobType === 'Imported'
                                 ? 'Enter the Field Nation work order number so payroll can open the FN link and run the pay calculator.'
                                 : 'Manual jobs use a flat pay you enter below; payroll verifies it.'}
                         </p>
                     </div>
                     <div className="space-y-2 text-left">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted">Client Entity</Label>
-                        <Input name="clientName" className="bg-bg-primary h-10 text-xs uppercase font-bold" />
+                        <Label className="text-[10px] font-bold text-text-muted">Client Entity</Label>
+                        <Input name="clientName" className="bg-bg-primary h-10 text-xs font-bold" />
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-left">
                         {jobType === 'Imported' && (
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Work Order # (Field Nation)</Label>
-                                <Input name="externalWorkOrderId" required placeholder="e.g. 18927456" className="bg-bg-primary h-10 text-xs uppercase font-bold" />
+                                <Label className="text-[10px] font-bold text-text-muted">Work Order # (Field Nation)</Label>
+                                <Input name="externalWorkOrderId" required placeholder="e.g. 18927456" className="bg-bg-primary h-10 text-xs font-bold" />
                             </div>
                         )}
                         <div className="space-y-2 text-left">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted">{jobType === 'Imported' ? 'Job Pay (optional)' : 'Job Pay'}</Label>
+                            <Label className="text-[10px] font-bold text-text-muted">{jobType === 'Imported' ? 'Job Pay (optional)' : 'Job Pay'}</Label>
                             <Input name="pay" type="number" step="0.01" required={jobType === 'Manual'} placeholder="0.00" className="bg-bg-primary h-10 text-xs font-mono" />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-left">
                         <div className="space-y-2 text-left">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted">Work Date</Label>
+                            <Label className="text-[10px] font-bold text-text-muted">Work Date</Label>
                             <Input name="date" type="date" required className="bg-bg-primary h-10 text-xs" />
                         </div>
                         <div className="space-y-2 text-left">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted">Location</Label>
+                            <Label className="text-[10px] font-bold text-text-muted">Location</Label>
                             <AddressAutocompleteInput name="location" required className="bg-bg-primary h-10 text-xs" />
                         </div>
                     </div>
                     <div className="space-y-2 text-left">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted">Summary</Label>
-                        <Textarea name="summary" required className="bg-bg-primary min-h-[120px] text-xs leading-relaxed uppercase font-medium text-left" placeholder="Document site activity and terminal outcomes..." />
+                        <Label className="text-[10px] font-bold text-text-muted">Summary</Label>
+                        <Textarea name="summary" required className="bg-bg-primary min-h-[120px] text-xs leading-relaxed font-medium text-left" placeholder="Document site activity and terminal outcomes..." />
                     </div>
                     <DialogFooter className="pt-4 border-t border-border-sub flex-row gap-3">
-                        <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
-                        <Button type="submit" className="flex-1 bg-brand-red hover:bg-brand-red-hover h-11 uppercase font-bold text-[10px] tracking-widest text-white shadow-lg">
+                        <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider">Cancel</Button>
+                        <Button type="submit" className="flex-1 bg-brand-red hover:bg-brand-red-hover h-11 uppercase font-bold text-[10px] tracking-wider text-white shadow-lg">
                             <Send size={14} className="mr-2" /> Submit Inquiry
                         </Button>
                     </DialogFooter>
@@ -1621,8 +1621,8 @@ function TripLogsView({ tripLogs, workOrders, mileageUnit }: { tripLogs: TripLog
         return (
             <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30">
                 <Car size={48} className="mx-auto text-text-muted mb-2 opacity-20" />
-                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No trips recorded yet</p>
-                <p className="text-[9px] text-text-muted uppercase tracking-widest mt-1">Trips added from an assignment appear here for year-end mileage review.</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">No trips recorded yet</p>
+                <p className="text-[10px] text-text-muted uppercase tracking-wider mt-1">Trips added from an assignment appear here for year-end mileage review.</p>
             </div>
         );
     }
@@ -1631,11 +1631,11 @@ function TripLogsView({ tripLogs, workOrders, mileageUnit }: { tripLogs: TripLog
         <div className="space-y-4 max-w-5xl">
             <div className="flex items-center gap-4 p-3 rounded-xl bg-bg-secondary border border-border-sub w-max">
                 <div>
-                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Total Trips</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Total Trips</p>
                     <p className="text-lg font-mono font-bold text-text-primary leading-none">{sorted.length}</p>
                 </div>
                 <div className="border-l border-border-sub pl-4">
-                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Total {mileageUnit === 'km' ? 'Kilometers' : 'Miles'}</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Total {mileageUnit === 'km' ? 'Kilometers' : 'Miles'}</p>
                     <p className="text-lg font-mono font-bold text-text-green leading-none">{formatDistance(totalMiles, mileageUnit)}</p>
                 </div>
             </div>
@@ -1645,7 +1645,7 @@ function TripLogsView({ tripLogs, workOrders, mileageUnit }: { tripLogs: TripLog
                     <thead>
                         <tr className="bg-bg-tertiary/50 border-b border-border-sub">
                             {['Date', 'Work Order', 'Job / Site', 'Route', 'Time', mileageUnit === 'km' ? 'KM' : 'Miles', 'Source', 'Status'].map(h => (
-                                <th key={h} className="text-[8px] font-black uppercase tracking-widest text-text-muted px-3 py-2 whitespace-nowrap">{h}</th>
+                                <th key={h} className="text-[10px] font-bold uppercase tracking-wider text-text-muted px-3 py-2 whitespace-nowrap">{h}</th>
                             ))}
                         </tr>
                     </thead>
@@ -1662,12 +1662,12 @@ function TripLogsView({ tripLogs, workOrders, mileageUnit }: { tripLogs: TripLog
                                     <td className="px-3 py-2.5 text-[10px] text-text-secondary whitespace-nowrap">{t.date || '—'}</td>
                                     <td className="px-3 py-2.5 text-[10px] font-mono font-bold text-brand-red whitespace-nowrap">{woNum}</td>
                                     <td className="px-3 py-2.5 text-[10px] text-text-primary max-w-[200px] truncate">{t.jobTitle || job?.title || job?.description || t.purpose || '—'}</td>
-                                    <td className="px-3 py-2.5 text-[9px] text-text-muted max-w-[220px] truncate">{[t.startLocation, t.endLocation].filter(Boolean).join(' → ') || '—'}</td>
-                                    <td className="px-3 py-2.5 text-[9px] text-text-muted whitespace-nowrap">{[t.startTime, t.endTime].filter(Boolean).join(' – ') || '—'}</td>
+                                    <td className="px-3 py-2.5 text-[11px] text-text-muted max-w-[220px] truncate">{[t.startLocation, t.endLocation].filter(Boolean).join(' → ') || '—'}</td>
+                                    <td className="px-3 py-2.5 text-[11px] text-text-muted whitespace-nowrap">{[t.startTime, t.endTime].filter(Boolean).join(' – ') || '—'}</td>
                                     <td className="px-3 py-2.5 text-[10px] font-mono font-bold text-text-primary whitespace-nowrap">{miles ? formatDistance(miles, mileageUnit) : '—'}</td>
-                                    <td className="px-3 py-2.5 text-[9px] text-text-muted uppercase whitespace-nowrap">{TRIP_SOURCE_LABEL[t.source || 'manual'] || 'Manual'}</td>
+                                    <td className="px-3 py-2.5 text-[11px] text-text-muted whitespace-nowrap">{TRIP_SOURCE_LABEL[t.source || 'manual'] || 'Manual'}</td>
                                     <td className="px-3 py-2.5 whitespace-nowrap">
-                                        <span className={cn('inline-block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border', st.cls)}>{st.label}</span>
+                                        <span className={cn('inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border', st.cls)}>{st.label}</span>
                                     </td>
                                 </tr>
                             );

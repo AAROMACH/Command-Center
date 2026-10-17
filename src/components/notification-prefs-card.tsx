@@ -53,7 +53,7 @@ export function NotificationPrefsCard() {
                 ] as const).map(item => (
                     <div key={item.id} className="flex items-center justify-between p-4 rounded-lg border border-border-sub bg-bg-primary">
                         <div className="space-y-1 text-left">
-                            <h4 className="text-xs font-bold uppercase text-text-primary">{item.label}</h4>
+                            <h4 className="text-xs font-bold text-text-primary">{item.label}</h4>
                             <p className="text-[10px] text-text-muted">{item.desc}</p>
                         </div>
                         <Switch checked={resolved[item.id]} onCheckedChange={() => toggle(item.id)} disabled={!uid} />

@@ -75,14 +75,14 @@ export function ChangePasswordDialog({ isOpen, setIsOpen }: { isOpen: boolean, s
         <DialogHeader>
           <div className="flex items-center gap-2 mb-1">
             <Key className="text-brand-red h-5 w-5" />
-            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Change Access Key</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-text-primary">Change Access Key</DialogTitle>
           </div>
           <DialogDescription className="text-xs">Update your credentials. You will be required to re-authenticate with your current password.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleUpdate} className="space-y-4 py-4">
           <div className="space-y-2 text-left">
-            <Label className="text-[10px] uppercase font-bold text-text-muted">Current Password</Label>
+            <Label className="text-[10px] font-bold text-text-muted">Current Password</Label>
             <Input 
               type="password" 
               required 
@@ -95,7 +95,7 @@ export function ChangePasswordDialog({ isOpen, setIsOpen }: { isOpen: boolean, s
           <Separator className="bg-border-sub" />
 
           <div className="space-y-2 text-left">
-            <Label className="text-[10px] uppercase font-bold text-text-muted">New Password</Label>
+            <Label className="text-[10px] font-bold text-text-muted">New Password</Label>
             <Input 
               type="password" 
               required 
@@ -105,7 +105,7 @@ export function ChangePasswordDialog({ isOpen, setIsOpen }: { isOpen: boolean, s
             />
           </div>
           <div className="space-y-2 text-left">
-            <Label className="text-[10px] uppercase font-bold text-text-muted">Confirm New Password</Label>
+            <Label className="text-[10px] font-bold text-text-muted">Confirm New Password</Label>
             <Input 
               type="password" 
               required 
@@ -117,7 +117,7 @@ export function ChangePasswordDialog({ isOpen, setIsOpen }: { isOpen: boolean, s
 
           <div className="p-3 rounded bg-bg-secondary border border-border-sub flex items-start gap-2">
             <ShieldCheck size={14} className="text-text-green shrink-0 mt-0.5" />
-            <p className="text-[9px] text-text-muted uppercase font-bold leading-tight text-left">
+            <p className="text-[11px] text-text-muted font-bold leading-tight text-left">
               Security Protocol: Password updates require a valid handshake with the primary authentication server.
             </p>
           </div>

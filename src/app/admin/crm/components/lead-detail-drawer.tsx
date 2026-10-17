@@ -56,7 +56,7 @@ type Props = {
   onConvert: (lead: Lead) => void;
 };
 
-const sectionLabel = 'text-[9px] font-black uppercase tracking-[0.2em] text-text-muted';
+const sectionLabel = 'text-[10px] font-bold uppercase tracking-wider text-text-muted';
 
 function safeFormat(iso: string | undefined, fmt: string) {
   if (!iso) return '';
@@ -200,7 +200,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
               <TrendingUp size={18} className="text-brand-red" />
             </div>
             <div className="min-w-0 flex-1">
-              <SheetTitle className="text-sm font-black uppercase tracking-widest text-text-primary leading-tight">
+              <SheetTitle className="text-sm font-bold text-text-primary leading-tight">
                 {lead.companyName}
               </SheetTitle>
               <SheetDescription className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">
@@ -211,19 +211,19 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
           </div>
 
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <span className={cn('text-[10px] font-black uppercase tracking-widest', STAGE_COLORS[lead.stage])}>
+            <span className={cn('text-[10px] font-bold uppercase tracking-wider', STAGE_COLORS[lead.stage])}>
               ● {STAGE_LABELS[lead.stage]}
             </span>
             {isStale(lead) && (
-              <Badge className="text-[8px] h-5 uppercase bg-amber-400/10 text-amber-400 border border-amber-400/20">
+              <Badge className="text-[10px] h-5 bg-amber-400/10 text-amber-400 border border-amber-400/20">
                 <AlertTriangle size={9} className="mr-1" /> Stale {touchDays}d
               </Badge>
             )}
             <div className="ml-auto flex gap-1.5">
-              <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase tracking-wider" onClick={() => onEdit(lead)}>
+              <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold uppercase tracking-wider" onClick={() => onEdit(lead)}>
                 <Pencil size={10} className="mr-1.5" /> Edit
               </Button>
-              <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase tracking-wider" onClick={() => setIsFullDetailOpen(true)}>
+              <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold uppercase tracking-wider" onClick={() => setIsFullDetailOpen(true)}>
                 <Maximize2 size={10} className="mr-1.5" /> Full
                 {(lead.attachments?.length ?? 0) > 0 && (
                   <span className="ml-1.5 inline-flex items-center gap-0.5 text-text-muted"><Paperclip size={9} />{lead.attachments!.length}</span>
@@ -261,8 +261,8 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
               ['Last Touch', touchDays !== null ? (touchDays === 0 ? 'Today' : `${touchDays}d ago`) : '—'],
             ] as [string, string][]).map(([label, value]) => (
               <div key={label} className="rounded-lg border border-border-sub bg-bg-primary px-3 py-2">
-                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">{label}</p>
-                <p className="text-[12px] font-black text-text-primary mt-0.5 tabular-nums">{value}</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{label}</p>
+                <p className="text-[12px] font-bold text-text-primary mt-0.5 tabular-nums">{value}</p>
               </div>
             ))}
           </div>
@@ -272,7 +272,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
             <Briefcase size={11} />
             Owner: <span className="font-bold text-text-primary">{lead.assignedToName || (isMine ? currentUserName || 'You' : lead.assignedTo ? 'Another rep' : 'Unassigned')}</span>
             {!isMine && (
-              <Button size="sm" variant="ghost" className="h-6 px-2 text-[9px] font-bold uppercase ml-auto"
+              <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px] font-bold ml-auto"
                 onClick={() => patch({ assignedTo: currentUserId, assignedToName: currentUserName || '' }, 'Lead assigned to you')}>
                 Take Ownership
               </Button>
@@ -310,7 +310,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
             {(lead.serviceLines?.length ?? 0) > 0 && (
               <div className="flex flex-wrap gap-1 pt-1">
                 {lead.serviceLines!.map(s => (
-                  <Badge key={s} className="text-[8px] h-5 uppercase bg-bg-tertiary border-border-sub text-text-secondary">{s}</Badge>
+                  <Badge key={s} className="text-[10px] h-5 bg-bg-tertiary border-border-sub text-text-secondary">{s}</Badge>
                 ))}
               </div>
             )}
@@ -321,7 +321,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <p className={sectionLabel}>People at {lead.companyName}</p>
-                <Button size="sm" variant="ghost" className="h-6 px-2 text-[9px] font-bold uppercase" onClick={() => router.push(paths.accounts)}>
+                <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px] font-bold" onClick={() => router.push(paths.accounts)}>
                   Account →
                 </Button>
               </div>
@@ -363,7 +363,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
                   className="h-8 text-xs bg-bg-tertiary border-border-main w-[150px]"
                 />
                 {[1, 3, 7].map(d => (
-                  <Button key={d} size="sm" variant="ghost" className="h-7 px-2 text-[9px] font-bold uppercase"
+                  <Button key={d} size="sm" variant="ghost" className="h-7 px-2 text-[11px] font-bold"
                     onClick={() => { const t = new Date(); t.setDate(t.getDate() + d); patch({ followUpDate: todayKey(t) }, `Follow-up set +${d}d`); }}>
                     +{d}d
                   </Button>
@@ -430,7 +430,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <p className={sectionLabel}>Site Surveys ({leadSurveys.length})</p>
-                  <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase tracking-wider" onClick={() => setSurveyOpen('new')}>
+                  <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold uppercase tracking-wider" onClick={() => setSurveyOpen('new')}>
                     <Footprints size={10} className="mr-1.5" /> New Survey
                   </Button>
                 </div>
@@ -440,9 +440,9 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
                     <Footprints size={12} className="text-brand-red shrink-0" />
                     <span className="flex-1 min-w-0">
                       <span className="block text-[11px] font-bold text-text-primary truncate">{s.title}</span>
-                      <span className="block text-[9px] text-text-muted">{[s.surveyDate, s.surveyedBy, `${totalDrops(s)} drops`, `${s.photos.length} photos`].filter(Boolean).join(' · ')}</span>
+                      <span className="block text-[11px] text-text-muted">{[s.surveyDate, s.surveyedBy, `${totalDrops(s)} drops`, `${s.photos.length} photos`].filter(Boolean).join(' · ')}</span>
                     </span>
-                    <Badge className={cn('text-[8px] h-5 uppercase border', s.status === 'complete' ? 'bg-text-green/10 text-text-green border-text-green/20' : 'bg-amber-400/10 text-amber-400 border-amber-400/20')}>{s.status}</Badge>
+                    <Badge className={cn('text-[10px] h-5 border', s.status === 'complete' ? 'bg-text-green/10 text-text-green border-text-green/20' : 'bg-amber-400/10 text-amber-400 border-amber-400/20')}>{s.status}</Badge>
                   </button>
                 ))}
               </div>
@@ -453,7 +453,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <p className={sectionLabel}>Quotes ({leadQuotes.length})</p>
-              <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase tracking-wider"
+              <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold uppercase tracking-wider"
                 onClick={() => router.push(`${paths.quotes}?leadId=${encodeURIComponent(lead.id)}`)}>
                 <FileText size={10} className="mr-1.5" /> Create Quote
               </Button>
@@ -464,10 +464,10 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
                 <FileText size={12} className="text-brand-red shrink-0" />
                 <span className="flex-1 min-w-0">
                   <span className="block text-[11px] font-bold text-text-primary truncate">{q.title}</span>
-                  <span className="block text-[9px] text-text-muted font-mono">{q.quoteNumber}</span>
+                  <span className="block text-[11px] text-text-muted font-mono">{q.quoteNumber}</span>
                 </span>
-                <span className="text-[11px] font-black text-text-green tabular-nums">{formatMoney(q.total || 0)}</span>
-                <Badge className={cn('text-[8px] h-5 uppercase border',
+                <span className="text-[11px] font-bold text-text-green tabular-nums">{formatMoney(q.total || 0)}</span>
+                <Badge className={cn('text-[10px] h-5 border',
                   q.status === 'approved' || q.status.startsWith('converted') ? 'bg-text-green/10 text-text-green border-text-green/20'
                   : q.status === 'rejected' || q.status === 'expired' ? 'bg-text-red/10 text-text-red border-text-red/20'
                   : 'bg-amber-400/10 text-amber-400 border-amber-400/20')}>
@@ -483,7 +483,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
             <div className="flex gap-2">
               <Input placeholder="Send cable spec sheet..." value={taskText} onChange={e => setTaskText(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTask()} className="h-9 text-xs bg-bg-tertiary border-border-main flex-1" />
               <Input type="date" value={taskDue} onChange={e => setTaskDue(e.target.value)} className="h-9 text-xs bg-bg-tertiary border-border-main w-[140px]" />
-              <Button size="sm" variant="outline" className="h-9 text-[10px] font-bold uppercase px-3" onClick={addTask} disabled={!taskText.trim()}>Add</Button>
+              <Button size="sm" variant="outline" className="h-9 text-[10px] font-bold px-3" onClick={addTask} disabled={!taskText.trim()}>Add</Button>
             </div>
             {tasks.map(t => {
               const overdue = !t.completedAt && t.scheduledAt && t.scheduledAt < today;
@@ -492,7 +492,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
                   <Checkbox checked={!!t.completedAt} onCheckedChange={() => toggleTask(t)} />
                   <span className={cn('flex-1', t.completedAt ? 'line-through text-text-muted' : 'text-text-secondary')}>{t.description}</span>
                   {t.scheduledAt && (
-                    <span className={cn('text-[9px] uppercase font-bold', overdue ? 'text-brand-red' : 'text-text-muted')}>
+                    <span className={cn('text-[11px] font-bold', overdue ? 'text-brand-red' : 'text-text-muted')}>
                       {safeFormat(t.scheduledAt, 'MMM d')}
                     </span>
                   )}
@@ -514,7 +514,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
             <p className={sectionLabel}>Log Activity</p>
             <div className="flex gap-2">
               <Select value={activityType} onValueChange={v => setActivityType(v as LeadActivity['type'])}>
-                <SelectTrigger className="h-9 text-[10px] font-bold uppercase bg-bg-tertiary border-border-main w-[120px]">
+                <SelectTrigger className="h-9 text-[10px] font-bold bg-bg-tertiary border-border-main w-[120px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-bg-elevated border-border-main">
@@ -523,7 +523,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
               </Select>
               {activityType === 'call' && (
                 <Select value={callOutcome || undefined} onValueChange={setCallOutcome}>
-                  <SelectTrigger className="h-9 text-[10px] font-bold uppercase bg-bg-tertiary border-border-main w-[140px]">
+                  <SelectTrigger className="h-9 text-[10px] font-bold bg-bg-tertiary border-border-main w-[140px]">
                     <SelectValue placeholder="Outcome" />
                   </SelectTrigger>
                   <SelectContent className="bg-bg-elevated border-border-main">
@@ -567,9 +567,9 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[9px] font-black uppercase tracking-wider text-text-muted">{activity.type.replace('_', ' ')}</span>
-                          {activity.outcome && <span className="text-[9px] font-bold uppercase text-blue-400">{activity.outcome}</span>}
-                          <span className="text-[9px] text-text-muted flex items-center gap-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{activity.type.replace('_', ' ')}</span>
+                          {activity.outcome && <span className="text-[11px] font-bold text-blue-400">{activity.outcome}</span>}
+                          <span className="text-[11px] text-text-muted flex items-center gap-1">
                             <Clock size={9} /> {safeFormat(activity.createdAt, 'MMM d, h:mm a')}
                           </span>
                         </div>
@@ -597,10 +597,10 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
         <Dialog open={isFullDetailOpen} onOpenChange={setIsFullDetailOpen}>
           <DialogContent className="bg-bg-elevated border-border-main sm:max-w-2xl max-h-[85vh] flex flex-col p-0">
             <DialogHeader className="p-6 pb-4 border-b border-border-sub">
-              <DialogTitle className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+              <DialogTitle className="text-[13px] font-bold flex items-center gap-2">
                 <TrendingUp size={14} className="text-brand-red" /> {lead.companyName}
               </DialogTitle>
-              <DialogDescription className="text-[10px] uppercase font-bold text-text-muted">
+              <DialogDescription className="text-[10px] font-bold text-text-muted">
                 Full lead record{lead.importedFrom ? ` · imported from ${lead.importedFrom}` : ''}
               </DialogDescription>
             </DialogHeader>
@@ -632,7 +632,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
                     ['Tags', (lead.tags || []).join(', ')],
                   ] as [string, string | undefined][]).filter(([, v]) => v).map(([label, value]) => (
                     <div key={label}>
-                      <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">{label}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{label}</p>
                       <p className="text-[11px] text-text-primary mt-0.5 break-words">{value}</p>
                     </div>
                   ))}
@@ -640,13 +640,13 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
 
                 {lead.notes && (
                   <div>
-                    <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted mb-1.5">Notes / Extracted Text</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5">Notes / Extracted Text</p>
                     <p className="text-[11px] text-text-secondary leading-relaxed whitespace-pre-wrap rounded-lg border border-border-sub bg-bg-secondary p-3">{lead.notes}</p>
                   </div>
                 )}
 
                 <div>
-                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted mb-1.5 flex items-center gap-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5 flex items-center gap-1.5">
                     <Paperclip size={9} /> Original Files ({lead.attachments?.length ?? 0})
                   </p>
                   {(lead.attachments?.length ?? 0) === 0 ? (
@@ -659,7 +659,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
                           <FileText size={13} className="text-brand-red shrink-0" />
                           <span className="flex-1 min-w-0">
                             <span className="block text-[11px] font-bold text-text-primary truncate group-hover:text-brand-red transition-colors">{att.fileName}</span>
-                            <span className="block text-[9px] text-text-muted">
+                            <span className="block text-[11px] text-text-muted">
                               {[att.contentType, att.sizeBytes ? `${(att.sizeBytes / 1024).toFixed(0)} KB` : null].filter(Boolean).join(' · ')}
                             </span>
                           </span>

@@ -83,11 +83,11 @@ function ReadinessPanel({ title, readiness, link }: { title: string; readiness: 
   return (
     <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
       <div className="flex items-center justify-between border-b border-border-sub pb-2">
-        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+        <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
           <Link2 size={11} className="text-brand-red" /> {title}
         </h3>
         {readiness.applies && (
-          <Badge variant={readiness.ready ? 'active' : 'onhold'} className="text-[8px] uppercase">
+          <Badge variant={readiness.ready ? 'active' : 'onhold'} className="text-[10px]">
             {readiness.ready ? 'Ready' : `${done}/${readiness.checks.length}`}
           </Badge>
         )}
@@ -103,14 +103,14 @@ function ReadinessPanel({ title, readiness, link }: { title: string; readiness: 
                 : <XCircle size={12} className="text-text-red mt-0.5 shrink-0" />}
               <div className="min-w-0">
                 <p className={cn('text-[11px]', c.ok ? 'text-text-secondary' : 'text-text-primary font-bold')}>{c.label}</p>
-                {!c.ok && c.hint && <p className="text-[9px] text-text-muted">{c.hint}</p>}
+                {!c.ok && c.hint && <p className="text-[11px] text-text-muted">{c.hint}</p>}
               </div>
             </li>
           ))}
         </ul>
       )}
       <div className="pt-2 border-t border-border-sub flex items-center justify-between text-[10px]">
-        <span className="text-text-muted uppercase font-bold tracking-widest">QuickBooks link</span>
+        <span className="text-text-muted font-bold">QuickBooks link</span>
         {link?.id ? (
           <span className={cn('font-mono', link.error ? 'text-text-red' : 'text-text-green')}>
             #{link.id}{link.error ? ` · ${link.error}` : link.syncedAt ? ` · synced ${format(parseISO(link.syncedAt), 'MM/dd/yy')}` : ''}
@@ -410,15 +410,15 @@ export default function DirectoryPersonPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <AlertTriangle size={32} className="text-text-red" />
-        <p className="text-[11px] font-bold text-text-muted uppercase">Personnel record not found</p>
-        <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-[10px] uppercase font-bold">
+        <p className="text-[11px] font-bold text-text-muted">Personnel record not found</p>
+        <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-[10px] font-bold">
           <ArrowLeft size={14} className="mr-2" /> Back
         </Button>
       </div>
     );
   }
 
-  const tabTriggerClass = "px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[10px] font-black uppercase tracking-[0.15em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all flex items-center gap-1.5";
+  const tabTriggerClass = "tab-underline";
 
   const techTabs = [
     { value: 'overview', label: 'Overview' },
@@ -454,7 +454,7 @@ export default function DirectoryPersonPage() {
   return (
     <div className="space-y-6 max-w-5xl">
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={() => router.push('/admin/directory')} className="h-8 text-[10px] uppercase font-bold text-text-muted">
+        <Button variant="ghost" size="sm" onClick={() => router.push('/admin/directory')} className="h-8 text-[10px] font-bold text-text-muted">
           <ArrowLeft size={14} className="mr-2" /> Directory
         </Button>
         <div className="flex items-center gap-2">
@@ -463,7 +463,7 @@ export default function DirectoryPersonPage() {
               size="sm"
               variant="outline"
               onClick={() => router.push(`/admin/clients/${id}`)}
-              className="h-8 text-[10px] font-black uppercase tracking-wider border-border-main"
+              className="h-8 text-[10px] font-bold uppercase tracking-wider border-border-main"
             >
               <Briefcase size={11} className="mr-1.5" /> Client Page
             </Button>
@@ -471,7 +471,7 @@ export default function DirectoryPersonPage() {
           <Button
             size="sm"
             onClick={() => setIsEditOpen(true)}
-            className="h-8 text-[10px] font-black uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white"
+            className="h-8 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white"
           >
             <Pencil size={11} className="mr-1.5" /> Edit Profile
           </Button>
@@ -488,9 +488,9 @@ export default function DirectoryPersonPage() {
         </div>
         <div className="flex-1 space-y-4">
           <div>
-            <h1 className="text-2xl font-black uppercase tracking-tight text-text-primary">{person.name || 'Unnamed'}</h1>
+            <h1 className="text-2xl font-black tracking-tight text-text-primary">{person.name || 'Unnamed'}</h1>
             <div className="flex flex-wrap gap-1.5 mt-1.5">
-              {roles.map(r => <Badge key={r} variant="scheduled" className="text-[8px] uppercase h-4 px-2">{r}</Badge>)}
+              {roles.map(r => <Badge key={r} variant="scheduled" className="text-[10px] h-4 px-2">{r}</Badge>)}
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -522,7 +522,7 @@ export default function DirectoryPersonPage() {
             { label: 'Account', value: (person.accountStatus || 'Unknown').replace(/_/g, ' '), color: 'text-text-primary' },
           ].map(stat => (
             <div key={stat.label} className="p-2.5 rounded-lg bg-bg-primary border border-border-sub">
-              <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">{stat.label}</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{stat.label}</p>
               <p className={cn('text-[11px] font-bold font-mono mt-0.5 capitalize', stat.color)}>{stat.value}</p>
             </div>
           )) : isTech ? [
@@ -530,7 +530,7 @@ export default function DirectoryPersonPage() {
             { label: 'Completed', value: completedJobs.length, color: 'text-text-green' },
           ].map(stat => (
             <div key={stat.label} className="p-2.5 rounded-lg bg-bg-primary border border-border-sub">
-              <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">{stat.label}</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{stat.label}</p>
               <p className={cn('text-lg font-bold font-mono mt-0.5', stat.color)}>{stat.value}</p>
             </div>
           )) : null}
@@ -545,7 +545,7 @@ export default function DirectoryPersonPage() {
               <TabsTrigger key={t.value} value={t.value} className={tabTriggerClass}>
                 {t.label}
                 {t.badge !== undefined && t.badge > 0 && (
-                  <span className="text-[8px] font-black bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">{t.badge}</span>
+                  <span className="text-[10px] font-bold bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">{t.badge}</span>
                 )}
               </TabsTrigger>
             ))}
@@ -557,26 +557,26 @@ export default function DirectoryPersonPage() {
           {isClient ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-4">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 flex items-center gap-2">
                   <Briefcase size={11} className="text-brand-red" /> Company Info
                 </h3>
                 <div className="space-y-3">
                   {person.clientCompany && (
                     <div>
-                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Company</p>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Company</p>
                       <p className="text-[13px] font-bold text-text-primary">{person.clientCompany}</p>
                     </div>
                   )}
                   {person.businessType && (
                     <div>
-                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Business Type</p>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Business Type</p>
                       <p className="text-[11px] text-text-secondary">{person.businessType}</p>
                     </div>
                   )}
                   {person.accountStatus && (
                     <div>
-                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Account Status</p>
-                      <Badge variant={person.accountStatus === 'active' || person.accountStatus === 'vip' ? 'active' : 'outline'} className="text-[9px] uppercase mt-0.5">
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Account Status</p>
+                      <Badge variant={person.accountStatus === 'active' || person.accountStatus === 'vip' ? 'active' : 'outline'} className="text-[11px] mt-0.5">
                         {person.accountStatus.replace(/_/g, ' ')}
                       </Badge>
                     </div>
@@ -584,35 +584,35 @@ export default function DirectoryPersonPage() {
                 </div>
               </div>
               <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 flex items-center gap-2">
                   <BarChart2 size={11} /> Subscription
                 </h3>
                 {/* From the client's subscription record (Service Plans). */}
                 {clientSub ? (
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px] text-text-muted uppercase font-bold">Plan</span>
+                      <span className="text-[10px] text-text-muted font-bold">Plan</span>
                       <span className="text-[11px] font-bold text-text-primary">{clientPlan?.name || clientSub.planId}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px] text-text-muted uppercase font-bold">Status</span>
-                      <Badge variant={clientSub.status === 'active' ? 'active' : 'outline'} className="text-[9px] uppercase">
+                      <span className="text-[10px] text-text-muted font-bold">Status</span>
+                      <Badge variant={clientSub.status === 'active' ? 'active' : 'outline'} className="text-[11px]">
                         {SUBSCRIPTION_STATUS_LABELS[clientSub.status]}
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px] text-text-muted uppercase font-bold">Billing</span>
+                      <span className="text-[10px] text-text-muted font-bold">Billing</span>
                       <span className="text-[10px] text-text-primary font-mono">{formatMoney(subscriptionAmount(clientSub, clientPlan))} · {INTERVAL_LABELS[clientSub.interval]}</span>
                     </div>
                     {clientSub.startDate && (
                       <div className="flex justify-between items-center">
-                        <span className="text-[10px] text-text-muted uppercase font-bold">Since</span>
+                        <span className="text-[10px] text-text-muted font-bold">Since</span>
                         <span className="text-[10px] text-text-primary font-mono">{formatDate(clientSub.startDate)}</span>
                       </div>
                     )}
                     {clientSub.nextBillingDate && (
                       <div className="flex justify-between items-center">
-                        <span className="text-[10px] text-text-muted uppercase font-bold">Next Bill</span>
+                        <span className="text-[10px] text-text-muted font-bold">Next Bill</span>
                         <span className="text-[10px] text-text-primary font-mono">{formatDate(clientSub.nextBillingDate)}</span>
                       </div>
                     )}
@@ -620,11 +620,11 @@ export default function DirectoryPersonPage() {
                 ) : (
                   <p className="text-[11px] text-text-muted">Not on a service plan.</p>
                 )}
-                <a href="/admin/plans" className="text-[10px] font-bold uppercase text-brand-red hover:underline">Manage on Service Plans →</a>
+                <a href="/admin/plans" className="text-[10px] font-bold text-brand-red hover:underline">Manage on Service Plans →</a>
               </div>
               {(person as any).managedSites && (person as any).managedSites.length > 0 && (
                 <div className="lg:col-span-2 p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
-                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                  <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 flex items-center gap-2">
                     <MapPin size={11} /> Managed Sites ({(person as any).managedSites.length})
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -641,58 +641,58 @@ export default function DirectoryPersonPage() {
           ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <div className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-2">
-              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+              <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
                 <Activity size={11} /> Recent Assignments
               </h3>
               {activeJobs.length === 0 ? (
-                <p className="text-[10px] text-text-muted uppercase py-3 text-center">No active assignments</p>
+                <p className="text-[10px] text-text-muted py-3 text-center">No active assignments</p>
               ) : activeJobs.slice(0, 3).map(wo => (
                 <div key={wo.id} className="flex items-center justify-between p-2 rounded-lg border border-border-sub bg-bg-primary">
                   <div className="min-w-0">
-                    <p className="text-[10px] font-bold text-text-primary uppercase truncate">{wo.title || wo.description || wo.id}</p>
-                    <p className="text-[9px] text-text-muted uppercase">{wo.clientName}</p>
+                    <p className="text-[10px] font-bold text-text-primary truncate">{wo.title || wo.description || wo.id}</p>
+                    <p className="text-[11px] text-text-muted">{wo.clientName}</p>
                   </div>
-                  <Badge variant={wo.status === 'in-progress' ? 'active' : 'scheduled'} className="text-[7px] uppercase h-4 shrink-0 ml-2">{wo.status}</Badge>
+                  <Badge variant={wo.status === 'in-progress' ? 'active' : 'scheduled'} className="text-[10px] h-4 shrink-0 ml-2">{wo.status}</Badge>
                 </div>
               ))}
             </div>
             <div className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-2">
-              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+              <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
                 <CheckCircle size={11} className="text-text-green" /> Completion Stats
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 <div className="text-center p-3 rounded-lg bg-bg-primary border border-border-sub">
                   <p className="text-2xl font-black font-mono text-text-green">{completedJobs.length}</p>
-                  <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Completed</p>
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Completed</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-bg-primary border border-border-sub">
                   <p className="text-2xl font-black font-mono text-text-amber">{activeJobs.length}</p>
-                  <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Active</p>
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Active</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-bg-primary border border-border-sub">
                   <p className="text-2xl font-black font-mono text-text-primary">{projects.length}</p>
-                  <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Projects</p>
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Projects</p>
                 </div>
               </div>
             </div>
             {person.workPreferences && (
               <div className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-2">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
                   <Wrench size={11} /> Work Preferences
                 </h3>
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-[10px]">
-                    <span className="text-text-muted uppercase font-bold">Preferred Radius</span>
+                    <span className="text-text-muted font-bold">Preferred Radius</span>
                     <span className="text-text-primary font-mono">{person.workPreferences.preferredRadius} mi</span>
                   </div>
                   <div className="flex justify-between text-[10px]">
-                    <span className="text-text-muted uppercase font-bold">Max Distance</span>
+                    <span className="text-text-muted font-bold">Max Distance</span>
                     <span className="text-text-primary font-mono">{person.workPreferences.maxTravelDistance} mi</span>
                   </div>
                   {person.workPreferences.preferredJobTypes?.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
                       {person.workPreferences.preferredJobTypes.map(jt => (
-                        <Badge key={jt} variant="scheduled" className="text-[8px] h-4 px-1.5">{jt}</Badge>
+                        <Badge key={jt} variant="scheduled" className="text-[10px] h-4 px-1.5">{jt}</Badge>
                       ))}
                     </div>
                   )}
@@ -708,20 +708,20 @@ export default function DirectoryPersonPage() {
           <TabsContent value="business" className="m-0 pt-5">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-4">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 flex items-center gap-2">
                   <Briefcase size={11} className="text-brand-red" /> Business Profile
                 </h3>
                 <div className="space-y-3">
                   <div>
-                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Company Name</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Company Name</p>
                     <p className="text-[12px] font-bold text-text-primary">{person.clientCompany || '—'}</p>
                   </div>
                   <div>
-                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Business Type</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Business Type</p>
                     <p className="text-[11px] text-text-secondary">{person.businessType || '—'}</p>
                   </div>
                   <div>
-                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Account Status</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Account Status</p>
                     <p className="text-[11px] text-text-secondary capitalize">{person.accountStatus?.replace(/_/g, ' ') || '—'}</p>
                   </div>
                 </div>
@@ -729,7 +729,7 @@ export default function DirectoryPersonPage() {
                   size="sm"
                   variant="outline"
                   onClick={() => setIsEditOpen(true)}
-                  className="w-full h-8 text-[10px] font-black uppercase tracking-widest mt-2"
+                  className="w-full h-8 text-[10px] font-bold uppercase tracking-wider mt-2"
                 >
                   <Pencil size={11} className="mr-1.5" /> Edit Billing &amp; Accounting
                 </Button>
@@ -738,20 +738,20 @@ export default function DirectoryPersonPage() {
                 <ReadinessPanel title="QuickBooks Customer" readiness={customerStatus} link={person.accounting?.qboCustomer} />
               )}
               <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 flex items-center gap-2">
                   <Landmark size={11} /> Accounting
                 </h3>
                 <div className="space-y-2.5">
                   <div>
-                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Customer Name in QuickBooks</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Customer Name in QuickBooks</p>
                     <p className="text-[11px] text-text-primary">{customerDisplayName(person) || '—'}</p>
                   </div>
                   <div>
-                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Billing Address</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Billing Address</p>
                     <p className="text-[11px] text-text-primary">{person.accounting?.billingAddress || person.address || '—'}</p>
                   </div>
                   <div>
-                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Sales Tax</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Sales Tax</p>
                     <p className="text-[11px] text-text-primary">
                       {person.accounting?.taxExempt === true ? `Exempt — ${person.accounting.taxExemptReason || 'no reason given'}`
                         : person.accounting?.taxExempt === false ? 'Taxable' : 'Not set'}
@@ -761,24 +761,24 @@ export default function DirectoryPersonPage() {
               </div>
               {person.billingDetails && (
                 <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
-                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                  <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 flex items-center gap-2">
                     <FileText size={11} /> Billing Details
                   </h3>
                   <div className="space-y-2.5">
                     <div>
-                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Billing Contact</p>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Billing Contact</p>
                       <p className="text-[11px] text-text-primary">{person.billingDetails.contactName || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Billing Email</p>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Billing Email</p>
                       <p className="text-[11px] text-text-primary">{person.billingDetails.email || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Payment Terms</p>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Payment Terms</p>
                       <p className="text-[11px] text-text-primary">{person.billingDetails.terms || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Invoice Delivery</p>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Invoice Delivery</p>
                       <p className="text-[11px] text-text-primary">{person.billingDetails.deliveryMethod || '—'}</p>
                     </div>
                   </div>
@@ -792,7 +792,7 @@ export default function DirectoryPersonPage() {
         <TabsContent value="contact" className="m-0 pt-5">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-4">
-              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+              <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 flex items-center gap-2">
                 <Mail size={11} /> Contact Information
               </h3>
               <div className="space-y-3">
@@ -802,7 +802,7 @@ export default function DirectoryPersonPage() {
                       <Mail size={13} className="text-text-muted" />
                     </div>
                     <div>
-                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Email</p>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Email</p>
                       <a href={`mailto:${person.email}`} className="text-[11px] text-text-primary hover:text-brand-red">{person.email}</a>
                     </div>
                   </div>
@@ -813,7 +813,7 @@ export default function DirectoryPersonPage() {
                       <Phone size={13} className="text-text-muted" />
                     </div>
                     <div>
-                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Phone</p>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Phone</p>
                       <a href={`tel:${person.phone}`} className="text-[11px] text-text-primary hover:text-brand-red">{person.phone}</a>
                     </div>
                   </div>
@@ -824,7 +824,7 @@ export default function DirectoryPersonPage() {
                       <MapPin size={13} className="text-text-muted" />
                     </div>
                     <div>
-                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Address</p>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Address</p>
                       <p className="text-[11px] text-text-primary">{person.address || person.currentLocation}</p>
                     </div>
                   </div>
@@ -832,7 +832,7 @@ export default function DirectoryPersonPage() {
               </div>
             </div>
             <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-4">
-              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+              <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 flex items-center gap-2">
                 <PhoneCall size={11} className="text-brand-red" /> Emergency Contact
               </h3>
               {person.emergencyContact ? (
@@ -842,7 +842,7 @@ export default function DirectoryPersonPage() {
                       <UserCheck size={13} className="text-text-muted" />
                     </div>
                     <div>
-                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Name</p>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Name</p>
                       <p className="text-[11px] text-text-primary">{person.emergencyContact.name}</p>
                     </div>
                   </div>
@@ -851,7 +851,7 @@ export default function DirectoryPersonPage() {
                       <Users size={13} className="text-text-muted" />
                     </div>
                     <div>
-                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Relation</p>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Relation</p>
                       <p className="text-[11px] text-text-primary">{person.emergencyContact.relation}</p>
                     </div>
                   </div>
@@ -860,13 +860,13 @@ export default function DirectoryPersonPage() {
                       <Phone size={13} className="text-text-muted" />
                     </div>
                     <div>
-                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Phone</p>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Phone</p>
                       <a href={`tel:${person.emergencyContact.phone}`} className="text-[11px] text-text-primary hover:text-brand-red">{person.emergencyContact.phone}</a>
                     </div>
                   </div>
                 </div>
               ) : (
-                <p className="text-[10px] text-text-muted uppercase py-4 text-center">No emergency contact on file</p>
+                <p className="text-[10px] text-text-muted py-4 text-center">No emergency contact on file</p>
               )}
             </div>
           </div>
@@ -877,21 +877,21 @@ export default function DirectoryPersonPage() {
           <TabsContent value="skills" className="m-0 pt-5">
             <div className="space-y-5">
               <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 mb-3 flex items-center gap-2">
+                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 mb-3 flex items-center gap-2">
                   <Wrench size={11} /> Skills ({person.skills?.length || 0})
                 </h3>
                 {person.skills && person.skills.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {person.skills.map(skill => (
-                      <Badge key={skill} variant="scheduled" className="text-[9px] uppercase px-2.5 py-1 h-auto">{skill}</Badge>
+                      <Badge key={skill} variant="scheduled" className="text-[11px] px-2.5 py-1 h-auto">{skill}</Badge>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[10px] text-text-muted uppercase py-3 text-center">No skills listed</p>
+                  <p className="text-[10px] text-text-muted py-3 text-center">No skills listed</p>
                 )}
               </div>
               <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 mb-3 flex items-center gap-2">
+                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 mb-3 flex items-center gap-2">
                   <CheckCircle size={11} className="text-text-green" /> Certifications ({certDocuments.length})
                 </h3>
                 {certDocuments.length > 0 ? (
@@ -904,9 +904,9 @@ export default function DirectoryPersonPage() {
                         <div key={d.id} className={cn('flex items-center justify-between p-3 rounded-lg border', expiringSoon && 'border-amber-400/30 bg-amber-400/5', expired && 'border-text-red/30 bg-text-red/5', !expiringSoon && !expired && 'border-border-sub bg-bg-primary')}>
                           <div>
                             <p className="text-[11px] font-bold text-text-primary">{d.name}</p>
-                            <p className="text-[9px] text-text-muted uppercase">Expires: {d.expiryDate ? formatDate(d.expiryDate) : 'No expiry'}</p>
+                            <p className="text-[11px] text-text-muted">Expires: {d.expiryDate ? formatDate(d.expiryDate) : 'No expiry'}</p>
                           </div>
-                          <Badge className={`text-[8px] h-5 uppercase border ${d.approvalStatus === 'approved' ? 'bg-text-green/10 text-text-green border-text-green/20' : 'bg-amber-400/10 text-amber-400 border-amber-400/20'}`}>
+                          <Badge className={`text-[10px] h-5 uppercase border ${d.approvalStatus === 'approved' ? 'bg-text-green/10 text-text-green border-text-green/20' : 'bg-amber-400/10 text-amber-400 border-amber-400/20'}`}>
                             {d.approvalStatus}
                           </Badge>
                         </div>
@@ -914,7 +914,7 @@ export default function DirectoryPersonPage() {
                     })}
                   </div>
                 ) : (
-                  <p className="text-[10px] text-text-muted uppercase py-3 text-center">No certifications on file</p>
+                  <p className="text-[10px] text-text-muted py-3 text-center">No certifications on file</p>
                 )}
               </div>
             </div>
@@ -929,7 +929,7 @@ export default function DirectoryPersonPage() {
             )}
             <div className="rounded-xl border border-border-sub overflow-hidden">
               <div className="p-3 bg-bg-tertiary border-b border-border-sub">
-                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest flex items-center gap-2">
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
                   <Calendar size={11} /> Weekly Availability Schedule
                 </p>
               </div>
@@ -941,15 +941,15 @@ export default function DirectoryPersonPage() {
                     <div key={day} className={cn('flex items-center justify-between px-4 py-3', isOff && 'bg-bg-tertiary/30')}>
                       <div className="flex items-center gap-3">
                         <div className={cn('w-2 h-2 rounded-full', isOff ? 'bg-text-muted/30' : 'bg-text-green')} />
-                        <p className="text-[11px] font-bold text-text-primary uppercase w-24">{day}</p>
+                        <p className="text-[11px] font-bold text-text-primary w-24">{day}</p>
                       </div>
                       {isOff ? (
-                        <Badge variant="onhold" className="text-[8px] uppercase">Day Off</Badge>
+                        <Badge variant="onhold" className="text-[10px]">Day Off</Badge>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <Badge variant="scheduled" className="text-[9px] font-mono px-2">{slot.start}</Badge>
+                          <Badge variant="scheduled" className="text-[11px] font-mono px-2">{slot.start}</Badge>
                           <span className="text-text-muted text-[10px]">→</span>
-                          <Badge variant="scheduled" className="text-[9px] font-mono px-2">{slot.end}</Badge>
+                          <Badge variant="scheduled" className="text-[11px] font-mono px-2">{slot.end}</Badge>
                         </div>
                       )}
                     </div>
@@ -965,7 +965,7 @@ export default function DirectoryPersonPage() {
           <TabsContent value="pay" className="m-0 pt-5">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 flex items-center gap-2">
                   <Landmark size={11} className="text-brand-red" /> Pay &amp; Tax Profile
                 </h3>
                 {[
@@ -981,11 +981,11 @@ export default function DirectoryPersonPage() {
                   { label: 'W-9', value: hasW9OnFile(documents) ? 'Approved, on file' : documents.some(d => d.type === 'w9') ? 'Uploaded — needs approval' : 'Missing' },
                 ].map(row => (
                   <div key={row.label} className="flex justify-between gap-4 text-[11px]">
-                    <span className="text-[9px] font-black text-text-muted uppercase tracking-widest pt-0.5">{row.label}</span>
+                    <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider pt-0.5">{row.label}</span>
                     <span className="text-text-primary text-right">{row.value}</span>
                   </div>
                 ))}
-                <Button size="sm" variant="outline" onClick={() => setIsEditOpen(true)} className="w-full h-8 text-[10px] font-black uppercase tracking-widest mt-2">
+                <Button size="sm" variant="outline" onClick={() => setIsEditOpen(true)} className="w-full h-8 text-[10px] font-bold uppercase tracking-wider mt-2">
                   <Pencil size={11} className="mr-1.5" /> Edit Pay &amp; Tax
                 </Button>
               </div>
@@ -999,7 +999,7 @@ export default function DirectoryPersonPage() {
         {/* ── DOCUMENTS ── */}
         <TabsContent value="documents" className="m-0 pt-5">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-[10px] font-black text-text-muted uppercase tracking-widest flex items-center gap-2">
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
               <FileText size={11} /> {documents.length} Document{documents.length !== 1 ? 's' : ''}
             </p>
             <Button size="sm" className="h-8 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setUploadOpen(true)}>
@@ -1010,12 +1010,12 @@ export default function DirectoryPersonPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-border-sub">
-                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Document</TableHead>
-                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Type</TableHead>
-                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Uploaded</TableHead>
-                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Expiry</TableHead>
-                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</TableHead>
-                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted w-36">Action</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Document</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Type</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Uploaded</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Expiry</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Status</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted w-36">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1031,10 +1031,10 @@ export default function DirectoryPersonPage() {
                             {d.name} <ExternalLink size={10} className="text-text-muted" />
                           </a>
                         ) : d.name}
-                        {d._legacy && <span className="ml-1.5 text-[8px] text-text-muted uppercase">(older upload)</span>}
+                        {d._legacy && <span className="ml-1.5 text-[10px] text-text-muted">(older upload)</span>}
                       </TableCell>
                       <TableCell>
-                        <Badge className={`text-[8px] h-5 uppercase border ${DOC_TYPE_COLORS[d.type] || DOC_TYPE_COLORS.other}`}>
+                        <Badge className={`text-[10px] h-5 uppercase border ${DOC_TYPE_COLORS[d.type] || DOC_TYPE_COLORS.other}`}>
                           {DOC_TYPE_LABELS[d.type] || d.type}
                         </Badge>
                       </TableCell>
@@ -1043,11 +1043,11 @@ export default function DirectoryPersonPage() {
                       </TableCell>
                       <TableCell className={cn('text-[10px]', expiringSoon ? 'text-amber-400 font-bold' : expired ? 'text-text-red font-bold' : 'text-text-muted')}>
                         {d.expiryDate ? format(new Date(d.expiryDate), 'MM/dd/yyyy') : '—'}
-                        {expiringSoon && <span className="ml-1 text-[8px]">({daysToExpiry}d)</span>}
-                        {expired && <span className="ml-1 text-[8px]">Expired</span>}
+                        {expiringSoon && <span className="ml-1 text-[10px]">({daysToExpiry}d)</span>}
+                        {expired && <span className="ml-1 text-[10px]">Expired</span>}
                       </TableCell>
                       <TableCell>
-                        <Badge className={`text-[8px] h-5 uppercase border ${
+                        <Badge className={`text-[10px] h-5 uppercase border ${
                           d.approvalStatus === 'approved' ? 'bg-text-green/10 text-text-green border-text-green/20' :
                           d.approvalStatus === 'rejected' ? 'bg-text-red/10 text-text-red border-text-red/20' :
                           'bg-amber-400/10 text-amber-400 border-amber-400/20'
@@ -1058,12 +1058,12 @@ export default function DirectoryPersonPage() {
                       <TableCell>
                         <div className="flex items-center gap-1">
                           {!d._legacy && d.approvalStatus !== 'approved' && (
-                            <Button size="sm" variant="ghost" className="h-6 px-2 text-[9px] font-bold text-text-green hover:bg-text-green/10" onClick={() => handleReviewDoc(d, 'approved')}>
+                            <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px] font-bold text-text-green hover:bg-text-green/10" onClick={() => handleReviewDoc(d, 'approved')}>
                               Approve
                             </Button>
                           )}
                           {!d._legacy && d.approvalStatus === 'pending' && (
-                            <Button size="sm" variant="ghost" className="h-6 px-2 text-[9px] font-bold text-text-red hover:bg-text-red/10" onClick={() => handleReviewDoc(d, 'rejected')}>
+                            <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px] font-bold text-text-red hover:bg-text-red/10" onClick={() => handleReviewDoc(d, 'rejected')}>
                               Reject
                             </Button>
                           )}
@@ -1077,7 +1077,7 @@ export default function DirectoryPersonPage() {
                 })}
                 {documents.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-[10px] text-text-muted uppercase tracking-widest">No documents uploaded</TableCell>
+                    <TableCell colSpan={6} className="text-center py-12 text-[10px] text-text-muted uppercase tracking-wider">No documents uploaded</TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -1090,27 +1090,27 @@ export default function DirectoryPersonPage() {
           <div className="space-y-6">
             <div className="space-y-3">
               <div className="flex items-center justify-between border-b border-border-sub pb-2">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
                   <Shield size={11} /> Portal Access &amp; Permissions
                 </h3>
-                <Button size="sm" onClick={handleSavePerms} disabled={!canEditAccess || !permsDirty || savingPerms} className="h-7 text-[9px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white disabled:opacity-40">
+                <Button size="sm" onClick={handleSavePerms} disabled={!canEditAccess || !permsDirty || savingPerms} className="h-7 text-[11px] font-bold bg-brand-red hover:bg-brand-red/90 text-white disabled:opacity-40">
                   {savingPerms ? 'Saving...' : 'Save Permissions'}
                 </Button>
               </div>
               {!canEditAccess && (
-                <p className="text-[9px] text-amber-400">View only — only a super admin can change permissions.</p>
+                <p className="text-[11px] text-amber-400">View only — only a super admin can change permissions.</p>
               )}
               {userPortals.length === 0 ? (
                 <div className="py-12 text-center">
                   <Shield size={24} className="mx-auto text-text-muted mb-3 opacity-30" />
-                  <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">No Portal Access</p>
-                  <p className="text-[9px] text-text-muted mt-1">
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">No Portal Access</p>
+                  <p className="text-[11px] text-text-muted mt-1">
                     <button onClick={() => setIsEditOpen(true)} className="text-brand-red font-bold hover:underline">Assign a subrole in Edit Profile</button> to give this user a portal.
                   </p>
                 </div>
               ) : (
                 <>
-                  <p className="text-[9px] text-text-muted">
+                  <p className="text-[11px] text-text-muted">
                     Select a portal to see and change this user&apos;s permissions in it. Portals come from subroles —{' '}
                     <button onClick={() => setIsEditOpen(true)} className="text-brand-red font-bold hover:underline">change subroles in Edit Profile</button>.
                   </p>
@@ -1130,17 +1130,17 @@ export default function DirectoryPersonPage() {
                             selected ? 'bg-brand-red/10 border-brand-red text-text-primary' : 'border-border-sub bg-bg-secondary text-text-secondary hover:border-border-main')}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <p className="text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                            <p className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
                               <span className={cn('inline-block w-2 h-2 rounded-full', PORTAL_META[portal].dot)} />
                               {PORTAL_META[portal].label}
                             </p>
                             {selected ? <ChevronDown size={12} className="text-brand-red" /> : <ChevronRight size={12} className="text-text-muted" />}
                           </div>
-                          <p className="text-[9px] text-text-muted mt-1.5 truncate">
+                          <p className="text-[11px] text-text-muted mt-1.5 truncate">
                             {roles.filter(r => SUBROLE_DEFINITIONS[r as keyof typeof SUBROLE_DEFINITIONS]?.portal === portal)
                               .map(r => SUBROLE_DEFINITIONS[r as keyof typeof SUBROLE_DEFINITIONS].label).join(', ') || 'Legacy access'}
                           </p>
-                          <p className="text-[9px] font-mono mt-1 text-text-secondary">
+                          <p className="text-[11px] font-mono mt-1 text-text-secondary">
                             {on}/{perms.length} on{overrides > 0 && <span className="text-amber-400"> · {overrides} override{overrides !== 1 ? 's' : ''}</span>}
                           </p>
                         </button>
@@ -1155,21 +1155,21 @@ export default function DirectoryPersonPage() {
                     return (
                       <div className="space-y-3 pt-2">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-[10px] font-black text-text-primary uppercase tracking-[0.15em] flex items-center gap-1.5">
+                          <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider flex items-center gap-1.5">
                             <span className={cn('inline-block w-2 h-2 rounded-full', PORTAL_META[selectedPortal].dot)} />
                             {PORTAL_META[selectedPortal].label} Permissions
                           </h4>
                           <div className="flex items-center gap-3">
-                            <button onClick={() => setAllPerms(allPerms, !allOn)} className="text-[9px] font-bold uppercase text-text-muted hover:text-text-primary">
+                            <button onClick={() => setAllPerms(allPerms, !allOn)} className="text-[11px] font-bold text-text-muted hover:text-text-primary">
                               {allOn ? 'Turn all off' : 'Turn all on'}
                             </button>
-                            <button onClick={() => resetPerms(allPerms)} className="text-[9px] font-bold uppercase text-text-muted hover:text-text-primary">
+                            <button onClick={() => resetPerms(allPerms)} className="text-[11px] font-bold text-text-muted hover:text-text-primary">
                               Reset to role defaults
                             </button>
                           </div>
                         </div>
                         {selectedPortal === 'sales' && (
-                          <p className="text-[9px] text-text-muted">Sales Portal access is controlled by the CRM permissions below.</p>
+                          <p className="text-[11px] text-text-muted">Sales Portal access is controlled by the CRM permissions below.</p>
                         )}
                         {Object.entries(sections).map(([page, perms]) => {
                           const sectionKey = `${selectedPortal}:${page}`;
@@ -1189,7 +1189,7 @@ export default function DirectoryPersonPage() {
                                   })}
                                 >
                                   {isCollapsed ? <ChevronRight size={10} className="text-text-muted" /> : <ChevronDown size={10} className="text-text-muted" />}
-                                  <span className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">{page.replace(/_/g, ' ')}</span>
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{page.replace(/_/g, ' ')}</span>
                                 </button>
                                 <button
                                   onClick={() => setAllPerms(perms, !allSel)}
@@ -1207,8 +1207,8 @@ export default function DirectoryPersonPage() {
                                     return (
                                       <div key={perm} className={cn('flex items-center justify-between p-2 rounded-lg border transition-all', effective ? 'bg-text-green/5 border-text-green/20' : 'bg-bg-secondary border-border-sub')}>
                                         <div className="min-w-0">
-                                          <p className="text-[9px] font-bold text-text-primary truncate">{permissionLabel(perm)}</p>
-                                          {override !== undefined && <p className="text-[8px] text-amber-400 uppercase">Override</p>}
+                                          <p className="text-[11px] font-bold text-text-primary truncate">{permissionLabel(perm)}</p>
+                                          {override !== undefined && <p className="text-[10px] text-amber-400">Override</p>}
                                         </div>
                                         <div className="flex items-center gap-1 shrink-0 ml-2">
                                           <button
@@ -1219,7 +1219,7 @@ export default function DirectoryPersonPage() {
                                             {effective ? <CheckSquare size={11} /> : <Square size={11} />}
                                           </button>
                                           {override !== undefined && (
-                                            <button onClick={() => resetPerms([perm])} className="text-[8px] text-text-muted hover:text-text-primary uppercase font-bold px-1" title="Reset to role default">✕</button>
+                                            <button onClick={() => resetPerms([perm])} className="text-[10px] text-text-muted hover:text-text-primary font-bold px-1" title="Reset to role default">✕</button>
                                           )}
                                         </div>
                                       </div>
@@ -1239,13 +1239,13 @@ export default function DirectoryPersonPage() {
             {/* ── MESSAGE RESTRICTIONS ── */}
             <div className="space-y-3">
               <div className="border-b border-border-sub pb-2">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
                   <Ban size={11} className="text-brand-red" /> Message Restrictions
                 </h3>
-                <p className="text-[9px] text-text-muted mt-1">Control who this user can message</p>
+                <p className="text-[11px] text-text-muted mt-1">Control who this user can message</p>
               </div>
               <div className="space-y-1.5">
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Who can this user message?</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Who can this user message?</p>
                 <Select
                   value={(person.messagingAllowedRoles as string) || 'all'}
                   onValueChange={handleMessagingRoleChange}
@@ -1263,7 +1263,7 @@ export default function DirectoryPersonPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Blocked Clients</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Blocked Clients</p>
                 {/* Show only currently blocked clients */}
                 <div className="space-y-1.5 max-h-48 overflow-y-auto">
                   {allClients
@@ -1273,16 +1273,16 @@ export default function DirectoryPersonPage() {
                         <div className="flex items-center gap-2 min-w-0">
                           <Avatar className="h-6 w-6 shrink-0">
                             <AvatarImage src={client.avatarUrl} />
-                            <AvatarFallback className="text-[8px]">{(client.name || '?').charAt(0)}</AvatarFallback>
+                            <AvatarFallback className="text-[10px]">{(client.name || '?').charAt(0)}</AvatarFallback>
                           </Avatar>
                           <div className="min-w-0">
                             <p className="text-[10px] font-bold text-text-primary truncate">{client.name}</p>
-                            <p className="text-[8px] text-text-muted truncate">{client.clientCompany || client.email}</p>
+                            <p className="text-[10px] text-text-muted truncate">{client.clientCompany || client.email}</p>
                           </div>
                         </div>
                         <button
                           onClick={() => handleToggleClientRestriction(client.id, false)}
-                          className="h-6 px-2.5 rounded text-[8px] font-bold border border-brand-red/40 bg-brand-red/10 text-brand-red hover:bg-brand-red/20 transition-colors shrink-0 ml-2"
+                          className="h-6 px-2.5 rounded text-[10px] font-bold border border-brand-red/40 bg-brand-red/10 text-brand-red hover:bg-brand-red/20 transition-colors shrink-0 ml-2"
                         >
                           Unblock
                         </button>
@@ -1317,14 +1317,14 @@ export default function DirectoryPersonPage() {
           <div className="space-y-4">
             {person?.adminNotes && (
               <div className="p-4 rounded-xl border border-accent-gold/30 bg-accent-gold/5 space-y-2">
-                <h3 className="text-[10px] font-black text-accent-gold uppercase tracking-[0.2em] flex items-center gap-2">
+                <h3 className="text-[10px] font-bold text-accent-gold uppercase tracking-wider flex items-center gap-2">
                   <Shield size={11} /> Admin Notes <span className="text-text-muted normal-case font-medium">(admin-only, edited via Edit Profile)</span>
                 </h3>
                 <p className="text-[11px] text-text-primary whitespace-pre-wrap">{person.adminNotes}</p>
               </div>
             )}
             <div className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
-              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+              <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
                 <Plus size={11} /> Add Note
               </h3>
               <Textarea
@@ -1338,22 +1338,22 @@ export default function DirectoryPersonPage() {
                   size="sm"
                   onClick={handleAddNote}
                   disabled={!noteText.trim() || addingNote}
-                  className="h-8 text-[10px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white"
+                  className="h-8 text-[10px] font-bold bg-brand-red hover:bg-brand-red/90 text-white"
                 >
                   {addingNote ? 'Saving...' : 'Save Note'}
                 </Button>
               </div>
             </div>
             <div className="space-y-2">
-              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+              <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 flex items-center gap-2">
                 <StickyNote size={11} /> Notes ({techNotes.length})
               </h3>
               {techNotes.length === 0 ? (
-                <p className="text-[10px] text-text-muted uppercase py-6 text-center">No notes yet</p>
+                <p className="text-[10px] text-text-muted py-6 text-center">No notes yet</p>
               ) : techNotes.map(note => (
                 <div key={note.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary">
                   <p className="text-[11px] text-text-primary whitespace-pre-wrap">{note.text}</p>
-                  <p className="text-[9px] text-text-muted uppercase mt-2">
+                  <p className="text-[11px] text-text-muted mt-2">
                     {note.authorName ? `${note.authorName} · ` : ''}{note.createdAt ? format(new Date(note.createdAt), 'MMM d, yyyy h:mm a') : '—'}
                   </p>
                 </div>
@@ -1368,20 +1368,20 @@ export default function DirectoryPersonPage() {
             <div className="space-y-5">
               <p className="text-[10px] text-text-muted">The reliability score is turned off for now; events are still recorded here.</p>
               <div className="space-y-2">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 flex items-center gap-2">
                   <BarChart2 size={11} /> Event History ({penaltyEvents.length})
                 </h3>
                 {penaltyEvents.length === 0 ? (
-                  <p className="text-[10px] text-text-muted uppercase py-6 text-center">No reliability events</p>
+                  <p className="text-[10px] text-text-muted py-6 text-center">No reliability events</p>
                 ) : (
                   <div className="rounded-xl border border-border-sub overflow-hidden">
                     <Table>
                       <TableHeader>
                         <TableRow className="border-border-sub">
-                          <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Event</TableHead>
-                          <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Category</TableHead>
-                          <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted text-right">Score Δ</TableHead>
-                          <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Date</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Event</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Category</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-right">Score Δ</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Date</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1389,7 +1389,7 @@ export default function DirectoryPersonPage() {
                           <TableRow key={ev.id} className="border-border-sub">
                             <TableCell className="text-[10px] text-text-primary font-bold">{ev.eventType?.replace(/_/g, ' ')}</TableCell>
                             <TableCell>
-                              <Badge className={`text-[7px] uppercase h-4 border ${
+                              <Badge className={`text-[10px] uppercase h-4 border ${
                                 ev.category === 'critical_failure' ? 'bg-text-red/10 text-text-red border-text-red/20' :
                                 ev.category === 'positive_recovery' ? 'bg-text-green/10 text-text-green border-text-green/20' :
                                 'bg-amber-400/10 text-amber-400 border-amber-400/20'
@@ -1428,17 +1428,17 @@ export default function DirectoryPersonPage() {
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
         <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+            <DialogTitle className="text-[13px] font-bold flex items-center gap-2">
               <Upload size={14} className="text-brand-red" /> Upload Document
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Document Name</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Document Name</Label>
               <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="e.g. Driver's License" value={uploadForm.name} onChange={e => setUploadForm(p => ({ ...p, name: e.target.value }))} />
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Document Type</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Document Type</Label>
               <Select value={uploadForm.type} onValueChange={v => setUploadForm(p => ({ ...p, type: v }))}>
                 <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-bg-elevated border-border-main">
@@ -1449,20 +1449,20 @@ export default function DirectoryPersonPage() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Expiry Date (optional)</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Expiry Date (optional)</Label>
               <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={uploadForm.expiryDate} onChange={e => setUploadForm(p => ({ ...p, expiryDate: e.target.value }))} />
             </div>
             <div className="space-y-1">
               <div className="flex items-center justify-between mb-1">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Source</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Source</Label>
                 <div className="flex rounded-md border border-border-main overflow-hidden">
                   <button
                     onClick={() => setUploadMode('file')}
-                    className={cn('px-2.5 py-1 text-[9px] font-black uppercase tracking-widest transition-colors', uploadMode === 'file' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
+                    className={cn('px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors', uploadMode === 'file' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
                   >Device</button>
                   <button
                     onClick={() => setUploadMode('url')}
-                    className={cn('px-2.5 py-1 text-[9px] font-black uppercase tracking-widest transition-colors border-l border-border-main', uploadMode === 'url' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
+                    className={cn('px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors border-l border-border-main', uploadMode === 'url' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
                   >URL</button>
                 </div>
               </div>
@@ -1488,8 +1488,8 @@ export default function DirectoryPersonPage() {
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => { setUploadOpen(false); setUploadFileObj(null); setUploadMode('url'); }} className="text-[10px] font-black uppercase">Cancel</Button>
-            <Button size="sm" onClick={handleUploadDoc} disabled={!uploadForm.name || uploadSaving || (uploadMode === 'file' ? !uploadFileObj : !/^https?:\/\//.test(uploadForm.url.trim()))} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+            <Button variant="outline" size="sm" onClick={() => { setUploadOpen(false); setUploadFileObj(null); setUploadMode('url'); }} className="text-[10px] font-bold">Cancel</Button>
+            <Button size="sm" onClick={handleUploadDoc} disabled={!uploadForm.name || uploadSaving || (uploadMode === 'file' ? !uploadFileObj : !/^https?:\/\//.test(uploadForm.url.trim()))} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
               {uploadSaving ? 'Uploading...' : 'Upload'}
             </Button>
           </DialogFooter>

@@ -132,11 +132,11 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
                       </span>
                     )}
                   </div>
-                  <p className="text-[13px] font-bold text-text-primary uppercase tracking-wide truncate">
+                  <p className="text-[13px] font-bold text-text-primary tracking-wide truncate">
                     {wo.title || wo.description}
                   </p>
                 </div>
-                <Badge variant={wo.priority === 'critical' ? 'high' : wo.priority === 'high' ? 'high' : 'outline'} className="text-[7px] h-3 px-1 uppercase tracking-tighter shrink-0">
+                <Badge variant={wo.priority === 'critical' ? 'high' : wo.priority === 'high' ? 'high' : 'outline'} className="text-[10px] h-3 px-1 uppercase tracking-tighter shrink-0">
                     {wo.priority}
                 </Badge>
               </div>
@@ -163,9 +163,9 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
                   <div className="flex items-center gap-2">
                     <Avatar className="h-6 w-6 border border-border-sub">
                       <AvatarImage src={tech.avatarUrl} />
-                      <AvatarFallback className="text-[8px]">{(tech.name || 'U').charAt(0)}</AvatarFallback>
+                      <AvatarFallback className="text-[10px]">{(tech.name || 'U').charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <span className="text-[10px] font-bold text-text-primary uppercase truncate max-w-[80px]">
+                    <span className="text-[10px] font-bold text-text-primary truncate max-w-[80px]">
                       {tech.name}
                     </span>
                   </div>
@@ -173,7 +173,7 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
                   <Button
                     size="sm"
                     onClick={(event) => { event.stopPropagation(); setMobileAssignOrder(wo); }}
-                    className="h-8 px-3 text-[10px] font-bold uppercase tracking-widest bg-brand-red text-white hover:bg-brand-red/90"
+                    className="h-8 px-3 text-[10px] font-bold uppercase tracking-wider bg-brand-red text-white hover:bg-brand-red/90"
                   >
                     Assign
                   </Button>
@@ -184,7 +184,7 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
         })}
         {workOrders.length === 0 && (
           <div className="p-24 text-center border-2 border-dashed border-border-main rounded-xl bg-bg-secondary/30">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No missions found in this terminal category.</p>
+            <p className="text-xs font-bold text-text-muted italic">No missions found in this terminal category.</p>
           </div>
         )}
       </div>

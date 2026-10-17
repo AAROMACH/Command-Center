@@ -31,10 +31,10 @@ export function MyTasksCard({ techId }: { techId: string | null | undefined }) {
         <Card className="bg-bg-secondary border-border-sub">
             <CardContent className="p-4 space-y-2">
                 <div className="flex items-center justify-between">
-                    <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-text-primary">
+                    <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-text-primary">
                         <ListChecks size={13} className="text-brand-red" /> My Tasks
                     </p>
-                    <span className="text-[9px] font-bold text-text-muted">{tasks.length} open</span>
+                    <span className="text-[11px] font-bold text-text-muted">{tasks.length} open</span>
                 </div>
                 <div className="divide-y divide-border-sub">
                     {tasks.slice(0, 8).map(t => (
@@ -42,13 +42,13 @@ export function MyTasksCard({ techId }: { techId: string | null | undefined }) {
                             className="flex items-center gap-3 py-2 text-left hover:bg-bg-tertiary/40 rounded px-1">
                             <div className="min-w-0 flex-1">
                                 <p className="text-[11px] font-bold text-text-primary truncate">{t.name}</p>
-                                <p className="text-[9px] text-text-muted truncate">{t.projectName} · {t.phase}</p>
+                                <p className="text-[11px] text-text-muted truncate">{t.projectName} · {t.phase}</p>
                             </div>
                             <ChevronRight size={14} className="text-text-muted shrink-0" />
                         </Link>
                     ))}
                 </div>
-                {tasks.length > 8 && <p className="text-[9px] text-text-muted">+{tasks.length - 8} more in your projects</p>}
+                {tasks.length > 8 && <p className="text-[11px] text-text-muted">+{tasks.length - 8} more in your projects</p>}
             </CardContent>
         </Card>
     );

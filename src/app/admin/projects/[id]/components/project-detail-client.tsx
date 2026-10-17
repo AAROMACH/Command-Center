@@ -233,7 +233,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30">
                         <div className="flex items-center justify-between">
                             <div className="text-left">
-                                <DialogTitle className="uppercase tracking-widest font-bold text-lg">
+                                <DialogTitle className="font-bold text-lg">
                                     {isReadOnly ? 'Audit Project Registry' : 'Modify Project Registry'}
                                 </DialogTitle>
                                 <DialogDescription>Project Identifier: <span className="text-brand-red font-mono">{(project.id || '').toUpperCase()}</span>.</DialogDescription>
@@ -242,20 +242,20 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                                 <div className="flex items-center gap-3">
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
-                                            <Button variant="ghost" className="h-8 px-2 text-[9px] text-text-muted hover:text-text-red hover:bg-brand-red/10 uppercase tracking-widest font-bold">
+                                            <Button variant="ghost" className="h-8 px-2 text-[10px] text-text-muted hover:text-text-red hover:bg-brand-red/10 uppercase tracking-wider font-bold">
                                                 <Archive size={12} className="mr-1.5"/> Archive Project
                                             </Button>
                                         </AlertDialogTrigger>
                                         <AlertDialogContent className="bg-bg-elevated border-border-main">
                                             <AlertDialogHeader className="text-left">
-                                                <AlertDialogTitle className="uppercase tracking-widest font-bold">Authorize Archival?</AlertDialogTitle>
+                                                <AlertDialogTitle className="font-bold">Authorize Archival?</AlertDialogTitle>
                                                 <AlertDialogDescription className="text-xs">
                                                     Warning: This will terminate the active lifecycle of project <span className="font-bold text-text-primary">{project.name}</span>. The folder will move to historical storage.
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
-                                                <AlertDialogCancel className="text-[10px] uppercase font-bold">Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={handleArchive} className="bg-brand-red hover:bg-brand-red-hover text-[10px] uppercase font-bold">
+                                                <AlertDialogCancel className="text-[10px] font-bold">Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={handleArchive} className="bg-brand-red hover:bg-brand-red-hover text-[10px] font-bold">
                                                     Confirm Archival
                                                 </AlertDialogAction>
                                             </AlertDialogFooter>
@@ -264,9 +264,9 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                                     
                                     <Separator orientation="vertical" className="h-4 bg-border-sub" />
 
-                                    <Label className="text-[10px] font-bold uppercase text-text-muted">Status</Label>
+                                    <Label className="text-[10px] font-bold text-text-muted">Status</Label>
                                     <Select value={editedProject.status} onValueChange={(val: any) => setEditedProject({...editedProject, status: val})}>
-                                        <SelectTrigger className="h-8 w-[140px] bg-bg-primary text-[10px] uppercase font-bold tracking-widest">
+                                        <SelectTrigger className="h-8 w-[140px] bg-bg-primary text-[10px] uppercase font-bold tracking-wider">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -280,7 +280,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                                 </div>
                             )}
                             {isReadOnly && (
-                                <Badge variant="active" className="h-6 px-4 uppercase tracking-[0.2em] font-black">
+                                <Badge variant="active" className="h-6 px-4 font-bold">
                                     FINALIZED REGISTRY
                                 </Badge>
                             )}
@@ -290,21 +290,21 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                     <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
                             <div className="space-y-6">
-                                <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2 text-left">
+                                <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-wider flex items-center gap-2 border-b border-border-sub pb-2 text-left">
                                     <Building2 size={12}/> Identity & Coordinates
                                 </h3>
                                 <div className="space-y-4">
                                     <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] font-bold uppercase text-text-muted">Project Name</Label>
+                                        <Label className="text-[10px] font-bold text-text-muted">Project Name</Label>
                                         <Input 
                                             disabled={isReadOnly}
                                             value={editedProject.name || ''} 
                                             onChange={e => setEditedProject({...editedProject, name: e.target.value})}
-                                            className="bg-bg-primary h-10 text-xs font-bold uppercase"
+                                            className="bg-bg-primary h-10 text-xs font-bold"
                                         />
                                     </div>
                                     <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] font-bold uppercase text-text-muted">Client Entity</Label>
+                                        <Label className="text-[10px] font-bold text-text-muted">Client Entity</Label>
                                         <Input 
                                             disabled={isReadOnly}
                                             value={editedProject.client || ''} 
@@ -313,7 +313,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                                         />
                                     </div>
                                     <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] font-bold uppercase text-text-muted">Operational Address</Label>
+                                        <Label className="text-[10px] font-bold text-text-muted">Operational Address</Label>
                                         <div className="relative">
                                             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
                                             <Input 
@@ -326,7 +326,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] font-bold uppercase text-text-muted">On-Site Contact Name</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted">On-Site Contact Name</Label>
                                             <div className="relative">
                                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
                                                 <Input 
@@ -339,7 +339,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                                             </div>
                                         </div>
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] font-bold uppercase text-text-muted">On-Site Contact Phone</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted">On-Site Contact Phone</Label>
                                             <div className="relative">
                                                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
                                                 <Input 
@@ -356,12 +356,12 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                             </div>
 
                             <div className="space-y-6">
-                                <h3 className="text-[10px] font-bold text-accent-gold uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2 text-left">
+                                <h3 className="text-[10px] font-bold text-accent-gold uppercase tracking-wider flex items-center gap-2 border-b border-border-sub pb-2 text-left">
                                     <ShieldAlert size={12}/> Operational Briefing
                                 </h3>
                                 <div className="space-y-4">
                                     <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] font-bold uppercase text-text-muted">Scope of Work</Label>
+                                        <Label className="text-[10px] font-bold text-text-muted">Scope of Work</Label>
                                         <Textarea 
                                             disabled={isReadOnly}
                                             value={editedProject.scope || ''} 
@@ -371,7 +371,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                                         />
                                     </div>
                                     <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] font-bold uppercase text-text-muted">Access Instructions</Label>
+                                        <Label className="text-[10px] font-bold text-text-muted">Access Instructions</Label>
                                         <Textarea 
                                             disabled={isReadOnly}
                                             value={editedProject.siteAccessInstructions || ''} 
@@ -384,13 +384,13 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                             </div>
 
                             <div className="space-y-6">
-                                <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2 text-left">
+                                <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-wider flex items-center gap-2 border-b border-border-sub pb-2 text-left">
                                     <Clock size={12}/> Schedule & Duration
                                 </h3>
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] font-bold uppercase text-text-muted">Start Date</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted">Start Date</Label>
                                             <Input 
                                                 disabled={isReadOnly}
                                                 type="date"
@@ -400,7 +400,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                                             />
                                         </div>
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] font-bold uppercase text-text-muted">Daily Start Time</Label>
+                                            <Label className="text-[10px] font-bold text-text-muted">Daily Start Time</Label>
                                             <Input 
                                                 disabled={isReadOnly}
                                                 placeholder="e.g. 9:00 AM EDT"
@@ -411,7 +411,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                                         </div>
                                     </div>
                                     <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] font-bold uppercase text-text-muted">Estimated Project Duration</Label>
+                                        <Label className="text-[10px] font-bold text-text-muted">Estimated Project Duration</Label>
                                         <div className="relative">
                                             <Timer className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
                                             <Input 
@@ -427,12 +427,12 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                             </div>
 
                             <div className="space-y-6">
-                                <h3 className="text-[10px] font-bold text-text-green uppercase tracking-[0.2em] flex items-center gap-2 border-b border-border-sub pb-2 text-left">
+                                <h3 className="text-[10px] font-bold text-text-green uppercase tracking-wider flex items-center gap-2 border-b border-border-sub pb-2 text-left">
                                     <DollarSign size={12}/> Project Economics
                                 </h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] font-bold uppercase text-text-muted">Project Budget ($)</Label>
+                                        <Label className="text-[10px] font-bold text-text-muted">Project Budget ($)</Label>
                                         <Input 
                                             disabled={isReadOnly}
                                             type="number"
@@ -442,7 +442,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                                         />
                                     </div>
                                     <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] font-bold uppercase text-text-muted">Allocated Hours</Label>
+                                        <Label className="text-[10px] font-bold text-text-muted">Allocated Hours</Label>
                                         <Input 
                                             disabled={isReadOnly}
                                             type="number"
@@ -457,15 +457,15 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                     </div>
 
                     <DialogFooter className="bg-bg-tertiary/50 p-6 border-t border-border-default flex flex-row items-center justify-end gap-3">
-                        <Button variant="outline" onClick={() => setIsEditOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">
+                        <Button variant="outline" onClick={() => setIsEditOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-wider">
                             {isReadOnly ? 'Exit Registry' : 'Discard'}
                         </Button>
                         {isReadOnly ? (
-                            <Button variant="outline" className="h-11 bg-green-dim border-green-border text-text-green hover:bg-green-dim/80 text-[10px] uppercase font-bold tracking-widest pointer-events-none">
+                            <Button variant="outline" className="h-11 bg-green-dim border-green-border text-text-green hover:bg-green-dim/80 text-[10px] uppercase font-bold tracking-wider pointer-events-none">
                                 <FileCheck size={16} className="mr-2"/> Project Archived
                             </Button>
                         ) : (
-                            <Button onClick={handleSaveEdit} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">
+                            <Button onClick={handleSaveEdit} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider text-white">
                                 <Check size={16} className="mr-2"/> Commit Registry Updates
                             </Button>
                         )}

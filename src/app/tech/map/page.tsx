@@ -32,7 +32,7 @@ const MapView = dynamic(() => import('./components/map-view'), {
     <div className="flex items-center justify-center h-full bg-bg-secondary rounded-lg border border-border-main">
       <div className="text-center space-y-3">
         <MapIcon size={32} className="mx-auto text-text-muted animate-pulse" />
-        <p className="text-xs text-text-muted uppercase tracking-widest font-bold">Loading map...</p>
+        <p className="text-xs text-text-muted font-bold">Loading map...</p>
       </div>
     </div>
   ),
@@ -160,7 +160,7 @@ export default function TechMapPage() {
             <div className="flex items-center justify-center h-full bg-bg-secondary">
               <div className="text-center space-y-3">
                 <MapPin size={32} className="mx-auto text-text-muted animate-pulse" />
-                <p className="text-xs text-text-muted uppercase tracking-widest font-bold">Loading assignments...</p>
+                <p className="text-xs text-text-muted font-bold">Loading assignments...</p>
               </div>
             </div>
           ) : todayJobs.length === 0 ? (
@@ -170,7 +170,7 @@ export default function TechMapPage() {
                   <MapPin size={32} className="text-text-muted" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-bold text-text-primary uppercase tracking-wide">No upcoming jobs</p>
+                  <p className="text-sm font-bold text-text-primary tracking-wide">No upcoming jobs</p>
                   <p className="text-xs text-text-muted">No upcoming assignments found in the registry.</p>
                 </div>
               </div>
@@ -193,11 +193,11 @@ export default function TechMapPage() {
           style={{ maxHeight: '70vh' }}
         >
           <div className="flex items-center justify-between">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
               {todayJobs.length} Upcoming Job{todayJobs.length !== 1 ? 's' : ''}
             </p>
             {mappableJobs.length < todayJobs.length && (
-              <div className="flex items-center gap-1 text-[9px] text-accent-gold font-bold uppercase">
+              <div className="flex items-center gap-1 text-[11px] text-accent-gold font-bold">
                 <AlertCircle size={10} />
                 {todayJobs.length - mappableJobs.length} unmapped
               </div>
@@ -210,10 +210,10 @@ export default function TechMapPage() {
             <Card className="bg-bg-secondary border-border-main">
               <CardContent className="py-10 text-center space-y-2">
                 <Calendar size={24} className="mx-auto text-text-muted opacity-40" />
-                <p className="text-xs text-text-muted uppercase tracking-widest font-bold">No upcoming jobs</p>
+                <p className="text-xs text-text-muted font-bold">No upcoming jobs</p>
                 <p className="text-[10px] text-text-muted">Check back when new assignments are dispatched.</p>
                 <Link href="/tech/assignments">
-                  <Button variant="outline" size="sm" className="h-7 text-[9px] uppercase font-bold mt-2">
+                  <Button variant="outline" size="sm" className="h-7 text-[11px] font-bold mt-2">
                     View All Assignments
                   </Button>
                 </Link>
@@ -240,14 +240,14 @@ export default function TechMapPage() {
                   <div className="pl-4 pt-4 pb-2 pr-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="flex-shrink-0 h-5 w-5 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[9px] font-black text-text-muted">
+                        <span className="flex-shrink-0 h-5 w-5 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[11px] font-bold text-text-muted">
                           {index + 1}
                         </span>
-                        <p className="text-xs font-bold uppercase tracking-wide truncate text-text-primary">
+                        <p className="text-xs font-bold tracking-wide truncate text-text-primary">
                           {job.title || job.description || `Job ${job.id.slice(0, 6).toUpperCase()}`}
                         </p>
                       </div>
-                      <Badge variant={getStatusVariant(job.status)} className="h-4 text-[8px] uppercase flex-shrink-0">
+                      <Badge variant={getStatusVariant(job.status)} className="h-4 text-[10px] flex-shrink-0">
                         {job.status}
                       </Badge>
                     </div>
@@ -274,7 +274,7 @@ export default function TechMapPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-8 flex-1 text-[9px] uppercase font-bold"
+                        className="h-8 flex-1 text-[11px] font-bold"
                         onClick={(e) => { e.stopPropagation(); openDirections(job); }}
                       >
                         <Navigation size={10} className="mr-1.5" />
@@ -284,7 +284,7 @@ export default function TechMapPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-8 text-[9px] uppercase font-bold px-2"
+                          className="h-8 text-[11px] font-bold px-2"
                         >
                           <ChevronRight size={14} />
                         </Button>
@@ -292,7 +292,7 @@ export default function TechMapPage() {
                     </div>
 
                     {!hasCoordsForMap && (
-                      <p className="text-[9px] text-text-muted font-bold uppercase opacity-60">
+                      <p className="text-[11px] text-text-muted font-bold opacity-60">
                         · Not visible on map
                       </p>
                     )}

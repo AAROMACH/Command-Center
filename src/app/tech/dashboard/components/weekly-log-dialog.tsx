@@ -62,7 +62,7 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log, onSubmitted, jobs }: W
                 <DialogHeader>
                     <div className="flex items-center gap-2 mb-1">
                         <ScrollText className="text-accent-gold h-5 w-5" />
-                        <DialogTitle className="text-lg font-bold uppercase tracking-widest">Finalize Weekly Log</DialogTitle>
+                        <DialogTitle className="text-lg font-bold">Finalize Weekly Log</DialogTitle>
                     </div>
                     <DialogDescription>
                         Audit for week of <span className="text-text-primary font-bold">{log.weekOf}</span>. Ensure all reimbursements are logged.
@@ -72,7 +72,7 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log, onSubmitted, jobs }: W
                 {!isWeekend && (
                     <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-start gap-3 mb-4">
                         <Info size={16} className="text-accent-gold shrink-0 mt-0.5" />
-                        <p className="text-[10px] text-text-muted uppercase font-bold leading-relaxed text-left">
+                        <p className="text-[10px] text-text-muted font-bold leading-relaxed text-left">
                             Submission Lock: This week's manifest can be updated mid-week, but final submission is only authorized on <span className="text-brand-red">Saturday and Sunday</span>.
                         </p>
                     </div>
@@ -80,7 +80,7 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log, onSubmitted, jobs }: W
 
                 <div className="py-4 space-y-6 max-h-[60vh] overflow-y-auto">
                     <div className="space-y-2">
-                        <h3 className="text-[10px] font-bold uppercase tracking-[0.15em] text-text-muted">Assignment Summary</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Assignment Summary</h3>
                         <div className="table-wrap p-0 border border-border-sub">
                             <Table>
                                 <TableHeader className="bg-bg-tertiary">
@@ -96,17 +96,17 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log, onSubmitted, jobs }: W
                                         return (
                                             <TableRow key={item.id || item.workOrderId || `log-item-${index}`} className="border-border-sub">
                                                 <TableCell className="py-2 text-left">
-                                                    <div className="text-xs font-bold uppercase">{(wo?.id || item.workOrderId || 'N/A').toUpperCase()}</div>
-                                                    <div className="text-[10px] text-text-muted truncate max-w-[200px] uppercase text-left">{wo?.title || wo?.description || 'Assignment Detail Restricted'}</div>
+                                                    <div className="text-xs font-bold">{(wo?.id || item.workOrderId || 'N/A').toUpperCase()}</div>
+                                                    <div className="text-[10px] text-text-muted truncate max-w-[200px] text-left">{wo?.title || wo?.description || 'Assignment Detail Restricted'}</div>
                                                 </TableCell>
                                                 <TableCell className="py-2">
-                                                    <Badge variant={item.confirmationStatus === 'confirmed' ? 'active' : 'onhold'} className="text-[9px] uppercase tracking-widest h-5">
+                                                    <Badge variant={item.confirmationStatus === 'confirmed' ? 'active' : 'onhold'} className="text-[10px] uppercase tracking-wider h-5">
                                                         {item.confirmationStatus ? item.confirmationStatus.toUpperCase() : 'VERIFYING'}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="py-2 text-right">
                                                     <span className={cn(
-                                                        "text-[10px] font-mono uppercase font-bold",
+                                                        "text-[10px] font-mono font-bold",
                                                         item.outcomeCode === 'worked_completed' ? "text-text-green" : 
                                                         item.outcomeCode === 'worked_revisit' ? "text-text-red" : "text-text-muted"
                                                     )}>
@@ -123,10 +123,10 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log, onSubmitted, jobs }: W
 
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                             <h3 className="text-[10px] font-bold uppercase tracking-[0.15em] text-text-muted flex items-center gap-2">
+                             <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
                                 <Coins size={12}/> Reimbursements & Expenses
                              </h3>
-                             <Link href="/tech/logs" className="text-[9px] font-bold uppercase tracking-widest text-accent-gold hover:underline">
+                             <Link href="/tech/logs" className="text-[10px] font-bold uppercase tracking-wider text-accent-gold hover:underline">
                                 Add on Logs page
                              </Link>
                         </div>
@@ -136,13 +136,13 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log, onSubmitted, jobs }: W
                                 <div key={item.id || `reimb-${index}`} className="flex gap-2 items-center justify-between p-2 rounded bg-bg-primary border border-border-sub">
                                     <span className="text-xs truncate text-left">{item.description || 'Reimbursement'}</span>
                                     <span className="flex items-center gap-2 shrink-0">
-                                        <Badge variant="outline" className="text-[8px] uppercase h-4">{item.status || 'approved'}</Badge>
+                                        <Badge variant="outline" className="text-[10px] h-4">{item.status || 'approved'}</Badge>
                                         <span className="text-xs font-mono">${(Number(item.amount) || 0).toFixed(2)}</span>
                                     </span>
                                 </div>
                             ))}
                             {(log.reimbursements || []).length === 0 && (
-                                <div className="text-center py-6 border border-dashed border-border-sub rounded text-[10px] uppercase font-bold text-text-muted">No reimbursements logged</div>
+                                <div className="text-center py-6 border border-dashed border-border-sub rounded text-[10px] font-bold text-text-muted">No reimbursements logged</div>
                             )}
                         </div>
                     </div>
@@ -154,7 +154,7 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log, onSubmitted, jobs }: W
                         onClick={handleSubmit} 
                         disabled={!isWeekend || submitting}
                         className={cn(
-                            "font-bold uppercase text-[10px] tracking-widest h-10 px-8",
+                            "font-bold uppercase text-[10px] tracking-wider h-10 px-8",
                             isWeekend ? "bg-brand-red hover:bg-brand-red-hover" : "bg-bg-tertiary text-text-muted border border-border-sub"
                         )}
                     >

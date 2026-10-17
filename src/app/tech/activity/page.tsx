@@ -149,8 +149,8 @@ export default function TechActivityPage() {
 
   if (!mounted) return null;
 
-  const label = 'text-[9px] font-black uppercase tracking-widest text-text-muted';
-  const control = 'h-8 bg-bg-primary border-border-main text-[10px] font-bold uppercase';
+  const label = 'text-[10px] font-bold uppercase tracking-wider text-text-muted';
+  const control = 'h-8 bg-bg-primary border-border-main text-[10px] font-bold';
   const pick = (k: 'customer' | 'type', v: string) => set({ [k]: f[k] === v ? null : v } as Partial<Filters>);
 
   return (
@@ -174,33 +174,33 @@ export default function TechActivityPage() {
           <Select value={f.customer ?? 'all'} onValueChange={v => set({ customer: v === 'all' ? null : v })}>
             <SelectTrigger className={cn(control, 'w-[170px]')}><SelectValue /></SelectTrigger>
             <SelectContent className="bg-bg-elevated border-border-main">
-              <SelectItem value="all" className="text-[10px] font-bold uppercase">All customers</SelectItem>
-              {customers.map(c => <SelectItem key={c} value={c} className="text-[10px] font-bold uppercase">{c}</SelectItem>)}
+              <SelectItem value="all" className="text-[10px] font-bold">All customers</SelectItem>
+              {customers.map(c => <SelectItem key={c} value={c} className="text-[10px] font-bold">{c}</SelectItem>)}
             </SelectContent>
           </Select></div>
         <div className="flex flex-col gap-1"><span className={label}>Type of work</span>
           <Select value={f.type ?? 'all'} onValueChange={v => set({ type: v === 'all' ? null : v })}>
             <SelectTrigger className={cn(control, 'w-[160px]')}><SelectValue /></SelectTrigger>
             <SelectContent className="bg-bg-elevated border-border-main">
-              <SelectItem value="all" className="text-[10px] font-bold uppercase">All types</SelectItem>
-              {types.map(t => <SelectItem key={t} value={t} className="text-[10px] font-bold uppercase">{t}</SelectItem>)}
+              <SelectItem value="all" className="text-[10px] font-bold">All types</SelectItem>
+              {types.map(t => <SelectItem key={t} value={t} className="text-[10px] font-bold">{t}</SelectItem>)}
             </SelectContent>
           </Select></div>
         <div className="flex flex-col gap-1"><span className={label}>Jobs</span>
           <Select value={f.job} onValueChange={v => set({ job: v as Filters['job'] })}>
             <SelectTrigger className={cn(control, 'w-[130px]')}><SelectValue /></SelectTrigger>
             <SelectContent className="bg-bg-elevated border-border-main">
-              <SelectItem value="all" className="text-[10px] font-bold uppercase">All jobs</SelectItem>
-              <SelectItem value="completed" className="text-[10px] font-bold uppercase">Completed</SelectItem>
-              <SelectItem value="open" className="text-[10px] font-bold uppercase">Open / upcoming</SelectItem>
+              <SelectItem value="all" className="text-[10px] font-bold">All jobs</SelectItem>
+              <SelectItem value="completed" className="text-[10px] font-bold">Completed</SelectItem>
+              <SelectItem value="open" className="text-[10px] font-bold">Open / upcoming</SelectItem>
             </SelectContent>
           </Select></div>
         <div className="flex flex-col gap-1"><span className={label}>Pay status</span>
           <Select value={f.pay ?? 'all'} onValueChange={v => set({ pay: v === 'all' ? null : v as PayStatus })}>
             <SelectTrigger className={cn(control, 'w-[140px]')}><SelectValue /></SelectTrigger>
             <SelectContent className="bg-bg-elevated border-border-main">
-              <SelectItem value="all" className="text-[10px] font-bold uppercase">Any</SelectItem>
-              {(Object.keys(PAY_STATUS_LABELS) as PayStatus[]).map(p => <SelectItem key={p} value={p} className="text-[10px] font-bold uppercase">{PAY_STATUS_LABELS[p]}</SelectItem>)}
+              <SelectItem value="all" className="text-[10px] font-bold">Any</SelectItem>
+              {(Object.keys(PAY_STATUS_LABELS) as PayStatus[]).map(p => <SelectItem key={p} value={p} className="text-[10px] font-bold">{PAY_STATUS_LABELS[p]}</SelectItem>)}
             </SelectContent>
           </Select></div>
         {f.customer && (
@@ -209,7 +209,7 @@ export default function TechActivityPage() {
           </button>
         )}
         {!isDefault && (
-          <button onClick={() => setF(DEFAULT_FILTERS)} className="h-8 px-3 inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-brand-red hover:underline">
+          <button onClick={() => setF(DEFAULT_FILTERS)} className="h-8 px-3 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-brand-red hover:underline">
             <RotateCcw size={11} /> Reset
           </button>
         )}
@@ -223,13 +223,13 @@ export default function TechActivityPage() {
       )}
 
       {all.length === 0 ? (
-        <Card className="bg-bg-secondary border-border-main"><CardContent className="py-16 text-center text-[11px] font-bold uppercase tracking-widest text-text-muted">No jobs yet — your history fills in as you're assigned work.</CardContent></Card>
+        <Card className="bg-bg-secondary border-border-main"><CardContent className="py-16 text-center text-[11px] font-bold text-text-muted">No jobs yet — your history fills in as you're assigned work.</CardContent></Card>
       ) : (<>
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
           {kpis.map(k => (
             <Card key={k.label} className="bg-bg-secondary border-border-main">
               <CardContent className="p-4 min-w-0">
-                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest truncate">{k.label}</p>
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider truncate">{k.label}</p>
                 <p className={cn('text-xl font-black tabular-nums truncate', k.tone)}>{k.value}</p>
                 <p className="text-[10px] text-text-muted truncate">{k.sub}</p>
               </CardContent>
@@ -240,7 +240,7 @@ export default function TechActivityPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <Card className="bg-bg-secondary border-border-main min-w-0 lg:col-span-2">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-bold uppercase tracking-wide">Pay by month</CardTitle>
+              <CardTitle className="text-sm font-bold tracking-wide">Pay by month</CardTitle>
               <CardDescription className="text-[10px]">{f.customer ? `${f.customer} — ` : ''}by work date. Green = approved; gold = submitted, draft or not filed yet.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -248,8 +248,8 @@ export default function TechActivityPage() {
                 <ChartContainer config={{ approved: { label: 'Approved', color: 'var(--text-green)' }, pending: { label: 'Pending', color: 'var(--accent-gold)' } } satisfies ChartConfig} className="w-full h-[260px]">
                   <BarChart data={monthly} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
                     <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.15} />
-                    <XAxis dataKey="month" tickLine={false} axisLine={false} className="text-[9px]" tickFormatter={monthLabel} minTickGap={8} />
-                    <YAxis tickLine={false} axisLine={false} className="text-[9px]" tickFormatter={v => `$${v}`} width={48} />
+                    <XAxis dataKey="month" tickLine={false} axisLine={false} className="text-[11px]" tickFormatter={monthLabel} minTickGap={8} />
+                    <YAxis tickLine={false} axisLine={false} className="text-[11px]" tickFormatter={v => `$${v}`} width={48} />
                     <Tooltip cursor={{ opacity: 0.1 }} content={({ payload }) => {
                       const d = payload?.[0]?.payload as { month: string; approved: number; pending: number } | undefined;
                       return d ? <Tip title={monthLabel(d.month)} lines={[`${money(d.approved)} approved`, `${money(d.pending)} pending`]} /> : null;
@@ -263,14 +263,14 @@ export default function TechActivityPage() {
           </Card>
           <Card className="bg-bg-secondary border-border-main min-w-0">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-bold uppercase tracking-wide">Pay by customer</CardTitle>
+              <CardTitle className="text-sm font-bold tracking-wide">Pay by customer</CardTitle>
               <CardDescription className="text-[10px]">Tap a customer to focus the page on them.</CardDescription>
             </CardHeader>
             <CardContent><HBars items={byCustomer} fmt={money} selected={f.customer} onPick={c => pick('customer', c)} color="var(--brand-red)" empty="No completed jobs in this view." /></CardContent>
           </Card>
           <Card className="bg-bg-secondary border-border-main min-w-0">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-bold uppercase tracking-wide">Pay by type of work</CardTitle>
+              <CardTitle className="text-sm font-bold tracking-wide">Pay by type of work</CardTitle>
               <CardDescription className="text-[10px]">Tap a type to filter by it.</CardDescription>
             </CardHeader>
             <CardContent><HBars items={byType} fmt={money} selected={f.type} onPick={t => pick('type', t)} color="var(--accent-gold)" empty="No completed jobs in this view." /></CardContent>
@@ -280,7 +280,7 @@ export default function TechActivityPage() {
         <Card className="bg-bg-secondary border-border-main">
           <CardHeader className="pb-2 flex flex-row flex-wrap items-center justify-between gap-3 space-y-0">
             <div>
-              <CardTitle className="text-sm font-bold uppercase tracking-wide">Job history</CardTitle>
+              <CardTitle className="text-sm font-bold tracking-wide">Job history</CardTitle>
               <CardDescription className="text-[10px]">{count(table.length)} job{table.length === 1 ? '' : 's'} · tap a job to open it · ~ = estimate until it's on a log</CardDescription>
             </div>
             <div className="relative w-full sm:w-[240px]">
@@ -296,7 +296,7 @@ export default function TechActivityPage() {
                     ['date', 'Date', ''], ['title', 'Job', ''], ['customer', 'Customer', 'hidden md:table-cell'], ['type', 'Type', 'hidden lg:table-cell'],
                     ['status', 'Status', 'hidden sm:table-cell'], ['pay', 'My pay', ''], ['payStatus', 'Pay status', ''],
                   ] as [SortKey, string, string][]).map(([k, text, cls]) => (
-                    <th key={k} className={cn('px-3 py-2 font-black uppercase tracking-widest text-[9px] text-text-muted', k === 'pay' ? 'text-right' : 'text-left', cls)}
+                    <th key={k} className={cn('px-3 py-2 font-bold uppercase tracking-wider text-[10px] text-text-muted', k === 'pay' ? 'text-right' : 'text-left', cls)}
                       aria-sort={k === sortKey ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'}>
                       <button onClick={() => sortBy(k)} className="inline-flex items-center gap-1 hover:text-text-primary">
                         {text}{k === sortKey && (sortDir > 0 ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
@@ -311,8 +311,8 @@ export default function TechActivityPage() {
                     <td className="px-3 py-2 whitespace-nowrap">{dayLabel(r.date)}</td>
                     <td className="px-3 py-2 max-w-[220px]">
                       <p className="font-bold text-text-primary truncate">{r.title}</p>
-                      <p className="text-[9px] text-text-muted truncate md:hidden">{r.customer}</p>
-                      {r.role === 'helper' && <span className="text-[8px] font-bold uppercase text-text-muted">Helper</span>}
+                      <p className="text-[11px] text-text-muted truncate md:hidden">{r.customer}</p>
+                      {r.role === 'helper' && <span className="text-[10px] font-bold text-text-muted">Helper</span>}
                     </td>
                     <td className="px-3 py-2 hidden md:table-cell max-w-[180px] truncate">{r.customer}</td>
                     <td className="px-3 py-2 hidden lg:table-cell max-w-[160px] truncate">{r.type}</td>
@@ -321,8 +321,8 @@ export default function TechActivityPage() {
                       {r.pay || !r.estimated ? `${r.estimated ? '~' : ''}${money(r.pay)}` : '—'}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
-                      <span className={cn('text-[9px] font-bold uppercase', PAY_TONE[r.payStatus])}>{PAY_STATUS_LABELS[r.payStatus]}</span>
-                      {r.disputed && <span className="ml-1 text-[9px] font-bold uppercase text-brand-red">· Disputed</span>}
+                      <span className={cn('text-[11px] font-bold', PAY_TONE[r.payStatus])}>{PAY_STATUS_LABELS[r.payStatus]}</span>
+                      {r.disputed && <span className="ml-1 text-[11px] font-bold text-brand-red">· Disputed</span>}
                     </td>
                   </tr>
                 ))}

@@ -201,8 +201,8 @@ export default function ClientDashboardPage() {
                             <Timer size={14} className={item.color} />
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-1">
-                                    <p className="text-[10px] font-bold text-text-primary uppercase tracking-widest truncate">{item.request.requestType} · {item.request.description}</p>
-                                    <span className={cn("text-[10px] font-black uppercase shrink-0 ml-2", item.color)}>{Math.round(item.hoursRemaining)}h remaining</span>
+                                    <p className="text-[10px] font-bold text-text-primary uppercase tracking-wider truncate">{item.request.requestType} · {item.request.description}</p>
+                                    <span className={cn("text-[10px] font-bold shrink-0 ml-2", item.color)}>{Math.round(item.hoursRemaining)}h remaining</span>
                                 </div>
                                 <div className="w-full bg-bg-tertiary rounded-full h-1">
                                     <div className={cn("h-1 rounded-full transition-all", item.bgColor)} style={{ width: `${item.pct}%` }} />
@@ -217,7 +217,7 @@ export default function ClientDashboardPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="bg-bg-secondary border-border-main">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-[10px] text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                        <CardTitle className="text-[10px] text-text-muted uppercase tracking-wider flex items-center gap-2">
                             <Briefcase size={12} className="text-brand-red" /> Active Projects
                         </CardTitle>
                     </CardHeader>
@@ -227,7 +227,7 @@ export default function ClientDashboardPage() {
                 </Card>
                 <Card className="bg-bg-secondary border-border-main">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-[10px] text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                        <CardTitle className="text-[10px] text-text-muted uppercase tracking-wider flex items-center gap-2">
                             <ClipboardList size={12} className="text-accent-gold" /> Open Tickets
                         </CardTitle>
                     </CardHeader>
@@ -239,7 +239,7 @@ export default function ClientDashboardPage() {
                 </Card>
                 <Card className="bg-bg-secondary border-border-main">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-[10px] text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                        <CardTitle className="text-[10px] text-text-muted uppercase tracking-wider flex items-center gap-2">
                             <Coins size={12} className="text-text-green" /> Outstanding A/R
                         </CardTitle>
                     </CardHeader>
@@ -249,7 +249,7 @@ export default function ClientDashboardPage() {
                 </Card>
                 <Card className="bg-bg-secondary border-border-main">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-[10px] text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                        <CardTitle className="text-[10px] text-text-muted uppercase tracking-wider flex items-center gap-2">
                             <Activity size={12} className="text-brand-red" /> Live Sessions
                         </CardTitle>
                     </CardHeader>
@@ -264,7 +264,7 @@ export default function ClientDashboardPage() {
             {/* Analytics Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="bg-bg-secondary border border-border-main rounded-xl p-4">
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-3 flex items-center gap-1.5"><ClipboardList size={10} className="text-brand-red" /> Requests / Month</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-3 flex items-center gap-1.5"><ClipboardList size={10} className="text-brand-red" /> Requests / Month</p>
                     {requestsByMonth.length > 0 ? (
                         <ResponsiveContainer width="100%" height={160}>
                             <BarChart data={requestsByMonth} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
@@ -275,11 +275,11 @@ export default function ClientDashboardPage() {
                             </BarChart>
                         </ResponsiveContainer>
                     ) : (
-                        <div className="h-[160px] flex items-center justify-center"><p className="text-[9px] text-text-muted uppercase opacity-40">No requests yet</p></div>
+                        <div className="h-[160px] flex items-center justify-center"><p className="text-[11px] text-text-muted opacity-40">No requests yet</p></div>
                     )}
                 </div>
                 <div className="bg-bg-secondary border border-border-main rounded-xl p-4">
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-3 flex items-center gap-1.5"><Coins size={10} className="text-brand-red" /> Invoice Status</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-3 flex items-center gap-1.5"><Coins size={10} className="text-brand-red" /> Invoice Status</p>
                     {invoicePie.length > 0 ? (
                         <ResponsiveContainer width="100%" height={160}>
                             <PieChart>
@@ -290,11 +290,11 @@ export default function ClientDashboardPage() {
                             </PieChart>
                         </ResponsiveContainer>
                     ) : (
-                        <div className="h-[160px] flex items-center justify-center"><p className="text-[9px] text-text-muted uppercase opacity-40">No invoices yet</p></div>
+                        <div className="h-[160px] flex items-center justify-center"><p className="text-[11px] text-text-muted opacity-40">No invoices yet</p></div>
                     )}
                 </div>
                 <div className="bg-bg-secondary border border-border-main rounded-xl p-4">
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-3 flex items-center gap-1.5"><Activity size={10} className="text-brand-red" /> Project Progress</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-3 flex items-center gap-1.5"><Activity size={10} className="text-brand-red" /> Project Progress</p>
                     {projectProgress.length > 0 ? (
                         <ResponsiveContainer width="100%" height={160}>
                             <BarChart data={projectProgress} layout="vertical" margin={{ top: 0, right: 4, bottom: 0, left: 0 }}>
@@ -305,7 +305,7 @@ export default function ClientDashboardPage() {
                             </BarChart>
                         </ResponsiveContainer>
                     ) : (
-                        <div className="h-[160px] flex items-center justify-center"><p className="text-[9px] text-text-muted uppercase opacity-40">No projects yet</p></div>
+                        <div className="h-[160px] flex items-center justify-center"><p className="text-[11px] text-text-muted opacity-40">No projects yet</p></div>
                     )}
                 </div>
             </div>
@@ -320,7 +320,7 @@ export default function ClientDashboardPage() {
                                 <CardDescription>Status tracking for your low voltage projects.</CardDescription>
                             </div>
                             <Link href="/client/projects">
-                                <Button variant="outline" size="sm" className="h-7 text-[9px] uppercase font-bold">
+                                <Button variant="outline" size="sm" className="h-7 text-[11px] font-bold">
                                     View All
                                 </Button>
                             </Link>
@@ -330,7 +330,7 @@ export default function ClientDashboardPage() {
                                 {myProjects.length === 0 ? (
                                     <div className="p-12 text-center space-y-2">
                                         <Briefcase size={24} className="mx-auto text-text-muted opacity-40" />
-                                        <p className="text-xs text-text-muted uppercase tracking-widest">No active projects.</p>
+                                        <p className="text-xs text-text-muted">No active projects.</p>
                                         <p className="text-[10px] text-text-muted">Contact Aaromach to start a new project.</p>
                                     </div>
                                 ) : (
@@ -338,8 +338,8 @@ export default function ClientDashboardPage() {
                                         <Link key={project.id} href="/client/projects">
                                             <div className="p-4 flex items-center justify-between hover:bg-bg-tertiary transition-colors group cursor-pointer text-left">
                                                 <div className="space-y-1 min-w-0 flex-1 mr-4">
-                                                    <p className="text-sm font-bold text-text-primary uppercase tracking-wide truncate">{project.name}</p>
-                                                    <div className="flex flex-wrap items-center gap-3 text-[10px] text-text-muted font-bold uppercase">
+                                                    <p className="text-sm font-bold text-text-primary tracking-wide truncate">{project.name}</p>
+                                                    <div className="flex flex-wrap items-center gap-3 text-[10px] text-text-muted font-bold">
                                                         <span className="flex items-center gap-1.5">
                                                             <MapPin size={10} className="text-brand-red flex-shrink-0" />
                                                             <span className="truncate max-w-[120px]">{project.location}</span>
@@ -351,7 +351,7 @@ export default function ClientDashboardPage() {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-3 flex-shrink-0">
-                                                    <Badge variant={project.status === 'active' ? 'active' : 'completed'} className="h-5 uppercase">
+                                                    <Badge variant={project.status === 'active' ? 'active' : 'completed'} className="h-5">
                                                         {project.status}
                                                     </Badge>
                                                     <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all hidden sm:block" />
@@ -375,7 +375,7 @@ export default function ClientDashboardPage() {
                                 {recentActivity.length === 0 ? (
                                     <div className="p-12 text-center space-y-2">
                                         <Clock size={24} className="mx-auto text-text-muted opacity-40" />
-                                        <p className="text-xs text-text-muted uppercase tracking-widest">No recent field activity.</p>
+                                        <p className="text-xs text-text-muted">No recent field activity.</p>
                                     </div>
                                 ) : (
                                     recentActivity.map(activity => (
@@ -385,15 +385,15 @@ export default function ClientDashboardPage() {
                                                     <Clock size={14} />
                                                 </div>
                                                 <div className="text-left min-w-0">
-                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate">{activity.description || activity.title}</p>
-                                                    <p className="text-[9px] text-text-muted uppercase tracking-widest mt-0.5 truncate">
+                                                    <p className="text-xs font-bold text-text-primary tracking-wide truncate">{activity.description || activity.title}</p>
+                                                    <p className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5 truncate">
                                                         {activity.location} · {formatDateStr(activity.scheduleDate)}
                                                     </p>
                                                 </div>
                                             </div>
                                             <Badge
                                                 variant={activity.status === 'completed' ? 'active' : activity.status === 'in-progress' ? 'inprogress' : 'scheduled'}
-                                                className="uppercase h-5 flex-shrink-0 ml-3"
+                                                className="h-5 flex-shrink-0 ml-3"
                                             >
                                                 {activity.status}
                                             </Badge>
@@ -410,7 +410,7 @@ export default function ClientDashboardPage() {
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                             <CardTitle>Service Requests</CardTitle>
-                            <Button variant="default" size="sm" className="h-7 text-[9px] uppercase font-bold" onClick={() => router.push('/client/tickets')}>
+                            <Button variant="default" size="sm" className="h-7 text-[11px] font-bold" onClick={() => router.push('/client/tickets')}>
                                 <Plus size={12} className="mr-1.5" />
                                 New
                             </Button>
@@ -420,8 +420,8 @@ export default function ClientDashboardPage() {
                                 {myRequests.length === 0 ? (
                                     <div className="p-8 text-center space-y-2">
                                         <ClipboardList size={20} className="mx-auto text-text-muted opacity-40" />
-                                        <p className="text-[10px] text-text-muted uppercase tracking-widest">No pending requests.</p>
-                                        <Button variant="outline" size="sm" className="h-7 text-[9px] uppercase font-bold mt-2" onClick={() => router.push('/client/tickets')}>
+                                        <p className="text-[10px] text-text-muted uppercase tracking-wider">No pending requests.</p>
+                                        <Button variant="outline" size="sm" className="h-7 text-[11px] font-bold mt-2" onClick={() => router.push('/client/tickets')}>
                                             Submit a Ticket
                                         </Button>
                                     </div>
@@ -436,11 +436,11 @@ export default function ClientDashboardPage() {
                                                 <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide line-clamp-1 flex-1">
                                                     {request.description}
                                                 </p>
-                                                <Badge variant={request.status === 'new' ? 'pending' : 'active'} className="text-[8px] h-4 uppercase flex-shrink-0">
+                                                <Badge variant={request.status === 'new' ? 'pending' : 'active'} className="text-[10px] h-4 flex-shrink-0">
                                                     {request.status}
                                                 </Badge>
                                             </div>
-                                            <p className="text-[9px] text-text-muted uppercase tracking-widest">
+                                            <p className="text-[10px] text-text-muted uppercase tracking-wider">
                                                 {request.requestType} · {formatDateStr(request.submittedDate)}
                                             </p>
                                         </div>
@@ -449,7 +449,7 @@ export default function ClientDashboardPage() {
                             </div>
                             {myRequests.length > 4 && (
                                 <div className="p-3 border-t border-border-sub">
-                                    <Button variant="ghost" size="sm" className="w-full h-7 text-[9px] uppercase font-bold" onClick={() => router.push('/client/tickets')}>
+                                    <Button variant="ghost" size="sm" className="w-full h-7 text-[11px] font-bold" onClick={() => router.push('/client/tickets')}>
                                         View All {myRequests.length} Requests
                                     </Button>
                                 </div>

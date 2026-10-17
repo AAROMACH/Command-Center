@@ -69,7 +69,7 @@ export function ReviewQueueView({ jobs, technicians, onSendToDispatch, onArchive
     return (
       <div className="p-24 text-center border-2 border-dashed border-border-main rounded-xl bg-bg-secondary/30">
         <ClipboardList size={32} className="mx-auto text-text-muted mb-3 opacity-40" />
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">
+        <p className="text-xs font-bold text-text-muted italic">
           Review queue is clear — no cancelled or unfinished jobs awaiting a decision.
         </p>
       </div>
@@ -91,16 +91,16 @@ export function ReviewQueueView({ jobs, technicians, onSendToDispatch, onArchive
                   <div className="flex items-center gap-2 flex-wrap">
                     <WorkOrderId wo={wo} />
                     {newIds?.has(wo.id) && (
-                      <Badge className="text-[8px] h-4 px-1.5 uppercase tracking-widest bg-brand-red text-white animate-pulse">New</Badge>
+                      <Badge className="text-[10px] h-4 px-1.5 uppercase tracking-wider bg-brand-red text-white animate-pulse">New</Badge>
                     )}
-                    <Badge variant="outline" className="text-[8px] h-4 px-1.5 uppercase tracking-widest border-brand-red/40 text-brand-red bg-brand-red/5">
+                    <Badge variant="outline" className="text-[10px] h-4 px-1.5 uppercase tracking-wider border-brand-red/40 text-brand-red bg-brand-red/5">
                       {wo.techOutcome === 'did_not_do'
                         ? <><XCircle size={10} className="mr-1" />Did Not Do</>
                         : <><Ban size={10} className="mr-1" />Cancelled</>}
                     </Badge>
                   </div>
-                  <p className="text-xs font-bold text-text-primary uppercase tracking-wide mt-1.5">{wo.title || wo.description}</p>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                  <p className="text-xs font-bold text-text-primary tracking-wide mt-1.5">{wo.title || wo.description}</p>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-[10px] text-text-muted font-bold uppercase tracking-wider">
                     <span>{wo.clientName || 'Unassigned Client'}</span>
                     <span>·</span>
                     <span>{formatCityState(wo.location)}</span>
@@ -115,7 +115,7 @@ export function ReviewQueueView({ jobs, technicians, onSendToDispatch, onArchive
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 text-[9px] font-bold uppercase tracking-widest border-brand-blue text-brand-blue hover:bg-brand-blue/10"
+                    className="h-8 text-[10px] font-bold uppercase tracking-wider border-brand-blue text-brand-blue hover:bg-brand-blue/10"
                     onClick={() => onSendToDispatch(wo)}
                   >
                     <Send size={13} className="mr-1.5" /> Move to Unassigned
@@ -123,7 +123,7 @@ export function ReviewQueueView({ jobs, technicians, onSendToDispatch, onArchive
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 text-[9px] font-bold uppercase tracking-widest border-text-muted text-text-muted hover:bg-bg-tertiary"
+                    className="h-8 text-[10px] font-bold uppercase tracking-wider border-text-muted text-text-muted hover:bg-bg-tertiary"
                     onClick={() => onArchive(wo)}
                   >
                     <ArchiveIcon size={13} className="mr-1.5" /> Move to Archives

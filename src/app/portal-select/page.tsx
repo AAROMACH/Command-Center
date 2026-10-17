@@ -127,7 +127,7 @@ export default function PortalSelectPage() {
         )}
 
         <div className="space-y-2">
-          <h1 className="text-2xl font-black uppercase tracking-wide text-text-primary">Select Portal</h1>
+          <h1 className="text-2xl font-black tracking-wide text-text-primary">Select Portal</h1>
           <p className="text-sm text-text-secondary">Your account has access to multiple portals. Choose where to go.</p>
         </div>
 
@@ -150,7 +150,7 @@ export default function PortalSelectPage() {
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className={cn('text-sm font-black uppercase tracking-widest', meta.color)}>{meta.label}</p>
+                    <p className={cn('text-sm font-bold', meta.color)}>{meta.label}</p>
                     <p className="text-xs text-text-muted mt-0.5">{meta.description}</p>
                   </div>
                 </div>
@@ -162,12 +162,12 @@ export default function PortalSelectPage() {
         <Button
           variant="ghost"
           onClick={handleSignOut}
-          className="w-full h-10 font-bold uppercase tracking-widest text-xs text-text-muted hover:text-text-primary"
+          className="w-full h-10 font-bold text-xs text-text-muted hover:text-text-primary"
         >
           <LogOut size={14} className="mr-2" /> Sign Out
         </Button>
 
-        <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">
+        <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">
           Aaromach Command Center · Authorized Access Only
         </p>
       </div>

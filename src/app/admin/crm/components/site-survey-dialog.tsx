@@ -34,7 +34,7 @@ type Props = {
 
 type Draft = Omit<SiteSurvey, 'leadId' | 'createdAt' | 'updatedAt' | 'createdBy'> & Partial<Pick<SiteSurvey, 'createdAt' | 'createdBy'>>;
 
-const labelCls = 'text-[10px] font-bold uppercase tracking-widest text-text-muted';
+const labelCls = 'text-[10px] font-bold uppercase tracking-wider text-text-muted';
 const inputCls = 'h-9 text-xs bg-bg-tertiary border-border-main';
 
 function Num({ label, value, onChange, suffix }: { label: string; value: number; onChange: (n: number) => void; suffix?: string }) {
@@ -168,10 +168,10 @@ export function SiteSurveyDialog({ open, lead, survey, currentUserId, currentUse
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="bg-bg-secondary border-border-main sm:max-w-3xl max-h-[92vh] flex flex-col p-0">
         <DialogHeader className="p-5 pb-3 border-b border-border-sub">
-          <DialogTitle className="flex items-center gap-2 text-sm font-black uppercase tracking-widest">
+          <DialogTitle className="flex items-center gap-2 text-sm font-bold">
             <ClipboardList size={15} className="text-brand-red" /> Site Survey
           </DialogTitle>
-          <DialogDescription className="text-[10px] uppercase font-bold text-text-muted">
+          <DialogDescription className="text-[10px] font-bold text-text-muted">
             {lead.companyName}{lead.address ? ` · ${lead.address}` : ''}
           </DialogDescription>
           <div className="grid grid-cols-3 gap-2 pt-2">
@@ -188,7 +188,7 @@ export function SiteSurveyDialog({ open, lead, survey, currentUserId, currentUse
         <div className="flex gap-1 px-5 pt-3 overflow-x-auto shrink-0">
           {ordered.map(s => (
             <button key={s.key} onClick={() => setSection(s.key)}
-              className={cn('px-3 h-8 rounded-md text-[9px] font-black uppercase tracking-widest whitespace-nowrap border transition-colors',
+              className={cn('px-3 h-8 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap border transition-colors',
                 section === s.key ? 'bg-brand-red text-white border-brand-red' : s.relevant ? 'border-border-main text-text-primary' : 'border-border-sub text-text-muted')}>
               {s.label}
             </button>
@@ -236,7 +236,7 @@ export function SiteSurveyDialog({ open, lead, survey, currentUserId, currentUse
                     const on = d.cabling.pathways.includes(p);
                     return (
                       <button key={p} type="button" onClick={() => patch('cabling', { pathways: on ? d.cabling.pathways.filter(x => x !== p) : [...d.cabling.pathways, p] })}
-                        className={cn('px-2.5 h-7 rounded-md border text-[9px] font-bold uppercase tracking-wider', on ? 'bg-brand-red/15 border-brand-red/40 text-text-primary' : 'border-border-main text-text-muted')}>
+                        className={cn('px-2.5 h-7 rounded-md border text-[10px] font-bold uppercase tracking-wider', on ? 'bg-brand-red/15 border-brand-red/40 text-text-primary' : 'border-border-main text-text-muted')}>
                         {p}
                       </button>
                     );
@@ -268,7 +268,7 @@ export function SiteSurveyDialog({ open, lead, survey, currentUserId, currentUse
                   <Input value={c.notes} onChange={e => setCloset(i, { notes: e.target.value })} placeholder="Existing switches, space on backboard, HVAC..." className={inputCls} />
                 </div>
               ))}
-              <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase"
+              <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold"
                 onClick={() => setD(p => p && ({ ...p, closets: [...p.closets, { name: p.closets.length ? `IDF-${p.closets.length}` : 'MDF', location: '', rackNeeded: false, powerAvailable: false, grounded: false, notes: '' }] }))}>
                 <Plus size={11} className="mr-1.5" /> Add Closet
               </Button>
@@ -325,7 +325,7 @@ export function SiteSurveyDialog({ open, lead, survey, currentUserId, currentUse
           <div className="space-y-2 pt-2 border-t border-border-sub">
             <div className="flex items-center justify-between">
               <Label className={labelCls}>Photos & Plans ({d.photos.length})</Label>
-              <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase" onClick={() => fileRef.current?.click()} disabled={uploading > 0}>
+              <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold" onClick={() => fileRef.current?.click()} disabled={uploading > 0}>
                 {uploading > 0 ? <Loader2 size={11} className="mr-1.5 animate-spin" /> : <Camera size={11} className="mr-1.5" />}
                 {uploading > 0 ? `Uploading ${uploading}...` : 'Add Photos'}
               </Button>
@@ -337,13 +337,13 @@ export function SiteSurveyDialog({ open, lead, survey, currentUserId, currentUse
                   <div key={p.storagePath} className="relative group">
                     <a href={p.url} target="_blank" rel="noreferrer" className="block aspect-square rounded-md overflow-hidden border border-border-sub bg-bg-tertiary">
                       {/\.pdf/i.test(p.storagePath)
-                        ? <span className="h-full flex items-center justify-center text-[10px] font-black text-text-muted">PDF</span>
+                        ? <span className="h-full flex items-center justify-center text-[10px] font-bold text-text-muted">PDF</span>
                         : <img src={p.url} alt={p.caption || 'Survey photo'} className="h-full w-full object-cover" />}
                     </a>
                     <button onClick={() => removePhoto(i)} className="absolute top-1 right-1 p-0.5 rounded bg-black/60 text-white opacity-0 group-hover:opacity-100"><X size={11} /></button>
                     <input value={p.caption || ''} placeholder="Caption"
                       onChange={e => setD(prev => prev && ({ ...prev, photos: prev.photos.map((x, j) => j === i ? { ...x, caption: e.target.value } : x) }))}
-                      className="mt-1 w-full bg-transparent text-[9px] text-text-muted focus:outline-none focus:text-text-primary" />
+                      className="mt-1 w-full bg-transparent text-[11px] text-text-muted focus:outline-none focus:text-text-primary" />
                   </div>
                 ))}
               </div>
@@ -355,9 +355,9 @@ export function SiteSurveyDialog({ open, lead, survey, currentUserId, currentUse
 
         <DialogFooter className="gap-2 p-4 border-t border-border-sub">
           <span className="mr-auto text-[10px] font-bold uppercase tracking-wider text-text-muted self-center">{drops} drops · {d.photos.length} photos</span>
-          <Button variant="ghost" size="sm" className="text-[10px] uppercase font-bold" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button variant="outline" size="sm" className="text-[10px] uppercase font-bold" onClick={() => save('draft')} disabled={saving || uploading > 0}>Save Draft</Button>
-          <Button size="sm" className="text-[10px] uppercase font-bold bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => save('complete')} disabled={saving || uploading > 0}>
+          <Button variant="ghost" size="sm" className="text-[10px] font-bold" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button variant="outline" size="sm" className="text-[10px] font-bold" onClick={() => save('draft')} disabled={saving || uploading > 0}>Save Draft</Button>
+          <Button size="sm" className="text-[10px] font-bold bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => save('complete')} disabled={saving || uploading > 0}>
             {saving && <Loader2 size={12} className="animate-spin mr-1.5" />} Mark Complete
           </Button>
         </DialogFooter>

@@ -19,14 +19,14 @@ export default function SalesSettingsPage() {
             <section className="space-y-4">
                 <div className="flex items-center gap-2 px-1">
                     <Bell size={14} className="text-brand-red" />
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Notifications</h3>
+                    <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Notifications</h3>
                 </div>
                 <NotificationPrefsCard />
             </section>
             <section className="space-y-4">
                 <div className="flex items-center gap-2 px-1">
                     <Type size={14} className="text-brand-red" />
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Display</h3>
+                    <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Display</h3>
                 </div>
                 <ThemeToggleSetting />
                 <FontPreferenceSetting />

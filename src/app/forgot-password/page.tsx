@@ -72,7 +72,7 @@ export default function ForgotPasswordPage() {
             )}
           </div>
           <div>
-            <CardTitle className="text-xl font-bold uppercase tracking-wider text-text-primary">
+            <CardTitle className="text-xl font-bold tracking-wider text-text-primary">
               Forgot Password
             </CardTitle>
             <CardDescription className="text-text-muted">
@@ -89,8 +89,8 @@ export default function ForgotPasswordPage() {
                 </div>
             </div>
             <div className="space-y-2">
-                <p className="text-sm font-bold text-text-primary uppercase tracking-wide">Protocol Initialized</p>
-                <p className="text-xs text-text-muted leading-relaxed uppercase">
+                <p className="text-sm font-bold text-text-primary tracking-wide">Protocol Initialized</p>
+                <p className="text-xs text-text-muted leading-relaxed">
                     A recovery link has been dispatched to: <br/>
                     <span className="text-text-primary font-bold">{email}</span>
                 </p>
@@ -107,7 +107,7 @@ export default function ForgotPasswordPage() {
           <form onSubmit={handleReset}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-text-muted">Email</Label>
+                <Label htmlFor="email" className="text-xs font-bold text-text-muted">Email</Label>
                 <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                     <Input
@@ -129,13 +129,13 @@ export default function ForgotPasswordPage() {
               <Button 
                 type="submit" 
                 disabled={isLoading}
-                className="w-full h-11 bg-brand-red hover:bg-brand-red-hover text-white font-bold uppercase tracking-widest"
+                className="w-full h-11 bg-brand-red hover:bg-brand-red-hover text-white font-bold"
               >
                 {isLoading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : "Send Reset Email"}
               </Button>
               <Link 
                 href="/login" 
-                className="text-[10px] font-bold uppercase text-text-muted hover:text-text-primary transition-colors tracking-[0.2em] flex items-center justify-center gap-2"
+                className="text-[10px] font-bold uppercase text-text-muted hover:text-text-primary transition-colors tracking-wider flex items-center justify-center gap-2"
               >
                 <ArrowLeft size={12}/> Back to Login
               </Link>

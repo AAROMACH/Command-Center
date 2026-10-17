@@ -277,7 +277,7 @@ export default function ClientTicketsPage() {
                 <div className="page-header-right items-center gap-3">
                     <Button
                         variant="outline"
-                        className="h-10 px-4 font-bold uppercase tracking-widest text-[10px]"
+                        className="h-10 px-4 font-bold uppercase tracking-wider text-[10px]"
                         onClick={() => {
                             const params = new URLSearchParams({
                                 name: currentUser?.name || '',
@@ -291,7 +291,7 @@ export default function ClientTicketsPage() {
                         <ExternalLink size={13} className="mr-2" />
                         Go to Form
                     </Button>
-                    <Button variant="default" onClick={() => setIsNewTicketOpen(true)} className="h-10 px-6 font-bold uppercase tracking-widest">
+                    <Button variant="default" onClick={() => setIsNewTicketOpen(true)} className="h-10 px-6 font-bold">
                         <Plus size={16} className="mr-2"/>
                         Create Ticket
                     </Button>
@@ -302,7 +302,7 @@ export default function ClientTicketsPage() {
                 <div className="search-wrap flex-1 !mb-0 w-full md:w-auto text-left">
                     <Search className="h-4 w-4 text-text-muted" />
                     <input 
-                        className="search-input !h-10 !text-xs font-bold uppercase !w-full bg-bg-primary text-left" 
+                        className="search-input !h-10 !text-xs font-bold !w-full bg-bg-primary text-left" 
                         placeholder="Search tickets by ID, site, or description..." 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -311,14 +311,14 @@ export default function ClientTicketsPage() {
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                        <SelectTrigger className="w-[160px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest border-border-main">
+                        <SelectTrigger className="w-[160px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-wider border-border-main">
                             <SelectValue placeholder="Sort Registry" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="newest" className="text-[10px] uppercase font-bold">Newest First</SelectItem>
-                            <SelectItem value="oldest" className="text-[10px] uppercase font-bold">Earliest First</SelectItem>
-                            <SelectItem value="priority" className="text-[10px] uppercase font-bold">Priority Level</SelectItem>
-                            <SelectItem value="type" className="text-[10px] uppercase font-bold">Job Category</SelectItem>
+                            <SelectItem value="newest" className="text-[10px] font-bold">Newest First</SelectItem>
+                            <SelectItem value="oldest" className="text-[10px] font-bold">Earliest First</SelectItem>
+                            <SelectItem value="priority" className="text-[10px] font-bold">Priority Level</SelectItem>
+                            <SelectItem value="type" className="text-[10px] font-bold">Job Category</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -349,21 +349,21 @@ export default function ClientTicketsPage() {
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-2 mb-1 text-left">
                             <Plus className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">New Service Intake</DialogTitle>
+                            <DialogTitle className="text-lg font-bold text-text-primary">New Service Intake</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Submit detailed job requirements for administrative audit and dispatch.</DialogDescription>
+                        <DialogDescription className="text-xs font-bold text-text-muted text-left">Submit detailed job requirements for administrative audit and dispatch.</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleCreateTicket}>
                         <div className="px-6 py-4 space-y-6 text-left">
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Issue Summary / Subject</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">Issue Summary / Subject</Label>
                                 <Input name="description" placeholder="e.g., Network Closet Cabling Failure" className="bg-bg-primary h-11 text-xs" required />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2 text-left">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Request Type</Label>
+                                    <Label className="text-[10px] font-bold text-text-muted">Request Type</Label>
                                     <Select name="type" defaultValue="Repair">
-                                        <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold tracking-wider"><SelectValue /></SelectTrigger>
+                                        <SelectTrigger className="bg-bg-primary h-11 text-xs font-bold tracking-wider"><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="Repair">Infrastructure Repair</SelectItem>
                                             <SelectItem value="Installation">Low Voltage Install</SelectItem>
@@ -373,9 +373,9 @@ export default function ClientTicketsPage() {
                                     </Select>
                                 </div>
                                 <div className="space-y-2 text-left">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Priority Level</Label>
+                                    <Label className="text-[10px] font-bold text-text-muted">Priority Level</Label>
                                     <Select name="priority" defaultValue="medium">
-                                        <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold tracking-wider"><SelectValue /></SelectTrigger>
+                                        <SelectTrigger className="bg-bg-primary h-11 text-xs font-bold tracking-wider"><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="low">Low (Standard)</SelectItem>
                                             <SelectItem value="medium">Medium</SelectItem>
@@ -386,7 +386,7 @@ export default function ClientTicketsPage() {
                                 </div>
                             </div>
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Site Location / Coordinates</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">Site Location / Coordinates</Label>
                                 <div className="space-y-1.5">
                                     <div className="relative">
                                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
@@ -403,7 +403,7 @@ export default function ClientTicketsPage() {
                                         type="button" 
                                         variant="ghost" 
                                         size="sm" 
-                                        className="h-6 text-[9px] uppercase font-bold tracking-widest text-accent-gold hover:bg-accent-gold/10 p-0 flex items-center gap-1.5"
+                                        className="h-6 text-[10px] uppercase font-bold tracking-wider text-accent-gold hover:bg-accent-gold/10 p-0 flex items-center gap-1.5"
                                         onClick={() => setIsSiteRegistryOpen(true)}
                                     >
                                         <MapPin size={12}/> Search Managed Sites
@@ -413,10 +413,10 @@ export default function ClientTicketsPage() {
 
                             <div className="space-y-3 pt-4 border-t border-border-sub">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
                                         <FileText size={14} className="text-brand-red" /> Site Evidence & Assets
                                     </Label>
-                                    <span className="text-[9px] font-mono text-text-muted">{attachments.length}/5 Assets</span>
+                                    <span className="text-[11px] font-mono text-text-muted">{attachments.length}/5 Assets</span>
                                 </div>
                                 
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -427,7 +427,7 @@ export default function ClientTicketsPage() {
                                             ) : (
                                                 <div className="flex flex-col items-center gap-1">
                                                     <FileText size={20} className="text-text-muted" />
-                                                    <span className="text-[8px] font-bold uppercase truncate max-w-full">{asset.name}</span>
+                                                    <span className="text-[10px] font-bold truncate max-w-full">{asset.name}</span>
                                                 </div>
                                             )}
                                             <button 
@@ -442,12 +442,12 @@ export default function ClientTicketsPage() {
                                     {attachments.length < 5 && (
                                         <label className="aspect-video rounded-lg border-2 border-dashed border-border-sub flex flex-col items-center justify-center gap-1 text-text-muted hover:border-brand-red transition-all cursor-pointer group">
                                             <Upload size={16} className="group-hover:text-brand-red" />
-                                            <span className="text-[8px] font-bold uppercase">Attach Evidence</span>
+                                            <span className="text-[10px] font-bold">Attach Evidence</span>
                                             <input type="file" className="hidden" onChange={handleFileUpload} />
                                         </label>
                                     )}
                                 </div>
-                                <p className="text-[9px] text-text-muted uppercase font-bold italic tracking-tighter">Authorized formats: PDF, JPG, PNG, DOC (Max 10MB)</p>
+                                <p className="text-[10px] text-text-muted uppercase font-bold italic tracking-tighter">Authorized formats: PDF, JPG, PNG, DOC (Max 10MB)</p>
                             </div>
                         </div>
                         <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-2">
@@ -464,7 +464,7 @@ export default function ClientTicketsPage() {
                     <DialogHeader className="p-6 pb-2 text-left">
                         <div className="flex items-center gap-2 mb-1">
                             <Navigation className="text-accent-gold h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary text-left">Site Registry</DialogTitle>
+                            <DialogTitle className="text-lg font-bold text-text-primary text-left">Site Registry</DialogTitle>
                         </div>
                         <DialogDescription className="text-xs text-left">Select verified coordinates for your organization.</DialogDescription>
                     </DialogHeader>
@@ -479,7 +479,7 @@ export default function ClientTicketsPage() {
                                 >
                                     <div className="flex justify-between items-start gap-3">
                                         <div className="space-y-0.5 text-left">
-                                            <p className="text-xs font-bold text-text-primary uppercase tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
+                                            <p className="text-xs font-bold text-text-primary tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
                                             <p className="text-[10px] text-text-muted flex items-center gap-1.5 text-left">
                                                 <MapPin size={10} className="text-brand-red shrink-0" />
                                                 <span className="truncate">{site.location}</span>
@@ -491,13 +491,13 @@ export default function ClientTicketsPage() {
                             ))}
                             {(!currentUser?.managedSites || currentUser.managedSites.length === 0) && (
                                 <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
-                                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic text-center">No verified sites on record for your organization</p>
+                                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider italic text-center">No verified sites on record for your organization</p>
                                 </div>
                             )}
                         </div>
                     </ScrollArea>
                     <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                        <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-10" onClick={() => setIsSiteRegistryOpen(false)}>Close Registry</Button>
+                        <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-wider h-10" onClick={() => setIsSiteRegistryOpen(false)}>Close Registry</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -509,7 +509,7 @@ function TicketList({ requests }: { requests: ServiceRequest[] }) {
     if (requests.length === 0) {
         return (
             <div className="p-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30 text-left">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-center">No tickets found in this registry</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-center">No tickets found in this registry</p>
             </div>
         );
     }
@@ -520,15 +520,15 @@ function TicketList({ requests }: { requests: ServiceRequest[] }) {
                     <CardContent className="min-h-24 p-5 flex items-center justify-between text-left">
                         <div className="text-left space-y-1 flex-1">
                             <div className="flex items-center gap-2 text-left">
-                                <span className="text-[9px] font-mono font-bold text-brand-red uppercase">{(ticket.id || '').toUpperCase()}</span>
-                                <Badge variant={ticket.priority === 'critical' ? 'high' : 'medium'} className="text-[7px] h-3.5 px-1 uppercase">{ticket.priority}</Badge>
+                                <span className="text-[11px] font-mono font-bold text-brand-red">{(ticket.id || '').toUpperCase()}</span>
+                                <Badge variant={ticket.priority === 'critical' ? 'high' : 'medium'} className="text-[10px] h-3.5 px-1">{ticket.priority}</Badge>
                             </div>
-                            <h3 className="text-sm font-bold text-text-primary uppercase truncate max-w-[400px] text-left">{ticket.description}</h3>
-                            <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left">
+                            <h3 className="text-sm font-bold text-text-primary truncate max-w-[400px] text-left">{ticket.description}</h3>
+                            <div className="flex items-center gap-4 text-[10px] text-text-muted font-bold uppercase tracking-wider text-left">
                                 <span className="flex items-center gap-1.5"><MapPin size={10} className="text-brand-red"/> {ticket.location}</span>
                             </div>
                         </div>
-                        <Badge variant={ticket.status === 'new' ? 'pending' : 'active'} className="uppercase h-6 px-4">{ticket.status}</Badge>
+                        <Badge variant={ticket.status === 'new' ? 'pending' : 'active'} className="h-6 px-4">{ticket.status}</Badge>
                     </CardContent>
                 </Card>
             ))}

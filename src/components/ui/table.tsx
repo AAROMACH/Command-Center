@@ -1,6 +1,7 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
+import { tableHeadClasses } from "@/lib/ui-classes"
 
 const Table = React.forwardRef<
   HTMLTableElement,
@@ -73,8 +74,9 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-9 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
-      className
+      // One header look everywhere (UI plan); callers keep alignment/width.
+      "h-10 px-4 text-left align-middle text-[10px] font-semibold uppercase tracking-wider text-text-muted [&:has([role=checkbox])]:pr-0",
+      tableHeadClasses(className)
     )}
     {...props}
   />

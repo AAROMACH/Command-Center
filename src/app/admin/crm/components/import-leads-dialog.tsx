@@ -249,10 +249,10 @@ export function ImportLeadsDialog({ open, onClose, currentUserId, currentUserNam
     <Dialog open={open} onOpenChange={v => !v && handleClose()}>
       <DialogContent className="bg-bg-elevated border-border-main sm:max-w-2xl max-h-[85vh] flex flex-col p-0">
         <DialogHeader className="p-6 pb-4 border-b border-border-sub">
-          <DialogTitle className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+          <DialogTitle className="text-[13px] font-bold flex items-center gap-2">
             <Upload size={14} className="text-brand-red" /> Import Leads
           </DialogTitle>
-          <DialogDescription className="text-[10px] uppercase font-bold text-text-muted">
+          <DialogDescription className="text-[10px] font-bold text-text-muted">
             PDF (first page), CSV or Excel — including Apollo exports. One deal per company; every person is saved to the account.
           </DialogDescription>
         </DialogHeader>
@@ -266,11 +266,11 @@ export function ImportLeadsDialog({ open, onClose, currentUserId, currentUserNam
             className="w-full rounded-xl border-2 border-dashed border-border-main hover:border-brand-red/50 transition-colors p-6 text-center"
           >
             {parsing ? (
-              <span className="flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-widest text-text-muted">
+              <span className="flex items-center justify-center gap-2 text-[11px] font-bold text-text-muted">
                 <Loader2 size={14} className="animate-spin" /> Extracting…
               </span>
             ) : (
-              <span className="text-[11px] font-bold uppercase tracking-widest text-text-muted">
+              <span className="text-[11px] font-bold text-text-muted">
                 Click to select files <span className="text-text-primary">·</span> .pdf .csv .xlsx
               </span>
             )}
@@ -311,7 +311,7 @@ export function ImportLeadsDialog({ open, onClose, currentUserId, currentUserNam
 
           {candidates.length > 0 && (
             <div className="flex items-center gap-3">
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">Lead Source</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Lead Source</span>
               <Select value={source} onValueChange={v => setSource(v as Lead['source'])}>
                 <SelectTrigger className="h-8 w-[180px] text-xs bg-bg-tertiary border-border-main"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-bg-elevated border-border-main">
@@ -324,7 +324,7 @@ export function ImportLeadsDialog({ open, onClose, currentUserId, currentUserNam
           {/* Extracted candidates */}
           {candidates.length > 0 && (
             <div className="flex-1 min-h-0 flex flex-col">
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">
                 Extracted Leads ({includedCount} of {candidates.length} selected)
               </p>
               <ScrollArea className="flex-1 rounded-lg border border-border-sub">
@@ -344,10 +344,10 @@ export function ImportLeadsDialog({ open, onClose, currentUserId, currentUserNam
                         <p className="text-[11px] font-bold text-text-primary truncate flex items-center gap-2">
                           {c.companyName || '(no company)'}
                           {c.duplicateOf && (
-                            <span className="text-[8px] font-black uppercase tracking-wider text-amber-400 border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 rounded shrink-0">Already in CRM</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 rounded shrink-0">Already in CRM</span>
                           )}
                           {findCompany(companies, c.companyName) && !c.duplicateOf && (
-                            <span className="text-[8px] font-black uppercase tracking-wider text-text-green border border-text-green/30 bg-text-green/10 px-1.5 py-0.5 rounded shrink-0">Existing account</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-text-green border border-text-green/30 bg-text-green/10 px-1.5 py-0.5 rounded shrink-0">Existing account</span>
                           )}
                         </p>
                         <p className="text-[10px] text-text-muted truncate">
@@ -362,7 +362,7 @@ export function ImportLeadsDialog({ open, onClose, currentUserId, currentUserNam
                           </p>
                         )}
                         {c.estimatedValue > 0 && <p className="text-[10px] text-text-green font-mono">${c.estimatedValue.toLocaleString()}</p>}
-                        <p className="text-[8px] text-text-muted uppercase tracking-widest mt-0.5">{c.sourceFile}</p>
+                        <p className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">{c.sourceFile}</p>
                       </div>
                       <button
                         type="button"
@@ -381,12 +381,12 @@ export function ImportLeadsDialog({ open, onClose, currentUserId, currentUserNam
         </div>
 
         <DialogFooter className="p-6 pt-4 border-t border-border-sub gap-2">
-          <Button variant="outline" size="sm" onClick={handleClose} disabled={importing} className="text-[10px] font-black uppercase">Cancel</Button>
+          <Button variant="outline" size="sm" onClick={handleClose} disabled={importing} className="text-[10px] font-bold">Cancel</Button>
           <Button
             size="sm"
             onClick={handleImport}
             disabled={importing || includedCount === 0}
-            className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase"
+            className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold"
           >
             {importing ? <><Loader2 size={12} className="mr-1.5 animate-spin" />Importing…</> : `Import ${includedCount} Lead${includedCount !== 1 ? 's' : ''}`}
           </Button>

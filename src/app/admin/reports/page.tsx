@@ -860,8 +860,8 @@ export default function ActivityAuditPage() {
     const renderTechnicianRoster = () => (
         <div className="space-y-2">
             <div className="flex justify-between items-center px-1 mb-4 text-left">
-                <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest text-left">{technicians.filter(t => !isClient(t)).length} Technicians</p>
-                <Button variant="ghost" size="sm" className="h-7 text-[10px] uppercase font-bold text-text-muted" onClick={() => { setSelectedTechId(null); }}>
+                <p className="text-[11px] font-bold text-text-muted text-left">{technicians.filter(t => !isClient(t)).length} Technicians</p>
+                <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold text-text-muted" onClick={() => { setSelectedTechId(null); }}>
                     <RefreshCw size={12} className="mr-1.5"/> Refresh
                 </Button>
             </div>
@@ -878,17 +878,17 @@ export default function ActivityAuditPage() {
                                 </Avatar>
                             </div>
                             <div className="text-left">
-                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors text-left">{t.name || 'Unnamed Operative'}</p>
-                                <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5 text-left">{t.email}</p>
+                                <p className="text-sm font-bold text-text-primary tracking-wide group-hover:text-brand-red transition-colors text-left">{t.name || 'Unnamed Operative'}</p>
+                                <p className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5 text-left">{t.email}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-6">
                             <div className="text-right">
-                                <p className={cn("text-xs font-bold uppercase", isReliable ? 'text-text-green' : 'text-accent-gold')}>
+                                <p className={cn("text-xs font-bold", isReliable ? 'text-text-green' : 'text-accent-gold')}>
                                     {pts} PTS · {isReliable ? 'Reliable' : 'At Risk'}
                                 </p>
                             </div>
-                            <Badge variant={isReliable ? 'active' : 'onhold'} className="h-5 text-[8px] uppercase tracking-widest">
+                            <Badge variant={isReliable ? 'active' : 'onhold'} className="h-5 text-[10px] uppercase tracking-wider">
                                 {isReliable ? 'Clean' : 'Audit Required'}
                             </Badge>
                             <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary transition-all" />
@@ -905,18 +905,18 @@ export default function ActivityAuditPage() {
                 <div className="flex items-center gap-3 text-left">
                     <MessageSquare className="text-brand-red h-5 w-5" />
                     <div className="text-left">
-                        <h3 className="text-sm font-bold text-text-primary uppercase tracking-wide text-left">Operational Communications</h3>
-                        <p className="text-[10px] text-text-muted uppercase tracking-widest text-left">System-wide broadcast terminal</p>
+                        <h3 className="text-sm font-bold text-text-primary tracking-wide text-left">Operational Communications</h3>
+                        <p className="text-[10px] text-text-muted uppercase tracking-wider text-left">System-wide broadcast terminal</p>
                     </div>
                 </div>
-                <Button onClick={() => setIsBroadcasting(true)} className="bg-brand-red hover:bg-brand-red-hover h-9 px-6 text-[10px] font-bold uppercase tracking-widest text-white">
+                <Button onClick={() => setIsBroadcasting(true)} className="bg-brand-red hover:bg-brand-red-hover h-9 px-6 text-[10px] font-bold uppercase tracking-wider text-white">
                     <Send size={14} className="mr-2" />
                     Broadcast Message
                 </Button>
             </div>
 
             <div className="space-y-3 text-left">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1 text-left">Message Ledger</h3>
+                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 px-1 text-left">Message Ledger</h3>
                 <div className="space-y-2">
                     {messages.map(msg => (
                         <div key={msg.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-3 text-left">
@@ -933,29 +933,29 @@ export default function ActivityAuditPage() {
                                     </div>
                                     <div className="text-left">
                                         <div className="flex items-center gap-2 text-left">
-                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide text-left">{msg.subject}</p>
+                                            <p className="text-xs font-bold text-text-primary tracking-wide text-left">{msg.subject}</p>
                                             {msg.isLocked && <Lock size={12} className="text-brand-red" />}
                                         </div>
-                                        <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest text-left">
+                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider text-left">
                                             {format(parseISO(msg.timestamp), 'MMM d, yyyy h:mm a')} · Target: {msg.targetPortal}
                                             {msg.expiresAt && ` · Expires: ${format(parseISO(msg.expiresAt), 'MMM d, h:mm a')}`}
                                         </p>
                                     </div>
                                 </div>
-                                <Badge variant="outline" className="text-[8px] uppercase">{msg.type}</Badge>
+                                <Badge variant="outline" className="text-[10px]">{msg.type}</Badge>
                             </div>
-                            <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium text-left">{msg.body}</p>
+                            <p className="text-xs text-text-secondary leading-relaxed font-medium text-left">{msg.body}</p>
                             <div className="pt-3 border-t border-border-sub/30 flex justify-between items-center text-left">
                                 <div className="flex items-center gap-2 text-left">
-                                    <div className="h-4 w-4 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[7px] font-bold">
+                                    <div className="h-4 w-4 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[10px] font-bold">
                                         {(msg.senderName || 'A').charAt(0)}
                                     </div>
-                                    <span className="text-[8px] text-text-muted font-bold uppercase tracking-widest text-left">Sent by {msg.senderName}</span>
+                                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider text-left">Sent by {msg.senderName}</span>
                                 </div>
                                 <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                    className="h-7 text-[8px] uppercase font-bold text-text-muted hover:text-text-red"
+                                    className="h-7 text-[10px] font-bold text-text-muted hover:text-text-red"
                                     onClick={() => handleRevokeBroadcast(msg.id)}
                                 >
                                     Revoke Broadcast
@@ -971,16 +971,16 @@ export default function ActivityAuditPage() {
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-2 mb-1 text-left">
                             <MessageSquare className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Compose Broadcast</DialogTitle>
+                            <DialogTitle className="text-lg font-bold">Compose Broadcast</DialogTitle>
                         </div>
                         <DialogDescription className="text-xs text-left">Transmit a tactical message to the selected portal registry.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-6 py-4 px-6 text-left">
                         <div className="grid grid-cols-2 gap-4 text-left">
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted text-left">Target Portal</Label>
+                                <Label className="text-[10px] font-bold text-text-muted text-left">Target Portal</Label>
                                 <Select value={newMessage.targetPortal} onValueChange={(val: any) => setNewMessage({...newMessage, targetPortal: val})}>
-                                    <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="h-10 bg-bg-primary text-xs font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Channels</SelectItem>
                                         <SelectItem value="tech">Technicians Only</SelectItem>
@@ -990,9 +990,9 @@ export default function ActivityAuditPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted text-left">Priority Level</Label>
+                                <Label className="text-[10px] font-bold text-text-muted text-left">Priority Level</Label>
                                 <Select value={newMessage.type} onValueChange={(val: any) => setNewMessage({...newMessage, type: val})}>
-                                    <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="h-10 bg-bg-primary text-xs font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="info">Informational</SelectItem>
                                         <SelectItem value="warning">System Alert</SelectItem>
@@ -1004,21 +1004,21 @@ export default function ActivityAuditPage() {
                         </div>
 
                         <div className="space-y-2 text-left">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted text-left">Subject / Headline</Label>
+                            <Label className="text-[10px] font-bold text-text-muted text-left">Subject / Headline</Label>
                             <Input 
                                 placeholder="Clear, concise directive..." 
                                 value={newMessage.subject}
                                 onChange={e => setNewMessage({...newMessage, subject: e.target.value})}
-                                className="h-10 bg-bg-primary border-border-sub text-xs font-bold uppercase tracking-wide"
+                                className="h-10 bg-bg-primary border-border-sub text-xs font-bold tracking-wide"
                             />
                         </div>
                         <div className="space-y-2 text-left">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted text-left">Message Body</Label>
+                            <Label className="text-[10px] font-bold text-text-muted text-left">Message Body</Label>
                             <Textarea 
                                 placeholder="Provide full context and required actions..." 
                                 value={newMessage.body}
                                 onChange={e => setNewMessage({...newMessage, body: e.target.value})}
-                                className="bg-bg-primary text-xs h-32 leading-relaxed uppercase font-medium"
+                                className="bg-bg-primary text-xs h-32 leading-relaxed font-medium"
                             />
                         </div>
                     </div>
@@ -1040,13 +1040,13 @@ export default function ActivityAuditPage() {
                     <Filter size={16} />
                 </div>
                 <div className="text-left">
-                    <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-text-primary text-left">{title}</h3>
-                    <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest text-left">{count} records match registry constraints</p>
+                    <h3 className="text-xs font-bold text-text-primary text-left">{title}</h3>
+                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider text-left">{count} records match registry constraints</p>
                 </div>
             </div>
 
             <div className="flex items-center gap-3 w-full md:w-auto">
-                <Button variant="outline" size="sm" className="h-9 px-4 uppercase text-[9px] font-bold tracking-widest" onClick={handleExportCurrentAudit}>
+                <Button variant="outline" size="sm" className="h-9 px-4 uppercase text-[10px] font-bold tracking-wider" onClick={handleExportCurrentAudit}>
                     <Download size={12} className="mr-2" /> Export CSV
                 </Button>
                 
@@ -1058,7 +1058,7 @@ export default function ActivityAuditPage() {
                         )}>
                             <CalendarIcon size={12} className={cn("mr-2", auditRange !== 'all' ? "text-brand-red" : "text-text-muted")} />
                             <span className={cn(
-                                "text-[10px] font-bold uppercase tracking-widest whitespace-nowrap",
+                                "text-[10px] font-bold uppercase tracking-wider whitespace-nowrap",
                                 auditRange !== 'all' ? "text-text-primary" : "text-text-muted"
                             )}>
                                 {auditRange === 'all' ? 'Full Temporal Registry' : 
@@ -1072,15 +1072,15 @@ export default function ActivityAuditPage() {
                     </PopoverTrigger>
                     <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
                         <div className="p-3 border-b border-border-sub bg-bg-tertiary flex justify-between items-center text-left">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Temporal constraints</p>
-                            <button onClick={() => { setAuditRange('all'); setCustomVisitRange(undefined); }} className="text-[9px] font-bold text-brand-red hover:underline">Reset</button>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-primary">Temporal constraints</p>
+                            <button onClick={() => { setAuditRange('all'); setCustomVisitRange(undefined); }} className="text-[11px] font-bold text-brand-red hover:underline">Reset</button>
                         </div>
                         <div className="p-3 space-y-4 text-left">
                             <div className="grid grid-cols-1 gap-2 text-left">
-                                <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] uppercase font-bold", auditRange === 'all' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('all')}>Full Registry</Button>
-                                <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] uppercase font-bold", auditRange === '7d' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('7d')}>Last 7 Days</Button>
-                                <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] uppercase font-bold", auditRange === '30d' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('30d')}>Last 30 Days</Button>
-                                <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] uppercase font-bold", auditRange === 'custom' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('custom')}>Custom Range</Button>
+                                <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] font-bold", auditRange === 'all' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('all')}>Full Registry</Button>
+                                <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] font-bold", auditRange === '7d' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('7d')}>Last 7 Days</Button>
+                                <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] font-bold", auditRange === '30d' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('30d')}>Last 30 Days</Button>
+                                <Button variant="ghost" size="sm" className={cn("justify-start h-8 text-[10px] font-bold", auditRange === 'custom' && "bg-bg-secondary text-brand-red")} onClick={() => setAuditRange('custom')}>Custom Range</Button>
                             </div>
                             {auditRange === 'custom' && (
                                 <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -1092,15 +1092,15 @@ export default function ActivityAuditPage() {
                 </Popover>
 
                 <Select value={visitSortDir} onValueChange={(v: any) => setVisitSortDir(v)}>
-                    <SelectTrigger className="w-[120px] h-9 bg-bg-primary text-[10px] uppercase font-bold border-border-main">
+                    <SelectTrigger className="w-[120px] h-9 bg-bg-primary text-[10px] font-bold border-border-main">
                         <div className="flex items-center gap-2">
                             <ArrowUpDown size={14} className="text-text-muted" />
                             <SelectValue />
                         </div>
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="desc" className="text-[10px] uppercase font-bold">Newest First</SelectItem>
-                        <SelectItem value="asc" className="text-[10px] uppercase font-bold">Earliest First</SelectItem>
+                        <SelectItem value="desc" className="text-[10px] font-bold">Newest First</SelectItem>
+                        <SelectItem value="asc" className="text-[10px] font-bold">Earliest First</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -1110,9 +1110,9 @@ export default function ActivityAuditPage() {
     return (
         <div className="max-w-[1200px] mx-auto space-y-8 text-left">
             <header className="space-y-1 text-center text-left">
-                <p className="text-[10px] font-black text-brand-red uppercase tracking-[0.3em] text-center">Business History</p>
-                <h1 className="text-3xl font-bold uppercase tracking-widest text-text-primary text-center">Archives</h1>
-                <p className="text-xs text-text-muted uppercase font-bold tracking-widest mt-2 text-center">History, logs, and search across all field service records</p>
+                <p className="text-[10px] font-bold text-brand-red uppercase tracking-wider text-center">Business History</p>
+                <h1 className="text-3xl font-bold text-text-primary text-center">Archives</h1>
+                <p className="text-xs text-text-muted font-bold mt-2 text-center">History, logs, and search across all field service records</p>
             </header>
 
             <div className="space-y-6 text-left">
@@ -1151,26 +1151,26 @@ export default function ActivityAuditPage() {
                                     {/* Filter bar */}
                                     <div className="flex flex-wrap items-center gap-3 p-4 bg-bg-secondary rounded-xl border border-border-sub">
                                         <Select value={timelineTechFilter} onValueChange={setTimelineTechFilter}>
-                                            <SelectTrigger className="h-8 w-[160px] text-[10px] font-bold uppercase bg-bg-primary border-border-main">
+                                            <SelectTrigger className="h-8 w-[160px] text-[10px] font-bold bg-bg-primary border-border-main">
                                                 <SelectValue placeholder="All Techs" />
                                             </SelectTrigger>
                                             <SelectContent className="bg-bg-elevated border-border-main">
-                                                <SelectItem value="all" className="text-[10px] uppercase font-bold">All Techs</SelectItem>
+                                                <SelectItem value="all" className="text-[10px] font-bold">All Techs</SelectItem>
                                                 {technicians.filter(t => !isClient(t)).map(t => (
-                                                    <SelectItem key={t.id} value={t.id} className="text-[10px] uppercase font-bold">{t.name}</SelectItem>
+                                                    <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold">{t.name}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
                                         <Select value={timelineTypeFilter} onValueChange={setTimelineTypeFilter}>
-                                            <SelectTrigger className="h-8 w-[160px] text-[10px] font-bold uppercase bg-bg-primary border-border-main">
+                                            <SelectTrigger className="h-8 w-[160px] text-[10px] font-bold bg-bg-primary border-border-main">
                                                 <SelectValue placeholder="All Events" />
                                             </SelectTrigger>
                                             <SelectContent className="bg-bg-elevated border-border-main">
-                                                <SelectItem value="all" className="text-[10px] uppercase font-bold">All Events</SelectItem>
-                                                <SelectItem value="assignment" className="text-[10px] uppercase font-bold">Assignments</SelectItem>
-                                                <SelectItem value="work_order" className="text-[10px] uppercase font-bold">Work Orders</SelectItem>
-                                                <SelectItem value="log" className="text-[10px] uppercase font-bold">Weekly Logs</SelectItem>
-                                                <SelectItem value="invoice" className="text-[10px] uppercase font-bold">Invoices</SelectItem>
+                                                <SelectItem value="all" className="text-[10px] font-bold">All Events</SelectItem>
+                                                <SelectItem value="assignment" className="text-[10px] font-bold">Assignments</SelectItem>
+                                                <SelectItem value="work_order" className="text-[10px] font-bold">Work Orders</SelectItem>
+                                                <SelectItem value="log" className="text-[10px] font-bold">Weekly Logs</SelectItem>
+                                                <SelectItem value="invoice" className="text-[10px] font-bold">Invoices</SelectItem>
                                             </SelectContent>
                                         </Select>
                                         <Input
@@ -1183,13 +1183,13 @@ export default function ActivityAuditPage() {
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                className="h-8 text-[9px] uppercase font-bold text-text-muted"
+                                                className="h-8 text-[11px] font-bold text-text-muted"
                                                 onClick={() => { setTimelineTechFilter('all'); setTimelineTypeFilter('all'); setTimelineClientFilter(''); }}
                                             >
                                                 <X size={11} className="mr-1" /> Clear
                                             </Button>
                                         )}
-                                        <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-text-muted">
+                                        <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-text-muted">
                                             {filteredTimelineEvents.length} events
                                         </span>
                                     </div>
@@ -1198,7 +1198,7 @@ export default function ActivityAuditPage() {
                                     {filteredTimelineEvents.length === 0 ? (
                                         <div className="py-24 text-center border border-dashed border-border-sub rounded-xl opacity-40">
                                             <ActivityIcon size={32} className="mx-auto text-text-muted mb-2" />
-                                            <p className="text-[10px] font-bold uppercase text-text-muted">No events match the current filter</p>
+                                            <p className="text-[10px] font-bold text-text-muted">No events match the current filter</p>
                                         </div>
                                     ) : (
                                         <div className="space-y-1">
@@ -1223,18 +1223,18 @@ export default function ActivityAuditPage() {
                                                         typeColors[event.type] || 'border-l-border-sub'
                                                     )}>
                                                         <div className="w-[120px] shrink-0 text-right">
-                                                            <p className="text-[9px] font-mono text-text-muted leading-tight">{tsDisplay}</p>
+                                                            <p className="text-[11px] font-mono text-text-muted leading-tight">{tsDisplay}</p>
                                                         </div>
                                                         <div className="flex-1 min-w-0 text-left">
-                                                            <p className={cn('text-[10px] font-black uppercase tracking-wide', event.color)}>{event.eventLabel}</p>
+                                                            <p className={cn('text-[10px] font-bold uppercase tracking-wide', event.color)}>{event.eventLabel}</p>
                                                             <p className="text-[11px] font-bold text-text-primary leading-tight mt-0.5 truncate">{event.entity}</p>
                                                             <div className="flex items-center gap-2 mt-0.5">
-                                                                {event.techName && <span className="text-[9px] text-text-muted uppercase font-bold">{event.techName}</span>}
-                                                                {event.techName && event.clientName && <span className="text-text-muted text-[9px]">·</span>}
-                                                                {event.clientName && <span className="text-[9px] text-text-muted uppercase">{event.clientName}</span>}
+                                                                {event.techName && <span className="text-[11px] text-text-muted font-bold">{event.techName}</span>}
+                                                                {event.techName && event.clientName && <span className="text-text-muted text-[11px]">·</span>}
+                                                                {event.clientName && <span className="text-[11px] text-text-muted">{event.clientName}</span>}
                                                             </div>
                                                         </div>
-                                                        <Badge variant="outline" className="text-[7px] uppercase shrink-0 h-4">{event.type.replace('_', ' ')}</Badge>
+                                                        <Badge variant="outline" className="text-[10px] shrink-0 h-4">{event.type.replace('_', ' ')}</Badge>
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
@@ -1257,7 +1257,7 @@ export default function ActivityAuditPage() {
                                 {selectedTechId && activeTech && techStats ? (
                                     <div className="space-y-8 animate-in fade-in duration-300 text-left">
                                         <div className="flex items-center justify-between text-left">
-                                            <Button variant="ghost" size="sm" onClick={() => setSelectedTechId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted text-left">
+                                            <Button variant="ghost" size="sm" onClick={() => setSelectedTechId(null)} className="h-8 text-[10px] font-bold text-text-muted text-left">
                                                 <ArrowLeft size={14} className="mr-2"/> Back to List
                                             </Button>
                                         </div>
@@ -1272,25 +1272,25 @@ export default function ActivityAuditPage() {
                                                                 <AvatarFallback className="text-[10px]">{(activeTech.name || 'U').charAt(0)}</AvatarFallback>
                                                             </Avatar>
                                                             <div className="space-y-0.5 text-center">
-                                                                <h2 className="text-lg font-bold text-text-primary uppercase tracking-wide text-center">{activeTech.name || 'Unnamed Operative'}</h2>
-                                                                <p className="text-[10px] text-text-muted font-mono uppercase tracking-widest text-center">{activeTech.email}</p>
+                                                                <h2 className="text-lg font-bold text-text-primary tracking-wide text-center">{activeTech.name || 'Unnamed Operative'}</h2>
+                                                                <p className="text-[10px] text-text-muted font-mono uppercase tracking-wider text-center">{activeTech.email}</p>
                                                             </div>
                                                         </div>
 
                                                         <div className="space-y-4 pt-3 border-t border-border-sub/30 text-left">
                                                             <div className="space-y-1 text-center">
-                                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] text-center">Penalty Points</p>
+                                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-center">Penalty Points</p>
                                                                 <p className={cn("text-4xl font-mono font-bold tracking-tighter text-center", techStats.penaltyPoints === 0 ? 'text-text-green' : 'text-accent-gold')}>{techStats.penaltyPoints}</p>
                                                             </div>
                                                             <div className="flex items-center justify-center gap-1.5 opacity-60 text-center">
-                                                                <span className="text-[8px] text-text-muted font-mono uppercase tracking-widest text-center">REG ID: {activeTech.userId || activeTech.id}</span>
+                                                                <span className="text-[10px] text-text-muted font-mono uppercase tracking-wider text-center">REG ID: {activeTech.userId || activeTech.id}</span>
                                                             </div>
 
                                                             <div className="flex justify-center gap-3 text-left">
-                                                                <Button variant="outline" size="sm" className="flex-1 h-8 !text-[10px] font-bold uppercase tracking-widest" asChild>
+                                                                <Button variant="outline" size="sm" className="flex-1 h-8 !text-[10px] font-bold uppercase tracking-wider" asChild>
                                                                     <a href={`mailto:${activeTech.email}`}><Mail size={14} className="mr-2"/> Email</a>
                                                                 </Button>
-                                                                <Button variant="outline" size="sm" className="flex-1 h-8 !text-[10px] font-bold uppercase tracking-widest" asChild>
+                                                                <Button variant="outline" size="sm" className="flex-1 h-8 !text-[10px] font-bold uppercase tracking-wider" asChild>
                                                                     <a href={`tel:${activeTech.phone}`}><Phone size={14} className="mr-2"/> Call</a>
                                                                 </Button>
                                                             </div>
@@ -1300,19 +1300,19 @@ export default function ActivityAuditPage() {
 
                                                 <Card className="bg-bg-tertiary/30 border-border-sub text-left">
                                                     <CardHeader className="p-4 pb-2 text-left">
-                                                        <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-left">
+                                                        <CardTitle className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 text-left">
                                                             <Gauge size={14} className="text-brand-red"/> Performance Index
                                                         </CardTitle>
                                                     </CardHeader>
                                                     <CardContent className="p-4 pt-0 space-y-3 text-left">
                                                         <div className="flex justify-between items-center px-1 text-left">
-                                                            <span className="text-[10px] font-bold text-text-muted uppercase text-left">Mission Success</span>
-                                                            <span className="text-xs font-bold text-text-primary uppercase text-right">{techStats.completed} / {techStats.total}</span>
+                                                            <span className="text-[10px] font-bold text-text-muted text-left">Mission Success</span>
+                                                            <span className="text-xs font-bold text-text-primary text-right">{techStats.completed} / {techStats.total}</span>
                                                         </div>
                                                         <div className="h-1.5 w-full bg-bg-primary rounded-full overflow-hidden border border-border-sub text-left">
                                                             <div className="h-full bg-brand-red" style={{ width: `${(techStats.completed / (techStats.total || 1)) * 100}%` }} />
                                                         </div>
-                                                        <p className="text-[8px] text-text-muted uppercase italic text-left">Finalized deployments within rolling registry.</p>
+                                                        <p className="text-[10px] text-text-muted italic text-left">Finalized deployments within rolling registry.</p>
                                                     </CardContent>
                                                 </Card>
                                             </div>
@@ -1331,11 +1331,11 @@ export default function ActivityAuditPage() {
                                                             <Table>
                                                                 <TableHeader className="bg-bg-tertiary">
                                                                     <TableRow className="hover:bg-transparent border-border-sub">
-                                                                        <TableHead className="text-[7px] uppercase font-black tracking-widest pl-6">Mission ID</TableHead>
-                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest text-left">Date</TableHead>
-                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
-                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Audit Registry</TableHead>
-                                                                        <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Actions</TableHead>
+                                                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider pl-6">Mission ID</TableHead>
+                                                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider text-left">Date</TableHead>
+                                                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider text-center">Status</TableHead>
+                                                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider text-center">Audit Registry</TableHead>
+                                                                        <TableHead className="text-right pr-6 text-[10px] uppercase font-bold tracking-wider">Actions</TableHead>
                                                                     </TableRow>
                                                                 </TableHeader>
                                                                 <TableBody>
@@ -1345,39 +1345,39 @@ export default function ActivityAuditPage() {
                                                                             <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary transition-colors cursor-pointer group text-left" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
                                                                                 <TableCell className="text-left py-4 pl-6 text-left">
                                                                                     <div className="flex flex-col gap-0.5 text-left">
-                                                                                        <span className="font-mono text-brand-red font-bold text-[9px] uppercase tracking-widest leading-none text-left">{(wo.id || '').toUpperCase()}</span>
-                                                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors text-left">{wo.title || wo.description}</p>
-                                                                                        <p className="text-[10px] text-text-muted font-bold uppercase mt-0.5 text-left">{wo.clientName}</p>
+                                                                                        <span className="font-mono text-brand-red font-bold text-[10px] uppercase tracking-wider leading-none text-left">{(wo.id || '').toUpperCase()}</span>
+                                                                                        <p className="text-xs font-bold text-text-primary tracking-wide group-hover:text-brand-red transition-colors text-left">{wo.title || wo.description}</p>
+                                                                                        <p className="text-[10px] text-text-muted font-bold mt-0.5 text-left">{wo.clientName}</p>
                                                                                     </div>
                                                                                 </TableCell>
-                                                                                <TableCell className="text-left text-xs font-mono font-bold text-text-secondary uppercase text-left">
+                                                                                <TableCell className="text-left text-xs font-mono font-bold text-text-secondary text-left">
                                                                                     {formatDateDisplay(wo.scheduleDate)}
                                                                                 </TableCell>
                                                                                 <TableCell className="text-center">
-                                                                                    <Badge variant={wo.status === 'completed' ? 'active' : wo.status === 'in-progress' ? 'inprogress' : 'onhold'} className="uppercase h-4 text-[7px] tracking-widest">
+                                                                                    <Badge variant={wo.status === 'completed' ? 'active' : wo.status === 'in-progress' ? 'inprogress' : 'onhold'} className="uppercase h-4 text-[10px] tracking-wider">
                                                                                         {wo.status}
                                                                                     </Badge>
                                                                                 </TableCell>
                                                                                 <TableCell className="text-center">
                                                                                     {linkedLog ? (
-                                                                                        <Badge variant="outline" className="text-[8px] bg-bg-primary border-border-sub uppercase tracking-tighter">
+                                                                                        <Badge variant="outline" className="text-[10px] bg-bg-primary border-border-sub uppercase tracking-tighter">
                                                                                             <FileCheck size={10} className="mr-1 text-text-green"/> WK: {linkedLog.weekOf}
                                                                                         </Badge>
                                                                                     ) : (
-                                                                                        <span className="text-[9px] text-text-muted font-bold uppercase italic opacity-40">Pending audit</span>
+                                                                                        <span className="text-[11px] text-text-muted font-bold italic opacity-40">Pending audit</span>
                                                                                     )}
                                                                                 </TableCell>
                                                                                 <TableCell className="text-right pr-6">
                                                                                     <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
                                                                                         {wo.isAudited ? (
-                                                                                            <Badge variant="active" className="h-7 text-[8px] uppercase tracking-widest px-2 bg-green-dim border-green-border text-text-green">
+                                                                                            <Badge variant="active" className="h-7 text-[10px] uppercase tracking-wider px-2 bg-green-dim border-green-border text-text-green">
                                                                                                 <ShieldCheck size={10} className="mr-1"/> Verified
                                                                                             </Badge>
                                                                                         ) : (
                                                                                             <Button 
                                                                                                 variant="outline" 
                                                                                                 size="sm" 
-                                                                                                className="h-7 text-[8px] uppercase font-bold border-text-green text-text-green hover:bg-green-dim"
+                                                                                                className="h-7 text-[10px] font-bold border-text-green text-text-green hover:bg-green-dim"
                                                                                                 onClick={() => handleVerifyAssignment(wo.id)}
                                                                                             >
                                                                                                 <Check size={12} className="mr-1"/> Verify
@@ -1408,17 +1408,17 @@ export default function ActivityAuditPage() {
                                                             <Table>
                                                                 <TableHeader className="bg-bg-tertiary">
                                                                     <TableRow className="hover:bg-transparent border-border-sub">
-                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Week Period</TableHead>
-                                                                        <TableHead className="text-[9px] uppercase font-black tracking-widest text-left">Audit Status</TableHead>
-                                                                        <TableHead className="text-right pr-6 text-[9px] uppercase font-black tracking-widest">Payout</TableHead>
+                                                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider pl-6">Week Period</TableHead>
+                                                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider text-left">Audit Status</TableHead>
+                                                                        <TableHead className="text-right pr-6 text-[10px] uppercase font-bold tracking-wider">Payout</TableHead>
                                                                     </TableRow>
                                                                 </TableHeader>
                                                                 <TableBody>
                                                                     {techStats.myLogs.map(log => (
                                                                         <TableRow key={log.id} className="border-border-sub hover:bg-bg-tertiary transition-colors text-left">
-                                                                            <TableCell className="font-bold uppercase text-xs text-left pl-6 text-left">Week of {log.weekOf}</TableCell>
+                                                                            <TableCell className="font-bold text-xs text-left pl-6 text-left">Week of {log.weekOf}</TableCell>
                                                                             <TableCell className="text-left text-left">
-                                                                                <Badge variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'onhold' : 'pending'} className="uppercase h-4 text-[7px] tracking-widest">
+                                                                                <Badge variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'onhold' : 'pending'} className="uppercase h-4 text-[10px] tracking-wider">
                                                                                     {log.status}
                                                                                 </Badge>
                                                                             </TableCell>
@@ -1441,8 +1441,8 @@ export default function ActivityAuditPage() {
                                                                         <ShieldAlert size={16}/>
                                                                     </div>
                                                                     <div className="text-left">
-                                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide text-left">{p.eventType.replace(/_/g, ' ')}</p>
-                                                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest mt-0.5 text-left">{format(parseISO(p.createdAt), 'MMM d, yyyy')} · {p.reason}</p>
+                                                                        <p className="text-xs font-bold text-text-primary tracking-wide text-left">{p.eventType.replace(/_/g, ' ')}</p>
+                                                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider mt-0.5 text-left">{format(parseISO(p.createdAt), 'MMM d, yyyy')} · {p.reason}</p>
                                                                     </div>
                                                                 </div>
                                                                 <span className="text-sm font-mono font-bold text-text-red">{p.scoreChange}</span>
@@ -1451,7 +1451,7 @@ export default function ActivityAuditPage() {
                                                         {techStats.penalties.length === 0 && (
                                                             <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-2xl bg-bg-secondary/30 text-left">
                                                                 <CheckCircle2 size={48} className="mx-auto text-text-green mb-2" />
-                                                                <p className="text-[10px] font-bold uppercase tracking-widest text-center">Clean penalty registry</p>
+                                                                <p className="text-[10px] font-bold uppercase tracking-wider text-center">Clean penalty registry</p>
                                                             </div>
                                                         )}
                                                     </TabsContent>
@@ -1499,19 +1499,19 @@ export default function ActivityAuditPage() {
                     <div className="space-y-6 animate-in fade-in duration-300 text-left">
                         {searchResults.length > 0 ? searchResults.map((r, i) => (
                             <div key={i} onClick={() => handleResultClick(r)} className="p-5 rounded-2xl border border-border-main bg-bg-secondary hover:border-brand-red transition-all flex gap-5 group cursor-pointer text-left shadow-sm">
-                                <Badge variant="outline" className={cn("h-6 text-[9px] uppercase tracking-widest shrink-0 mt-0.5 px-3 font-black text-left", r.cls)}>
+                                <Badge variant="outline" className={cn("h-6 text-[10px] uppercase tracking-wider shrink-0 mt-0.5 px-3 font-bold text-left", r.cls)}>
                                     {r.type}
                                 </Badge>
                                 <div className="space-y-1.5 flex-1 min-w-0 text-left">
-                                    <p className="text-base font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors truncate text-left">{r.label}</p>
-                                    <p className="text-[11px] text-text-muted uppercase tracking-widest font-bold leading-relaxed text-left">{r.meta}</p>
+                                    <p className="text-base font-bold text-text-primary tracking-wide group-hover:text-brand-red transition-colors truncate text-left">{r.label}</p>
+                                    <p className="text-[11px] text-text-muted font-bold leading-relaxed text-left">{r.meta}</p>
                                 </div>
                                 <ChevronRight size={20} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all self-center" />
                             </div>
                         )) : (
                             <div className="py-24 text-center border-2 border-dashed border-border-main rounded-2xl opacity-60 bg-bg-secondary/30 text-left">
                                 <SearchX size={48} className="mx-auto text-text-muted mb-4" />
-                                <p className="text-sm font-bold uppercase tracking-widest text-center text-text-muted">No operational matches found</p>
+                                <p className="text-sm font-bold text-center text-text-muted">No operational matches found</p>
                             </div>
                         )}
                     </div>
@@ -1528,15 +1528,15 @@ export default function ActivityAuditPage() {
             <AlertDialog open={!!deleteConfirmId} onOpenChange={open => { if (!open) setDeleteConfirmId(null); }}>
                 <AlertDialogContent className="bg-bg-elevated border-border-main">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-text-primary uppercase font-black tracking-wide text-sm">Archive Assignment?</AlertDialogTitle>
+                        <AlertDialogTitle className="text-text-primary font-bold tracking-wide text-sm">Archive Assignment?</AlertDialogTitle>
                         <AlertDialogDescription className="text-text-muted text-[11px]">
                             This will move assignment <span className="font-bold text-text-primary">{deleteConfirmId?.toUpperCase()}</span> to Archives. It will no longer appear in active views, but stays recoverable from the Job Archive.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="text-[10px] uppercase font-bold">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="text-[10px] font-bold">Cancel</AlertDialogCancel>
                         <AlertDialogAction
-                            className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] uppercase font-bold"
+                            className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold"
                             onClick={() => deleteConfirmId && executeDeleteAssignment(deleteConfirmId)}
                         >
                             <ArchiveIcon size={12} className="mr-1.5" />Archive
@@ -1545,11 +1545,6 @@ export default function ActivityAuditPage() {
                 </AlertDialogContent>
             </AlertDialog>
             
-            <style jsx global>{`
-                .tab-trigger-activity {
-                    @apply px-0 pb-4 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
-                }
-            `}</style>
         </div>
     );
 }

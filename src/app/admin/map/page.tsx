@@ -34,7 +34,7 @@ const AdminMapView = dynamic(() => import('./components/admin-map-view'), {
     <div className="flex items-center justify-center h-full bg-bg-secondary rounded-lg border border-border-main">
       <div className="text-center space-y-3">
         <MapIcon size={32} className="mx-auto text-text-muted animate-pulse" />
-        <p className="text-xs text-text-muted uppercase tracking-widest font-bold">Loading map...</p>
+        <p className="text-xs text-text-muted font-bold">Loading map...</p>
       </div>
     </div>
   ),
@@ -124,7 +124,7 @@ export default function AdminMapPage() {
                 type="date"
                 value={selectedDate}
                 onChange={e => { setSelectedDate(e.target.value); setSelectedJob(null); }}
-                className="h-8 text-[11px] font-bold uppercase tracking-wider bg-bg-secondary border-border-main w-[140px] cursor-pointer"
+                className="h-8 text-[11px] font-bold tracking-wider bg-bg-secondary border-border-main w-[140px] cursor-pointer"
               />
             </div>
             <Button
@@ -151,15 +151,15 @@ export default function AdminMapPage() {
 
       {/* Date summary strip */}
       <div className="flex items-center gap-3 px-0">
-        <p className="text-sm font-black uppercase tracking-widest text-text-primary">{dateLabel}</p>
+        <p className="text-sm font-bold text-text-primary">{dateLabel}</p>
         <span className="text-text-muted text-xs">·</span>
-        <p className="text-xs text-text-muted font-bold uppercase tracking-wider">
+        <p className="text-xs text-text-muted font-bold tracking-wider">
           {loading ? '...' : `${dateJobs.length} work order${dateJobs.length !== 1 ? 's' : ''}`}
         </p>
         {!loading && mappableJobs.length < dateJobs.length && dateJobs.length > 0 && (
           <>
             <span className="text-text-muted text-xs">·</span>
-            <div className="flex items-center gap-1 text-[9px] text-accent-gold font-bold uppercase">
+            <div className="flex items-center gap-1 text-[11px] text-accent-gold font-bold">
               <AlertCircle size={10} />
               {dateJobs.length - mappableJobs.length} without coordinates
             </div>
@@ -204,7 +204,7 @@ export default function AdminMapPage() {
             <div className="flex items-center justify-center h-full bg-bg-secondary">
               <div className="text-center space-y-3">
                 <MapPin size={32} className="mx-auto text-text-muted animate-pulse" />
-                <p className="text-xs text-text-muted uppercase tracking-widest font-bold">Loading work orders...</p>
+                <p className="text-xs text-text-muted font-bold">Loading work orders...</p>
               </div>
             </div>
           ) : dateJobs.length === 0 ? (
@@ -214,10 +214,10 @@ export default function AdminMapPage() {
                   <MapPin size={32} className="text-text-muted" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-bold text-text-primary uppercase tracking-wide">No work orders</p>
+                  <p className="text-sm font-bold text-text-primary tracking-wide">No work orders</p>
                   <p className="text-xs text-text-muted">No work orders scheduled for {dateLabel}.</p>
                 </div>
-                <p className="text-[10px] text-text-muted font-bold uppercase">Try a different date above.</p>
+                <p className="text-[10px] text-text-muted font-bold">Try a different date above.</p>
               </div>
             </div>
           ) : (
@@ -238,7 +238,7 @@ export default function AdminMapPage() {
           style={{ maxHeight: '65vh' }}
         >
           <div className="flex items-center justify-between">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
               {dateJobs.length} Work Order{dateJobs.length !== 1 ? 's' : ''}
             </p>
           </div>
@@ -249,9 +249,9 @@ export default function AdminMapPage() {
             <Card className="bg-bg-secondary border-border-main">
               <CardContent className="py-10 text-center space-y-2">
                 <Calendar size={24} className="mx-auto text-text-muted opacity-40" />
-                <p className="text-xs text-text-muted uppercase tracking-widest font-bold">No work orders</p>
+                <p className="text-xs text-text-muted font-bold">No work orders</p>
                 <p className="text-[10px] text-text-muted">Nothing scheduled for {dateLabel}.</p>
-                <Button variant="outline" size="sm" className="h-7 text-[9px] uppercase font-bold mt-2" onClick={goToday}>
+                <Button variant="outline" size="sm" className="h-7 text-[11px] font-bold mt-2" onClick={goToday}>
                   Go to Today
                 </Button>
               </CardContent>
@@ -277,14 +277,14 @@ export default function AdminMapPage() {
                   <div className="pl-4 pt-4 pb-2 pr-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="flex-shrink-0 h-5 w-5 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[9px] font-black text-text-muted">
+                        <span className="flex-shrink-0 h-5 w-5 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[11px] font-bold text-text-muted">
                           {index + 1}
                         </span>
-                        <p className="text-xs font-bold uppercase tracking-wide truncate text-text-primary">
+                        <p className="text-xs font-bold tracking-wide truncate text-text-primary">
                           {job.title || job.description || `Job ${job.id.slice(0, 6).toUpperCase()}`}
                         </p>
                       </div>
-                      <Badge variant={getStatusVariant(job.status)} className="h-4 text-[8px] uppercase flex-shrink-0">
+                      <Badge variant={getStatusVariant(job.status)} className="h-4 text-[10px] flex-shrink-0">
                         {job.status}
                       </Badge>
                     </div>
@@ -311,7 +311,7 @@ export default function AdminMapPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-8 flex-1 text-[9px] uppercase font-bold"
+                        className="h-8 flex-1 text-[11px] font-bold"
                         onClick={(e) => {
                           e.stopPropagation();
                           const q = encodeURIComponent(job.location || '');
@@ -322,14 +322,14 @@ export default function AdminMapPage() {
                         Directions
                       </Button>
                       <Link href={`/admin/dispatch`} onClick={(e) => e.stopPropagation()}>
-                        <Button size="sm" variant="ghost" className="h-8 text-[9px] uppercase font-bold px-2">
+                        <Button size="sm" variant="ghost" className="h-8 text-[11px] font-bold px-2">
                           <ChevronRight size={14} />
                         </Button>
                       </Link>
                     </div>
 
                     {!hasCoordsForMap && (
-                      <p className="text-[9px] text-text-muted font-bold uppercase opacity-60">· No coordinates — not on map</p>
+                      <p className="text-[11px] text-text-muted font-bold opacity-60">· No coordinates — not on map</p>
                     )}
                   </div>
                 </div>

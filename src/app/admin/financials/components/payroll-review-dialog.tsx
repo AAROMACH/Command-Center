@@ -125,7 +125,7 @@ function CounterpartPayBadge({
             <PopoverTrigger asChild onClick={e => e.stopPropagation()}>
                 <button type="button">
                     <Badge variant="outline" className={cn(
-                        "text-[9px] h-3 px-1 cursor-pointer hover:brightness-125 transition-all",
+                        "text-[11px] h-3 px-1 cursor-pointer hover:brightness-125 transition-all",
                         wantHelper ? "bg-blue-400/15 border-blue-400/40 text-blue-400" : "bg-blue-400/10 border-blue-400/30 text-blue-400"
                     )}>
                         {wantHelper ? 'HELPER ADDED' : 'AS HELPER'}
@@ -133,10 +133,10 @@ function CounterpartPayBadge({
                 </button>
             </PopoverTrigger>
             <PopoverContent className="w-56 p-3 bg-bg-elevated border-border-main shadow-2xl text-left" onClick={e => e.stopPropagation()}>
-                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{wantHelper ? 'Helper Pay' : 'Lead Pay'}</p>
-                <p className="text-xs font-bold text-text-primary uppercase mt-1">{counterpart.techName}</p>
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{wantHelper ? 'Helper Pay' : 'Lead Pay'}</p>
+                <p className="text-xs font-bold text-text-primary mt-1">{counterpart.techName}</p>
                 <p className="text-lg font-mono font-bold text-text-green mt-0.5">${counterpart.jobPay.toFixed(2)}</p>
-                <p className="text-[10px] text-text-muted uppercase mt-1">Week of {counterpart.weekOf} · {counterpart.status}</p>
+                <p className="text-[10px] text-text-muted mt-1">Week of {counterpart.weekOf} · {counterpart.status}</p>
             </PopoverContent>
         </Popover>
     );
@@ -217,7 +217,7 @@ function ImportedJobAudit({
         )} onClick={e => e.stopPropagation()}>
              <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:flex-row sm:flex-wrap sm:items-center sm:w-auto">
                 <div className="flex flex-col items-start gap-1 min-w-0 sm:flex-row sm:items-center sm:gap-2 sm:w-auto">
-                    <Label className="text-[10px] font-black uppercase text-text-muted whitespace-nowrap">Pay</Label>
+                    <Label className="text-[10px] font-bold text-text-muted whitespace-nowrap">Pay</Label>
                     <div className="relative w-full sm:w-auto">
                         <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input
@@ -231,7 +231,7 @@ function ImportedJobAudit({
                     </div>
                 </div>
                 <div className="flex flex-col items-start gap-1 min-w-0 sm:flex-row sm:items-center sm:gap-2 sm:w-auto">
-                    <Label className="text-[10px] font-black uppercase text-text-muted whitespace-nowrap">Reimb.</Label>
+                    <Label className="text-[10px] font-bold text-text-muted whitespace-nowrap">Reimb.</Label>
                     <div className="relative w-full sm:w-auto">
                         <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input
@@ -243,14 +243,14 @@ function ImportedJobAudit({
                             className="h-7 w-full sm:w-20 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub shadow-none focus-visible:ring-1 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         {localReimb > 0 && (
-                            <span className="block sm:absolute sm:left-0 sm:top-full mt-0.5 text-[9px] font-bold text-text-green uppercase tracking-tight whitespace-nowrap" title="Reimbursement paid to tech, net of the Field Nation fee">
+                            <span className="block sm:absolute sm:left-0 sm:top-full mt-0.5 text-[10px] font-bold text-text-green uppercase tracking-tight whitespace-nowrap" title="Reimbursement paid to tech, net of the Field Nation fee">
                                 → ${reimbPayout.toFixed(2)} to tech
                             </span>
                         )}
                     </div>
                 </div>
                 <div className="flex flex-col items-start gap-1 min-w-0 sm:flex-row sm:items-center sm:gap-2 sm:w-auto">
-                    <Label className="text-[10px] font-black uppercase text-text-muted whitespace-nowrap">Ovhd.</Label>
+                    <Label className="text-[10px] font-bold text-text-muted whitespace-nowrap">Ovhd.</Label>
                     <div className="relative w-full sm:w-auto">
                         <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input
@@ -267,19 +267,19 @@ function ImportedJobAudit({
 
              <div className="grid grid-cols-4 gap-1.5 min-w-0 w-full sm:flex sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-1 sm:w-auto sm:pl-3 sm:border-l border-border-sub/50">
                 <div className="flex flex-col items-start gap-0.5 min-w-0 sm:flex-row sm:items-center sm:gap-1 sm:w-auto whitespace-nowrap">
-                    <span className="text-[9px] font-black text-text-muted uppercase">FN (15.85%)</span>
+                    <span className="text-[11px] font-bold text-text-muted">FN (15.85%)</span>
                     <span className="text-[11px] font-mono font-bold text-text-primary">${totalFnFee.toFixed(2)}</span>
                 </div>
                 <div className="flex flex-col items-start gap-0.5 min-w-0 sm:flex-row sm:items-center sm:gap-1 sm:w-auto whitespace-nowrap">
-                    <span className="text-[9px] font-black text-text-muted uppercase">Net</span>
+                    <span className="text-[11px] font-bold text-text-muted">Net</span>
                     <span className="text-[11px] font-mono font-bold text-text-primary">${netLabor.toFixed(2)}</span>
                 </div>
                 <div className="flex flex-col items-start gap-0.5 min-w-0 sm:flex-row sm:items-center sm:gap-1 sm:w-auto whitespace-nowrap">
-                    <span className="text-[9px] font-black text-text-green uppercase">Payout</span>
+                    <span className="text-[11px] font-bold text-text-green">Payout</span>
                     <span className="text-[11px] font-mono font-bold text-text-green" title="Tech labor payout (50% of net labor). Reimbursement is added separately, net of the FN fee.">${laborPayout.toFixed(2)}</span>
                 </div>
                 <div className="flex flex-col items-start gap-0.5 min-w-0 sm:flex-row sm:items-center sm:gap-1 sm:w-auto whitespace-nowrap">
-                    <span className="text-[9px] font-black text-brand-red uppercase">Aaromach</span>
+                    <span className="text-[11px] font-bold text-brand-red">Aaromach</span>
                     <span className="text-[11px] font-mono font-bold text-brand-red">${aaromachPay.toFixed(2)}</span>
                 </div>
              </div>
@@ -288,14 +288,14 @@ function ImportedJobAudit({
                 <div className="flex items-center gap-1.5 ml-auto">
                     <button
                         onClick={handleReset}
-                        className="h-6 px-2 rounded bg-bg-tertiary flex items-center gap-1 text-text-muted hover:text-text-primary transition-colors text-[10px] font-bold uppercase tracking-widest"
+                        className="h-6 px-2 rounded bg-bg-tertiary flex items-center gap-1 text-text-muted hover:text-text-primary transition-colors text-[10px] font-bold uppercase tracking-wider"
                         title="Reset changes"
                     >
                         <RotateCcw size={10}/> Reset
                     </button>
                     <button
                         onClick={handleCommit}
-                        className="h-6 px-2 rounded bg-brand-red flex items-center gap-1 text-white hover:bg-brand-red-hover transition-colors shadow-sm text-[10px] font-bold uppercase tracking-widest"
+                        className="h-6 px-2 rounded bg-brand-red flex items-center gap-1 text-white hover:bg-brand-red-hover transition-colors shadow-sm text-[10px] font-bold uppercase tracking-wider"
                         title="Commit Audit"
                     >
                         <Save size={10}/> Save
@@ -305,7 +305,7 @@ function ImportedJobAudit({
              {isLocked && (
                 <div className="flex items-center gap-1 ml-auto text-text-muted" title="Log approved — reopen it above to edit">
                     <Lock size={10}/>
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Locked</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Locked</span>
                 </div>
              )}
         </div>
@@ -845,11 +845,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                     <AvatarFallback className="font-bold">{technician.name.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 <div className="text-left min-w-0">
-                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Weekly Log Review</p>
+                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Weekly Log Review</p>
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <DialogTitle className="text-lg sm:text-xl font-bold text-text-primary text-left leading-tight">{technician.name}</DialogTitle>
                                         {localLog.unsubmitRequested && (
-                                            <Badge variant="destructive" className="h-5 px-2 text-[9px] uppercase">Unsubmit Requested</Badge>
+                                            <Badge variant="destructive" className="h-5 px-2 text-[11px]">Unsubmit Requested</Badge>
                                         )}
                                     </div>
                                     <DialogDescription className="text-[11px] text-text-muted text-left">
@@ -858,35 +858,35 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                     </DialogDescription>
                                 </div>
                             </div>
-                            <Badge variant={localLog.status === 'Approved' ? 'active' : localLog.status === 'Submitted' ? 'onhold' : 'pending'} className="h-7 px-4 uppercase text-[10px] tracking-widest shrink-0 self-start sm:self-center">
+                            <Badge variant={localLog.status === 'Approved' ? 'active' : localLog.status === 'Submitted' ? 'onhold' : 'pending'} className="h-7 px-4 uppercase text-[10px] tracking-wider shrink-0 self-start sm:self-center">
                                 {localLog.status}
                             </Badge>
                         </div>
                         {/* Summary strip */}
                         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
                             <div className="rounded-lg border border-border-sub bg-bg-primary px-3 py-2.5">
-                                <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">Jobs</p>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Jobs</p>
                                 <p className="text-lg font-bold tabular-nums text-text-primary leading-tight">{totalJobsCount}</p>
                             </div>
                             <div className="rounded-lg border border-border-sub bg-bg-primary px-3 py-2.5 col-span-2 sm:col-span-1">
-                                <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">Verified</p>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Verified</p>
                                 <p className={cn("text-lg font-bold tabular-nums leading-tight", isManifestFullyAudited ? "text-text-green" : "text-accent-gold")}>{auditCompleteCount} <span className="text-[11px] text-text-muted font-semibold">of {totalJobsCount}</span></p>
                                 <div className="mt-1.5 h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
                                     <div className={cn("h-full rounded-full transition-all", isManifestFullyAudited ? "bg-text-green" : "bg-accent-gold")} style={{ width: `${totalJobsCount ? Math.round((auditCompleteCount / totalJobsCount) * 100) : 0}%` }} />
                                 </div>
                             </div>
                             <div className="rounded-lg border border-border-sub bg-bg-primary px-3 py-2.5">
-                                <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">Disputed</p>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Disputed</p>
                                 <p className={cn("text-lg font-bold tabular-nums leading-tight", discrepancyItems.length ? "text-brand-red" : "text-text-primary")}>{discrepancyItems.length}</p>
                             </div>
                             <div className="rounded-lg border border-border-sub bg-bg-primary px-3 py-2.5">
-                                <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">Reimb. waiting</p>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Reimb. waiting</p>
                                 {(() => { const n = (localLog.reimbursements || []).filter(x => x.status === 'pending').length; return (
                                     <p className={cn("text-lg font-bold tabular-nums leading-tight", n ? "text-accent-gold" : "text-text-primary")}>{n}</p>
                                 ); })()}
                             </div>
                             <div className="rounded-lg border border-green-border/40 bg-green-dim/40 px-3 py-2.5 col-span-2 sm:col-span-1">
-                                <p className="text-[9px] font-bold uppercase tracking-widest text-text-green">Net settlement</p>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-green">Net settlement</p>
                                 <p className="text-xl font-bold font-mono tabular-nums text-text-green leading-tight">${calculatedTotalPayout.toFixed(2)}</p>
                             </div>
                         </div>
@@ -894,7 +894,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                     {!isLogApproved && !isLockedLog(localLog as any) && canOverrideDispute && (
                         <div className="px-3 sm:px-4 py-2 border-b border-border-sub shrink-0 bg-bg-tertiary/30">
-                            <button onClick={() => setToolsOpen(o => !o)} className="text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-text-primary flex items-center gap-1.5">
+                            <button onClick={() => setToolsOpen(o => !o)} className="text-[10px] font-bold uppercase tracking-wider text-text-muted hover:text-text-primary flex items-center gap-1.5">
                                 <Wrench size={11} /> Log Tools {toolsOpen ? '▾' : '▸'}
                             </button>
                             {toolsOpen && (
@@ -919,7 +919,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         <option key={l.id} value={l.id}>Week of {l.weekOf} · {l.status}</option>
                                                     ))}
                                                 </select>
-                                                <Button size="sm" variant="ghost" className="h-7 px-2 text-[9px] font-bold uppercase text-text-muted hover:text-text-red"
+                                                <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] font-bold text-text-muted hover:text-text-red"
                                                     disabled={!!toolBusy} onClick={() => handleRemoveItemTool(item)}>
                                                     {toolBusy === item.id ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />} Remove
                                                 </Button>
@@ -928,12 +928,12 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                     })}
                                     {(localLog.items || []).length === 0 && (localLog.reimbursements || []).length === 0 && (
                                         superAdmin ? (
-                                            <Button size="sm" className="h-7 text-[9px] font-bold uppercase bg-text-red hover:bg-text-red/90 text-white"
+                                            <Button size="sm" className="h-7 text-[11px] font-bold bg-text-red hover:bg-text-red/90 text-white"
                                                 disabled={!!toolBusy} onClick={handleDeleteEmptyLog}>
                                                 {toolBusy === 'log' ? <Loader2 size={11} className="mr-1.5 animate-spin" /> : <Trash2 size={11} className="mr-1.5" />} Delete Empty Log
                                             </Button>
                                         ) : (
-                                            <p className="text-[9px] text-text-muted uppercase tracking-wider">A super admin can delete this empty log.</p>
+                                            <p className="text-[10px] text-text-muted uppercase tracking-wider">A super admin can delete this empty log.</p>
                                         )
                                     )}
                                 </div>
@@ -942,7 +942,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                     )}
 
                     {isLogApproved && (
-                        <div className="flex flex-wrap items-center justify-between gap-3 px-3 sm:px-4 py-2 border-b border-border-sub shrink-0 text-[10px] font-bold uppercase tracking-widest bg-bg-tertiary/50 text-text-muted">
+                        <div className="flex flex-wrap items-center justify-between gap-3 px-3 sm:px-4 py-2 border-b border-border-sub shrink-0 text-[10px] font-bold uppercase tracking-wider bg-bg-tertiary/50 text-text-muted">
                             <span className="flex items-center gap-1.5">
                                 <Lock size={12} />
                                 {reopenConfirming
@@ -951,10 +951,10 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             </span>
                             {canOverrideDispute && (reopenConfirming ? (
                                 <div className="flex items-center gap-2 shrink-0">
-                                    <Button variant="outline" size="sm" className="h-7 text-[9px] font-bold uppercase tracking-widest" disabled={reopening} onClick={() => setReopenConfirming(false)}>
+                                    <Button variant="outline" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider" disabled={reopening} onClick={() => setReopenConfirming(false)}>
                                         Cancel
                                     </Button>
-                                    <Button size="sm" className="h-7 text-[9px] font-bold uppercase tracking-widest bg-brand-red hover:bg-brand-red/90 text-white" disabled={reopening} onClick={handleReopenToSubmitted}>
+                                    <Button size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white" disabled={reopening} onClick={handleReopenToSubmitted}>
                                         {reopening ? <Loader2 size={11} className="mr-1.5 animate-spin" /> : <Unlock size={11} className="mr-1.5" />} Confirm Reopen
                                     </Button>
                                 </div>
@@ -962,7 +962,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-7 shrink-0 text-[9px] font-bold uppercase tracking-widest"
+                                    className="h-7 shrink-0 text-[10px] font-bold uppercase tracking-wider"
                                     onClick={() => setReopenConfirming(true)}
                                 >
                                     <Unlock size={11} className="mr-1.5" /> Reopen to Edit
@@ -1003,21 +1003,21 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                 <AlertCircle size={18} className="text-text-red shrink-0 mt-0.5" />
                                                 <div className="space-y-1 text-left flex-1">
                                                     <div className="flex items-center justify-between">
-                                                        <p className="text-[10px] font-black text-text-red uppercase tracking-widest">Unsubmit Request Flagged</p>
-                                                        <span className="text-[10px] text-text-muted font-mono uppercase">{localLog.unsubmitRequestedAt ? format(parseISO(localLog.unsubmitRequestedAt), 'MMM d, h:mm a') : ''}</span>
+                                                        <p className="text-[10px] font-bold text-text-red uppercase tracking-wider">Unsubmit Request Flagged</p>
+                                                        <span className="text-[10px] text-text-muted font-mono">{localLog.unsubmitRequestedAt ? format(parseISO(localLog.unsubmitRequestedAt), 'MMM d, h:mm a') : ''}</span>
                                                     </div>
-                                                    <p className="text-[9px] text-text-secondary leading-relaxed uppercase font-medium italic text-left">&quot;{localLog.unsubmitReason}&quot;</p>
+                                                    <p className="text-[11px] text-text-secondary leading-relaxed font-medium italic text-left">&quot;{localLog.unsubmitReason}&quot;</p>
                                                     <div className="pt-1.5">
                                                         {canReturnLog ? (
                                                             <Button
                                                                 size="sm"
-                                                                className="h-7 px-4 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white"
+                                                                className="h-7 px-4 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider text-white"
                                                                 onClick={handleApproveUnsubmit}
                                                             >
                                                                 <Undo2 size={10} className="mr-1.5"/> Authorize Unsubmit
                                                             </Button>
                                                         ) : (
-                                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Requires weekly-log return permission</p>
+                                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Requires weekly-log return permission</p>
                                                         )}
                                                     </div>
                                                 </div>
@@ -1047,7 +1047,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             disabled={hasPendingReimb}
                                                             title={hasPendingReimb ? 'Locked: pending reimbursement must be approved first' : undefined}
                                                             className={cn(
-                                                                "w-full sm:w-auto h-9 sm:h-7 px-3 uppercase text-[9px] sm:text-[10px] font-bold tracking-widest transition-all",
+                                                                "w-full sm:w-auto h-9 sm:h-7 px-3 uppercase text-[10px] sm:text-[10px] font-bold tracking-wider transition-all",
                                                                 isAudited ? "bg-text-green text-white border-text-green" : "border-border-sub text-text-muted hover:border-text-green",
                                                                 hasPendingReimb && "opacity-40 cursor-not-allowed hover:border-border-sub"
                                                             )}
@@ -1062,7 +1062,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         <div className="min-w-0 text-left">
                                                             <div className="flex items-center gap-2 text-left flex-wrap">
                                                                 <p className="text-[13px] font-semibold text-text-primary break-words sm:truncate text-left">{displayTitle}</p>
-                                                                {isImported && <Badge variant="outline" className="text-[9px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4 px-1.5">IMPORTED</Badge>}
+                                                                {isImported && <Badge variant="outline" className="text-[11px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4 px-1.5">IMPORTED</Badge>}
                                                                 {item.isHelper && (
                                                                     <CounterpartPayBadge workOrderId={item.workOrderId} wantHelper={false} allWeeklyLogs={allWeeklyLogs} allTechnicians={allTechnicians} />
                                                                 )}
@@ -1070,14 +1070,14 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                     <CounterpartPayBadge workOrderId={item.workOrderId} wantHelper={true} allWeeklyLogs={allWeeklyLogs} allTechnicians={allTechnicians} />
                                                                 )}
                                                                 {hasPendingReimb && (
-                                                                    <Badge variant="outline" className="text-[9px] bg-accent-gold/15 border-accent-gold/30 text-accent-gold h-4 px-1.5">
+                                                                    <Badge variant="outline" className="text-[11px] bg-accent-gold/15 border-accent-gold/30 text-accent-gold h-4 px-1.5">
                                                                         REIMB. PENDING
                                                                     </Badge>
                                                                 )}
                                                             </div>
-                                                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-text-muted font-medium uppercase tracking-widest text-left">
+                                                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-text-muted font-medium uppercase tracking-wider text-left">
                                                                 {wo ? (
-                                                                    <WorkOrderId wo={wo} className="!text-[8px]" />
+                                                                    <WorkOrderId wo={wo} className="!text-[10px]" />
                                                                 ) : (
                                                                     <span className="text-brand-red font-mono font-bold">{(item.workOrderId || '').toUpperCase()}</span>
                                                                 )}
@@ -1087,7 +1087,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 <span>{wo?.scheduleDate || 'Schedule Pending'} · {wo?.scheduleTime || 'TBD'}</span>
                                                             </div>
                                                             {helperNames.length > 0 && (
-                                                                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-0.5 text-left italic">
+                                                                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider mt-0.5 text-left italic">
                                                                     Note: helper tech added during job — {helperNames.join(', ')}
                                                                 </p>
                                                             )}
@@ -1101,13 +1101,13 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             ) : (
                                                                 <div className="flex items-center gap-6 p-2 rounded bg-bg-tertiary/30 border border-border-sub/50">
                                                                     <div className="text-left">
-                                                                        <p className="text-[9px] font-black text-text-muted uppercase">Duration</p>
+                                                                        <p className="text-[11px] font-bold text-text-muted">Duration</p>
                                                                         <p className="text-[10px] font-mono font-bold text-accent-gold uppercase tracking-tighter leading-none text-left">
                                                                             {wo ? getHoursOnsite(wo.id) : 'TBD'}
                                                                         </p>
                                                                     </div>
                                                                     <div className="text-left">
-                                                                        <p className="text-[9px] font-black text-text-muted uppercase">Payout</p>
+                                                                        <p className="text-[11px] font-bold text-text-muted">Payout</p>
                                                                         <p className="text-[11px] font-mono font-bold text-text-green leading-none text-left">
                                                                             ${(item.jobPay || 0).toFixed(2)}
                                                                         </p>
@@ -1127,16 +1127,16 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             )}>
                                                                 <div className="min-w-0 flex items-center gap-2">
                                                                     <Receipt size={11} className="shrink-0 text-text-muted" />
-                                                                    <p className="text-[9px] font-bold text-text-primary uppercase tracking-wide truncate">{r.description}</p>
+                                                                    <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide truncate">{r.description}</p>
                                                                     <span className="text-[10px] font-mono font-bold text-accent-gold shrink-0">${r.amount.toFixed(2)}</span>
                                                                 </div>
                                                                 {r.status === 'pending' ? (
                                                                     <div className="flex items-center gap-1.5 shrink-0">
-                                                                        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] font-bold uppercase text-text-green border-text-green/30 hover:bg-text-green/10" onClick={() => reviewReimbursement(r.id, 'approved')}>Approve</Button>
-                                                                        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] font-bold uppercase text-brand-red border-brand-red/30 hover:bg-brand-red/10" onClick={() => reviewReimbursement(r.id, 'rejected')}>Reject</Button>
+                                                                        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] font-bold text-text-green border-text-green/30 hover:bg-text-green/10" onClick={() => reviewReimbursement(r.id, 'approved')}>Approve</Button>
+                                                                        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] font-bold text-brand-red border-brand-red/30 hover:bg-brand-red/10" onClick={() => reviewReimbursement(r.id, 'rejected')}>Reject</Button>
                                                                     </div>
                                                                 ) : (
-                                                                    <Badge variant="outline" className={cn("text-[9px] h-4 px-1.5 shrink-0 uppercase", r.status === 'rejected' ? "text-brand-red border-brand-red/30" : "text-text-green border-text-green/30")}>{r.status || 'approved'}</Badge>
+                                                                    <Badge variant="outline" className={cn("text-[11px] h-4 px-1.5 shrink-0", r.status === 'rejected' ? "text-brand-red border-brand-red/30" : "text-text-green border-text-green/30")}>{r.status || 'approved'}</Badge>
                                                                 )}
                                                             </div>
                                                         ))}
@@ -1147,7 +1147,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         }) : (
                                             <div className="p-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
                                                 <CheckCircle2 size={48} className="mx-auto text-text-muted mb-2" />
-                                                <p className="text-[10px] font-bold uppercase tracking-widest text-center">No assignments in verified state</p>
+                                                <p className="text-[10px] font-bold uppercase tracking-wider text-center">No assignments in verified state</p>
                                             </div>
                                         )}
                                     </div>
@@ -1180,7 +1180,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             disabled={hasPendingReimb}
                                                             title={hasPendingReimb ? 'Locked: pending reimbursement must be approved first' : 'Marks that you\'ve reviewed this — it stays in Discrepancies until you send it to Dispatch or archive it.'}
                                                             className={cn(
-                                                                "w-full sm:w-auto h-9 sm:h-7 px-3 uppercase text-[9px] sm:text-[10px] font-bold tracking-widest",
+                                                                "w-full sm:w-auto h-9 sm:h-7 px-3 uppercase text-[10px] sm:text-[10px] font-bold tracking-wider",
                                                                 isAudited ? "bg-text-green text-white border-text-green" : "border-brand-red text-text-red hover:bg-brand-red-dim",
                                                                 hasPendingReimb && "opacity-40 cursor-not-allowed hover:bg-transparent"
                                                             )}
@@ -1201,13 +1201,13 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="start">
                                                                     <DropdownMenuItem
-                                                                        className="text-[11px] uppercase font-bold tracking-wide"
+                                                                        className="text-[11px] font-bold tracking-wide"
                                                                         onClick={() => handleReturnDisputeToDispatch(item)}
                                                                     >
                                                                         <Send size={13} className="mr-2 text-text-muted" /> Send to Dispatch Hub
                                                                     </DropdownMenuItem>
                                                                     <DropdownMenuItem
-                                                                        className="text-[11px] uppercase font-bold tracking-wide text-text-red focus:text-text-red"
+                                                                        className="text-[11px] font-bold tracking-wide text-text-red focus:text-text-red"
                                                                         onClick={() => handleArchiveDispute(item)}
                                                                     >
                                                                         <ArchiveIcon size={13} className="mr-2" /> Move to Archives
@@ -1221,7 +1221,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         <div className="min-w-0 text-left">
                                                             <div className="flex items-center gap-2 text-left flex-wrap">
                                                                 <p className="text-[13px] font-semibold text-text-primary break-words sm:truncate text-left">{displayTitle}</p>
-                                                                {isImported && <Badge variant="outline" className="text-[9px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4 px-1.5">IMPORTED</Badge>}
+                                                                {isImported && <Badge variant="outline" className="text-[11px] bg-brand-red-dim border-brand-red/20 text-brand-red h-4 px-1.5">IMPORTED</Badge>}
                                                                 {item.isHelper && (
                                                                     <CounterpartPayBadge workOrderId={item.workOrderId} wantHelper={false} allWeeklyLogs={allWeeklyLogs} allTechnicians={allTechnicians} />
                                                                 )}
@@ -1229,14 +1229,14 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                     <CounterpartPayBadge workOrderId={item.workOrderId} wantHelper={true} allWeeklyLogs={allWeeklyLogs} allTechnicians={allTechnicians} />
                                                                 )}
                                                                 {hasPendingReimb && (
-                                                                    <Badge variant="outline" className="text-[9px] bg-accent-gold/15 border-accent-gold/30 text-accent-gold h-4 px-1.5">
+                                                                    <Badge variant="outline" className="text-[11px] bg-accent-gold/15 border-accent-gold/30 text-accent-gold h-4 px-1.5">
                                                                         REIMB. PENDING
                                                                     </Badge>
                                                                 )}
                                                             </div>
-                                                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-text-muted font-medium uppercase tracking-widest text-left">
+                                                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-text-muted font-medium uppercase tracking-wider text-left">
                                                                 {wo ? (
-                                                                    <WorkOrderId wo={wo} className="!text-[8px]" />
+                                                                    <WorkOrderId wo={wo} className="!text-[10px]" />
                                                                 ) : (
                                                                     <span className="text-brand-red font-mono font-bold">{(item.workOrderId || '').toUpperCase()}</span>
                                                                 )}
@@ -1246,7 +1246,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 <span>{wo?.scheduleDate || 'Schedule Pending'} · {wo?.scheduleTime || 'TBD'}</span>
                                                             </div>
                                                             {helperNames.length > 0 && (
-                                                                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-0.5 text-left italic">
+                                                                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider mt-0.5 text-left italic">
                                                                     Note: helper tech added during job — {helperNames.join(', ')}
                                                                 </p>
                                                             )}
@@ -1258,13 +1258,13 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             ) : (
                                                                 <div className="flex items-center gap-6 p-2 rounded bg-bg-tertiary/30 border border-border-sub/50 text-left">
                                                                     <div className="text-left">
-                                                                        <p className="text-[9px] font-black text-text-muted uppercase text-left">Duration</p>
-                                                                        <p className="text-[10px] font-mono font-bold text-accent-gold uppercase leading-none text-left">
+                                                                        <p className="text-[11px] font-bold text-text-muted text-left">Duration</p>
+                                                                        <p className="text-[10px] font-mono font-bold text-accent-gold leading-none text-left">
                                                                             {wo ? getHoursOnsite(wo.id) : 'TBD'}
                                                                         </p>
                                                                     </div>
                                                                     <div className="text-left">
-                                                                        <p className="text-[9px] font-black text-text-muted uppercase text-left">Payout</p>
+                                                                        <p className="text-[11px] font-bold text-text-muted text-left">Payout</p>
                                                                         <p className="text-[11px] font-mono font-bold text-text-red leading-none text-left">
                                                                             ${(item.jobPay || 0).toFixed(2)}
                                                                         </p>
@@ -1273,11 +1273,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             )}
 
                                                             <div className="min-w-[180px] max-w-[250px] p-2 rounded bg-brand-red-dim/10 border border-brand-red/10 text-left flex flex-col justify-center h-full">
-                                                                <p className="text-[9px] font-black text-brand-red uppercase flex items-center gap-1 text-left">
+                                                                <p className="text-[11px] font-bold text-brand-red flex items-center gap-1 text-left">
                                                                     <ShieldAlert size={8}/> DISCREPANCY: {item.disputeReason}
                                                                 </p>
                                                                 {item.disputeNotes && (
-                                                                    <p className="text-[9px] text-text-secondary leading-tight italic uppercase font-medium text-left truncate mt-0.5">
+                                                                    <p className="text-[11px] text-text-secondary leading-tight italic font-medium text-left truncate mt-0.5">
                                                                         &quot;{item.disputeNotes}&quot;
                                                                     </p>
                                                                 )}
@@ -1295,16 +1295,16 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             )}>
                                                                 <div className="min-w-0 flex items-center gap-2">
                                                                     <Receipt size={11} className="shrink-0 text-text-muted" />
-                                                                    <p className="text-[9px] font-bold text-text-primary uppercase tracking-wide truncate">{r.description}</p>
+                                                                    <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide truncate">{r.description}</p>
                                                                     <span className="text-[10px] font-mono font-bold text-accent-gold shrink-0">${r.amount.toFixed(2)}</span>
                                                                 </div>
                                                                 {r.status === 'pending' ? (
                                                                     <div className="flex items-center gap-1.5 shrink-0">
-                                                                        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] font-bold uppercase text-text-green border-text-green/30 hover:bg-text-green/10" onClick={() => reviewReimbursement(r.id, 'approved')}>Approve</Button>
-                                                                        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] font-bold uppercase text-brand-red border-brand-red/30 hover:bg-brand-red/10" onClick={() => reviewReimbursement(r.id, 'rejected')}>Reject</Button>
+                                                                        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] font-bold text-text-green border-text-green/30 hover:bg-text-green/10" onClick={() => reviewReimbursement(r.id, 'approved')}>Approve</Button>
+                                                                        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] font-bold text-brand-red border-brand-red/30 hover:bg-brand-red/10" onClick={() => reviewReimbursement(r.id, 'rejected')}>Reject</Button>
                                                                     </div>
                                                                 ) : (
-                                                                    <Badge variant="outline" className={cn("text-[9px] h-4 px-1.5 shrink-0 uppercase", r.status === 'rejected' ? "text-brand-red border-brand-red/30" : "text-text-green border-text-green/30")}>{r.status || 'approved'}</Badge>
+                                                                    <Badge variant="outline" className={cn("text-[11px] h-4 px-1.5 shrink-0", r.status === 'rejected' ? "text-brand-red border-brand-red/30" : "text-text-green border-text-green/30")}>{r.status || 'approved'}</Badge>
                                                                 )}
                                                             </div>
                                                         ))}
@@ -1340,11 +1340,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                                                         <div className="flex-1 text-left min-w-0">
                                                             <div className="flex items-center gap-2 text-left flex-wrap">
-                                                                <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide text-left truncate max-w-[220px]">{report.summary || 'Missing Assignment'}</p>
-                                                                <Badge variant="onhold" className="text-[9px] h-3.5 px-1 uppercase">Manually Added · Was Missing</Badge>
-                                                                <Badge variant="outline" className="text-[9px] h-3.5 px-1 uppercase">{report.jobType || 'Manual'}</Badge>
+                                                                <p className="text-[11px] font-bold text-text-primary tracking-wide text-left truncate max-w-[220px]">{report.summary || 'Missing Assignment'}</p>
+                                                                <Badge variant="onhold" className="text-[11px] h-3.5 px-1">Manually Added · Was Missing</Badge>
+                                                                <Badge variant="outline" className="text-[11px] h-3.5 px-1">{report.jobType || 'Manual'}</Badge>
                                                             </div>
-                                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-medium uppercase tracking-widest text-left">
+                                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-[10px] text-text-muted font-medium uppercase tracking-wider text-left">
                                                                 {report.clientName && <span>{report.clientName}</span>}
                                                                 {isImportedReport && report.externalWorkOrderId && (
                                                                     <a href={fieldNationUrl(reportWo)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-brand-red hover:underline" onClick={e => e.stopPropagation()}>
@@ -1360,7 +1360,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 variant="outline"
                                                                 size="sm"
                                                                 className={cn(
-                                                                    "w-full sm:w-auto h-9 sm:h-7 px-3 uppercase text-[9px] sm:text-[10px] font-bold tracking-widest",
+                                                                    "w-full sm:w-auto h-9 sm:h-7 px-3 uppercase text-[10px] sm:text-[10px] font-bold tracking-wider",
                                                                     isAudited ? "bg-text-green text-white border-text-green" : "border-accent-gold text-accent-gold hover:bg-accent-gold/10"
                                                                 )}
                                                                 onClick={async () => {
@@ -1389,7 +1389,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             <ImportedJobAudit wo={reportWo} onUpdateWorkOrder={(id, updates) => auditMissingReport(report.id, updates)} approvedReimbTotal={0} isLocked={isLogLockedForEdit} />
                                                         ) : (
                                                             <div className="flex items-center gap-2">
-                                                                <Label className="text-[10px] font-black uppercase text-text-muted whitespace-nowrap">Manual Pay</Label>
+                                                                <Label className="text-[10px] font-bold text-text-muted whitespace-nowrap">Manual Pay</Label>
                                                                 <div className="relative">
                                                                     <DollarSign size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-muted" />
                                                                     <Input
@@ -1400,7 +1400,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                         className="h-7 w-28 text-xs pl-5 bg-bg-secondary font-mono border border-border-sub disabled:opacity-50 disabled:cursor-not-allowed"
                                                                     />
                                                                 </div>
-                                                                <span className="text-[10px] text-text-muted uppercase">tech payout</span>
+                                                                <span className="text-[10px] text-text-muted">tech payout</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -1411,7 +1411,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         {discrepancyItems.length === 0 && (
                                             <div className="p-24 text-center bg-bg-secondary/30 rounded-xl border-2 border-dashed border-border-sub opacity-40">
                                                 <CheckCircle2 size={48} className="mx-auto mb-2 text-text-muted" />
-                                                <p className="text-[10px] font-bold uppercase tracking-widest italic text-center">Discrepancy registry clear</p>
+                                                <p className="text-[10px] font-bold uppercase tracking-wider italic text-center">Discrepancy registry clear</p>
                                             </div>
                                         )}
                                     </div>
@@ -1435,11 +1435,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     )}>
                                                         <div className="flex-1 min-w-0 text-left">
                                                             <div className="flex items-center gap-2 flex-wrap">
-                                                                <Badge variant="outline" className={cn("text-[9px] h-4 px-1.5 uppercase", isOpenDispute ? "border-brand-red/40 text-brand-red bg-brand-red/5" : "border-text-green/40 text-text-green bg-text-green/5")}>
+                                                                <Badge variant="outline" className={cn("text-[11px] h-4 px-1.5", isOpenDispute ? "border-brand-red/40 text-brand-red bg-brand-red/5" : "border-text-green/40 text-text-green bg-text-green/5")}>
                                                                     {reasonLabel}
                                                                 </Badge>
                                                                 <span className="text-[10px] font-bold text-text-primary uppercase tracking-wide">{dispute.techName}</span>
-                                                                {relatedWo && <WorkOrderId wo={relatedWo} className="!text-[8px]" />}
+                                                                {relatedWo && <WorkOrderId wo={relatedWo} className="!text-[10px]" />}
                                                             </div>
                                                             <p className="text-[10px] text-text-secondary leading-relaxed mt-1 text-left">{dispute.notes}</p>
                                                             <p className="text-[10px] text-text-muted font-mono mt-1">
@@ -1448,11 +1448,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             </p>
                                                         </div>
                                                         {isOpenDispute ? (
-                                                            <Button variant="outline" size="sm" className="h-8 shrink-0 text-[9px] font-bold uppercase tracking-widest border-text-green text-text-green hover:bg-green-dim" onClick={() => handleResolvePayrollDispute(dispute.id)}>
+                                                            <Button variant="outline" size="sm" className="h-8 shrink-0 text-[10px] font-bold uppercase tracking-wider border-text-green text-text-green hover:bg-green-dim" onClick={() => handleResolvePayrollDispute(dispute.id)}>
                                                                 <Check size={13} className="mr-1.5"/> Mark Resolved
                                                             </Button>
                                                         ) : (
-                                                            <Badge variant="active" className="shrink-0 h-6 px-3 text-[10px] uppercase tracking-widest">Resolved</Badge>
+                                                            <Badge variant="active" className="shrink-0 h-6 px-3 text-[10px] uppercase tracking-wider">Resolved</Badge>
                                                         )}
                                                     </div>
                                                 );
@@ -1466,22 +1466,22 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                     <DialogFooter className="px-4 sm:px-8 py-3 sm:py-4 border-t border-border-sub bg-bg-secondary flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 shrink-0">
                         {localLog && (localLog.status === 'Approved' || (localLog as any).status === 'Paid') ? (
-                            <Button variant="outline" className="w-full h-11 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsOpen(false)}>Close</Button>
+                            <Button variant="outline" className="w-full h-11 uppercase font-bold text-[10px] tracking-wider" onClick={() => setIsOpen(false)}>Close</Button>
                         ) : (canApproveLog || canReturnLog) ? (
                             <>
                                 {canReturnLog && localLog?.status === 'Submitted' && (
-                                    <Button variant="destructive-outline" className="w-full sm:w-auto order-3 sm:order-1 h-10 px-6 sm:px-8 uppercase font-bold text-[10px] tracking-widest" onClick={() => handleStatusChange('Rejected')}>
+                                    <Button variant="destructive-outline" className="w-full sm:w-auto order-3 sm:order-1 h-10 px-6 sm:px-8 uppercase font-bold text-[10px] tracking-wider" onClick={() => handleStatusChange('Rejected')}>
                                         <X size={16} className="mr-2"/> Return to Tech
                                     </Button>
                                 )}
                                 <div className="hidden sm:block flex-1 order-2" />
-                                <Button variant="outline" className="w-full sm:w-auto order-2 sm:order-3 h-11 px-6 sm:px-8 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsOpen(false)}>Close</Button>
+                                <Button variant="outline" className="w-full sm:w-auto order-2 sm:order-3 h-11 px-6 sm:px-8 uppercase font-bold text-[10px] tracking-wider" onClick={() => setIsOpen(false)}>Close</Button>
                                 {canApproveLog && (
                                     <Button
                                         disabled={!isManifestFullyAudited}
                                         title={isManifestFullyAudited ? undefined : 'Verify all assignments before approving'}
                                         className={cn(
-                                            "w-full sm:w-auto order-1 sm:order-4 h-11 px-6 sm:px-12 uppercase font-bold text-[10px] tracking-[0.15em] shadow-lg transition-all",
+                                            "w-full sm:w-auto order-1 sm:order-4 h-11 px-6 sm:px-12 uppercase font-bold text-[10px] tracking-wider shadow-lg transition-all",
                                             isManifestFullyAudited ? "bg-brand-red hover:bg-brand-red-hover" : "bg-bg-tertiary text-text-muted cursor-not-allowed border border-border-sub"
                                         )}
                                         onClick={() => handleStatusChange('Approved')}
@@ -1493,20 +1493,12 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             </>
                         ) : (
                             <div className="w-full flex items-center justify-between gap-3">
-                                <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">View only — you cannot approve or return weekly logs</p>
-                                <Button variant="outline" className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest shrink-0" onClick={() => setIsOpen(false)}>Close</Button>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">View only — you cannot approve or return weekly logs</p>
+                                <Button variant="outline" className="h-11 px-8 uppercase font-bold text-[10px] tracking-wider shrink-0" onClick={() => setIsOpen(false)}>Close</Button>
                             </div>
                         )}
                     </DialogFooter>
                 </DialogContent>
-                <style jsx global>{`
-                    .tab-trigger-payroll {
-                        @apply px-0 h-11 sm:h-12 bg-transparent text-[10px] font-bold uppercase tracking-[0.15em] text-text-muted rounded-none border-b-2 border-transparent transition-all;
-                    }
-                    .tab-trigger-payroll[data-state="active"] {
-                        @apply text-text-primary border-brand-red bg-transparent shadow-none;
-                    }
-                `}</style>
             </Dialog>
 
             <JobDetailDialog

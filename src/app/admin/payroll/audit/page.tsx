@@ -425,7 +425,7 @@ export default function PayrollAuditPage() {
         logs.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
                 <Receipt size={28} className="text-text-muted mx-auto mb-3" />
-                <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">No logs match your filters</p>
+                <p className="text-[11px] font-bold text-text-muted">No logs match your filters</p>
             </div>
         ) : (
             <div className="space-y-2">
@@ -440,32 +440,32 @@ export default function PayrollAuditPage() {
                                     className="flex-1 min-w-0 grid grid-cols-4 gap-3 items-center text-left"
                                 >
                                     <div>
-                                        <p className="text-[11px] font-bold text-text-primary uppercase">{tech?.name || log.techId}</p>
-                                        <p className="text-[9px] text-text-muted font-mono">Week of {log.weekOf}</p>
+                                        <p className="text-[11px] font-bold text-text-primary">{tech?.name || log.techId}</p>
+                                        <p className="text-[11px] text-text-muted font-mono">Week of {log.weekOf}</p>
                                     </div>
                                     <div className="flex flex-col items-start gap-1">
-                                        <Badge variant={statusVariant(log.status)} className="text-[7px] uppercase h-4 w-fit">{log.status}</Badge>
-                                        {log.mergeReviewRequired && <span className="text-[8px] font-bold text-accent-gold flex items-center gap-1"><AlertTriangle size={10} /> Needs reapproval</span>}
+                                        <Badge variant={statusVariant(log.status)} className="text-[10px] h-4 w-fit">{log.status}</Badge>
+                                        {log.mergeReviewRequired && <span className="text-[10px] font-bold text-accent-gold flex items-center gap-1"><AlertTriangle size={10} /> Needs reapproval</span>}
                                     </div>
                                     <div className="text-right">
                                         <p className={cn('text-[12px] font-bold font-mono', log.status === 'Approved' ? 'text-text-green' : 'text-text-primary')}>
                                             ${settlementOf(log).toFixed(2)}
                                         </p>
-                                        <p className="text-[8px] text-text-muted uppercase">{log.items?.length || 0} items</p>
+                                        <p className="text-[10px] text-text-muted">{log.items?.length || 0} items</p>
                                     </div>
                                     <div
-                                        className="text-right text-[9px] text-text-muted uppercase leading-tight"
+                                        className="text-right text-[11px] text-text-muted leading-tight"
                                         title={log.submittedAt ? `Submitted ${format(parseISO(log.submittedAt), 'MM/dd/yyyy h:mm a')}` : 'Not submitted yet'}
                                     >
                                         {log.submittedAt ? (
-                                            <><span className="block text-[8px] tracking-widest">Submitted</span>{format(parseISO(log.submittedAt), 'MM/dd/yy')}</>
+                                            <><span className="block text-[10px] tracking-widest">Submitted</span>{format(parseISO(log.submittedAt), 'MM/dd/yy')}</>
                                         ) : 'Not submitted'}
                                     </div>
                                 </button>
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-7 shrink-0 text-[9px] font-bold uppercase tracking-widest"
+                                    className="h-7 shrink-0 text-[10px] font-bold uppercase tracking-wider"
                                     onClick={() => openReview(log)}
                                 >
                                     <Receipt size={11} className="mr-1.5" /> Audit Log
@@ -488,16 +488,16 @@ export default function PayrollAuditPage() {
                                             title={job ? 'Open job details' : 'Job record not found'}
                                         >
                                             <div className="min-w-0">
-                                                <p className="text-[10px] font-bold text-text-primary uppercase font-mono">
+                                                <p className="text-[10px] font-bold text-text-primary font-mono">
                                                     {item.workOrderId?.toUpperCase() || item.id}
                                                     {job && <span className="ml-2 text-text-muted">WO {displayWorkOrderNumber(job)}</span>}
                                                 </p>
                                                 {job && <p className="text-[10px] text-text-secondary truncate">{job.title || job.description}</p>}
-                                                {item.outcomeCode && <p className="text-[9px] text-text-muted uppercase">{item.outcomeCode.replace(/_/g, ' ')}</p>}
+                                                {item.outcomeCode && <p className="text-[11px] text-text-muted">{item.outcomeCode.replace(/_/g, ' ')}</p>}
                                             </div>
                                             <div className="flex items-center gap-3">
                                                 {item.confirmationStatus && (
-                                                    <Badge variant={item.confirmationStatus === 'confirmed' ? 'active' : 'destructive'} className="text-[7px] uppercase h-4">
+                                                    <Badge variant={item.confirmationStatus === 'confirmed' ? 'active' : 'destructive'} className="text-[10px] h-4">
                                                         {item.confirmationStatus}
                                                     </Badge>
                                                 )}
@@ -513,9 +513,9 @@ export default function PayrollAuditPage() {
                                     })}
                                     {log.reimbursements && log.reimbursements.length > 0 && (
                                         <div className="px-5 py-2 bg-bg-primary/50">
-                                            <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-1">Reimbursements</p>
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">Reimbursements</p>
                                             {log.reimbursements.map(r => (
-                                                <div key={r.id} className="flex justify-between text-[9px] text-text-muted py-0.5">
+                                                <div key={r.id} className="flex justify-between text-[11px] text-text-muted py-0.5">
                                                     <span>{r.description}</span>
                                                     <span className="font-mono">${r.amount.toFixed(2)}</span>
                                                 </div>
@@ -538,7 +538,7 @@ export default function PayrollAuditPage() {
             <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 -ml-2 text-[10px] uppercase font-bold text-text-muted"
+                className="h-8 -ml-2 text-[10px] font-bold text-text-muted"
                 onClick={() => (window.history.length > 1 ? router.back() : router.push('/admin/financials'))}
             >
                 <ArrowLeft size={13} className="mr-1.5" /> Back
@@ -553,7 +553,7 @@ export default function PayrollAuditPage() {
                     <p className="page-subtitle">Full audit trail of weekly log submissions and approvals.</p>
                 </div>
                 <div className="page-header-right">
-                    <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold uppercase border-border-main" onClick={handleExportCsv}>
+                    <Button variant="outline" size="sm" className="h-9 text-[10px] font-bold border-border-main" onClick={handleExportCsv}>
                         <Download size={12} className="mr-1.5" /> Export CSV
                     </Button>
                 </div>
@@ -563,15 +563,15 @@ export default function PayrollAuditPage() {
             <div className="flex flex-wrap gap-3">
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-text-green/10 border border-text-green/20">
                     <CheckCircle size={12} className="text-text-green" />
-                    <span className="text-[10px] font-black text-text-green uppercase">${totals.approved.toFixed(2)} approved</span>
+                    <span className="text-[10px] font-bold text-text-green">${totals.approved.toFixed(2)} approved</span>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-text-amber/10 border border-text-amber/20">
                     <Clock size={12} className="text-text-amber" />
-                    <span className="text-[10px] font-black text-text-amber uppercase">${totals.pending.toFixed(2)} pending</span>
+                    <span className="text-[10px] font-bold text-text-amber">${totals.pending.toFixed(2)} pending</span>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bg-secondary border border-border-sub">
                     <DollarSign size={12} className="text-text-muted" />
-                    <span className="text-[10px] font-black text-text-muted uppercase">{totals.count} log{totals.count !== 1 ? 's' : ''} shown</span>
+                    <span className="text-[10px] font-bold text-text-muted">{totals.count} log{totals.count !== 1 ? 's' : ''} shown</span>
                 </div>
             </div>
 
@@ -590,10 +590,10 @@ export default function PayrollAuditPage() {
                                     <div className="flex items-center gap-3">
                                         <AlertTriangle size={16} className="text-brand-red shrink-0" />
                                         <div>
-                                            <p className="text-[11px] font-black uppercase tracking-widest text-brand-red">
+                                            <p className="text-[11px] font-bold text-brand-red">
                                                 {group.length} duplicate logs — {tech?.name || group[0].techId} — week of {group[0].weekOf}
                                             </p>
-                                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">
+                                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">
                                                 {totalItems} total job entries across the {group.length} logs ({uniqueItems} unique) — merge combines everything, or delete an individual duplicate below.
                                             </p>
                                             {primary.status === 'Approved' && (
@@ -607,7 +607,7 @@ export default function PayrollAuditPage() {
                                         <div className="flex flex-wrap items-center gap-2">
                                             <Button
                                                 size="sm" variant="outline"
-                                                className="h-8 text-[9px] font-bold uppercase tracking-widest shrink-0"
+                                                className="h-8 text-[10px] font-bold uppercase tracking-wider shrink-0"
                                                 disabled={ignoringKey === key || mergingKey === key}
                                                 onClick={() => setIgnoreGroup(group)}
                                             >
@@ -615,7 +615,7 @@ export default function PayrollAuditPage() {
                                             </Button>
                                             <Button
                                                 size="sm"
-                                                className="h-8 text-[9px] font-bold uppercase tracking-widest bg-brand-red hover:bg-brand-red-hover shrink-0"
+                                                className="h-8 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red-hover shrink-0"
                                                 disabled={mergingKey === key || ignoringKey === key}
                                                 onClick={() => handleMergeDuplicateLogs(group)}
                                             >
@@ -624,7 +624,7 @@ export default function PayrollAuditPage() {
                                             </Button>
                                             <Button
                                                 size="sm" variant="outline"
-                                                className="h-8 text-[9px] font-bold uppercase tracking-widest border-brand-red/40 text-brand-red shrink-0"
+                                                className="h-8 text-[10px] font-bold uppercase tracking-wider border-brand-red/40 text-brand-red shrink-0"
                                                 disabled={mergingKey === key || ignoringKey === key}
                                                 onClick={() => setDeleteSelectionKey(current => current === key ? null : key)}
                                             >
@@ -632,7 +632,7 @@ export default function PayrollAuditPage() {
                                             </Button>
                                         </div>
                                     ) : (
-                                        <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted shrink-0">Super admin required</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted shrink-0">Super admin required</p>
                                     )}
                                 </div>
                                 {superAdmin && deleteSelectionKey === key && (
@@ -646,24 +646,24 @@ export default function PayrollAuditPage() {
                                         return (
                                             <div key={log.id} className="flex items-center justify-between gap-3 px-4 py-2">
                                                 <div className="flex items-center gap-2 min-w-0">
-                                                    <span className="text-[10px] font-mono font-bold text-text-primary uppercase">{log.id}</span>
-                                                    <Badge variant="outline" className="h-4 px-1.5 text-[8px] uppercase tracking-widest shrink-0">{log.status}</Badge>
-                                                    <span className="text-[9px] text-text-muted uppercase font-bold tracking-widest shrink-0">{log.items?.length || 0} item{(log.items?.length || 0) === 1 ? '' : 's'}</span>
+                                                    <span className="text-[10px] font-mono font-bold text-text-primary">{log.id}</span>
+                                                    <Badge variant="outline" className="h-4 px-1.5 text-[10px] uppercase tracking-wider shrink-0">{log.status}</Badge>
+                                                    <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider shrink-0">{log.items?.length || 0} item{(log.items?.length || 0) === 1 ? '' : 's'}</span>
                                                 </div>
                                                 {isPrimary ? (
-                                                    <span className="text-[8px] font-black uppercase tracking-widest text-text-green shrink-0">Original — protected</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-green shrink-0">Original — protected</span>
                                                 ) : superAdmin && deleteSelectionKey === key ? (
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
-                                                        className="h-6 text-[8px] font-bold uppercase tracking-widest border-brand-red/40 text-brand-red hover:bg-brand-red-dim shrink-0"
+                                                        className="h-6 text-[10px] font-bold uppercase tracking-wider border-brand-red/40 text-brand-red hover:bg-brand-red-dim shrink-0"
                                                         disabled={deletingLogId === log.id}
                                                         onClick={() => setLogToDelete({ log, primary })}
                                                     >
                                                         {deletingLogId === log.id ? 'Deleting…' : 'Delete'}
                                                     </Button>
                                                 ) : (
-                                                    <span className="text-[8px] font-black uppercase tracking-widest text-text-muted shrink-0">{superAdmin ? 'Extra — choose Delete above' : 'Extra — needs super admin'}</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted shrink-0">{superAdmin ? 'Extra — choose Delete above' : 'Extra — needs super admin'}</span>
                                                 )}
                                             </div>
                                         );
@@ -678,15 +678,15 @@ export default function PayrollAuditPage() {
             <AlertDialog open={!!ignoreGroup} onOpenChange={(open) => { if (!open) setIgnoreGroup(null); }}>
                 <AlertDialogContent className="bg-bg-elevated border-border-main">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-text-primary uppercase font-black tracking-wide text-sm">Ignore duplicate alert?</AlertDialogTitle>
+                        <AlertDialogTitle className="text-text-primary font-bold tracking-wide text-sm">Ignore duplicate alert?</AlertDialogTitle>
                         <AlertDialogDescription className="text-xs text-text-muted">
                             This hides the alert for these logs. Both logs, their job entries, and their pay totals stay unchanged, so overlapping jobs may still be counted twice. The alert will return if the job or reimbursement list, status, or number of logs changes.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="uppercase font-bold text-[10px] tracking-widest">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="uppercase font-bold text-[10px] tracking-wider">Cancel</AlertDialogCancel>
                         <AlertDialogAction
-                            className="uppercase font-bold text-[10px] tracking-widest"
+                            className="uppercase font-bold text-[10px] tracking-wider"
                             onClick={() => { if (ignoreGroup) void handleIgnoreDuplicateAlert(ignoreGroup); }}
                         >
                             Ignore alert
@@ -698,7 +698,7 @@ export default function PayrollAuditPage() {
             <AlertDialog open={!!approvedMergeGroup} onOpenChange={(open) => { if (!open) setApprovedMergeGroup(null); }}>
                 <AlertDialogContent className="bg-bg-elevated border-border-main">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-text-primary uppercase font-black tracking-wide text-sm flex items-center gap-2">
+                        <AlertDialogTitle className="text-text-primary font-bold tracking-wide text-sm flex items-center gap-2">
                             <AlertTriangle size={16} className="text-accent-gold" /> Review approved log merge
                         </AlertDialogTitle>
                         <AlertDialogDescription className="text-xs text-text-muted space-y-2">
@@ -707,9 +707,9 @@ export default function PayrollAuditPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="uppercase font-bold text-[10px] tracking-widest">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="uppercase font-bold text-[10px] tracking-wider">Cancel</AlertDialogCancel>
                         <AlertDialogAction
-                            className="bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest"
+                            className="bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider"
                             onClick={() => {
                                 const group = approvedMergeGroup;
                                 setApprovedMergeGroup(null);
@@ -725,7 +725,7 @@ export default function PayrollAuditPage() {
             <AlertDialog open={!!logToDelete} onOpenChange={(open) => { if (!open) setLogToDelete(null); }}>
                 <AlertDialogContent className="bg-bg-elevated border-border-main">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-text-primary uppercase font-black tracking-wide text-sm">Delete duplicate log?</AlertDialogTitle>
+                        <AlertDialogTitle className="text-text-primary font-bold tracking-wide text-sm">Delete duplicate log?</AlertDialogTitle>
                         <AlertDialogDescription className="text-xs text-text-muted">
                             {logToDelete && (
                                 <>
@@ -742,9 +742,9 @@ export default function PayrollAuditPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="uppercase font-bold text-[10px] tracking-widest">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="uppercase font-bold text-[10px] tracking-wider">Cancel</AlertDialogCancel>
                         <AlertDialogAction
-                            className="bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest"
+                            className="bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider"
                             onClick={() => logToDelete && handleDeleteDuplicateLog(logToDelete.log, logToDelete.primary)}
                         >
                             Delete Duplicate
@@ -761,9 +761,9 @@ export default function PayrollAuditPage() {
                         { value: 'history', label: 'Paystub History', count: approvedLogsByTech.length },
                         { value: 'adjustments', label: 'Adjustments', count: adjustments.length + payrollDisputes.filter(d => d.status === 'open').length },
                     ].map(t => (
-                        <TabsTrigger key={t.value} value={t.value} className="px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all flex items-center gap-2">
+                        <TabsTrigger key={t.value} value={t.value} className="tab-underline">
                             {t.label}
-                            {t.count > 0 && <span className="text-[8px] font-black bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">{t.count}</span>}
+                            {t.count > 0 && <span className="text-[10px] font-bold bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">{t.count}</span>}
                         </TabsTrigger>
                     ))}
                 </TabsList>
@@ -775,7 +775,7 @@ export default function PayrollAuditPage() {
                         <div className="relative flex-1 min-w-[180px]">
                             <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                             <input
-                                className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-main bg-bg-primary text-[11px] font-bold uppercase tracking-wide text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-red transition-colors"
+                                className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-main bg-bg-primary text-[11px] font-bold tracking-wide text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-red transition-colors"
                                 placeholder="Search by tech name..."
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
@@ -787,7 +787,7 @@ export default function PayrollAuditPage() {
                                     key={s}
                                     onClick={() => setStatusFilter(s)}
                                     className={cn(
-                                        'h-9 px-3 text-[9px] font-black uppercase tracking-widest rounded-lg border transition-colors',
+                                        'h-9 px-3 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-colors',
                                         statusFilter === s ? 'bg-brand-red text-white border-brand-red' : 'border-border-main text-text-muted hover:text-text-primary bg-bg-primary'
                                     )}
                                 >
@@ -797,9 +797,9 @@ export default function PayrollAuditPage() {
                         </div>
                         <div className="flex items-center gap-2">
                             <input type="date" className="h-9 px-3 rounded-lg border border-border-main bg-bg-primary text-[10px] font-bold text-text-primary" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="From" />
-                            <span className="text-[9px] text-text-muted">to</span>
+                            <span className="text-[11px] text-text-muted">to</span>
                             <input type="date" className="h-9 px-3 rounded-lg border border-border-main bg-bg-primary text-[10px] font-bold text-text-primary" value={dateTo} onChange={e => setDateTo(e.target.value)} title="To" />
-                            {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[9px] text-brand-red font-black uppercase hover:underline">Clear</button>}
+                            {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[11px] text-brand-red font-bold hover:underline">Clear</button>}
                         </div>
                     </div>
                     {renderLogList(logsPager.items)}
@@ -812,27 +812,27 @@ export default function PayrollAuditPage() {
                     {approvedLogsByTech.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
                             <Receipt size={28} className="text-text-muted mx-auto mb-3" />
-                            <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">No approved logs yet</p>
+                            <p className="text-[11px] font-bold text-text-muted">No approved logs yet</p>
                         </div>
                     ) : stubTechPager.items.map(([techId, { tech, logs }]) => (
                         <div key={techId} className="rounded-xl border border-border-sub bg-bg-secondary overflow-hidden">
                             <div className="flex items-center justify-between px-4 py-3 bg-bg-tertiary/30 border-b border-border-sub">
                                 <div>
-                                    <p className="text-[11px] font-bold text-text-primary uppercase">{tech?.name || techId}</p>
-                                    <p className="text-[9px] text-text-muted uppercase">{logs.length} approved logs · ${logs.reduce((s, l) => s + settlementOf(l), 0).toFixed(2)} total</p>
+                                    <p className="text-[11px] font-bold text-text-primary">{tech?.name || techId}</p>
+                                    <p className="text-[11px] text-text-muted">{logs.length} approved logs · ${logs.reduce((s, l) => s + settlementOf(l), 0).toFixed(2)} total</p>
                                 </div>
-                                <Badge variant="active" className="text-[7px] uppercase h-4">{logs.length} stubs</Badge>
+                                <Badge variant="active" className="text-[10px] h-4">{logs.length} stubs</Badge>
                             </div>
                             <div className="divide-y divide-border-sub">
                                 {(allStubsFor.has(techId) ? logs : logs.slice(0, 12)).map(log => (
                                     <div key={log.id} className="flex items-center justify-between px-4 py-2.5">
                                         <div>
                                             <p className="text-[10px] font-bold text-text-primary font-mono">Week of {log.weekOf}</p>
-                                            <p className="text-[9px] text-text-muted">{log.items?.length || 0} items</p>
+                                            <p className="text-[11px] text-text-muted">{log.items?.length || 0} items</p>
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <p className="text-[12px] font-bold font-mono text-text-green">${settlementOf(log).toFixed(2)}</p>
-                                            <button className="text-[9px] text-text-muted hover:text-text-primary uppercase font-bold border border-border-sub rounded px-2 py-0.5 hover:border-border-main transition-colors" onClick={() => downloadPaystub(log, tech, techId, jobsById)}>
+                                            <button className="text-[11px] text-text-muted hover:text-text-primary font-bold border border-border-sub rounded px-2 py-0.5 hover:border-border-main transition-colors" onClick={() => downloadPaystub(log, tech, techId, jobsById)}>
                                                 <Download size={9} className="inline mr-0.5" /> Stub
                                             </button>
                                         </div>
@@ -841,7 +841,7 @@ export default function PayrollAuditPage() {
                             </div>
                             {logs.length > 12 && (
                                 <button
-                                    className="w-full px-4 py-2 text-[9px] font-black uppercase tracking-widest text-text-muted hover:text-text-primary border-t border-border-sub"
+                                    className="w-full px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-text-muted hover:text-text-primary border-t border-border-sub"
                                     onClick={() => setAllStubsFor(prev => { const n = new Set(prev); n.has(techId) ? n.delete(techId) : n.add(techId); return n; })}
                                 >
                                     {allStubsFor.has(techId) ? 'Show latest 12' : `Show all ${logs.length} stubs`}
@@ -861,7 +861,7 @@ export default function PayrollAuditPage() {
                         underneath for a paper trail. */}
                     {payrollDisputes.length > 0 && (
                         <div className="space-y-2">
-                            <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
                                 Payroll Disputes ({payrollDisputes.filter(d => d.status === 'open').length} open)
                             </p>
                             <div className="space-y-2">
@@ -879,22 +879,22 @@ export default function PayrollAuditPage() {
                                         )}>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                    <Badge variant="outline" className={cn("text-[7px] h-3.5 px-1.5 uppercase", isOpenDispute ? "border-brand-red/40 text-brand-red bg-brand-red/5" : "border-text-green/40 text-text-green bg-text-green/5")}>
+                                                    <Badge variant="outline" className={cn("text-[10px] h-3.5 px-1.5", isOpenDispute ? "border-brand-red/40 text-brand-red bg-brand-red/5" : "border-text-green/40 text-text-green bg-text-green/5")}>
                                                         {reasonLabel}
                                                     </Badge>
                                                     <span className="text-[10px] font-bold text-text-primary uppercase tracking-wide">{dispute.techName}</span>
-                                                    <span className="text-[9px] text-text-muted font-mono uppercase">Week of {dispute.weekOf}</span>
-                                                    {relatedJob && <span className="text-[9px] text-text-muted font-mono uppercase">{relatedJob.title || relatedJob.description || dispute.workOrderId?.toUpperCase()}</span>}
+                                                    <span className="text-[11px] text-text-muted font-mono">Week of {dispute.weekOf}</span>
+                                                    {relatedJob && <span className="text-[11px] text-text-muted font-mono">{relatedJob.title || relatedJob.description || dispute.workOrderId?.toUpperCase()}</span>}
                                                 </div>
                                                 <p className="text-[10px] text-text-secondary leading-relaxed mt-1">{dispute.notes}</p>
-                                                <p className="text-[8px] text-text-muted font-mono mt-1">
+                                                <p className="text-[10px] text-text-muted font-mono mt-1">
                                                     {new Date(dispute.createdAt).toLocaleString()}
                                                     {!isOpenDispute && dispute.resolvedBy && ` · Resolved by ${dispute.resolvedBy}`}
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0">
                                                 {relatedLog && (
-                                                    <Button variant="outline" size="sm" className="h-8 text-[9px] font-bold uppercase tracking-widest" onClick={() => openReview(relatedLog)}>
+                                                    <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-wider" onClick={() => openReview(relatedLog)}>
                                                         <Receipt size={12} className="mr-1.5" /> View Log
                                                     </Button>
                                                 )}
@@ -902,14 +902,14 @@ export default function PayrollAuditPage() {
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
-                                                        className="h-8 text-[9px] font-bold uppercase tracking-widest border-text-green text-text-green hover:bg-green-dim"
+                                                        className="h-8 text-[10px] font-bold uppercase tracking-wider border-text-green text-text-green hover:bg-green-dim"
                                                         disabled={resolvingDisputeId === dispute.id}
                                                         onClick={() => handleResolvePayrollDispute(dispute)}
                                                     >
                                                         <CheckCircle size={13} className="mr-1.5" /> Mark Resolved
                                                     </Button>
                                                 ) : (
-                                                    <Badge variant="active" className="h-6 px-3 text-[8px] uppercase tracking-widest">Resolved</Badge>
+                                                    <Badge variant="active" className="h-6 px-3 text-[10px] uppercase tracking-wider">Resolved</Badge>
                                                 )}
                                             </div>
                                         </div>
@@ -921,8 +921,8 @@ export default function PayrollAuditPage() {
                     )}
 
                     <div className="flex items-center justify-between">
-                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{adjustments.length} Adjustment{adjustments.length !== 1 ? 's' : ''}</p>
-                        <Button size="sm" className="h-8 text-[10px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setAdjustDialogOpen(true)}>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{adjustments.length} Adjustment{adjustments.length !== 1 ? 's' : ''}</p>
+                        <Button size="sm" className="h-8 text-[10px] font-bold bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setAdjustDialogOpen(true)}>
                             <Plus size={11} className="mr-1.5" /> Add Adjustment
                         </Button>
                     </div>
@@ -930,11 +930,11 @@ export default function PayrollAuditPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow className="border-border-sub">
-                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Tech</TableHead>
-                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Date</TableHead>
-                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Amount</TableHead>
-                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Reason</TableHead>
-                                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Added By</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Tech</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Date</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Amount</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Reason</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Added By</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -943,9 +943,9 @@ export default function PayrollAuditPage() {
                                     const amount = parseFloat(adj.amount || 0);
                                     return (
                                         <TableRow key={adj.id} className="border-border-sub hover:bg-bg-secondary">
-                                            <TableCell className="font-bold text-[11px] uppercase text-text-primary">{tech?.name || adj.techId}</TableCell>
+                                            <TableCell className="font-bold text-[11px] text-text-primary">{tech?.name || adj.techId}</TableCell>
                                             <TableCell className="text-[10px] text-text-muted">{parseLocalDate(adj.date)?.toLocaleDateString() ?? '—'}</TableCell>
-                                            <TableCell className={cn('text-[11px] font-black font-mono', amount >= 0 ? 'text-text-green' : 'text-text-red')}>
+                                            <TableCell className={cn('text-[11px] font-bold font-mono', amount >= 0 ? 'text-text-green' : 'text-text-red')}>
                                                 {amount >= 0 ? '+' : ''}${amount.toFixed(2)}
                                             </TableCell>
                                             <TableCell className="text-[10px] text-text-muted max-w-[200px] truncate">{adj.reason || '—'}</TableCell>
@@ -955,7 +955,7 @@ export default function PayrollAuditPage() {
                                 })}
                                 {adjustments.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-12 text-[10px] text-text-muted uppercase tracking-widest">No adjustments recorded</TableCell>
+                                        <TableCell colSpan={5} className="text-center py-12 text-[10px] text-text-muted uppercase tracking-wider">No adjustments recorded</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
@@ -970,13 +970,13 @@ export default function PayrollAuditPage() {
             <Dialog open={adjustDialogOpen} onOpenChange={setAdjustDialogOpen}>
                 <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
                     <DialogHeader>
-                        <DialogTitle className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+                        <DialogTitle className="text-[13px] font-bold flex items-center gap-2">
                             <SlidersHorizontal size={14} className="text-brand-red" /> Add Adjustment
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Technician</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Technician</Label>
                             <Select value={adjustForm.techId} onValueChange={v => setAdjustForm(p => ({ ...p, techId: v }))}>
                                 <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue placeholder="Select tech..." /></SelectTrigger>
                                 <SelectContent className="bg-bg-elevated border-border-main">
@@ -985,21 +985,21 @@ export default function PayrollAuditPage() {
                             </Select>
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Amount (use negative for deductions)</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Amount (use negative for deductions)</Label>
                             <Input type="number" step="0.01" className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="e.g. 50.00 or -25.00" value={adjustForm.amount} onChange={e => setAdjustForm(p => ({ ...p, amount: e.target.value }))} />
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Reason</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Reason</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Reason for adjustment" value={adjustForm.reason} onChange={e => setAdjustForm(p => ({ ...p, reason: e.target.value }))} />
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Date</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Date</Label>
                             <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={adjustForm.date} onChange={e => setAdjustForm(p => ({ ...p, date: e.target.value }))} />
                         </div>
                     </div>
                     <DialogFooter className="gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setAdjustDialogOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
-                        <Button size="sm" disabled={!adjustForm.techId || !adjustForm.amount || adjustSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase" onClick={async () => {
+                        <Button variant="outline" size="sm" onClick={() => setAdjustDialogOpen(false)} className="text-[10px] font-bold">Cancel</Button>
+                        <Button size="sm" disabled={!adjustForm.techId || !adjustForm.amount || adjustSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold" onClick={async () => {
                             setAdjustSaving(true);
                             const currentUserId = sessionStorage.getItem('currentUserId') || '';
                             const addedByTech = technicians.find(t => t.id === currentUserId);

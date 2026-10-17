@@ -117,23 +117,23 @@ export default function ClientFinancialsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-border-main border border-border-main rounded-lg overflow-hidden shadow-sm">
                 <div className="bg-bg-secondary p-6 text-left">
                     <div className="flex justify-between items-start mb-2">
-                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Outstanding Balance</p>
+                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Outstanding Balance</p>
                         <ArrowUpRight className="h-4 w-4 text-brand-red" />
                     </div>
                     <p className="text-3xl font-mono font-bold text-text-primary">${metrics.outstanding.toLocaleString()}</p>
-                    <p className="text-[10px] text-text-muted mt-1 uppercase tracking-widest font-bold">Funds Due for Settlement</p>
+                    <p className="text-[10px] text-text-muted mt-1 uppercase tracking-wider font-bold">Funds Due for Settlement</p>
                 </div>
                 <div className="bg-bg-secondary p-6 text-left">
                     <div className="flex justify-between items-start mb-2">
-                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Settled (YTD)</p>
+                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Settled (YTD)</p>
                         <CheckCircle2 className="h-4 w-4 text-text-green" />
                     </div>
                     <p className="text-3xl font-mono font-bold text-text-green">${metrics.paid.toLocaleString()}</p>
-                    <p className="text-[10px] text-text-muted mt-1 uppercase tracking-widest font-bold">Successfully Cleared</p>
+                    <p className="text-[10px] text-text-muted mt-1 uppercase tracking-wider font-bold">Successfully Cleared</p>
                 </div>
                 <div className="bg-bg-secondary p-6 text-left cursor-pointer hover:bg-bg-tertiary transition-colors group" onClick={() => router.push('/client/billing')}>
                     <div className="flex justify-between items-start mb-2">
-                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Current Plan</p>
+                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Current Plan</p>
                         <div className="flex items-center gap-1">
                             <Coins className="h-4 w-4 text-accent-gold" />
                             <ChevronRight className="h-3 w-3 text-text-muted group-hover:text-text-primary transition-colors" />
@@ -142,7 +142,7 @@ export default function ClientFinancialsPage() {
                     <p className="text-3xl font-bold text-text-primary capitalize">
                         {currentSub ? (currentPlan?.name || 'Service plan') : 'No plan'}
                     </p>
-                    <p className="text-[10px] text-text-muted mt-1 uppercase tracking-widest font-bold">
+                    <p className="text-[10px] text-text-muted mt-1 uppercase tracking-wider font-bold">
                         {currentPlan ? `${currentPlan.benefits.responseHours}-hour response` : `${currentUser?.billingDetails?.terms || 'Net 30'} terms`}
                     </p>
                 </div>
@@ -158,13 +158,13 @@ export default function ClientFinancialsPage() {
                         <div className="search-wrap !mb-0">
                             <Search />
                             <input 
-                                className="search-input !w-[250px] !h-9 !text-xs font-bold uppercase" 
+                                className="search-input !w-[250px] !h-9 !text-xs font-bold" 
                                 placeholder="Filter by Invoice # or Job..." 
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         </div>
-                        <Button variant="outline" size="sm" className="h-9 px-4 uppercase text-[10px] font-bold tracking-widest" onClick={handleExportInvoices}>
+                        <Button variant="outline" size="sm" className="h-9 px-4 uppercase text-[10px] font-bold tracking-wider" onClick={handleExportInvoices}>
                             <Download size={14} className="mr-2" /> Export CSV
                         </Button>
                     </div>
@@ -173,11 +173,11 @@ export default function ClientFinancialsPage() {
                     <Table>
                         <TableHeader className="bg-bg-tertiary/50">
                             <TableRow className="hover:bg-transparent border-border-sub">
-                                <TableHead className="pl-6 text-[10px] uppercase tracking-widest font-bold">Reference #</TableHead>
-                                <TableHead className="text-[10px] uppercase tracking-widest font-bold">Originating Source</TableHead>
-                                <TableHead className="text-[10px] uppercase tracking-widest font-bold">Date Issued</TableHead>
-                                <TableHead className="text-[10px] uppercase tracking-widest font-bold">Status</TableHead>
-                                <TableHead className="text-right text-[10px] uppercase tracking-widest font-bold">Total Amount</TableHead>
+                                <TableHead className="pl-6 text-[10px] uppercase tracking-wider font-bold">Reference #</TableHead>
+                                <TableHead className="text-[10px] uppercase tracking-wider font-bold">Originating Source</TableHead>
+                                <TableHead className="text-[10px] uppercase tracking-wider font-bold">Date Issued</TableHead>
+                                <TableHead className="text-[10px] uppercase tracking-wider font-bold">Status</TableHead>
+                                <TableHead className="text-right text-[10px] uppercase tracking-wider font-bold">Total Amount</TableHead>
                                 <TableHead className="text-right pr-6"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -188,11 +188,11 @@ export default function ClientFinancialsPage() {
                                 return (
                                     <TableRow key={invoice.id} className="border-border-sub hover:bg-bg-tertiary transition-colors group">
                                         <TableCell className="pl-6 text-left">
-                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide">INV-{invoice.invoiceNumber}</p>
+                                            <p className="text-xs font-bold text-text-primary tracking-wide">INV-{invoice.invoiceNumber}</p>
                                         </TableCell>
                                         <TableCell className="text-left">
                                             <div className="flex items-center gap-2">
-                                                <Badge variant="outline" className="text-[9px] uppercase bg-bg-primary border-border-sub flex items-center gap-1.5">
+                                                <Badge variant="outline" className="text-[11px] bg-bg-primary border-border-sub flex items-center gap-1.5">
                                                     <SourceIcon size={10}/>
                                                     {source.label}
                                                 </Badge>
@@ -222,7 +222,7 @@ export default function ClientFinancialsPage() {
                             })}
                             {filteredInvoices.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-32 text-center text-text-muted uppercase text-[10px] tracking-[0.2em] italic">
+                                    <TableCell colSpan={6} className="h-32 text-center text-text-muted uppercase text-[10px] tracking-wider italic">
                                         Financial ledger clear. No transaction history found.
                                     </TableCell>
                                 </TableRow>

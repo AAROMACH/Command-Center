@@ -175,7 +175,7 @@ export default function TechDashboardPage() {
             <div className="flex h-screen items-center justify-center bg-bg-primary">
                 <div className="text-center space-y-4">
                     <div className="h-8 w-8 border-4 border-brand-red border-t-transparent rounded-full animate-spin mx-auto" />
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Synchronizing Field terminal...</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Synchronizing Field terminal...</p>
                 </div>
             </div>
         );
@@ -200,31 +200,31 @@ export default function TechDashboardPage() {
                 <Card className="bg-bg-secondary border-border-sub cursor-pointer hover:border-border-main transition-all" onClick={() => router.push('/tech/assignments')}>
                     <CardContent className="p-3 space-y-1">
                         <div className="flex items-center justify-between">
-                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Jobs This Week</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Jobs This Week</p>
                             <Briefcase size={12} className="text-text-muted" />
                         </div>
                         <p className="text-2xl font-mono font-bold text-text-primary">{weeklyJobCount}</p>
-                        <p className="text-[8px] text-text-muted uppercase tracking-widest">{allWorkOrders.length} total assigned</p>
+                        <p className="text-[10px] text-text-muted uppercase tracking-wider">{allWorkOrders.length} total assigned</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-bg-secondary border-border-sub cursor-pointer hover:border-border-main transition-all" onClick={() => router.push('/tech/calendar')}>
                     <CardContent className="p-3 space-y-1">
                         <div className="flex items-center justify-between">
-                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Expected Pay</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Expected Pay</p>
                             <DollarSign size={12} className="text-text-green" />
                         </div>
                         <p className="text-2xl font-mono font-bold text-text-green">${expectedEarnings.toFixed(0)}</p>
-                        <p className="text-[8px] text-text-muted uppercase tracking-widest">Pending logs</p>
+                        <p className="text-[10px] text-text-muted uppercase tracking-wider">Pending logs</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-bg-secondary border-border-sub cursor-pointer hover:border-border-main transition-all" onClick={() => router.push('/tech/logs')}>
                     <CardContent className="p-3 space-y-1">
                         <div className="flex items-center justify-between">
-                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Logs Pending</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Logs Pending</p>
                             <TrendingUp size={12} className="text-accent-gold" />
                         </div>
                         <p className="text-2xl font-mono font-bold text-text-primary">{unsubmittedLogs.length}</p>
-                        <p className="text-[8px] text-text-muted uppercase tracking-widest">Draft weekly logs</p>
+                        <p className="text-[10px] text-text-muted uppercase tracking-wider">Draft weekly logs</p>
                     </CardContent>
                 </Card>
             </div>
@@ -244,61 +244,61 @@ export default function TechDashboardPage() {
                             <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div className="text-left space-y-2 flex-1 min-w-0">
                                     <div className="flex items-center gap-3">
-                                        <span className="text-[10px] font-bold text-brand-red uppercase tracking-widest font-mono">{(activeJob.id || '').toUpperCase()}</span>
+                                        <span className="text-[10px] font-bold text-brand-red uppercase tracking-wider font-mono">{(activeJob.id || '').toUpperCase()}</span>
                                         <Badge variant={activeJob.status === 'checked-out' ? 'checked-out' : activeJob.status === 'in-progress' ? 'inprogress' : 'onhold'}>
                                             {activeJob.status.replace(/-/g, ' ').toUpperCase()}
                                         </Badge>
                                     </div>
-                                    <h3 className="text-lg font-black uppercase tracking-tight text-text-primary leading-tight truncate">
+                                    <h3 className="text-lg font-black tracking-tight text-text-primary leading-tight truncate">
                                         {activeJob.title || activeJob.description}
                                     </h3>
                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 text-left">
+                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider flex items-center gap-1.5 text-left">
                                             <Building2 size={12}/> {activeJob.clientName}
                                         </p>
-                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 truncate max-w-[200px] text-left">
+                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider flex items-center gap-1.5 truncate max-w-[200px] text-left">
                                             <MapPin size={12} className="text-brand-red"/> {activeJob.location}
                                         </p>
-                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 text-left">
+                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider flex items-center gap-1.5 text-left">
                                             <CalendarIcon size={12} className="text-accent-gold"/> {activeJob.scheduleDate}
                                         </p>
-                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 text-left">
+                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider flex items-center gap-1.5 text-left">
                                             <Clock size={12} className="text-accent-gold"/> {activeJob.scheduleTime}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="flex gap-2 shrink-0 self-start md:self-center">
                                     {canConfirm(activeJob) && (
-                                        <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'confirmed'); }} className="h-9 px-5 bg-accent-gold text-white text-[10px] font-bold uppercase tracking-widest">
+                                        <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'confirmed'); }} className="h-9 px-5 bg-accent-gold text-white text-[10px] font-bold uppercase tracking-wider">
                                             <Check size={14} className="mr-2"/> Confirm
                                         </Button>
                                     )}
                                     {canStartTrip(activeJob) && (
-                                        <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'on-my-way'); }} className="h-9 px-5 bg-brand-red text-white text-[10px] uppercase font-bold tracking-widest">
+                                        <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'on-my-way'); }} className="h-9 px-5 bg-brand-red text-white text-[10px] uppercase font-bold tracking-wider">
                                             <Navigation size={14} className="mr-2"/> Start Trip
                                         </Button>
                                     )}
                                     {canCheckIn(activeJob) && (
-                                        <Button disabled={hasActiveSession} className="h-9 px-5 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
+                                        <Button disabled={hasActiveSession} className="h-9 px-5 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-wider" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
                                             <Play size={14} className="mr-2 fill-current"/> Check In
                                         </Button>
                                     )}
                                     {canCheckOut(activeJob) && (
-                                        <Button variant="outline" className="h-9 px-5 border-text-red text-text-red hover:bg-brand-red-dim text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'checked-out'); }}>
+                                        <Button variant="outline" className="h-9 px-5 border-text-red text-text-red hover:bg-brand-red-dim text-[10px] uppercase font-bold tracking-wider" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'checked-out'); }}>
                                             <LogOut size={14} className="mr-2"/> Check Out
                                         </Button>
                                     )}
                                     {canComplete(activeJob) && activeJob.status === 'in-progress' && (
-                                        <Button className="h-9 px-5 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
+                                        <Button className="h-9 px-5 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-wider" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
                                             <CheckCircle2 size={14} className="mr-2"/> Finalize
                                         </Button>
                                     )}
                                     {activeJob.status === 'checked-out' && (
                                         <div className="flex gap-2">
-                                            <Button disabled={hasActiveSession} variant="outline" className="h-9 px-4 border-accent-gold text-accent-gold hover:bg-accent-gold-dim text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
+                                            <Button disabled={hasActiveSession} variant="outline" className="h-9 px-4 border-accent-gold text-accent-gold hover:bg-accent-gold-dim text-[10px] uppercase font-bold tracking-wider" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
                                                 <RotateCcw size={14} className="mr-2"/> Resume
                                             </Button>
-                                            <Button className="h-9 px-4 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
+                                            <Button className="h-9 px-4 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-wider" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
                                                 <CheckCircle2 size={14} className="mr-2"/> Finalize
                                             </Button>
                                         </div>
@@ -310,8 +310,8 @@ export default function TechDashboardPage() {
                         <Card className="border border-border-sub bg-bg-secondary">
                             <CardContent className="py-8 text-center space-y-2">
                                 <CheckCircle2 size={28} className="mx-auto text-text-green opacity-20" />
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">No Active Mission</p>
-                                <p className="text-[9px] text-text-muted">Stand by — your next assignment will appear here when dispatched.</p>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">No Active Mission</p>
+                                <p className="text-[11px] text-text-muted">Stand by — your next assignment will appear here when dispatched.</p>
                             </CardContent>
                         </Card>
                     )}
@@ -327,34 +327,34 @@ export default function TechDashboardPage() {
                         <div className="grid grid-cols-2 gap-2">
                             <Button variant="outline" className="h-14 flex-col gap-1.5 relative bg-bg-secondary border-border-main hover:border-text-green hover:bg-green-dim/10 transition-all" onClick={() => setIsLogSelectionOpen(true)}>
                                 <ClipboardList size={18} className="text-text-green" />
-                                <span className="text-[9px] font-bold uppercase tracking-wider">Submit Log</span>
+                                <span className="text-[10px] font-bold uppercase tracking-wider">Submit Log</span>
                                 {unsubmittedLogs.length > 0 && (
-                                    <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[8px] bg-brand-red">{unsubmittedLogs.length}</Badge>
+                                    <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-brand-red">{unsubmittedLogs.length}</Badge>
                                 )}
                             </Button>
                             <Button variant="outline" className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-accent-gold hover:bg-accent-gold-dim/10 transition-all" onClick={() => setIsReceiptDialogOpen(true)}>
                                 <Receipt size={18} className="text-accent-gold" />
-                                <span className="text-[9px] font-bold uppercase tracking-wider">Receipt</span>
+                                <span className="text-[10px] font-bold uppercase tracking-wider">Receipt</span>
                             </Button>
                         </div>
                         <Button variant="outline" className="w-full h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-brand-red hover:bg-brand-red-dim/10 transition-all" onClick={() => setIsCheckInDialogOpen(true)}>
                             <Play size={18} className="text-brand-red" />
-                            <span className="text-[9px] font-bold uppercase tracking-wider">Check In</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider">Check In</span>
                         </Button>
                     </div>
 
                     {/* Pending logs */}
                     {unsubmittedLogs.length > 0 && (
                         <div className="space-y-2">
-                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted px-1">Logs Pending Submission</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted px-1">Logs Pending Submission</p>
                             {unsubmittedLogs.map(log => (
                                 <Card key={log.id} className="bg-bg-secondary border-accent-gold/30 cursor-pointer hover:border-accent-gold transition-all" onClick={() => { setSelectedLog(log); }}>
                                     <CardContent className="p-3 flex items-center justify-between">
                                         <div>
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-primary">Week of {log.weekOf}</p>
-                                            <p className="text-[9px] text-text-muted">{(log.items || []).length} assignments</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-primary">Week of {log.weekOf}</p>
+                                            <p className="text-[11px] text-text-muted">{(log.items || []).length} assignments</p>
                                         </div>
-                                        <span className="text-[9px] font-bold uppercase tracking-widest text-accent-gold">Submit →</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-accent-gold">Submit →</span>
                                     </CardContent>
                                 </Card>
                             ))}

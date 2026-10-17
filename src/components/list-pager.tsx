@@ -76,7 +76,7 @@ export function ListPager<T>({ pager, className, noun = 'rows' }: { pager: Pager
   return (
     <div className={cn('flex flex-wrap items-center justify-between gap-3 py-3', className)}>
       <div className="flex items-center gap-2">
-        <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">Show</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Show</span>
         {sizes.map(n => (
           <button
             key={n}

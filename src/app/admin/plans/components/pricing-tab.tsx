@@ -13,7 +13,7 @@ import {
 } from '@/lib/billing';
 import { savePricing } from '@/lib/billing-actions';
 
-const labelCls = 'text-[10px] font-black uppercase tracking-widest text-text-muted';
+const labelCls = 'text-[10px] font-bold uppercase tracking-wider text-text-muted';
 const inputCls = 'h-9 text-xs bg-bg-secondary border-border-main';
 
 /**
@@ -100,7 +100,7 @@ export function PricingTab({ settings, canEdit }: { settings: PricingSettings; c
                 </Button>
               </div>
             ))}
-            <Button type="button" variant="outline" size="sm" onClick={addRate} className="h-9 text-[10px] font-black uppercase tracking-widest">
+            <Button type="button" variant="outline" size="sm" onClick={addRate} className="h-9 text-[10px] font-bold uppercase tracking-wider">
               <Plus size={12} className="mr-1.5" /> Add Rate
             </Button>
           </CardContent>
@@ -159,11 +159,11 @@ export function PricingTab({ settings, canEdit }: { settings: PricingSettings; c
       {canEdit && (
         <div className="flex items-center justify-end gap-2 sticky bottom-4">
           {dirty && (
-            <Button variant="outline" onClick={() => { setDraft(settings); setDirty(false); }} disabled={saving} className="h-10 text-[10px] font-black uppercase">
+            <Button variant="outline" onClick={() => { setDraft(settings); setDirty(false); }} disabled={saving} className="h-10 text-[10px] font-bold">
               Discard
             </Button>
           )}
-          <Button onClick={handleSave} disabled={!dirty || saving} className="h-10 px-6 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase shadow-lg">
+          <Button onClick={handleSave} disabled={!dirty || saving} className="h-10 px-6 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold shadow-lg">
             {saving ? <Loader2 size={12} className="mr-1.5 animate-spin" /> : <Save size={12} className="mr-1.5" />} Save Pricing
           </Button>
         </div>

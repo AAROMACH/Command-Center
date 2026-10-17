@@ -83,12 +83,12 @@ export function JobDensityMap({ jobs }: { jobs: WorkOrder[] }) {
                 <div ref={containerRef} className="absolute inset-0" aria-label="Job density map of Michigan and Ohio" role="img" />
                 {breaks.length > 0 && (
                     <div className="absolute bottom-3 left-3 z-[400] rounded-md border border-border-main bg-bg-elevated/95 px-3 py-2 shadow-lg">
-                        <p className="mb-1.5 text-[9px] font-black uppercase tracking-widest text-text-muted">Jobs per ~10-mile square</p>
+                        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted">Jobs per ~10-mile square</p>
                         <div className="flex items-end gap-1">
                             {breaks.map((b, i) => (
                                 <div key={b} className="flex flex-col items-center gap-1">
                                     <span className="block h-3 w-8 rounded-sm" style={{ background: colors[i] }} />
-                                    <span className="text-[9px] font-mono text-text-secondary">
+                                    <span className="text-[11px] font-mono text-text-secondary">
                                         {i === 0 ? (b === 1 ? '1' : `1–${b}`) : (breaks[i - 1] + 1 === b ? `${b}` : `${breaks[i - 1] + 1}–${b}`)}
                                     </span>
                                 </div>
@@ -97,7 +97,7 @@ export function JobDensityMap({ jobs }: { jobs: WorkOrder[] }) {
                     </div>
                 )}
             </div>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
                 {grid.plotted} job{grid.plotted !== 1 ? 's' : ''} mapped
                 {grid.missingCoords > 0 && ` · ${grid.missingCoords} without saved coordinates`}
                 {grid.outside > 0 && ` · ${grid.outside} outside Michigan / Ohio`}

@@ -59,7 +59,7 @@ const PRIORITY_CLS: Record<RequestPriority, string> = {
 
 function Pill({ cls, label }: { cls: string; label: string }) {
   return (
-    <span className={cn('text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border whitespace-nowrap', cls)}>
+    <span className={cn('text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border whitespace-nowrap', cls)}>
       {label}
     </span>
   );
@@ -68,7 +68,7 @@ function Pill({ cls, label }: { cls: string; label: string }) {
 function TabCount({ n }: { n: number }) {
   if (!n) return null;
   return (
-    <span className="ml-1 inline-flex items-center justify-center rounded-full bg-brand-red text-white text-[8px] font-black min-w-[16px] h-4 px-1 leading-none">
+    <span className="ml-1 inline-flex items-center justify-center rounded-full bg-brand-red text-white text-[10px] font-bold min-w-[16px] h-4 px-1 leading-none">
       {n > 99 ? '99+' : n}
     </span>
   );
@@ -95,11 +95,11 @@ function FilterGroup<T extends string>({ label, options, value, onChange }: {
 }) {
   return (
     <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-      <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest mr-0.5">{label}:</span>
+      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider mr-0.5">{label}:</span>
       {options.map(o => (
         <button key={o.value} type="button" onClick={() => onChange(o.value)}
           className={cn(
-            'text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border transition-colors whitespace-nowrap',
+            'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border transition-colors whitespace-nowrap',
             value === o.value
               ? 'bg-bg-tertiary text-text-primary border-border-main'
               : 'text-text-muted border-border-sub hover:border-border-main hover:text-text-secondary'
@@ -274,7 +274,7 @@ export default function RequestsPage() {
         </div>
         <div className="page-header-right items-center gap-2">
           {canManage && (
-            <Button variant="default" size="default" className="h-9 text-[10px] font-bold uppercase tracking-widest" onClick={() => setIsNewDialogOpen(true)}>
+            <Button variant="default" size="default" className="h-9 text-[10px] font-bold uppercase tracking-wider" onClick={() => setIsNewDialogOpen(true)}>
               <Plus size={14} className="mr-1.5" />New Request
             </Button>
           )}
@@ -295,7 +295,7 @@ export default function RequestsPage() {
             ] as { value: TabId; label: string }[]).map(t => (
               <TabsTrigger key={t.value} value={t.value}
                 className={cn(
-                  'relative h-10 px-4 rounded-none border-0 border-b-2 text-[10px] font-bold uppercase tracking-widest transition-colors shrink-0',
+                  'relative h-10 px-4 rounded-none border-0 border-b-2 text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0',
                   activeTab === t.value
                     ? 'border-brand-red text-text-primary'
                     : 'border-transparent text-text-muted hover:text-text-secondary'
@@ -376,14 +376,14 @@ export default function RequestsPage() {
               </div>
               {(req.email || req.phone) && (
                 <div className="flex items-center gap-3 flex-wrap">
-                  {req.email && <span className="flex items-center gap-1 text-[9px] text-text-muted truncate"><Mail size={8} className="shrink-0" />{req.email}</span>}
-                  {req.phone && <span className="flex items-center gap-1 text-[9px] text-text-muted"><Phone size={8} className="shrink-0" />{req.phone}</span>}
+                  {req.email && <span className="flex items-center gap-1 text-[11px] text-text-muted truncate"><Mail size={8} className="shrink-0" />{req.email}</span>}
+                  {req.phone && <span className="flex items-center gap-1 text-[11px] text-text-muted"><Phone size={8} className="shrink-0" />{req.phone}</span>}
                 </div>
               )}
               {req.description && (
                 <p className="text-[10px] text-text-secondary leading-relaxed line-clamp-2">{req.description}</p>
               )}
-              <p className="text-[9px] text-text-muted mt-auto pt-1">
+              <p className="text-[11px] text-text-muted mt-auto pt-1">
                 {SOURCE_LABELS[req.source]} · {formatRequestDate(req.createdAt, true)}
                 {req.updatedAt && <> · Updated {formatRequestDate(req.updatedAt)}</>}
               </p>
@@ -427,13 +427,13 @@ export default function RequestsPage() {
                   <Pill cls="bg-bg-tertiary text-text-muted border-border-sub" label={SOURCE_LABELS[selected.source]} />
                   {selected.priority && <Pill cls={PRIORITY_CLS[selected.priority]} label={selected.priority} />}
                 </div>
-                <p className="text-[15px] font-black text-text-primary">{selected.displayName}</p>
-                <p className="text-[9px] text-text-muted font-mono mt-0.5">{selected.rawId.toUpperCase()}</p>
+                <p className="text-[15px] font-bold text-text-primary">{selected.displayName}</p>
+                <p className="text-[11px] text-text-muted font-mono mt-0.5">{selected.rawId.toUpperCase()}</p>
               </div>
 
               {/* Contact */}
               <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Contact</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Contact</p>
                 {selected.contactName && <p className="text-[13px] font-bold text-text-primary">{selected.contactName}</p>}
                 {selected.companyName && <p className="text-[11px] text-text-secondary flex items-center gap-1"><Building2 size={10} />{selected.companyName}</p>}
                 {selected.email && <p className="text-[11px] text-text-muted flex items-center gap-1"><Mail size={10} />{selected.email}</p>}
@@ -448,13 +448,13 @@ export default function RequestsPage() {
               {/* Details */}
               {selected.description && (
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Details</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Details</p>
                   <p className="text-[12px] text-text-primary leading-relaxed whitespace-pre-wrap">{selected.description}</p>
                 </div>
               )}
               {Array.isArray(selected.raw.serviceTypes) && selected.raw.serviceTypes.length > 0 && (
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Services</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Services</p>
                   <div className="flex flex-wrap gap-1">
                     {selected.raw.serviceTypes.map((t: string) => (
                       <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-bg-tertiary border border-border-sub text-text-secondary font-medium">{t}</span>
@@ -464,7 +464,7 @@ export default function RequestsPage() {
               )}
               {Array.isArray(selected.raw.serviceInterests) && selected.raw.serviceInterests.length > 0 && (
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Service Interests</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Service Interests</p>
                   <div className="flex flex-wrap gap-1">
                     {selected.raw.serviceInterests.map((t: string) => (
                       <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-bg-tertiary border border-border-sub text-text-secondary font-medium">{t}</span>
@@ -474,7 +474,7 @@ export default function RequestsPage() {
               )}
               {selected.locationText && (
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Location</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Location</p>
                   <p className="text-[11px] text-text-secondary flex items-center gap-1"><MapPin size={10} />{selected.locationText}</p>
                 </div>
               )}
@@ -482,11 +482,11 @@ export default function RequestsPage() {
               {/* Timestamps */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Created</p>
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Created</p>
                   <p className="text-[11px] text-text-primary">{formatRequestDate(selected.createdAt, true)}</p>
                 </div>
                 <div>
-                  <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Updated</p>
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Updated</p>
                   <p className="text-[11px] text-text-primary">{formatRequestDate(selected.updatedAt, true)}</p>
                 </div>
               </div>
@@ -494,7 +494,7 @@ export default function RequestsPage() {
               {/* Linked records */}
               {(selected.convertedId || selected.convertedClientId) && (
                 <div className="space-y-1.5 p-3 rounded-lg bg-bg-tertiary border border-border-sub">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Linked Records</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Linked Records</p>
                   {selected.convertedClientId && (
                     <p className="text-[10px] text-text-secondary">Client record: <span className="font-mono text-brand-red">{selected.convertedClientId.toUpperCase()}</span></p>
                   )}
@@ -514,7 +514,7 @@ export default function RequestsPage() {
               {/* Actions */}
               {canManage && (
                 <div className="border-t border-border-sub pt-4 space-y-2">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Actions</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Actions</p>
                   <div className="grid grid-cols-2 gap-2">
                     {isOpen(selected) && (
                       <>

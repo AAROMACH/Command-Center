@@ -74,7 +74,7 @@ const EMPTY: FormState = {
 
 function FieldLabel({ label, required }: { label: string; required?: boolean }) {
   return (
-    <label className="block text-[11px] font-bold uppercase tracking-widest text-text-muted mb-1.5">
+    <label className="block text-[11px] font-bold text-text-muted mb-1.5">
       {label}{required && <span className="text-brand-red ml-0.5">*</span>}
     </label>
   );
@@ -257,7 +257,7 @@ export default function PublicServiceRequestPage() {
             </p>
           </div>
           <div className="rounded-xl border border-border-sub bg-bg-secondary p-4 text-left space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Your submission</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Your submission</p>
             <p className="text-[12px] font-bold text-text-primary">{form.fullName}</p>
             <p className="text-[11px] text-text-muted">{form.email}</p>
             <p className="text-[11px] text-text-muted">Priority: <span className="capitalize">{form.priorityLevel}</span></p>
@@ -279,7 +279,7 @@ export default function PublicServiceRequestPage() {
 
         {/* Header */}
         <div className="text-center space-y-2">
-          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-brand-red">Aaromach</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-brand-red">Aaromach</p>
           <h1 className="text-[28px] font-black text-text-primary">Service Request</h1>
           <p className="text-[13px] text-text-secondary max-w-md mx-auto">
             Request a technician for structured cabling, fiber, security cameras, AV, network racks, phone systems or
@@ -292,12 +292,12 @@ export default function PublicServiceRequestPage() {
           {[1, 2].map(s => (
             <div key={s} className="flex items-center gap-2 flex-1">
               <div className={cn(
-                'w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black shrink-0',
+                'w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0',
                 step > s ? 'bg-text-green text-white' : step === s ? 'bg-brand-red text-white' : 'bg-bg-secondary border border-border-sub text-text-muted',
               )}>
                 {step > s ? <Check size={13} /> : s}
               </div>
-              <span className={cn('text-[10px] font-bold uppercase tracking-widest', step === s ? 'text-text-primary' : 'text-text-muted')}>
+              <span className={cn('text-[10px] font-bold uppercase tracking-wider', step === s ? 'text-text-primary' : 'text-text-muted')}>
                 {s === 1 ? 'Contact Info' : 'Service Details'}
               </span>
               {s < 2 && <div className="flex-1 h-px bg-border-sub" />}
@@ -308,7 +308,7 @@ export default function PublicServiceRequestPage() {
         {/* Step 1: Contact Information */}
         {step === 1 && (
           <div className="rounded-2xl border border-border-sub bg-bg-secondary p-6 space-y-5">
-            <h2 className="text-[15px] font-black text-text-primary">Contact Information</h2>
+            <h2 className="text-[15px] font-bold text-text-primary">Contact Information</h2>
 
             <div>
               <FieldLabel label="Email Address" required />
@@ -379,7 +379,7 @@ export default function PublicServiceRequestPage() {
             <button
               type="button"
               onClick={nextStep}
-              className="w-full h-12 rounded-xl bg-brand-red hover:bg-brand-red/90 text-white text-[12px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-colors"
+              className="w-full h-12 rounded-xl bg-brand-red hover:bg-brand-red/90 text-white text-[12px] font-bold flex items-center justify-center gap-2 transition-colors"
             >
               Next: Service Details <ChevronRight size={16} />
             </button>
@@ -389,7 +389,7 @@ export default function PublicServiceRequestPage() {
         {/* Step 2: Service Information */}
         {step === 2 && (
           <div className="rounded-2xl border border-border-sub bg-bg-secondary p-6 space-y-5">
-            <h2 className="text-[15px] font-black text-text-primary">Service Information</h2>
+            <h2 className="text-[15px] font-bold text-text-primary">Service Information</h2>
 
             <div>
               <FieldLabel label="Types of Services Required" required />
@@ -439,7 +439,7 @@ export default function PublicServiceRequestPage() {
                         : 'border-border-sub bg-bg-primary hover:border-border-main',
                     )}
                   >
-                    <span className={cn('block text-[11px] font-black uppercase tracking-widest mb-0.5',
+                    <span className={cn('block text-[11px] font-bold mb-0.5',
                       opt.value === 'critical' ? 'text-brand-red' : opt.value === 'high' ? 'text-orange-400' : opt.value === 'medium' ? 'text-amber-400' : 'text-text-muted',
                     )}>{opt.label}</span>
                     <span className="text-[10px] text-text-muted">{opt.desc}</span>
@@ -497,7 +497,7 @@ export default function PublicServiceRequestPage() {
                     type="button"
                     onClick={() => set('hasSupportingDocuments', v)}
                     className={cn(
-                      'px-6 py-2 rounded-lg border text-[11px] font-bold uppercase tracking-widest transition-all',
+                      'px-6 py-2 rounded-lg border text-[11px] font-bold transition-all',
                       form.hasSupportingDocuments === v
                         ? 'border-brand-red bg-brand-red/10 text-brand-red'
                         : 'border-border-sub bg-bg-primary text-text-secondary hover:border-border-main',
@@ -595,7 +595,7 @@ export default function PublicServiceRequestPage() {
               <button
                 type="button"
                 onClick={() => { setStep(1); window.scrollTo(0, 0); }}
-                className="h-12 px-5 rounded-xl border border-border-main text-[11px] font-black uppercase tracking-widest text-text-secondary hover:text-text-primary transition-colors flex items-center gap-2"
+                className="h-12 px-5 rounded-xl border border-border-main text-[11px] font-bold text-text-secondary hover:text-text-primary transition-colors flex items-center gap-2"
               >
                 <ChevronLeft size={16} /> Back
               </button>
@@ -603,7 +603,7 @@ export default function PublicServiceRequestPage() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex-1 h-12 rounded-xl bg-brand-red hover:bg-brand-red/90 disabled:opacity-60 text-white text-[12px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-colors"
+                className="flex-1 h-12 rounded-xl bg-brand-red hover:bg-brand-red/90 disabled:opacity-60 text-white text-[12px] font-bold flex items-center justify-center gap-2 transition-colors"
               >
                 {submitting ? <><Loader2 size={16} className="animate-spin" />Submitting...</> : 'Submit Request'}
               </button>

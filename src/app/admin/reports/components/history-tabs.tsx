@@ -119,16 +119,16 @@ function FilterBar({ fields, values, onChange, search, onSearch, onReset, onExpo
     exportDisabled?: boolean;
 }) {
     const active = !!search || Object.values(values).some(Boolean);
-    const control = 'h-8 bg-bg-primary border-border-main text-[10px] font-bold uppercase';
+    const control = 'h-8 bg-bg-primary border-border-main text-[10px] font-bold';
     return (
         <div className="space-y-3">
             <div className="flex flex-wrap items-end gap-3 p-3 bg-bg-secondary/60 border border-border-sub rounded-xl">
                 <div className="flex items-center gap-2 shrink-0 self-center">
                     <Filter size={12} className="text-text-muted" />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">Filters</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Filters</span>
                 </div>
                 <label className="flex flex-col gap-1 min-w-[180px] flex-1 max-w-[260px]">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">Search</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Search</span>
                     <span className="relative">
                         <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input value={search} onChange={e => onSearch(e.target.value)} placeholder="ID, title, client, tech…" className="h-8 pl-7 bg-bg-primary border-border-main text-[11px]" />
@@ -136,30 +136,30 @@ function FilterBar({ fields, values, onChange, search, onSearch, onReset, onExpo
                 </label>
                 {fields.map(f => f.kind === 'date' ? (
                     <label key={f.key} className="flex flex-col gap-1">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">{f.label}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{f.label}</span>
                         <Input type="date" className={cn(control, 'w-[145px]')} value={values[f.key] || ''} onChange={e => onChange(f.key, e.target.value)} />
                     </label>
                 ) : (
                     <div key={f.key} className="flex flex-col gap-1">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">{f.label}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{f.label}</span>
                         <Select value={values[f.key] || 'all'} onValueChange={v => onChange(f.key, v === 'all' ? '' : v)}>
                             <SelectTrigger className={cn(control, 'w-[165px]')}><SelectValue /></SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main max-h-[320px]">
-                                <SelectItem value="all" className="text-[10px] font-bold uppercase">{f.allLabel}</SelectItem>
-                                {f.options.map(o => <SelectItem key={o.value} value={o.value} className="text-[10px] font-bold uppercase">{o.label}</SelectItem>)}
+                                <SelectItem value="all" className="text-[10px] font-bold">{f.allLabel}</SelectItem>
+                                {f.options.map(o => <SelectItem key={o.value} value={o.value} className="text-[10px] font-bold">{o.label}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
                 ))}
                 {active && (
-                    <button onClick={onReset} className="h-8 px-2 inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-brand-red hover:underline">
+                    <button onClick={onReset} className="h-8 px-2 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-brand-red hover:underline">
                         <RotateCcw size={11} /> Reset
                     </button>
                 )}
             </div>
             <div className="flex items-center justify-between gap-3">
-                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{count.toLocaleString()} {noun}{active ? ' match' : ''}</p>
-                <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest" onClick={onExport} disabled={exportDisabled ?? count === 0}>
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{count.toLocaleString()} {noun}{active ? ' match' : ''}</p>
+                <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-wider" onClick={onExport} disabled={exportDisabled ?? count === 0}>
                     <Download size={13} className="mr-1.5" /> Export CSV{active ? ' (filtered)' : ''}
                 </Button>
             </div>
@@ -181,20 +181,20 @@ function useFilters(keys: string[]) {
 const opts = (vals: string[]): Option[] => Array.from(new Set(vals.filter(Boolean))).sort().map(v => ({ value: v, label: v }));
 const inRange = (d: string | null, from: string, to: string) => (!from || (!!d && d >= from)) && (!to || (!!d && d <= to));
 const matchesText = (q: string, ...parts: (string | null | undefined)[]) => !q || parts.some(p => (p || '').toLowerCase().includes(q));
-const th = 'text-[9px] uppercase font-black tracking-widest';
+const th = 'text-[10px] uppercase font-bold tracking-wider';
 
 function JobCells({ r }: { r: JobRecord }) {
     return (
         <>
             <TableCell className="py-3 pl-6">
-                <p className="text-[10px] font-mono font-bold text-brand-red uppercase">{r.assignmentId}</p>
-                <p className="text-xs font-bold text-text-primary uppercase mt-0.5 max-w-[240px] truncate">{r.title || '—'}</p>
+                <p className="text-[10px] font-mono font-bold text-brand-red">{r.assignmentId}</p>
+                <p className="text-xs font-bold text-text-primary mt-0.5 max-w-[240px] truncate">{r.title || '—'}</p>
             </TableCell>
-            <TableCell className="py-3 text-[10px] font-mono text-text-secondary uppercase">{r.workOrderId || '—'}</TableCell>
+            <TableCell className="py-3 text-[10px] font-mono text-text-secondary">{r.workOrderId || '—'}</TableCell>
             <TableCell className="py-3 text-[10px] font-mono text-text-secondary hidden md:table-cell">{show(r.assignedOn)}</TableCell>
             <TableCell className="py-3 text-[10px] font-mono text-text-secondary">{show(r.scheduled)}</TableCell>
-            <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase max-w-[180px] truncate">{r.client || '—'}</TableCell>
-            <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase max-w-[200px] hidden lg:table-cell">{r.techs || 'Unassigned'}</TableCell>
+            <TableCell className="py-3 text-[10px] font-bold text-text-secondary max-w-[180px] truncate">{r.client || '—'}</TableCell>
+            <TableCell className="py-3 text-[10px] font-bold text-text-secondary max-w-[200px] hidden lg:table-cell">{r.techs || 'Unassigned'}</TableCell>
         </>
     );
 }
@@ -266,12 +266,12 @@ export function AssignmentHistoryTab({ jobs, technicians, disputedIds, onOpen }:
                             <TableRow key={job.id} className="border-border-sub hover:bg-bg-tertiary cursor-pointer" onClick={() => onOpen(job)}>
                                 <JobCells r={r} />
                                 <TableCell className="py-3 text-right pr-6">
-                                    <Badge variant={r.status === 'disputed' ? 'destructive' : 'active'} className="text-[8px] uppercase">{r.status}</Badge>
+                                    <Badge variant={r.status === 'disputed' ? 'destructive' : 'active'} className="text-[10px]">{r.status}</Badge>
                                 </TableCell>
                             </TableRow>
                         ))}
                         {filtered.length === 0 && (
-                            <TableRow><TableCell colSpan={7} className="py-16 text-center text-[10px] font-bold text-text-muted uppercase">No completed assignments match</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={7} className="py-16 text-center text-[10px] font-bold text-text-muted">No completed assignments match</TableCell></TableRow>
                         )}
                     </TableBody>
                 </Table>
@@ -338,21 +338,21 @@ export function ProjectHistoryTab({ projects, technicians }: { projects: Project
                         {pager.items.map(r => (
                             <TableRow key={r.p.id} className="border-border-sub hover:bg-bg-tertiary">
                                 <TableCell className="py-3 pl-6">
-                                    <p className="text-xs font-bold text-text-primary uppercase">{r.name}</p>
-                                    <p className="text-[9px] font-mono text-brand-red uppercase mt-0.5">{r.id}</p>
+                                    <p className="text-xs font-bold text-text-primary">{r.name}</p>
+                                    <p className="text-[11px] font-mono text-brand-red mt-0.5">{r.id}</p>
                                 </TableCell>
-                                <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{r.client || '—'}</TableCell>
+                                <TableCell className="py-3 text-[10px] font-bold text-text-secondary">{r.client || '—'}</TableCell>
                                 <TableCell className="py-3 text-[10px] font-mono text-text-secondary">{show(r.start)}</TableCell>
                                 <TableCell className="py-3 text-[10px] font-mono text-text-secondary hidden md:table-cell">{show(r.end)}</TableCell>
-                                <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase hidden lg:table-cell max-w-[220px]">
+                                <TableCell className="py-3 text-[10px] font-bold text-text-secondary hidden lg:table-cell max-w-[220px]">
                                     {r.lead && <span className="text-text-primary">{r.lead} (lead){r.crew.length > 1 ? ', ' : ''}</span>}
                                     {r.crewNames.split(', ').filter(n => n && n !== r.lead).join(', ') || (!r.lead ? '—' : '')}
                                 </TableCell>
-                                <TableCell className="py-3 text-right pr-6"><Badge variant="active" className="text-[8px] uppercase">completed</Badge></TableCell>
+                                <TableCell className="py-3 text-right pr-6"><Badge variant="active" className="text-[10px]">completed</Badge></TableCell>
                             </TableRow>
                         ))}
                         {filtered.length === 0 && (
-                            <TableRow><TableCell colSpan={6} className="py-16 text-center text-[10px] font-bold text-text-muted uppercase">No completed projects match</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={6} className="py-16 text-center text-[10px] font-bold text-text-muted">No completed projects match</TableCell></TableRow>
                         )}
                     </TableBody>
                 </Table>
@@ -414,17 +414,17 @@ export function WeeklyLogHistoryTab({ logs, technicians }: { logs: WeeklyLog[]; 
                     <TableBody>
                         {pager.items.map(r => (
                             <TableRow key={r.l.id} className="border-border-sub hover:bg-bg-tertiary">
-                                <TableCell className="py-3 pl-6 text-[10px] font-mono font-bold text-text-secondary uppercase">{show(r.week)}</TableCell>
-                                <TableCell className="py-3 text-[10px] font-bold text-text-primary uppercase">{r.tech}</TableCell>
+                                <TableCell className="py-3 pl-6 text-[10px] font-mono font-bold text-text-secondary">{show(r.week)}</TableCell>
+                                <TableCell className="py-3 text-[10px] font-bold text-text-primary">{r.tech}</TableCell>
                                 <TableCell className="py-3 text-center text-[10px] font-bold text-text-secondary">
                                     {r.items}{r.disputed > 0 && <span className="ml-1 text-brand-red">({r.disputed} disputed)</span>}
                                 </TableCell>
                                 <TableCell className="py-3 text-[10px] font-mono text-text-muted hidden md:table-cell">{show(r.submitted)}</TableCell>
-                                <TableCell className="py-3 text-right pr-6"><Badge variant={r.l.status === 'Approved' ? 'active' : 'scheduled'} className="text-[8px] uppercase">{r.l.status}</Badge></TableCell>
+                                <TableCell className="py-3 text-right pr-6"><Badge variant={r.l.status === 'Approved' ? 'active' : 'scheduled'} className="text-[10px]">{r.l.status}</Badge></TableCell>
                             </TableRow>
                         ))}
                         {filtered.length === 0 && (
-                            <TableRow><TableCell colSpan={5} className="py-16 text-center text-[10px] font-bold text-text-muted uppercase">No logs match</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={5} className="py-16 text-center text-[10px] font-bold text-text-muted">No logs match</TableCell></TableRow>
                         )}
                     </TableBody>
                 </Table>
@@ -494,15 +494,15 @@ export function ArchiveTab({ items, technicians, onOpen, onRestore }: {
                         : [archived || '', item.kind, item.identifier || '', '', item.title, '', '', item.clientName || '', '', item.techName || '', '', '']))}
             />
             <div className="flex items-center justify-between">
-                <p className="text-[9px] text-text-muted">Jobs and hidden activity share one archive. Restoring a job returns it to where it came from.</p>
-                <button onClick={() => setNewestFirst(v => !v)} className="h-8 px-3 rounded-md border border-border-main bg-bg-primary text-[10px] font-bold uppercase tracking-widest text-text-muted hover:text-text-primary">
+                <p className="text-[11px] text-text-muted">Jobs and hidden activity share one archive. Restoring a job returns it to where it came from.</p>
+                <button onClick={() => setNewestFirst(v => !v)} className="h-8 px-3 rounded-md border border-border-main bg-bg-primary text-[10px] font-bold uppercase tracking-wider text-text-muted hover:text-text-primary">
                     {newestFirst ? 'Latest first' : 'Earliest first'}
                 </button>
             </div>
             {filtered.length === 0 ? (
                 <div className="py-20 text-center border border-dashed border-border-sub rounded-xl opacity-60">
                     <ArchiveIcon size={32} className="mx-auto text-text-muted mb-2" />
-                    <p className="text-[10px] font-bold uppercase text-text-muted">No archived records match.</p>
+                    <p className="text-[10px] font-bold text-text-muted">No archived records match.</p>
                 </div>
             ) : (
                 <div className="table-wrap text-left">
@@ -525,18 +525,18 @@ export function ArchiveTab({ items, technicians, onOpen, onRestore }: {
                                 <TableRow key={item.id} className={cn('border-border-sub hover:bg-bg-tertiary', item.job && 'cursor-pointer')}
                                     onClick={() => { if (item.job) onOpen(item.job); }}>
                                     <TableCell className="py-3 pl-6 text-[10px] font-mono text-text-secondary">{show(archived)}</TableCell>
-                                    <TableCell className="py-3"><Badge variant="outline" className="text-[7px] uppercase h-4">{item.kind}</Badge></TableCell>
+                                    <TableCell className="py-3"><Badge variant="outline" className="text-[10px] h-4">{item.kind}</Badge></TableCell>
                                     <TableCell className="py-3">
-                                        <p className="text-[10px] font-mono font-bold text-brand-red uppercase">{r?.assignmentId || item.identifier}</p>
-                                        <p className="text-xs font-bold text-text-primary uppercase mt-0.5 max-w-[220px] truncate">{item.title}</p>
+                                        <p className="text-[10px] font-mono font-bold text-brand-red">{r?.assignmentId || item.identifier}</p>
+                                        <p className="text-xs font-bold text-text-primary mt-0.5 max-w-[220px] truncate">{item.title}</p>
                                     </TableCell>
-                                    <TableCell className="py-3 text-[10px] font-mono text-text-secondary uppercase">{r?.workOrderId || '—'}</TableCell>
+                                    <TableCell className="py-3 text-[10px] font-mono text-text-secondary">{r?.workOrderId || '—'}</TableCell>
                                     <TableCell className="py-3 text-[10px] font-mono text-text-secondary hidden md:table-cell">{show(r?.assignedOn || null)}</TableCell>
-                                    <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase max-w-[160px] truncate">{r?.client || item.clientName || '—'}</TableCell>
-                                    <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase hidden lg:table-cell max-w-[200px]">{r?.techs || item.techName || '—'}</TableCell>
-                                    <TableCell className="py-3">{r?.status ? <Badge variant="outline" className="text-[8px] uppercase">{r.status}</Badge> : <span className="text-[10px] text-text-muted">—</span>}</TableCell>
+                                    <TableCell className="py-3 text-[10px] font-bold text-text-secondary max-w-[160px] truncate">{r?.client || item.clientName || '—'}</TableCell>
+                                    <TableCell className="py-3 text-[10px] font-bold text-text-secondary hidden lg:table-cell max-w-[200px]">{r?.techs || item.techName || '—'}</TableCell>
+                                    <TableCell className="py-3">{r?.status ? <Badge variant="outline" className="text-[10px]">{r.status}</Badge> : <span className="text-[10px] text-text-muted">—</span>}</TableCell>
                                     <TableCell className="py-3 text-right pr-6" onClick={e => e.stopPropagation()}>
-                                        <Button variant="outline" size="sm" className="h-7 text-[9px] uppercase font-bold tracking-widest" onClick={() => onRestore(item)}>
+                                        <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase font-bold tracking-wider" onClick={() => onRestore(item)}>
                                             <RotateCcw size={10} className="mr-1" />Restore
                                         </Button>
                                     </TableCell>

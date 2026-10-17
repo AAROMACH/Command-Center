@@ -49,8 +49,8 @@ const METRICS: Record<Metric, { label: string; fmt: (v: number) => string }> = {
 };
 const HOURLY: Metric[] = ['rate', 'profitRate'];
 
-const label = 'text-[9px] font-black uppercase tracking-widest text-text-muted';
-const control = 'h-8 bg-bg-primary border-border-main text-[10px] font-bold uppercase';
+const label = 'text-[10px] font-bold uppercase tracking-wider text-text-muted';
+const control = 'h-8 bg-bg-primary border-border-main text-[10px] font-bold';
 
 export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onFilteredJobIds }: {
     jobs: WorkOrder[];
@@ -216,8 +216,8 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                     <Select value={p.type ?? 'all'} onValueChange={v => set({ type: v === 'all' ? null : v })}>
                         <SelectTrigger className={cn(control, 'w-[170px]')}><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-bg-elevated border-border-main">
-                            <SelectItem value="all" className="text-[10px] font-bold uppercase">All types</SelectItem>
-                            {types.map(t => <SelectItem key={t} value={t} className="text-[10px] font-bold uppercase">{t}</SelectItem>)}
+                            <SelectItem value="all" className="text-[10px] font-bold">All types</SelectItem>
+                            {types.map(t => <SelectItem key={t} value={t} className="text-[10px] font-bold">{t}</SelectItem>)}
                         </SelectContent>
                     </Select>
                 </div>
@@ -226,8 +226,8 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                     <Select value={p.provider ?? 'all'} onValueChange={v => set({ provider: v === 'all' ? null : v })}>
                         <SelectTrigger className={cn(control, 'w-[170px]')}><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-bg-elevated border-border-main">
-                            <SelectItem value="all" className="text-[10px] font-bold uppercase">All technicians</SelectItem>
-                            {providers.map(t => <SelectItem key={t} value={t} className="text-[10px] font-bold uppercase">{t}</SelectItem>)}
+                            <SelectItem value="all" className="text-[10px] font-bold">All technicians</SelectItem>
+                            {providers.map(t => <SelectItem key={t} value={t} className="text-[10px] font-bold">{t}</SelectItem>)}
                         </SelectContent>
                     </Select>
                 </div>
@@ -248,7 +248,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                 )}
                 {!isDefault && (
                     <button onClick={() => { setSearch(''); setP(DEFAULTS); }}
-                        className="h-8 px-3 inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-brand-red hover:underline">
+                        className="h-8 px-3 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-brand-red hover:underline">
                         <RotateCcw size={11} /> Reset
                     </button>
                 )}
@@ -256,7 +256,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
 
             {empty ? (
                 <Card className="bg-bg-secondary border-border-main">
-                    <CardContent className="py-16 text-center text-[11px] font-bold uppercase tracking-widest text-text-muted">
+                    <CardContent className="py-16 text-center text-[11px] font-bold text-text-muted">
                         No completed jobs yet — the dashboard fills in as jobs are completed.
                     </CardContent>
                 </Card>
@@ -266,7 +266,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                     {kpis.map(k => (
                         <Card key={k.label} className="bg-bg-secondary border-border-main">
                             <CardContent className="p-4 min-w-0">
-                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest truncate">{k.label}</p>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider truncate">{k.label}</p>
                                 <p className="text-xl font-black text-text-primary tabular-nums truncate">{k.value}</p>
                                 <p className="text-[10px] text-text-muted truncate">{k.sub}</p>
                             </CardContent>
@@ -279,7 +279,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                     <Card className="bg-bg-secondary border-border-main min-w-0">
                         <CardHeader className="pb-2 flex flex-row items-start justify-between gap-3 space-y-0">
                             <div>
-                                <CardTitle className="text-sm font-bold uppercase tracking-wide">Top customers</CardTitle>
+                                <CardTitle className="text-sm font-bold tracking-wide">Top customers</CardTitle>
                                 <CardDescription className="text-[10px]">
                                     {hourly ? 'Customers with 5+ jobs and 5+ logged hours. ' : ''}Click a bar to focus the page on that customer.
                                 </CardDescription>
@@ -287,7 +287,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                             <Select value={metric} onValueChange={v => set({ metric: v as Metric })}>
                                 <SelectTrigger className={cn(control, 'w-[150px] shrink-0')}><SelectValue /></SelectTrigger>
                                 <SelectContent className="bg-bg-elevated border-border-main">
-                                    {(Object.keys(METRICS) as Metric[]).map(m => <SelectItem key={m} value={m} className="text-[10px] font-bold uppercase">{METRICS[m].label}</SelectItem>)}
+                                    {(Object.keys(METRICS) as Metric[]).map(m => <SelectItem key={m} value={m} className="text-[10px] font-bold">{METRICS[m].label}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </CardHeader>
@@ -298,7 +298,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
 
                     <Card className="bg-bg-secondary border-border-main min-w-0">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-bold uppercase tracking-wide">Volume vs. hourly return</CardTitle>
+                            <CardTitle className="text-sm font-bold tracking-wide">Volume vs. hourly return</CardTitle>
                             <CardDescription className="text-[10px]">Customers with 3+ jobs and 2+ logged hours. Dot size = net pay; dashed lines = medians. Click a dot to focus.</CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -309,8 +309,8 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                                     <ScatterChart margin={{ top: 16, right: 24, bottom: 16, left: 4 }}>
                                         <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
                                         <XAxis type="number" dataKey="jobs" name="Jobs" scale="log" domain={[Math.max(1, Math.min(...scatterPts.map(c => c.jobs)) * 0.8), 'auto']} allowDataOverflow
-                                            tickLine={false} className="text-[9px]" label={{ value: 'Jobs (log scale)', position: 'insideBottom', offset: -8, className: 'text-[9px] fill-current' }} />
-                                        <YAxis type="number" dataKey="rate" name="Net/hr" domain={[0, rateMax]} allowDataOverflow tickLine={false} className="text-[9px]" tickFormatter={v => `$${v}`} width={44} />
+                                            tickLine={false} className="text-[11px]" label={{ value: 'Jobs (log scale)', position: 'insideBottom', offset: -8, className: 'text-[11px] fill-current' }} />
+                                        <YAxis type="number" dataKey="rate" name="Net/hr" domain={[0, rateMax]} allowDataOverflow tickLine={false} className="text-[11px]" tickFormatter={v => `$${v}`} width={44} />
                                         <ZAxis type="number" dataKey="net" range={[40, 420]} />
                                         {medJobs != null && <ReferenceLine x={medJobs} stroke="currentColor" strokeOpacity={0.35} strokeDasharray="4 4" />}
                                         {medRate != null && <ReferenceLine y={medRate} stroke="currentColor" strokeOpacity={0.35} strokeDasharray="4 4" />}
@@ -322,7 +322,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                                             {scatterPts.map(c => (
                                                 <Cell key={c.buyer} fill={c.buyer === p.buyer ? 'var(--brand-red)' : 'var(--accent-gold)'} fillOpacity={p.buyer && c.buyer !== p.buyer ? 0.3 : 0.75} />
                                             ))}
-                                            <LabelList dataKey="label" position="right" className="text-[9px] font-bold fill-current" />
+                                            <LabelList dataKey="label" position="right" className="text-[11px] font-bold fill-current" />
                                         </Scatter>
                                     </ScatterChart>
                                 </ChartContainer>
@@ -332,7 +332,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
 
                     <Card className="bg-bg-secondary border-border-main min-w-0">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-bold uppercase tracking-wide">Net pay by month</CardTitle>
+                            <CardTitle className="text-sm font-bold tracking-wide">Net pay by month</CardTitle>
                             <CardDescription className="text-[10px]">{p.buyer ? `${p.buyer} — ` : ''}by work date.</CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -342,8 +342,8 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                                 <ChartContainer config={{ net: { label: 'Net pay', color: 'var(--brand-red)' } } satisfies ChartConfig} className="w-full h-[300px]">
                                     <BarChart data={monthly} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
                                         <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.15} />
-                                        <XAxis dataKey="month" tickLine={false} axisLine={false} className="text-[9px]" tickFormatter={month} minTickGap={12} />
-                                        <YAxis tickLine={false} axisLine={false} className="text-[9px]" tickFormatter={v => compact(v)} width={48} />
+                                        <XAxis dataKey="month" tickLine={false} axisLine={false} className="text-[11px]" tickFormatter={month} minTickGap={12} />
+                                        <YAxis tickLine={false} axisLine={false} className="text-[11px]" tickFormatter={v => compact(v)} width={48} />
                                         <Tooltip cursor={{ opacity: 0.1 }} content={({ payload }) => {
                                             const d = payload?.[0]?.payload as { month: string; net: number } | undefined;
                                             return d ? <Tip title={month(d.month)} lines={[`${money(d.net)} net`]} /> : null;
@@ -357,7 +357,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
 
                     <Card className="bg-bg-secondary border-border-main min-w-0">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-bold uppercase tracking-wide">Net pay by type of work</CardTitle>
+                            <CardTitle className="text-sm font-bold tracking-wide">Net pay by type of work</CardTitle>
                             <CardDescription className="text-[10px]">{p.buyer ? `${p.buyer} — ` : ''}click a type to filter the page by it.</CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -372,7 +372,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                 <Card className="bg-bg-secondary border-border-main">
                     <CardHeader className="pb-2 flex flex-row flex-wrap items-center justify-between gap-3 space-y-0">
                         <div>
-                            <CardTitle className="text-sm font-bold uppercase tracking-wide">All customers</CardTitle>
+                            <CardTitle className="text-sm font-bold tracking-wide">All customers</CardTitle>
                             <CardDescription className="text-[10px]">{count(tableRows.length)} customer{tableRows.length === 1 ? '' : 's'} · click a row to focus</CardDescription>
                         </div>
                         <div className="relative w-full sm:w-[240px]">
@@ -389,7 +389,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                                         ['hours', 'Hours', 'hidden md:table-cell'], ['rate', 'Net/hr', ''], ['profit', 'Profit', ''], ['profitRate', 'Profit/hr', 'hidden sm:table-cell'], ['feePct', 'Fees %', 'hidden md:table-cell'],
                                         ['last', 'Last job', 'hidden lg:table-cell'], ['mainType', 'Main work', 'hidden lg:table-cell'],
                                     ] as [SortKey, string, string][]).map(([k, text, cls]) => (
-                                        <th key={k} className={cn('px-3 py-2 font-black uppercase tracking-widest text-[9px] text-text-muted', k === 'buyer' || k === 'mainType' ? 'text-left' : 'text-right', cls)}
+                                        <th key={k} className={cn('px-3 py-2 font-bold uppercase tracking-wider text-[10px] text-text-muted', k === 'buyer' || k === 'mainType' ? 'text-left' : 'text-right', cls)}
                                             aria-sort={k === sortKey ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'}>
                                             <button onClick={() => sortBy(k)} className="inline-flex items-center gap-1 hover:text-text-primary">
                                                 {text}{k === sortKey && (sortDir > 0 ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
@@ -438,7 +438,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
 export function Tip({ title, lines }: { title: string; lines: string[] }) {
     return (
         <div className="rounded-md border border-border-main bg-bg-elevated px-3 py-2 shadow-xl text-[10px]">
-            <p className="font-black text-text-primary mb-0.5">{title}</p>
+            <p className="font-bold text-text-primary mb-0.5">{title}</p>
             {lines.map(l => <p key={l} className="text-text-muted">{l}</p>)}
         </div>
     );

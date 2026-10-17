@@ -243,14 +243,14 @@ export default function AdminMapView({ jobs, selectedJob, onSelectJob, onResolve
       {geocoding && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-bg-elevated border border-border-main rounded-lg px-4 py-2 flex items-center gap-2 shadow-lg">
           <div className="h-3 w-3 border-2 border-brand-red border-t-transparent rounded-full animate-spin" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
             Resolving {geocodedCount}/{pendingCount} locations...
           </span>
         </div>
       )}
       {!geocoding && needsReview.length > 0 && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-amber-400/10 border border-amber-400/40 rounded-lg px-4 py-2 shadow-lg max-w-[90%]">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
             {needsReview.length} location{needsReview.length !== 1 ? 's' : ''} need review — address could not be resolved
           </span>
         </div>
@@ -258,8 +258,8 @@ export default function AdminMapView({ jobs, selectedJob, onSelectJob, onResolve
       {!geocoding && effectiveJobs.length === 0 && jobs.length > 0 && (
         <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-bg-primary/80 rounded-lg">
           <div className="text-center space-y-2">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted">No geocodable locations found</p>
-            <p className="text-[10px] text-text-muted uppercase">Jobs may have incomplete address data</p>
+            <p className="text-[11px] font-bold text-text-muted">No geocodable locations found</p>
+            <p className="text-[10px] text-text-muted">Jobs may have incomplete address data</p>
           </div>
         </div>
       )}

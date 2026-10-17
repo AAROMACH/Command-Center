@@ -112,52 +112,52 @@ export default function GetAccessPage() {
             )}
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold uppercase tracking-wider text-text-primary">Get Access</CardTitle>
-            <CardDescription className="text-text-muted uppercase font-bold text-[10px] tracking-widest">Request Terminal Credentials</CardDescription>
+            <CardTitle className="text-2xl font-bold tracking-wider text-text-primary">Get Access</CardTitle>
+            <CardDescription className="text-text-muted uppercase font-bold text-[10px] tracking-wider">Request Terminal Credentials</CardDescription>
           </div>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-xs font-bold uppercase tracking-widest text-text-muted text-left block">Full Name</Label>
+              <Label htmlFor="name" className="text-xs font-bold text-text-muted text-left block">Full Name</Label>
               <Input id="name" type="text" disabled={isLoading} placeholder="Jane Operative" className="bg-bg-primary border-border-sub h-11 text-xs" {...register("name")} />
-              {errors.name && <p className="text-[10px] font-bold text-brand-red uppercase text-left">{errors.name.message}</p>}
+              {errors.name && <p className="text-[10px] font-bold text-brand-red text-left">{errors.name.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-text-muted text-left block">Email</Label>
+              <Label htmlFor="email" className="text-xs font-bold text-text-muted text-left block">Email</Label>
               <Input id="email" type="email" disabled={isLoading} placeholder="operative@aaromach.com" className="bg-bg-primary border-border-sub h-11 text-xs" {...register("email")} />
-              {errors.email && <p className="text-[10px] font-bold text-brand-red uppercase text-left">{errors.email.message}</p>}
+              {errors.email && <p className="text-[10px] font-bold text-brand-red text-left">{errors.email.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone" className="text-xs font-bold uppercase tracking-widest text-text-muted text-left block">Phone <span className="text-text-muted/60 normal-case tracking-normal">(optional)</span></Label>
+              <Label htmlFor="phone" className="text-xs font-bold text-text-muted text-left block">Phone <span className="text-text-muted/60 normal-case tracking-normal">(optional)</span></Label>
               <Input id="phone" type="tel" disabled={isLoading} placeholder="(555) 123-4567" className="bg-bg-primary border-border-sub h-11 text-xs" {...register("phone")} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-xs font-bold uppercase tracking-widest text-text-muted text-left block">Password</Label>
+              <Label htmlFor="password" className="text-xs font-bold text-text-muted text-left block">Password</Label>
               <div className="relative">
                 <Input id="password" type={showPassword ? "text" : "password"} disabled={isLoading} {...register("password")} placeholder="••••••••" className="bg-bg-primary border-border-sub pr-10 h-11 text-xs" />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary focus:outline-none transition-colors">
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              {errors.password && <p className="text-[10px] font-bold text-brand-red uppercase text-left">{errors.password.message}</p>}
+              {errors.password && <p className="text-[10px] font-bold text-brand-red text-left">{errors.password.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-xs font-bold uppercase tracking-widest text-text-muted text-left block">Confirm Password</Label>
+              <Label htmlFor="confirmPassword" className="text-xs font-bold text-text-muted text-left block">Confirm Password</Label>
               <Input id="confirmPassword" type={showPassword ? "text" : "password"} disabled={isLoading} {...register("confirmPassword")} placeholder="••••••••" className="bg-bg-primary border-border-sub h-11 text-xs" />
-              {errors.confirmPassword && <p className="text-[10px] font-bold text-brand-red uppercase text-left">{errors.confirmPassword.message}</p>}
+              {errors.confirmPassword && <p className="text-[10px] font-bold text-brand-red text-left">{errors.confirmPassword.message}</p>}
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-3 pb-6">
-            <Button type="submit" disabled={isLoading} className="w-full h-12 bg-brand-red hover:bg-brand-red-hover text-white font-bold uppercase tracking-widest text-xs flex items-center gap-2">
+            <Button type="submit" disabled={isLoading} className="w-full h-12 bg-brand-red hover:bg-brand-red-hover text-white font-bold text-xs flex items-center gap-2">
               {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating Account...</> : <><UserPlus size={15} className="shrink-0" />Create Account</>}
             </Button>
 
-            <Link href="/login" className="text-[10px] font-bold uppercase text-text-muted hover:text-text-primary transition-colors tracking-[0.2em] flex items-center justify-center gap-2 pt-1">
+            <Link href="/login" className="text-[10px] font-bold uppercase text-text-muted hover:text-text-primary transition-colors tracking-wider flex items-center justify-center gap-2 pt-1">
               <ArrowLeft size={12} /> Back to Login
             </Link>
 
-            <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest text-center px-4 pt-1">New accounts require admin approval before access is granted.</p>
+            <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider text-center px-4 pt-1">New accounts require admin approval before access is granted.</p>
           </CardFooter>
         </form>
       </Card>

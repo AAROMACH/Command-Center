@@ -83,17 +83,17 @@ function TechCard({ tech, label }: { tech: Technician; label?: string }) {
   return (
     <div className="flex items-center gap-3 p-3 bg-bg-primary/40 rounded-xl border border-border-sub h-full">
       <div
-        className="h-9 w-9 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0 uppercase"
+        className="h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"
         style={{ background: bg }}
       >
         {tech.name.charAt(0)}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 mb-1">
-          <p className="text-[11px] font-black uppercase text-text-primary truncate">{tech.name}</p>
+          <p className="text-[11px] font-bold text-text-primary truncate">{tech.name}</p>
           {label && (
             <span
-              className="shrink-0 text-[7px] font-black uppercase tracking-widest px-1.5 py-px rounded border"
+              className="shrink-0 text-[10px] font-bold uppercase tracking-wider px-1.5 py-px rounded border"
               style={{
                 background: isPrimary ? 'color-mix(in srgb, var(--text-green) 10%, transparent)' : 'color-mix(in srgb, var(--accent-gold) 10%, transparent)',
                 color: isPrimary ? 'var(--text-green)' : 'var(--accent-gold)',
@@ -109,9 +109,9 @@ function TechCard({ tech, label }: { tech: Technician; label?: string }) {
           <Mail size={8} />
           <div className="w-px h-3 bg-border-sub" />
           <Calendar size={8} />
-          <span className="text-[9px] font-mono text-text-secondary">{tech.currentWorkload ?? '—'}</span>
+          <span className="text-[11px] font-mono text-text-secondary">{tech.currentWorkload ?? '—'}</span>
           <Clock size={8} />
-          <span className="text-[9px] font-mono text-text-secondary">—</span>
+          <span className="text-[11px] font-mono text-text-secondary">—</span>
         </div>
       </div>
     </div>
@@ -246,20 +246,20 @@ export default function TechAssignmentDetailPage() {
 
   if (loading) return (
     <div className="flex items-center justify-center py-24">
-      <p className="text-xs font-bold uppercase text-text-muted tracking-widest animate-pulse">Loading assignment...</p>
+      <p className="text-xs font-bold text-text-muted animate-pulse">Loading assignment...</p>
     </div>
   );
 
   if (!assignment) return (
     <div className="space-y-4">
-      <Button variant="ghost" size="sm" className="h-8 text-[10px] uppercase font-bold text-text-muted"
+      <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold text-text-muted"
         onClick={() => router.push('/tech/assignments')}>
         <ArrowLeft size={13} className="mr-1.5" /> Back
       </Button>
       <div className="py-24 text-center border border-dashed border-border-sub rounded-xl">
         <AlertTriangle size={32} className="mx-auto text-text-muted mb-2 opacity-40" />
-        <p className="text-xs font-bold uppercase text-text-muted">Assignment not found</p>
-        <p className="text-[10px] text-text-muted mt-1 uppercase">{assignmentId}</p>
+        <p className="text-xs font-bold text-text-muted">Assignment not found</p>
+        <p className="text-[10px] text-text-muted mt-1">{assignmentId}</p>
       </div>
     </div>
   );
@@ -365,7 +365,7 @@ export default function TechAssignmentDetailPage() {
 
       {/* Back ───────────────────────────────────────────────────────────── */}
       <Button variant="ghost" size="sm"
-        className="h-8 text-[10px] uppercase font-bold text-text-muted -ml-2"
+        className="h-8 text-[10px] font-bold text-text-muted -ml-2"
         onClick={() => router.push('/tech/assignments')}>
         <ArrowLeft size={13} className="mr-1.5" /> Back to Assignments
       </Button>
@@ -373,13 +373,13 @@ export default function TechAssignmentDetailPage() {
       {/* Header ─────────────────────────────────────────────────────────── */}
       <div className="space-y-2">
         <div className="flex items-start gap-3 flex-wrap">
-          <h1 className="text-xl font-black uppercase tracking-tight text-text-primary leading-none">
+          <h1 className="text-xl font-black tracking-tight text-text-primary leading-none">
             {assignment.title || assignment.description?.split('\n')[0]?.slice(0, 80) || assignmentId.toUpperCase()}
           </h1>
           <ShieldCheck size={18} className="shrink-0 mt-0.5" style={{ color: 'var(--text-green)' }} />
           {assignment.priority && (
             <span
-              className="text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded border shrink-0 self-start"
+              className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded border shrink-0 self-start"
               style={{ background: 'color-mix(in srgb, var(--accent-gold) 10%, transparent)', color: 'var(--accent-gold)', borderColor: 'color-mix(in srgb, var(--accent-gold) 30%, transparent)' }}
             >
               {assignment.priority} Priority
@@ -389,12 +389,12 @@ export default function TechAssignmentDetailPage() {
 
         <div className="flex items-center gap-2 flex-wrap">
           <span
-            className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded"
+            className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded"
             style={{ background: 'color-mix(in srgb, var(--text-green) 12%, transparent)', color: 'var(--text-green)', border: '1px solid color-mix(in srgb, var(--text-green) 25%, transparent)' }}
           >
             <Check size={9} /> {getStatusLabel(status)}
           </span>
-          <span className="text-[10px] font-mono font-bold text-text-muted uppercase">{assignmentId.toUpperCase()}</span>
+          <span className="text-[10px] font-mono font-bold text-text-muted">{assignmentId.toUpperCase()}</span>
           {assignment.shortId && (
             <>
               <span className="text-text-muted text-[10px]">•</span>
@@ -402,7 +402,7 @@ export default function TechAssignmentDetailPage() {
             </>
           )}
           {assignment.source && (
-            <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded bg-brand-blue/10 text-brand-blue border border-brand-blue/20">
+            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded bg-brand-blue/10 text-brand-blue border border-brand-blue/20">
               <span className="h-1.5 w-1.5 rounded-full inline-block bg-brand-blue" />
               {assignment.source}
             </span>
@@ -412,7 +412,7 @@ export default function TechAssignmentDetailPage() {
 
       {/* Team (read-only for techs) ──────────────────────────────────────── */}
       <div className="bg-bg-secondary rounded-xl border border-border-sub p-4">
-        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 mb-4">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2 mb-4">
           <Users size={11} className="text-brand-red" /> Team
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -422,7 +422,7 @@ export default function TechAssignmentDetailPage() {
           ))}
           {!tech && helperTechs.length === 0 && (
             <div className="col-span-full py-6 text-center">
-              <p className="text-[9px] font-bold uppercase text-text-muted opacity-40">No team assigned</p>
+              <p className="text-[11px] font-bold text-text-muted opacity-40">No team assigned</p>
             </div>
           )}
         </div>
@@ -435,7 +435,7 @@ export default function TechAssignmentDetailPage() {
             key={v}
             onClick={() => setDetailView(v)}
             className={cn(
-              'px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-colors',
+              'px-4 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors',
               detailView === v
                 ? 'text-text-primary border-b-2 border-brand-red -mb-px'
                 : 'text-text-muted hover:text-text-primary'
@@ -454,14 +454,14 @@ export default function TechAssignmentDetailPage() {
 
         {/* Job Details */}
         <div className="md:col-span-2 bg-bg-secondary rounded-xl border border-border-sub p-4">
-          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 mb-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2 mb-3">
             <Briefcase size={11} className="text-brand-red" /> Job Details
           </p>
           <div>
             {jobDetailRows.map(({ label, value, icon: Icon }) => (
               <div key={label} className="flex items-start gap-3 py-2 border-b border-border-sub last:border-0">
                 <Icon size={11} className="text-text-muted shrink-0 mt-0.5" />
-                <span className="text-[9px] font-black uppercase tracking-widest text-text-muted w-20 shrink-0 leading-tight">{label}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted w-20 shrink-0 leading-tight">{label}</span>
                 <span className="text-[11px] font-bold text-text-primary min-w-0 break-words">{value || '—'}</span>
               </div>
             ))}
@@ -470,22 +470,22 @@ export default function TechAssignmentDetailPage() {
 
         {/* Schedule */}
         <div className="md:col-span-1 bg-bg-secondary rounded-xl border border-border-sub p-4">
-          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 mb-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2 mb-3">
             <Calendar size={11} className="text-brand-red" /> Schedule
           </p>
           <div className="space-y-4">
             {/* Date row */}
             <div className="flex items-baseline gap-3">
-              <p className="font-black text-text-primary leading-none" style={{ fontSize: '3.25rem', fontVariantNumeric: 'tabular-nums' }}>{dayNum}</p>
+              <p className="font-bold text-text-primary leading-none" style={{ fontSize: '3.25rem', fontVariantNumeric: 'tabular-nums' }}>{dayNum}</p>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted leading-none">{monthStr}</p>
-                <p className="text-[8px] font-black uppercase tracking-[0.12em] text-text-muted leading-none mt-0.5">{dayName} · {yearStr}</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted leading-none">{monthStr}</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted leading-none mt-0.5">{dayName} · {yearStr}</p>
               </div>
             </div>
             {/* Time row */}
             <div className="space-y-2 border-t border-border-sub pt-3">
               <div>
-                <p className="text-[8px] font-black uppercase tracking-[0.15em] text-text-muted flex items-center gap-1 mb-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1 mb-1">
                   <Clock size={8} /> Start Window
                 </p>
                 <p className="text-2xl font-black text-text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -494,7 +494,7 @@ export default function TechAssignmentDetailPage() {
               </div>
               {endTime && (
                 <div>
-                  <p className="text-[8px] font-black uppercase tracking-[0.15em] text-text-muted flex items-center gap-1 mb-1">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1 mb-1">
                     <Clock size={8} /> End Window
                   </p>
                   <p className="text-2xl font-black text-text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -514,7 +514,7 @@ export default function TechAssignmentDetailPage() {
               <span className="text-[10px] font-bold text-text-primary truncate">{assignment.location || '—'}</span>
             </div>
             <button
-              className="text-[8px] font-black uppercase tracking-widest flex items-center gap-0.5 shrink-0 transition-colors"
+              className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-0.5 shrink-0 transition-colors"
               style={{ color: 'var(--text-green)' }}
               onClick={() => window.open(
                 `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(assignment.location || '')}`,
@@ -536,10 +536,10 @@ export default function TechAssignmentDetailPage() {
               { icon: Activity,   label: 'Traffic',  value: '—' },
             ].map(({ icon: Icon, label, value }) => (
               <div key={label} className="py-2 px-1 text-center">
-                <p className="text-[7px] font-black uppercase tracking-widest text-text-muted flex items-center justify-center gap-0.5 mb-0.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center justify-center gap-0.5 mb-0.5">
                   <Icon size={7} /> {label}
                 </p>
-                <p className="text-[11px] font-black text-text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>{value}</p>
+                <p className="text-[11px] font-bold text-text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>{value}</p>
               </div>
             ))}
           </div>
@@ -553,7 +553,7 @@ export default function TechAssignmentDetailPage() {
         {/* Scope of Work */}
         <div className="lg:col-span-2 bg-bg-secondary rounded-xl border border-border-sub flex flex-col">
           <div className="p-4 flex-1">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 mb-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2 mb-3">
               <Wrench size={11} className="text-brand-red" /> Scope of Work
             </p>
             <p className="text-[11px] text-text-secondary leading-relaxed whitespace-pre-wrap">
@@ -571,8 +571,8 @@ export default function TechAssignmentDetailPage() {
             {statusStripItems.map(({ icon: Icon, label, value, color }) => (
               <div key={label} className="py-3 px-2 flex flex-col items-center text-center gap-1">
                 <Icon size={10} style={color ? { color } : {}} className={cn(!color && 'text-text-muted')} />
-                <p className="text-[7px] font-black uppercase tracking-widest text-text-muted leading-none">{label}</p>
-                <p className={cn('text-[9px] font-black uppercase leading-none', !color && 'text-text-primary')} style={color ? { color } : {}}>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted leading-none">{label}</p>
+                <p className={cn('text-[11px] font-bold leading-none', !color && 'text-text-primary')} style={color ? { color } : {}}>
                   {value}
                 </p>
               </div>
@@ -585,11 +585,11 @@ export default function TechAssignmentDetailPage() {
 
           {/* Always-visible utility buttons */}
           <div className="grid grid-cols-2 gap-2">
-            <Button size="sm" variant="outline" className="h-9 text-[9px] font-black uppercase tracking-widest gap-1.5 px-3 justify-start"
+            <Button size="sm" variant="outline" className="h-9 text-[10px] font-bold uppercase tracking-wider gap-1.5 px-3 justify-start"
               onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(assignment.location || '')}`, '_blank', 'noopener')}>
               <Navigation size={10} /> Directions
             </Button>
-            <Button size="sm" variant="outline" className="h-9 text-[9px] font-black uppercase tracking-widest gap-1.5 px-3 justify-start"
+            <Button size="sm" variant="outline" className="h-9 text-[10px] font-bold uppercase tracking-wider gap-1.5 px-3 justify-start"
               onClick={() => router.push('/tech/messaging')}>
               <MessageSquare size={10} /> Message
             </Button>
@@ -600,7 +600,7 @@ export default function TechAssignmentDetailPage() {
             <div className={cn('grid gap-2', techActions.length >= 2 ? 'grid-cols-2' : 'grid-cols-1')}>
               {techActions.map(action => (
                 <Button key={action.key} size="sm" variant="outline"
-                  className={cn('h-9 text-[9px] font-black uppercase tracking-widest gap-1.5 px-3 justify-start', action.cls)}
+                  className={cn('h-9 text-[10px] font-bold uppercase tracking-wider gap-1.5 px-3 justify-start', action.cls)}
                   disabled={actionLoading}
                   onClick={action.handler}>
                   <action.icon size={10} /> {action.label}
@@ -613,24 +613,24 @@ export default function TechAssignmentDetailPage() {
 
       {/* Pay Ledger ─────────────────────────────────────────────────────── */}
       <div className="bg-bg-secondary rounded-xl border border-border-sub p-4">
-        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-3 flex items-center gap-2">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-3 flex items-center gap-2">
           <DollarSign size={11} className="text-brand-red" /> Pay Ledger
         </p>
         {relatedLogs.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {relatedLogs.map(log => (
               <div key={log.id} className="p-3 rounded-lg bg-bg-primary border border-border-sub">
-                <p className="text-[9px] font-bold uppercase text-text-primary">Week of {log.weekOf}</p>
+                <p className="text-[11px] font-bold text-text-primary">Week of {log.weekOf}</p>
                 <p className="text-sm font-mono font-bold mt-0.5" style={{ color: 'var(--text-green)' }}>
                   ${jobPayIn(log).toFixed(2)}
                 </p>
-                <p className="text-[8px] text-text-muted uppercase">This job&apos;s pay</p>
-                <Badge variant="outline" className="h-4 text-[7px] mt-1 uppercase">{log.status}</Badge>
+                <p className="text-[10px] text-text-muted">This job&apos;s pay</p>
+                <Badge variant="outline" className="h-4 text-[10px] mt-1">{log.status}</Badge>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-[9px] text-text-muted opacity-40 font-bold uppercase">No pay logs linked</p>
+          <p className="text-[11px] text-text-muted opacity-40 font-bold">No pay logs linked</p>
         )}
       </div>
 
@@ -640,19 +640,19 @@ export default function TechAssignmentDetailPage() {
       {detailView === 'history' && (
         <div className="bg-bg-secondary rounded-xl border border-border-sub p-4 flex flex-col">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
               <Activity size={11} className="text-brand-red" /> Event History
             </p>
             <Select value={historyTypeFilter} onValueChange={setHistoryTypeFilter}>
-              <SelectTrigger className="h-7 w-[150px] text-[9px] bg-bg-primary border-border-main uppercase font-bold">
+              <SelectTrigger className="h-7 w-[150px] text-[11px] bg-bg-primary border-border-main font-bold">
                 <SelectValue placeholder="All Events" />
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
-                <SelectItem value="all" className="text-[9px] uppercase font-bold">All Events</SelectItem>
-                <SelectItem value="status" className="text-[9px] uppercase font-bold">Status Changes</SelectItem>
-                <SelectItem value="assignment" className="text-[9px] uppercase font-bold">Assignments</SelectItem>
-                <SelectItem value="note" className="text-[9px] uppercase font-bold">Notes</SelectItem>
-                <SelectItem value="dispatch" className="text-[9px] uppercase font-bold">Dispatch</SelectItem>
+                <SelectItem value="all" className="text-[11px] font-bold">All Events</SelectItem>
+                <SelectItem value="status" className="text-[11px] font-bold">Status Changes</SelectItem>
+                <SelectItem value="assignment" className="text-[11px] font-bold">Assignments</SelectItem>
+                <SelectItem value="note" className="text-[11px] font-bold">Notes</SelectItem>
+                <SelectItem value="dispatch" className="text-[11px] font-bold">Dispatch</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -681,14 +681,14 @@ export default function TechAssignmentDetailPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 mb-0.5">
                           <div>
-                            <span className="text-[8px] font-mono text-text-muted">{dateStr}</span>
-                            {timeStr && <span className="text-[8px] font-mono text-text-muted ml-2">{timeStr}</span>}
+                            <span className="text-[10px] font-mono text-text-muted">{dateStr}</span>
+                            {timeStr && <span className="text-[10px] font-mono text-text-muted ml-2">{timeStr}</span>}
                           </div>
                           {ev.user && (
-                            <span className="text-[8px] font-black uppercase text-text-muted shrink-0 tracking-wide">{ev.user}</span>
+                            <span className="text-[10px] font-bold uppercase text-text-muted shrink-0 tracking-wide">{ev.user}</span>
                           )}
                         </div>
-                        <p className="text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ color: dotColor }}>{typeLabel}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: dotColor }}>{typeLabel}</p>
                         {ev.details && <p className="text-[10px] text-text-secondary leading-snug">{ev.details}</p>}
                       </div>
                     </div>
@@ -697,7 +697,7 @@ export default function TechAssignmentDetailPage() {
               </div>
             ) : (
               <div className="flex-1 flex items-center justify-center py-8">
-                <p className="text-[9px] font-bold uppercase text-text-muted opacity-40">No history recorded</p>
+                <p className="text-[11px] font-bold text-text-muted opacity-40">No history recorded</p>
               </div>
             );
           })()}

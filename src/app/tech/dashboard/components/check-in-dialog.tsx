@@ -156,9 +156,9 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                 <DialogHeader className="p-6 pb-2 text-left">
                     <div className="flex items-center gap-2 mb-1 text-left">
                         <Navigation className="text-brand-red h-5 w-5" />
-                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary text-left">Check In Terminal</DialogTitle>
+                        <DialogTitle className="text-lg font-bold text-text-primary text-left">Check In Terminal</DialogTitle>
                     </div>
-                    <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">High-fidelity site verification for assignments and projects.</DialogDescription>
+                    <DialogDescription className="text-xs font-bold text-text-muted text-left">High-fidelity site verification for assignments and projects.</DialogDescription>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
@@ -167,9 +167,9 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                         <div className="p-4 rounded-xl border border-border-alert bg-brand-red-dim/5 flex items-start gap-4 shadow-sm animate-pulse text-left">
                             <AlertCircle size={20} className="text-text-red shrink-0 mt-0.5" />
                             <div className="space-y-1 text-left">
-                                <p className="text-[11px] font-bold text-text-red uppercase tracking-wide text-left">Active Session conflict</p>
-                                <p className="text-[10px] text-text-muted leading-relaxed uppercase font-medium text-left">
-                                    You are currently checked into another mission. You must <span className="text-text-red font-black">Check Out</span> of your active session before initiating a new one.
+                                <p className="text-[11px] font-bold text-text-red tracking-wide text-left">Active Session conflict</p>
+                                <p className="text-[10px] text-text-muted leading-relaxed font-medium text-left">
+                                    You are currently checked into another mission. You must <span className="text-text-red font-bold">Check Out</span> of your active session before initiating a new one.
                                 </p>
                             </div>
                         </div>
@@ -178,18 +178,18 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                     {/* Identified Location */}
                     <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2 text-left">
+                            <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2 text-left">
                                 <LocateFixed size={12} className={userLocation ? "text-text-green" : "text-text-red"}/>
                                 Identified Site Location
                             </h3>
                             {isLocating ? (
-                                <div className="flex items-center gap-1.5 text-[9px] font-bold text-accent-gold uppercase animate-pulse">
+                                <div className="flex items-center gap-1.5 text-[11px] font-bold text-accent-gold animate-pulse">
                                     <Loader2 size={10} className="animate-spin" /> Verifying Position...
                                 </div>
                             ) : (
                                 <Badge 
                                     variant={selectedId && !isOutOfRange ? "active" : "outline"} 
-                                    className={cn("text-[9px] h-5 uppercase tracking-widest px-2", !selectedId || isOutOfRange ? "bg-bg-tertiary text-text-muted border-border-sub" : "")}
+                                    className={cn("text-[10px] h-5 uppercase tracking-wider px-2", !selectedId || isOutOfRange ? "bg-bg-tertiary text-text-muted border-border-sub" : "")}
                                 >
                                     {selectedId && !isOutOfRange ? "On Site" : "GPS Validated"}
                                 </Badge>
@@ -201,26 +201,26 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                                     <MapPin size={18} />
                                 </div>
                                 <div className="text-left">
-                                    <p className="text-sm font-bold text-text-primary uppercase tracking-tight text-left">{userLocation.city}</p>
-                                    <p className="text-[9px] font-mono text-text-muted uppercase text-left">Coordinate Signature Locked</p>
+                                    <p className="text-sm font-bold text-text-primary tracking-tight text-left">{userLocation.city}</p>
+                                    <p className="text-[11px] font-mono text-text-muted text-left">Coordinate Signature Locked</p>
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-[10px] text-text-red uppercase font-bold tracking-widest italic py-1 text-left">
+                            <div className="text-[10px] text-text-red uppercase font-bold tracking-wider italic py-1 text-left">
                                 Awaiting sensor handshake...
                             </div>
                         )}
                     </div>
 
                     <div className="space-y-2 text-left">
-                        <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest text-left">Select Assignment / Project</Label>
+                        <Label className="text-[10px] uppercase font-bold text-text-muted tracking-wider text-left">Select Assignment / Project</Label>
                         <div className="relative text-left">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                             <Input 
                                 placeholder="Search by mission ID or location..." 
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="h-10 pl-9 text-xs bg-bg-primary border-border-sub focus:border-brand-red uppercase font-bold"
+                                className="h-10 pl-9 text-xs bg-bg-primary border-border-sub focus:border-brand-red font-bold"
                             />
                         </div>
                     </div>
@@ -244,10 +244,10 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                                                     <item.icon size={16} className={isSelected ? "text-white" : "text-text-muted"} />
                                                 </div>
                                                 <div className="text-left">
-                                                    <p className={cn("text-[11px] font-bold uppercase", isSelected ? "text-white" : "text-text-primary")}>{item.name}</p>
+                                                    <p className={cn("text-[11px] font-bold", isSelected ? "text-white" : "text-text-primary")}>{item.name}</p>
                                                     <div className="flex items-center gap-1 mt-0.5 text-left">
                                                         <MapPin size={10} className={isSelected ? "text-white/60" : "text-text-muted"} />
-                                                        <p className={cn("text-[9px] uppercase tracking-widest", isSelected ? "text-white/80" : "text-text-muted")}>{item.location}</p>
+                                                        <p className={cn("text-[10px] uppercase tracking-wider", isSelected ? "text-white/80" : "text-text-muted")}>{item.location}</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -256,7 +256,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                                     )
                                 }) : (
                                     <div className="text-center py-12">
-                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic text-center">Registry clear: No matching missions</p>
+                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider italic text-center">Registry clear: No matching missions</p>
                                     </div>
                                 )}
                             </div>
@@ -272,20 +272,20 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                                     : "bg-bg-secondary/50 border-border-sub"
                              )}>
                                 <div className="space-y-1 text-left">
-                                    <p className="text-[10px] uppercase font-bold text-text-muted text-left">Proximity Audit</p>
+                                    <p className="text-[10px] font-bold text-text-muted text-left">Proximity Audit</p>
                                     {isOutOfRange ? (
-                                        <p className="text-[10px] font-bold text-text-red uppercase flex items-center gap-1.5 text-left">
+                                        <p className="text-[10px] font-bold text-text-red flex items-center gap-1.5 text-left">
                                             <AlertCircle size={12}/> Flagged: Distance Discrepancy ({simulatedDistance}mi)
                                         </p>
                                     ) : (
-                                        <p className="text-[10px] font-bold text-text-green uppercase flex items-center gap-1.5 text-left">
+                                        <p className="text-[10px] font-bold text-text-green flex items-center gap-1.5 text-left">
                                             <ShieldCheck size={12}/> Handshake Verified (On Site)
                                         </p>
                                     )}
                                 </div>
                                 <div className="text-right">
-                                     <p className="text-[9px] uppercase font-bold text-text-muted tracking-widest">Registry Coordinates</p>
-                                     <p className="text-[10px] font-bold text-text-primary uppercase truncate max-w-[150px]">{selectedItem.location}</p>
+                                     <p className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Registry Coordinates</p>
+                                     <p className="text-[10px] font-bold text-text-primary truncate max-w-[150px]">{selectedItem.location}</p>
                                 </div>
                              </div>
 
@@ -301,7 +301,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                                     className="absolute top-0 left-0"
                                 ></iframe>
                                 <div className="absolute top-2 left-2 z-10">
-                                    <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2 py-1 rounded border border-white/10 text-[9px] font-bold uppercase text-white tracking-widest">
+                                    <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2 py-1 rounded border border-white/10 text-[10px] font-bold uppercase text-white tracking-wider">
                                         <Navigation size={10} className="animate-pulse text-brand-red" /> Tactical Feed
                                     </div>
                                 </div>
@@ -311,13 +311,13 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                 </div>
 
                 <DialogFooter className="border-t border-border-default p-6 bg-bg-secondary/30">
-                    <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 flex-1 uppercase font-bold text-[10px] tracking-widest">
+                    <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 flex-1 uppercase font-bold text-[10px] tracking-wider">
                         Cancel
                     </Button>
                     <Button 
                         onClick={handleCheckIn} 
                         className={cn(
-                            "h-10 flex-1 uppercase font-bold text-[10px] tracking-widest shadow-lg transition-all",
+                            "h-10 flex-1 uppercase font-bold text-[10px] tracking-wider shadow-lg transition-all",
                             isOutOfRange ? "bg-accent-gold hover:bg-accent-gold/80" : "bg-brand-red hover:bg-brand-red-hover",
                             hasActiveSession && "opacity-50 cursor-not-allowed pointer-events-none"
                         )}

@@ -101,7 +101,7 @@ export default function TechSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Bell size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">{TERMINOLOGY.CONFIG.NOTIFICATIONS}</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{TERMINOLOGY.CONFIG.NOTIFICATIONS}</h3>
                     </div>
                     <Card>
                         <CardHeader className="text-left">
@@ -116,8 +116,8 @@ export default function TechSettingsPage() {
                             ].map((item) => (
                                 <div key={item.id} className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary/50 border border-border-sub hover:border-text-muted transition-all">
                                     <div className="space-y-0.5 text-left">
-                                        <p className="text-xs font-bold uppercase tracking-wider">{item.label}</p>
-                                        <p className="text-[10px] text-text-muted uppercase font-medium">{item.desc}</p>
+                                        <p className="text-xs font-bold tracking-wider">{item.label}</p>
+                                        <p className="text-[10px] text-text-muted font-medium">{item.desc}</p>
                                     </div>
                                     <Switch 
                                         checked={resolveNotificationPrefs(currentUser?.notificationPreferences)[item.id as keyof NotificationPreferences]} 
@@ -133,7 +133,7 @@ export default function TechSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Monitor size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Terminal Interface</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Terminal Interface</h3>
                     </div>
                     <ThemeToggleSetting />
                     <FontPreferenceSetting />
@@ -143,7 +143,7 @@ export default function TechSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Route size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Work Preferences</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Work Preferences</h3>
                     </div>
                     <Card>
                         <CardHeader className="text-left">
@@ -153,8 +153,8 @@ export default function TechSettingsPage() {
                         <CardContent className="space-y-4 text-left">
                             <div className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary/50 border border-border-sub">
                                 <div className="space-y-0.5 text-left">
-                                    <p className="text-xs font-bold uppercase tracking-wider">Route Preference</p>
-                                    <p className="text-[10px] text-text-muted uppercase font-medium">Default ordering for your daily job route.</p>
+                                    <p className="text-xs font-bold tracking-wider">Route Preference</p>
+                                    <p className="text-[10px] text-text-muted font-medium">Default ordering for your daily job route.</p>
                                 </div>
                                 <Select
                                     value={routePreference}
@@ -163,20 +163,20 @@ export default function TechSettingsPage() {
                                         saveField('routePreference', v);
                                     }}
                                 >
-                                    <SelectTrigger className="h-9 w-[160px] bg-bg-primary border-border-main text-[10px] font-bold uppercase">
+                                    <SelectTrigger className="h-9 w-[160px] bg-bg-primary border-border-main text-[10px] font-bold">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="bg-bg-elevated border-border-main">
-                                        <SelectItem value="optimized" className="text-[10px] font-bold uppercase">Optimized</SelectItem>
-                                        <SelectItem value="by-time" className="text-[10px] font-bold uppercase">By Time</SelectItem>
-                                        <SelectItem value="by-mileage" className="text-[10px] font-bold uppercase">By Mileage</SelectItem>
+                                        <SelectItem value="optimized" className="text-[10px] font-bold">Optimized</SelectItem>
+                                        <SelectItem value="by-time" className="text-[10px] font-bold">By Time</SelectItem>
+                                        <SelectItem value="by-mileage" className="text-[10px] font-bold">By Mileage</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary/50 border border-border-sub">
                                 <div className="space-y-0.5 text-left">
-                                    <p className="text-xs font-bold uppercase tracking-wider">Distance Units</p>
-                                    <p className="text-[10px] text-text-muted uppercase font-medium">Miles or kilometers for mileage tracking.</p>
+                                    <p className="text-xs font-bold tracking-wider">Distance Units</p>
+                                    <p className="text-[10px] text-text-muted font-medium">Miles or kilometers for mileage tracking.</p>
                                 </div>
                                 <div className="flex items-center border border-border-main rounded-lg overflow-hidden h-9 bg-bg-primary">
                                     {(['mi', 'km'] as const).map(unit => (
@@ -184,7 +184,7 @@ export default function TechSettingsPage() {
                                             key={unit}
                                             onClick={() => { setMileageUnit(unit); saveField('mileageUnit', unit); }}
                                             className={cn(
-                                                'h-9 px-4 text-[10px] font-bold uppercase tracking-widest transition-colors border-l border-border-main first:border-l-0',
+                                                'h-9 px-4 text-[10px] font-bold uppercase tracking-wider transition-colors border-l border-border-main first:border-l-0',
                                                 mileageUnit === unit ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary'
                                             )}
                                         >
@@ -201,7 +201,7 @@ export default function TechSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Calendar size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Calendar Integration</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Calendar Integration</h3>
                     </div>
                     <Card>
                         <CardHeader className="text-left">
@@ -211,12 +211,12 @@ export default function TechSettingsPage() {
                         <CardContent>
                             <div className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary/50 border border-border-sub hover:border-text-muted transition-all">
                                 <div className="space-y-0.5 text-left">
-                                    <p className="text-xs font-bold uppercase tracking-wider">Enable Sync</p>
-                                    <p className="text-[10px] text-text-muted uppercase font-medium">Automatically add assignments to your Google Calendar.</p>
+                                    <p className="text-xs font-bold tracking-wider">Enable Sync</p>
+                                    <p className="text-[10px] text-text-muted font-medium">Automatically add assignments to your Google Calendar.</p>
                                 </div>
                                 {/* Nothing reads this flag yet — shown as coming soon
                                     instead of a switch that does nothing. */}
-                                <span className="text-[9px] font-black uppercase tracking-widest text-text-muted border border-border-sub rounded px-2 py-1">Coming soon</span>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub rounded px-2 py-1">Coming soon</span>
                             </div>
                         </CardContent>
                     </Card>

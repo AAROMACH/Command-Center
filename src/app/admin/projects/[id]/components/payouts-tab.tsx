@@ -273,14 +273,14 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-1.5">
           <DollarSign size={12} className="text-text-muted" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
             ${totalOwed.toLocaleString()} Owed
           </span>
         </div>
         <span className="text-text-muted text-xs">·</span>
         <div className="flex items-center gap-1.5">
           <Check size={12} className="text-text-green" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-text-green">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-text-green">
             ${totalPaid.toLocaleString()} Paid
           </span>
         </div>
@@ -288,7 +288,7 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
           <Button
             size="sm"
             variant="outline"
-            className="h-8 text-[10px] font-bold uppercase border-border-main"
+            className="h-8 text-[10px] font-bold border-border-main"
             onClick={() => setIsAddOpen(true)}
           >
             <Plus size={12} className="mr-1.5" />
@@ -302,8 +302,8 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
         <div className="border border-border-sub rounded-lg overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-2.5 bg-bg-tertiary border-b border-border-sub">
             <Calculator size={12} className="text-accent-gold" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Timesheet Payouts</p>
-            <span className="ml-auto text-[9px] font-bold uppercase tracking-widest text-text-muted">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Timesheet Payouts</p>
+            <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-text-muted">
               Based on logged hours × hourly rate
             </span>
           </div>
@@ -314,22 +314,22 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
                 <div key={summary.tech.id}>
                   <div className="flex items-center gap-4 px-4 py-3">
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-bold uppercase tracking-wide text-text-primary truncate">
+                      <p className="text-[11px] font-bold tracking-wide text-text-primary truncate">
                         {summary.tech.name}
                       </p>
                       <div className="flex items-center gap-3 mt-0.5">
-                        <span className="text-[9px] text-text-muted font-mono">
+                        <span className="text-[11px] text-text-muted font-mono">
                           {summary.totalHours.toFixed(2)}h total
                         </span>
                         {summary.remainingHours < summary.totalHours && (
-                          <span className="text-[9px] text-text-muted font-mono">
+                          <span className="text-[11px] text-text-muted font-mono">
                             · {summary.remainingHours.toFixed(2)}h remaining
                           </span>
                         )}
                         {summary.rate ? (
-                          <span className="text-[9px] text-text-muted font-mono">· ${summary.rate}/hr</span>
+                          <span className="text-[11px] text-text-muted font-mono">· ${summary.rate}/hr</span>
                         ) : (
-                          <span className="text-[9px] text-brand-red font-bold uppercase">No rate set</span>
+                          <span className="text-[11px] text-brand-red font-bold">No rate set</span>
                         )}
                       </div>
                     </div>
@@ -351,7 +351,7 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
                         size="sm"
                         disabled={!!generating || summary.remainingHours <= 0 || !summary.rate}
                         onClick={() => handleGenerateTimesheetPayout(summary)}
-                        className="h-7 text-[9px] font-bold uppercase bg-accent-gold/10 border border-accent-gold/30 text-accent-gold hover:bg-accent-gold hover:text-white transition-all"
+                        className="h-7 text-[11px] font-bold bg-accent-gold/10 border border-accent-gold/30 text-accent-gold hover:bg-accent-gold hover:text-white transition-all"
                       >
                         {generating === summary.tech.id ? (
                           <Loader2 size={10} className="animate-spin mr-1" />
@@ -391,11 +391,11 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
       <div className="border border-border-sub rounded-lg overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-2.5 bg-bg-tertiary border-b border-border-sub">
           <Banknote size={12} className="text-text-muted" />
-          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Payout History</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Payout History</p>
           <button
             onClick={() => setShowFilters(f => !f)}
             className={cn(
-              'ml-auto flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest transition-colors',
+              'ml-auto flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider transition-colors',
               hasFilters ? 'text-brand-red' : 'text-text-muted hover:text-text-primary'
             )}
           >
@@ -441,7 +441,7 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
             {hasFilters && (
               <button
                 onClick={() => { setFilterTech(''); setFilterStatus(''); setFilterSource(''); }}
-                className="text-[9px] font-bold text-brand-red hover:underline uppercase tracking-widest"
+                className="text-[10px] font-bold text-brand-red hover:underline uppercase tracking-wider"
               >
                 Clear
               </button>
@@ -452,19 +452,19 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent border-border-sub">
-              <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-4">Technician</TableHead>
-              <TableHead className="text-[10px] uppercase font-bold tracking-widest">Source</TableHead>
-              <TableHead className="text-[10px] uppercase font-bold tracking-widest">Hours</TableHead>
-              <TableHead className="text-[10px] uppercase font-bold tracking-widest">Amount</TableHead>
-              <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
-              <TableHead className="text-[10px] uppercase font-bold tracking-widest">Notes</TableHead>
+              <TableHead className="text-[10px] uppercase font-bold tracking-wider pl-4">Technician</TableHead>
+              <TableHead className="text-[10px] uppercase font-bold tracking-wider">Source</TableHead>
+              <TableHead className="text-[10px] uppercase font-bold tracking-wider">Hours</TableHead>
+              <TableHead className="text-[10px] uppercase font-bold tracking-wider">Amount</TableHead>
+              <TableHead className="text-[10px] uppercase font-bold tracking-wider">Status</TableHead>
+              <TableHead className="text-[10px] uppercase font-bold tracking-wider">Notes</TableHead>
               <TableHead className="text-right pr-4"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-xs text-text-muted uppercase tracking-widest">
+                <TableCell colSpan={7} className="text-center py-8 text-xs text-text-muted">
                   Loading...
                 </TableCell>
               </TableRow>
@@ -473,7 +473,7 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
                 <TableCell colSpan={7} className="text-center py-10">
                   <div className="space-y-2">
                     <Banknote size={24} className="mx-auto text-text-muted opacity-40" />
-                    <p className="text-xs text-text-muted uppercase tracking-widest font-bold">
+                    <p className="text-xs text-text-muted font-bold">
                       {hasFilters ? 'No matching payout records' : 'No payout records'}
                     </p>
                     {!hasFilters && (
@@ -485,12 +485,12 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
             ) : (
               filteredPayouts.map(payout => (
                 <TableRow key={payout.id} className="border-border-sub hover:bg-bg-tertiary transition-colors">
-                  <TableCell className="text-xs font-bold uppercase pl-4">
+                  <TableCell className="text-xs font-bold pl-4">
                     {payout.technicianName || payout.technicianId.slice(0, 8)}
                   </TableCell>
                   <TableCell>
                     <span className={cn(
-                      'inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded',
+                      'inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded',
                       (payout as any).payoutSource === 'timesheet'
                         ? 'bg-accent-gold/10 text-accent-gold border border-accent-gold/20'
                         : 'bg-bg-tertiary text-text-muted border border-border-sub'
@@ -507,16 +507,16 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
                   </TableCell>
                   <TableCell>
                     <div className="space-y-0.5">
-                      <Badge variant={STATUS_STYLES[payout.status]?.variant || 'default'} className="text-[8px] h-4 uppercase">
+                      <Badge variant={STATUS_STYLES[payout.status]?.variant || 'default'} className="text-[10px] h-4">
                         {STATUS_STYLES[payout.status]?.label || payout.status}
                       </Badge>
                       {payout.status === 'approved' && (payout as any).approvedAt && (
-                        <p className="text-[8px] text-text-muted">
+                        <p className="text-[10px] text-text-muted">
                           {new Date((payout as any).approvedAt).toLocaleDateString()}
                         </p>
                       )}
                       {payout.status === 'paid' && payout.paidAt && (
-                        <p className="text-[8px] text-text-muted">
+                        <p className="text-[10px] text-text-muted">
                           {new Date(payout.paidAt).toLocaleDateString()}
                         </p>
                       )}
@@ -529,7 +529,7 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 text-[9px] font-bold uppercase"
+                          className="h-7 text-[11px] font-bold"
                           onClick={() => updateStatus(payout.id, 'approved')}
                         >
                           Approve
@@ -538,7 +538,7 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
                       {payout.status === 'approved' && (
                         <Button
                           size="sm"
-                          className="h-7 text-[9px] font-bold uppercase bg-text-green/20 hover:bg-text-green/30 text-text-green border border-text-green/30"
+                          className="h-7 text-[11px] font-bold bg-text-green/20 hover:bg-text-green/30 text-text-green border border-text-green/30"
                           onClick={() => updateStatus(payout.id, 'paid')}
                         >
                           Mark Paid
@@ -557,7 +557,7 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
       <Dialog open={isAddOpen} onOpenChange={v => !v && setIsAddOpen(false)}>
         <DialogContent className="bg-bg-secondary border-border-main max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-sm font-black uppercase tracking-widest">
+            <DialogTitle className="flex items-center gap-2 text-sm font-bold">
               <Banknote size={16} className="text-brand-red" />
               Manual Payout Record
             </DialogTitle>
@@ -568,7 +568,7 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
 
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Technician *</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Technician *</Label>
               <Select value={form.technicianId} onValueChange={v => setForm(f => ({ ...f, technicianId: v }))}>
                 <SelectTrigger className="h-9 text-xs bg-bg-tertiary border-border-main">
                   <SelectValue placeholder="Select technician" />
@@ -583,7 +583,7 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Role</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Role</Label>
                 <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v as ProjectPayout['role'] }))}>
                   <SelectTrigger className="h-9 text-xs bg-bg-tertiary border-border-main">
                     <SelectValue />
@@ -595,7 +595,7 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pay Type</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Pay Type</Label>
                 <Select value={form.payType} onValueChange={v => setForm(f => ({ ...f, payType: v as ProjectPayout['payType'] }))}>
                   <SelectTrigger className="h-9 text-xs bg-bg-tertiary border-border-main">
                     <SelectValue />
@@ -610,7 +610,7 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Amount ($) *</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Amount ($) *</Label>
               <Input
                 type="number"
                 min="0"
@@ -623,7 +623,7 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Notes</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Notes</Label>
               <Input
                 placeholder="Milestone bonus, phase completion..."
                 value={form.notes}
@@ -634,12 +634,12 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
           </div>
 
           <DialogFooter className="gap-2">
-            <Button variant="ghost" size="sm" className="text-[10px] uppercase font-bold" onClick={() => setIsAddOpen(false)} disabled={saving}>
+            <Button variant="ghost" size="sm" className="text-[10px] font-bold" onClick={() => setIsAddOpen(false)} disabled={saving}>
               Cancel
             </Button>
             <Button
               size="sm"
-              className="text-[10px] uppercase font-bold bg-brand-red hover:bg-brand-red/90 text-white"
+              className="text-[10px] font-bold bg-brand-red hover:bg-brand-red/90 text-white"
               onClick={handleAdd}
               disabled={saving}
             >

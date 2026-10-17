@@ -336,7 +336,7 @@
     @apply mb-3 flex flex-wrap gap-1 p-0;
   }
   .tab {
-    @apply h-auto cursor-pointer rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-text-muted transition-all;
+    @apply h-auto cursor-pointer rounded-full px-3.5 py-1.5 text-[13px] font-medium normal-case tracking-normal text-text-muted transition-all;
   }
   .tab:hover {
     @apply text-text-primary;
@@ -380,7 +380,7 @@
     @apply mb-0 text-xs font-semibold uppercase tracking-wide text-text-primary;
   }
   .cell-desc-client {
-    @apply flex items-center justify-center gap-1 text-[9px] text-text-muted;
+    @apply flex items-center justify-center gap-1 text-[10px] text-text-muted;
   }
   .cell-desc-client svg {
     @apply h-2.5 w-2.5;
@@ -422,7 +422,7 @@
     @apply flex items-center justify-center gap-0.5;
   }
   .btn-assign {
-    @apply inline-flex h-auto items-center gap-1 rounded bg-brand-red px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white hover:bg-brand-red-hover;
+    @apply inline-flex h-auto items-center gap-1 rounded bg-brand-red px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-brand-red-hover;
   }
   .btn-assign svg { @apply h-2.5 w-2.5; }
 
@@ -438,7 +438,7 @@
 
   /* Project Page Styles */
   .tech-stack { @apply flex items-center justify-center; }
-  .tech-avatar { @apply flex h-[18px] w-[18px] items-center justify-center rounded-full border border-bg-secondary bg-bg-tertiary text-[7px] font-bold text-text-secondary; }
+  .tech-avatar { @apply flex h-[18px] w-[18px] items-center justify-center rounded-full border border-bg-secondary bg-bg-tertiary text-[10px] font-bold text-text-secondary; }
   .tech-avatar:not(:first-child) { @apply -ml-1; }
 
   .btn-folder { @apply inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border-red bg-brand-red-dim px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-brand-red transition-all hover:bg-brand-red hover:text-white; }
@@ -449,7 +449,7 @@
   .progress-fill { @apply h-full rounded-full bg-brand-red relative overflow-hidden; }
   .progress-fill.gold { @apply bg-accent-gold; }
   .progress-fill.green { @apply bg-text-green; }
-  .progress-pct { @apply text-[9px] font-bold text-text-secondary; }
+  .progress-pct { @apply text-[10px] font-bold text-text-secondary; }
   .progress-fill.flashy::before {
     content: '';
     position: absolute;
@@ -474,8 +474,9 @@
   .detail-breadcrumb span { @apply font-semibold text-text-primary; }
 
   .detail-tabs { @apply mb-3 flex justify-center border-b border-border-main; }
-  .detail-tab { @apply -mb-px cursor-pointer border-b-2 border-transparent px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-text-muted transition-all hover:text-text-primary; }
-  .detail-tab.active { @apply border-brand-red text-text-primary; }
+  /* Same look as .tab-underline (raw <button> tabs on project pages). */
+  .detail-tab { @apply -mb-px cursor-pointer border-b-2 border-transparent px-3 pb-2.5 pt-1 text-[13px] font-medium text-text-muted transition-colors hover:text-text-primary; }
+  .detail-tab.active { @apply border-brand-red font-semibold text-text-primary; }
 
   .project-detail-header { @apply mb-3 rounded-lg border border-border-main bg-bg-secondary p-3; }
   .pdh-top { @apply mb-2 flex items-start justify-between; }
@@ -485,29 +486,29 @@
   .pdh-meta-item svg { @apply h-2.5 w-2.5 text-text-muted; }
   .pdh-actions { @apply flex items-center gap-1; }
   .pdh-progress { @apply flex items-center justify-center gap-2; }
-  .pdh-progress-label { @apply text-[9px] font-semibold uppercase tracking-wider text-text-muted; }
+  .pdh-progress-label { @apply text-[10px] font-semibold uppercase tracking-wider text-text-muted; }
 
   .overview-grid { @apply grid grid-cols-1 gap-2 lg:grid-cols-2; }
   .field-group { @apply rounded-lg border border-border-main bg-bg-secondary p-3; }
-  .field-group-title { @apply mb-2 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-text-muted; }
+  .field-group-title { @apply mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-text-muted; }
   .field-group-title svg { @apply h-2.5 w-2.5 text-brand-red; }
   .field-row { @apply mb-2; }
   .field-row:last-child { @apply mb-0; }
-  .field-label { @apply mb-0.5 block text-[9px] font-bold uppercase tracking-wider text-text-muted; }
+  .field-label { @apply mb-0.5 block text-[10px] font-bold uppercase tracking-wider text-text-muted; }
   .field-input, .field-textarea { @apply w-full rounded border-border-sub bg-bg-primary p-1.5 text-[11px] text-text-primary placeholder:text-text-muted focus:border-brand-red focus:outline-none focus:ring-0; }
   
   .note-chips { @apply mt-1 flex flex-wrap gap-1 justify-center; }
-  .note-chip { @apply inline-flex cursor-pointer items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-semibold; }
+  .note-chip { @apply inline-flex cursor-pointer items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold; }
   .note-chip.danger { @apply border-border-alert bg-brand-red-dim text-text-red; }
   .note-chip.info { @apply border-accent/50 bg-accent-gold-dim text-accent-gold; }
-  .note-chip-add { @apply inline-flex cursor-pointer items-center gap-1 rounded border border-dashed border-border-main px-1.5 py-0.5 text-[9px] font-semibold text-text-muted transition-colors hover:border-text-secondary hover:text-text-secondary; }
+  .note-chip-add { @apply inline-flex cursor-pointer items-center gap-1 rounded border border-dashed border-border-main px-1.5 py-0.5 text-[10px] font-semibold text-text-muted transition-colors hover:border-text-secondary hover:text-text-secondary; }
   .note-chip svg { @apply h-2 w-2; }
   
   .phase-block { @apply mb-2 overflow-hidden rounded-lg border border-border-main bg-bg-secondary; }
   .phase-header { @apply flex cursor-pointer items-center gap-2 p-2.5 transition-colors hover:bg-bg-tertiary; }
-  .phase-num { @apply flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-brand-red text-[9px] font-bold text-white; }
+  .phase-num { @apply flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-brand-red text-[10px] font-bold text-white; }
   .phase-name { @apply flex-1 text-[11px] font-bold text-text-primary; }
-  .phase-meta { @apply flex items-center gap-2 text-[9px] text-text-muted; }
+  .phase-meta { @apply flex items-center gap-2 text-[10px] text-text-muted; }
   .phase-chevron { @apply text-text-muted transition-transform; }
   .phase-chevron.open { @apply rotate-180; }
   .phase-progress { @apply px-2.5 pb-1; }
@@ -517,7 +518,7 @@
   .task-check { @apply h-3 w-3 shrink-0; }
   .task-name { @apply flex-1 text-[12px] text-text-primary; }
   .task-name.done { @apply text-text-muted line-through; }
-  .task-photo-req { @apply flex items-center justify-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-text-muted; }
+  .task-photo-req { @apply flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted; }
   .task-photo-req svg { @apply h-2.5 w-2.5; }
   .task-actions { @apply flex items-center gap-0.5 justify-center; }
   .task-action-btn { @apply flex h-4 w-4 items-center justify-center rounded text-text-muted transition-colors hover:bg-bg-primary hover:text-text-primary; }
@@ -529,7 +530,7 @@
   .docs-toolbar { @apply mb-2 flex items-center justify-between; }
   .upload-zone { @apply mb-2 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border-main p-4 text-center transition-colors hover:border-brand-red hover:bg-brand-red-dim; }
   .upload-zone-text { @apply text-[11px] text-text-secondary; }
-  .upload-zone-sub { @apply text-[9px] text-text-muted; }
+  .upload-zone-sub { @apply text-[10px] text-text-muted; }
   .doc-list { @apply overflow-hidden rounded-lg border border-border-main bg-bg-secondary; }
   .doc-row { @apply flex items-center gap-2.5 border-b border-border-sub p-1.5 transition-colors hover:bg-bg-tertiary; }
   .doc-row:last-child { @apply border-none; }
@@ -540,27 +541,27 @@
   .doc-icon svg { @apply h-3 w-3; }
   .doc-info { @apply min-w-0 flex-1; }
   .doc-name { @apply truncate text-xs font-semibold text-text-primary; }
-  .doc-meta { @apply mt-0 flex items-center justify-center gap-1.5 text-[9px] text-text-muted; }
-  .doc-label { @apply inline-flex items-center rounded border border-border-main bg-bg-tertiary px-1 py-0.5 text-[8px] font-semibold text-text-secondary; }
-  .doc-size { @apply text-[9px] text-text-muted; }
+  .doc-meta { @apply mt-0 flex items-center justify-center gap-1.5 text-[10px] text-text-muted; }
+  .doc-label { @apply inline-flex items-center rounded border border-border-main bg-bg-tertiary px-1 py-0.5 text-[10px] font-semibold text-text-secondary; }
+  .doc-size { @apply text-[10px] text-text-muted; }
   .doc-actions { @apply flex items-center justify-center gap-0.5; }
-  .doc-btn { @apply inline-flex h-5 items-center gap-1 rounded border border-border-main bg-bg-tertiary px-1 text-[8px] font-semibold uppercase tracking-wider text-text-secondary transition-colors hover:border-text-secondary hover:text-text-primary; }
+  .doc-btn { @apply inline-flex h-5 items-center gap-1 rounded border border-border-main bg-bg-tertiary px-1 text-[10px] font-semibold uppercase tracking-wider text-text-secondary transition-colors hover:border-text-secondary hover:text-text-primary; }
   .doc-btn svg { @apply h-2.5 w-2.5; }
 
   .ts-card { @apply mb-1 overflow-hidden rounded-md border border-border-main bg-bg-secondary; }
   .ts-card-header { @apply flex items-center gap-2 border-b border-border-main p-1; }
-  .ts-tech-avatar { @apply flex h-6 w-6 items-center justify-center rounded-full border border-border-main bg-bg-tertiary text-[9px] font-bold; }
+  .ts-tech-avatar { @apply flex h-6 w-6 items-center justify-center rounded-full border border-border-main bg-bg-tertiary text-[10px] font-bold; }
   .ts-tech-name { @apply text-[11px] font-bold text-text-primary; }
-  .ts-tech-date { @apply text-[8px] text-text-muted; }
+  .ts-tech-date { @apply text-[10px] text-text-muted; }
   .ts-badge-wrap { @apply ml-auto flex items-center gap-1; }
   .ts-body { @apply p-1.5; }
   .ts-checkin-row { @apply grid grid-cols-3 gap-1; }
-  .ts-field-label { @apply mb-0 block text-[7px] font-bold uppercase tracking-wider text-text-muted; }
+  .ts-field-label { @apply mb-0 block text-[10px] font-bold uppercase tracking-wider text-text-muted; }
   .ts-field-val { @apply text-[10px] font-semibold text-text-primary; }
-  .ts-log-label { @apply mb-0.5 block text-[7px] font-bold uppercase tracking-wider text-text-muted; }
+  .ts-log-label { @apply mb-0.5 block text-[10px] font-bold uppercase tracking-wider text-text-muted; }
   .ts-log-summary { @apply text-[10px] leading-snug text-text-secondary; }
   .ts-log-tasks { @apply mt-1 flex flex-wrap gap-1 justify-center; }
-  .ts-task-pill { @apply inline-flex items-center gap-1 rounded-full border px-1 py-0 text-[7px] font-semibold; }
+  .ts-task-pill { @apply inline-flex items-center gap-1 rounded-full border px-1 py-0 text-[10px] font-semibold; }
   .ts-task-pill.done { @apply border-green-border bg-green-dim text-text-green; }
   .ts-task-pill.progress { @apply border-border-gold bg-accent-gold-dim text-accent-gold; }
   .ts-task-pill svg { @apply h-2 w-2; }
@@ -594,16 +595,16 @@
   /* Tech Schedule Page Styles */
   .session-banner { @apply mb-3 flex items-center justify-between gap-2 rounded-lg border border-green-border bg-green-dim px-3 py-1.5; }
   .session-dot { @apply h-1.5 w-1.5 flex-shrink-0 animate-pulse rounded-full bg-text-green; }
-  .session-label { @apply text-[9px] font-bold uppercase tracking-wider text-text-green; }
+  .session-label { @apply text-[10px] font-bold uppercase tracking-wider text-text-green; }
   .session-detail { @apply text-[11px] text-text-secondary; }
-  .session-time { @apply text-[9px] uppercase tracking-wide text-text-muted; }
+  .session-time { @apply text-[10px] uppercase tracking-wide text-text-muted; }
   
   .cal-controls { @apply mb-2 flex items-center justify-between; }
   .cal-nav { @apply flex items-center gap-1; }
   .nav-btn { @apply flex h-6 w-6 items-center justify-center rounded-md border border-border-main bg-bg-secondary text-text-muted transition-colors hover:border-[#444] hover:text-text-primary; }
   .cal-period { @apply w-32 text-center text-[11px] font-bold text-text-primary; }
   .view-toggle { @apply flex gap-0.5 rounded-md border border-border-main bg-bg-secondary p-0.5; }
-  .view-btn { @apply flex items-center gap-1 rounded-[4px] border-none bg-transparent px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-text-muted transition-colors; }
+  .view-btn { @apply flex items-center gap-1 rounded-[4px] border-none bg-transparent px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted transition-colors; }
   .view-btn:hover { @apply text-text-primary; }
   .view-btn.active { @apply bg-brand-red text-white; }
   
@@ -612,7 +613,7 @@
   .day-pill:hover { @apply border-[#444]; }
   .day-pill.selected { @apply border-brand-red bg-brand-red-dim; }
   .day-pill.today { @apply border-border-alert; }
-  .day-name { @apply text-[8px] font-bold uppercase tracking-widest text-text-muted; }
+  .day-name { @apply text-[10px] font-bold uppercase tracking-widest text-text-muted; }
   .day-pill.selected .day-name, .day-pill.today .day-name { @apply text-brand-red; }
   .day-num { @apply text-base font-bold leading-none text-text-secondary; }
   .day-pill.selected .day-num { @apply text-text-primary; }
@@ -620,7 +621,7 @@
   
   .month-grid-wrap { @apply mb-3 overflow-hidden rounded-lg border border-border-main bg-bg-secondary; }
   .month-header { @apply grid grid-cols-7 border-b border-border-main; }
-  .month-header-cell { @apply p-1 text-center text-[9px] font-bold uppercase tracking-wider text-text-muted; }
+  .month-header-cell { @apply p-1 text-center text-[10px] font-bold uppercase tracking-wider text-text-muted; }
   .month-days { @apply grid grid-cols-7; }
   .month-day { @apply flex h-8 cursor-pointer flex-col items-center justify-center gap-0.5 border-b border-r border-border-sub text-[11px] font-semibold text-text-secondary transition-colors; }
   .month-day:hover { @apply bg-bg-tertiary; }
@@ -630,9 +631,9 @@
   .month-day-dot { @apply h-0.5 w-0.5 rounded-full bg-brand-red; }
     
   .intel-header { @apply mb-2 flex items-center justify-center gap-2 border-b border-border-main pb-1.5; }
-  .intel-label { @apply text-[9px] font-bold uppercase tracking-wider text-text-muted; }
+  .intel-label { @apply text-[10px] font-bold uppercase tracking-wider text-text-muted; }
   .intel-date { @apply font-bold text-brand-red; }
-  .intel-count { @apply ml-auto text-[9px] text-text-muted; }
+  .intel-count { @apply ml-auto text-[10px] text-text-muted; }
   
   .job-card { @apply mb-1.5 overflow-hidden rounded border border-border-main bg-bg-secondary transition-all; }
   .job-card:hover { @apply border-[#444]; }
@@ -644,11 +645,11 @@
   .job-left { @apply min-w-0 flex-1 flex flex-col items-center text-center; }
   .job-title-row { @apply mb-0.5 flex flex-wrap items-center justify-center gap-1.5; }
   .job-title { @apply text-[11px] font-bold uppercase tracking-wide text-text-primary; }
-  .job-wo { @apply rounded-sm border border-border-alert bg-brand-red-dim px-1 py-0 font-mono text-[9px] font-bold text-brand-red; }
-  .job-active-badge { @apply flex items-center justify-center gap-1 rounded-sm border border-green-border bg-green-dim px-1 py-0 text-[9px] font-bold uppercase tracking-wider text-text-green; }
+  .job-wo { @apply rounded-sm border border-border-alert bg-brand-red-dim px-1 py-0 font-mono text-[10px] font-bold text-brand-red; }
+  .job-active-badge { @apply flex items-center justify-center gap-1 rounded-sm border border-green-border bg-green-dim px-1 py-0 text-[10px] font-bold uppercase tracking-wider text-text-green; }
   .job-active-badge-dot { @apply h-0.5 w-0.5 animate-pulse rounded-full bg-text-green; }
   .job-meta { @apply flex flex-wrap items-center justify-center gap-x-2 gap-y-0; }
-  .job-meta-item { @apply flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-text-secondary; }
+  .job-meta-item { @apply flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-text-secondary; }
   .job-meta-item svg { @apply h-2.5 w-2.5 flex-shrink-0 text-text-muted; }
   .job-meta-divider { @apply border-l border-border-main pl-2 text-[11px] font-normal normal-case tracking-normal; }
   .job-right { @apply flex-shrink-0 flex items-center justify-center; }
@@ -656,14 +657,19 @@
   .empty-state {
     @apply border border-dashed border-border-main rounded-lg p-6 text-center;
   }
-  .empty-state-text { @apply mt-1.5 text-[9px] font-bold uppercase tracking-wider text-text-muted; }
+  .empty-state-text { @apply mt-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted; }
 
-  /* Underline tab style — one consistent definition shared by the three
-     historical aliases so plans / job / activity tabs look identical. */
+  /* Tabs: two styles only (UI plan). Pills (.tab) for page-level
+     sections; underline (.tab-underline) inside a detail page or dialog.
+     The tab-trigger-* / crm-tab-trigger names are older aliases. */
+  .tab-underline,
   .tab-trigger-plans,
   .tab-trigger-job,
-  .tab-trigger-activity {
-      @apply px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
+  .tab-trigger-activity,
+  .tab-trigger-payroll,
+  .tab-trigger-dashboard,
+  .crm-tab-trigger {
+      @apply h-auto px-0.5 pb-2.5 pt-1 bg-transparent rounded-none border-b-2 border-transparent text-[13px] font-medium normal-case tracking-normal text-text-muted shadow-none transition-colors hover:text-text-primary data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:font-semibold data-[state=active]:border-brand-red data-[state=active]:shadow-none;
   }
 }
 

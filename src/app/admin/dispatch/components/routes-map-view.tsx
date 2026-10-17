@@ -185,7 +185,7 @@ export default function RoutesMapView({ routes, jobsById, unroutedJobs, onResolv
       {geocoding && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-bg-elevated border border-border-main rounded-lg px-4 py-2 flex items-center gap-2 shadow-lg">
           <div className="h-3 w-3 border-2 border-brand-red border-t-transparent rounded-full animate-spin" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Resolving locations...</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Resolving locations...</span>
         </div>
       )}
       <div ref={containerRef} className="w-full h-full" style={{ background: '#1a1a1a' }} />

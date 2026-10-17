@@ -476,7 +476,7 @@ export default function AssetsAndMaterialsPage() {
     const assetHistory = (assetId: string) =>
         assignments.filter(a => a.assetId === assetId).sort((a, b) => b.checkedOutAt.localeCompare(a.checkedOutAt));
 
-    const tabTriggerCls = "px-0 pb-3 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[10px] font-black uppercase tracking-[0.15em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all";
+    const tabTriggerCls = "tab-underline";
 
     // ── Render ─────────────────────────────────────────────────────────────
 
@@ -492,11 +492,11 @@ export default function AssetsAndMaterialsPage() {
                 <div className="page-header-right gap-2">
                     <ViewToggle value={viewMode} onChange={setViewMode} />
                     {mainTab === 'assets' ? (
-                        <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase tracking-widest" onClick={openAddAsset}>
+                        <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold uppercase tracking-wider" onClick={openAddAsset}>
                             <Plus size={12} className="mr-1.5" /> Add Asset
                         </Button>
                     ) : (
-                        <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase tracking-widest" onClick={openAddMaterial}>
+                        <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold uppercase tracking-wider" onClick={openAddMaterial}>
                             <Plus size={12} className="mr-1.5" /> Add Material
                         </Button>
                     )}
@@ -516,7 +516,7 @@ export default function AssetsAndMaterialsPage() {
                         <s.icon size={16} className={cn('shrink-0', s.color)} />
                         <div>
                             <p className={cn('text-[20px] font-black font-mono leading-none', s.color)}>{s.value}</p>
-                            <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mt-0.5">{s.label}</p>
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-0.5">{s.label}</p>
                         </div>
                     </div>
                 ))}
@@ -541,7 +541,7 @@ export default function AssetsAndMaterialsPage() {
                             <button
                                 key={cat.value}
                                 onClick={() => setAssetCatFilter(cat.value)}
-                                className={cn('flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap',
+                                className={cn('flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap',
                                     assetCatFilter === cat.value
                                         ? 'bg-brand-red text-white border-brand-red'
                                         : 'bg-bg-primary text-text-muted border-border-sub hover:border-border-main'
@@ -568,23 +568,23 @@ export default function AssetsAndMaterialsPage() {
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="h-9 w-[140px] bg-bg-primary border-border-main text-[10px] font-bold uppercase">
+                            <SelectTrigger className="h-9 w-[140px] bg-bg-primary border-border-main text-[10px] font-bold">
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
-                                <SelectItem value="all" className="text-[10px] font-bold uppercase">All Statuses</SelectItem>
+                                <SelectItem value="all" className="text-[10px] font-bold">All Statuses</SelectItem>
                                 {ASSET_STATUSES.map(s => (
-                                    <SelectItem key={s} value={s} className="text-[10px] font-bold uppercase">{s.replace(/_/g, ' ')}</SelectItem>
+                                    <SelectItem key={s} value={s} className="text-[10px] font-bold">{s.replace(/_/g, ' ')}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
                         <Select value={conditionFilter} onValueChange={setConditionFilter}>
-                            <SelectTrigger className="h-9 w-[140px] bg-bg-primary border-border-main text-[10px] font-bold uppercase">
+                            <SelectTrigger className="h-9 w-[140px] bg-bg-primary border-border-main text-[10px] font-bold">
                                 <SelectValue placeholder="Condition" />
                             </SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
                                 {['all', 'excellent', 'good', 'fair', 'poor', 'out-of-service'].map(v => (
-                                    <SelectItem key={v} value={v} className="text-[10px] font-bold uppercase">{v === 'all' ? 'All Conditions' : v}</SelectItem>
+                                    <SelectItem key={v} value={v} className="text-[10px] font-bold">{v === 'all' ? 'All Conditions' : v}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -594,13 +594,13 @@ export default function AssetsAndMaterialsPage() {
                     {filteredAssets.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
                             <Package size={28} className="text-text-muted mx-auto mb-3" />
-                            <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">
+                            <p className="text-[11px] font-bold text-text-muted">
                                 {search || statusFilter !== 'all' || conditionFilter !== 'all' || assetCatFilter !== 'all'
                                     ? 'No assets match your filters'
                                     : 'No assets tracked yet'}
                             </p>
                             {!search && statusFilter === 'all' && conditionFilter === 'all' && assetCatFilter === 'all' && (
-                                <Button size="sm" variant="outline" className="mt-4 text-[10px] font-black uppercase" onClick={openAddAsset}>
+                                <Button size="sm" variant="outline" className="mt-4 text-[10px] font-bold" onClick={openAddAsset}>
                                     <Plus size={11} className="mr-1.5" /> Add First Asset
                                 </Button>
                             )}
@@ -616,20 +616,20 @@ export default function AssetsAndMaterialsPage() {
                                         className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border-sub bg-bg-secondary hover:border-brand-red hover:bg-bg-tertiary transition-all cursor-pointer">
                                         <CatIcon size={13} className="text-brand-red shrink-0" />
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-[12px] font-black uppercase tracking-tight text-text-primary truncate">{asset.name}</p>
-                                            <p className="text-[9px] text-text-muted truncate">
+                                            <p className="text-[12px] font-bold tracking-tight text-text-primary truncate">{asset.name}</p>
+                                            <p className="text-[11px] text-text-muted truncate">
                                                 {[asset.brand, asset.model, asset.serialNumber ? `S/N ${asset.serialNumber}` : null].filter(Boolean).join(' · ')}
                                             </p>
                                         </div>
                                         {asset.currentLocation && (
-                                            <span className="hidden lg:flex items-center gap-1 text-[9px] text-text-muted shrink-0"><MapPin size={9} />{asset.currentLocation}</span>
+                                            <span className="hidden lg:flex items-center gap-1 text-[11px] text-text-muted shrink-0"><MapPin size={9} />{asset.currentLocation}</span>
                                         )}
-                                        <span className="hidden md:block text-[9px] font-bold text-text-secondary uppercase truncate max-w-[120px] shrink-0">
+                                        <span className="hidden md:block text-[11px] font-bold text-text-secondary truncate max-w-[120px] shrink-0">
                                             {assignedTech ? assignedTech.name : 'Unassigned'}
                                         </span>
-                                        <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[8px] font-bold uppercase shrink-0', CONDITION_COLORS[asset.condition])}>{asset.condition}</span>
+                                        <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-bold shrink-0', CONDITION_COLORS[asset.condition])}>{asset.condition}</span>
                                         {needsMaint && <AlertTriangle size={11} className="text-text-amber shrink-0" />}
-                                        <span className={cn('inline-flex items-center px-2 h-4 rounded text-[7px] font-black uppercase border shrink-0', STATUS_COLORS[asset.status] || STATUS_COLORS.available)}>
+                                        <span className={cn('inline-flex items-center px-2 h-4 rounded text-[10px] font-bold border shrink-0', STATUS_COLORS[asset.status] || STATUS_COLORS.available)}>
                                             {asset.status.replace(/_/g, ' ')}
                                         </span>
                                     </div>
@@ -651,43 +651,43 @@ export default function AssetsAndMaterialsPage() {
                                         <div className="bg-bg-tertiary/50 border-b border-border-sub px-4 py-2.5 flex items-center justify-between gap-2">
                                             <div className="flex items-center gap-2 min-w-0">
                                                 <CatIcon size={12} className="text-brand-red shrink-0" />
-                                                {asset.brand && <span className="text-[9px] font-bold text-text-muted uppercase truncate">{asset.brand}</span>}
+                                                {asset.brand && <span className="text-[11px] font-bold text-text-muted truncate">{asset.brand}</span>}
                                             </div>
                                             <div className="flex items-center gap-1.5 shrink-0">
                                                 {needsMaint && <AlertTriangle size={11} className="text-text-amber" />}
-                                                <span className={cn('inline-flex items-center px-2 h-4 rounded text-[7px] font-black uppercase border', STATUS_COLORS[asset.status] || STATUS_COLORS.available)}>
+                                                <span className={cn('inline-flex items-center px-2 h-4 rounded text-[10px] font-bold border', STATUS_COLORS[asset.status] || STATUS_COLORS.available)}>
                                                     {asset.status.replace(/_/g, ' ')}
                                                 </span>
                                             </div>
                                         </div>
                                         <div className="p-4 space-y-2.5">
                                             <div>
-                                                <p className="text-[13px] font-black uppercase tracking-tight text-text-primary truncate group-hover:text-brand-red transition-colors">{asset.name}</p>
-                                                {asset.model && <p className="text-[9px] text-text-muted mt-0.5">{asset.model}</p>}
-                                                {asset.serialNumber && <p className="text-[9px] font-mono text-text-muted">S/N: {asset.serialNumber}</p>}
+                                                <p className="text-[13px] font-bold tracking-tight text-text-primary truncate group-hover:text-brand-red transition-colors">{asset.name}</p>
+                                                {asset.model && <p className="text-[11px] text-text-muted mt-0.5">{asset.model}</p>}
+                                                {asset.serialNumber && <p className="text-[11px] font-mono text-text-muted">S/N: {asset.serialNumber}</p>}
                                             </div>
-                                            <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[8px] font-bold uppercase', CONDITION_COLORS[asset.condition])}>
+                                            <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-bold', CONDITION_COLORS[asset.condition])}>
                                                 <CheckCircle size={8} /> {asset.condition}
                                             </span>
                                             {assignedTech ? (
                                                 <div className="flex items-center gap-2">
                                                     <Avatar className="h-5 w-5 border border-border-sub shrink-0">
                                                         <AvatarImage src={assignedTech.avatarUrl} />
-                                                        <AvatarFallback className="text-[7px]">{(assignedTech.name || 'U')[0]}</AvatarFallback>
+                                                        <AvatarFallback className="text-[10px]">{(assignedTech.name || 'U')[0]}</AvatarFallback>
                                                     </Avatar>
-                                                    <p className="text-[9px] font-bold text-text-secondary uppercase truncate">{assignedTech.name}</p>
+                                                    <p className="text-[11px] font-bold text-text-secondary truncate">{assignedTech.name}</p>
                                                 </div>
                                             ) : (
-                                                <p className="text-[8px] text-text-muted uppercase">Unassigned</p>
+                                                <p className="text-[10px] text-text-muted">Unassigned</p>
                                             )}
                                             {asset.currentLocation && (
-                                                <p className="flex items-center gap-1 text-[9px] text-text-muted">
+                                                <p className="flex items-center gap-1 text-[11px] text-text-muted">
                                                     <MapPin size={9} />{asset.currentLocation}
                                                 </p>
                                             )}
                                         </div>
                                         <div className="bg-bg-tertiary/20 border-t border-border-sub px-4 py-2 flex items-center justify-between">
-                                            <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">View Details</p>
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">View Details</p>
                                             <ChevronRight size={12} className="text-text-muted group-hover:text-text-primary transition-colors" />
                                         </div>
                                     </div>
@@ -706,7 +706,7 @@ export default function AssetsAndMaterialsPage() {
                             <button
                                 key={cat}
                                 onClick={() => setMatCatFilter(cat)}
-                                className={cn('text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap',
+                                className={cn('text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap',
                                     matCatFilter === cat
                                         ? 'bg-brand-red text-white border-brand-red'
                                         : 'bg-bg-primary text-text-muted border-border-sub hover:border-border-main'
@@ -729,13 +729,13 @@ export default function AssetsAndMaterialsPage() {
                             />
                         </div>
                         <Select value={matStatusFilter} onValueChange={setMatStatusFilter}>
-                            <SelectTrigger className="h-9 w-[130px] bg-bg-primary border-border-main text-[10px] font-bold uppercase">
+                            <SelectTrigger className="h-9 w-[130px] bg-bg-primary border-border-main text-[10px] font-bold">
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
-                                <SelectItem value="all" className="text-[10px] font-bold uppercase">All</SelectItem>
-                                <SelectItem value="active" className="text-[10px] font-bold uppercase">Active</SelectItem>
-                                <SelectItem value="inactive" className="text-[10px] font-bold uppercase">Inactive</SelectItem>
+                                <SelectItem value="all" className="text-[10px] font-bold">All</SelectItem>
+                                <SelectItem value="active" className="text-[10px] font-bold">Active</SelectItem>
+                                <SelectItem value="inactive" className="text-[10px] font-bold">Inactive</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -743,11 +743,11 @@ export default function AssetsAndMaterialsPage() {
                     {filteredMaterials.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
                             <ShoppingCart size={28} className="text-text-muted mx-auto mb-3" />
-                            <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">
+                            <p className="text-[11px] font-bold text-text-muted">
                                 {search || matStatusFilter !== 'all' || matCatFilter !== 'all' ? 'No materials match your filters' : 'No materials in price list yet'}
                             </p>
                             {!search && matStatusFilter === 'all' && matCatFilter === 'all' && (
-                                <Button size="sm" variant="outline" className="mt-4 text-[10px] font-black uppercase" onClick={openAddMaterial}>
+                                <Button size="sm" variant="outline" className="mt-4 text-[10px] font-bold" onClick={openAddMaterial}>
                                     <Plus size={11} className="mr-1.5" /> Add First Material
                                 </Button>
                             )}
@@ -759,20 +759,20 @@ export default function AssetsAndMaterialsPage() {
                                     className="rounded-xl border border-border-sub bg-bg-secondary hover:border-brand-red hover:bg-bg-tertiary transition-all cursor-pointer p-4 space-y-2.5">
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="min-w-0">
-                                            <p className="text-[12px] font-bold text-text-primary uppercase truncate">{m.name}</p>
-                                            {m.vendor && <p className="text-[9px] text-text-muted truncate">{m.vendor}</p>}
+                                            <p className="text-[12px] font-bold text-text-primary truncate">{m.name}</p>
+                                            {m.vendor && <p className="text-[11px] text-text-muted truncate">{m.vendor}</p>}
                                         </div>
-                                        <Badge variant={m.status === 'active' ? 'active' : 'completed'} className="text-[7px] uppercase h-4 shrink-0">{m.status}</Badge>
+                                        <Badge variant={m.status === 'active' ? 'active' : 'completed'} className="text-[10px] h-4 shrink-0">{m.status}</Badge>
                                     </div>
                                     <div className="flex items-center gap-2 flex-wrap">
-                                        <Badge variant="scheduled" className="text-[7px] uppercase h-4">{m.category}</Badge>
-                                        <Badge variant="scheduled" className="text-[7px] uppercase h-4">{m.unitType}</Badge>
-                                        {m.sku && <span className="text-[8px] font-mono text-text-muted">SKU {m.sku}</span>}
+                                        <Badge variant="scheduled" className="text-[10px] h-4">{m.category}</Badge>
+                                        <Badge variant="scheduled" className="text-[10px] h-4">{m.unitType}</Badge>
+                                        {m.sku && <span className="text-[10px] font-mono text-text-muted">SKU {m.sku}</span>}
                                     </div>
                                     <div className="flex items-center gap-3 pt-1 border-t border-border-sub">
-                                        <div><p className="text-[7px] font-black text-text-muted uppercase">Cost</p><p className="text-[11px] font-mono text-text-muted">${m.standardCost.toFixed(2)}</p></div>
-                                        <div><p className="text-[7px] font-black text-text-muted uppercase">Billable</p><p className="text-[11px] font-mono font-bold text-text-primary">${m.billablePrice.toFixed(2)}</p></div>
-                                        {m.markupPercentage ? <div><p className="text-[7px] font-black text-text-muted uppercase">Markup</p><p className="text-[11px] font-mono text-text-amber">{m.markupPercentage}%</p></div> : null}
+                                        <div><p className="text-[10px] font-bold text-text-muted">Cost</p><p className="text-[11px] font-mono text-text-muted">${m.standardCost.toFixed(2)}</p></div>
+                                        <div><p className="text-[10px] font-bold text-text-muted">Billable</p><p className="text-[11px] font-mono font-bold text-text-primary">${m.billablePrice.toFixed(2)}</p></div>
+                                        {m.markupPercentage ? <div><p className="text-[10px] font-bold text-text-muted">Markup</p><p className="text-[11px] font-mono text-text-amber">{m.markupPercentage}%</p></div> : null}
                                     </div>
                                 </div>
                             ))}
@@ -782,14 +782,14 @@ export default function AssetsAndMaterialsPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow className="border-border-sub bg-bg-secondary/50">
-                                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Name</TableHead>
-                                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Category</TableHead>
-                                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Unit</TableHead>
-                                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted text-right">Cost</TableHead>
-                                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted text-right">Billable</TableHead>
-                                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted text-right">Markup</TableHead>
-                                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">SKU</TableHead>
-                                        <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Name</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Category</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Unit</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-right">Cost</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-right">Billable</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-right">Markup</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">SKU</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Status</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -800,21 +800,21 @@ export default function AssetsAndMaterialsPage() {
                                             onClick={() => setSelectedMaterial(m)}
                                         >
                                             <TableCell>
-                                                <p className="text-[10px] font-bold text-text-primary uppercase">{m.name}</p>
-                                                {m.vendor && <p className="text-[8px] text-text-muted">{m.vendor}</p>}
+                                                <p className="text-[10px] font-bold text-text-primary">{m.name}</p>
+                                                {m.vendor && <p className="text-[10px] text-text-muted">{m.vendor}</p>}
                                             </TableCell>
-                                            <TableCell className="text-[9px] text-text-muted">{m.category}</TableCell>
+                                            <TableCell className="text-[11px] text-text-muted">{m.category}</TableCell>
                                             <TableCell>
-                                                <Badge variant="scheduled" className="text-[7px] uppercase h-4">{m.unitType}</Badge>
+                                                <Badge variant="scheduled" className="text-[10px] h-4">{m.unitType}</Badge>
                                             </TableCell>
                                             <TableCell className="text-[10px] font-mono text-text-muted text-right">${m.standardCost.toFixed(2)}</TableCell>
                                             <TableCell className="text-[10px] font-mono font-bold text-text-primary text-right">${m.billablePrice.toFixed(2)}</TableCell>
-                                            <TableCell className="text-[9px] font-mono text-text-amber text-right">
+                                            <TableCell className="text-[11px] font-mono text-text-amber text-right">
                                                 {m.markupPercentage ? `${m.markupPercentage}%` : '—'}
                                             </TableCell>
-                                            <TableCell className="text-[9px] font-mono text-text-muted">{m.sku || '—'}</TableCell>
+                                            <TableCell className="text-[11px] font-mono text-text-muted">{m.sku || '—'}</TableCell>
                                             <TableCell>
-                                                <Badge variant={m.status === 'active' ? 'active' : 'completed'} className="text-[7px] uppercase h-4">{m.status}</Badge>
+                                                <Badge variant={m.status === 'active' ? 'active' : 'completed'} className="text-[10px] h-4">{m.status}</Badge>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -843,8 +843,8 @@ export default function AssetsAndMaterialsPage() {
                                                 <CatIcon size={16} className="text-brand-red" />
                                             </div>
                                             <div>
-                                                <DialogTitle className="text-[14px] font-black uppercase">{selectedAsset.name}</DialogTitle>
-                                                <p className="text-[9px] text-text-muted uppercase">
+                                                <DialogTitle className="text-[14px] font-bold">{selectedAsset.name}</DialogTitle>
+                                                <p className="text-[11px] text-text-muted">
                                                     {selectedAsset.brand && `${selectedAsset.brand} `}{selectedAsset.model && `${selectedAsset.model} · `}
                                                     {ASSET_CATS.find(c => c.value === selectedAsset.category)?.label}
                                                     {selectedAsset.subCategory && ` · ${selectedAsset.subCategory}`}
@@ -852,10 +852,10 @@ export default function AssetsAndMaterialsPage() {
                                             </div>
                                         </div>
                                         <div className="flex gap-1.5 flex-wrap shrink-0">
-                                            <span className={cn('inline-flex items-center px-2 h-5 rounded text-[7px] font-black uppercase border', STATUS_COLORS[selectedAsset.status])}>
+                                            <span className={cn('inline-flex items-center px-2 h-5 rounded text-[10px] font-bold border', STATUS_COLORS[selectedAsset.status])}>
                                                 {selectedAsset.status.replace(/_/g, ' ')}
                                             </span>
-                                            <span className={cn('inline-flex items-center px-2 h-5 rounded text-[7px] font-bold uppercase border', CONDITION_COLORS[selectedAsset.condition])}>
+                                            <span className={cn('inline-flex items-center px-2 h-5 rounded text-[10px] font-bold border', CONDITION_COLORS[selectedAsset.condition])}>
                                                 {selectedAsset.condition}
                                             </span>
                                         </div>
@@ -868,11 +868,11 @@ export default function AssetsAndMaterialsPage() {
                                         <div className="flex items-center gap-3 p-3 rounded-lg bg-bg-secondary border border-border-sub">
                                             <Avatar className="h-8 w-8 border border-border-sub">
                                                 <AvatarImage src={assignedTech.avatarUrl} />
-                                                <AvatarFallback className="text-[9px]">{(assignedTech.name || 'U')[0]}</AvatarFallback>
+                                                <AvatarFallback className="text-[11px]">{(assignedTech.name || 'U')[0]}</AvatarFallback>
                                             </Avatar>
                                             <div className="flex-1">
-                                                <p className="text-[10px] font-bold text-text-primary uppercase">{assignedTech.name}</p>
-                                                <p className="text-[8px] text-text-muted uppercase">
+                                                <p className="text-[10px] font-bold text-text-primary">{assignedTech.name}</p>
+                                                <p className="text-[10px] text-text-muted">
                                                     Assigned {selectedAsset.checkedOutAt ? format(parseISO(selectedAsset.checkedOutAt), 'MMM d, yyyy') : ''}
                                                     {selectedAsset.expectedReturnAt && ` · Expected back ${selectedAsset.expectedReturnAt}`}
                                                 </p>
@@ -895,7 +895,7 @@ export default function AssetsAndMaterialsPage() {
                                             ['Last Returned', selectedAsset.lastReturnedAt ? format(parseISO(selectedAsset.lastReturnedAt), 'MMM d, yyyy') : undefined],
                                         ].filter(([, v]) => v).map(([label, value]) => (
                                             <div key={label as string} className="p-2 rounded-lg bg-bg-secondary border border-border-sub">
-                                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">{label}</p>
+                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{label}</p>
                                                 <p className="text-[10px] font-bold text-text-primary mt-0.5">{value}</p>
                                             </div>
                                         ))}
@@ -903,7 +903,7 @@ export default function AssetsAndMaterialsPage() {
 
                                     {selectedAsset.notes && (
                                         <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub">
-                                            <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-1">Notes</p>
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">Notes</p>
                                             <p className="text-[10px] text-text-secondary">{selectedAsset.notes}</p>
                                         </div>
                                     )}
@@ -911,27 +911,27 @@ export default function AssetsAndMaterialsPage() {
                                     {/* Action buttons */}
                                     <div className="flex flex-wrap gap-2 border-t border-border-sub pt-3">
                                         {!isOut && (
-                                            <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase" onClick={() => setAssignOpen(true)}>
+                                            <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" onClick={() => setAssignOpen(true)}>
                                                 <ArrowRightLeft size={10} className="mr-1.5" /> Assign / Check Out
                                             </Button>
                                         )}
                                         {isOut && (
-                                            <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase" onClick={() => setReturnOpen(true)}>
+                                            <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" onClick={() => setReturnOpen(true)}>
                                                 <RotateCcw size={10} className="mr-1.5" /> Return Asset
                                             </Button>
                                         )}
                                         {selectedAsset.status !== 'needs_repair' && (
-                                            <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase text-text-amber border-text-amber/30" onClick={() => handleStatusChange(selectedAsset, 'needs_repair')}>
+                                            <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold text-text-amber border-text-amber/30" onClick={() => handleStatusChange(selectedAsset, 'needs_repair')}>
                                                 <Hammer size={10} className="mr-1.5" /> Needs Repair
                                             </Button>
                                         )}
                                         {selectedAsset.status !== 'lost' && (
-                                            <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase text-text-red border-text-red/30" onClick={() => handleStatusChange(selectedAsset, 'lost')}>
+                                            <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold text-text-red border-text-red/30" onClick={() => handleStatusChange(selectedAsset, 'lost')}>
                                                 <XCircle size={10} className="mr-1.5" /> Mark Lost
                                             </Button>
                                         )}
                                         {selectedAsset.status !== 'available' && !isOut && (
-                                            <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase text-text-green border-text-green/30" onClick={() => handleStatusChange(selectedAsset, 'available')}>
+                                            <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold text-text-green border-text-green/30" onClick={() => handleStatusChange(selectedAsset, 'available')}>
                                                 <CheckCircle size={10} className="mr-1.5" /> Mark Available
                                             </Button>
                                         )}
@@ -940,23 +940,23 @@ export default function AssetsAndMaterialsPage() {
                                     {/* Assignment history */}
                                     {history.length > 0 && (
                                         <div>
-                                            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest flex items-center gap-2 mb-2">
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2 mb-2">
                                                 <History size={10} /> Assignment History
                                             </p>
                                             <div className="space-y-1.5">
                                                 {history.map(h => (
                                                     <div key={h.id} className="flex items-center justify-between p-2.5 rounded-lg bg-bg-secondary border border-border-sub">
                                                         <div className="min-w-0">
-                                                            <p className="text-[10px] font-bold text-text-primary uppercase">{h.assignedToName}</p>
-                                                            <p className="text-[8px] text-text-muted">
+                                                            <p className="text-[10px] font-bold text-text-primary">{h.assignedToName}</p>
+                                                            <p className="text-[10px] text-text-muted">
                                                                 {format(parseISO(h.checkedOutAt), 'MMM d, yyyy')}
                                                                 {h.returnedAt && ` → ${format(parseISO(h.returnedAt), 'MMM d, yyyy')}`}
                                                             </p>
-                                                            {h.notes && <p className="text-[8px] text-text-muted italic">{h.notes}</p>}
+                                                            {h.notes && <p className="text-[10px] text-text-muted italic">{h.notes}</p>}
                                                         </div>
                                                         <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
-                                                            <Badge variant={h.status === 'active' ? 'active' : 'completed'} className="text-[6px] uppercase h-3">{h.status}</Badge>
-                                                            <span className={cn('text-[7px] uppercase font-bold', CONDITION_COLORS[h.checkoutCondition]?.split(' ')[0])}>{h.checkoutCondition}</span>
+                                                            <Badge variant={h.status === 'active' ? 'active' : 'completed'} className="text-[10px] h-3">{h.status}</Badge>
+                                                            <span className={cn('text-[10px] font-bold', CONDITION_COLORS[h.checkoutCondition]?.split(' ')[0])}>{h.checkoutCondition}</span>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -966,8 +966,8 @@ export default function AssetsAndMaterialsPage() {
                                 </div>
 
                                 <DialogFooter className="gap-2">
-                                    <Button variant="outline" size="sm" onClick={() => setSelectedAsset(null)} className="text-[10px] font-black uppercase">Close</Button>
-                                    <Button size="sm" onClick={() => { openEditAsset(selectedAsset); setSelectedAsset(null); }} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+                                    <Button variant="outline" size="sm" onClick={() => setSelectedAsset(null)} className="text-[10px] font-bold">Close</Button>
+                                    <Button size="sm" onClick={() => { openEditAsset(selectedAsset); setSelectedAsset(null); }} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
                                         <Edit2 size={11} className="mr-1.5" /> Edit
                                     </Button>
                                 </DialogFooter>
@@ -981,46 +981,46 @@ export default function AssetsAndMaterialsPage() {
             <Dialog open={assignOpen} onOpenChange={open => { if (!open) { setAssignOpen(false); setAssignForm({ ...EMPTY_ASSIGN_FORM }); } }}>
                 <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
                     <DialogHeader>
-                        <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Assign Asset</DialogTitle>
+                        <DialogTitle className="text-[13px] font-bold">Assign Asset</DialogTitle>
                         {selectedAsset && <p className="text-[10px] text-text-muted mt-1">{selectedAsset.name}</p>}
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Assign To *</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Assign To *</Label>
                             <Select value={assignForm.assignedToUserId} onValueChange={v => setAssignForm(f => ({ ...f, assignedToUserId: v }))}>
-                                <SelectTrigger className="h-9 text-[10px] bg-bg-secondary border-border-main font-bold uppercase">
+                                <SelectTrigger className="h-9 text-[10px] bg-bg-secondary border-border-main font-bold">
                                     <SelectValue placeholder="Select person" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-bg-elevated border-border-main">
                                     {technicians.map(t => (
-                                        <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name}</SelectItem>
+                                        <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold">{t.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Checkout Condition</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Checkout Condition</Label>
                             <Select value={assignForm.checkoutCondition} onValueChange={v => setAssignForm(f => ({ ...f, checkoutCondition: v }))}>
-                                <SelectTrigger className="h-9 text-[10px] bg-bg-secondary border-border-main font-bold uppercase"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-9 text-[10px] bg-bg-secondary border-border-main font-bold"><SelectValue /></SelectTrigger>
                                 <SelectContent className="bg-bg-elevated border-border-main">
                                     {['excellent', 'good', 'fair', 'poor'].map(c => (
-                                        <SelectItem key={c} value={c} className="text-[10px] font-bold uppercase">{c}</SelectItem>
+                                        <SelectItem key={c} value={c} className="text-[10px] font-bold">{c}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Expected Return</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Expected Return</Label>
                             <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={assignForm.expectedReturnAt} onChange={e => setAssignForm(f => ({ ...f, expectedReturnAt: e.target.value }))} />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Notes</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Notes</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Optional notes..." value={assignForm.notes} onChange={e => setAssignForm(f => ({ ...f, notes: e.target.value }))} />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" size="sm" onClick={() => setAssignOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
-                        <Button size="sm" onClick={handleAssign} disabled={assignSaving || !assignForm.assignedToUserId} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+                        <Button variant="outline" size="sm" onClick={() => setAssignOpen(false)} className="text-[10px] font-bold">Cancel</Button>
+                        <Button size="sm" onClick={handleAssign} disabled={assignSaving || !assignForm.assignedToUserId} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
                             {assignSaving ? 'Assigning...' : 'Assign Asset'}
                         </Button>
                     </DialogFooter>
@@ -1031,29 +1031,29 @@ export default function AssetsAndMaterialsPage() {
             <Dialog open={returnOpen} onOpenChange={open => { if (!open) { setReturnOpen(false); setReturnForm({ ...EMPTY_RETURN_FORM }); } }}>
                 <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
                     <DialogHeader>
-                        <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Return Asset</DialogTitle>
+                        <DialogTitle className="text-[13px] font-bold">Return Asset</DialogTitle>
                         {selectedAsset && <p className="text-[10px] text-text-muted mt-1">{selectedAsset.name} — currently with {selectedAsset.assignedUserName}</p>}
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Return Condition</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Return Condition</Label>
                             <Select value={returnForm.returnCondition} onValueChange={v => setReturnForm(f => ({ ...f, returnCondition: v }))}>
-                                <SelectTrigger className="h-9 text-[10px] bg-bg-secondary border-border-main font-bold uppercase"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-9 text-[10px] bg-bg-secondary border-border-main font-bold"><SelectValue /></SelectTrigger>
                                 <SelectContent className="bg-bg-elevated border-border-main">
                                     {['excellent', 'good', 'fair', 'poor', 'out-of-service'].map(c => (
-                                        <SelectItem key={c} value={c} className="text-[10px] font-bold uppercase">{c}</SelectItem>
+                                        <SelectItem key={c} value={c} className="text-[10px] font-bold">{c}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Notes</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Notes</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Return notes..." value={returnForm.notes} onChange={e => setReturnForm(f => ({ ...f, notes: e.target.value }))} />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" size="sm" onClick={() => setReturnOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
-                        <Button size="sm" onClick={handleReturn} disabled={returnSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+                        <Button variant="outline" size="sm" onClick={() => setReturnOpen(false)} className="text-[10px] font-bold">Cancel</Button>
+                        <Button size="sm" onClick={handleReturn} disabled={returnSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
                             {returnSaving ? 'Processing...' : 'Confirm Return'}
                         </Button>
                     </DialogFooter>
@@ -1064,23 +1064,23 @@ export default function AssetsAndMaterialsPage() {
             <Dialog open={assetFormOpen} onOpenChange={open => { if (!open) { setAssetFormOpen(false); setEditingAsset(false); setAssetForm({ ...EMPTY_ASSET_FORM }); } }}>
                 <DialogContent className="bg-bg-elevated border-border-main max-w-lg max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle className="text-[13px] font-black uppercase tracking-widest">{editingAsset ? 'Edit Asset' : 'Add Asset'}</DialogTitle>
+                        <DialogTitle className="text-[13px] font-bold">{editingAsset ? 'Edit Asset' : 'Add Asset'}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Asset Name *</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Asset Name *</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="e.g. Milwaukee Drill M18" value={assetForm.name} onChange={e => setAssetForm(f => ({ ...f, name: e.target.value }))} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Category *</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Category *</Label>
                                 <Select value={assetForm.category} onValueChange={v => setAssetForm(f => ({ ...f, category: v as AssetCategory, subCategory: '' }))}>
-                                    <SelectTrigger className="h-9 bg-bg-secondary border-border-main text-[10px] font-bold uppercase">
+                                    <SelectTrigger className="h-9 bg-bg-secondary border-border-main text-[10px] font-bold">
                                         <SelectValue placeholder="Select category" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-bg-elevated border-border-main">
                                         {(['tool', 'electronic', 'safety', 'vehicle', 'inventory'] as AssetCategory[]).map(c => (
-                                            <SelectItem key={c} value={c} className="text-[10px] font-bold uppercase">
+                                            <SelectItem key={c} value={c} className="text-[10px] font-bold">
                                                 {ASSET_CATS.find(x => x.value === c)?.label || c}
                                             </SelectItem>
                                         ))}
@@ -1088,48 +1088,48 @@ export default function AssetsAndMaterialsPage() {
                                 </Select>
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Sub-Category</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Sub-Category</Label>
                                 <Select value={assetForm.subCategory} onValueChange={v => setAssetForm(f => ({ ...f, subCategory: v }))} disabled={!assetForm.category}>
-                                    <SelectTrigger className="h-9 bg-bg-secondary border-border-main text-[10px] font-bold uppercase">
+                                    <SelectTrigger className="h-9 bg-bg-secondary border-border-main text-[10px] font-bold">
                                         <SelectValue placeholder="Select type" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-bg-elevated border-border-main">
                                         {(assetForm.category ? ASSET_CAT_SUBS[assetForm.category as AssetCategory] || [] : []).map(s => (
-                                            <SelectItem key={s} value={s} className="text-[10px] font-bold uppercase">{s}</SelectItem>
+                                            <SelectItem key={s} value={s} className="text-[10px] font-bold">{s}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Brand</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Brand</Label>
                                 <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="e.g. Milwaukee" value={assetForm.brand} onChange={e => setAssetForm(f => ({ ...f, brand: e.target.value }))} />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Model</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Model</Label>
                                 <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="e.g. M18 FUEL" value={assetForm.model} onChange={e => setAssetForm(f => ({ ...f, model: e.target.value }))} />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Condition *</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Condition *</Label>
                                 <Select value={assetForm.condition} onValueChange={v => setAssetForm(f => ({ ...f, condition: v as Asset['condition'] }))}>
-                                    <SelectTrigger className="h-9 bg-bg-secondary border-border-main text-[10px] font-bold uppercase">
+                                    <SelectTrigger className="h-9 bg-bg-secondary border-border-main text-[10px] font-bold">
                                         <SelectValue placeholder="Select condition" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-bg-elevated border-border-main">
                                         {(['excellent', 'good', 'fair', 'poor', 'out-of-service'] as const).map(c => (
-                                            <SelectItem key={c} value={c} className="text-[10px] font-bold uppercase">{c}</SelectItem>
+                                            <SelectItem key={c} value={c} className="text-[10px] font-bold">{c}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Status</Label>
                                 <Select value={assetForm.status} onValueChange={v => setAssetForm(f => ({ ...f, status: v as Asset['status'] }))}>
-                                    <SelectTrigger className="h-9 bg-bg-secondary border-border-main text-[10px] font-bold uppercase">
+                                    <SelectTrigger className="h-9 bg-bg-secondary border-border-main text-[10px] font-bold">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="bg-bg-elevated border-border-main">
                                         {ASSET_STATUSES.map(s => (
-                                            <SelectItem key={s} value={s} className="text-[10px] font-bold uppercase">{s.replace(/_/g, ' ')}</SelectItem>
+                                            <SelectItem key={s} value={s} className="text-[10px] font-bold">{s.replace(/_/g, ' ')}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -1137,70 +1137,70 @@ export default function AssetsAndMaterialsPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Serial Number</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Serial Number</Label>
                                 <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="S/N" value={assetForm.serialNumber} onChange={e => setAssetForm(f => ({ ...f, serialNumber: e.target.value }))} />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Vendor</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Vendor</Label>
                                 <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Supplier" value={assetForm.vendor} onChange={e => setAssetForm(f => ({ ...f, vendor: e.target.value }))} />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Purchase Date</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Purchase Date</Label>
                                 <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={assetForm.purchaseDate} onChange={e => setAssetForm(f => ({ ...f, purchaseDate: e.target.value }))} />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Purchase Price ($)</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Purchase Price ($)</Label>
                                 <Input type="number" className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="0.00" value={assetForm.purchasePrice} onChange={e => setAssetForm(f => ({ ...f, purchasePrice: e.target.value }))} />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Warranty Expiry</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Warranty Expiry</Label>
                                 <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={assetForm.warrantyExpiry} onChange={e => setAssetForm(f => ({ ...f, warrantyExpiry: e.target.value }))} />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Next Maintenance</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Next Maintenance</Label>
                                 <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={assetForm.nextMaintenanceDate} onChange={e => setAssetForm(f => ({ ...f, nextMaintenanceDate: e.target.value }))} />
                             </div>
                         </div>
                         {assetForm.category === 'vehicle' && (
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
-                                    <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">VIN</Label>
+                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">VIN</Label>
                                     <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Vehicle ID number" value={assetForm.vin} onChange={e => setAssetForm(f => ({ ...f, vin: e.target.value }))} />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">License Plate</Label>
+                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">License Plate</Label>
                                     <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="ABC-1234" value={assetForm.licensePlate} onChange={e => setAssetForm(f => ({ ...f, licensePlate: e.target.value }))} />
                                 </div>
                             </div>
                         )}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Current Location</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Current Location</Label>
                                 <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="e.g. Warehouse A" value={assetForm.currentLocation} onChange={e => setAssetForm(f => ({ ...f, currentLocation: e.target.value }))} />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Assign To</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Assign To</Label>
                                 <Select value={assetForm.assignedUserId || '__none__'} onValueChange={v => setAssetForm(f => ({ ...f, assignedUserId: v === '__none__' ? '' : v }))}>
-                                    <SelectTrigger className="h-9 bg-bg-secondary border-border-main text-[10px] font-bold uppercase">
+                                    <SelectTrigger className="h-9 bg-bg-secondary border-border-main text-[10px] font-bold">
                                         <SelectValue placeholder="Unassigned" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-bg-elevated border-border-main">
-                                        <SelectItem value="__none__" className="text-[10px] font-bold uppercase">Unassigned</SelectItem>
+                                        <SelectItem value="__none__" className="text-[10px] font-bold">Unassigned</SelectItem>
                                         {technicians.map(t => (
-                                            <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name}</SelectItem>
+                                            <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold">{t.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Notes</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Notes</Label>
                             <Textarea className="text-[11px] bg-bg-secondary border-border-main min-h-[60px]" placeholder="Additional notes..." value={assetForm.notes} onChange={e => setAssetForm(f => ({ ...f, notes: e.target.value }))} />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" size="sm" onClick={() => { setAssetFormOpen(false); setEditingAsset(false); setAssetForm({ ...EMPTY_ASSET_FORM }); }} className="text-[10px] font-black uppercase">Cancel</Button>
-                        <Button size="sm" onClick={handleSaveAsset} disabled={assetSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+                        <Button variant="outline" size="sm" onClick={() => { setAssetFormOpen(false); setEditingAsset(false); setAssetForm({ ...EMPTY_ASSET_FORM }); }} className="text-[10px] font-bold">Cancel</Button>
+                        <Button size="sm" onClick={handleSaveAsset} disabled={assetSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
                             {assetSaving ? 'Saving...' : editingAsset ? 'Save Changes' : 'Add Asset'}
                         </Button>
                     </DialogFooter>
@@ -1215,10 +1215,10 @@ export default function AssetsAndMaterialsPage() {
                             <DialogHeader>
                                 <div className="flex items-start justify-between gap-3">
                                     <div>
-                                        <DialogTitle className="text-[14px] font-black uppercase">{selectedMaterial.name}</DialogTitle>
-                                        <p className="text-[9px] text-text-muted uppercase mt-0.5">{selectedMaterial.category}</p>
+                                        <DialogTitle className="text-[14px] font-bold">{selectedMaterial.name}</DialogTitle>
+                                        <p className="text-[11px] text-text-muted mt-0.5">{selectedMaterial.category}</p>
                                     </div>
-                                    <Badge variant={selectedMaterial.status === 'active' ? 'active' : 'completed'} className="text-[7px] uppercase h-5 shrink-0">{selectedMaterial.status}</Badge>
+                                    <Badge variant={selectedMaterial.status === 'active' ? 'active' : 'completed'} className="text-[10px] h-5 shrink-0">{selectedMaterial.status}</Badge>
                                 </div>
                             </DialogHeader>
                             <div className="space-y-3 py-1">
@@ -1227,18 +1227,18 @@ export default function AssetsAndMaterialsPage() {
                                 )}
                                 <div className="grid grid-cols-3 gap-3">
                                     <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub text-center">
-                                        <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Cost</p>
-                                        <p className="text-[16px] font-black font-mono text-text-muted mt-0.5">${selectedMaterial.standardCost.toFixed(2)}</p>
-                                        <p className="text-[7px] text-text-muted uppercase">per {selectedMaterial.unitType}</p>
+                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Cost</p>
+                                        <p className="text-[16px] font-bold font-mono text-text-muted mt-0.5">${selectedMaterial.standardCost.toFixed(2)}</p>
+                                        <p className="text-[10px] text-text-muted">per {selectedMaterial.unitType}</p>
                                     </div>
                                     <div className="p-3 rounded-lg bg-brand-red/5 border border-brand-red/20 text-center">
-                                        <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Billable</p>
-                                        <p className="text-[16px] font-black font-mono text-brand-red mt-0.5">${selectedMaterial.billablePrice.toFixed(2)}</p>
-                                        <p className="text-[7px] text-text-muted uppercase">per {selectedMaterial.unitType}</p>
+                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Billable</p>
+                                        <p className="text-[16px] font-bold font-mono text-brand-red mt-0.5">${selectedMaterial.billablePrice.toFixed(2)}</p>
+                                        <p className="text-[10px] text-text-muted">per {selectedMaterial.unitType}</p>
                                     </div>
                                     <div className="p-3 rounded-lg bg-text-amber/5 border border-text-amber/20 text-center">
-                                        <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">Markup</p>
-                                        <p className="text-[16px] font-black font-mono text-text-amber mt-0.5">{selectedMaterial.markupPercentage ?? '—'}%</p>
+                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Markup</p>
+                                        <p className="text-[16px] font-bold font-mono text-text-amber mt-0.5">{selectedMaterial.markupPercentage ?? '—'}%</p>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
@@ -1249,21 +1249,21 @@ export default function AssetsAndMaterialsPage() {
                                         ['Taxable', selectedMaterial.taxable ? 'Yes' : 'No'],
                                     ].filter(([, v]) => v).map(([label, value]) => (
                                         <div key={label as string} className="p-2 rounded-lg bg-bg-secondary border border-border-sub">
-                                            <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">{label}</p>
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{label}</p>
                                             <p className="text-[10px] font-bold text-text-primary mt-0.5 capitalize">{value}</p>
                                         </div>
                                     ))}
                                 </div>
                                 {selectedMaterial.notes && (
                                     <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub">
-                                        <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-1">Notes</p>
+                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">Notes</p>
                                         <p className="text-[10px] text-text-secondary">{selectedMaterial.notes}</p>
                                     </div>
                                 )}
                             </div>
                             <DialogFooter className="gap-2">
-                                <Button variant="outline" size="sm" onClick={() => setSelectedMaterial(null)} className="text-[10px] font-black uppercase">Close</Button>
-                                <Button size="sm" onClick={() => { openEditMaterial(selectedMaterial); setSelectedMaterial(null); }} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+                                <Button variant="outline" size="sm" onClick={() => setSelectedMaterial(null)} className="text-[10px] font-bold">Close</Button>
+                                <Button size="sm" onClick={() => { openEditMaterial(selectedMaterial); setSelectedMaterial(null); }} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
                                     <Edit2 size={11} className="mr-1.5" /> Edit
                                 </Button>
                             </DialogFooter>
@@ -1276,75 +1276,75 @@ export default function AssetsAndMaterialsPage() {
             <Dialog open={matFormOpen} onOpenChange={open => { if (!open) { setMatFormOpen(false); setEditingMat(false); setMatForm({ ...EMPTY_MAT_FORM }); } }}>
                 <DialogContent className="bg-bg-elevated border-border-main max-w-lg max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle className="text-[13px] font-black uppercase tracking-widest">{editingMat ? 'Edit Material' : 'Add Material'}</DialogTitle>
+                        <DialogTitle className="text-[13px] font-bold">{editingMat ? 'Edit Material' : 'Add Material'}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Material Name *</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Material Name *</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="e.g. Cat6 Cable" value={matForm.name} onChange={e => setMatForm(f => ({ ...f, name: e.target.value }))} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Category *</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Category *</Label>
                                 <Select value={matForm.category} onValueChange={v => setMatForm(f => ({ ...f, category: v }))}>
-                                    <SelectTrigger className="h-9 bg-bg-secondary border-border-main text-[10px] font-bold uppercase">
+                                    <SelectTrigger className="h-9 bg-bg-secondary border-border-main text-[10px] font-bold">
                                         <SelectValue placeholder="Select category" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-bg-elevated border-border-main">
                                         {MAT_CATS.map(c => (
-                                            <SelectItem key={c} value={c} className="text-[10px] font-bold uppercase">{c}</SelectItem>
+                                            <SelectItem key={c} value={c} className="text-[10px] font-bold">{c}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Unit Type *</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Unit Type *</Label>
                                 <Select value={matForm.unitType} onValueChange={v => setMatForm(f => ({ ...f, unitType: v as Material['unitType'] }))}>
-                                    <SelectTrigger className="h-9 bg-bg-secondary border-border-main text-[10px] font-bold uppercase"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="h-9 bg-bg-secondary border-border-main text-[10px] font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent className="bg-bg-elevated border-border-main">
                                         {UNIT_TYPES.map(u => (
-                                            <SelectItem key={u} value={u} className="text-[10px] font-bold uppercase">{u}</SelectItem>
+                                            <SelectItem key={u} value={u} className="text-[10px] font-bold">{u}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Description</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Description</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Brief description..." value={matForm.description} onChange={e => setMatForm(f => ({ ...f, description: e.target.value }))} />
                         </div>
                         <div className="grid grid-cols-3 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Cost ($)</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Cost ($)</Label>
                                 <Input type="number" step="0.01" className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="0.00" value={matForm.standardCost} onChange={e => setMatForm(f => ({ ...f, standardCost: e.target.value }))} />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Billable ($)</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Billable ($)</Label>
                                 <Input type="number" step="0.01" className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="0.00" value={matForm.billablePrice} onChange={e => setMatForm(f => ({ ...f, billablePrice: e.target.value }))} />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Markup %</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Markup %</Label>
                                 <Input type="number" className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Auto" value={matForm.markupPercentage} onChange={e => setMatForm(f => ({ ...f, markupPercentage: e.target.value }))} />
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Vendor / Source</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Vendor / Source</Label>
                                 <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Supplier name" value={matForm.vendor} onChange={e => setMatForm(f => ({ ...f, vendor: e.target.value }))} />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">SKU / Part #</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">SKU / Part #</Label>
                                 <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Part number or SKU" value={matForm.sku} onChange={e => setMatForm(f => ({ ...f, sku: e.target.value }))} />
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Status</Label>
                                 <Select value={matForm.status} onValueChange={v => setMatForm(f => ({ ...f, status: v as Material['status'] }))}>
-                                    <SelectTrigger className="h-9 bg-bg-secondary border-border-main text-[10px] font-bold uppercase"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="h-9 bg-bg-secondary border-border-main text-[10px] font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent className="bg-bg-elevated border-border-main">
-                                        <SelectItem value="active" className="text-[10px] font-bold uppercase">Active</SelectItem>
-                                        <SelectItem value="inactive" className="text-[10px] font-bold uppercase">Inactive</SelectItem>
+                                        <SelectItem value="active" className="text-[10px] font-bold">Active</SelectItem>
+                                        <SelectItem value="inactive" className="text-[10px] font-bold">Inactive</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -1356,18 +1356,18 @@ export default function AssetsAndMaterialsPage() {
                                         onChange={e => setMatForm(f => ({ ...f, taxable: e.target.checked }))}
                                         className="accent-brand-red h-4 w-4"
                                     />
-                                    <span className="text-[10px] font-bold uppercase text-text-muted">Taxable</span>
+                                    <span className="text-[10px] font-bold text-text-muted">Taxable</span>
                                 </label>
                             </div>
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Notes</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Notes</Label>
                             <Textarea className="text-[11px] bg-bg-secondary border-border-main min-h-[60px]" placeholder="Additional notes..." value={matForm.notes} onChange={e => setMatForm(f => ({ ...f, notes: e.target.value }))} />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" size="sm" onClick={() => { setMatFormOpen(false); setEditingMat(false); setMatForm({ ...EMPTY_MAT_FORM }); }} className="text-[10px] font-black uppercase">Cancel</Button>
-                        <Button size="sm" onClick={handleSaveMaterial} disabled={matSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+                        <Button variant="outline" size="sm" onClick={() => { setMatFormOpen(false); setEditingMat(false); setMatForm({ ...EMPTY_MAT_FORM }); }} className="text-[10px] font-bold">Cancel</Button>
+                        <Button size="sm" onClick={handleSaveMaterial} disabled={matSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
                             {matSaving ? 'Saving...' : editingMat ? 'Save Changes' : 'Add Material'}
                         </Button>
                     </DialogFooter>

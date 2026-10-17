@@ -288,7 +288,7 @@ function NewQuoteDialog({
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="bg-bg-elevated border-border-main max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-[13px] font-black uppercase tracking-widest">New Quote</DialogTitle>
+          <DialogTitle className="text-[13px] font-bold">New Quote</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5 py-2">
@@ -296,7 +296,7 @@ function NewQuoteDialog({
           <div className="flex gap-2">
             {(['in_app_client', 'external_customer'] as const).map(t => (
               <button key={t} type="button" onClick={() => setCustomerType(t)}
-                className={cn('flex-1 py-2 text-[9px] font-black uppercase tracking-widest rounded border transition-colors',
+                className={cn('flex-1 py-2 text-[10px] font-bold uppercase tracking-wider rounded border transition-colors',
                   customerType === t ? 'bg-brand-red/10 text-brand-red border-brand-red/30' : 'border-border-sub text-text-muted hover:border-border-main')}>
                 {t === 'in_app_client' ? 'App Client' : 'External Customer'}
               </button>
@@ -306,7 +306,7 @@ function NewQuoteDialog({
           {/* Customer info */}
           {customerType === 'in_app_client' ? (
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Client</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client</Label>
               <Select value={clientId} onValueChange={setClientId}>
                 <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main">
                   <SelectValue placeholder="Select client..." />
@@ -323,19 +323,19 @@ function NewQuoteDialog({
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Name</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Name</Label>
                 <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Jane Smith" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Company</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Company</Label>
                 <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={customerCompany} onChange={e => setCustomerCompany(e.target.value)} placeholder="Acme Corp" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Email *</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Email *</Label>
                 <Input type="email" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="jane@acme.com" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Phone</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Phone</Label>
                 <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="555-000-0000" />
               </div>
             </div>
@@ -343,29 +343,29 @@ function NewQuoteDialog({
 
           {/* Quote info */}
           <div className="space-y-3 border-t border-border-sub pt-4">
-            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Quote Details</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Quote Details</p>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Title *</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Title *</Label>
               <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={title} onChange={e => setTitle(e.target.value)} placeholder="Security camera installation — 4 units" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Description</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Description</Label>
               <textarea rows={2} className="w-full text-[11px] bg-bg-secondary border border-border-main rounded-md p-2 text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-brand-red/40"
                 value={description} onChange={e => setDescription(e.target.value)} placeholder="Brief overview of the project..." />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Scope Summary</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Scope Summary</Label>
               <textarea rows={2} className="w-full text-[11px] bg-bg-secondary border border-border-main rounded-md p-2 text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-brand-red/40"
                 value={scopeSummary} onChange={e => setScopeSummary(e.target.value)} placeholder="What's included in this quote..." />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Expiration Date</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Expiration Date</Label>
                 <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={expirationDate} onChange={e => setExpirationDate(e.target.value)} />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Terms</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Terms</Label>
               <textarea rows={2} className="w-full text-[11px] bg-bg-secondary border border-border-main rounded-md p-2 text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-brand-red/40"
                 value={terms} onChange={e => setTerms(e.target.value)} />
             </div>
@@ -374,8 +374,8 @@ function NewQuoteDialog({
           {/* Line Items */}
           <div className="space-y-2 border-t border-border-sub pt-4">
             <div className="flex items-center justify-between">
-              <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Line Items</p>
-              <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase" onClick={addLineItem}>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Line Items</p>
+              <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" onClick={addLineItem}>
                 <Plus size={10} className="mr-1" /> Add Item
               </Button>
             </div>
@@ -383,7 +383,7 @@ function NewQuoteDialog({
               {lineItems.map((item, idx) => (
                 <div key={item.id} className="rounded-lg border border-border-sub bg-bg-secondary p-3 space-y-2">
                   <div className="space-y-1">
-                    <Label className="text-[8px] font-black uppercase tracking-widest text-text-muted">Preset</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Preset</Label>
                     <Select onValueChange={v => handlePremadeItemSelect(idx, v)}>
                       <SelectTrigger className="h-7 text-[10px] bg-bg-tertiary border-border-sub">
                         <SelectValue placeholder="Select preset or enter below..." />
@@ -391,7 +391,7 @@ function NewQuoteDialog({
                       <SelectContent className="bg-bg-elevated border-border-main">
                         {PRESET_CATALOG.map(group => (
                           <SelectGroup key={group.group}>
-                            <SelectLabel className="text-[8px] font-black uppercase tracking-widest text-text-muted px-2 py-1">{group.group}</SelectLabel>
+                            <SelectLabel className="text-[10px] font-bold uppercase tracking-wider text-text-muted px-2 py-1">{group.group}</SelectLabel>
                             {group.items.map(p => (
                               <SelectItem key={p.id} value={p.id} className="text-[10px]">{p.name}</SelectItem>
                             ))}
@@ -402,12 +402,12 @@ function NewQuoteDialog({
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <Label className="text-[8px] font-black uppercase tracking-widest text-text-muted">Item Name</Label>
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Item Name</Label>
                       <Input className="h-7 text-[10px] bg-bg-tertiary border-border-sub" value={item.name}
                         onChange={e => updateLineItem(idx, 'name', e.target.value)} placeholder="Labor — installation" />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[8px] font-black uppercase tracking-widest text-text-muted">Category</Label>
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Category</Label>
                       <Select value={item.category} onValueChange={v => updateLineItem(idx, 'category', v)}>
                         <SelectTrigger className="h-7 text-[10px] bg-bg-tertiary border-border-sub">
                           <SelectValue />
@@ -422,28 +422,28 @@ function NewQuoteDialog({
                   </div>
                   <div className="grid grid-cols-3 gap-2 items-end">
                     <div className="space-y-1">
-                      <Label className="text-[8px] font-black uppercase tracking-widest text-text-muted">Qty</Label>
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Qty</Label>
                       <Input type="number" className="h-7 text-[10px] bg-bg-tertiary border-border-sub" value={item.quantity}
                         onChange={e => updateLineItem(idx, 'quantity', parseFloat(e.target.value) || 0)} />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[8px] font-black uppercase tracking-widest text-text-muted">Unit Price</Label>
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Unit Price</Label>
                       <Input type="number" className="h-7 text-[10px] bg-bg-tertiary border-border-sub" value={item.unitPrice}
                         onChange={e => updateLineItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)} />
                     </div>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-black text-text-primary">{fmtMoney(item.total)}</span>
+                      <span className="text-[11px] font-bold text-text-primary">{fmtMoney(item.total)}</span>
                       <button type="button" onClick={() => removeLineItem(idx)} className="text-text-muted hover:text-brand-red transition-colors">
                         <Trash2 size={12} />
                       </button>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-1.5 text-[9px] text-text-muted cursor-pointer">
+                    <label className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer">
                       <input type="checkbox" checked={item.taxable} onChange={e => updateLineItem(idx, 'taxable', e.target.checked)} className="accent-brand-red" />
                       Taxable
                     </label>
-                    <label className="flex items-center gap-1.5 text-[9px] text-text-muted cursor-pointer">
+                    <label className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer">
                       <input type="checkbox" checked={item.required} onChange={e => updateLineItem(idx, 'required', e.target.checked)} className="accent-brand-red" />
                       Required
                     </label>
@@ -454,15 +454,15 @@ function NewQuoteDialog({
             <div className="text-right space-y-0.5 pt-2">
               <p className="text-[10px] text-text-muted">Subtotal: <span className="text-text-primary font-bold">{fmtMoney(subtotal)}</span></p>
               <p className="text-[10px] text-text-muted">Tax (8%): <span className="text-text-primary font-bold">{fmtMoney(taxAmount)}</span></p>
-              <p className="text-[12px] font-black text-text-primary">Total: {fmtMoney(total)}</p>
+              <p className="text-[12px] font-bold text-text-primary">Total: {fmtMoney(total)}</p>
             </div>
           </div>
 
           {/* Optional Choices */}
           <div className="space-y-2 border-t border-border-sub pt-4">
             <div className="flex items-center justify-between">
-              <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Optional Add-Ons</p>
-              <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase" onClick={addOptionalGroup}>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Optional Add-Ons</p>
+              <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" onClick={addOptionalGroup}>
                 <Plus size={10} className="mr-1" /> Add Group
               </Button>
             </div>
@@ -480,7 +480,7 @@ function NewQuoteDialog({
                     <button type="button" onClick={() => removeOption(gIdx, oIdx)} className="text-text-muted hover:text-brand-red"><Trash2 size={11} /></button>
                   </div>
                 ))}
-                <Button size="sm" variant="ghost" className="h-6 text-[9px] font-bold uppercase text-text-muted" onClick={() => addOption(gIdx)}>
+                <Button size="sm" variant="ghost" className="h-6 text-[11px] font-bold text-text-muted" onClick={() => addOption(gIdx)}>
                   <Plus size={9} className="mr-1" /> Add Option
                 </Button>
               </div>
@@ -489,8 +489,8 @@ function NewQuoteDialog({
         </div>
 
         <DialogFooter className="gap-2 pt-2">
-          <Button variant="outline" size="sm" onClick={onClose} className="text-[10px] font-black uppercase">Cancel</Button>
-          <Button size="sm" onClick={handleSave} disabled={saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+          <Button variant="outline" size="sm" onClick={onClose} className="text-[10px] font-bold">Cancel</Button>
+          <Button size="sm" onClick={handleSave} disabled={saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
             {saving && <Loader2 size={11} className="animate-spin mr-1.5" />}
             Save as Draft
           </Button>
@@ -511,19 +511,19 @@ function QuoteCard({ quote, onClick }: { quote: Quote; onClick: () => void }) {
           <p className="text-[12px] font-bold text-text-primary truncate">{quote.title}</p>
           <p className="text-[10px] text-text-muted">{quote.customerName || quote.customerCompany}</p>
         </div>
-        <span className={cn('text-[8px] px-2 py-0.5 rounded border font-black uppercase tracking-widest shrink-0', statusCls(quote.status))}>
+        <span className={cn('text-[10px] px-2 py-0.5 rounded border font-bold uppercase tracking-wider shrink-0', statusCls(quote.status))}>
           {quote.status.replace(/_/g, ' ')}
         </span>
       </div>
       <div className="flex items-center gap-3 text-[10px] text-text-muted">
-        <span className="font-mono text-[9px]">{quote.quoteNumber}</span>
-        <span className="font-black text-text-primary">{fmtMoney(quote.total)}</span>
+        <span className="font-mono text-[11px]">{quote.quoteNumber}</span>
+        <span className="font-bold text-text-primary">{fmtMoney(quote.total)}</span>
         {quote.expirationDate && (
           <span className="flex items-center gap-1"><Clock size={9} />Exp {quote.expirationDate}</span>
         )}
       </div>
       {quote.lineItems.length > 0 && (
-        <p className="text-[9px] text-text-muted">{quote.lineItems.length} line item{quote.lineItems.length !== 1 ? 's' : ''}</p>
+        <p className="text-[11px] text-text-muted">{quote.lineItems.length} line item{quote.lineItems.length !== 1 ? 's' : ''}</p>
       )}
     </button>
   );
@@ -542,8 +542,8 @@ function QuoteRow({ quote, onClick }: { quote: Quote; onClick: () => void }) {
       {quote.expirationDate && (
         <span className="hidden md:flex items-center gap-1 text-[10px] text-text-muted shrink-0"><Clock size={9} />Exp {quote.expirationDate}</span>
       )}
-      <span className="text-[11px] font-black text-text-primary shrink-0">{fmtMoney(quote.total)}</span>
-      <span className={cn('text-[8px] px-2 py-0.5 rounded border font-black uppercase tracking-widest shrink-0', statusCls(quote.status))}>
+      <span className="text-[11px] font-bold text-text-primary shrink-0">{fmtMoney(quote.total)}</span>
+      <span className={cn('text-[10px] px-2 py-0.5 rounded border font-bold uppercase tracking-wider shrink-0', statusCls(quote.status))}>
         {quote.status.replace(/_/g, ' ')}
       </span>
     </button>
@@ -613,20 +613,20 @@ function QuoteDetailSheet({
     <Sheet open={!!quote} onOpenChange={v => !v && onClose()}>
       <SheetContent className="w-full sm:max-w-lg bg-bg-secondary border-border-main overflow-y-auto">
         <SheetHeader className="pb-4 border-b border-border-sub">
-          <SheetTitle className="text-[13px] font-black uppercase tracking-widest">{quote.title}</SheetTitle>
+          <SheetTitle className="text-[13px] font-bold">{quote.title}</SheetTitle>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[9px] font-mono text-text-muted">{quote.quoteNumber}</span>
-            <span className={cn('text-[8px] px-2 py-0.5 rounded border font-black uppercase tracking-widest', statusCls(quote.status))}>
+            <span className="text-[11px] font-mono text-text-muted">{quote.quoteNumber}</span>
+            <span className={cn('text-[10px] px-2 py-0.5 rounded border font-bold uppercase tracking-wider', statusCls(quote.status))}>
               {quote.status.replace(/_/g, ' ')}
             </span>
-            <span className="text-[10px] font-black text-text-primary">{fmtMoney(quote.total)}</span>
+            <span className="text-[10px] font-bold text-text-primary">{fmtMoney(quote.total)}</span>
           </div>
         </SheetHeader>
 
         <div className="py-4 space-y-5">
           {/* Customer */}
           <div className="space-y-1">
-            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Customer</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Customer</p>
             <p className="text-[13px] font-bold text-text-primary">{quote.customerName}</p>
             {quote.leadId && (
               <a href={paths.pipeline + `?lead=${quote.leadId}`} className="text-[10px] font-bold uppercase tracking-wider text-brand-red hover:underline">Linked CRM lead →</a>
@@ -643,34 +643,34 @@ function QuoteDetailSheet({
           {/* Scope */}
           {quote.scopeSummary && (
             <div className="space-y-1">
-              <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Scope</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Scope</p>
               <p className="text-[11px] text-text-secondary leading-relaxed">{quote.scopeSummary}</p>
             </div>
           )}
 
           {/* Line items */}
           <div className="space-y-1">
-            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Line Items</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Line Items</p>
             <div className="rounded-lg border border-border-sub overflow-hidden">
               {quote.lineItems.map(item => (
                 <div key={item.id} className="flex items-center justify-between px-3 py-2 border-b border-border-sub last:border-0">
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold text-text-primary truncate">{item.name}</p>
-                    <p className="text-[9px] text-text-muted">{item.quantity} × {fmtMoney(item.unitPrice)} · {item.category}</p>
+                    <p className="text-[11px] text-text-muted">{item.quantity} × {fmtMoney(item.unitPrice)} · {item.category}</p>
                   </div>
-                  <span className="text-[11px] font-black text-text-primary shrink-0 ml-3">{fmtMoney(item.total)}</span>
+                  <span className="text-[11px] font-bold text-text-primary shrink-0 ml-3">{fmtMoney(item.total)}</span>
                 </div>
               ))}
               <div className="px-3 py-2 bg-bg-tertiary space-y-0.5">
-                <div className="flex justify-between text-[9px] text-text-muted">
+                <div className="flex justify-between text-[11px] text-text-muted">
                   <span>Subtotal</span><span>{fmtMoney(quote.subtotal)}</span>
                 </div>
                 {quote.taxAmount > 0 && (
-                  <div className="flex justify-between text-[9px] text-text-muted">
+                  <div className="flex justify-between text-[11px] text-text-muted">
                     <span>Tax</span><span>{fmtMoney(quote.taxAmount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-[11px] font-black text-text-primary border-t border-border-sub pt-1 mt-1">
+                <div className="flex justify-between text-[11px] font-bold text-text-primary border-t border-border-sub pt-1 mt-1">
                   <span>Total</span><span>{fmtMoney(quote.total)}</span>
                 </div>
               </div>
@@ -680,7 +680,7 @@ function QuoteDetailSheet({
           {/* Optional choices */}
           {quote.optionalChoices.length > 0 && (
             <div className="space-y-1">
-              <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Optional Add-Ons</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Optional Add-Ons</p>
               {quote.optionalChoices.map(g => (
                 <div key={g.id} className="rounded-lg border border-border-sub p-3 space-y-1.5">
                   <p className="text-[10px] font-bold text-text-primary">{g.title}</p>
@@ -698,7 +698,7 @@ function QuoteDetailSheet({
           {/* Approval info */}
           {quote.approvedAt && (
             <div className="rounded-lg bg-text-green/5 border border-text-green/20 p-3 space-y-1">
-              <p className="text-[9px] font-black uppercase tracking-widest text-text-green">Approved</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-green">Approved</p>
               <p className="text-[11px] text-text-primary">{quote.approvedByName} — {quote.approvedByEmail}</p>
               <p className="text-[10px] text-text-muted">{format(parseISO(quote.approvedAt), 'MMM d, yyyy h:mm a')}</p>
               {quote.approvalNote && <p className="text-[10px] text-text-secondary italic">"{quote.approvalNote}"</p>}
@@ -706,7 +706,7 @@ function QuoteDetailSheet({
           )}
           {quote.rejectionReason && (
             <div className="rounded-lg bg-brand-red/5 border border-brand-red/20 p-3 space-y-1">
-              <p className="text-[9px] font-black uppercase tracking-widest text-brand-red">Rejected</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-brand-red">Rejected</p>
               <p className="text-[10px] text-text-secondary italic">"{quote.rejectionReason}"</p>
             </div>
           )}
@@ -714,14 +714,14 @@ function QuoteDetailSheet({
           {/* Public link */}
           {publicUrl && (
             <div className="rounded-lg border border-border-sub p-3 space-y-2">
-              <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Approval Link</p>
-              <p className="text-[9px] text-text-muted font-mono break-all">{publicUrl}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Approval Link</p>
+              <p className="text-[11px] text-text-muted font-mono break-all">{publicUrl}</p>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase flex-1" onClick={handleCopyLink}>
+                <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold flex-1" onClick={handleCopyLink}>
                   <Copy size={10} className="mr-1" /> Copy Link
                 </Button>
                 <a href={publicUrl} target="_blank" rel="noreferrer">
-                  <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase">
+                  <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold">
                     <ExternalLink size={10} />
                   </Button>
                 </a>
@@ -732,8 +732,8 @@ function QuoteDetailSheet({
           {/* In-app client delivery note */}
           {quote.customerType === 'in_app_client' && quote.status !== 'draft' && (
             <div className="rounded-lg border border-border-sub p-3 space-y-1">
-              <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Client Delivery</p>
-              <p className="text-[9px] text-text-muted leading-relaxed">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client Delivery</p>
+              <p className="text-[11px] text-text-muted leading-relaxed">
                 This quote is visible to the client in their portal. No external link is required.
               </p>
             </div>
@@ -741,15 +741,15 @@ function QuoteDetailSheet({
 
           {/* Actions */}
           <div className="border-t border-border-sub pt-4 space-y-2">
-            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Actions</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Actions</p>
             <div className="grid grid-cols-2 gap-2">
               {quote.status === 'draft' && (
                 <>
-                  <Button size="sm" className="h-8 text-[9px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white col-span-2"
+                  <Button size="sm" className="h-8 text-[11px] font-bold bg-brand-red hover:bg-brand-red/90 text-white col-span-2"
                     onClick={handleSend} disabled={acting}>
                     <Send size={11} className="mr-1.5" />Send Quote
                   </Button>
-                  <Button size="sm" variant="outline" className="h-8 text-[9px] font-bold uppercase border-brand-red/30 text-brand-red hover:bg-brand-red/5"
+                  <Button size="sm" variant="outline" className="h-8 text-[11px] font-bold border-brand-red/30 text-brand-red hover:bg-brand-red/5"
                     onClick={() => act({ status: 'archived' })} disabled={acting}>
                     <Archive size={11} className="mr-1.5" />Archive
                   </Button>
@@ -757,17 +757,17 @@ function QuoteDetailSheet({
               )}
               {(quote.status === 'sent' || quote.status === 'viewed') && (
                 <>
-                  <Button size="sm" variant="outline" className="h-8 text-[9px] font-bold uppercase col-span-2"
+                  <Button size="sm" variant="outline" className="h-8 text-[11px] font-bold col-span-2"
                     onClick={handleSend} disabled={acting}>
                     <RotateCcw size={11} className="mr-1.5" />Resend
                   </Button>
                   {publicUrl && (
-                    <Button size="sm" variant="outline" className="h-8 text-[9px] font-bold uppercase"
+                    <Button size="sm" variant="outline" className="h-8 text-[11px] font-bold"
                       onClick={handleCopyLink} disabled={acting}>
                       <Copy size={11} className="mr-1.5" />Copy Link
                     </Button>
                   )}
-                  <Button size="sm" variant="outline" className="h-8 text-[9px] font-bold uppercase border-brand-red/30 text-brand-red hover:bg-brand-red/5"
+                  <Button size="sm" variant="outline" className="h-8 text-[11px] font-bold border-brand-red/30 text-brand-red hover:bg-brand-red/5"
                     onClick={() => act({ status: 'expired' })} disabled={acting}>
                     <Clock size={11} className="mr-1.5" />Mark Expired
                   </Button>
@@ -775,26 +775,26 @@ function QuoteDetailSheet({
               )}
               {quote.status === 'approved' && (
                 <>
-                  <Button size="sm" className="h-8 text-[9px] font-bold uppercase bg-blue-600 hover:bg-blue-600/90 text-white"
+                  <Button size="sm" className="h-8 text-[11px] font-bold bg-blue-600 hover:bg-blue-600/90 text-white"
                     onClick={() => handleConvert('work_order')} disabled={acting || !!quote.convertedToWorkOrderId}>
                     <ArrowRight size={11} className="mr-1.5" />→ Work Order
                   </Button>
-                  <Button size="sm" className="h-8 text-[9px] font-bold uppercase bg-purple-600 hover:bg-purple-600/90 text-white"
+                  <Button size="sm" className="h-8 text-[11px] font-bold bg-purple-600 hover:bg-purple-600/90 text-white"
                     onClick={() => handleConvert('project')} disabled={acting || !!quote.convertedToProjectId}>
                     <ArrowRight size={11} className="mr-1.5" />→ Project
                   </Button>
-                  <Button size="sm" className="h-8 text-[9px] font-bold uppercase bg-text-green hover:bg-text-green/90 text-white col-span-2"
+                  <Button size="sm" className="h-8 text-[11px] font-bold bg-text-green hover:bg-text-green/90 text-white col-span-2"
                     onClick={() => handleConvert('invoice')} disabled={acting || !!quote.convertedToInvoiceId}>
                     <ArrowRight size={11} className="mr-1.5" />→ Invoice
                   </Button>
-                  <Button size="sm" variant="outline" className="h-8 text-[9px] font-bold uppercase col-span-2"
+                  <Button size="sm" variant="outline" className="h-8 text-[11px] font-bold col-span-2"
                     onClick={() => act({ status: 'archived' })} disabled={acting}>
                     <Archive size={11} className="mr-1.5" />Archive
                   </Button>
                 </>
               )}
               {(quote.status === 'rejected' || quote.status === 'expired') && (
-                <Button size="sm" variant="outline" className="h-8 text-[9px] font-bold uppercase col-span-2"
+                <Button size="sm" variant="outline" className="h-8 text-[11px] font-bold col-span-2"
                   onClick={() => act({ status: 'archived' })} disabled={acting}>
                   <Archive size={11} className="mr-1.5" />Archive
                 </Button>
@@ -855,7 +855,7 @@ export default function AdminQuotesPage() {
   function TabCount({ n }: { n: number }) {
     if (!n) return null;
     return (
-      <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-brand-red text-white text-[8px] font-black min-w-[16px] h-4 px-1">
+      <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-brand-red text-white text-[10px] font-bold min-w-[16px] h-4 px-1">
         {n}
       </span>
     );
@@ -878,7 +878,7 @@ export default function AdminQuotesPage() {
         </div>
         <div className="page-header-right items-center gap-2">
           <ViewToggle value={viewMode} onChange={setViewMode} />
-          <Button onClick={() => setIsNewOpen(true)} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase tracking-widest h-9">
+          <Button onClick={() => setIsNewOpen(true)} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold uppercase tracking-wider h-9">
             <Plus size={13} className="mr-1.5" />New Quote
           </Button>
         </div>

@@ -107,11 +107,11 @@ export default function PublicQuotePage() {
       <header className="border-b border-white/10 px-6 py-4">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <div className="h-8 w-8 rounded bg-[#e00] flex items-center justify-center shrink-0">
-            <span className="text-white font-black text-[10px]">A</span>
+            <span className="text-white font-bold text-[10px]">A</span>
           </div>
           <div>
-            <p className="text-[13px] font-black uppercase tracking-wider text-white">Aaromach</p>
-            <p className="text-[9px] text-white/40 uppercase tracking-widest">Quote Approval Portal</p>
+            <p className="text-[13px] font-bold tracking-wider text-white">Aaromach</p>
+            <p className="text-[10px] text-white/40 uppercase tracking-wider">Quote Approval Portal</p>
           </div>
         </div>
       </header>
@@ -119,7 +119,7 @@ export default function PublicQuotePage() {
         {children}
       </main>
       <footer className="border-t border-white/10 px-6 py-4 text-center">
-        <p className="text-[9px] text-white/30 uppercase tracking-widest">
+        <p className="text-[10px] text-white/30 uppercase tracking-wider">
           Aaromach · Secure Quote Portal · This link is private — do not share
         </p>
       </footer>
@@ -138,7 +138,7 @@ export default function PublicQuotePage() {
     <Wrap>
       <div className="text-center py-24">
         <AlertTriangle size={32} className="mx-auto mb-4 text-amber-400" />
-        <p className="text-[14px] font-black uppercase tracking-wide text-white">
+        <p className="text-[14px] font-bold tracking-wide text-white">
           {state === 'not_found' ? 'Quote not found' : 'Something went wrong'}
         </p>
         <p className="text-[11px] text-white/40 mt-2">
@@ -155,7 +155,7 @@ export default function PublicQuotePage() {
           ? <CheckCircle2 size={40} className="mx-auto mb-4 text-[#2fc880]" />
           : <XCircle size={40} className="mx-auto mb-4 text-[#e00]" />
         }
-        <p className="text-[16px] font-black uppercase tracking-wide text-white">
+        <p className="text-[16px] font-bold tracking-wide text-white">
           {quote.status === 'approved' ? 'Quote Already Approved' : 'Quote Already Declined'}
         </p>
         <p className="text-[11px] text-white/40 mt-2">
@@ -173,12 +173,12 @@ export default function PublicQuotePage() {
         <div className="h-16 w-16 mx-auto rounded-full bg-[#2fc880]/10 border border-[#2fc880]/30 flex items-center justify-center">
           <CheckCircle2 size={32} className="text-[#2fc880]" />
         </div>
-        <p className="text-[18px] font-black uppercase tracking-wide text-white">Quote Approved</p>
+        <p className="text-[18px] font-black tracking-wide text-white">Quote Approved</p>
         <p className="text-[12px] text-white/60">Thank you, {approverName}. We'll be in touch shortly.</p>
         <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-left space-y-2 mt-6">
-          <p className="text-[9px] font-black uppercase tracking-widest text-white/40">Approval Summary</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Approval Summary</p>
           <p className="text-[12px] font-bold text-white">{quote?.title}</p>
-          <p className="text-[11px] text-white/60">Approved total: <span className="text-white font-black">{fmtMoney(grandTotal)}</span></p>
+          <p className="text-[11px] text-white/60">Approved total: <span className="text-white font-bold">{fmtMoney(grandTotal)}</span></p>
           <p className="text-[10px] text-white/40">Ref: {quote?.quoteNumber}</p>
         </div>
       </div>
@@ -189,7 +189,7 @@ export default function PublicQuotePage() {
     <Wrap>
       <div className="text-center py-16 space-y-3">
         <XCircle size={40} className="mx-auto text-[#e00]" />
-        <p className="text-[16px] font-black uppercase tracking-wide text-white">Quote Declined</p>
+        <p className="text-[16px] font-bold tracking-wide text-white">Quote Declined</p>
         <p className="text-[11px] text-white/40">We've recorded your response. Contact us if you'd like to discuss further.</p>
       </div>
     </Wrap>
@@ -203,14 +203,14 @@ export default function PublicQuotePage() {
           {/* Header */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-mono text-white/30">{quote.quoteNumber}</span>
+              <span className="text-[11px] font-mono text-white/30">{quote.quoteNumber}</span>
               {quote.expirationDate && (
-                <span className="text-[8px] px-2 py-0.5 rounded border border-amber-400/30 text-amber-400 font-bold uppercase">
+                <span className="text-[10px] px-2 py-0.5 rounded border border-amber-400/30 text-amber-400 font-bold">
                   Expires {quote.expirationDate}
                 </span>
               )}
             </div>
-            <h1 className="text-[22px] font-black uppercase tracking-tight text-white leading-tight">
+            <h1 className="text-[22px] font-black tracking-tight text-white leading-tight">
               {quote.title}
             </h1>
             <p className="text-[12px] text-white/50">Prepared for {quote.customerName || quote.customerCompany}</p>
@@ -219,22 +219,22 @@ export default function PublicQuotePage() {
           {/* Scope */}
           {quote.scopeSummary && (
             <div className="rounded-xl border border-white/10 bg-white/3 p-4 space-y-2">
-              <p className="text-[9px] font-black uppercase tracking-widest text-white/40">Scope of Work</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Scope of Work</p>
               <p className="text-[12px] text-white/80 leading-relaxed">{quote.scopeSummary}</p>
             </div>
           )}
 
           {/* Line items */}
           <div className="space-y-2">
-            <p className="text-[9px] font-black uppercase tracking-widest text-white/40">Line Items</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Line Items</p>
             <div className="rounded-xl border border-white/10 overflow-hidden">
               {quote.lineItems.map(item => (
                 <div key={item.id} className="flex items-center justify-between px-4 py-3 border-b border-white/10 last:border-0">
                   <div>
                     <p className="text-[11px] font-bold text-white">{item.name}</p>
-                    <p className="text-[9px] text-white/40">{item.quantity} × {fmtMoney(item.unitPrice)} · {item.category}</p>
+                    <p className="text-[11px] text-white/40">{item.quantity} × {fmtMoney(item.unitPrice)} · {item.category}</p>
                   </div>
-                  <span className="text-[12px] font-black text-white">{fmtMoney(item.total)}</span>
+                  <span className="text-[12px] font-bold text-white">{fmtMoney(item.total)}</span>
                 </div>
               ))}
               <div className="px-4 py-3 bg-white/5 space-y-1">
@@ -251,7 +251,7 @@ export default function PublicQuotePage() {
                     <span>Selected Add-Ons</span><span>+{fmtMoney(selectedAddon)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-[14px] font-black text-white border-t border-white/10 pt-2 mt-1">
+                <div className="flex justify-between text-[14px] font-bold text-white border-t border-white/10 pt-2 mt-1">
                   <span>Total</span><span>{fmtMoney(grandTotal)}</span>
                 </div>
               </div>
@@ -261,11 +261,11 @@ export default function PublicQuotePage() {
           {/* Optional choices */}
           {choices.length > 0 && (
             <div className="space-y-3">
-              <p className="text-[9px] font-black uppercase tracking-widest text-white/40">Optional Add-Ons</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Optional Add-Ons</p>
               <p className="text-[11px] text-white/50">Select any options you'd like to include.</p>
               {choices.map((group, gIdx) => (
                 <div key={group.id} className="rounded-xl border border-white/10 p-4 space-y-3">
-                  <p className="text-[11px] font-black text-white uppercase tracking-wide">{group.title}</p>
+                  <p className="text-[11px] font-bold text-white tracking-wide">{group.title}</p>
                   {group.description && <p className="text-[10px] text-white/50">{group.description}</p>}
                   <div className="space-y-2">
                     {group.options.map((opt, oIdx) => (
@@ -291,7 +291,7 @@ export default function PublicQuotePage() {
           {/* Terms */}
           {quote.terms && (
             <div className="rounded-xl border border-white/10 p-4 space-y-1">
-              <p className="text-[9px] font-black uppercase tracking-widest text-white/40">Terms</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Terms</p>
               <p className="text-[11px] text-white/60 leading-relaxed">{quote.terms}</p>
             </div>
           )}
@@ -301,12 +301,12 @@ export default function PublicQuotePage() {
             <div className="grid grid-cols-2 gap-3 pt-2">
               <button type="button"
                 onClick={() => setState('confirming_approve')}
-                className="py-3 rounded-xl bg-[#2fc880]/10 border border-[#2fc880]/30 text-[#2fc880] text-[10px] font-black uppercase tracking-widest hover:bg-[#2fc880]/20 transition-colors">
+                className="py-3 rounded-xl bg-[#2fc880]/10 border border-[#2fc880]/30 text-[#2fc880] text-[10px] font-bold uppercase tracking-wider hover:bg-[#2fc880]/20 transition-colors">
                 Approve Quote
               </button>
               <button type="button"
                 onClick={() => setState('confirming_reject')}
-                className="py-3 rounded-xl bg-[#e00]/10 border border-[#e00]/30 text-[#e00] text-[10px] font-black uppercase tracking-widest hover:bg-[#e00]/20 transition-colors">
+                className="py-3 rounded-xl bg-[#e00]/10 border border-[#e00]/30 text-[#e00] text-[10px] font-bold uppercase tracking-wider hover:bg-[#e00]/20 transition-colors">
                 Decline
               </button>
             </div>
@@ -315,24 +315,24 @@ export default function PublicQuotePage() {
           {/* Approve confirmation */}
           {state === 'confirming_approve' && (
             <div className="rounded-xl border border-[#2fc880]/30 bg-[#2fc880]/5 p-5 space-y-4">
-              <p className="text-[11px] font-black uppercase tracking-widest text-[#2fc880]">Confirm Approval</p>
+              <p className="text-[11px] font-bold text-[#2fc880]">Confirm Approval</p>
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-bold text-white/50 uppercase tracking-widest">Your Name *</label>
+                  <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider">Your Name *</label>
                   <input
                     className="w-full h-10 px-3 rounded-lg bg-white/5 border border-white/20 text-white text-[12px] placeholder:text-white/30 focus:outline-none focus:border-[#2fc880]/50"
                     value={approverName} onChange={e => setApproverName(e.target.value)}
                     placeholder="Full name" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-bold text-white/50 uppercase tracking-widest">Your Email *</label>
+                  <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider">Your Email *</label>
                   <input type="email"
                     className="w-full h-10 px-3 rounded-lg bg-white/5 border border-white/20 text-white text-[12px] placeholder:text-white/30 focus:outline-none focus:border-[#2fc880]/50"
                     value={approverEmail} onChange={e => setApproverEmail(e.target.value)}
                     placeholder="your@email.com" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-bold text-white/50 uppercase tracking-widest">Note (optional)</label>
+                  <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider">Note (optional)</label>
                   <textarea rows={2}
                     className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/20 text-white text-[12px] placeholder:text-white/30 focus:outline-none focus:border-[#2fc880]/50 resize-none"
                     value={approvalNote} onChange={e => setApprovalNote(e.target.value)}
@@ -344,11 +344,11 @@ export default function PublicQuotePage() {
               </p>
               <div className="flex gap-2">
                 <button type="button" onClick={() => setState('active')}
-                  className="flex-1 py-2.5 rounded-lg border border-white/20 text-white/60 text-[10px] font-bold uppercase hover:border-white/40 transition-colors">
+                  className="flex-1 py-2.5 rounded-lg border border-white/20 text-white/60 text-[10px] font-bold hover:border-white/40 transition-colors">
                   Back
                 </button>
                 <button type="button" onClick={handleApprove} disabled={!approverName || !approverEmail || submitting}
-                  className="flex-1 py-2.5 rounded-lg bg-[#2fc880] text-[#0a0a0a] text-[10px] font-black uppercase disabled:opacity-40 hover:bg-[#2fc880]/90 transition-colors flex items-center justify-center gap-2">
+                  className="flex-1 py-2.5 rounded-lg bg-[#2fc880] text-[#0a0a0a] text-[10px] font-bold disabled:opacity-40 hover:bg-[#2fc880]/90 transition-colors flex items-center justify-center gap-2">
                   {submitting && <Loader2 size={12} className="animate-spin" />}
                   Confirm Approval
                 </button>
@@ -359,9 +359,9 @@ export default function PublicQuotePage() {
           {/* Reject confirmation */}
           {state === 'confirming_reject' && (
             <div className="rounded-xl border border-[#e00]/30 bg-[#e00]/5 p-5 space-y-4">
-              <p className="text-[11px] font-black uppercase tracking-widest text-[#e00]">Decline Quote</p>
+              <p className="text-[11px] font-bold text-[#e00]">Decline Quote</p>
               <div className="space-y-1.5">
-                <label className="text-[9px] font-bold text-white/50 uppercase tracking-widest">Reason *</label>
+                <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider">Reason *</label>
                 <textarea rows={3}
                   className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/20 text-white text-[12px] placeholder:text-white/30 focus:outline-none focus:border-[#e00]/50 resize-none"
                   value={rejectReason} onChange={e => setRejectReason(e.target.value)}
@@ -369,11 +369,11 @@ export default function PublicQuotePage() {
               </div>
               <div className="flex gap-2">
                 <button type="button" onClick={() => setState('active')}
-                  className="flex-1 py-2.5 rounded-lg border border-white/20 text-white/60 text-[10px] font-bold uppercase hover:border-white/40 transition-colors">
+                  className="flex-1 py-2.5 rounded-lg border border-white/20 text-white/60 text-[10px] font-bold hover:border-white/40 transition-colors">
                   Back
                 </button>
                 <button type="button" onClick={handleReject} disabled={!rejectReason || submitting}
-                  className="flex-1 py-2.5 rounded-lg bg-[#e00] text-white text-[10px] font-black uppercase disabled:opacity-40 hover:bg-[#e00]/90 transition-colors flex items-center justify-center gap-2">
+                  className="flex-1 py-2.5 rounded-lg bg-[#e00] text-white text-[10px] font-bold disabled:opacity-40 hover:bg-[#e00]/90 transition-colors flex items-center justify-center gap-2">
                   {submitting && <Loader2 size={12} className="animate-spin" />}
                   Decline Quote
                 </button>
@@ -381,7 +381,7 @@ export default function PublicQuotePage() {
             </div>
           )}
 
-          <div className="flex items-center gap-2 text-[9px] text-white/20 justify-center pt-2">
+          <div className="flex items-center gap-2 text-[11px] text-white/20 justify-center pt-2">
             <Shield size={10} />
             <span>This is a secure, private link. Do not share it with others.</span>
           </div>

@@ -333,7 +333,7 @@ export function AlertBand() {
               aria-label={`Alert: ${alert.text}`}
               onKeyDown={(e) => e.key === 'Enter' && handleAlertClick(alert)}
               className={cn(
-                'flex cursor-pointer items-center gap-2 rounded-md px-3 py-1 text-[10px] font-bold uppercase tracking-widest transition-all hover:opacity-80 active:scale-[0.98] whitespace-nowrap',
+                'flex cursor-pointer items-center gap-2 rounded-md px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-all hover:opacity-80 active:scale-[0.98] whitespace-nowrap',
                 {
                   'border border-border-alert bg-brand-red-dim text-text-red shadow-[0_0_10px_color-mix(in_srgb,var(--brand-red)_15%,transparent)]': alert.type === 'critical',
                   'border border-border-gold bg-accent-gold-dim text-accent-gold': alert.type === 'warning',
@@ -347,7 +347,7 @@ export function AlertBand() {
             </div>
           ))}
           {alerts.length === 0 && (
-            <div className="flex items-center gap-2 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted opacity-40">
+            <div className="flex items-center gap-2 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-text-muted opacity-40">
               <Activity size={12} />
               Registry Nominal
             </div>
@@ -371,9 +371,9 @@ export function AlertBand() {
                 </div>
               )}
               <div className="text-left">
-                <DialogTitle className="uppercase tracking-widest text-text-primary text-base">Operational Alert</DialogTitle>
+                <DialogTitle className="text-text-primary text-base">Operational Alert</DialogTitle>
                 <p className={cn(
-                  "text-[10px] font-bold uppercase tracking-widest",
+                  "text-[10px] font-bold uppercase tracking-wider",
                   selectedAlert?.type === 'critical' ? 'text-text-red' : 'text-text-muted'
                 )}>
                   {selectedAlert?.type} priority
@@ -385,7 +385,7 @@ export function AlertBand() {
           <div className="py-4">
             {selectedAlert && (
               <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub">
-                <p className="text-xs text-text-primary font-bold uppercase mb-2 flex items-center gap-2">
+                <p className="text-xs text-text-primary font-bold mb-2 flex items-center gap-2">
                   <Info size={14} className="text-brand-red" />
                   Details
                 </p>
@@ -397,10 +397,10 @@ export function AlertBand() {
           </div>
 
           <DialogFooter className="border-t border-border-default pt-4 gap-3">
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-10 flex-1 uppercase font-bold text-[10px] tracking-widest">
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-10 flex-1 uppercase font-bold text-[10px] tracking-wider">
               Dismiss
             </Button>
-            <Button onClick={handleAction} className="h-10 flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">
+            <Button onClick={handleAction} className="h-10 flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider text-white">
               {selectedAlert?.actionLabel || 'Take Action'}
               <ChevronRight size={14} className="ml-1.5" />
             </Button>

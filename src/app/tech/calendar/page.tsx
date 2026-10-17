@@ -30,7 +30,7 @@ import { Button } from '@/components/ui/button';
 const MapView = dynamic(() => import('../map/components/map-view'), {
   ssr: false,
   loading: () => (
-    <div className="flex items-center justify-center h-full bg-bg-tertiary text-text-muted text-[10px] uppercase tracking-widest">
+    <div className="flex items-center justify-center h-full bg-bg-tertiary text-text-muted text-[10px] uppercase tracking-wider">
       Loading map...
     </div>
   ),
@@ -101,11 +101,11 @@ function CalendarChip({ wo, index, onClick }: { wo: JobWithSrc; index: number; o
     <div
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       className={cn(
-        'flex items-center gap-0.5 rounded px-1 py-0.5 text-[8px] font-bold uppercase tracking-tight cursor-pointer select-none truncate border w-full transition-opacity hover:opacity-80',
+        'flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-bold uppercase tracking-tight cursor-pointer select-none truncate border w-full transition-opacity hover:opacity-80',
         getStatusChipCls(wo.status),
       )}
     >
-      <span className="shrink-0 w-3.5 h-3.5 rounded-full text-[7px] flex items-center justify-center font-black opacity-60">
+      <span className="shrink-0 w-3.5 h-3.5 rounded-full text-[10px] flex items-center justify-center font-bold opacity-60">
         {index + 1}
       </span>
       <span className="truncate ml-0.5">{wo.title || wo.description || wo.id.slice(0, 6)}</span>
@@ -323,7 +323,7 @@ export default function TechCalendarPage() {
       <div className="md:hidden flex border-b border-border-sub -mx-4 mb-0">
         {(['calendar', 'map', 'list'] as const).map(t => (
           <button key={t} onClick={() => setMobileTab(t)}
-            className={cn('flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest transition-colors',
+            className={cn('flex-1 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors',
               mobileTab === t ? 'border-b-2 border-brand-red text-brand-red' : 'text-text-muted hover:text-text-primary')}>
             {t}
           </button>
@@ -345,7 +345,7 @@ export default function TechCalendarPage() {
             </button>
             <button
               onClick={() => { setMonthDate(new Date()); setSelectedDate(new Date()); }}
-              className="h-7 px-2.5 text-[11px] font-bold uppercase tracking-widest rounded border border-border-sub hover:bg-bg-primary text-text-muted hover:text-text-primary transition-colors">
+              className="h-7 px-2.5 text-[11px] font-bold rounded border border-border-sub hover:bg-bg-primary text-text-muted hover:text-text-primary transition-colors">
               Today
             </button>
           </div>
@@ -363,7 +363,7 @@ export default function TechCalendarPage() {
         <div className={cn('border-b border-border-sub', mobileTab !== 'calendar' && 'hidden md:block')}>
           <div className="grid grid-cols-7 bg-bg-tertiary border-b border-border-sub">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-              <div key={d} className="py-2 text-center text-[9px] font-black uppercase tracking-widest text-text-muted">{d}</div>
+              <div key={d} className="py-2 text-center text-[10px] font-bold uppercase tracking-wider text-text-muted">{d}</div>
             ))}
           </div>
           <div className="grid grid-cols-7 divide-x divide-y divide-border-sub">
@@ -401,7 +401,7 @@ export default function TechCalendarPage() {
                     />
                   ))}
                   {overflow > 0 && (
-                    <span className="text-[8px] font-bold text-text-muted pl-0.5 pointer-events-none">
+                    <span className="text-[10px] font-bold text-text-muted pl-0.5 pointer-events-none">
                       +{overflow} more
                     </span>
                   )}
@@ -415,25 +415,25 @@ export default function TechCalendarPage() {
         <div className="flex items-center gap-4 px-4 py-2 border-b border-border-sub shrink-0">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-text-green" />
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Active</span>
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Active</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-amber-400" />
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Scheduled</span>
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Scheduled</span>
           </div>
           {selectedDateJobs.length > 0 && (
             <div className="flex items-center gap-1.5 pl-3 border-l border-border-sub" title={`Round-trip mileage from your home address, through each job (ordered by your "${routePreference.replace('-', ' ')}" route preference), and back`}>
               <RouteIcon size={11} className="text-brand-red" />
               {!currentTech?.address ? (
-                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest italic">Add home address in profile to see route mileage</span>
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider italic">Add home address in profile to see route mileage</span>
               ) : mileageLoading ? (
-                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Calculating route…</span>
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Calculating route…</span>
               ) : routeMileage !== null ? (
-                <span className="text-[10px] font-bold text-text-primary uppercase tracking-widest">
+                <span className="text-[10px] font-bold text-text-primary uppercase tracking-wider">
                   {formatDistance(routeMileage, currentTech?.mileageUnit || 'mi')} round trip · home to home
                 </span>
               ) : (
-                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest italic">Route mileage unavailable</span>
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider italic">Route mileage unavailable</span>
               )}
             </div>
           )}
@@ -453,7 +453,7 @@ export default function TechCalendarPage() {
           )}>
             <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-sub shrink-0">
               <MapPin size={10} className="text-brand-red" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex-1">
                 {format(selectedDate, 'EEE, MMM d')} — {selectedDateJobs.length} job{selectedDateJobs.length !== 1 ? 's' : ''}
               </span>
               <button
@@ -473,7 +473,7 @@ export default function TechCalendarPage() {
                 />
               ) : (
                 <div className="flex items-center justify-center h-full bg-bg-tertiary">
-                  <p className="text-[9px] font-bold uppercase text-text-muted tracking-widest text-center px-4">
+                  <p className="text-[10px] font-bold uppercase text-text-muted tracking-wider text-center px-4">
                     No jobs on {format(selectedDate, 'EEE, MMM d')}
                   </p>
                 </div>
@@ -492,7 +492,7 @@ export default function TechCalendarPage() {
               <span className="text-[11px] font-medium text-text-primary flex-1">
                 Jobs for <span className="font-bold">{format(selectedDate, 'EEE, MMM d, yyyy')}</span>
               </span>
-              <span className="text-[9px] font-bold text-text-muted bg-bg-tertiary px-1.5 py-0.5 rounded border border-border-sub">
+              <span className="text-[11px] font-bold text-text-muted bg-bg-tertiary px-1.5 py-0.5 rounded border border-border-sub">
                 {selectedDateJobs.length} Jobs
               </span>
             </div>
@@ -523,7 +523,7 @@ export default function TechCalendarPage() {
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                           <span
-                            className="shrink-0 w-5 h-5 rounded-full text-[9px] font-black text-white flex items-center justify-center leading-none"
+                            className="shrink-0 w-5 h-5 rounded-full text-[11px] font-bold text-white flex items-center justify-center leading-none"
                             style={{ background: wo.status === 'completed' ? 'var(--brand-blue)' : wo.status === 'in-progress' || wo.status === 'confirmed' || wo.status === 'on-my-way' ? 'var(--text-green)' : 'var(--accent-gold)' }}
                           >{idx + 1}</span>
                           <span className={cn('text-[12px] font-medium truncate', isSelected ? 'text-brand-red' : 'text-text-primary')}>
@@ -531,7 +531,7 @@ export default function TechCalendarPage() {
                           </span>
                         </div>
                         <span className={cn(
-                          'text-[9px] px-1.5 py-0.5 rounded border whitespace-nowrap shrink-0 font-bold uppercase tracking-wider',
+                          'text-[10px] px-1.5 py-0.5 rounded border whitespace-nowrap shrink-0 font-bold uppercase tracking-wider',
                           getStatusChipCls(wo.status),
                         )}>{getStatusLabel(wo.status)}</span>
                       </div>
@@ -540,7 +540,7 @@ export default function TechCalendarPage() {
                           <Building2 size={9} className="shrink-0" />{wo.clientName}
                         </p>
                       )}
-                      <div className="flex flex-wrap gap-2 text-[9px] text-text-muted">
+                      <div className="flex flex-wrap gap-2 text-[11px] text-text-muted">
                         {wo.scheduleTime && (
                           <span className="flex items-center gap-1">
                             <Clock size={9} />{wo.scheduleTime}
@@ -573,10 +573,10 @@ export default function TechCalendarPage() {
                 <div className="flex-1 min-w-0 pr-2">
                   <div className="flex items-center gap-1.5 flex-wrap mb-1">
                     <span className={cn(
-                      'text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-widest',
+                      'text-[10px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider',
                       getStatusChipCls(drawerJob.status),
                     )}>{getStatusLabel(drawerJob.status)}</span>
-                    <span className="text-[9px] text-text-muted font-mono uppercase">
+                    <span className="text-[11px] text-text-muted font-mono">
                       {displayWorkOrderNumber(drawerJob)}
                     </span>
                   </div>
@@ -594,13 +594,13 @@ export default function TechCalendarPage() {
                 <div className="p-3.5 space-y-3 divide-y divide-border-sub">
                   {drawerJob.clientName && (
                     <div className="pb-3">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted mb-1">Client</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1">Client</p>
                       <p className="text-[12px] text-text-primary font-medium">{drawerJob.clientName}</p>
                     </div>
                   )}
                   {drawerJob.location && (
                     <div className="py-3">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted mb-1">Location</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1">Location</p>
                       <p className="text-[12px] text-text-primary flex items-start gap-1.5">
                         <MapPin size={11} className="text-brand-red shrink-0 mt-0.5" />
                         {drawerJob.location}
@@ -609,7 +609,7 @@ export default function TechCalendarPage() {
                   )}
                   {(drawerJob.scheduleDate || drawerJob.scheduleTime) && (
                     <div className="py-3">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted mb-1">Schedule</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1">Schedule</p>
                       <p className="text-[12px] text-text-primary flex items-center gap-1.5">
                         <Clock size={11} className="text-text-muted shrink-0" />
                         {drawerJob.scheduleDate && format(parseISO(drawerJob.scheduleDate), 'EEE, MMM d')}
@@ -620,12 +620,12 @@ export default function TechCalendarPage() {
                   {drawerJob.pay != null && (
                     <div className="py-3 flex items-center gap-5">
                       <div>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted mb-0.5">Pay</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-0.5">Pay</p>
                         <p className="text-[16px] font-mono font-bold text-text-green">${Number(drawerJob.pay).toFixed(2)}</p>
                       </div>
                       {drawerJob.payType && (
                         <div>
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted mb-0.5">Type</p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-0.5">Type</p>
                           <p className="text-[11px] text-text-secondary capitalize">{drawerJob.payType}</p>
                         </div>
                       )}
@@ -633,7 +633,7 @@ export default function TechCalendarPage() {
                   )}
                   {drawerJob.description && (
                     <div className="py-3">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted mb-1">Scope</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1">Scope</p>
                       <p className="text-[11px] text-text-secondary leading-relaxed">{drawerJob.description}</p>
                     </div>
                   )}
@@ -644,7 +644,7 @@ export default function TechCalendarPage() {
               <div className="p-3 border-t border-border-sub flex flex-col gap-2 shrink-0">
                 {/* Open full detail */}
                 <Button
-                  className="w-full h-9 text-[11px] font-bold uppercase tracking-widest bg-bg-tertiary border border-border-main text-text-secondary hover:bg-bg-primary hover:text-text-primary transition-all"
+                  className="w-full h-9 text-[11px] font-bold bg-bg-tertiary border border-border-main text-text-secondary hover:bg-bg-primary hover:text-text-primary transition-all"
                   onClick={() => router.push('/tech/assignments/' + drawerJob.id)}
                 >
                   <ExternalLink size={13} className="mr-1.5" />
@@ -657,7 +657,7 @@ export default function TechCalendarPage() {
                   return (
                     <Button
                       key={action.key}
-                      className={cn('w-full h-9 text-[11px] font-bold uppercase tracking-widest', action.cls)}
+                      className={cn('w-full h-9 text-[11px] font-bold', action.cls)}
                       disabled={actionLoading}
                       onClick={() => withLoading(() => statusAction(drawerJob, action.newStatus, action.label))}
                     >

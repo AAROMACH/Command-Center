@@ -277,7 +277,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-3">
                     <NotificationBell />
                     {availablePortals.length > 1 && techPortal && (
-                        <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest border-border-main" onClick={handleSwapPortal}>
+                        <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-wider border-border-main" onClick={handleSwapPortal}>
                             <MonitorUp size={12} className="mr-1.5 text-text-muted" />
                             Swap View
                         </Button>
@@ -290,28 +290,28 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary">
                     <Banknote size={11} className="text-text-green shrink-0" />
                     <div>
-                        <p className="text-[7px] font-black uppercase tracking-widest text-text-muted">MTD Revenue</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">MTD Revenue</p>
                         <p className="text-[12px] font-bold font-mono text-text-green">${financialKpis.mtdRevenue.toLocaleString()}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary">
                     <TrendingUp size={11} className="text-text-green shrink-0" />
                     <div>
-                        <p className="text-[7px] font-black uppercase tracking-widest text-text-muted">MTD Aaromach Profit</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">MTD Aaromach Profit</p>
                         <p className={cn('text-[12px] font-bold font-mono', financialKpis.mtdProfit >= 0 ? 'text-text-green' : 'text-text-red')}>${financialKpis.mtdProfit.toLocaleString()}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary">
                     <TrendingUp size={11} className="text-accent-gold shrink-0" />
                     <div>
-                        <p className="text-[7px] font-black uppercase tracking-widest text-text-muted">Outstanding</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Outstanding</p>
                         <p className="text-[12px] font-bold font-mono text-accent-gold">${financialKpis.outstanding.toLocaleString()}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary">
                     <Zap size={11} className="text-brand-red shrink-0" />
                     <div>
-                        <p className="text-[7px] font-black uppercase tracking-widest text-text-muted">Upcoming Payroll</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Upcoming Payroll</p>
                         <p className="text-[12px] font-bold font-mono text-text-primary">${financialKpis.upcomingPayroll.toLocaleString()}</p>
                     </div>
                 </div>
@@ -320,17 +320,17 @@ export default function DashboardPage() {
             {/* Quick Actions */}
             <div className="flex flex-wrap items-center gap-2 mb-4">
                 <Link href="/admin/dispatch">
-                    <Button size="sm" className="h-8 text-[10px] font-black uppercase tracking-widest bg-brand-red hover:bg-brand-red/90 text-white gap-1.5">
+                    <Button size="sm" className="h-8 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white gap-1.5">
                         <Plus size={11} /> New Work Order
                     </Button>
                 </Link>
                 <Link href="/admin/projects?action=new">
-                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest gap-1.5">
+                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5">
                         <FolderKanban size={11} /> New Project
                     </Button>
                 </Link>
                 <Link href="/admin/messaging">
-                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest gap-1.5">
+                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5">
                         <MessageSquare size={11} /> Send Broadcast
                     </Button>
                 </Link>
@@ -341,7 +341,7 @@ export default function DashboardPage() {
                 {slaAlerts.length > 0 && (
                     <button
                         onClick={() => slaRef.current?.scrollIntoView({ behavior: 'smooth' })}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-bg-tertiary border border-border-main text-text-muted text-[10px] font-black uppercase tracking-widest hover:text-text-primary transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-bg-tertiary border border-border-main text-text-muted text-[10px] font-bold uppercase tracking-wider hover:text-text-primary transition-colors"
                     >
                         <Timer size={10} />
                         {slaAlerts.length} alert{slaAlerts.length !== 1 ? 's' : ''}
@@ -355,40 +355,40 @@ export default function DashboardPage() {
                     <div className="bg-bg-secondary p-4 rounded-xl border border-border-default hover:border-border-main transition-colors h-full">
                         <Wrench size={13} className="text-text-muted mb-3" />
                         <p className="text-3xl font-bold text-text-primary tracking-tighter">{activeAssignmentsCount}</p>
-                        <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mt-0.5 mb-2">Active Jobs</p>
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest bg-text-green/10 text-text-green border border-text-green/20">ACTIVE</span>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-0.5 mb-2">Active Jobs</p>
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-text-green/10 text-text-green border border-text-green/20">ACTIVE</span>
                     </div>
                 </Link>
                 <Link href="/admin/dispatch">
                     <div className="bg-bg-secondary p-4 rounded-xl border border-border-default hover:border-border-main transition-colors h-full">
                         <AlertCircle size={13} className="text-text-muted mb-3" />
                         <p className="text-3xl font-bold text-text-primary tracking-tighter">{unassignedJobs.length}</p>
-                        <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mt-0.5 mb-2">Unassigned</p>
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest bg-brand-red/10 text-brand-red border border-brand-red/20">UNASSIGNED</span>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-0.5 mb-2">Unassigned</p>
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-brand-red/10 text-brand-red border border-brand-red/20">UNASSIGNED</span>
                     </div>
                 </Link>
                 <Link href="/admin/projects">
                     <div className="bg-bg-secondary p-4 rounded-xl border border-border-default hover:border-border-main transition-colors h-full">
                         <FolderKanban size={13} className="text-text-muted mb-3" />
                         <p className="text-3xl font-bold text-text-primary tracking-tighter">{projects.filter(p => p.status === 'on-hold').length}</p>
-                        <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mt-0.5 mb-2">On Hold</p>
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest bg-accent-gold/10 text-accent-gold border border-accent-gold/20">ON HOLD</span>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-0.5 mb-2">On Hold</p>
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-accent-gold/10 text-accent-gold border border-accent-gold/20">ON HOLD</span>
                     </div>
                 </Link>
                 <Link href="/admin/payroll/audit">
                     <div className="bg-bg-secondary p-4 rounded-xl border border-border-default hover:border-border-main transition-colors h-full">
                         <ClipboardList size={13} className="text-text-muted mb-3" />
                         <p className="text-3xl font-bold text-text-primary tracking-tighter">{pendingLogs.length}</p>
-                        <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mt-0.5 mb-2">Pending Logs</p>
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest bg-accent-gold/10 text-accent-gold border border-accent-gold/20">AWAITING REVIEW</span>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-0.5 mb-2">Pending Logs</p>
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-accent-gold/10 text-accent-gold border border-accent-gold/20">AWAITING REVIEW</span>
                     </div>
                 </Link>
                 <div className="cursor-pointer" onClick={() => setIsPendingDialogOpen(true)}>
                     <div className="bg-bg-secondary p-4 rounded-xl border border-border-default hover:border-border-main transition-colors h-full">
                         <Clock size={13} className="text-text-muted mb-3" />
                         <p className="text-3xl font-bold text-text-primary tracking-tighter">{pendingRequests.total}</p>
-                        <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mt-0.5 mb-2">Global Requests</p>
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest bg-brand-red/10 text-brand-red border border-brand-red/20">AWAITING ACTION</span>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-0.5 mb-2">Global Requests</p>
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-brand-red/10 text-brand-red border border-brand-red/20">AWAITING ACTION</span>
                     </div>
                 </div>
             </div>
@@ -396,7 +396,7 @@ export default function DashboardPage() {
             {/* Today's Schedule Strip */}
             {todayJobs.length > 0 && (
                 <div className="mb-6">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-text-muted mb-2 flex items-center gap-1.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2 flex items-center gap-1.5">
                         <Calendar size={10} className="text-brand-red" />
                         Today's Schedule — {todayJobs.length} job{todayJobs.length !== 1 ? 's' : ''}
                     </p>
@@ -411,13 +411,13 @@ export default function DashboardPage() {
                                         {tech && (
                                             <Avatar className="h-7 w-7 border border-border-sub shrink-0">
                                                 <AvatarImage src={tech.avatarUrl} />
-                                                <AvatarFallback className="text-[9px] font-black">{tech.name?.charAt(0)}</AvatarFallback>
+                                                <AvatarFallback className="text-[11px] font-bold">{tech.name?.charAt(0)}</AvatarFallback>
                                             </Avatar>
                                         )}
                                         <div className="flex-1 min-w-0">
-                                            {wo.scheduleTime && <p className="text-[8px] font-mono text-text-muted">{wo.scheduleTime}</p>}
-                                            <p className="text-[9px] font-black uppercase text-text-primary leading-tight truncate">{wo.title || wo.description || wo.id.slice(0, 8)}</p>
-                                            <p className="text-[8px] text-text-muted truncate">{wo.clientName}</p>
+                                            {wo.scheduleTime && <p className="text-[10px] font-mono text-text-muted">{wo.scheduleTime}</p>}
+                                            <p className="text-[11px] font-bold text-text-primary leading-tight truncate">{wo.title || wo.description || wo.id.slice(0, 8)}</p>
+                                            <p className="text-[10px] text-text-muted truncate">{wo.clientName}</p>
                                         </div>
                                         <div className={`h-2 w-2 rounded-full shrink-0 ${statusDot}`} />
                                     </div>
@@ -456,16 +456,16 @@ export default function DashboardPage() {
                                             <TableCell className="text-left pl-6">
                                                 <div className="cell-id !mb-0">{(job.shortId || job.id.slice(0, 8)).toUpperCase()}</div>
                                             </TableCell>
-                                            <TableCell className="text-left text-xs font-bold uppercase text-text-muted">{job.clientName}</TableCell>
-                                            <TableCell className="text-left text-[10px] font-bold uppercase text-text-secondary">{job.location.split(',')[0]}</TableCell>
-                                            <TableCell className="text-left text-[10px] font-bold uppercase text-text-muted">{job.jobType || job.projectType}</TableCell>
+                                            <TableCell className="text-left text-xs font-bold text-text-muted">{job.clientName}</TableCell>
+                                            <TableCell className="text-left text-[10px] font-bold text-text-secondary">{job.location.split(',')[0]}</TableCell>
+                                            <TableCell className="text-left text-[10px] font-bold text-text-muted">{job.jobType || job.projectType}</TableCell>
                                             <TableCell>
                                                 <Badge variant={job.priority === 'critical' || job.priority === 'high' ? 'high' : 'medium'}>{job.priority}</Badge>
                                             </TableCell>
                                             <TableCell className="text-right pr-6">
                                                 <Button
                                                     size="sm"
-                                                    className="h-7 text-[9px] bg-brand-red hover:bg-brand-red/90 text-white uppercase font-black tracking-widest px-3"
+                                                    className="h-7 text-[10px] bg-brand-red hover:bg-brand-red/90 text-white uppercase font-bold tracking-wider px-3"
                                                     onClick={() => router.push('/admin/dispatch?tab=dispatch')}
                                                 >
                                                     ASSIGN TECH
@@ -475,7 +475,7 @@ export default function DashboardPage() {
                                     ))}
                                     {unassignedJobs.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="text-center h-32 text-xs font-bold uppercase text-text-muted italic opacity-40">
+                                            <TableCell colSpan={6} className="text-center h-32 text-xs font-bold text-text-muted italic opacity-40">
                                                 All jobs dispatched — queue clear.
                                             </TableCell>
                                         </TableRow>
@@ -485,7 +485,7 @@ export default function DashboardPage() {
                         </CardContent>
                         {unassignedJobs.length > 8 && (
                             <CardFooter className="pt-0 border-t border-border-sub bg-bg-tertiary/20 p-4">
-                                <Button variant="ghost" className="w-full text-[10px] uppercase font-bold tracking-widest h-8" onClick={() => router.push('/admin/dispatch')}>
+                                <Button variant="ghost" className="w-full text-[10px] uppercase font-bold tracking-wider h-8" onClick={() => router.push('/admin/dispatch')}>
                                     View All {unassignedJobs.length} Unassigned Jobs <ChevronRight size={12} className="ml-2" />
                                 </Button>
                             </CardFooter>
@@ -515,11 +515,11 @@ export default function DashboardPage() {
                                         >
                                             <Timer size={12} className={isBreached ? 'text-brand-red shrink-0' : isAtRisk ? 'text-accent-gold shrink-0' : 'text-text-muted shrink-0'} />
                                             <div className="flex-1 min-w-0 text-left">
-                                                <p className="text-[10px] font-black uppercase text-text-primary leading-tight">{req.clientName}</p>
-                                                <p className="text-[9px] text-text-muted uppercase tracking-wide truncate">{req.requestType}</p>
+                                                <p className="text-[10px] font-bold text-text-primary leading-tight">{req.clientName}</p>
+                                                <p className="text-[10px] text-text-muted uppercase tracking-wide truncate">{req.requestType}</p>
                                             </div>
                                             <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : 'medium'} className="shrink-0">{req.priority}</Badge>
-                                            <div className={cn('text-[10px] font-black font-mono shrink-0 min-w-[48px] text-right', isBreached ? 'text-brand-red' : isAtRisk ? 'text-accent-gold' : 'text-text-muted')}>
+                                            <div className={cn('text-[10px] font-bold font-mono shrink-0 min-w-[48px] text-right', isBreached ? 'text-brand-red' : isAtRisk ? 'text-accent-gold' : 'text-text-muted')}>
                                                 {isBreached
                                                     ? `${Math.round(Math.abs(remaining))}h over`
                                                     : remaining < 1
@@ -532,21 +532,21 @@ export default function DashboardPage() {
                                 {clientRequests.length === 0 && (
                                     <div className="py-10 text-center border border-dashed border-border-sub rounded-lg opacity-40">
                                         <Timer size={20} className="mx-auto mb-2 text-text-muted" />
-                                        <p className="text-[10px] font-bold uppercase text-text-muted">No active service requests</p>
+                                        <p className="text-[10px] font-bold text-text-muted">No active service requests</p>
                                     </div>
                                 )}
 
                                 {slaAlerts.length > 0 && (
                                     <div className="pt-3 mt-1 border-t border-border-sub space-y-1.5">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-brand-red flex items-center gap-1 mb-2">
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-brand-red flex items-center gap-1 mb-2">
                                             <SlaAlertIcon size={9} /> SLA Breaches / At Risk — {slaAlerts.length}
                                         </p>
                                         {slaAlerts.map(({ wo, sla }) => (
                                             <Link key={wo.id} href="/admin/dispatch" className="flex items-center gap-3 p-2 rounded bg-brand-red/5 border border-brand-red/20 hover:border-brand-red/40 transition-colors">
                                                 <Timer size={10} className={slaStatusColor(sla.status)} />
-                                                <span className="text-[9px] font-bold uppercase text-text-primary font-mono">{wo.shortId || wo.id.slice(0, 8).toUpperCase()}</span>
-                                                <span className="text-[9px] text-text-muted uppercase flex-1 truncate">{wo.clientName}</span>
-                                                <span className={cn('text-[9px] font-black uppercase', slaStatusColor(sla.status))}>
+                                                <span className="text-[11px] font-bold text-text-primary font-mono">{wo.shortId || wo.id.slice(0, 8).toUpperCase()}</span>
+                                                <span className="text-[11px] text-text-muted flex-1 truncate">{wo.clientName}</span>
+                                                <span className={cn('text-[11px] font-bold', slaStatusColor(sla.status))}>
                                                     {sla.status === 'breached' ? 'BREACHED' : 'AT RISK'}
                                                 </span>
                                             </Link>
@@ -572,9 +572,9 @@ export default function DashboardPage() {
                                     <div className="flex items-center gap-2 mb-1.5">
                                         <Avatar className="h-5 w-5 shrink-0">
                                             <AvatarImage src={item.avatarUrl} />
-                                            <AvatarFallback className="text-[7px]">{(item.name || 'U').charAt(0)}</AvatarFallback>
+                                            <AvatarFallback className="text-[10px]">{(item.name || 'U').charAt(0)}</AvatarFallback>
                                         </Avatar>
-                                        <span className="text-[10px] font-black uppercase text-text-primary flex-1 truncate">{item.name}</span>
+                                        <span className="text-[10px] font-bold text-text-primary flex-1 truncate">{item.name}</span>
                                         <span className="text-[10px] font-mono font-bold text-text-muted shrink-0">{item.assigned}</span>
                                     </div>
                                     <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden ml-7">
@@ -586,7 +586,7 @@ export default function DashboardPage() {
                                 </div>
                             )) : (
                                 <div className="py-6 text-center opacity-40">
-                                    <p className="text-[10px] font-bold uppercase text-text-muted">No active assignments</p>
+                                    <p className="text-[10px] font-bold text-text-muted">No active assignments</p>
                                 </div>
                             )}
                         </CardContent>
@@ -607,7 +607,7 @@ export default function DashboardPage() {
                             ].map(({ label, value }) => (
                                 <div key={label} className="flex items-center justify-between py-2.5 border-b border-border-sub last:border-0">
                                     <span className="text-[10px] font-bold text-text-muted uppercase tracking-wide">{label}</span>
-                                    <span className="text-[10px] font-mono font-black text-text-primary">{value}</span>
+                                    <span className="text-[10px] font-mono font-bold text-text-primary">{value}</span>
                                 </div>
                             ))}
                         </CardContent>
@@ -621,25 +621,25 @@ export default function DashboardPage() {
                     <DialogHeader className="p-6 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-3">
                             <Clock className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Global Requests</DialogTitle>
+                            <DialogTitle className="text-lg font-bold text-text-primary">Global Requests</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs uppercase font-bold text-text-muted">Consolidated audit terminal for unverified field signals and intake data.</DialogDescription>
+                        <DialogDescription className="text-xs font-bold text-text-muted">Consolidated audit terminal for unverified field signals and intake data.</DialogDescription>
                     </DialogHeader>
 
                     <Tabs defaultValue="tickets" className="flex-1 overflow-hidden flex flex-col">
                         <div className="px-6 border-b border-border-sub bg-bg-secondary/30">
                             <TabsList className="h-12 bg-transparent p-0 gap-8 justify-start">
                                 <TabsTrigger value="tickets" className="tab-trigger-dashboard flex items-center gap-2">
-                                    <ClipboardList size={14} /> Requests <Badge variant="outline" className="h-4 px-1.5 text-[8px]">{pendingRequests.tickets.length}</Badge>
+                                    <ClipboardList size={14} /> Requests <Badge variant="outline" className="h-4 px-1.5 text-[10px]">{pendingRequests.tickets.length}</Badge>
                                 </TabsTrigger>
                                 <TabsTrigger value="timeoff" className="tab-trigger-dashboard flex items-center gap-2">
-                                    <Users size={14} /> Personnel Logs <Badge variant="outline" className="h-4 px-1.5 text-[8px]">{pendingRequests.timeOff.length}</Badge>
+                                    <Users size={14} /> Personnel Logs <Badge variant="outline" className="h-4 px-1.5 text-[10px]">{pendingRequests.timeOff.length}</Badge>
                                 </TabsTrigger>
                                 <TabsTrigger value="unsubmits" className="tab-trigger-dashboard flex items-center gap-2">
-                                    <Undo2 size={14} /> Amendments <Badge variant="outline" className="h-4 px-1.5 text-[8px]">{pendingRequests.unsubmits.length}</Badge>
+                                    <Undo2 size={14} /> Amendments <Badge variant="outline" className="h-4 px-1.5 text-[10px]">{pendingRequests.unsubmits.length}</Badge>
                                 </TabsTrigger>
                                 <TabsTrigger value="sites" className="tab-trigger-dashboard flex items-center gap-2">
-                                    <MapPin size={14} /> Site Registry <Badge variant="outline" className="h-4 px-1.5 text-[8px]">{pendingRequests.sites.length}</Badge>
+                                    <MapPin size={14} /> Site Registry <Badge variant="outline" className="h-4 px-1.5 text-[10px]">{pendingRequests.sites.length}</Badge>
                                 </TabsTrigger>
                             </TabsList>
                         </div>
@@ -651,13 +651,13 @@ export default function DashboardPage() {
                                         <div key={req.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between group hover:border-text-muted transition-all">
                                             <div className="text-left space-y-1">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-[10px] font-mono font-bold text-brand-red uppercase">{req.id}</span>
-                                                    <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : 'medium'} className="text-[7px] h-3.5 px-1 uppercase">{req.priority}</Badge>
+                                                    <span className="text-[10px] font-mono font-bold text-brand-red">{req.id}</span>
+                                                    <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : 'medium'} className="text-[10px] h-3.5 px-1">{req.priority}</Badge>
                                                 </div>
-                                                <p className="text-xs font-bold text-text-primary uppercase truncate max-w-[400px]">{[req.clientName, req.requestType].filter(Boolean).join(' — ') || 'Request'}</p>
-                                                <p className="text-[10px] text-text-muted font-medium uppercase tracking-widest">{(req.location || '').split(',')[0] || '—'}</p>
+                                                <p className="text-xs font-bold text-text-primary truncate max-w-[400px]">{[req.clientName, req.requestType].filter(Boolean).join(' — ') || 'Request'}</p>
+                                                <p className="text-[10px] text-text-muted font-medium uppercase tracking-wider">{(req.location || '').split(',')[0] || '—'}</p>
                                             </div>
-                                            <Button size="sm" variant="ghost" className="h-8 text-[9px] font-bold uppercase tracking-widest" onClick={() => { setIsPendingDialogOpen(false); router.push('/admin/requests'); }}>Audit detail</Button>
+                                            <Button size="sm" variant="ghost" className="h-8 text-[10px] font-bold uppercase tracking-wider" onClick={() => { setIsPendingDialogOpen(false); router.push('/admin/requests'); }}>Audit detail</Button>
                                         </div>
                                     ))}
                                     {pendingRequests.tickets.length === 0 && <EmptyState icon={ClipboardList} label="Service funnel clear" />}
@@ -674,15 +674,15 @@ export default function DashboardPage() {
                                                         <AvatarFallback>{(tech?.name || 'U').charAt(0)}</AvatarFallback>
                                                     </Avatar>
                                                     <div className="text-left">
-                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{tech?.name}</p>
-                                                        <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">{req.type} Request</p>
+                                                        <p className="text-xs font-bold text-text-primary tracking-wide">{tech?.name}</p>
+                                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider">{req.type} Request</p>
                                                         <div className="flex items-center gap-2 mt-1">
                                                             <Calendar className="h-3 w-3 text-brand-red" />
                                                             <span className="text-[10px] font-mono font-bold">{req.startDate} — {req.endDate}</span>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <Button size="sm" variant="ghost" className="h-8 text-[9px] font-bold uppercase tracking-widest" onClick={() => { setIsPendingDialogOpen(false); router.push('/admin/directory?tab=requests&subtab=personnel'); }}>Review Log</Button>
+                                                <Button size="sm" variant="ghost" className="h-8 text-[10px] font-bold uppercase tracking-wider" onClick={() => { setIsPendingDialogOpen(false); router.push('/admin/directory?tab=requests&subtab=personnel'); }}>Review Log</Button>
                                             </div>
                                         );
                                     })}
@@ -701,14 +701,14 @@ export default function DashboardPage() {
                                                     </Avatar>
                                                     <div className="text-left">
                                                         <div className="flex items-center gap-2">
-                                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{tech?.name}</p>
-                                                            <Badge variant="destructive" className="h-3.5 px-1 text-[7px] uppercase">Unsubmit Req.</Badge>
+                                                            <p className="text-xs font-bold text-text-primary tracking-wide">{tech?.name}</p>
+                                                            <Badge variant="destructive" className="h-3.5 px-1 text-[10px]">Unsubmit Req.</Badge>
                                                         </div>
-                                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Week of {log.weekOf}</p>
+                                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Week of {log.weekOf}</p>
                                                         <p className="text-[10px] text-text-secondary leading-tight mt-1 line-clamp-1 italic">&quot;{log.unsubmitReason}&quot;</p>
                                                     </div>
                                                 </div>
-                                                <Button size="sm" variant="ghost" className="h-8 text-[9px] font-bold uppercase tracking-widest" onClick={() => { setIsPendingDialogOpen(false); router.push('/admin/financials?tab=payroll'); }}>Audit Manifest</Button>
+                                                <Button size="sm" variant="ghost" className="h-8 text-[10px] font-bold uppercase tracking-wider" onClick={() => { setIsPendingDialogOpen(false); router.push('/admin/financials?tab=payroll'); }}>Audit Manifest</Button>
                                             </div>
                                         );
                                     })}
@@ -719,14 +719,14 @@ export default function DashboardPage() {
                                     {pendingRequests.sites.map(req => (
                                         <div key={req.id} className="p-4 rounded-xl border border-border-sub bg-bg-secondary flex items-center justify-between">
                                             <div className="text-left space-y-1">
-                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{req.siteName}</p>
-                                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">{req.clientName}</p>
+                                                <p className="text-xs font-bold text-text-primary tracking-wide">{req.siteName}</p>
+                                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider">{req.clientName}</p>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <MapPin className="h-3 w-3 text-brand-red" />
-                                                    <span className="text-[10px] text-text-secondary truncate max-w-[300px] uppercase font-medium">{req.location}</span>
+                                                    <span className="text-[10px] text-text-secondary truncate max-w-[300px] font-medium">{req.location}</span>
                                                 </div>
                                             </div>
-                                            <Button size="sm" variant="ghost" className="h-8 text-[9px] font-bold uppercase tracking-widest" onClick={() => { setIsPendingDialogOpen(false); router.push('/admin/directory?tab=requests&subtab=client'); }}>Verify Site</Button>
+                                            <Button size="sm" variant="ghost" className="h-8 text-[10px] font-bold uppercase tracking-wider" onClick={() => { setIsPendingDialogOpen(false); router.push('/admin/directory?tab=requests&subtab=client'); }}>Verify Site</Button>
                                         </div>
                                     ))}
                                     {pendingRequests.sites.length === 0 && <EmptyState icon={MapPin} label="Site verifications complete" />}
@@ -736,19 +736,11 @@ export default function DashboardPage() {
                     </Tabs>
 
                     <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default">
-                        <Button variant="outline" className="w-full h-11 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsPendingDialogOpen(false)}>Close Buffer</Button>
+                        <Button variant="outline" className="w-full h-11 uppercase font-bold text-[10px] tracking-wider" onClick={() => setIsPendingDialogOpen(false)}>Close Buffer</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            <style jsx global>{`
-                .tab-trigger-dashboard {
-                    @apply px-0 h-12 bg-transparent text-[10px] font-bold uppercase tracking-[0.15em] text-text-muted rounded-none border-b-2 border-transparent transition-all;
-                }
-                .tab-trigger-dashboard[data-state="active"] {
-                    @apply text-text-primary border-brand-red bg-transparent shadow-none;
-                }
-            `}</style>
         </div>
     );
 }
@@ -757,7 +749,7 @@ function EmptyState({ icon: Icon, label }: { icon: any, label: string }) {
     return (
         <div className="py-24 text-center border-2 border-dashed border-border-sub rounded-xl opacity-40 bg-bg-secondary/30">
             <Icon size={48} className="mx-auto text-text-muted mb-2" />
-            <p className="text-[10px] font-bold uppercase tracking-widest">{label}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider">{label}</p>
         </div>
     );
 }

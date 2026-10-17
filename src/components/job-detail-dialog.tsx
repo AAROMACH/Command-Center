@@ -102,7 +102,7 @@ function calcPayout(wo: WorkOrder, hoursWorked?: number) {
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 mb-4">
-      <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] whitespace-nowrap">{children}</p>
+      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider whitespace-nowrap">{children}</p>
       <div className="flex-1 h-px bg-border-sub/30" />
     </div>
   );
@@ -122,10 +122,10 @@ function TimelineEntry({ dot, time, title, note, by, isLast }: {
         {!isLast && <div className="w-px flex-1 bg-border-sub/30 mt-2 mb-2 min-h-[20px]" />}
       </div>
       <div className="pb-6 flex-1 min-w-0">
-        <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">{time}</p>
-        <p className="text-xs font-black text-text-primary uppercase tracking-wide leading-tight mt-0.5">{title}</p>
+        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{time}</p>
+        <p className="text-xs font-bold text-text-primary tracking-wide leading-tight mt-0.5">{title}</p>
         <p className="text-[11px] text-text-secondary mt-2 leading-relaxed font-medium">{note}</p>
-        <p className="text-[8px] font-black text-text-muted/60 uppercase tracking-[0.2em] mt-2">BY: {by}</p>
+        <p className="text-[10px] font-bold text-text-muted/60 uppercase tracking-wider mt-2">BY: {by}</p>
       </div>
     </div>
   );
@@ -470,16 +470,16 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
 
           {/* WO ID + badges */}
           <div className="flex items-center gap-2.5 flex-wrap pr-8">
-            <span className="font-mono text-[11px] font-bold text-brand-red uppercase tracking-[0.15em]">
+            <span className="font-mono text-[11px] font-bold text-brand-red">
               WO: {displayWorkOrderNumber(mission)}
             </span>
             {isImported(mission) && (
-              <span className="font-mono text-[11px] font-bold text-text-muted uppercase tracking-[0.15em]">
+              <span className="font-mono text-[11px] font-bold text-text-muted">
                 ASMT: {mission.id.toUpperCase()}
               </span>
             )}
             <span className={cn(
-              'flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-wider',
+              'flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wider',
               isConfirmed ? 'border-text-green/40 bg-text-green/10 text-text-green'
                 : isInProgress ? 'border-brand-blue/30 bg-brand-blue/10 text-brand-blue'
                 : 'border-border-sub bg-bg-secondary text-text-muted'
@@ -488,7 +488,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
               {statusLabel}
             </span>
             {mission.source && (
-              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-brand-blue/30 bg-brand-blue/10 text-brand-blue text-[9px] font-black uppercase tracking-wider">
+              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-brand-blue/30 bg-brand-blue/10 text-brand-blue text-[10px] font-bold uppercase tracking-wider">
                 <span className="w-1.5 h-1.5 rounded-full bg-brand-blue shrink-0" />
                 {mission.source}
               </span>
@@ -508,7 +508,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
             <Button
               size="sm"
               onClick={() => onEdit(mission)}
-              className="mb-3 h-9 px-4 text-[10px] font-black uppercase tracking-widest bg-brand-red hover:bg-brand-red/90 text-white"
+              className="mb-3 h-9 px-4 text-[10px] font-bold uppercase tracking-wider bg-brand-red hover:bg-brand-red/90 text-white"
             >
               <Pencil size={12} className="mr-1.5" /> Edit Job
             </Button>
@@ -553,7 +553,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={cn(
-                  'text-[10px] font-black uppercase tracking-widest px-4 py-3 transition-colors border-b-2 -mb-px',
+                  'text-[10px] font-bold uppercase tracking-wider px-4 py-3 transition-colors border-b-2 -mb-px',
                   activeTab === tab
                     ? 'text-text-primary border-text-green'
                     : 'text-text-muted border-transparent hover:text-text-secondary'
@@ -578,14 +578,14 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
                 <div className="rounded-xl border border-border-main bg-bg-secondary overflow-hidden">
                   <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-sub">
                     <Wrench size={12} className="text-text-muted" />
-                    <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Assignment Logic</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Assignment Logic</p>
                   </div>
                   <div className="grid grid-cols-2 gap-px bg-border-sub">
                     {logicGrid.map(({ icon: Icon, label, value, cls }) => (
                       <div key={label} className="flex items-start gap-3 p-3 bg-bg-secondary">
                         <Icon size={13} className="text-text-muted mt-0.5 shrink-0" />
                         <div>
-                          <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mb-0.5">{label}</p>
+                          <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-0.5">{label}</p>
                           <p className={cn('text-[11px] font-bold', cls)}>{value}</p>
                         </div>
                       </div>
@@ -597,20 +597,20 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
                 <div className="rounded-xl border border-border-main bg-bg-secondary overflow-hidden">
                   <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-sub">
                     <UserPlus size={12} className="text-brand-purple" />
-                    <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Lead Allocation</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Lead Allocation</p>
                   </div>
                   {leadTech ? (
                     <>
                       <div className="flex items-center gap-3 p-4">
                         <div
-                          className="w-11 h-11 rounded-full flex items-center justify-center text-base font-black text-white shrink-0"
+                          className="w-11 h-11 rounded-full flex items-center justify-center text-base font-bold text-white shrink-0"
                           style={{ background: getAvatarColor(leadTech.name) }}
                         >
                           {leadTech.name.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-black text-text-primary leading-tight">{leadTech.name}</p>
-                          <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">{leadTech.role || 'Field Technician'}</p>
+                          <p className="text-[13px] font-bold text-text-primary leading-tight">{leadTech.name}</p>
+                          <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider">{leadTech.role || 'Field Technician'}</p>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <a href={`tel:${leadTech.phone}`} className="w-8 h-8 rounded-lg border border-border-sub bg-bg-primary flex items-center justify-center hover:border-border-main transition-colors">
@@ -629,8 +629,8 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
                         ].map(({ icon: Icon, stat, sub }) => (
                           <div key={sub} className="flex-1 flex flex-col items-center gap-1 py-3 px-2">
                             <Icon size={14} className="text-text-muted" />
-                            <p className="text-sm font-black text-text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>{String(stat)}</p>
-                            <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest text-center leading-tight">{sub}</p>
+                            <p className="text-sm font-bold text-text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>{String(stat)}</p>
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-center leading-tight">{sub}</p>
                           </div>
                         ))}
                       </div>
@@ -638,32 +638,32 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
                   ) : (
                     <div className="p-10 flex flex-col items-center justify-center opacity-40">
                       <UserPlus size={28} className="text-text-muted mb-2" />
-                      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Unallocated</p>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Unallocated</p>
                     </div>
                   )}
                   {helperTechs.length > 0 && (
                     <div className="border-t border-border-sub px-4 py-3">
-                      <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] mb-2">Helpers</p>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">Helpers</p>
                       <div className="space-y-2">
                         {helperTechs.map(({ id, tech }) => {
                           const name = tech?.name || id;
                           return (
                             <div key={id} className="flex items-center gap-2.5 rounded-lg border border-border-sub bg-bg-primary px-3 py-2">
                               <div
-                                className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black text-white shrink-0"
+                                className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
                                 style={{ background: getAvatarColor(name) }}
                               >
                                 {name.charAt(0).toUpperCase()}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="text-[11px] font-black text-text-primary truncate">{name}</p>
-                                <p className="text-[8px] text-text-muted font-bold uppercase tracking-widest">Helper</p>
+                                <p className="text-[11px] font-bold text-text-primary truncate">{name}</p>
+                                <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Helper</p>
                               </div>
                               <button
                                 type="button"
                                 title="Remove helper"
                                 onClick={() => handleRemoveHelper(id)}
-                                className="shrink-0 text-[8px] font-black uppercase tracking-widest text-text-muted hover:text-rose-400 px-1.5"
+                                className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-text-muted hover:text-rose-400 px-1.5"
                               >
                                 × Remove
                               </button>
@@ -685,7 +685,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
                     className="flex flex-col items-center gap-1.5 py-3 px-1 rounded-lg border border-border-main bg-bg-secondary hover:bg-bg-tertiary hover:border-border-main transition-colors"
                   >
                     <Icon size={14} className="text-text-muted" />
-                    <span className="text-[8px] font-black uppercase tracking-wider text-text-muted leading-tight text-center">{label}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted leading-tight text-center">{label}</span>
                   </button>
                 ))}
               </div>
@@ -697,12 +697,12 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
                 <div className="flex justify-between items-center mb-4">
                   <SectionLabel>Operational Briefing</SectionLabel>
                   {mission.source === 'Imported' && (
-                    <a href={getFieldNationUrl(mission)} target="_blank" rel="noopener noreferrer" className="text-[9px] font-black text-brand-red uppercase tracking-tighter hover:underline flex items-center gap-1 shrink-0 ml-4">
+                    <a href={getFieldNationUrl(mission)} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-brand-red uppercase tracking-tighter hover:underline flex items-center gap-1 shrink-0 ml-4">
                       <ExternalLink size={10} /> Link to Registry
                     </a>
                   )}
                 </div>
-                <div className="p-5 rounded-xl bg-bg-secondary border border-border-sub text-[12px] text-text-secondary leading-relaxed uppercase font-medium italic shadow-inner">
+                <div className="p-5 rounded-xl bg-bg-secondary border border-border-sub text-[12px] text-text-secondary leading-relaxed font-medium italic shadow-inner">
                   &quot;{mission.description}&quot;
                 </div>
               </div>
@@ -711,7 +711,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
                   <SectionLabel>Requirement Assets</SectionLabel>
                   <div className="flex flex-wrap gap-2">
                     {mission.requiredSkills.map((skill, idx) => (
-                      <Badge key={idx} variant="outline" className="bg-bg-secondary text-[9px] uppercase tracking-widest px-3 py-1">{skill}</Badge>
+                      <Badge key={idx} variant="outline" className="bg-bg-secondary text-[10px] uppercase tracking-wider px-3 py-1">{skill}</Badge>
                     ))}
                   </div>
                 </div>
@@ -738,7 +738,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
                 }) : (
                   <div className="p-12 text-center border-2 border-dashed border-border-sub rounded-2xl opacity-40 bg-bg-secondary/30">
                     <History size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                    <p className="text-[11px] font-bold uppercase tracking-widest italic text-center">No operational events logged</p>
+                    <p className="text-[11px] font-bold italic text-center">No operational events logged</p>
                   </div>
                 )}
               </div>
@@ -749,7 +749,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
               {loadingAdmin ? (
                 <div className="py-24 text-center space-y-4">
                   <RefreshCw className="h-10 w-10 animate-spin mx-auto text-brand-red opacity-30" />
-                  <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.3em]">Accessing Audit Data...</p>
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Accessing Audit Data...</p>
                 </div>
               ) : (
                 <>
@@ -760,15 +760,15 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
                       <div className="flex items-center gap-3 p-4 rounded-xl border border-border-green bg-green-dim">
                         <CheckCircle2 size={18} className="text-text-green shrink-0" />
                         <div>
-                          <p className="text-[11px] font-black uppercase tracking-wide text-text-green">Job Completed</p>
-                          <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest mt-0.5">This assignment is closed out.</p>
+                          <p className="text-[11px] font-bold tracking-wide text-text-green">Job Completed</p>
+                          <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider mt-0.5">This assignment is closed out.</p>
                         </div>
                       </div>
                     ) : !forceOpen ? (
                       <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-border-sub bg-bg-secondary">
                         <div className="min-w-0">
-                          <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide">Force Complete</p>
-                          <p className="text-[9px] text-text-muted font-medium mt-1 leading-relaxed">
+                          <p className="text-[11px] font-bold text-text-primary tracking-wide">Force Complete</p>
+                          <p className="text-[11px] text-text-muted font-medium mt-1 leading-relaxed">
                             Close out this job on the operative&apos;s behalf — for work already done by a tech who can&apos;t mark it complete themselves.
                           </p>
                         </div>
@@ -778,7 +778,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
                       </div>
                     ) : (
                       <div className="p-4 rounded-xl border border-accent-gold/40 bg-accent-gold-dim space-y-3">
-                        <p className="text-[11px] font-black uppercase tracking-wide text-text-primary">Confirm force completion</p>
+                        <p className="text-[11px] font-bold tracking-wide text-text-primary">Confirm force completion</p>
                         <p className="text-[10px] text-text-muted leading-relaxed">
                           Marks <span className="font-mono font-bold text-text-primary">{displayWorkOrderNumber(mission)}</span> as{' '}
                           <span className="text-text-green font-bold">completed</span>
@@ -814,19 +814,19 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
                       <Card className="bg-bg-secondary border-border-sub overflow-hidden shadow-inner">
                         <div className="p-4 flex items-center justify-between border-b border-border-sub bg-bg-tertiary/20">
                           <div>
-                            <p className="text-[8px] font-black text-text-muted uppercase mb-1">This Job&apos;s Settlement</p>
+                            <p className="text-[10px] font-bold text-text-muted mb-1">This Job&apos;s Settlement</p>
                             <p className="text-2xl font-mono font-bold text-text-green">{hidePay ? 'Restricted' : adminData.jobItem ? `$${effectiveJobPay(adminData.jobItem, mission).toFixed(2)}` : '—'}</p>
                           </div>
-                          <Badge variant={adminData.weeklyLog.status === 'Approved' ? 'active' : adminData.weeklyLog.status === 'Submitted' ? 'scheduled' : 'onhold'} className="h-6 px-4 uppercase text-[9px] tracking-widest font-black">Log {adminData.weeklyLog.status}</Badge>
+                          <Badge variant={adminData.weeklyLog.status === 'Approved' ? 'active' : adminData.weeklyLog.status === 'Submitted' ? 'scheduled' : 'onhold'} className="h-6 px-4 uppercase text-[10px] tracking-wider font-bold">Log {adminData.weeklyLog.status}</Badge>
                         </div>
                         <div className="p-4">
-                          <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Linked Weeklog: <span className="text-text-primary">WK-{adminData.weeklyLog.weekOf}</span></p>
+                          <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Linked Weeklog: <span className="text-text-primary">WK-{adminData.weeklyLog.weekOf}</span></p>
                         </div>
                       </Card>
                     ) : (
                       <div className="p-12 border-2 border-dashed border-border-sub rounded-xl text-center opacity-40 bg-bg-secondary/30">
                         <Clock size={32} className="mx-auto text-text-muted mb-2" />
-                        <p className="text-[10px] font-bold uppercase tracking-widest italic text-center">Awaiting payroll submission</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider italic text-center">Awaiting payroll submission</p>
                       </div>
                     )}
                   </div>
@@ -839,18 +839,18 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
                             <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-text-muted"><Navigation size={18} /></div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{displayTime(log.checkInTime)} — {log.checkOutTime ? displayTime(log.checkOutTime) : 'ACTIVE'}</p>
-                                {log.checkOutTime ? <Badge variant="active" className="text-[7px] h-3.5 px-1.5 uppercase">Verified</Badge> : <Badge variant="inprogress" className="text-[7px] h-3.5 px-1.5 uppercase animate-pulse">Live Session</Badge>}
+                                <p className="text-xs font-bold text-text-primary tracking-wide">{displayTime(log.checkInTime)} — {log.checkOutTime ? displayTime(log.checkOutTime) : 'ACTIVE'}</p>
+                                {log.checkOutTime ? <Badge variant="active" className="text-[10px] h-3.5 px-1.5">Verified</Badge> : <Badge variant="inprogress" className="text-[10px] h-3.5 px-1.5 animate-pulse">Live Session</Badge>}
                               </div>
-                              <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest mt-0.5">{log.minutesWorked ? `${(log.minutesWorked / 60).toFixed(1)}h Logged` : 'Recording Duration'} · {log.location}</p>
+                              <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider mt-0.5">{log.minutesWorked ? `${(log.minutesWorked / 60).toFixed(1)}h Logged` : 'Recording Duration'} · {log.location}</p>
                             </div>
                           </div>
-                          <Badge variant="outline" className="text-[8px] bg-bg-tertiary border-border-sub font-mono">GPS LOCKED</Badge>
+                          <Badge variant="outline" className="text-[10px] bg-bg-tertiary border-border-sub font-mono">GPS LOCKED</Badge>
                         </div>
                       )) : (
                         <div className="p-12 border-2 border-dashed border-border-sub rounded-xl text-center opacity-40 bg-bg-secondary/30">
                           <Navigation size={32} className="mx-auto text-text-muted mb-2" />
-                          <p className="text-[10px] font-bold uppercase tracking-widest italic text-center">No field sessions recorded</p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider italic text-center">No field sessions recorded</p>
                         </div>
                       )}
                     </div>
@@ -864,20 +864,20 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
                             <div className="flex-shrink-0 w-1.5 h-1.5 mt-1.5 rounded-full bg-text-muted opacity-40" />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-[9px] font-black text-text-primary uppercase tracking-widest">{ev.field === '__action__' ? ev.newValue : ev.field}</span>
+                                <span className="text-[10px] font-bold text-text-primary uppercase tracking-wider">{ev.field === '__action__' ? ev.newValue : ev.field}</span>
                                 {ev.field !== '__action__' && (
-                                  <span className="text-[9px] text-text-muted font-mono">
+                                  <span className="text-[11px] text-text-muted font-mono">
                                     <span className="text-text-red">{String(ev.oldValue ?? '—')}</span>
                                     <span className="mx-1 text-text-muted">→</span>
                                     <span className="text-text-green">{String(ev.newValue ?? '—')}</span>
                                   </span>
                                 )}
-                                {ev.details && <span className="text-[9px] text-text-muted">{ev.details}</span>}
+                                {ev.details && <span className="text-[11px] text-text-muted">{ev.details}</span>}
                               </div>
                               <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-[8px] text-text-muted font-mono">{ev.changedByName || ev.changedBy}</span>
-                                <span className="text-[8px] text-text-muted">·</span>
-                                <span className="text-[8px] text-text-muted font-mono">{ev.changedAt ? new Date(ev.changedAt).toLocaleString() : '—'}</span>
+                                <span className="text-[10px] text-text-muted font-mono">{ev.changedByName || ev.changedBy}</span>
+                                <span className="text-[10px] text-text-muted">·</span>
+                                <span className="text-[10px] text-text-muted font-mono">{ev.changedAt ? new Date(ev.changedAt).toLocaleString() : '—'}</span>
                               </div>
                             </div>
                           </div>
@@ -897,7 +897,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
           <div className="flex items-stretch divide-x divide-border-sub">
             {footerItems.map(({ label, value, cls }) => (
               <div key={label} className="flex-1 flex flex-col gap-0.5 px-4 py-3 min-w-0">
-                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest truncate">{label}</p>
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider truncate">{label}</p>
                 <p className={cn('text-[11px] font-bold truncate', cls)}>{value}</p>
               </div>
             ))}
@@ -910,17 +910,17 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
       <Dialog open={swapOpen} onOpenChange={setSwapOpen}>
         <DialogContent className="bg-bg-elevated border-border-main sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-[13px] font-black uppercase tracking-widest">{hasAssignedTech ? 'Swap Technician' : 'Assign Technician'}</DialogTitle>
+            <DialogTitle className="text-[13px] font-bold">{hasAssignedTech ? 'Swap Technician' : 'Assign Technician'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">{hasAssignedTech ? 'Select Replacement' : 'Select Technician'}</Label>
+            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{hasAssignedTech ? 'Select Replacement' : 'Select Technician'}</Label>
             <Select value={swapTechId} onValueChange={setSwapTechId}>
-              <SelectTrigger className="h-9 text-[10px] font-bold uppercase bg-bg-secondary border-border-main">
+              <SelectTrigger className="h-9 text-[10px] font-bold bg-bg-secondary border-border-main">
                 <SelectValue placeholder="Choose technician..." />
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
                 {sortTechniciansForDeployment(technicians.filter(isAssignableTechnician)).map(t => (
-                  <SelectItem key={t.id} value={t.id} disabled={isInactiveTechnician(t)} className="text-[10px] font-bold uppercase">
+                  <SelectItem key={t.id} value={t.id} disabled={isInactiveTechnician(t)} className="text-[10px] font-bold">
                     {t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}
                   </SelectItem>
                 ))}
@@ -928,8 +928,8 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
             </Select>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold" onClick={() => setSwapOpen(false)}>Cancel</Button>
-            <Button size="sm" className="h-8 text-[10px] uppercase font-bold bg-brand-red hover:bg-brand-red/90 text-white" disabled={!swapTechId} onClick={handleSwapTech}>{hasAssignedTech ? 'Confirm Swap' : 'Assign Technician'}</Button>
+            <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold" onClick={() => setSwapOpen(false)}>Cancel</Button>
+            <Button size="sm" className="h-8 text-[10px] font-bold bg-brand-red hover:bg-brand-red/90 text-white" disabled={!swapTechId} onClick={handleSwapTech}>{hasAssignedTech ? 'Confirm Swap' : 'Assign Technician'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -938,19 +938,19 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
       <Dialog open={helperOpen} onOpenChange={setHelperOpen}>
         <DialogContent className="bg-bg-elevated border-border-main sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-[13px] font-black uppercase tracking-widest">Add Helper</DialogTitle>
+            <DialogTitle className="text-[13px] font-bold">Add Helper</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Select Helper</Label>
+            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Select Helper</Label>
             <Select value={helperTechId} onValueChange={setHelperTechId}>
-              <SelectTrigger className="h-9 text-[10px] font-bold uppercase bg-bg-secondary border-border-main">
+              <SelectTrigger className="h-9 text-[10px] font-bold bg-bg-secondary border-border-main">
                 <SelectValue placeholder="Choose technician..." />
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
                 {sortTechniciansForDeployment(technicians
                   .filter(t => isAssignableTechnician(t) && t.id !== assignedTechId && !helperIds.includes(t.id)))
                   .map(t => (
-                    <SelectItem key={t.id} value={t.id} disabled={isInactiveTechnician(t)} className="text-[10px] font-bold uppercase">
+                    <SelectItem key={t.id} value={t.id} disabled={isInactiveTechnician(t)} className="text-[10px] font-bold">
                       {t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}
                     </SelectItem>
                   ))}
@@ -958,8 +958,8 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
             </Select>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold" onClick={() => setHelperOpen(false)}>Cancel</Button>
-            <Button size="sm" className="h-8 text-[10px] uppercase font-bold bg-brand-red hover:bg-brand-red/90 text-white" disabled={!helperTechId} onClick={handleAddHelper}>Add to Team</Button>
+            <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold" onClick={() => setHelperOpen(false)}>Cancel</Button>
+            <Button size="sm" className="h-8 text-[10px] font-bold bg-brand-red hover:bg-brand-red/90 text-white" disabled={!helperTechId} onClick={handleAddHelper}>Add to Team</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

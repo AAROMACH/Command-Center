@@ -39,7 +39,7 @@ export function CompletionWeekDialog({
         <DialogHeader className="text-left">
           <div className="flex items-center gap-2 mb-1">
             <CalendarClock className="text-accent-gold h-5 w-5" />
-            <DialogTitle className="text-base font-bold uppercase tracking-widest">Which Weekly Log?</DialogTitle>
+            <DialogTitle className="text-base font-bold">Which Weekly Log?</DialogTitle>
           </div>
           <p className="text-[11px] text-text-muted leading-relaxed">
             This assignment was scheduled for the week of <span className="text-text-primary font-bold">{scheduledWeek}</span>, but you are completing it during the week of <span className="text-text-primary font-bold">{reportingWeek}</span>. Which weekly log should contain it?
@@ -54,7 +54,7 @@ export function CompletionWeekDialog({
           >
             <div>
               <p className="text-[12px] font-bold text-text-primary">Add to Correct Week</p>
-              <p className="text-[9px] text-text-muted uppercase tracking-widest font-bold">
+              <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">
                 {scheduledWeekEligible ? `Week of ${scheduledWeek}` : 'That week’s log is locked'}
               </p>
             </div>
@@ -68,7 +68,7 @@ export function CompletionWeekDialog({
           >
             <div>
               <p className="text-[12px] font-bold text-text-primary">Add to Current Week</p>
-              <p className="text-[9px] text-text-muted uppercase tracking-widest font-bold">Week of {reportingWeek} · flagged as different service week</p>
+              <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Week of {reportingWeek} · flagged as different service week</p>
             </div>
             <CalendarClock size={14} className="text-brand-red shrink-0" />
           </button>

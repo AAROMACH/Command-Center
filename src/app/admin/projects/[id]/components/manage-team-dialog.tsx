@@ -105,11 +105,11 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogContent className="sm:max-w-[525px] bg-bg-elevated border-border-default shadow-2xl">
                 <DialogHeader>
-                    <DialogTitle className="page-title text-xl text-left uppercase font-bold tracking-widest">Manage Project Team</DialogTitle>
+                    <DialogTitle className="page-title text-xl text-left font-bold">Manage Project Team</DialogTitle>
                 </DialogHeader>
                 <div className="py-4 space-y-6">
                     <div>
-                        <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2 text-left">Current Team</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2 text-left">Current Team</h3>
                         <div className="space-y-2">
                             {team.map(member => {
                                 const tech = getTechnician(member.techId);
@@ -117,13 +117,13 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
                                 return (
                                     <div key={member.techId} className="flex items-center gap-3 p-2 rounded-md bg-bg-primary border border-border-sub">
                                         <Avatar className="h-8 w-8 border border-border-sub"><AvatarImage src={tech.avatarUrl} /><AvatarFallback>{(tech.name || 'U').charAt(0)}</AvatarFallback></Avatar>
-                                        <div className="flex-1 font-bold text-xs text-text-primary uppercase truncate text-left">{tech.name}</div>
+                                        <div className="flex-1 font-bold text-xs text-text-primary truncate text-left">{tech.name}</div>
                                         <Select value={member.role} onValueChange={(value) => handleRoleChange(member.techId, value)}>
-                                            <SelectTrigger className="w-[150px] bg-bg-secondary border-border-sub h-8 text-[10px] uppercase font-bold">
+                                            <SelectTrigger className="w-[150px] bg-bg-secondary border-border-sub h-8 text-[10px] font-bold">
                                                 <SelectValue placeholder="Select role" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {ROLES.map(role => <SelectItem key={role} value={role} className="text-xs uppercase font-bold">{role}</SelectItem>)}
+                                                {ROLES.map(role => <SelectItem key={role} value={role} className="text-xs font-bold">{role}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
                                         <button onClick={() => handleRemoveTech(member.techId)} className="p-1.5 text-text-muted hover:text-text-red transition-colors">
@@ -134,16 +134,16 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
                             })}
                             {team.length === 0 && (
                                 <div className="p-8 text-center border border-dashed border-border-sub rounded-md">
-                                    <p className="text-[10px] uppercase font-bold text-text-muted italic">No personnel assigned</p>
+                                    <p className="text-[10px] font-bold text-text-muted italic">No personnel assigned</p>
                                 </div>
                             )}
                         </div>
                     </div>
                      <div>
-                        <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2 text-left">Add Technician</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2 text-left">Add Technician</h3>
                         <div className="flex items-center gap-2">
                              <Select value={newTechId} onValueChange={setNewTechId}>
-                                <SelectTrigger className="flex-1 bg-bg-secondary border-border-sub h-9 text-[10px] uppercase font-bold">
+                                <SelectTrigger className="flex-1 bg-bg-secondary border-border-sub h-9 text-[10px] font-bold">
                                     <SelectValue placeholder="Select operative..." />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -152,7 +152,7 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
                                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
                                             <Input 
                                                 placeholder="Search registry..."
-                                                className="w-full h-8 pl-8 bg-bg-primary border-border-sub text-[10px] uppercase font-bold"
+                                                className="w-full h-8 pl-8 bg-bg-primary border-border-sub text-[10px] font-bold"
                                                 value={searchQuery}
                                                 onChange={e => setSearchQuery(e.target.value)}
                                                 onKeyDown={(e) => e.stopPropagation()}
@@ -162,25 +162,25 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
                                     <ScrollArea className="h-[150px]">
                                         <div className="p-1">
                                             {filteredTechnicians.length > 0 ? filteredTechnicians.map(tech => (
-                                                <SelectItem key={tech.id} value={tech.id} className="text-[10px] uppercase font-bold">
+                                                <SelectItem key={tech.id} value={tech.id} className="text-[10px] font-bold">
                                                     <div className="flex items-center gap-2">
                                                         <Avatar className="h-5 w-5 border border-border-sub"><AvatarImage src={tech.avatarUrl} /><AvatarFallback>{(tech.name || 'U').charAt(0)}</AvatarFallback></Avatar>
                                                         <span>{tech.name}</span>
                                                     </div>
                                                 </SelectItem>
                                             )) : (
-                                                <div className="text-center text-[10px] uppercase font-bold text-text-muted p-4">No operatives found</div>
+                                                <div className="text-center text-[10px] font-bold text-text-muted p-4">No operatives found</div>
                                             )}
                                         </div>
                                     </ScrollArea>
                                 </SelectContent>
                             </Select>
                              <Select value={newTechRole} onValueChange={setNewTechRole}>
-                                <SelectTrigger className="w-[150px] bg-bg-secondary border-border-sub h-9 text-[10px] uppercase font-bold">
+                                <SelectTrigger className="w-[150px] bg-bg-secondary border-border-sub h-9 text-[10px] font-bold">
                                     <SelectValue placeholder="Select role" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {ROLES.map(role => <SelectItem key={role} value={role} className="text-xs uppercase font-bold">{role}</SelectItem>)}
+                                    {ROLES.map(role => <SelectItem key={role} value={role} className="text-xs font-bold">{role}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                             <Button size="icon" className="h-9 w-9 shrink-0 bg-brand-red hover:bg-brand-red-hover text-white" onClick={handleAddTech} disabled={!newTechId || !newTechRole}>
@@ -191,7 +191,7 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
                 </div>
                 <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default">
                     <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
-                    <Button onClick={handleSaveChanges} className="bg-brand-red hover:bg-brand-red-hover px-10 text-white font-bold uppercase text-[10px] tracking-widest">Save Team Updates</Button>
+                    <Button onClick={handleSaveChanges} className="bg-brand-red hover:bg-brand-red-hover px-10 text-white font-bold uppercase text-[10px] tracking-wider">Save Team Updates</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

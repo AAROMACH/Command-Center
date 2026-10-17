@@ -71,6 +71,9 @@ import { doc, updateDoc, collection, setDoc } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { formatClock } from '@/lib/time-on-site';
+import { NotificationService } from '@/lib/notification-service';
+import { MilestonesTab as LeadMilestonesTab } from '@/app/admin/projects/[id]/components/milestones-tab';
+import { DocumentsTab as LeadDocumentsTab } from '@/app/admin/projects/[id]/components/documents-tab';
 
 // --- UTILITIES ---
 
@@ -143,12 +146,14 @@ const ProximityDisplay = ({ lat, lng, project, label, size = 'default' }: { lat?
 const PhaseBlock = ({ 
     phase, 
     onTaskToggle, 
-    isReadOnly 
+    isReadOnly,
+    nameOf,
 }: { 
     phase: any, 
     onTaskToggle: (pid: string, tid: string) => void, 
     documents: any[], 
-    isReadOnly: boolean 
+    isReadOnly: boolean,
+    nameOf: (id: string) => string,
 }) => {
     const [isOpen, setIsOpen] = useState(true);
     const completedTasks = (phase.tasks || []).filter((t: any) => t.isCompleted).length;
@@ -177,6 +182,7 @@ const PhaseBlock = ({
                                 disabled={isReadOnly}
                             />
                             <span className={cn("task-name", task.isCompleted && "line-through text-text-muted")}>{task.name}</span>
+                            {task.assignedTechId && <span className="text-[8px] font-bold uppercase tracking-wider text-brand-red border border-brand-red/30 bg-brand-red/10 rounded px-1.5 py-0.5 whitespace-nowrap">{nameOf(task.assignedTechId)}</span>}
                             {task.requiresPhoto && <Camera size={12} className="text-text-muted" />}
                         </div>
                     ))}
@@ -344,7 +350,7 @@ const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => {
     );
 };
 
-const MilestonesTab = ({ project, onTaskToggle, isReadOnly }: { project: Project, onTaskToggle: (pid: string, tid: string) => void, documents: ProjectDocument[], isReadOnly: boolean }) => {
+const MilestonesTab = ({ project, onTaskToggle, isReadOnly, nameOf }: { project: Project, onTaskToggle: (pid: string, tid: string) => void, documents: ProjectDocument[], isReadOnly: boolean, nameOf: (id: string) => string }) => {
     return (
         <div className="space-y-4 animate-in fade-in duration-300">
              <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
@@ -359,6 +365,7 @@ const MilestonesTab = ({ project, onTaskToggle, isReadOnly }: { project: Project
                         onTaskToggle={onTaskToggle} 
                         documents={[]} 
                         isReadOnly={isReadOnly} 
+                        nameOf={nameOf}
                     />
                 ))}
             </div>
@@ -677,9 +684,16 @@ const TimesheetsTab = ({
     );
 };
 
-export function ProjectDetailClient({ project, dailyLogs, technicians, documents }: { project: Project, dailyLogs: ProjectDailyLog[], technicians: Technician[], documents: ProjectDocument[] }) {
+export function ProjectDetailClient({ project, dailyLogs, technicians, documents, canLead = false }: {
+    project: Project, dailyLogs: ProjectDailyLog[], technicians: Technician[], documents: ProjectDocument[],
+    /** Named lead (or PM): adds the Plan tab and document upload/delete. */
+    canLead?: boolean,
+}) {
+    const nameOf = (id: string) => technicians.find(t => t.id === id)?.name || 'Crew member';
     const [activeTab, _setActiveTabRaw] = useState(() => { try { return localStorage.getItem('cc:project-detail:tab') || 'overview'; } catch { return 'overview'; } });
     const setActiveTab = (v: string) => { _setActiveTabRaw(v); try { localStorage.setItem('cc:project-detail:tab', v); } catch {} };
+    // A saved "Plan" tab from a project they lead falls back to Tasks elsewhere.
+    useEffect(() => { if (!canLead && activeTab === 'plan') setActiveTab('milestones'); }, [canLead, activeTab]);
     const { toast } = useToast();
 
     const currentUserId = useMemo(() => typeof window !== 'undefined' ? sessionStorage.getItem('currentUserId') : null, []);
@@ -734,6 +748,13 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
                 title: "Task Registry Updated",
                 description: "Mission status has been synchronized with the Command Center."
             });
+            if (task && !task.isCompleted) {
+                const allDone = updatedPhases.every(ph => (ph.tasks || []).every(t => t.isCompleted)) && updatedPhases.some(ph => (ph.tasks || []).length);
+                NotificationService.notifyProjectManagers(project.id,
+                    allDone ? 'Project tasks complete' : 'Task completed',
+                    `${nameOf(currentUserId || '')} completed "${task.name}" on ${project.name}.${allDone ? '\nEvery task is done — ready to close out.' : ''}`,
+                    !allDone);
+            }
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
         }
@@ -777,6 +798,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             const logId = await createDocId(ID_PREFIXES.PROJECT_DAILY_LOG);
             await setDoc(doc(db, 'projectDailyLogs', logId), { ...newLog, id: logId });
             toast({ title: 'Check In Validated', description: `Registry initialized for ${project.name}.` });
+            NotificationService.notifyProjectManagers(project.id, 'Crew checked in', `${nameOf(currentUserId)} checked in on ${project.name}.`);
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
         }
@@ -821,6 +843,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             });
 
             toast({ title: 'Check Out Confirmed', description: `Session manifest committed to registry.` });
+            NotificationService.notifyProjectManagers(project.id, 'Crew checked out', `${nameOf(currentUserId || '')} checked out of ${project.name} after ${hoursWorked}h.`);
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
         }
@@ -861,14 +884,17 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             <div className="detail-tabs justify-center">
                 <button className={`detail-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Briefing</button>
                 <button className={`detail-tab ${activeTab === 'milestones' ? 'active' : ''}`} onClick={() => setActiveTab('milestones')}>Tasks</button>
+                {canLead && <button className={`detail-tab ${activeTab === 'plan' ? 'active' : ''}`} onClick={() => setActiveTab('plan')}>Plan</button>}
                 <button className={`detail-tab ${activeTab === 'documents' ? 'active' : ''}`} onClick={() => setActiveTab('documents')}>Documents</button>
                 <button className={`detail-tab ${activeTab === 'timesheets' ? 'active' : ''}`} onClick={() => setActiveTab('timesheets')}>Timesheets</button>
             </div>
 
             <div className="tab-content">
                 {activeTab === 'overview' && <OverviewTab project={project} technicians={technicians} />}
-                {activeTab === 'milestones' && <MilestonesTab project={project} onTaskToggle={handleTaskToggle} documents={documents} isReadOnly={isReadOnly} />}
-                {activeTab === 'documents' && <DocumentsTab documents={documents} />}
+                {activeTab === 'milestones' && <MilestonesTab project={project} onTaskToggle={handleTaskToggle} documents={documents} isReadOnly={isReadOnly} nameOf={nameOf} />}
+                {/* Lead tools reuse the office editors: phases/tasks/assignees and document upload. */}
+                {activeTab === 'plan' && canLead && <LeadMilestonesTab project={project} technicians={technicians} />}
+                {activeTab === 'documents' && (canLead ? <LeadDocumentsTab project={project} documents={documents} /> : <DocumentsTab documents={documents} />)}
                 {activeTab === 'timesheets' && (
                     <TimesheetsTab 
                         dailyLogs={dailyLogs} 

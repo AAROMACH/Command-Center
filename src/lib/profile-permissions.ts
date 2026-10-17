@@ -68,7 +68,12 @@ export function getEditableProfileFields(
  * Admin roles and permission overrides stay super-admin only — mirrors
  * nonAdminRoles() in firestore.rules.
  */
-export const NON_ADMIN_ROLES: string[] = ['client', 'field_technician', 'project_lead', 'sales'];
+export const NON_ADMIN_ROLES: string[] = ['client', 'field_technician', 'project_lead', 'project_manager', 'sales'];
+
+/** Granting the Project Manager role: dispatch or super admin (firestore.rules pmGrantAllowed). */
+export function canGrantProjectManager(currentUser: Technician | null | undefined): boolean {
+  return getSubroles(currentUser).some(r => r === 'super_admin' || r === 'dispatch_admin');
+}
 
 export function canEditUserAccess(currentUser: Technician | null | undefined): boolean {
   return getSubroles(currentUser).includes('super_admin');

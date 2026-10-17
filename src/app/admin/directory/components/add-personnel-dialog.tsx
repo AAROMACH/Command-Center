@@ -19,9 +19,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import type { AppRole, Technician } from '@/lib/types';
 import { createDocId } from '@/lib/generateId';
-import { canEditUserAccess, canEditUserPay, NON_ADMIN_ROLES } from '@/lib/profile-permissions';
+import { canEditUserAccess, canEditUserPay, canGrantProjectManager, NON_ADMIN_ROLES } from '@/lib/profile-permissions';
 import { ID_PREFIXES } from '@/lib/constants';
 import { ROLE_DATA } from '@/lib/constants/roles';
+import { ROLE_GROUP_LABELS } from '@/lib/permissions';
 import { 
   User, 
   ChevronRight, 
@@ -214,6 +215,10 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         toast({ variant: "destructive", title: "Super admin only", description: "Only a super admin can add someone with an admin role." });
         return;
     }
+    if ((formData.roles || []).includes('project_manager') && !canGrantProjectManager(me)) {
+        toast({ variant: "destructive", title: "Dispatch or super admin only", description: "Only a dispatch admin or super admin can add a Project Manager." });
+        return;
+    }
 
     try {
         const idToken = await auth.currentUser?.getIdToken();
@@ -317,7 +322,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
 
   const currentPermissions = useMemo(() => {
     const roles = formData.roles || [];
-    const allOptions = [...ROLE_DATA.admin, ...ROLE_DATA.tech, ...ROLE_DATA.client, ...ROLE_DATA.office];
+    const allOptions = [...ROLE_DATA.admin, ...ROLE_DATA.external, ...ROLE_DATA.tech, ...ROLE_DATA.client];
     const perms = new Set<string>();
     roles.forEach(roleId => {
         const option = allOptions.find(o => o.id === roleId);
@@ -433,7 +438,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {(Object.keys(ROLE_DATA) as Array<keyof typeof ROLE_DATA>).map((category) => (
                     <div key={category} className="space-y-4">
-                        <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1 capitalize text-left">{category}</h4>
+                        <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1 text-left">{ROLE_GROUP_LABELS[category]}</h4>
                         <div className="space-y-2">
                             {ROLE_DATA[category].map(role => {
                                 const isSelected = (formData.roles || []).includes(role.id);

@@ -64,7 +64,7 @@ export async function sendEmail(to: string, subject: string, body: string): Prom
 export async function deliverNotification(
   fs: Firestore,
   recipients: { id: string; data: Record<string, any> }[],
-  msg: { title: string; body: string; entity?: NotifyEntity; sentBy: string },
+  msg: { title: string; body: string; entity?: NotifyEntity; sentBy: string; inAppOnly?: boolean },
 ): Promise<number> {
   const subject = `[AAROMACH] ${msg.title.toUpperCase()}`;
   const { entity } = msg;
@@ -73,8 +73,10 @@ export async function deliverNotification(
   await Promise.all(recipients.filter(r => r.data.accountStatus !== 'inactive').map(async ({ id, data }) => {
     const prefs = resolveNotificationPrefs(data.notificationPreferences);
     const channels: ('email' | 'sms' | 'push')[] = [];
-    if (prefs.email && data.email) channels.push('email');
-    if (prefs.sms && data.phone) channels.push('sms');
+    // Routine activity (a task checked off, a check-in) is an in-app record
+    // only — texting every update would bury the alerts that matter.
+    if (!msg.inAppOnly && prefs.email && data.email) channels.push('email');
+    if (!msg.inAppOnly && prefs.sms && data.phone) channels.push('sms');
     if (prefs.push) channels.push('push');
     // Always leave an in-app record, even if they've opted out of every channel.
     if (channels.length === 0) channels.push('push');

@@ -435,7 +435,7 @@ export default function AdminMessagingPage() {
                 <div className="space-y-0.5 mb-2">
                   {adminTechs.filter(t => {
                     if (contactFilter === 'admins') return t.roles?.includes('super_admin') || t.roles?.includes('dispatch_admin');
-                    if (contactFilter === 'techs') return t.roles?.includes('field_technician') || t.roles?.includes('project_lead');
+                    if (contactFilter === 'techs') return t.roles?.includes('field_technician') || t.roles?.includes('project_lead') || t.roles?.includes('project_manager');
                     if (contactFilter === 'clients') return false;
                     return true;
                   }).map(t => {

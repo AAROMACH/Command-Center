@@ -6,7 +6,10 @@ import { db } from "@/lib/firebase";
 import { doc, onSnapshot, collection, query, where, orderBy } from 'firebase/firestore';
 import { notFound, useParams } from 'next/navigation';
 import { ProjectDetailClient } from './components/project-detail-client';
+import { ProjectDetailClient as ManagerProjectDetail } from '@/app/admin/projects/[id]/components/project-detail-client';
 import { useDirectory } from '@/hooks/use-directory';
+import { useAuth } from '@/contexts/auth-context';
+import { canLeadProject, canManageProjects, isOnProject } from '@/lib/project-access';
 import type { Project, Technician, ProjectDailyLog, ProjectDocument } from '@/lib/types';
 
 /**
@@ -21,6 +24,10 @@ export default function TechProjectDetailPage() {
   const technicians = useDirectory();
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  // Project Managers run the project with the office tools (no pay); a PM
+  // who is also on the crew can flip to the field view to check in.
+  const { user, loading: authLoading } = useAuth();
+  const [view, setView] = useState<'manage' | 'field'>('manage');
 
   useEffect(() => {
     if (!id) return;
@@ -52,7 +59,8 @@ export default function TechProjectDetailPage() {
     };
   }, [id]);
 
-  if (loading) {
+  // Wait for the signed-in user too: lead/PM tools depend on who it is.
+  if (loading || authLoading) {
       return (
           <div className="flex h-[400px] items-center justify-center">
               <div className="text-center space-y-4">
@@ -67,12 +75,46 @@ export default function TechProjectDetailPage() {
     return notFound();
   }
 
+  const isPM = canManageProjects(user);
+  const onCrew = isOnProject(project, user?.id);
+  const switcher = isPM && onCrew && (
+    <div className="flex justify-end mb-3">
+      <div className="flex items-center border border-border-main rounded-md overflow-hidden h-8">
+        {(['manage', 'field'] as const).map((v, i) => (
+          <button key={v} onClick={() => setView(v)}
+            className={`px-3 h-full text-[10px] font-bold uppercase tracking-widest transition-colors ${i ? 'border-l border-border-main' : ''} ${view === v ? 'bg-brand-red text-white' : 'bg-bg-secondary text-text-muted hover:text-text-primary'}`}>
+            {v === 'manage' ? 'Manage' : 'Field View'}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  if (isPM && (view === 'manage' || !onCrew)) {
+    return (
+      <>
+        {switcher}
+        <ManagerProjectDetail
+          mode="manager"
+          project={project}
+          technicians={technicians}
+          documents={documents}
+          timesheets={dailyLogs}
+        />
+      </>
+    );
+  }
+
   return (
-    <ProjectDetailClient 
-        project={project}
-        dailyLogs={dailyLogs}
-        technicians={technicians}
-        documents={documents}
-    />
+    <>
+      {switcher}
+      <ProjectDetailClient 
+          project={project}
+          dailyLogs={dailyLogs}
+          technicians={technicians}
+          documents={documents}
+          canLead={canLeadProject(user, project)}
+      />
+    </>
   );
 }

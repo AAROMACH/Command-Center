@@ -6,11 +6,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-const TECH_ROLES = ['field_technician', 'project_lead'];
+const TECH_ROLES = ['field_technician', 'project_lead', 'project_manager'];
 
 /**
  * Whether a user can be deployed to a job as a field technician. Anyone
- * holding field_technician or project_lead is always deployable, no matter
+ * holding a technician role (field tech, project lead, project manager) is always deployable, no matter
  * what other roles they also carry (e.g. a dispatcher who also does field
  * work). Everyone else — Client-only, Admin-only, or Client+Admin
  * combinations with no tech role at all — is excluded from assignment

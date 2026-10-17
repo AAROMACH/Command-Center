@@ -11,8 +11,8 @@ import { adminApp } from '@/lib/firebase-admin';
  * server" until it was hard-refreshed. A plain route has a stable URL.
  */
 
-const ADMIN_ROLES = ['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'];
-const NON_ADMIN_ROLES = ['client', 'field_technician', 'project_lead', 'sales'];
+const ADMIN_ROLES = ['super_admin', 'dispatch_admin', 'payroll_admin'];
+const NON_ADMIN_ROLES = ['client', 'field_technician', 'project_lead', 'project_manager', 'sales'];
 
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('authorization') || '';
@@ -44,6 +44,10 @@ export async function POST(req: NextRequest) {
   const isSuper = roles.includes('super_admin') || ['super_admin', 'admin'].includes(caller.role || '');
   if (!isSuper && requestedRoles.some(r => !NON_ADMIN_ROLES.includes(r))) {
     return NextResponse.json({ error: 'Only a super admin can add someone with an admin role.' }, { status: 403 });
+  }
+  const isDispatch = roles.includes('dispatch_admin') || caller.role === 'dispatch_admin';
+  if (requestedRoles.includes('project_manager') && !isSuper && !isDispatch) {
+    return NextResponse.json({ error: 'Only a dispatch admin or super admin can add a Project Manager.' }, { status: 403 });
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 });

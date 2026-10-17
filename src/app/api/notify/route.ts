@@ -19,19 +19,24 @@ import { deliverNotification } from '@/lib/server/notify-delivery';
  *    the company's verified email/SMS identity, so it must not be a relay).
  */
 
-type Audience = 'admins' | 'payroll_admins';
+type Audience = 'admins' | 'payroll_admins' | 'project_managers';
 type NotifyPayload = {
   userId?: string;
   audience?: Audience;
   title: string;
   body: string;
   entity?: { id: string; type: 'assignment' | 'project' | 'request' | 'lead' };
+  /** Routine activity: in-app record only, no email/SMS. */
+  inAppOnly?: boolean;
 };
 
-const ADMIN_ROLES = ['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'];
+const ADMIN_ROLES = ['super_admin', 'dispatch_admin', 'payroll_admin'];
 const AUDIENCE_ROLES: Record<Audience, string[]> = {
   admins: ['super_admin', 'dispatch_admin'],
   payroll_admins: ['super_admin', 'payroll_admin'],
+  // Project activity (crew check-ins, tasks, documents, status) — PMs run
+  // every project from the Tech Portal.
+  project_managers: ['project_manager'],
 };
 
 const rolesOf = (u: Record<string, any>): string[] => [
@@ -78,7 +83,8 @@ export async function POST(req: NextRequest) {
   let recipients: { id: string; data: Record<string, any> }[];
   if (audience) {
     const snap = await fs.collection('users').where('roles', 'array-contains-any', AUDIENCE_ROLES[audience]).get();
-    recipients = snap.docs.map(d => ({ id: d.id, data: d.data() }));
+    // Never notify someone about their own action.
+    recipients = snap.docs.map(d => ({ id: d.id, data: d.data() })).filter(r => r.id !== callerId);
   } else {
     const snap = await fs.collection('users').doc(String(userId)).get();
     if (!snap.exists) return NextResponse.json({ error: 'Unknown user' }, { status: 404 });
@@ -90,7 +96,7 @@ export async function POST(req: NextRequest) {
   }
 
   const entity = payload.entity && typeof payload.entity.id === 'string' ? payload.entity : undefined;
-  const sent = await deliverNotification(fs, recipients, { title, body, entity, sentBy: callerId });
+  const sent = await deliverNotification(fs, recipients, { title, body, entity, sentBy: callerId, inAppOnly: payload.inAppOnly === true });
 
   return NextResponse.json({ status: sent > 0 ? 'sent' : 'recorded', recipients: recipients.length });
 }

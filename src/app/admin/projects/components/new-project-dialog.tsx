@@ -28,7 +28,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { ID_PREFIXES } from '@/lib/constants';
 import { createDocId } from '@/lib/generateId';
-import { useLiveUsers } from '@/hooks/use-live-users';
+import { useDirectory } from '@/hooks/use-directory';
 
 declare global {
   interface Window {
@@ -47,7 +47,9 @@ type NewProjectDialogProps = {
 
 export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialogProps) {
   // Live user records (was the demo list in lib/data).
-  const technicians = useLiveUsers();
+  // Admins get full user records; a Project Manager (tech portal) gets the
+  // directory (names, roles, company) — enough to pick the client.
+  const technicians = useDirectory();
   const [formData, setFormData] = useState<Partial<Project>>({
     name: '',
     client: '',

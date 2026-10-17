@@ -1,6 +1,7 @@
 
 'use client';
-import type { Project, Phase, Task } from '@/lib/types';
+import type { Project, Phase, Task, Technician } from '@/lib/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +26,8 @@ import { doc, updateDoc } from 'firebase/firestore';
 
 type MilestonesTabProps = {
     project: Project;
+    /** People lookup for the crew picker / assignee names (directory or users). */
+    technicians?: Technician[];
 };
 
 const PhaseBlock = ({ 
@@ -36,7 +39,8 @@ const PhaseBlock = ({
     onEditTask,
     onDeletePhase,
     onEditPhaseName,
-    isReadOnly
+    isReadOnly,
+    nameOf,
 }: { 
     phase: Phase, 
     onTaskToggle: (phaseId: string, taskId: string) => void, 
@@ -46,7 +50,8 @@ const PhaseBlock = ({
     onEditTask: (phaseId: string, task: Task) => void,
     onDeletePhase: (phaseId: string) => void,
     onEditPhaseName: (phaseId: string, name: string) => void,
-    isReadOnly: boolean
+    isReadOnly: boolean,
+    nameOf: (id: string) => string,
 }) => {
     const [isOpen, setIsOpen] = useState(true);
     const [newTaskName, setNewTaskName] = useState("");
@@ -116,6 +121,7 @@ const PhaseBlock = ({
                                 <label htmlFor={`task-${task.id}`} className={cn("task-name", task.isCompleted && 'done')}>{task.name}</label>
                                 
                                 <div className="flex flex-wrap gap-1 mt-1">
+                                    {task.assignedTechId && <div className="inline-flex items-center gap-1 rounded bg-brand-red/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-brand-red border border-brand-red/30">{nameOf(task.assignedTechId)}</div>}
                                     {task.requiresPhoto && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Camera size={10}/> Photo</div>}
                                     {task.requiresText && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><FileText size={10}/> Text</div>}
                                     {task.requiresNumeric && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Hash size={10}/> Number</div>}
@@ -152,7 +158,9 @@ const PhaseBlock = ({
     )
 }
 
-export function MilestonesTab({ project }: MilestonesTabProps) {
+export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps) {
+    const nameOf = (id: string) => technicians.find(t => t.id === id)?.name || 'Crew member';
+    const crew = (project.team || []).map(m => ({ id: m.techId, name: nameOf(m.techId), role: m.role }));
     const [editablePhases, setEditablePhases] = useState<Phase[]>(project.phases || []);
     const [isEditing, setIsEditing] = useState(false);
     const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -328,6 +336,7 @@ export function MilestonesTab({ project }: MilestonesTabProps) {
                         onDeletePhase={handleDeletePhase}
                         onEditPhaseName={handleEditPhaseName}
                         isReadOnly={isReadOnly}
+                        nameOf={nameOf}
                     />
                 ))}
             </div>
@@ -354,6 +363,21 @@ export function MilestonesTab({ project }: MilestonesTabProps) {
                                         onChange={(e) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, name: e.target.value }})}
                                         className="bg-bg-primary h-9 text-xs"
                                     />
+                                </div>
+
+                                <div className="space-y-2 text-left">
+                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Assigned To</Label>
+                                    <Select
+                                        value={editingTaskData.task.assignedTechId || 'none'}
+                                        onValueChange={(v) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, assignedTechId: v === 'none' ? null : v }})}
+                                    >
+                                        <SelectTrigger className="bg-bg-primary h-9 text-xs"><SelectValue /></SelectTrigger>
+                                        <SelectContent className="bg-bg-elevated border-border-main">
+                                            <SelectItem value="none" className="text-xs">Unassigned (whole crew)</SelectItem>
+                                            {crew.map(c => <SelectItem key={c.id} value={c.id} className="text-xs">{c.name} · {c.role}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    {crew.length === 0 && <p className="text-[9px] text-text-muted">Add crew in Manage Team to assign tasks.</p>}
                                 </div>
 
                                 <div className="space-y-3">

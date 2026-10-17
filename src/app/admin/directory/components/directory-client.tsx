@@ -49,7 +49,7 @@ import {
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AddPersonnelDialog } from './add-personnel-dialog';
-import { canEditUserAccess, NON_ADMIN_ROLES } from '@/lib/profile-permissions';
+import { canEditUserAccess, canGrantProjectManager, NON_ADMIN_ROLES } from '@/lib/profile-permissions';
 import { useToast } from '@/hooks/use-toast';
 import { cn, isInactiveTechnician } from '@/lib/utils';
 import { 
@@ -83,11 +83,11 @@ const ALL_ROLES = [
     { value: 'super_admin', label: 'Super Admin' },
     { value: 'dispatch_admin', label: 'Dispatch Admin' },
     { value: 'payroll_admin', label: 'Payroll Admin' },
+    { value: 'sales', label: 'Sales (external)' },
     { value: 'project_manager', label: 'Project Manager' },
     { value: 'project_lead', label: 'Project Lead' },
     { value: 'field_technician', label: 'Field Technician' },
     { value: 'client', label: 'Client User' },
-    { value: 'sales', label: 'Sales' },
 ];
 
 type DirectoryClientProps = {
@@ -169,6 +169,10 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
         const me = personnel.find(p => p.id === auth.currentUser?.uid);
         if (selectedRoles.some(r => !NON_ADMIN_ROLES.includes(r)) && !canEditUserAccess(me)) {
             toast({ variant: 'destructive', title: 'Super admin only', description: 'Only a super admin can grant an admin role. Approve with a tech, sales or client role, or ask a super admin.' });
+            return;
+        }
+        if (selectedRoles.includes('project_manager') && !canGrantProjectManager(me)) {
+            toast({ variant: 'destructive', title: 'Dispatch or super admin only', description: 'Only a dispatch admin or super admin can make someone a Project Manager.' });
             return;
         }
         setApproving(true);

@@ -31,7 +31,7 @@ export type DirectoryEntry = {
   clientCompany?: string;
 };
 
-const ADMIN_ROLES = ['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager', 'admin'];
+const ADMIN_ROLES = ['super_admin', 'dispatch_admin', 'payroll_admin', 'admin'];
 
 type UserDoc = RoleLike & {
   name?: string; preferredName?: string; avatarUrl?: string; photoURL?: string; clientCompany?: string;

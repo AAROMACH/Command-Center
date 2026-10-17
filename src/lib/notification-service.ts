@@ -9,7 +9,7 @@ type Entity = { id: string; type: 'assignment' | 'project' | 'request' | 'lead' 
  * let them read other users (to find admins or their addresses) or write
  * notification ids through every path, so their alerts silently vanished.
  */
-async function post(payload: { userId?: string; audience?: 'admins' | 'payroll_admins'; title: string; body: string; entity?: Entity }) {
+async function post(payload: { userId?: string; audience?: 'admins' | 'payroll_admins' | 'project_managers'; title: string; body: string; entity?: Entity; inAppOnly?: boolean }) {
   try {
     const idToken = await auth.currentUser?.getIdToken();
     if (!idToken) {
@@ -44,5 +44,14 @@ export const NotificationService = {
    *  addition to super_admin, since dispatch_admin has no payroll stake. */
   async notifyPayrollAdmins(title: string, body: string, entity?: Entity) {
     return post({ audience: 'payroll_admins', title, body, entity });
+  },
+
+  /**
+   * Project activity for every Project Manager. `routine` (task done,
+   * check-in/out, a document) stays in-app; status changes and new projects
+   * also go out by email/SMS per each PM's preferences.
+   */
+  async notifyProjectManagers(projectId: string, title: string, body: string, routine = true) {
+    return post({ audience: 'project_managers', title, body, entity: { id: projectId, type: 'project' }, inAppOnly: routine });
   },
 };

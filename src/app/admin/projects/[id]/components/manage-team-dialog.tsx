@@ -14,6 +14,8 @@ import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { isAssignableTechnician } from '@/lib/utils';
+import { crewFields } from '@/lib/project-access';
+import { NotificationService } from '@/lib/notification-service';
 
 type ManageTeamDialogProps = {
     isOpen: boolean;
@@ -75,7 +77,9 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
     const handleSaveChanges = async () => {
         try {
             const docRef = doc(db, 'projects', project.id);
-            await updateDoc(docRef, { team });
+            // Keep the crew ids / named lead the security rules read in step.
+            await updateDoc(docRef, { team, ...crewFields(team) });
+            NotificationService.notifyProjectManagers(project.id, 'Crew updated', `${project.name} crew is now ${team.length} ${team.length === 1 ? 'person' : 'people'}.`);
             toast({ title: 'Team Registry Updated', description: 'Personnel changes synchronized with cloud folder.' });
             setIsOpen(false);
         } catch (e: any) {

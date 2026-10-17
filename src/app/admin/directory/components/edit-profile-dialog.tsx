@@ -43,12 +43,12 @@ type EditProfileDialogProps = {
 // rest of the app. Labels / descriptions / portal come from the central
 // SUBROLE_DEFINITIONS map (permissions.ts).
 const ROLE_ICONS: Partial<Record<AppRole, typeof User>> = Object.fromEntries(
-  [...ROLE_DATA.admin, ...ROLE_DATA.tech, ...ROLE_DATA.client, ...ROLE_DATA.office].map(r => [r.id, r.icon])
+  [...ROLE_DATA.admin, ...ROLE_DATA.external, ...ROLE_DATA.tech, ...ROLE_DATA.client].map(r => [r.id, r.icon])
 ) as Partial<Record<AppRole, typeof User>>;
 
 const PORTAL_GROUPS: { portal: SubrolePortal; label: string; icon: typeof User; accent: string }[] = [
   { portal: 'admin', label: 'Admin Subroles', icon: ShieldCheck, accent: 'text-brand-red' },
-  { portal: 'sales', label: 'Sales Subroles', icon: Handshake, accent: 'text-amber-400' },
+  { portal: 'sales', label: 'External Access', icon: Handshake, accent: 'text-amber-400' },
   { portal: 'tech', label: 'Tech Subroles', icon: Wrench, accent: 'text-brand-blue' },
   { portal: 'client', label: 'Client Subroles', icon: Building2, accent: 'text-brand-emerald' },
 ];

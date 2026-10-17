@@ -338,8 +338,11 @@ export type Project = {
   startDate: string;
   startTime?: string;
   estimatedDuration: string;
+  /** Crew ids, derived from `team` on every team change (lib/project-access crewFields). */
   assignedTechnicianIds: string[]; 
   team: ProjectTeamMember[];
+  /** The named lead (team role "Project Lead"); derived from `team`. */
+  projectLeadId?: string | null;
   phases: Phase[];
   scope: string;
   onsiteContactName?: string;
@@ -380,6 +383,8 @@ export type Task = {
   requiresOther?: boolean;
   otherRequirementLabel?: string;
   estimatedHours?: number;
+  /** Crew member this task is assigned to (set by the PM or project lead). */
+  assignedTechId?: string | null;
   photoUrl?: string;
   textValue?: string;
   numericValue?: number;

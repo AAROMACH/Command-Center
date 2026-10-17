@@ -33,21 +33,23 @@ type OverviewTabProps = {
     project: Project;
     allTechnicians: Technician[];
     dailyLogs: ProjectDailyLog[];
+    /** Project Economics (labor cost from pay rates, invoices, profit). Off for a Project Manager. */
+    showMoney?: boolean;
 };
 
-export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabProps) {
+export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = true }: OverviewTabProps) {
     // Project economics from the real expenses / invoices linked to this
     // project (was the demo lists in lib/data).
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     useEffect(() => {
-        if (!project?.id) return;
+        if (!project?.id || !showMoney) return;
         const unsubE = onSnapshot(query(collection(db, 'expenses'), where('projectId', '==', project.id)),
             snap => setExpenses(snap.docs.map(d => ({ ...d.data(), id: d.id } as Expense))), () => setExpenses([]));
         const unsubI = onSnapshot(query(collection(db, 'invoices'), where('projectId', '==', project.id)),
             snap => setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice))), () => setInvoices([]));
         return () => { unsubE(); unsubI(); };
-    }, [project?.id]);
+    }, [project?.id, showMoney]);
     const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
     const [isAddingNote, setIsAddingNote] = useState(false);
     const [newNoteText, setNewNoteText] = useState("");
@@ -290,6 +292,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
                         </div>
                     </div>
 
+                     {showMoney && (
                      <div className="field-group !pb-2">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="field-group-title !mb-0 font-bold uppercase tracking-widest"><DollarSign className="text-brand-red h-4 w-4"/> Project Economics</h3>
@@ -459,6 +462,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs }: OverviewTabP
                             </CollapsibleContent>
                         </Collapsible>
                     </div>
+                     )}
                 </div>
 
                 <div className="lg:col-span-1 space-y-4">

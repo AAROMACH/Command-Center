@@ -18,11 +18,11 @@ export type RoleOption = {
     permissions: string[];
 };
 
-// Note: the 'office' subrole (sales) is NOT blanket-admin — isAdmin() only
-// covers the 4 subroles in the 'admin' bucket below, matching
-// firestore.rules/storage.rules. Sales unlocks the admin portal but gets only
-// the specific permissions SUBROLE_DEFINITIONS (permissions.ts) grants it.
-export const ROLE_DATA: Record<'admin' | 'tech' | 'client' | 'office', RoleOption[]> = {
+// Groups match SUBROLE_DEFINITIONS (permissions.ts): Admin = the 3 office
+// operations roles isAdmin() covers (and firestore.rules/storage.rules);
+// External = limited accounts outside operations (Sales; a bookkeeper later)
+// that only open their own portal; Technician includes Project Manager.
+export const ROLE_DATA: Record<'admin' | 'external' | 'tech' | 'client', RoleOption[]> = {
     admin: [
         { 
             id: 'super_admin', 
@@ -45,21 +45,21 @@ export const ROLE_DATA: Record<'admin' | 'tech' | 'client' | 'office', RoleOptio
             icon: Banknote,
             permissions: ['Approve Weekly Logs', 'Manage Reimbursements', 'Payout Authorization']
         },
-        { 
-            id: 'project_manager', 
-            label: 'Project Manager', 
-            desc: 'Strategic deployment oversight.', 
-            icon: Shield,
-            permissions: ['Create Projects', 'Phase Management', 'Task Definition', 'Resource Planning']
-        },
     ],
     tech: [
         { 
+            id: 'project_manager', 
+            label: 'Project Manager', 
+            desc: 'Runs every project from the Tech Portal.', 
+            icon: Shield,
+            permissions: ['All Projects', 'Create & Staff Projects', 'Phases & Tasks', 'Timesheets & Closeout']
+        },
+        { 
             id: 'project_lead', 
             label: 'Project Lead', 
-            desc: 'On-site lead technician.', 
+            desc: 'Crew boss on projects where they are the named lead.', 
             icon: Hammer,
-            permissions: ['Update Project Progress', 'Field Documentation', 'Task Management', 'Site Reporting']
+            permissions: ['Crew Boss on Own Projects', 'Phases & Tasks', 'Assign Crew Tasks', 'Field Documentation']
         },
         { 
             id: 'field_technician', 
@@ -78,7 +78,7 @@ export const ROLE_DATA: Record<'admin' | 'tech' | 'client' | 'office', RoleOptio
             permissions: ['View Project Status', 'Submit Service Requests', 'View Work History']
         },
     ],
-    office: [
+    external: [
         {
             id: 'sales',
             label: 'Sales',

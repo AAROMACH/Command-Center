@@ -65,6 +65,8 @@ import { useRouter } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
 import { format, parseISO } from 'date-fns';
 import { isAdmin, isSuperAdmin } from '@/lib/permissions';
+import { canManageProjects } from '@/lib/project-access';
+import { NotificationService } from '@/lib/notification-service';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
@@ -73,9 +75,14 @@ type ProjectDetailClientProps = {
     technicians: Technician[];
     documents: ProjectDocument[];
     timesheets: ProjectDailyLog[];
+    /** 'manager' = a Project Manager in the Tech Portal: same tools, no
+     *  Payouts tab or project economics (pay stays with payroll/super). */
+    mode?: 'admin' | 'manager';
 };
 
-export function ProjectDetailClient({ project, technicians, documents, timesheets }: ProjectDetailClientProps) {
+export function ProjectDetailClient({ project, technicians, documents, timesheets, mode = 'admin' }: ProjectDetailClientProps) {
+    const manager = mode === 'manager';
+    const basePath = manager ? '/tech/projects' : '/admin/projects';
     const [activeTab, setActiveTab] = useState('overview');
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [editedProject, setEditedProject] = useState<Project>(project);
@@ -122,6 +129,10 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
             await updateDoc(docRef, {
                 ...editedProject
             });
+            if (editedProject.status !== project.status) {
+                NotificationService.notifyProjectManagers(project.id, 'Project status changed',
+                    `${project.name} is now ${editedProject.status} (was ${project.status}).`, false);
+            }
             setIsEditOpen(false);
             toast({
                 title: "Project Registry Updated",
@@ -136,13 +147,14 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
         try {
             const docRef = doc(db, 'projects', project.id);
             await updateDoc(docRef, { status: 'completed' });
+            NotificationService.notifyProjectManagers(project.id, 'Project closed', `${project.name} was marked completed.`, false);
             setIsEditOpen(false);
             toast({
                 variant: "destructive",
                 title: "Project Archived",
                 description: `${project.name} has been moved to the historical archive.`,
             });
-            router.push('/admin/projects');
+            router.push(basePath);
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Archive Failed', description: e.message });
         }
@@ -151,7 +163,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
     return (
         <div>
             <div className="detail-nav">
-                <Link href="/admin/projects" className="detail-back">
+                <Link href={basePath} className="detail-back">
                     <ChevronLeft size={16} />
                     Back to Projects
                 </Link>
@@ -193,15 +205,15 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                 <button className={`detail-tab ${activeTab === 'milestones' ? 'active' : ''}`} onClick={() => setActiveTab('milestones')}>Milestones</button>
                 <button className={`detail-tab ${activeTab === 'documents' ? 'active' : ''}`} onClick={() => setActiveTab('documents')}>Documents</button>
                 <button className={`detail-tab ${activeTab === 'timesheets' ? 'active' : ''}`} onClick={() => setActiveTab('timesheets')}>Timesheets</button>
-                <button className={`detail-tab ${activeTab === 'payouts' ? 'active' : ''}`} onClick={() => setActiveTab('payouts')}>Payouts</button>
+                {!manager && <button className={`detail-tab ${activeTab === 'payouts' ? 'active' : ''}`} onClick={() => setActiveTab('payouts')}>Payouts</button>}
             </div>
 
             <div className="tab-content">
-                {activeTab === 'overview' && <OverviewTab project={project} allTechnicians={technicians} dailyLogs={timesheets} />}
-                {activeTab === 'milestones' && <MilestonesTab project={project} />}
+                {activeTab === 'overview' && <OverviewTab project={project} allTechnicians={technicians} dailyLogs={timesheets} showMoney={!manager} />}
+                {activeTab === 'milestones' && <MilestonesTab project={project} technicians={technicians} />}
                 {activeTab === 'documents' && <DocumentsTab project={project} documents={documents} />}
                 {activeTab === 'timesheets' && <TimesheetsTab timesheets={timesheets} technicians={technicians} project={project} />}
-                {activeTab === 'payouts' && <PayoutsTab projectId={project.id} technicians={technicians} />}
+                {activeTab === 'payouts' && !manager && <PayoutsTab projectId={project.id} technicians={technicians} />}
             </div>
 
             <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
@@ -248,7 +260,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                                         <SelectContent>
                                             <SelectItem value="active">Active</SelectItem>
                                             <SelectItem value="on-hold">On Hold</SelectItem>
-                                            <SelectItem value="completed" disabled={!isAdmin(currentUser) || !allTasksDone}>
+                                            <SelectItem value="completed" disabled={!(isAdmin(currentUser) || canManageProjects(currentUser)) || !allTasksDone}>
                                                 Completed {!allTasksDone && '(Milestones Pending)'}
                                             </SelectItem>
                                         </SelectContent>

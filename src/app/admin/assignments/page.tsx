@@ -36,6 +36,7 @@ import {
   FileText,
   Trash2,
   Check,
+  Download,
 } from "lucide-react";
 import type { WorkOrder, Technician, WeeklyLog } from "@/lib/types";
 import { externalWorkOrderId, isImported } from "@/lib/work-order-identity";
@@ -75,6 +76,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn, formatCityState, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
 import { DateRange } from "react-day-picker";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { exportAssignmentsCsv } from '@/app/admin/reports/components/history-tabs';
 import { isAdmin, isPayAdmin } from "@/lib/permissions";
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { WorkOrderId } from '@/components/work-order-id';
@@ -529,6 +531,13 @@ export default function AssignmentsHubPage() {
                 </FilterSection>
               </FiltersPopover>
               <DateRangeButton value={dateRange} onChange={setDateRange} />
+              {/* Every job matching the search / filters / dates — both tabs,
+                  any status — not just the page on screen. */}
+              <Button variant="outline" className="h-10 shrink-0 text-[10px] font-bold uppercase tracking-widest" disabled={filteredWorkOrders.length === 0}
+                onClick={() => exportAssignmentsCsv(filteredWorkOrders, id => techById.get(id)?.name, isPayAdmin(currentUser))}
+                title={`Export ${filteredWorkOrders.length} job${filteredWorkOrders.length === 1 ? '' : 's'} with locations`}>
+                <Download size={14} className="mr-1.5" /> CSV ({filteredWorkOrders.length})
+              </Button>
             </div>
         </div>
       </header>

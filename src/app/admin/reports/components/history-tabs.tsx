@@ -71,6 +71,33 @@ export function jobRecord(job: WorkOrder, nameOf: (id: string) => string | undef
     };
 }
 
+/** Address pieces for a job's location (Google "street, city, ST zip, USA" or looser text). */
+export function locationParts(job: Pick<WorkOrder, 'location' | 'locationText' | 'lat' | 'lng'>) {
+    const raw = (job.location || job.locationText || '').trim();
+    const zip = raw.match(/\b\d{5}(?:-\d{4})?\b/)?.[0] || '';
+    const parts = raw.split(',').map(p => p.trim()).filter(p => p && p.toUpperCase() !== 'USA');
+    let city = '', state = '';
+    const stIdx = parts.findIndex(p => /^[A-Z]{2}(\s+\d{5}(-\d{4})?)?$/i.test(p));
+    if (stIdx > 0) { state = parts[stIdx].slice(0, 2).toUpperCase(); city = parts[stIdx - 1]; }
+    else if (parts.length >= 2) {
+        const m = parts[parts.length - 1].match(/^([A-Za-z]{2})\b/);
+        if (m) { state = m[1].toUpperCase(); city = parts[parts.length - 2]; }
+    }
+    const street = stIdx > 1 ? parts.slice(0, stIdx - 1).join(', ') : parts.length > 2 ? parts[0] : '';
+    return { address: raw, street, city, state, zip, lat: job.lat ?? '', lng: job.lng ?? '' };
+}
+
+/** Assignments page export: every job matching its filters, with full location. */
+export function exportAssignmentsCsv(jobs: WorkOrder[], nameOf: (id: string) => string | undefined, withPay: boolean) {
+    const header = [...JOB_CSV_HEADER, 'Scheduled Time', 'Priority', 'Job Type', 'Street', 'City', 'State', 'ZIP', 'Latitude', 'Longitude', ...(withPay ? ['Pay'] : [])];
+    downloadCsv('assignments', header, jobs.map(j => {
+        const r = jobRecord(j, nameOf);
+        const l = locationParts(j);
+        return [...jobCsvRow(r), j.scheduleTime || '', j.priority || '', j.jobType || j.projectType || '',
+            l.street, l.city, l.state, l.zip, l.lat, l.lng, ...(withPay ? [Number(j.pay) || 0] : [])];
+    }));
+}
+
 const JOB_CSV_HEADER = ['Assignment ID', 'Work Order ID', 'Title', 'Date Assigned', 'Scheduled Date', 'Client', 'Location', 'Technicians', 'Status', 'Source'];
 const jobCsvRow = (r: JobRecord) => [r.assignmentId, r.workOrderId, r.title, r.assignedOn || '', r.scheduled || '', r.client, r.location, r.techs, r.status, r.source];
 

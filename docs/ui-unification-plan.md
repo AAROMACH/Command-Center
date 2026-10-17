@@ -91,6 +91,30 @@ Replace hand-rolled patterns with components so pages can't drift:
 - `DialogShell` (sizes sm / md / lg / full; standard header and footer)
 - `ChartCard` (ChartContainer + status colors + tooltip)
 
+### Phase 2b — List controls that work the same on every page (~3 days)
+Every list or table page (jobs, assignments, requests, projects, clients,
+sites, directory, CRM, quotes, invoices, assets, plans, weekly logs, payroll,
+tech and client lists) gets the same toolbar from `DataTable`, and each control
+must actually work — verified per page, not assumed.
+
+| Control | Standard behavior |
+|---|---|
+| **Search** | One box, matches every visible text column (IDs incl. Field Nation #, title, client, location, tech names); debounced; resets to page 1; "×" to clear. |
+| **Sort** | Sort menu and clickable column headers; asc/desc toggle; correct for dates in either format (MM-DD-YYYY / YYYY-MM-DD), numbers and text; remembered per page. |
+| **Filters** | Filter popover + chips showing what's on; accurate active count; one **Reset**; options built from real values (no option that can never match); remembered per page. |
+| **Column filters** | Filter icon on filterable column headers (status, client, tech, type, date) — same logic as the popover, so the two never disagree. |
+| **Date range** | One picker, same presets everywhere (Today, This week, Last 30 days, This month, Custom). |
+| **Select all / bulk actions** | Header checkbox selects the **filtered** rows (with "Select all N matching" when paged); selection clears when filters change so hidden rows are never acted on; bulk bar shows the count and the actions. |
+| **Pagination** | `ListPager` everywhere a list can exceed ~25 rows; resets on search/filter change. |
+| **Export CSV** | Exports every row matching the filters (not just the page), same columns as the table plus IDs. |
+| **Empty / no-match** | "No jobs match these filters" + Reset button, distinct from "No jobs yet". |
+| **Mobile** | Toolbar collapses to Search + Filters button + Sort; no control hidden on phones without an alternative. |
+
+Each page gets a checklist row in the audit table below (built from a code
+trace), and is only marked done when every control on it passes.
+
+<!-- LIST-CONTROLS-AUDIT -->
+
 ### Phase 3 — Migrate pages, highest traffic first (~1–2 weeks)
 Each page: swap to the building blocks, apply the type scale, fix copy. No
 behavior changes; one portal per PR so review stays manageable.

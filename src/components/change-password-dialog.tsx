@@ -59,7 +59,7 @@ export function ChangePasswordDialog({ isOpen, setIsOpen }: { isOpen: boolean, s
       console.error('Password update error:', error);
       toast({ 
         variant: 'destructive', 
-        title: 'Update Failed', 
+        title: 'Save failed', 
         description: error.code === 'auth/wrong-password' 
           ? 'Current password provided is incorrect.' 
           : error.message || 'Unable to update credentials.' 

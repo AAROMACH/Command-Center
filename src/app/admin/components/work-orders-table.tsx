@@ -376,7 +376,7 @@ export const WorkOrdersTable = React.memo(({
     setIsEditDialogOpen(false);
     setSelectedOrder(null);
     setEditedOrder(null);
-    toast({ title: "Registry Updated", description: "Job entry synchronized." });
+    toast({ title: "Saved", description: "Job entry synchronized." });
   };
 
   const handleDeleteOrder = () => {
@@ -416,7 +416,7 @@ export const WorkOrdersTable = React.memo(({
         toast({ title: `${label} Archived`, description: "Moved to Archives — recoverable from the Archives page." });
       } catch (e: any) {
         console.error("Archive Error:", e);
-        toast({ variant: "destructive", title: "Archive Failed", description: e?.message || "Could not archive. Please try again." });
+        toast({ variant: "destructive", title: "Archive failed", description: e?.message || "Could not archive. Please try again." });
       }
     })();
   };
@@ -426,7 +426,7 @@ export const WorkOrdersTable = React.memo(({
     const docRef = doc(db, collectionName, woId);
     updateDoc(docRef, updates).catch((e: any) => {
         console.error("Job Update Error:", e);
-        toast({ variant: "destructive", title: "Update Failed", description: e.message });
+        toast({ variant: "destructive", title: "Save failed", description: e.message });
     });
   }, [mode, toast]);
 

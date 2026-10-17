@@ -123,7 +123,7 @@ export default function ClientProfilePage() {
             await auditFieldChange('users', currentUser.id, currentUser.id, currentUser.name || currentUser.id, savedSnapshotRef.current, updates);
             await updateDoc(doc(db, 'users', currentUser.id), updates);
             savedSnapshotRef.current = { ...updates };
-            toast({ title: "Profile Registry Updated", description: "Your contact and billing parameters have been committed." });
+            toast({ title: "Profile saved", description: "Your contact and billing parameters have been committed." });
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: err.message });
         } finally {

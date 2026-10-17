@@ -260,7 +260,7 @@ export default function ActivityAuditPage() {
 
     const handleBroadcast = useCallback(async () => {
         if (!newMessage.subject || !newMessage.body) {
-            toast({ variant: 'destructive', title: 'Transmission Error', description: 'Subject and body are required for broadcast.' });
+            toast({ variant: 'destructive', title: 'Send failed', description: 'Subject and body are required for broadcast.' });
             return;
         }
 
@@ -359,7 +359,7 @@ export default function ActivityAuditPage() {
             });
             toast({ title: 'Archived', description: `Assignment ${woId.toUpperCase()} moved to Archives — recoverable from the Job Archive.` });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Archive Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Archive failed', description: e.message });
         }
         setDeleteConfirmId(null);
     };
@@ -435,7 +435,7 @@ export default function ActivityAuditPage() {
             });
             toast({ title: 'Archived', description: `"${event.eventLabel}" moved to archive.` });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Archive Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Archive failed', description: e.message });
         }
     };
 
@@ -644,7 +644,7 @@ export default function ActivityAuditPage() {
         updateDoc(docRef, updates).catch((e: any) => {
             const woRef = doc(db, 'workOrders', woId);
             updateDoc(woRef, updates).catch(err => {
-                toast({ variant: 'destructive', title: 'Update Failed', description: err.message });
+                toast({ variant: 'destructive', title: 'Save failed', description: err.message });
             });
         });
     };

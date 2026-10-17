@@ -53,7 +53,7 @@ export default function LoginPage() {
     try {
       await applyPersistence();
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
-      toast({ title: "Authorization Successful", description: "Terminal access granted." });
+      toast({ title: "Approved", description: "Access granted." });
       await handleRedirect(userCredential.user);
     } catch {
       toast({ variant: "destructive", title: "Access Denied", description: "Invalid credentials. Please verify your email and password." });
@@ -109,7 +109,7 @@ export default function LoginPage() {
         }
       }
 
-      toast({ title: "Google Sign-In Successful", description: "Terminal access granted." });
+      toast({ title: "Google Sign-In Successful", description: "Access granted." });
       await handleRedirect(firebaseUser);
     } catch (err: any) {
       const code: string = err.code || "";

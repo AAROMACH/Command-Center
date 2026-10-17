@@ -170,7 +170,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
         
         const requiresSuper = status === 'rejected' || status === 'approved';
         if (requiresSuper && !userIsSuper) {
-            toast({ variant: 'destructive', title: 'Authorization Restricted', description: 'This authorization path requires Super Admin credentials.' });
+            toast({ variant: 'destructive', title: 'Not allowed', description: 'This authorization path requires Super Admin credentials.' });
             return;
         }
 
@@ -213,7 +213,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                 setIsReviewOpen(false);
             }
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Update Failed", description: e.message });
+            toast({ variant: "destructive", title: "Save failed", description: e.message });
         }
     };
 
@@ -228,7 +228,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                 setLinkedMission(wo);
                 setIsMissionCardOpen(true);
             } else {
-                toast({ variant: 'destructive', title: 'Registry Discrepancy', description: 'Linked assignment record could not be located in current terminal buffer.' });
+                toast({ variant: 'destructive', title: 'Data mismatch', description: 'Linked assignment record could not be located in current terminal buffer.' });
             }
         }
     };

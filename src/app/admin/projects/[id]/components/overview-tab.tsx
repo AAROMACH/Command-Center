@@ -159,7 +159,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                 setIsAddingNote(false);
                 toast({ title: "Note Added" });
             } catch (e: any) {
-                toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+                toast({ variant: 'destructive', title: 'Save failed', description: e.message });
             }
         }
     };
@@ -173,7 +173,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
             });
             toast({ title: "Note Removed", description: "Site intelligence has been updated." });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
     };
 
@@ -189,7 +189,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                 description: "Changes saved.",
             });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
     };
 

@@ -77,7 +77,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
       console.warn("Google Maps API Handshake Restricted.");
       toast({
         variant: "destructive",
-        title: "Registry Security Error",
+        title: "Google Maps unavailable",
         description: "Google Maps API referer or activation restriction active. Please authorize this workstation URL in your Cloud Console.",
       });
     };
@@ -173,7 +173,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
     }));
     setIsRegistryOpen(false);
     toast({
-        title: "Registry Match Selected",
+        title: "Client selected",
         description: `${name} has been linked to this service request.`,
     });
   };
@@ -239,14 +239,14 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
       }
       const url = URL.createObjectURL(file);
       setImages([...images, url]);
-      toast({ title: "Visual Asset Buffered", description: `${file.name} ready for intake.` });
+      toast({ title: "Photo ready", description: `${file.name} ready for intake.` });
     } else {
       if (docs.length >= 2) {
         toast({ variant: "destructive", title: "Buffer Full", description: "Maximum 2 technical documents authorized." });
         return;
       }
       setDocs([...docs, file.name]);
-      toast({ title: "Technical Asset Buffered", description: `${file.name} ready for intake.` });
+      toast({ title: "File ready", description: `${file.name} ready for intake.` });
     }
     
     e.target.value = "";

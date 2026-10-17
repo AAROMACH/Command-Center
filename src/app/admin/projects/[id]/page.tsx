@@ -63,7 +63,7 @@ export default function ProjectDetailPage() {
           <div className="flex h-[400px] items-center justify-center">
               <div className="text-center space-y-4">
                   <div className="h-8 w-8 border-4 border-brand-red border-t-transparent rounded-full animate-spin mx-auto" />
-                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Accessing Registry Folder...</p>
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Loading project...</p>
               </div>
           </div>
       );

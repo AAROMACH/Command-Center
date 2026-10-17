@@ -78,7 +78,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
       console.warn("Google Maps API Handshake Restricted.");
       toast({
         variant: "destructive",
-        title: "Registry Security Error",
+        title: "Google Maps unavailable",
         description: "Google Maps API referer or activation restriction active. Please authorize this workstation URL in your Cloud Console.",
       });
     };
@@ -177,8 +177,8 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
     }));
     setIsRegistryOpen(false);
     toast({
-        title: "Registry Match Selected",
-        description: `${name} has been linked to this project folder.`,
+        title: "Client selected",
+        description: `${name} is the client for this project.`,
     });
   };
 

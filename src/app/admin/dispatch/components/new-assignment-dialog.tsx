@@ -82,7 +82,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
       console.warn("Google Maps API Handshake Restricted.");
       toast({
         variant: "destructive",
-        title: "Registry Security Error",
+        title: "Google Maps unavailable",
         description: "Google Maps API referer or activation restriction active. Please authorize this workstation URL in your Cloud Console.",
       });
     };
@@ -248,7 +248,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
     }));
     setIsRegistryOpen(false);
     toast({
-        title: "Registry Match Selected",
+        title: "Client selected",
         description: `${name} has been linked to this dispatch entry.`,
     });
   };

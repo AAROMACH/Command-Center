@@ -153,7 +153,7 @@ export default function FinancialsPage() {
             await updateDoc(doc(db, 'expenses', id), { status });
             toast({ title: `Expense ${status}`, description: `The expense has been successfully ${status.toLowerCase()}.` });
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Update Failed", description: e.message });
+            toast({ variant: "destructive", title: "Save failed", description: e.message });
         }
     };
     
@@ -233,7 +233,7 @@ export default function FinancialsPage() {
         }
 
         if (rows.length === 1) {
-            toast({ title: 'Export Terminal Empty', description: 'No records found matching the specified temporal window.' });
+            toast({ title: 'Nothing to export', description: 'No records found matching the specified temporal window.' });
             return;
         }
 

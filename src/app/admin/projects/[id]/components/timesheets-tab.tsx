@@ -210,7 +210,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
 
             toast({ title: 'Timesheet Saved', description: 'Timesheet log committed to project.' });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
     };
 
@@ -238,11 +238,11 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
                 });
             }
 
-            toast({ title: 'Registry Synchronized', description: 'Timesheet parameters have been updated.' });
+            toast({ title: 'Saved', description: 'Timesheet parameters have been updated.' });
             setIsEditLogOpen(false);
             setEditingLog(null);
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
     };
 
@@ -256,11 +256,11 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
             await updateDoc(projectRef, {
                 actualHours: Math.max(0, (project.actualHours || 0) - (logToDelete.hoursWorked || 0))
             });
-            toast({ title: 'Record Purged', description: 'Timesheet entry removed from operational ledger.' });
+            toast({ title: 'Deleted', description: 'Timesheet entry removed from operational ledger.' });
             setIsEditLogOpen(false);
             setEditingLog(null);
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Purge Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Delete failed', description: e.message });
         }
     };
 

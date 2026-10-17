@@ -23,6 +23,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import { NotificationService } from '@/lib/notification-service';
 
 type MilestonesTabProps = {
     project: Project;
@@ -288,10 +289,22 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
         try {
             const docRef = doc(db, 'projects', project.id);
             await updateDoc(docRef, { phases: editablePhases });
+            // Tell each crew member about tasks newly assigned to them.
+            const prevOwner = new Map((project.phases || []).flatMap(p => (p.tasks || []).map(t => [t.id, t.assignedTechId || null] as const)));
+            const fresh = new Map<string, string[]>();
+            editablePhases.forEach(p => (p.tasks || []).forEach(t => {
+                if (t.assignedTechId && t.assignedTechId !== prevOwner.get(t.id) && !t.isCompleted) {
+                    fresh.set(t.assignedTechId, [...(fresh.get(t.assignedTechId) || []), t.name]);
+                }
+            }));
+            fresh.forEach((names, techId) => NotificationService.notify(techId,
+                names.length === 1 ? 'Task assigned to you' : `${names.length} tasks assigned to you`,
+                `${project.name}: ${names.slice(0, 5).join(', ')}${names.length > 5 ? '…' : ''}`,
+                { id: project.id, type: 'project' }));
             setIsEditing(false);
-            toast({ title: "Milestones Updated", description: "Project phases and tasks committed to registry." });
+            toast({ title: "Tasks saved", description: "Phases and tasks saved." });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
     };
 

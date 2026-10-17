@@ -618,3 +618,16 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Touch screens have no hover, so controls revealed with
+   `opacity-0 group-hover:opacity-100` (edit/delete task, remove route stop,
+   delete notification, photo actions...) were invisible on phones. Show
+   hover-revealed buttons, and overlays that hold buttons, when the device
+   can't hover. Decorative hover hints (icons) are left alone. */
+@media (hover: none) {
+  button.opacity-0[class*="group-hover"],
+  .opacity-0[class*="group-hover"]:has(button),
+  .opacity-0[class*="group-hover"]:has(a) {
+    opacity: 1 !important;
+  }
+}

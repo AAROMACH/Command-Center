@@ -465,7 +465,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                     `Log for week of ${localLog.weekOf} (tech: ${technician?.name ?? localLog.techId}) ${status.toLowerCase()} by ${adminName}. Total payout: $${finalTotal.toFixed(2)}`
                 );
             } catch (e: any) {
-                toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+                toast({ variant: 'destructive', title: 'Save failed', description: e.message });
             }
         }
     };
@@ -528,12 +528,12 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                 `Unsubmit approved by ${adminName} for week of ${localLog.weekOf} (tech: ${technician?.name ?? localLog.techId}). Log reverted from ${previousStatus} to Draft. Reason: ${localLog.unsubmitReason ?? '—'}`
             );
             toast({
-                title: "Unsubmit Authorized",
+                title: "Unsubmit approved",
                 description: `Weekly log for ${localLog.weekOf} has been reverted to Draft.`,
             });
             setIsOpen(false);
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Authorization Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Not allowed', description: e.message });
         }
     };
 
@@ -565,7 +565,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                 setLocalLog({ ...localLog, items: updatedItems });
                 if (isLogApproved) logReopenedPayEdit(localLog.id, localLog.weekOf);
                 // NOTIFICATION DISPATCHED ONLY ON FORMAL COMMIT
-                toast({ title: "Pay Registry Updated", description: "Audit adjustment reflected in current manifest." });
+                toast({ title: "Pay updated", description: "Audit adjustment reflected in current manifest." });
             } catch (e: any) {
                 toast({ variant: 'destructive', title: 'Sync Error', description: e.message });
             }
@@ -602,7 +602,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             await updateDoc(doc(db, 'weeklyLogs', localLog.id), { missingAssignmentReports: updatedReports });
             setLocalLog({ ...localLog, missingAssignmentReports: updatedReports });
             if (isLogApproved) logReopenedPayEdit(localLog.id, localLog.weekOf);
-            toast({ title: 'Pay Registry Updated', description: 'Missing-job audit saved to the log.' });
+            toast({ title: 'Pay updated', description: 'Missing-job audit saved to the log.' });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Sync Error', description: e.message });
         }
@@ -789,7 +789,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             await removeLogItem(item.id);
             toast({ title: "Sent to Dispatch Hub", description: "Job reset to unassigned and removed from this payroll manifest." });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Override Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Change failed', description: e.message });
         }
     };
 
@@ -812,7 +812,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             await removeLogItem(item.id);
             toast({ title: "Job Archived", description: "Moved to Archives and removed from this payroll manifest." });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Override Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Change failed', description: e.message });
         }
     };
 

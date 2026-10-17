@@ -293,7 +293,7 @@ export default function TechAssignmentsPage() {
             });
             toast({ title: `Marked as ${label}`, description: "Removed from your active board and flagged for admin review." });
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Update Failed", description: e.message });
+            toast({ variant: "destructive", title: "Save failed", description: e.message });
         }
     };
 

@@ -28,7 +28,7 @@ import { ThemeToggleSetting } from '@/components/theme-toggle-setting';
 export default function TechSettingsPage() {
     const [mounted, setMounted] = useState(false);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
-    const [routePreference, setRoutePreference] = useState<'optimized' | 'by-time' | 'by-mileage'>('optimized');
+    const [routePreference, setRoutePreference] = useState<'optimized' | 'by-time' | 'by-mileage'>('by-time'); // calendar's default
     const [mileageUnit, setMileageUnit] = useState<'mi' | 'km'>('mi');
     const { toast } = useToast();
 
@@ -73,11 +73,11 @@ export default function TechSettingsPage() {
                 notificationPreferences: updatedPrefs
             });
             toast({
-                title: "Protocol Synced",
+                title: "Settings saved",
                 description: `${type.toUpperCase()} alerts are now ${updatedPrefs[type] ? 'ACTIVE' : 'DISABLED'} for your profile.`,
             });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
+            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
     };
 
@@ -110,9 +110,9 @@ export default function TechSettingsPage() {
                         </CardHeader>
                         <CardContent className="space-y-3">
                             {[
-                                { id: 'email', label: 'Email Manifests', desc: 'Transmission of formal assignment folders and pay stubs.' },
-                                { id: 'sms', label: 'SMS Tactical Alerts', desc: 'Direct mission staging alerts and emergency pings.' },
-                                { id: 'push', label: 'Push Terminal', desc: 'On-device status alerts and check-in reminders.' },
+                                { id: 'email', label: 'Email', desc: 'Assignments, pay stubs and alerts sent to your email.' },
+                                { id: 'sms', label: 'Text Message', desc: 'Job and schedule alerts texted to your phone.' },
+                                { id: 'push', label: 'In-App', desc: 'Alerts in the bell at the top of the app.' },
                             ].map((item) => (
                                 <div key={item.id} className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary/50 border border-border-sub hover:border-text-muted transition-all">
                                     <div className="space-y-0.5 text-left">

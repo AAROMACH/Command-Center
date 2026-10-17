@@ -3,11 +3,12 @@
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, doc, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, setDoc, writeBatch } from 'firebase/firestore';
+import { crewFields } from '@/lib/project-access';
 import { ProjectsTabs } from "./components/projects-tabs";
 import { Button } from "@/components/ui/button";
 import { FolderKanban, Plus, Search, SlidersHorizontal, X, ArrowUpDown, Calendar as CalendarIcon, Activity, LayoutList, LayoutGrid } from "lucide-react";
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { NewProjectDialog } from "./components/new-project-dialog";
 import type { Project, Technician } from "@/lib/types";
@@ -60,12 +61,32 @@ export default function ProjectsPage() {
     return () => { unsubProj(); unsubTech(); };
   }, []);
 
+  // One pass per visit: fill in crew ids / named lead on projects that only
+  // ever saved `team` (the rules and Directory read the derived fields).
+  const healedRef = useRef(false);
+  useEffect(() => {
+    if (healedRef.current || allProjects.length === 0) return;
+    healedRef.current = true;
+    const stale = allProjects.filter(p => {
+      const want = crewFields(p.team || []);
+      const have = p.assignedTechnicianIds || [];
+      return want.assignedTechnicianIds.length !== have.length
+        || want.assignedTechnicianIds.some(id => !have.includes(id))
+        || (p.projectLeadId || null) !== want.projectLeadId;
+    });
+    for (let i = 0; i < stale.length; i += 400) {
+      const batch = writeBatch(db);
+      stale.slice(i, i + 400).forEach(p => batch.update(doc(db, 'projects', p.id), crewFields(p.team || [])));
+      batch.commit().catch(() => { healedRef.current = false; });
+    }
+  }, [allProjects]);
+
   const handleNewProject = async (newProject: Project) => {
     try {
         await setDoc(doc(db, 'projects', newProject.id), { ...newProject });
         toast({
-          title: "Create Record",
-          description: `${newProject.name} has been staged in the system.`,
+          title: "Project created",
+          description: `${newProject.name} is ready to staff.`,
         });
     } catch (e: any) {
         toast({ variant: "destructive", title: "Creation Failed", description: e.message });

@@ -97,7 +97,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
       console.warn("Google Maps API Handshake Restricted.");
       toast({
         variant: "destructive",
-        title: "Registry Security Error",
+        title: "Google Maps unavailable",
         description: "Google Maps API referer or activation restriction active. Please authorize this workstation URL in your Cloud Console.",
       });
     };
@@ -196,13 +196,13 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
             };
             onSave(newPerson);
             toast({
-                title: "Operative Linked",
+                title: "Person linked",
                 description: `Firestore profile created and linked to existing auth account for ${formData.email}.`
             });
             handleReset();
             setIsOpen(false);
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Enrollment Failed", description: e.message });
+            toast({ variant: "destructive", title: "Could not add person", description: e.message });
         }
         return;
     }
@@ -244,7 +244,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                     description: "This email already has a Firebase Auth account. Paste their Firebase UID in the field below to link the profile."
                 });
             } else {
-                toast({ variant: "destructive", title: "Enrollment Failed", description: error ?? 'Auth user creation failed.' });
+                toast({ variant: "destructive", title: "Could not add person", description: error ?? 'Auth user creation failed.' });
             }
             return;
         }
@@ -271,7 +271,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
             emailed = false;
         }
         toast({
-            title: "Operative Enrolled",
+            title: "Person added",
             description: emailed
                 ? `Auth account created. Password setup email sent to ${formData.email}.`
                 : `Auth account created, but the password email couldn't be sent. Use "Forgot password" on the login page for ${formData.email}.`,
@@ -280,7 +280,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         handleReset();
         setIsOpen(false);
     } catch (e: any) {
-        toast({ variant: "destructive", title: "Enrollment Failed", description: e.message });
+        toast({ variant: "destructive", title: "Could not add person", description: e.message });
     }
 };
   

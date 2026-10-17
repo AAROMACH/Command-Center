@@ -489,7 +489,7 @@ export function DispatchPageClient() {
       await deleteDoc(doc(db, 'assignments', wo.id));
       toast({ title: "Moved to Unassigned", description: "Job reset to unassigned for redispatch." });
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Update Failed", description: e.message });
+      toast({ variant: "destructive", title: "Save failed", description: e.message });
     }
   };
 
@@ -505,7 +505,7 @@ export function DispatchPageClient() {
       });
       toast({ title: "Job Archived", description: "Moved to Archives — recoverable from the Archives page." });
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Archive Failed", description: e.message });
+      toast({ variant: "destructive", title: "Archive failed", description: e.message });
     }
   };
 

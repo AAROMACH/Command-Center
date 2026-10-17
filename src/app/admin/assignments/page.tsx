@@ -386,7 +386,7 @@ export default function AssignmentsHubPage() {
         .then(() => deleteDoc(doc(db, 'assignments', editedOrder.id)))
         .catch((error: any) => {
           console.error("Unassign Error:", error);
-          toast({ variant: "destructive", title: "Update Failed", description: error.message });
+          toast({ variant: "destructive", title: "Save failed", description: error.message });
         });
     } else {
       const docRef = doc(db, 'assignments', editedOrder.id);
@@ -402,7 +402,7 @@ export default function AssignmentsHubPage() {
         })
         .catch((error: any) => {
           console.error("Registry Update Error:", error);
-          toast({ variant: "destructive", title: "Update Failed", description: error.message });
+          toast({ variant: "destructive", title: "Save failed", description: error.message });
         });
     }
 
@@ -446,7 +446,7 @@ export default function AssignmentsHubPage() {
       setOrderToArchive(null);
     } catch (e: any) {
       console.error("Archive Error:", e);
-      toast({ variant: "destructive", title: "Archive Failed", description: e?.message || "Could not archive assignment. Please try again." });
+      toast({ variant: "destructive", title: "Archive failed", description: e?.message || "Could not archive assignment. Please try again." });
     } finally {
       setIsArchiving(false);
     }
@@ -472,7 +472,7 @@ export default function AssignmentsHubPage() {
         const woRef = doc(db, 'workOrders', woId);
         updateDoc(woRef, sanitize(updates)).catch(err => {
             console.error("Field Update Error:", err);
-            toast({ variant: "destructive", title: "Update Failed", description: err.message });
+            toast({ variant: "destructive", title: "Save failed", description: err.message });
         });
     });
     

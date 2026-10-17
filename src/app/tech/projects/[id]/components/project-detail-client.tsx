@@ -219,9 +219,9 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
         try {
             const docRef = doc(db, 'projects', project.id);
             await updateDoc(docRef, { ...localProjectData });
-            toast({ title: "Registry Updated", description: "Operational briefing changes have been committed." });
+            toast({ title: "Saved", description: "Briefing saved." });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
+            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
     };
 
@@ -427,7 +427,7 @@ const TimesheetsTab = ({
             await updateDoc(doc(db, 'projectDailyLogs', logId), {
                 workSummary: notes
             });
-            toast({ title: "Registry Synced", description: "Field notes committed to registry." });
+            toast({ title: "Saved", description: "Field notes committed to registry." });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Sync Failure', description: e.message });
         } finally {
@@ -745,8 +745,8 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             const docRef = doc(db, 'projects', project.id);
             await updateDoc(docRef, { phases: updatedPhases });
             toast({
-                title: "Task Registry Updated",
-                description: "Mission status has been synchronized with the Command Center."
+                title: "Task updated",
+                description: "Task saved."
             });
             if (task && !task.isCompleted) {
                 const allDone = updatedPhases.every(ph => (ph.tasks || []).every(t => t.isCompleted)) && updatedPhases.some(ph => (ph.tasks || []).length);
@@ -756,7 +756,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
                     !allDone);
             }
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
     };
 
@@ -797,10 +797,10 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
         try {
             const logId = await createDocId(ID_PREFIXES.PROJECT_DAILY_LOG);
             await setDoc(doc(db, 'projectDailyLogs', logId), { ...newLog, id: logId });
-            toast({ title: 'Check In Validated', description: `Registry initialized for ${project.name}.` });
+            toast({ title: 'Checked in', description: `You are checked in on ${project.name}.` });
             NotificationService.notifyProjectManagers(project.id, 'Crew checked in', `${nameOf(currentUserId)} checked in on ${project.name}.`);
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
+            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
     };
 
@@ -842,10 +842,10 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
                 actualHours: (project.actualHours || 0) + hoursWorked
             });
 
-            toast({ title: 'Check Out Confirmed', description: `Session manifest committed to registry.` });
+            toast({ title: 'Checked out', description: `Your hours were logged.` });
             NotificationService.notifyProjectManagers(project.id, 'Crew checked out', `${nameOf(currentUserId || '')} checked out of ${project.name} after ${hoursWorked}h.`);
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
+            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
     };
 

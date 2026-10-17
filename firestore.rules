@@ -850,8 +850,8 @@ service cloud.firestore {
     // Admin-managed config read across portals (skills list, finance rates)
     match /adminConfig/{id} {
       allow read: if isSignedIn();
-      // Pricing (labor rates, markups, sales tax) is billing staff only.
-      allow write: if (id != 'pricing' && isAdmin()) || (id == 'pricing' && isPayrollAdmin());
+      // Pricing and the payroll mileage rate (finance) are billing staff only.
+      allow write: if (!(id in ['pricing', 'finance']) && isAdmin()) || (id in ['pricing', 'finance'] && isPayrollAdmin());
     }
   }
 }

@@ -44,6 +44,28 @@ const rolesOf = (u: Record<string, any>): string[] => [
   ...(typeof u.role === 'string' && u.role ? [u.role] : []),
 ];
 const isAdminUser = (u: Record<string, any>) => rolesOf(u).some(r => r === 'admin' || ADMIN_ROLES.includes(r));
+const TECH_ROLES = ['field_technician', 'project_lead', 'project_manager'];
+const LEAD_TEAM_ROLES = ['Project Lead', 'Project Manager'];
+
+/**
+ * Project crew alerts from non-admins: a Project Manager may notify any tech;
+ * a project's named lead may notify that project's crew about it.
+ */
+async function mayNotifyCrew(
+  fs: FirebaseFirestore.Firestore, callerId: string, caller: Record<string, any>,
+  recipientId: string, recipient: Record<string, any>, entity?: NotifyPayload['entity'],
+): Promise<boolean> {
+  if (!rolesOf(recipient).some(r => TECH_ROLES.includes(r))) return false;
+  if (rolesOf(caller).includes('project_manager')) return true;
+  if (entity?.type !== 'project' || typeof entity.id !== 'string' || !rolesOf(caller).includes('project_lead')) return false;
+  const p = (await fs.collection('projects').doc(entity.id).get()).data();
+  if (!p) return false;
+  const team: { techId?: string; role?: string }[] = Array.isArray(p.team) ? p.team : [];
+  const leads = p.projectLeadId === callerId || team.some(m => m.techId === callerId && LEAD_TEAM_ROLES.includes(m.role || ''));
+  const onCrew = team.some(m => m.techId === recipientId) || (p.assignedTechnicianIds || []).includes(recipientId);
+  return leads && onCrew;
+}
+
 const isActive = (u: Record<string, any>) => u.accountStatus !== 'inactive' && u.approvalStatus !== 'pending' && u.approvalStatus !== 'denied';
 
 export async function POST(req: NextRequest) {
@@ -89,7 +111,8 @@ export async function POST(req: NextRequest) {
     const snap = await fs.collection('users').doc(String(userId)).get();
     if (!snap.exists) return NextResponse.json({ error: 'Unknown user' }, { status: 404 });
     const data = snap.data() || {};
-    if (!callerIsAdmin && snap.id !== callerId && !isAdminUser(data)) {
+    if (!callerIsAdmin && snap.id !== callerId && !isAdminUser(data)
+        && !(await mayNotifyCrew(fs, callerId, caller, snap.id, data, payload.entity))) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     recipients = [{ id: snap.id, data }];

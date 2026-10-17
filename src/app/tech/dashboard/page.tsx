@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 
 import { ScheduleBox } from './components/schedule-box';
+import { MyTasksCard } from './components/my-tasks-card';
 import { useToast } from '@/hooks/use-toast';
 import { WeeklyLogDialog } from './components/weekly-log-dialog';
 import { ReceiptUploadDialog } from './components/receipt-upload-dialog';
@@ -227,6 +228,8 @@ export default function TechDashboardPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            <MyTasksCard techId={currentTechId} />
 
             {/* Two-column layout */}
             <div className="flex flex-col lg:flex-row gap-5 items-start">

@@ -32,7 +32,7 @@ export function FontPreferenceSetting() {
     try {
       await updateDoc(doc(db, 'users', user.id), { uiFontPreference: value });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+      toast({ variant: 'destructive', title: 'Save failed', description: e.message });
     }
   };
 

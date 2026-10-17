@@ -143,7 +143,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
             console.warn("Google Maps API Handshake Restricted.");
             toast({
               variant: "destructive",
-              title: "Registry Security Error",
+              title: "Google Maps unavailable",
               description: "Google Maps API referer or activation restriction active. Please authorize this workstation URL in your Cloud Console.",
             });
           };
@@ -227,11 +227,11 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
         try {
             await setDoc(doc(db, 'users', newPerson.id), newPerson);
             toast({
-                title: "Personnel Enrolled",
+                title: "Person added",
                 description: `${newPerson.name} has been successfully registered.`
             });
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Enrollment Failed", description: e.message });
+            toast({ variant: "destructive", title: "Could not add person", description: e.message });
         }
     };
 

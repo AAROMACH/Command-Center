@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isAfter } from 'date-fns';
 import type { AdminMessage } from '@/lib/types';
@@ -28,14 +28,20 @@ export function NotificationBell() {
   // Personal alerts (CRM digest, quote answers, hand-offs…) — the in-app
   // 'push' record /api/notify writes for every recipient.
   const [personal, setPersonal] = useState<AdminMessage[]>([]);
+  // Where each personal alert opens (its job / project / request / lead).
+  const [links, setLinks] = useState<Record<string, string>>({});
+  const router = useRouter();
 
   useEffect(() => {
     if (!user?.id) return;
     const q = query(collection(db, 'notifications'), where('userId', '==', user.id));
     return onSnapshot(q, (snap) => {
-      setPersonal(snap.docs
-        .map(d => d.data())
-        .filter(n => n.type === 'push' && !n.read)
+      const unread = snap.docs.map(d => d.data()).filter(n => n.type === 'push' && !n.read);
+      const portal = pathname.startsWith('/tech') ? 'tech' : pathname.startsWith('/client') ? 'client' : pathname.startsWith('/sales') ? 'sales' : 'admin';
+      setLinks(Object.fromEntries(unread
+        .map(n => [`notif:${n.id}`, entityHref(portal, n.relatedEntityType, n.relatedEntityId)])
+        .filter(([, href]) => !!href)));
+      setPersonal(unread
         .map(n => ({
           id: `notif:${n.id}`,
           subject: String(n.title || '').replace(/^\[AAROMACH\]\s*/, ''),
@@ -46,7 +52,7 @@ export function NotificationBell() {
           senderName: 'Command Center',
         } as AdminMessage)));
     }, () => setPersonal([]));
-  }, [user?.id]);
+  }, [user?.id, pathname]);
   const [open, setOpen] = useState(false);
 
   // Listen to Firestore broadcasts in real-time
@@ -151,8 +157,8 @@ export function NotificationBell() {
     }
     fetchMessages();
     toast({
-        title: "Directive Acknowledged",
-        description: `Message "${subject}" cleared from active terminal.`,
+        title: "Dismissed",
+        description: `"${subject}" cleared.`,
     });
   };
 
@@ -233,7 +239,9 @@ export function NotificationBell() {
                     {messages.slice(0, 3).map((msg) => {
                         const Icon = getIcon(msg.type);
                         return (
-                            <div key={msg.id} className="p-4 hover:bg-bg-tertiary/50 cursor-default transition-all group relative pr-12">
+                            <div key={msg.id}
+                                onClick={links[msg.id] ? () => { setOpen(false); handleClearMessage(msg.id, msg.subject); router.push(links[msg.id]); } : undefined}
+                                className={cn("p-4 hover:bg-bg-tertiary/50 transition-all group relative pr-12", links[msg.id] ? 'cursor-pointer' : 'cursor-default')}>
                                 <div className="flex gap-4">
                                     <div className={cn(
                                         "p-2 rounded-lg shrink-0 h-fit transition-colors",
@@ -265,7 +273,7 @@ export function NotificationBell() {
                                 {/* Acknowledge / Seen Button - Only show if not locked */}
                                 {!msg.isLocked && (
                                     <button
-                                        onClick={() => handleClearMessage(msg.id, msg.subject)}
+                                        onClick={(e) => { e.stopPropagation(); handleClearMessage(msg.id, msg.subject); }}
                                         aria-label={`Acknowledge: ${msg.subject}`}
                                         className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-brand-red"
                                     >
@@ -300,4 +308,14 @@ export function NotificationBell() {
     </Popover>
     </div>
   );
+}
+
+/** The page a notification's linked record opens in the viewer's portal. */
+function entityHref(portal: 'admin' | 'tech' | 'client' | 'sales', type?: string, id?: string): string {
+  if (!type || !id) return '';
+  if (type === 'project') return portal === 'tech' ? `/tech/projects/${id}` : portal === 'client' ? '/client/projects' : portal === 'admin' ? `/admin/projects/${id}` : '';
+  if (type === 'assignment') return portal === 'tech' ? `/tech/assignments/${id}` : portal === 'admin' ? `/admin/assignments/${id}` : '';
+  if (type === 'request') return portal === 'admin' ? '/admin/requests' : portal === 'client' ? '/client/tickets' : '';
+  if (type === 'lead') return portal === 'sales' ? '/sales/pipeline' : portal === 'admin' ? '/admin/crm' : '';
+  return '';
 }

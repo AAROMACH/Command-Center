@@ -65,7 +65,7 @@ import { useRouter } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
 import { format, parseISO } from 'date-fns';
 import { isAdmin, isSuperAdmin } from '@/lib/permissions';
-import { canManageProjects } from '@/lib/project-access';
+import { canManageProjects, crewFields } from '@/lib/project-access';
 import { NotificationService } from '@/lib/notification-service';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -97,6 +97,18 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
             setCurrentUser(technicians.find(t => t.id === userId) || null);
         }
     }, [technicians]);
+
+    // Older projects never saved the crew ids / named lead the security rules
+    // read (only `team`). Fill them in the first time an admin or PM opens one.
+    useEffect(() => {
+        if (!currentUser || !(isAdmin(currentUser) || canManageProjects(currentUser))) return;
+        const want = crewFields(project.team || []);
+        const have = project.assignedTechnicianIds || [];
+        const same = want.assignedTechnicianIds.length === have.length
+            && want.assignedTechnicianIds.every(id => have.includes(id))
+            && (project.projectLeadId || null) === want.projectLeadId;
+        if (!same) updateDoc(doc(db, 'projects', project.id), want).catch(() => { /* next open retries */ });
+    }, [currentUser, project.id, project.team, project.assignedTechnicianIds, project.projectLeadId]);
 
     const progress = useMemo(() => {
         const phases = project.phases || [];
@@ -135,11 +147,11 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
             }
             setIsEditOpen(false);
             toast({
-                title: "Project Registry Updated",
-                description: "New parameters have been committed to the project folder.",
+                title: "Project updated",
+                description: "Your changes were saved.",
             });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
     };
 
@@ -151,12 +163,12 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
             setIsEditOpen(false);
             toast({
                 variant: "destructive",
-                title: "Project Archived",
+                title: "Project closed",
                 description: `${project.name} has been moved to the historical archive.`,
             });
             router.push(basePath);
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Archive Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Could not close project', description: e.message });
         }
     };
 

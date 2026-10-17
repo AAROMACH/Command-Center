@@ -1,5 +1,8 @@
 'use client';
 
+import { useAuth } from '@/contexts/auth-context';
+import { useRouter } from 'next/navigation';
+import { useClientPlan } from '@/components/client-plan-card';
 import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { db } from "@/lib/firebase";
@@ -29,29 +32,17 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { money } from '@/lib/financial-summary';
 
-const PLAN_DETAILS: Record<string, { name: string; discount: string; priority: string; response: string; billing: string }> = {
-    'on-call': { name: 'On-Call', discount: '0%', priority: 'Standard', response: '48h', billing: 'Monthly' },
-    'site-partner': { name: 'Site Partner', discount: '10%', priority: 'Priority', response: '24h', billing: 'Monthly' },
-    'dedicated': { name: 'Dedicated', discount: '20%', priority: 'Dedicated', response: 'Same-Day', billing: 'Annually' },
-};
-
 export default function ClientFinancialsPage() {
-    const [currentUser, setCurrentUser] = useState<Technician | null>(null);
+    // Signed-in client from Firebase Auth (sessionStorage is per-tab, so a
+    // new tab showed nothing).
+    const { user: currentUser } = useAuth();
     const [mounted, setMounted] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
-    const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false);
     const { toast } = useToast();
+    const router = useRouter();
+    const { plan: currentPlan, current: currentSub } = useClientPlan(currentUser);
 
-    // The nested invoice listener here used to leak (a new one per profile
-    // update), missed invoices linked by clientId, and showed drafts.
-    useEffect(() => {
-        setMounted(true);
-        const userId = sessionStorage.getItem('currentUserId');
-        if (!userId) return;
-        return onSnapshot(doc(db, 'users', userId), (d) => {
-            if (d.exists()) setCurrentUser({ ...d.data(), id: d.id } as Technician);
-        });
-    }, []);
+    useEffect(() => { setMounted(true); }, []);
     const myInvoices = useClientInvoices(currentUser);
 
     const filteredInvoices = useMemo(() => {
@@ -107,7 +98,6 @@ export default function ClientFinancialsPage() {
         toast({ title: "Download Executed", description: "Audit CSV generated for settlement verification."});
     };
 
-    const planInfo = currentUser?.planId ? PLAN_DETAILS[currentUser.planId] : null;
 
     if (!mounted) return null;
 
@@ -141,7 +131,7 @@ export default function ClientFinancialsPage() {
                     <p className="text-3xl font-mono font-bold text-text-green">${metrics.paid.toLocaleString()}</p>
                     <p className="text-[10px] text-text-muted mt-1 uppercase tracking-widest font-bold">Successfully Cleared</p>
                 </div>
-                <div className="bg-bg-secondary p-6 text-left cursor-pointer hover:bg-bg-tertiary transition-colors group" onClick={() => setIsPlanDialogOpen(true)}>
+                <div className="bg-bg-secondary p-6 text-left cursor-pointer hover:bg-bg-tertiary transition-colors group" onClick={() => router.push('/client/billing')}>
                     <div className="flex justify-between items-start mb-2">
                         <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Current Plan</p>
                         <div className="flex items-center gap-1">
@@ -150,10 +140,10 @@ export default function ClientFinancialsPage() {
                         </div>
                     </div>
                     <p className="text-3xl font-bold text-text-primary capitalize">
-                        {currentUser?.planId ? (PLAN_DETAILS[currentUser.planId]?.name || currentUser.planId) : 'Enterprise'}
+                        {currentSub ? (currentPlan?.name || 'Service plan') : 'No plan'}
                     </p>
                     <p className="text-[10px] text-text-muted mt-1 uppercase tracking-widest font-bold">
-                        {currentUser?.planId ? `${PLAN_DETAILS[currentUser.planId]?.response || '48h'} Response Guarantee` : 'Standard Net-30 Terms'}
+                        {currentPlan ? `${currentPlan.benefits.responseHours}-hour response` : `${currentUser?.billingDetails?.terms || 'Net 30'} terms`}
                     </p>
                 </div>
             </div>
@@ -242,52 +232,6 @@ export default function ClientFinancialsPage() {
                     <div className="px-4"><ListPager pager={invoicePager} noun="invoices" /></div>
                 </CardContent>
             </Card>
-            {/* Plan Details Dialog */}
-            <Dialog open={isPlanDialogOpen} onOpenChange={setIsPlanDialogOpen}>
-                <DialogContent className="sm:max-w-[480px] bg-bg-elevated border-border-default">
-                    <DialogHeader>
-                        <DialogTitle className="uppercase tracking-widest font-bold text-sm">
-                            {planInfo?.name || 'Current Plan'} Details
-                        </DialogTitle>
-                        <DialogDescription>Your current service plan and entitlements.</DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4 space-y-3">
-                        {planInfo ? (
-                            <>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-text-muted mb-1">Response Guarantee</p>
-                                        <p className="text-sm font-bold text-text-primary">{planInfo.response}</p>
-                                    </div>
-                                    <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-text-muted mb-1">Priority Level</p>
-                                        <p className="text-sm font-bold text-text-primary">{planInfo.priority}</p>
-                                    </div>
-                                    <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-text-muted mb-1">Labor Discount</p>
-                                        <p className="text-sm font-bold text-text-green">{planInfo.discount}</p>
-                                    </div>
-                                    <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-text-muted mb-1">Billing Cycle</p>
-                                        <p className="text-sm font-bold text-text-primary">{planInfo.billing}</p>
-                                    </div>
-                                </div>
-                            </>
-                        ) : (
-                            <p className="text-xs text-text-muted">No plan details available. Contact Aaromach for more information.</p>
-                        )}
-                    </div>
-                    <DialogFooter className="gap-3 flex-row">
-                        <Button variant="outline" onClick={() => setIsPlanDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest">Close</Button>
-                        <Button
-                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white"
-                            onClick={() => { window.location.href = 'mailto:sales@aaromach.com?subject=Plan Upgrade Inquiry'; }}
-                        >
-                            Contact Sales
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }

@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
@@ -94,12 +95,11 @@ import { DateRange } from "react-day-picker";
 import { cn, formatCityState } from '@/lib/utils';
 import { isArchivedJob, archiveJobRecord, jobTechId, weekOfValue, parseLocalDate, mergeJobs, jobDateTimeValue } from '@/lib/jobs';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
-import { IntelligenceTerminal } from './components/intelligence-terminal';
+import { ArchiveTab, AssignmentHistoryTab, ProjectHistoryTab, WeeklyLogHistoryTab } from './components/history-tabs';
 import type { Technician, WorkOrder, WeeklyLog, TimeOffRequest, AdminMessage, Invoice, Project } from '@/lib/types';
 import { format, parseISO, subDays, isAfter, addHours, isSameDay, startOfDay, isWithinInterval } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 import { isAdmin, isSuperAdmin, isClient } from '@/lib/permissions';
 import { usePenaltyEvents, penaltyPoints } from '@/hooks/use-penalty-events';
 import { computeWeeklyLogSettlement } from '@/lib/payroll';
@@ -216,13 +216,13 @@ export default function ActivityAuditPage() {
 
     // 1. Initialize Data Listeners
     useEffect(() => {
-        const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
+        const unsubWO = onSharedSnapshot('workOrders', (snap) => {
             setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
-        const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
+        const unsubAsmt = onSharedSnapshot('assignments', (snap) => {
             setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
-        const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
+        const unsubTech = onSharedSnapshot('users', (snap) => {
             const techs = snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician));
             setTechnicians(techs);
             const userId = sessionStorage.getItem('currentUserId');
@@ -231,19 +231,19 @@ export default function ActivityAuditPage() {
                 if (user) setCurrentUser(user);
             }
         });
-        const unsubLogs = onSnapshot(collection(db, 'weeklyLogs'), (snap) => {
+        const unsubLogs = onSharedSnapshot('weeklyLogs', (snap) => {
             setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
         });
-        const unsubProj = onSnapshot(collection(db, 'projects'), (snap) => {
+        const unsubProj = onSharedSnapshot('projects', (snap) => {
             setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
         });
-        const unsubInv = onSnapshot(collection(db, 'invoices'), (snap) => {
+        const unsubInv = onSharedSnapshot('invoices', (snap) => {
             setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
         });
-        const unsubTOR = onSnapshot(collection(db, 'timeOffRequests'), (snap) => {
+        const unsubTOR = onSharedSnapshot('timeOffRequests', (snap) => {
             setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)));
         });
-        const unsubArchive = onSnapshot(collection(db, 'activityArchive'), (snap) => {
+        const unsubArchive = onSharedSnapshot('activityArchive', (snap) => {
             setArchivedEvents(snap.docs.map(d => ({ ...d.data() } as ArchivedEvent)));
         });
 
@@ -261,7 +261,7 @@ export default function ActivityAuditPage() {
 
     const handleBroadcast = useCallback(async () => {
         if (!newMessage.subject || !newMessage.body) {
-            toast({ variant: 'destructive', title: 'Transmission Error', description: 'Subject and body are required for broadcast.' });
+            toast({ variant: 'destructive', title: 'Send failed', description: 'Subject and body are required for broadcast.' });
             return;
         }
 
@@ -360,7 +360,7 @@ export default function ActivityAuditPage() {
             });
             toast({ title: 'Archived', description: `Assignment ${woId.toUpperCase()} moved to Archives — recoverable from the Job Archive.` });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Archive Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Archive failed', description: e.message });
         }
         setDeleteConfirmId(null);
     };
@@ -436,7 +436,7 @@ export default function ActivityAuditPage() {
             });
             toast({ title: 'Archived', description: `"${event.eventLabel}" moved to archive.` });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Archive Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Archive failed', description: e.message });
         }
     };
 
@@ -509,7 +509,6 @@ export default function ActivityAuditPage() {
         const completed = myJobs.filter(wo => wo.status === 'completed').length;
         const penalties = allPenalties.filter(pe => pe.techId === selectedTechId);
         const points = penaltyPoints(allPenalties, selectedTechId);
-        const reliability = Math.max(0, 100 - (points * 5));
         
         const myLogs = weeklyLogs.filter(log => log.techId === selectedTechId)
             .sort((a, b) => {
@@ -526,7 +525,6 @@ export default function ActivityAuditPage() {
         return { 
             total: myJobs.length, 
             completed, 
-            reliability, 
             penaltyPoints: points, 
             penalties,
             totalEarnings,
@@ -647,7 +645,7 @@ export default function ActivityAuditPage() {
         updateDoc(docRef, updates).catch((e: any) => {
             const woRef = doc(db, 'workOrders', woId);
             updateDoc(woRef, updates).catch(err => {
-                toast({ variant: 'destructive', title: 'Update Failed', description: err.message });
+                toast({ variant: 'destructive', title: 'Save failed', description: err.message });
             });
         });
     };
@@ -783,16 +781,18 @@ export default function ActivityAuditPage() {
     // Paged lists (components/list-pager.tsx).
     const timelinePager = usePaged(filteredTimelineEvents, PAGE_SIZES_LARGE, 'reports-timeline', [timelineTechFilter, timelineTypeFilter, timelineClientFilter]);
     const visitsPager = usePaged(sortedTechVisits, PAGE_SIZES_LARGE, 'reports-tech-visits', [selectedTechId]);
-    const archivePager = usePaged(archiveItems, PAGE_SIZES_LARGE, 'reports-archive');
     // Completed work (archived jobs live in the Archive tab), newest first by
     // scheduled date — a string sort mixed date formats.
     const reportsCompletedJobs = useMemo(() => mergeJobs(workOrders, assignments)
         .filter(wo => wo.status === 'completed' && !isArchivedJob(wo))
         .sort((a, b) => jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime)),
         [workOrders, assignments]);
-    const completedJobsPager = usePaged(reportsCompletedJobs, PAGE_SIZES_LARGE, 'reports-completed-jobs');
+    // A job the tech disputed still reads "completed" on the log item — once
+    // that log is Approved, history shows Disputed so it stays visible.
+    const disputedWorkOrderIds = useMemo(() => new Set(weeklyLogs
+        .filter(log => log.status === 'Approved')
+        .flatMap(log => (log.items || []).filter(item => item.confirmationStatus === 'disputed').map(item => item.workOrderId))), [weeklyLogs]);
     const reportsCompletedProjects = useMemo(() => projects.filter(p => p.status === 'completed'), [projects]);
-    const completedProjectsPager = usePaged(reportsCompletedProjects, PAGE_SIZES_SMALL, 'reports-completed-projects');
 
     const searchResults = useMemo(() => {
         if (!searchQuery) return [];
@@ -805,7 +805,7 @@ export default function ActivityAuditPage() {
                 results.push({
                     type: 'OPERATIVE',
                     label: t.name,
-                    meta: `${t.role} · Reliability: ${t.reliabilityScore}%`,
+                    meta: `${t.role}`,
                     id: t.id,
                     cat: 'tech',
                     cls: 'border-brand-red text-brand-red'
@@ -1274,11 +1274,8 @@ export default function ActivityAuditPage() {
 
                                                         <div className="space-y-4 pt-3 border-t border-border-sub/30 text-left">
                                                             <div className="space-y-1 text-center">
-                                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] text-center">Reliability</p>
-                                                                <p className={cn("text-4xl font-mono font-bold tracking-tighter text-center", techStats.reliability > 90 ? 'text-text-green' : 'text-accent-gold')}>{techStats.reliability}%</p>
-                                                                <Badge variant={getReliabilityTier(techStats.reliability) === 'Elite' ? 'active' : 'onhold'} className="h-5 px-3 uppercase text-[8px] tracking-widest">
-                                                                    {getReliabilityTier(techStats.reliability)}
-                                                                </Badge>
+                                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] text-center">Penalty Points</p>
+                                                                <p className={cn("text-4xl font-mono font-bold tracking-tighter text-center", techStats.penaltyPoints === 0 ? 'text-text-green' : 'text-accent-gold')}>{techStats.penaltyPoints}</p>
                                                             </div>
                                                             <div className="flex items-center justify-center gap-1.5 opacity-60 text-center">
                                                                 <span className="text-[8px] text-text-muted font-mono uppercase tracking-widest text-center">REG ID: {activeTech.userId || activeTech.id}</span>
@@ -1461,303 +1458,34 @@ export default function ActivityAuditPage() {
                             </TabsContent>
 
                             <TabsContent value="assignments_history" className="m-0 text-left">
-                                <div className="space-y-4">
-                                    {(() => {
-                                        // Archived jobs live in the Archive tab, not here — this is
-                                        // purely a record of work that was actually completed.
-                                        const completedJobs = reportsCompletedJobs;
-                                        // A job the tech disputed still shows "completed" on the log
-                                        // item itself — but once that log is Approved, the assignment
-                                        // record should read Disputed here, not Completed, so a
-                                        // lingering pay/reimbursement disagreement stays visible.
-                                        const disputedWorkOrderIds = new Set(
-                                            weeklyLogs
-                                                .filter(log => log.status === 'Approved')
-                                                .flatMap(log => (log.items || [])
-                                                    .filter(item => item.confirmationStatus === 'disputed')
-                                                    .map(item => item.workOrderId))
-                                        );
-                                        return (
-                                            <>
-                                                <div className="flex items-center justify-between">
-                                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{completedJobs.length} Completed Records</p>
-                                                    <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest" onClick={() => {
-                                                        const rows = [['DATE','ID','TITLE','CLIENT','TECH','STATUS']];
-                                                        completedJobs.forEach(wo => {
-                                                            const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || wo.techId));
-                                                            rows.push([wo.scheduleDate, wo.id.toUpperCase(), wo.title || wo.description || '', wo.clientName || '', tech?.name || 'Unassigned', wo.status]);
-                                                        });
-                                                        const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-                                                        const blob = new Blob([csv], { type: 'text/csv' });
-                                                        const url = URL.createObjectURL(blob);
-                                                        const a = document.createElement('a'); a.href = url; a.download = 'assignment_history.csv'; a.click();
-                                                    }}>
-                                                        <Download size={13} className="mr-1.5" /> Export CSV
-                                                    </Button>
-                                                </div>
-                                                <div className="table-wrap text-left">
-                                                    <Table>
-                                                        <TableHeader className="bg-bg-tertiary">
-                                                            <TableRow className="hover:bg-transparent border-border-sub">
-                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Date</TableHead>
-                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest">Job ID / Title</TableHead>
-                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest">Client</TableHead>
-                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest">Technician</TableHead>
-                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest text-right pr-6">Status</TableHead>
-                                                            </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            {completedJobsPager.items.map(wo => {
-                                                                const tech = technicians.find(t => t.id === (wo.assignedTechnicianId || wo.techId));
-                                                                return (
-                                                                    <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary cursor-pointer" onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}>
-                                                                        <TableCell className="py-3 pl-6 text-[10px] font-mono text-text-secondary uppercase">{formatDateDisplay(wo.scheduleDate)}</TableCell>
-                                                                        <TableCell className="py-3">
-                                                                            <p className="text-[9px] font-bold text-brand-red font-mono uppercase">{((wo as any).externalWorkOrderId || wo.id).toString().toUpperCase()}</p>
-                                                                            <p className="text-xs font-bold text-text-primary uppercase mt-0.5">{wo.title || wo.description}</p>
-                                                                        </TableCell>
-                                                                        <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{wo.clientName}</TableCell>
-                                                                        <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{tech?.name || '—'}</TableCell>
-                                                                        <TableCell className="py-3 text-right pr-6">
-                                                                            {disputedWorkOrderIds.has(wo.id) ? (
-                                                                                <Badge variant="destructive" className="text-[8px] uppercase">disputed</Badge>
-                                                                            ) : (
-                                                                                <Badge variant="active" className="text-[8px] uppercase">completed</Badge>
-                                                                            )}
-                                                                        </TableCell>
-                                                                    </TableRow>
-                                                                );
-                                                            })}
-                                                            {completedJobs.length === 0 && (
-                                                                <TableRow><TableCell colSpan={5} className="py-16 text-center text-[10px] font-bold text-text-muted uppercase">No completed assignments</TableCell></TableRow>
-                                                            )}
-                                                        </TableBody>
-                                                    </Table>
-                                                    <ListPager pager={completedJobsPager} noun="jobs" />
-                                                </div>
-                                            </>
-                                        );
-                                    })()}
-                                </div>
+                                <AssignmentHistoryTab
+                                    jobs={reportsCompletedJobs}
+                                    technicians={technicians}
+                                    disputedIds={disputedWorkOrderIds}
+                                    onOpen={(wo) => { setSelectedJob(wo); setIsJobOpen(true); }}
+                                />
                             </TabsContent>
 
                             <TabsContent value="project_history" className="m-0 text-left">
-                                <div className="space-y-4">
-                                    {(() => {
-                                        const completedProjects = reportsCompletedProjects;
-                                        return (
-                                            <>
-                                                <div className="flex items-center justify-between">
-                                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{completedProjects.length} Completed Projects</p>
-                                                    <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest" onClick={() => {
-                                                        const rows = [['NAME','CLIENT','STATUS','START DATE','END DATE']];
-                                                        completedProjects.forEach(p => rows.push([p.name, (p as any).client || (p as any).clientName || '', p.status || '', p.startDate || '', (p as any).endDate || '']));
-                                                        const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-                                                        const blob = new Blob([csv], { type: 'text/csv' });
-                                                        const url = URL.createObjectURL(blob);
-                                                        const a = document.createElement('a'); a.href = url; a.download = 'project_history.csv'; a.click();
-                                                    }}>
-                                                        <Download size={13} className="mr-1.5" /> Export CSV
-                                                    </Button>
-                                                </div>
-                                                <div className="table-wrap text-left">
-                                                    <Table>
-                                                        <TableHeader className="bg-bg-tertiary">
-                                                            <TableRow className="hover:bg-transparent border-border-sub">
-                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Project</TableHead>
-                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest">Client</TableHead>
-                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest">Status</TableHead>
-                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest">Completed</TableHead>
-                                                            </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            {completedProjectsPager.items.map(p => (
-                                                                <TableRow key={p.id} className="border-border-sub hover:bg-bg-tertiary">
-                                                                    <TableCell className="py-3 pl-6">
-                                                                        <p className="text-xs font-bold text-text-primary uppercase">{p.name}</p>
-                                                                        <p className="text-[9px] font-mono text-brand-red uppercase mt-0.5">{p.id?.toUpperCase()}</p>
-                                                                    </TableCell>
-                                                                    <TableCell className="py-3 text-[10px] font-bold text-text-secondary uppercase">{(p as any).client || (p as any).clientName || '—'}</TableCell>
-                                                                    <TableCell className="py-3"><Badge variant="active" className="text-[8px] uppercase">completed</Badge></TableCell>
-                                                                    <TableCell className="py-3 text-[10px] font-mono text-text-muted">{(p as any).endDate || '—'}</TableCell>
-                                                                </TableRow>
-                                                            ))}
-                                                            {completedProjects.length === 0 && (
-                                                                <TableRow><TableCell colSpan={4} className="py-16 text-center text-[10px] font-bold text-text-muted uppercase">No completed projects</TableCell></TableRow>
-                                                            )}
-                                                        </TableBody>
-                                                    </Table>
-                                                    <ListPager pager={completedProjectsPager} noun="projects" />
-                                                </div>
-                                            </>
-                                        );
-                                    })()}
-                                </div>
+                                <ProjectHistoryTab projects={reportsCompletedProjects} technicians={technicians} />
                             </TabsContent>
 
                             <TabsContent value="weekly_logs" className="m-0 text-left">
-                                <div className="space-y-4">
-                                    {(() => {
-                                        const submittedLogs = weeklyLogs.filter(l => l.status === 'Submitted' || l.status === 'Approved').sort((a, b) => weekOfValue(b.weekOf) - weekOfValue(a.weekOf));
-                                        return (
-                                            <>
-                                                <div className="flex items-center justify-between">
-                                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{submittedLogs.length} Submitted / Approved Logs</p>
-                                                    <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase font-bold tracking-widest" onClick={() => {
-                                                        const rows = [['WEEK OF','TECHNICIAN','ITEMS','STATUS']];
-                                                        submittedLogs.forEach(l => {
-                                                            const tech = technicians.find(t => t.id === l.techId);
-                                                            rows.push([l.weekOf, tech?.name || l.techId, String((l.items || []).length), l.status]);
-                                                        });
-                                                        const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-                                                        const blob = new Blob([csv], { type: 'text/csv' });
-                                                        const url = URL.createObjectURL(blob);
-                                                        const a = document.createElement('a'); a.href = url; a.download = 'weekly_log_history.csv'; a.click();
-                                                    }}>
-                                                        <Download size={13} className="mr-1.5" /> Export CSV
-                                                    </Button>
-                                                </div>
-                                                <div className="table-wrap text-left">
-                                                    <Table>
-                                                        <TableHeader className="bg-bg-tertiary">
-                                                            <TableRow className="hover:bg-transparent border-border-sub">
-                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Week Of</TableHead>
-                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest">Technician</TableHead>
-                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Items</TableHead>
-                                                                <TableHead className="text-[9px] uppercase font-black tracking-widest">Status</TableHead>
-                                                            </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            {submittedLogs.map(l => {
-                                                                const tech = technicians.find(t => t.id === l.techId);
-                                                                return (
-                                                                    <TableRow key={l.id} className="border-border-sub hover:bg-bg-tertiary">
-                                                                        <TableCell className="py-3 pl-6 text-[10px] font-mono font-bold text-text-secondary uppercase">{l.weekOf}</TableCell>
-                                                                        <TableCell className="py-3 text-[10px] font-bold text-text-primary uppercase">{tech?.name || l.techId}</TableCell>
-                                                                        <TableCell className="py-3 text-center text-[10px] font-bold text-text-secondary">{(l.items || []).length}</TableCell>
-                                                                        <TableCell className="py-3"><Badge variant={l.status === 'Approved' ? 'active' : 'scheduled'} className="text-[8px] uppercase">{l.status}</Badge></TableCell>
-                                                                    </TableRow>
-                                                                );
-                                                            })}
-                                                            {submittedLogs.length === 0 && (
-                                                                <TableRow><TableCell colSpan={4} className="py-16 text-center text-[10px] font-bold text-text-muted uppercase">No submitted or approved logs</TableCell></TableRow>
-                                                            )}
-                                                        </TableBody>
-                                                    </Table>
-                                                </div>
-                                            </>
-                                        );
-                                    })()}
-                                </div>
+                                <WeeklyLogHistoryTab logs={weeklyLogs} technicians={technicians} />
                             </TabsContent>
 
                             {/* ARCHIVE TAB */}
                             <TabsContent value="archive" className="m-0 text-left">
-                                <div className="space-y-6">
-                                    <div className="flex flex-wrap items-center justify-between gap-3">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                                            {archiveItems.length} Archived Record{archiveItems.length !== 1 ? 's' : ''}
-                                        </p>
-                                        <div className="flex items-center gap-2">
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <div className={cn(
-                                                        "flex items-center h-9 rounded-md border border-border-main bg-bg-primary px-3 cursor-pointer hover:bg-bg-tertiary transition-all group relative pr-8",
-                                                        archiveDateRange?.from && "border-brand-red ring-1 ring-brand-red"
-                                                    )}>
-                                                        <CalendarIcon size={12} className={cn("mr-2", archiveDateRange?.from ? "text-brand-red" : "text-text-muted")} />
-                                                        <span className={cn("text-[10px] font-bold uppercase tracking-widest whitespace-nowrap", archiveDateRange?.from ? "text-text-primary" : "text-text-muted")}>
-                                                            {archiveDateRange?.from ? (
-                                                                archiveDateRange.to ? `${format(archiveDateRange.from, "MM-dd-yyyy")} – ${format(archiveDateRange.to, "MM-dd-yyyy")}` : format(archiveDateRange.from, "MM-dd-yyyy")
-                                                            ) : "Filter by Date"}
-                                                        </span>
-                                                        {archiveDateRange?.from && (
-                                                            <button
-                                                                className="absolute right-2 p-0.5 rounded-full hover:bg-brand-red/20 text-text-muted hover:text-brand-red transition-colors"
-                                                                onClick={(e) => { e.stopPropagation(); setArchiveDateRange(undefined); }}
-                                                            >
-                                                                <X size={10} />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-                                                    <Calendar initialFocus mode="range" selected={archiveDateRange} onSelect={setArchiveDateRange} numberOfMonths={1} />
-                                                </PopoverContent>
-                                            </Popover>
-                                            <button
-                                                onClick={() => setArchiveSortDir(d => d === 'desc' ? 'asc' : 'desc')}
-                                                className="flex items-center gap-1.5 h-9 rounded-md border border-border-main bg-bg-primary px-3 text-[10px] font-bold uppercase tracking-widest text-text-muted hover:text-text-primary transition-colors"
-                                            >
-                                                <ArrowUpDown size={12} />
-                                                {archiveSortDir === 'desc' ? 'Latest First' : 'Earliest First'}
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <div>
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Archived Records ({archiveItems.length})</p>
-                                            <p className="text-[9px] text-text-muted mt-1">Jobs and hidden activity share one archive. Restoring a job returns it to its original registry.</p>
-                                        </div>
-                                        {archiveItems.length === 0 ? (
-                                            <div className="py-20 text-center border border-dashed border-border-sub rounded-xl opacity-40">
-                                                <ArchiveIcon size={32} className="mx-auto text-text-muted mb-2" />
-                                                <p className="text-[10px] font-bold uppercase text-text-muted">No archived records{archiveDateRange?.from ? ' in this range' : ' yet'}.</p>
-                                            </div>
-                                        ) : (
-                                            <div className="table-wrap text-left">
-                                                <Table>
-                                                    <TableHeader className="bg-bg-tertiary">
-                                                        <TableRow className="hover:bg-transparent border-border-sub">
-                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest pl-6">Archived</TableHead>
-                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Type</TableHead>
-                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Record</TableHead>
-                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Client / Technician</TableHead>
-                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest text-right pr-6">Actions</TableHead>
-                                                        </TableRow>
-                                                    </TableHeader>
-                                                    <TableBody>
-                                                        {archivePager.items.map(item => {
-                                                            const archivedDate = new Date(item.archivedAt);
-                                                            const archivedDisplay = isNaN(archivedDate.getTime()) ? item.archivedAt || '—' : format(archivedDate, 'MMM d, yyyy');
-                                                            return (
-                                                                <TableRow
-                                                                    key={item.id}
-                                                                    className={cn('border-border-sub hover:bg-bg-tertiary', item.job && 'cursor-pointer')}
-                                                                    onClick={() => { if (item.job) { setSelectedJob(item.job); setIsJobOpen(true); } }}
-                                                                >
-                                                                    <TableCell className="py-3 pl-6 text-[10px] font-mono text-text-secondary uppercase">{archivedDisplay}</TableCell>
-                                                                    <TableCell className="py-3"><Badge variant="outline" className="text-[7px] uppercase h-4">{item.kind}</Badge></TableCell>
-                                                                    <TableCell className="py-3">
-                                                                        <p className="text-[9px] font-bold text-brand-red font-mono uppercase">{item.identifier}</p>
-                                                                        <p className="text-xs font-bold text-text-primary uppercase mt-0.5">{item.title}</p>
-                                                                    </TableCell>
-                                                                    <TableCell className="py-3">
-                                                                        {item.clientName && <p className="text-[10px] font-bold text-text-secondary uppercase">{item.clientName}</p>}
-                                                                        {item.techName && <p className="text-[9px] text-text-muted uppercase">{item.techName}</p>}
-                                                                        {!item.clientName && !item.techName && <span className="text-[10px] text-text-muted">—</span>}
-                                                                    </TableCell>
-                                                                    <TableCell className="py-3 text-right pr-6" onClick={e => e.stopPropagation()}>
-                                                                        <Button
-                                                                            variant="outline"
-                                                                            size="sm"
-                                                                            className="h-7 text-[9px] uppercase font-bold tracking-widest"
-                                                                            onClick={() => item.event ? handleRestoreEvent(item.event.id) : item.job && handleRestoreArchived(item.job)}
-                                                                        >
-                                                                            <RotateCcw size={10} className="mr-1" />Restore
-                                                                        </Button>
-                                                                    </TableCell>
-                                                                </TableRow>
-                                                            );
-                                                        })}
-                                                    </TableBody>
-                                                </Table>
-                                                <ListPager pager={archivePager} noun="records" />
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                <ArchiveTab
+                                    items={archiveItems}
+                                    technicians={technicians}
+                                    onOpen={(wo) => { setSelectedJob(wo); setIsJobOpen(true); }}
+                                    onRestore={(row) => {
+                                        const item = archiveItems.find(i => i.id === row.id);
+                                        if (item?.event) handleRestoreEvent(item.event.id);
+                                        else if (item?.job) handleRestoreArchived(item.job);
+                                    }}
+                                />
                             </TabsContent>
 
                         </div>

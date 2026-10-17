@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
@@ -16,8 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { cn, isInactiveTechnician } from '@/lib/utils';
 import type { WorkOrder, Technician, WeeklyLog, Invoice } from '@/lib/types';
-import { IntelligenceTerminal } from '../reports/components/intelligence-terminal';
-import { getReliabilityTier } from '@/lib/reliability';
+import { CustomerDashboard } from './components/customer-dashboard';
 import { effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
 import { Tabs as InnerTabs, TabsList as InnerTabsList, TabsTrigger as InnerTabsTrigger, TabsContent as InnerTabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -54,11 +54,6 @@ export default function FieldIntelligencePage() {
     const [archivedJobs, setArchivedJobs] = useState<WorkOrder[]>([]);
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
 
-    // Intelligence filter state
-    const [intelPersonnel, setIntelPersonnel] = useState('all');
-    const [intelClient, setIntelClient] = useState('all');
-    const [timeWindow, setTimeWindow] = useState<'7d' | '30d' | '90d' | '1y' | 'all'>('30d');
-
     // App Activity tab state
     const [timelineTechFilter, setTimelineTechFilter] = useState('all');
     const [timelineTypeFilter, setTimelineTypeFilter] = useState('all');
@@ -67,22 +62,22 @@ export default function FieldIntelligencePage() {
     const [timelinePage, setTimelinePage] = useState(0);
 
     useEffect(() => {
-        const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
+        const unsubWO = onSharedSnapshot('workOrders', (snap) => {
             setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
-        const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
+        const unsubAsmt = onSharedSnapshot('assignments', (snap) => {
             setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
-        const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
+        const unsubTech = onSharedSnapshot('users', (snap) => {
             setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
         });
-        const unsubLogs = onSnapshot(collection(db, 'weeklyLogs'), (snap) => {
+        const unsubLogs = onSharedSnapshot('weeklyLogs', (snap) => {
             setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
         });
-        const unsubInv = onSnapshot(collection(db, 'invoices'), (snap) => {
+        const unsubInv = onSharedSnapshot('invoices', (snap) => {
             setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
         });
-        const unsubArchive = onSnapshot(collection(db, 'activityArchive'), (snap) => {
+        const unsubArchive = onSharedSnapshot('activityArchive', (snap) => {
             const jobs = snap.docs.flatMap(d => {
                 const data = d.data() as any;
                 if (!data.archivedFrom) return [];
@@ -130,21 +125,13 @@ export default function FieldIntelligencePage() {
     const desyncedAssignments = useMemo(() => findDesyncedAssignments(missions), [missions]);
     const wrongTechCount = wrongTechEntries.length + desyncedAssignments.length;
 
-    // Density map follows the Intel filters (time window, personnel, client).
+    // Density map follows the customer dashboard's focused view.
     const [densityOpen, setDensityOpen] = useState(false);
-    const densityJobs = useMemo(() => {
-        const days = timeWindow === '7d' ? 7 : timeWindow === '30d' ? 30 : timeWindow === '90d' ? 90 : timeWindow === '1y' ? 365 : null;
-        const cutoff = days ? Date.now() - days * 864e5 : null;
-        return missions.filter(j => {
-            if (intelClient !== 'all' && j.clientName !== intelClient) return false;
-            if (intelPersonnel !== 'all' && jobTechId(j) !== intelPersonnel) return false;
-            if (cutoff !== null) {
-                const t = jobDateTimeValue(j.scheduleDate, null);
-                if (!t || t < cutoff) return false;
-            }
-            return true;
-        });
-    }, [missions, timeWindow, intelClient, intelPersonnel]);
+    const [intelJobIds, setIntelJobIds] = useState<Set<string> | null>(null);
+    const densityJobs = useMemo(
+        () => (intelJobIds ? missions.filter(j => intelJobIds.has(j.id)) : []),
+        [missions, intelJobIds],
+    );
     const flagsTotal = anomalyCounts + unloggedAudit.rows.length + wrongTechCount;
     const [flagsView, setFlagsView] = useState<'anomalies' | 'unlogged' | 'wrong-tech'>('anomalies');
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -319,66 +306,13 @@ export default function FieldIntelligencePage() {
                 </div>
 
                 <TabsContent value="intelligence" className="m-0">
-                    {/* Filter bar */}
-                    <div className="flex flex-wrap items-center gap-3 mb-5 p-3 bg-bg-secondary/60 border border-border-sub rounded-xl">
-                        <div className="flex items-center gap-2 shrink-0">
-                            <Filter size={12} className="text-text-muted" />
-                            <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">Filters</span>
-                        </div>
-                        <Select value={intelPersonnel} onValueChange={setIntelPersonnel}>
-                            <SelectTrigger className="h-8 w-[160px] bg-bg-primary border-border-main text-[10px] font-bold uppercase">
-                                <SelectValue placeholder="Personnel" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-bg-elevated border-border-main">
-                                <SelectItem value="all" className="text-[10px] font-bold uppercase">All Personnel</SelectItem>
-                                {staffTechs.map(t => (
-                                    <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold uppercase">{t.name || t.id}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select value={intelClient} onValueChange={setIntelClient}>
-                            <SelectTrigger className="h-8 w-[160px] bg-bg-primary border-border-main text-[10px] font-bold uppercase">
-                                <SelectValue placeholder="Client" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-bg-elevated border-border-main">
-                                <SelectItem value="all" className="text-[10px] font-bold uppercase">All Clients</SelectItem>
-                                {clientNames.map(name => (
-                                    <SelectItem key={name} value={name} className="text-[10px] font-bold uppercase">{name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select value={timeWindow} onValueChange={(v: any) => setTimeWindow(v)}>
-                            <SelectTrigger className="h-8 w-[160px] bg-bg-primary border-border-main text-[10px] font-bold uppercase">
-                                <SelectValue placeholder="Time Window" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-bg-elevated border-border-main">
-                                <SelectItem value="7d" className="text-[10px] font-bold uppercase">Past Week</SelectItem>
-                                <SelectItem value="30d" className="text-[10px] font-bold uppercase">Past Month</SelectItem>
-                                <SelectItem value="90d" className="text-[10px] font-bold uppercase">Past 3 Months</SelectItem>
-                                <SelectItem value="1y" className="text-[10px] font-bold uppercase">Past Year</SelectItem>
-                                <SelectItem value="all" className="text-[10px] font-bold uppercase">All Time</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        {(intelPersonnel !== 'all' || intelClient !== 'all' || timeWindow !== '30d') && (
-                            <button
-                                onClick={() => { setIntelPersonnel('all'); setIntelClient('all'); setTimeWindow('30d'); }}
-                                className="h-8 px-3 text-[9px] font-black uppercase tracking-widest text-brand-red hover:underline"
-                            >
-                                Clear
-                            </button>
-                        )}
-                        <div className="ml-auto flex gap-2 flex-wrap">
-                            {intelPersonnel !== 'all' && <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border border-blue-400/30 bg-blue-400/10 text-blue-400">{staffTechs.find(t => t.id === intelPersonnel)?.name || intelPersonnel}</span>}
-                            {intelClient !== 'all' && <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border border-amber-400/30 bg-amber-400/10 text-amber-400">{intelClient}</span>}
-                        </div>
-                    </div>
                     {/* Compact card; the map itself opens in a dialog instead of
                         taking the full width of the page. */}
                     <Card className="bg-bg-secondary border-border-main mb-5">
                         <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
                             <div className="min-w-0">
                                 <p className="text-[11px] font-black uppercase tracking-[0.2em] text-text-primary">Job Density — Michigan &amp; Ohio</p>
-                                <p className="text-[10px] text-text-muted">{densityJobs.length.toLocaleString()} job{densityJobs.length === 1 ? '' : 's'} for the selected filters</p>
+                                <p className="text-[10px] text-text-muted">{densityJobs.length.toLocaleString()} completed job{densityJobs.length === 1 ? '' : 's'} in the dashboard view below</p>
                             </div>
                             <Button size="sm" variant="outline" className="h-8 text-[9px] font-black uppercase tracking-widest" onClick={() => setDensityOpen(true)}>
                                 Open Map
@@ -394,10 +328,12 @@ export default function FieldIntelligencePage() {
                             {densityOpen && <JobDensityMap jobs={densityJobs} />}
                         </DialogContent>
                     </Dialog>
-                    <IntelligenceTerminal
-                        timeWindow={timeWindow}
-                        personnel={intelPersonnel}
-                        client={intelClient}
+                    <CustomerDashboard
+                        jobs={missions}
+                        weeklyLogs={weeklyLogs}
+                        invoices={invoices}
+                        technicians={technicians}
+                        onFilteredJobIds={setIntelJobIds}
                     />
                 </TabsContent>
 
@@ -481,9 +417,6 @@ export default function FieldIntelligencePage() {
                                             <div className="pt-3 border-t border-border-sub/30 space-y-1">
                                                 <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Penalty Points</p>
                                                 <p className={cn("text-4xl font-mono font-bold", techStats.points === 0 ? 'text-text-green' : 'text-accent-gold')}>{techStats.points}</p>
-                                                <Badge variant={techStats.points <= 2 ? 'active' : 'onhold'} className="h-5 px-3 uppercase text-[8px] tracking-widest">
-                                                    {getReliabilityTier(Math.max(0, 100 - techStats.points * 5))}
-                                                </Badge>
                                             </div>
                                             <div className="flex gap-2">
                                                 <Button variant="outline" size="sm" className="flex-1 h-8 !text-[10px] font-bold uppercase" asChild>

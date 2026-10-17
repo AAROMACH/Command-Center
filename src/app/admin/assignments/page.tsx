@@ -1,5 +1,6 @@
 
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect, useDeferredValue } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
@@ -35,6 +36,7 @@ import {
   FileText,
   Trash2,
   Check,
+  Download,
 } from "lucide-react";
 import type { WorkOrder, Technician, WeeklyLog } from "@/lib/types";
 import { externalWorkOrderId, isImported } from "@/lib/work-order-identity";
@@ -74,6 +76,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn, formatCityState, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
 import { DateRange } from "react-day-picker";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { exportAssignmentsCsv } from '@/app/admin/reports/components/history-tabs';
 import { isAdmin, isPayAdmin } from "@/lib/permissions";
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { WorkOrderId } from '@/components/work-order-id';
@@ -188,7 +191,7 @@ export default function AssignmentsHubPage() {
 
     // Weekly logs let Job History show each closed job's payroll stage
     // (logged → submitted → paid) without a per-row lookup.
-    const logUnsub = onSnapshot(collection(db, 'weeklyLogs'), (snapshot) => {
+    const logUnsub = onSharedSnapshot('weeklyLogs', (snapshot) => {
       setWeeklyLogs(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
     });
 
@@ -385,7 +388,7 @@ export default function AssignmentsHubPage() {
         .then(() => deleteDoc(doc(db, 'assignments', editedOrder.id)))
         .catch((error: any) => {
           console.error("Unassign Error:", error);
-          toast({ variant: "destructive", title: "Update Failed", description: error.message });
+          toast({ variant: "destructive", title: "Save failed", description: error.message });
         });
     } else {
       const docRef = doc(db, 'assignments', editedOrder.id);
@@ -401,7 +404,7 @@ export default function AssignmentsHubPage() {
         })
         .catch((error: any) => {
           console.error("Registry Update Error:", error);
-          toast({ variant: "destructive", title: "Update Failed", description: error.message });
+          toast({ variant: "destructive", title: "Save failed", description: error.message });
         });
     }
 
@@ -445,7 +448,7 @@ export default function AssignmentsHubPage() {
       setOrderToArchive(null);
     } catch (e: any) {
       console.error("Archive Error:", e);
-      toast({ variant: "destructive", title: "Archive Failed", description: e?.message || "Could not archive assignment. Please try again." });
+      toast({ variant: "destructive", title: "Archive failed", description: e?.message || "Could not archive assignment. Please try again." });
     } finally {
       setIsArchiving(false);
     }
@@ -471,7 +474,7 @@ export default function AssignmentsHubPage() {
         const woRef = doc(db, 'workOrders', woId);
         updateDoc(woRef, sanitize(updates)).catch(err => {
             console.error("Field Update Error:", err);
-            toast({ variant: "destructive", title: "Update Failed", description: err.message });
+            toast({ variant: "destructive", title: "Save failed", description: err.message });
         });
     });
     
@@ -528,6 +531,13 @@ export default function AssignmentsHubPage() {
                 </FilterSection>
               </FiltersPopover>
               <DateRangeButton value={dateRange} onChange={setDateRange} />
+              {/* Every job matching the search / filters / dates — both tabs,
+                  any status — not just the page on screen. */}
+              <Button variant="outline" className="h-10 shrink-0 text-[10px] font-bold uppercase tracking-widest" disabled={filteredWorkOrders.length === 0}
+                onClick={() => exportAssignmentsCsv(filteredWorkOrders, id => techById.get(id)?.name, isPayAdmin(currentUser))}
+                title={`Export ${filteredWorkOrders.length} job${filteredWorkOrders.length === 1 ? '' : 's'} with locations`}>
+                <Download size={14} className="mr-1.5" /> CSV ({filteredWorkOrders.length})
+              </Button>
             </div>
         </div>
       </header>
@@ -876,7 +886,7 @@ export default function AssignmentsHubPage() {
             isOpen={isDetailOpen} 
             setIsOpen={setIsDetailOpen} 
             mission={selectedJob} 
-            onEdit={(m) => { setIsDetailOpen(false); handleOpenEditDialog(m); }} 
+            onEdit={(m) => { setIsDetailOpen(false); handleOpenEditDialog(workOrders.find(w => w.id === m.id) ?? m); }} 
             onUpdate={handleJobUpdate}
         />
         

@@ -49,8 +49,7 @@ import {
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AddPersonnelDialog } from './add-personnel-dialog';
-import { EditPersonnelDialog } from './edit-personnel-dialog';
-import { PersonnelDetailDialog } from './personnel-detail-dialog';
+import { canEditUserAccess, canGrantProjectManager, NON_ADMIN_ROLES } from '@/lib/profile-permissions';
 import { useToast } from '@/hooks/use-toast';
 import { cn, isInactiveTechnician } from '@/lib/utils';
 import { 
@@ -62,11 +61,9 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO } from 'date-fns';
-import { getReliabilityTier, getTierBadgeVariant, getTierColor } from '@/lib/reliability';
 import { useSearchParams } from 'next/navigation';
 import { db, auth } from "@/lib/firebase";
 import { doc, updateDoc, setDoc, deleteDoc, addDoc, collection } from 'firebase/firestore';
-import { auditFieldChange } from '@/lib/audit';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -86,11 +83,11 @@ const ALL_ROLES = [
     { value: 'super_admin', label: 'Super Admin' },
     { value: 'dispatch_admin', label: 'Dispatch Admin' },
     { value: 'payroll_admin', label: 'Payroll Admin' },
+    { value: 'sales', label: 'Sales (external)' },
     { value: 'project_manager', label: 'Project Manager' },
     { value: 'project_lead', label: 'Project Lead' },
     { value: 'field_technician', label: 'Field Technician' },
     { value: 'client', label: 'Client User' },
-    { value: 'sales', label: 'Sales' },
 ];
 
 type DirectoryClientProps = {
@@ -103,7 +100,7 @@ type DirectoryClientProps = {
 };
 
 type ViewMode = 'rows' | 'grid';
-type SortOption = 'name' | 'reliability' | 'contacts' | 'role';
+type SortOption = 'name' | 'contacts' | 'role';
 
 export function DirectoryClient({ technicians: personnel, timeOffRequests, workOrders, assignments, siteRequests, pendingUsers }: DirectoryClientProps) {
     const searchParams = useSearchParams();
@@ -121,9 +118,6 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
     const [itemsPerPage, setItemsPerPage] = useState(10);
 
     const [isAddPersonnelOpen, setIsAddPersonnelOpen] = useState(false);
-    const [isEditPersonnelOpen, setIsEditPersonnelOpen] = useState(false);
-    const [selectedPerson, setSelectedPerson] = useState<Technician | null>(null);
-    const [isDetailOpen, setIsDetailOpen] = useState(false);
 
     const [selectedClientCompany, setSelectedClientCompany] = useState<{ name: string; businessType?: string; contacts: Technician[] } | null>(null);
 
@@ -149,7 +143,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
             console.warn("Google Maps API Handshake Restricted.");
             toast({
               variant: "destructive",
-              title: "Registry Security Error",
+              title: "Google Maps unavailable",
               description: "Google Maps API referer or activation restriction active. Please authorize this workstation URL in your Cloud Console.",
             });
           };
@@ -168,36 +162,19 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
         if (company) setSelectedClientCompany(company);
     };
 
-    const handleEditClick = (person: Technician) => {
-        setSelectedPerson(person);
-        setIsDetailOpen(false);
-        setIsEditPersonnelOpen(true);
-    };
-
-    const handleSavePersonnel = async (personId: string, updates: Partial<Technician>) => {
-        try {
-            const oldPerson = personnel.find(p => p.id === personId);
-            const adminId = auth.currentUser?.uid || '';
-            const adminName = auth.currentUser?.displayName || 'Admin';
-            if (oldPerson) {
-                await auditFieldChange('users', personId, adminId, adminName, oldPerson as Record<string, unknown>, updates as Record<string, unknown>);
-            }
-            // Partial update only — never spread the full stale snapshot back,
-            // or fields edited elsewhere since this dialog opened (like admin
-            // notes) get silently reverted.
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await updateDoc(doc(db, 'users', personId), updates as any);
-            toast({
-                title: "Operative Updated",
-                description: `Personnel records for ${updates.name || oldPerson?.name} committed.`
-            });
-        } catch (e: any) {
-            toast({ variant: "destructive", title: "Update Failed", description: e.message });
-        }
-    };
-
     const handleApproveUser = async () => {
         if (!selectedPendingUser || selectedRoles.length === 0 || !primaryRole) return;
+        // Any admin approves techs, leads, sales and clients; admin roles need
+        // a super admin (firestore.rules adminMayUpdateUser).
+        const me = personnel.find(p => p.id === auth.currentUser?.uid);
+        if (selectedRoles.some(r => !NON_ADMIN_ROLES.includes(r)) && !canEditUserAccess(me)) {
+            toast({ variant: 'destructive', title: 'Super admin only', description: 'Only a super admin can grant an admin role. Approve with a tech, sales or client role, or ask a super admin.' });
+            return;
+        }
+        if (selectedRoles.includes('project_manager') && !canGrantProjectManager(me)) {
+            toast({ variant: 'destructive', title: 'Dispatch or super admin only', description: 'Only a dispatch admin or super admin can make someone a Project Manager.' });
+            return;
+        }
         setApproving(true);
         try {
             const adminUid = auth.currentUser?.uid || '';
@@ -250,11 +227,11 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
         try {
             await setDoc(doc(db, 'users', newPerson.id), newPerson);
             toast({
-                title: "Personnel Enrolled",
+                title: "Person added",
                 description: `${newPerson.name} has been successfully registered.`
             });
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Enrollment Failed", description: e.message });
+            toast({ variant: "destructive", title: "Could not add person", description: e.message });
         }
     };
 
@@ -299,7 +276,6 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                 const ai = isInactiveTechnician(a) ? 1 : 0;
                 const bi = isInactiveTechnician(b) ? 1 : 0;
                 if (ai !== bi) return ai - bi;
-                if (sortBy === 'reliability') return (b.reliabilityScore || 0) - (a.reliabilityScore || 0);
                 return (a.name || '').localeCompare(b.name || '');
             });
     }, [techniciansList, lowercasedQuery, sortBy, showInactive]);
@@ -499,7 +475,6 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="name" className="text-[8px] uppercase font-bold">Name</SelectItem>
-                                            {activeTab === 'technicians' && <SelectItem value="reliability" className="text-[8px] uppercase font-bold">Reliability</SelectItem>}
                                             {activeTab === 'clients' && <SelectItem value="contacts" className="text-[8px] uppercase font-bold">Density</SelectItem>}
                                             {activeTab === 'staff' && <SelectItem value="role" className="text-[8px] uppercase font-bold">Role</SelectItem>}
                                         </SelectContent>
@@ -539,16 +514,11 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                     <div className="text-left pl-0">TECHNICIAN</div>
                                     <div className="text-left">ROLE</div>
                                     <div className="text-left">CONTACT</div>
-                                    <div className="text-center">OPERATIONAL TRUST</div>
+                                    <div className="text-left">WORKING LOCATION</div>
                                     <div className="text-center">STATUS</div>
                                 </div>
                                 <ScrollArea className="h-full">
                                     {paginatedTechnicians.map(tech => {
-                                        const tier = tech.reliabilityTier || getReliabilityTier(tech.reliabilityScore || 0);
-                                        const tierColor = getTierColor(tier);
-                                        const badgeVariant = getTierBadgeVariant(tier);
-                                        const isRestricted = tier === 'Restricted' || tier === 'Suspended Review';
-
                                         return (
                                         <div key={tech.id} className="grid grid-cols-1 gap-1.5 md:gap-0 md:grid-cols-[2fr,1fr,1.5fr,1.2fr,1fr] items-start md:items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors last:border-none" onClick={() => handleRowClick(tech)}>
                                             <div className="flex items-center justify-start gap-3 pl-0">
@@ -572,23 +542,14 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                     <Phone size={10} className="text-text-muted shrink-0"/>{tech.phone}
                                                 </div>
                                             </div>
-                                            <div className="flex flex-col items-center justify-center gap-1">
-                                                <Badge variant={badgeVariant} className="text-[8px] h-4 uppercase tracking-[0.1em] px-2 font-black">
-                                                    {tier}
-                                                </Badge>
-                                                <div className="flex items-center gap-1.5">
-                                                    <Activity size={10} className={tierColor} />
-                                                    <span className={cn("font-mono font-bold text-xs", tierColor)}>{tech.reliabilityScore || 0}%</span>
-                                                </div>
+                                            <div className="flex items-center gap-1.5 text-[10px] text-text-secondary min-w-0">
+                                                <MapPin size={10} className="text-text-muted shrink-0" />
+                                                <span className="truncate">{tech.currentLocation || '—'}</span>
                                             </div>
                                             <div className="flex items-center justify-center">
                                                 {isInactiveTechnician(tech) ? (
                                                     <Badge variant="outline" className="text-[8px] h-4 uppercase tracking-widest gap-1 text-text-muted border-border-sub bg-bg-tertiary">
                                                         Inactive
-                                                    </Badge>
-                                                ) : isRestricted ? (
-                                                    <Badge variant="missed" className="text-[8px] h-4 uppercase tracking-widest gap-1">
-                                                        <Lock size={10}/> FLAG
                                                     </Badge>
                                                 ) : (
                                                     <Badge variant="active" className="text-[8px] h-4 uppercase tracking-widest">ACTIVE</Badge>
@@ -601,10 +562,6 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                         )}
                         <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4", viewMode === 'rows' && "md:hidden")}>
                                 {paginatedTechnicians.map(tech => {
-                                    const tier = tech.reliabilityTier || getReliabilityTier(tech.reliabilityScore || 0);
-                                    const badgeVariant = getTierBadgeVariant(tier);
-                                    const tierColor = getTierColor(tier);
-                                    
                                     return (
                                         <Card key={tech.id} className="bg-bg-secondary border-border-main hover:border-brand-red transition-all cursor-pointer group" onClick={() => handleRowClick(tech)}>
                                             <CardHeader className="p-4 pb-2 text-left">
@@ -613,7 +570,6 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                         <AvatarImage src={tech.avatarUrl} />
                                                         <AvatarFallback>{(tech.name || 'U').charAt(0)}</AvatarFallback>
                                                     </Avatar>
-                                                    <Badge variant={badgeVariant} className="text-[7px] uppercase h-4 px-1.5">{tier}</Badge>
                                                 </div>
                                                 <div className="mt-3 text-left">
                                                     <CardTitle className="text-xs uppercase font-black truncate">{tech.name}</CardTitle>
@@ -621,12 +577,6 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                 </div>
                                             </CardHeader>
                                             <CardContent className="p-4 pt-2 space-y-3">
-                                                <div className="flex items-center justify-between p-2 rounded bg-bg-primary border border-border-sub">
-                                                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-text-muted">
-                                                        <Gauge size={12} className={tierColor}/> Index
-                                                    </div>
-                                                    <span className={cn("font-mono font-bold text-xs", tierColor)}>{tech.reliabilityScore}%</span>
-                                                </div>
                                                 <div className="space-y-1.5">
                                                     <div className="flex items-center gap-2 text-[10px] text-text-muted">
                                                         <MapPin size={10} className="text-brand-red"/>
@@ -1027,8 +977,8 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                     {selectedMapEntity.metaType === 'tech' ? (
                                                         <div className="flex items-center justify-between pt-1 border-t border-border-sub/30 mt-1">
                                                             <div className="space-y-0.5 text-left">
-                                                                <p className="text-[8px] font-black uppercase text-text-muted tracking-widest">Reliability</p>
-                                                                <p className="text-xs font-mono font-bold text-text-green">{(selectedMapEntity as Technician).reliabilityScore}%</p>
+                                                                <p className="text-[8px] font-black uppercase text-text-muted tracking-widest">Role</p>
+                                                                <p className="text-xs font-bold text-text-primary">{getPrimaryRoleLabel(selectedMapEntity as Technician)}</p>
                                                             </div>
                                                             <Button 
                                                                 size="sm" 
@@ -1190,25 +1140,6 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                 onSave={handleAddPersonnel}
             />
             
-            {selectedPerson && (
-                <EditPersonnelDialog 
-                    isOpen={isEditPersonnelOpen} 
-                    setIsOpen={setIsEditPersonnelOpen} 
-                    person={selectedPerson}
-                    onSave={handleSavePersonnel}
-                />
-            )}
-            
-            <PersonnelDetailDialog
-                isOpen={isDetailOpen}
-                setIsOpen={setIsDetailOpen}
-                person={selectedPerson}
-                workOrders={workOrders}
-                assignments={assignments}
-                onEdit={() => handleEditClick(selectedPerson!)}
-                timeOffRequests={timeOffRequests}
-            />
-
             {/* Approve User Dialog */}
             <Dialog open={approveOpen} onOpenChange={setApproveOpen}>
                 <DialogContent className="bg-bg-secondary border-border-main max-w-md">

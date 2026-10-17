@@ -15,14 +15,14 @@ service firebase.storage {
 
     function isAdmin() {
       let d = userData();
-      return d.get('roles', []).hasAny(['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'])
-          || d.get('role', '') in ['admin', 'super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'];
+      return d.get('roles', []).hasAny(['super_admin', 'dispatch_admin', 'payroll_admin'])
+          || d.get('role', '') in ['admin', 'super_admin', 'dispatch_admin', 'payroll_admin'];
     }
 
     function isTech() {
       let d = userData();
-      return d.get('roles', []).hasAny(['project_lead', 'field_technician'])
-          || d.get('role', '') in ['tech', 'project_lead', 'field_technician'];
+      return d.get('roles', []).hasAny(['project_lead', 'field_technician', 'project_manager'])
+          || d.get('role', '') in ['tech', 'project_lead', 'field_technician', 'project_manager'];
     }
 
     function isClient() {

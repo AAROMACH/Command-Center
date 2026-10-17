@@ -11,27 +11,90 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    // Office operations roles. Project Manager is a technician role now
+    // (isProjectManager) and Sales an external one (isSales).
     function isAdmin() {
       let d = userData();
-      return d.get('roles', []).hasAny(['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'])
-          || d.get('role', '') in ['admin', 'super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'];
+      return d.get('roles', []).hasAny(['super_admin', 'dispatch_admin', 'payroll_admin'])
+          || d.get('role', '') in ['admin', 'super_admin', 'dispatch_admin', 'payroll_admin'];
     }
 
+    // Runs every project from the Tech Portal (no pay, no admin pages).
+    function isProjectManager() {
+      let d = userData();
+      return d.get('roles', []).hasAny(['project_manager']) || d.get('role', '') == 'project_manager';
+    }
+
+    // Legacy accounts with only role: 'admin' (no roles array) are treated as
+    // super admins, as the app does (normalizeLegacyRole).
     function isSuperAdmin() {
       let d = userData();
-      return d.get('roles', []).hasAny(['super_admin']) || d.get('role', '') == 'super_admin';
+      return d.get('roles', []).hasAny(['super_admin']) || d.get('role', '') in ['super_admin', 'admin'];
     }
 
     function isPayrollAdmin() {
       let d = userData();
       return d.get('roles', []).hasAny(['super_admin', 'payroll_admin'])
-          || d.get('role', '') in ['super_admin', 'payroll_admin'];
+          || d.get('role', '') in ['super_admin', 'payroll_admin', 'admin'];
+    }
+
+    // ── Who may change which parts of a user doc ─────────────────────────
+    // The UI gives role/permission editing to super_admin only and pay to
+    // payroll (admin.directory.assign_roles / admin.financials.*). isAdmin()
+    // alone let any admin subrole — dispatch, project manager — rewrite any
+    // user's roles from the browser console, including making themselves
+    // super_admin.
+    function accessKeys() {
+      return ['roles', 'role', 'permissionOverrides', 'primaryPortal', 'portalAccess'];
+    }
+    function payKeys() {
+      return ['hourlyRate', 'payRate', 'payType', 'payoutPreferences', 'accounting'];
+    }
+    // Roles any admin may hand out (approving a sign-up, adding a tech or
+    // client). Admin roles, and the per-user permission/portal overrides, stay
+    // with super admins — that is the escalation this closes.
+    function nonAdminRoles() {
+      return ['client', 'field_technician', 'project_lead', 'project_manager', 'sales'];
+    }
+    function holdsOnlyNonAdminRoles(d) {
+      return d.get('roles', []).hasOnly(nonAdminRoles())
+          && !(d.get('role', '').lower().replace(' ', '_') in
+               ['admin', 'super_admin', 'dispatch_admin', 'payroll_admin', 'administrator', 'owner', 'operator']);
+    }
+    function isDispatchAdmin() {
+      let d = userData();
+      return d.get('roles', []).hasAny(['dispatch_admin']) || d.get('role', '') == 'dispatch_admin';
+    }
+    // Making someone a Project Manager (or taking it away) is for dispatch
+    // and super admins — not payroll.
+    function pmGrantAllowed(before, after) {
+      return before.get('roles', []).hasAny(['project_manager']) == after.get('roles', []).hasAny(['project_manager'])
+          || isSuperAdmin() || isDispatchAdmin();
+    }
+    function adminMayUpdateUser() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let nonAdminRoleChange = !changed.hasAny(['permissionOverrides', 'primaryPortal', 'portalAccess'])
+          && holdsOnlyNonAdminRoles(resource.data)
+          && holdsOnlyNonAdminRoles(request.resource.data);
+      return isAdmin()
+          && (!changed.hasAny(accessKeys()) || isSuperAdmin() || nonAdminRoleChange)
+          && pmGrantAllowed(resource.data, request.resource.data)
+          && (!changed.hasAny(payKeys()) || isPayrollAdmin());
+    }
+    function adminMayCreateUser() {
+      let d = request.resource.data;
+      let nonAdminOnly = holdsOnlyNonAdminRoles(d)
+          && !d.keys().hasAny(['permissionOverrides', 'primaryPortal', 'portalAccess']);
+      return isAdmin()
+          && (nonAdminOnly || isSuperAdmin())
+          && (!d.get('roles', []).hasAny(['project_manager']) || isSuperAdmin() || isDispatchAdmin())
+          && (!d.keys().hasAny(payKeys()) || isPayrollAdmin());
     }
 
     function isTech() {
       let d = userData();
-      return d.get('roles', []).hasAny(['project_lead', 'field_technician'])
-          || d.get('role', '') in ['tech', 'project_lead', 'field_technician'];
+      return d.get('roles', []).hasAny(['project_lead', 'field_technician', 'project_manager'])
+          || d.get('role', '') in ['tech', 'project_lead', 'field_technician', 'project_manager'];
     }
 
     function isClient() {
@@ -56,7 +119,7 @@ service cloud.firestore {
     function isCounterBump() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       return changed.size() == 1
-          && changed.hasOnly(['asmt', 'cli', 'creq', 'fnr', 'batch', 'inv', 'lead', 'lact', 'msg', 'msr', 'noti', 'pdis', 'pen', 'plan', 'prj', 'plog', 'pdoc', 'ppay', 'reimb', 'route', 'site', 'sreq', 'svc', 'cint', 'pto', 'tlog', 'uID', 'wlog', 'wli', 'qt', 'wo'])
+          && changed.hasOnly(['asmt', 'cli', 'creq', 'fnr', 'batch', 'inv', 'lead', 'lact', 'msg', 'msr', 'noti', 'pdis', 'pen', 'plan', 'prj', 'plog', 'pdoc', 'ppay', 'reimb', 'route', 'site', 'sreq', 'sub', 'svc', 'cint', 'pto', 'tlog', 'uID', 'wlog', 'wli', 'qt', 'wo'])
           && counterStep('asmt')
           && counterStep('cli')
           && counterStep('creq')
@@ -79,6 +142,7 @@ service cloud.firestore {
           && counterStep('route')
           && counterStep('site')
           && counterStep('sreq')
+          && counterStep('sub')
           && counterStep('svc')
           && counterStep('cint')
           && counterStep('pto')
@@ -103,8 +167,8 @@ service cloud.firestore {
     }
     function messagingRoleAllowed(allowed, receiverId) {
       return allowed == 'all'
-        || (allowed == 'admins' && receiverRoles(receiverId).hasAny(['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager']))
-        || (allowed == 'techs'  && receiverRoles(receiverId).hasAny(['field_technician', 'project_lead']))
+        || (allowed == 'admins' && receiverRoles(receiverId).hasAny(['super_admin', 'dispatch_admin', 'payroll_admin']))
+        || (allowed == 'techs'  && receiverRoles(receiverId).hasAny(['field_technician', 'project_lead', 'project_manager']))
         || (allowed == 'clients' && receiverRoles(receiverId).hasAny(['client']));
     }
     function canMessage(receiverId) {
@@ -131,16 +195,17 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow create: if isAdmin()
+      allow create: if adminMayCreateUser()
           || (request.auth != null
               && request.auth.uid == userId
               && request.resource.data.approvalStatus == 'pending'
               && !request.resource.data.keys().hasAny(['role', 'clientCompany', 'clientId', 'companyId',
                     'portalAccess', 'primaryPortal', 'permissionOverrides',
-                    'messagingAllowedRoles', 'messagingBlockedClientIds', 'hourlyRate', 'payRate'])
+                    'messagingAllowedRoles', 'messagingBlockedClientIds', 'hourlyRate', 'payRate',
+                    'payoutPreferences', 'accounting'])
               && (!request.resource.data.keys().hasAny(['roles'])
                   || request.resource.data.roles.size() == 0));
-      allow update: if isAdmin()
+      allow update: if adminMayUpdateUser()
           || (isSignedIn() && request.auth.uid == userId
               && !request.resource.data.diff(resource.data).affectedKeys()
                   .hasAny(['roles', 'role', 'reliabilityScore', 'reliabilityTier', 'status', 'accountStatus',
@@ -152,7 +217,19 @@ service cloud.firestore {
                             // project threads; the messaging fields are admin-set limits.
                             'clientCompany', 'clientId', 'companyId',
                             'messagingAllowedRoles', 'messagingBlockedClientIds',
-                            'payRate', 'payType', 'currentWorkload']));
+                            'payRate', 'payType', 'currentWorkload',
+                            // Mirrored from subscriptions by billing staff.
+                            'planId', 'subscriptionStatus',
+                            // Tax / QuickBooks profile — admin-only (see UserAccounting).
+                            'accounting',
+                            // Contact email is admin-set; changing it here never
+                            // changed the sign-in email, so self-edits only confused records.
+                            'email'])
+              // Payment terms set the invoice due date — clients may edit their
+              // billing contact, but not their own terms.
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['billingDetails'])
+                  || request.resource.data.get('billingDetails', {}).get('terms', null)
+                     == resource.data.get('billingDetails', {}).get('terms', null)));
       allow delete: if isSuperAdmin();
 
       // Client-workspace subcollections (notes, documents, contacts, access
@@ -173,7 +250,13 @@ service cloud.firestore {
       // their own. Written by the directory detail page.
       match /documents/{docId} {
         allow read: if isSignedIn() && (isAdmin() || request.auth.uid == userId);
-        allow write: if isAdmin();
+        // The owner may submit a document for review (tech profile → Upload);
+        // only admins approve, edit or delete.
+        allow create: if isAdmin()
+            || (isSignedIn() && request.auth.uid == userId
+                && request.resource.data.approvalStatus == 'pending'
+                && !request.resource.data.keys().hasAny(['approvedBy', 'reviewedAt']));
+        allow update, delete: if isAdmin();
       }
       // Admin-only personnel notes.
       match /techNotes/{noteId} {
@@ -299,6 +382,7 @@ service cloud.firestore {
     match /projectDailyLogs/{id} {
       allow read: if isSignedIn() && (
           isAdmin()
+          || isProjectManager()
           || (isTech() && resource.data.techId == request.auth.uid)
           // The project page shows the whole crew's logs to techs on it.
           || (isTech() && resource.data.get('projectId', null) != null
@@ -307,11 +391,11 @@ service cloud.firestore {
           || (isClient() && resource.data.get('projectId', null) != null
               && isMyCompanyProject(resource.data.projectId))
       );
-      allow create: if isAdmin()
+      allow create: if isAdmin() || isProjectManager()
           || (isTech() && request.resource.data.techId == request.auth.uid);
-      allow update: if isAdmin()
+      allow update: if isAdmin() || isProjectManager()
           || (isTech() && resource.data.techId == request.auth.uid && keepsField('techId'));
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || isProjectManager();
     }
 
     // A client's company, or '' when the account has none (never matches a
@@ -334,22 +418,25 @@ service cloud.firestore {
       // Sales can hand a won deal to ops — only as an on-hold project tied
       // to the deal, with no crew assigned. Ops activates and staffs it.
       allow create: if isAdmin()
+          || isProjectManager()
           || (isSales()
               && request.resource.data.status == 'on-hold'
               && request.resource.data.sourceLeadId is string
               && request.resource.data.assignedTechnicianIds.size() == 0);
+      // PM: any project. The named lead and the crew: their project, but not
+      // who is on it, its status, client or budget (those are the PM's).
       allow update: if isAdmin()
-          || (isTech() && (
-              resource.data.assignedTechnicianIds.hasAny([request.auth.uid])
-              || resource.data.projectLeadId == request.auth.uid
-          ));
+          || isProjectManager()
+          || (isTech() && onProjectDoc(resource.data)
+              && !request.resource.data.diff(resource.data).affectedKeys().hasAny(projectControlKeys()));
       allow delete: if isSuperAdmin();
     }
 
     match /projectDocuments/{id} {
       allow read: if isSignedIn() && (isAdmin() || isTech());
       allow create: if isAdmin() || isTech();
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || isProjectManager()
+          || (isTech() && resource.data.get('projectId', null) is string && leadsProject(resource.data.projectId));
     }
 
     match /clients/{id} {
@@ -533,9 +620,36 @@ service cloud.firestore {
     }
 
     function isOnProject(projectId) {
+      return onProjectDoc(get(/databases/$(database)/documents/projects/$(projectId)).data);
+    }
+
+    // On the crew: the derived crew ids, the named lead, or the team list
+    // itself (older projects never had assignedTechnicianIds filled in).
+    // Team entries are {techId, role} maps, matched per crew role
+    // (Manage Team's ROLES).
+    function onProjectDoc(p) {
+      let uid = request.auth.uid;
+      return p.get('assignedTechnicianIds', []).hasAny([uid])
+          || p.get('projectLeadId', null) == uid
+          || p.get('team', []).hasAny([
+              {'techId': uid, 'role': 'Project Manager'}, {'techId': uid, 'role': 'Project Lead'},
+              {'techId': uid, 'role': 'Assist Tech'}, {'techId': uid, 'role': 'Cabling Tech'},
+              {'techId': uid, 'role': 'Fiber Tech'}, {'techId': uid, 'role': 'Network Tech'},
+              {'techId': uid, 'role': 'Apprentice'}]);
+    }
+
+    // The named lead of a project (Project Lead or PM role on the account).
+    function leadsProject(projectId) {
       let p = get(/databases/$(database)/documents/projects/$(projectId)).data;
-      return p.get('assignedTechnicianIds', []).hasAny([request.auth.uid])
-          || p.get('projectLeadId', null) == request.auth.uid;
+      let uid = request.auth.uid;
+      return userData().get('roles', []).hasAny(['project_lead', 'project_manager'])
+          && (p.get('projectLeadId', null) == uid
+              || p.get('team', []).hasAny([{'techId': uid, 'role': 'Project Lead'}, {'techId': uid, 'role': 'Project Manager'}]));
+    }
+
+    function projectControlKeys() {
+      return ['team', 'assignedTechnicianIds', 'projectLeadId', 'status', 'client', 'clientId',
+              'projectBudget', 'actualBudget', 'sourceLeadId', 'sourceQuoteId'];
     }
 
     function canReadMessage() {
@@ -581,11 +695,27 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Service plans — the app reads/writes the `plans` collection (the rule
-    // previously guarded `planTiers`, which no code references).
-    match /plans/{id} {
+    // Service plans — clients see them to choose one; billing admins
+    // (payroll/super) manage them. See lib/billing.ts.
+    match /servicePlans/{id} {
       allow read: if isSignedIn();
-      allow write: if isSuperAdmin();
+      allow write: if isPayrollAdmin();
+    }
+
+    // Client subscriptions. A client reads their own and may request a plan
+    // (a 'pending', manual, list-price request) or withdraw their own pending
+    // request; activating, pricing and canceling is billing staff only.
+    match /subscriptions/{id} {
+      allow read: if isSignedIn() && (isAdmin() || resource.data.clientId == request.auth.uid);
+      allow create: if isPayrollAdmin()
+          || (isClient()
+              && request.resource.data.clientId == request.auth.uid
+              && request.resource.data.status == 'pending'
+              && request.resource.data.collection == 'manual'
+              && request.resource.data.priceOverride == null);
+      allow update: if isPayrollAdmin();
+      allow delete: if isPayrollAdmin()
+          || (isClient() && resource.data.clientId == request.auth.uid && resource.data.status == 'pending');
     }
 
     match /financialRecords/{id} {
@@ -720,7 +850,8 @@ service cloud.firestore {
     // Admin-managed config read across portals (skills list, finance rates)
     match /adminConfig/{id} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      // Pricing and the payroll mileage rate (finance) are billing staff only.
+      allow write: if (!(id in ['pricing', 'finance']) && isAdmin()) || (id in ['pricing', 'finance'] && isPayrollAdmin());
     }
   }
 }

@@ -1,9 +1,11 @@
 'use client';
 
+import { useClientSubscriptions, useServicePlans } from '@/hooks/use-billing';
+import { formatMoney, INTERVAL_LABELS, isLiveSubscription, subscriptionAmount, SUBSCRIPTION_STATUS_LABELS } from '@/lib/billing';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
-import { doc, collection, onSnapshot, addDoc, updateDoc, arrayUnion, arrayRemove, query, where } from 'firebase/firestore';
+import { doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, query, where } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,15 +20,22 @@ import {
   ArrowLeft, Mail, Phone, MapPin, Briefcase, Clock, CheckCircle, AlertTriangle,
   Calendar, FileText, Upload, Shield, CheckSquare, Square, Minus,
   Star, Activity, TrendingUp, StickyNote, Plus, Users, Wrench,
-  PhoneCall, UserCheck, BarChart2, Pencil, Search, Ban, ChevronDown, ChevronRight,
+  PhoneCall, UserCheck, BarChart2, Pencil, Ban, ChevronDown, ChevronRight,
+  Landmark, ExternalLink, Trash2, XCircle, Link2,
 } from 'lucide-react';
 import { EditProfileDialog } from '../components/edit-profile-dialog';
 import { uploadFile } from '@/lib/upload';
 import { cn } from '@/lib/utils';
-import { getReliabilityTier, getTierBadgeVariant } from '@/lib/reliability';
-import { hasPermission, ALL_PERMISSIONS, PERMISSION_TREE, getPortalAccess, isTech as isTechRole, isClient as isClientRole, type Permission } from '@/lib/permissions';
+import { hasPermission, PERMISSION_TREE, getPortalAccess, getSubroles, SUBROLE_DEFINITIONS, isTech as isTechRole, isClient as isClientRole, type Permission } from '@/lib/permissions';
+import { auditEvent, auditFieldChange } from '@/lib/audit';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-context';
+import { canEditUserAccess } from '@/lib/profile-permissions';
+import {
+  vendorReadiness, customerReadiness, customerDisplayName, hasW9OnFile, WORKER_TYPE_LABELS, type Readiness,
+} from '@/lib/accounting-readiness';
 import { format, parseISO, differenceInDays } from 'date-fns';
-import type { Technician, WorkOrder, PersonnelDocument, Project, ReliabilityEvent } from '@/lib/types';
+import type { Technician, WorkOrder, PersonnelDocument, Project, ReliabilityEvent, QboLink } from '@/lib/types';
 import { isAssignedTo, isArchivedJob } from '@/lib/jobs';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -47,6 +56,73 @@ const DOC_TYPE_COLORS: Record<string, string> = {
   other: 'bg-bg-tertiary text-text-muted border-border-sub',
 };
 
+type PortalKey = 'admin' | 'sales' | 'tech' | 'client';
+const PORTAL_ORDER: PortalKey[] = ['admin', 'sales', 'tech', 'client'];
+const PORTAL_META: Record<PortalKey, { label: string; dot: string }> = {
+  admin: { label: 'Admin Portal', dot: 'bg-brand-red' },
+  sales: { label: 'Sales Portal', dot: 'bg-amber-400' },
+  tech: { label: 'Technician Portal', dot: 'bg-blue-400' },
+  client: { label: 'Client Portal', dot: 'bg-text-green' },
+};
+// The Sales Portal has no permission group of its own — its subrole is built
+// from the admin.crm.* actions (see SUBROLE_DEFINITIONS.sales).
+const PORTAL_PERMISSION_SECTIONS: Record<PortalKey, Record<string, Permission[]>> = {
+  admin: PERMISSION_TREE.admin as Record<string, Permission[]>,
+  sales: { crm: PERMISSION_TREE.admin.crm as Permission[] },
+  tech: PERMISSION_TREE.tech as Record<string, Permission[]>,
+  client: PERMISSION_TREE.client as Record<string, Permission[]>,
+};
+
+// Documents uploaded by the old directory pop-up before documents moved to
+// users/{id}/documents. Shown read-only beside the canonical ones.
+type DirectoryDocument = PersonnelDocument & { _legacy?: boolean };
+
+/** QuickBooks readiness checklist for a vendor (tech) or customer (client). */
+function ReadinessPanel({ title, readiness, link }: { title: string; readiness: Readiness; link?: QboLink }) {
+  const done = readiness.checks.filter(c => c.ok).length;
+  return (
+    <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
+      <div className="flex items-center justify-between border-b border-border-sub pb-2">
+        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+          <Link2 size={11} className="text-brand-red" /> {title}
+        </h3>
+        {readiness.applies && (
+          <Badge variant={readiness.ready ? 'active' : 'onhold'} className="text-[8px] uppercase">
+            {readiness.ready ? 'Ready' : `${done}/${readiness.checks.length}`}
+          </Badge>
+        )}
+      </div>
+      {!readiness.applies ? (
+        <p className="text-[10px] text-text-muted">{readiness.note}</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {readiness.checks.map(c => (
+            <li key={c.key} className="flex items-start gap-2">
+              {c.ok
+                ? <CheckCircle size={12} className="text-text-green mt-0.5 shrink-0" />
+                : <XCircle size={12} className="text-text-red mt-0.5 shrink-0" />}
+              <div className="min-w-0">
+                <p className={cn('text-[11px]', c.ok ? 'text-text-secondary' : 'text-text-primary font-bold')}>{c.label}</p>
+                {!c.ok && c.hint && <p className="text-[9px] text-text-muted">{c.hint}</p>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="pt-2 border-t border-border-sub flex items-center justify-between text-[10px]">
+        <span className="text-text-muted uppercase font-bold tracking-widest">QuickBooks link</span>
+        {link?.id ? (
+          <span className={cn('font-mono', link.error ? 'text-text-red' : 'text-text-green')}>
+            #{link.id}{link.error ? ` · ${link.error}` : link.syncedAt ? ` · synced ${format(parseISO(link.syncedAt), 'MM/dd/yy')}` : ''}
+          </span>
+        ) : (
+          <span className="text-text-muted">Not linked yet</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function permissionLabel(perm: string): string {
   const parts = perm.split('.');
   if (parts.length === 3) {
@@ -62,7 +138,12 @@ export default function DirectoryPersonPage() {
 
   const [person, setPerson] = useState<Technician | null>(null);
   const [assignments, setAssignments] = useState<WorkOrder[]>([]);
-  const [documents, setDocuments] = useState<PersonnelDocument[]>([]);
+  const [canonicalDocs, setCanonicalDocs] = useState<DirectoryDocument[]>([]);
+  const [legacyDocs, setLegacyDocs] = useState<DirectoryDocument[]>([]);
+  const documents = useMemo(() => [...canonicalDocs, ...legacyDocs], [canonicalDocs, legacyDocs]);
+  const { toast } = useToast();
+  const { user: me } = useAuth();
+  const canEditAccess = canEditUserAccess(me);
   const [projects, setProjects] = useState<Project[]>([]);
   const [penaltyEvents, setPenaltyEvents] = useState<ReliabilityEvent[]>([]);
   const [techNotes, setTechNotes] = useState<{ id: string; text: string; createdAt: string; authorName?: string }[]>([]);
@@ -80,9 +161,7 @@ export default function DirectoryPersonPage() {
   const [savingPerms, setSavingPerms] = useState(false);
   const [permsDirty, setPermsDirty] = useState(false);
 
-  const [rolesBuffer, setRolesBuffer] = useState<string[]>([]);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
-  const [restrictSearch, setRestrictSearch] = useState('');
   const [noteText, setNoteText] = useState('');
   const [addingNote, setAddingNote] = useState(false);
   const [allClients, setAllClients] = useState<Technician[]>([]);
@@ -95,17 +174,27 @@ export default function DirectoryPersonPage() {
         const data = { ...snap.data(), id: snap.id } as Technician;
         setPerson(data);
         setPermOverrides(data.permissionOverrides || {});
-        setRolesBuffer(Array.isArray(data.roles) ? [...(data.roles as string[])] : (data.role ? [data.role] : []));
+        setPermsDirty(false);
       }
       setLoading(false);
     });
 
     const unsubDocs = onSnapshot(collection(db, 'users', id, 'documents'), snap => {
-      setDocuments(snap.docs.map(d => ({ ...d.data(), id: d.id } as PersonnelDocument)));
+      setCanonicalDocs(snap.docs.map(d => ({ ...d.data(), id: d.id } as DirectoryDocument)));
     });
-    const unsubPenalty = onSnapshot(collection(db, 'penaltyEvents'), snap => {
-      const all = snap.docs.map(d => ({ ...d.data(), id: d.id } as ReliabilityEvent));
-      setPenaltyEvents(all.filter(e => e.techId === id).sort((a, b) => b.createdAt?.localeCompare(a.createdAt || '') || 0));
+    const unsubLegacyDocs = onSnapshot(query(collection(db, 'personnelDocuments'), where('personnelId', '==', id)), snap => {
+      setLegacyDocs(snap.docs.map(d => {
+        const data = d.data();
+        return {
+          id: d.id, name: data.name || 'Document', type: data.type === 'w9' ? 'w9' : 'other', url: data.url || '',
+          uploadedAt: data.uploadedAt || '', approvalStatus: data.approvalStatus || 'approved', _legacy: true,
+        } as DirectoryDocument;
+      }));
+    }, () => setLegacyDocs([]));
+    // Only this person's events (was a listener on the whole collection).
+    const unsubPenalty = onSnapshot(query(collection(db, 'penaltyEvents'), where('techId', '==', id)), snap => {
+      const mine = snap.docs.map(d => ({ ...d.data(), id: d.id } as ReliabilityEvent));
+      setPenaltyEvents(mine.sort((a, b) => b.createdAt?.localeCompare(a.createdAt || '') || 0));
     });
     const unsubNotes = onSnapshot(collection(db, 'users', id, 'techNotes'), snap => {
       setTechNotes(
@@ -143,7 +232,7 @@ export default function DirectoryPersonPage() {
     const unsubProjects = onSnapshot(query(collection(db, 'projects'), where('assignedTechnicianIds', 'array-contains', id)), snap => {
       setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
     }, () => setProjects([]));
-    return () => { unsubUser(); unsubDocs(); unsubPenalty(); unsubNotes(); unsubJobsA(); unsubJobsB(); unsubJobsC(); unsubProjects(); };
+    return () => { unsubUser(); unsubDocs(); unsubLegacyDocs(); unsubPenalty(); unsubNotes(); unsubJobsA(); unsubJobsB(); unsubJobsC(); unsubProjects(); };
   }, [id]);
 
   useEffect(() => {
@@ -156,19 +245,25 @@ export default function DirectoryPersonPage() {
 
   const activeJobs = useMemo(() => assignments.filter(wo => wo.status !== 'completed' && wo.status !== 'cancelled'), [assignments]);
   const completedJobs = useMemo(() => assignments.filter(wo => wo.status === 'completed'), [assignments]);
-  const reliabilityScore = person?.reliabilityScore ?? 0;
-  const tier = getReliabilityTier(reliabilityScore);
 
   const isTech = useMemo(() => (person ? isTechRole(person) : false), [person]);
 
   const isClient = useMemo(() => (person ? isClientRole(person) : false), [person]);
 
   const certDocuments = useMemo(() => documents.filter(d => d.type === 'certification'), [documents]);
-  const roles: string[] = rolesBuffer;
-  const activePortals = useMemo(() => {
-    if (!person) return { admin: false, tech: false, client: false };
-    return getPortalAccess({ ...person, roles: rolesBuffer as any });
-  }, [person, rolesBuffer]);
+  const roles: string[] = useMemo(() => getSubroles(person), [person]);
+  const activePortals = useMemo(() => getPortalAccess(person), [person]);
+  const userPortals = useMemo(() => PORTAL_ORDER.filter(p => activePortals[p]), [activePortals]);
+  const [pickedPortal, setSelectedPortal] = useState<PortalKey | null>(null);
+  const selectedPortal: PortalKey | null = pickedPortal && userPortals.includes(pickedPortal) ? pickedPortal : (userPortals[0] ?? null);
+  const { subscriptions: clientSubs } = useClientSubscriptions(person && isClientRole(person) ? person.id : null);
+  const { plans: allPlans } = useServicePlans();
+  const clientSub = clientSubs.find(isLiveSubscription) || clientSubs.find(s => s.status === 'pending') || null;
+  const clientPlan = allPlans.find(p => p.id === clientSub?.planId);
+  const vendorStatus = useMemo(() => (person ? vendorReadiness(person, documents) : null), [person, documents]);
+  const customerStatus = useMemo(() => (person ? customerReadiness(person) : null), [person]);
+  const adminName = () => auth.currentUser?.displayName || 'Admin';
+  const adminId = () => auth.currentUser?.uid || '';
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '—';
@@ -179,7 +274,7 @@ export default function DirectoryPersonPage() {
     if (!uploadForm.name || !id) return;
     setUploadSaving(true);
     try {
-      let resolvedUrl = uploadForm.url || '#';
+      let resolvedUrl = uploadForm.url.trim();
       if (uploadMode === 'file' && uploadFileObj) {
         const safeName = uploadFileObj.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         // Store under personnelDocuments/{userId} so it uses the deployed storage
@@ -200,39 +295,64 @@ export default function DirectoryPersonPage() {
       setUploadForm({ name: '', type: 'other', expiryDate: '', url: '' });
       setUploadFileObj(null);
       setUploadMode('url');
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Upload failed', description: e.message });
     } finally {
       setUploadSaving(false);
     }
   };
 
-  const handleApproveDoc = async (docId: string) => {
-    if (!id) return;
-    await updateDoc(doc(db, 'users', id, 'documents', docId), { approvalStatus: 'approved' });
+  const handleReviewDoc = async (d: DirectoryDocument, approvalStatus: 'approved' | 'rejected') => {
+    if (!id || d._legacy) return;
+    try {
+      await updateDoc(doc(db, 'users', id, 'documents', d.id), {
+        approvalStatus, approvedBy: adminId(), reviewedAt: new Date().toISOString(),
+      });
+      await auditEvent('users', id, adminId(), adminName(), `document_${approvalStatus}`, `${DOC_TYPE_LABELS[d.type] || d.type} "${d.name}" ${approvalStatus} by ${adminName()}`);
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Update failed', description: e.message });
+    }
   };
 
-  const handleToggleRole = (role: string, add: boolean) => {
-    setRolesBuffer(prev => add ? [...prev, role] : prev.filter(r => r !== role));
-    setPermsDirty(true);
+  const handleDeleteDoc = async (d: DirectoryDocument) => {
+    if (!id || !window.confirm(`Delete "${d.name}"? This can't be undone.`)) return;
+    try {
+      await deleteDoc(d._legacy ? doc(db, 'personnelDocuments', d.id) : doc(db, 'users', id, 'documents', d.id));
+      await auditEvent('users', id, adminId(), adminName(), 'document_deleted', `${DOC_TYPE_LABELS[d.type] || d.type} "${d.name}" deleted by ${adminName()}`);
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Delete failed', description: e.message });
+    }
   };
 
-  const handleTogglePerm = (perm: Permission, value: boolean | null) => {
+  // A user's permission = their override if one is set, else their subroles'
+  // preset. Overrides are only kept where they differ from the preset, so
+  // "on" for something the role already grants stores nothing.
+  const roleDefaultPerm = (perm: Permission) => hasPermission({ ...person, permissionOverrides: undefined }, perm);
+  const effectivePerm = (perm: Permission) => permOverrides[perm] ?? roleDefaultPerm(perm);
+
+  const setAllPerms = (perms: Permission[], value: boolean) => {
     setPermOverrides(prev => {
       const next = { ...prev };
-      if (value === null) { delete next[perm]; } else { next[perm] = value; }
+      perms.forEach(p => { if (roleDefaultPerm(p) === value) delete next[p]; else next[p] = value; });
       return next;
     });
     setPermsDirty(true);
   };
+  const setPerm = (perm: Permission, value: boolean) => setAllPerms([perm], value);
 
+  // Subroles (and so portal access) are edited in Edit Profile only. This tab
+  // saves individual overrides.
   const handleSavePerms = async () => {
-    if (!id) return;
+    if (!id || !person) return;
     setSavingPerms(true);
     try {
-      await updateDoc(doc(db, 'users', id), {
-        roles: rolesBuffer,
-        permissionOverrides: permOverrides,
-      });
+      await auditFieldChange('users', id, adminId(), adminName(),
+        { permissionOverrides: person.permissionOverrides || {} }, { permissionOverrides: permOverrides });
+      await updateDoc(doc(db, 'users', id), { permissionOverrides: permOverrides });
       setPermsDirty(false);
+      toast({ title: 'Permissions saved' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Save failed', description: e.message });
     } finally {
       setSavingPerms(false);
     }
@@ -243,36 +363,7 @@ export default function DirectoryPersonPage() {
     await updateDoc(doc(db, 'users', id), { messagingAllowedRoles: value });
   };
 
-  const handleSelectAllForPortal = (portal: 'admin' | 'tech' | 'client') => {
-    const portalPerms = Object.values(PERMISSION_TREE[portal]).flat() as Permission[];
-    setPermOverrides(prev => {
-      const next = { ...prev };
-      portalPerms.forEach(p => { next[p] = true; });
-      return next;
-    });
-    setPermsDirty(true);
-  };
-
-  const handleClearAllForPortal = (portal: 'admin' | 'tech' | 'client') => {
-    const portalPerms = Object.values(PERMISSION_TREE[portal]).flat() as Permission[];
-    setPermOverrides(prev => {
-      const next = { ...prev };
-      portalPerms.forEach(p => { delete next[p]; });
-      return next;
-    });
-    setPermsDirty(true);
-  };
-
-  const handleSelectAllForPage = (perms: Permission[]) => {
-    setPermOverrides(prev => {
-      const next = { ...prev };
-      perms.forEach(p => { next[p] = true; });
-      return next;
-    });
-    setPermsDirty(true);
-  };
-
-  const handleClearAllForPage = (perms: Permission[]) => {
+  const resetPerms = (perms: Permission[]) => {
     setPermOverrides(prev => {
       const next = { ...prev };
       perms.forEach(p => { delete next[p]; });
@@ -334,6 +425,7 @@ export default function DirectoryPersonPage() {
     { value: 'contact', label: 'Contact' },
     { value: 'skills', label: 'Skills', badge: (person.skills?.length || 0) + certDocuments.length || undefined },
     { value: 'availability', label: 'Availability' },
+    { value: 'pay', label: 'Pay & Tax' },
     { value: 'documents', label: 'Documents', badge: documents.length || undefined },
     { value: 'permissions', label: 'Permissions' },
     { value: 'notes', label: 'Notes', badge: techNotes.length || undefined },
@@ -343,7 +435,6 @@ export default function DirectoryPersonPage() {
   const staffTabs = [
     { value: 'overview', label: 'Overview' },
     { value: 'contact', label: 'Contact' },
-    { value: 'role', label: 'Role & Duties' },
     { value: 'permissions', label: 'Permissions' },
     { value: 'documents', label: 'Documents', badge: documents.length || undefined },
     { value: 'notes', label: 'Notes', badge: techNotes.length || undefined },
@@ -352,8 +443,9 @@ export default function DirectoryPersonPage() {
   const clientTabs = [
     { value: 'overview', label: 'Overview' },
     { value: 'contact', label: 'Contact' },
-    { value: 'business', label: 'Business Profile' },
+    { value: 'business', label: 'Billing & Accounting' },
     { value: 'documents', label: 'Documents', badge: documents.length || undefined },
+    { value: 'permissions', label: 'Permissions' },
     { value: 'notes', label: 'Notes', badge: techNotes.length || undefined },
   ];
 
@@ -393,7 +485,6 @@ export default function DirectoryPersonPage() {
             <AvatarImage src={person.avatarUrl} />
             <AvatarFallback className="text-lg font-bold">{(person.name || 'U')[0]}</AvatarFallback>
           </Avatar>
-          {isTech && <Badge variant={getTierBadgeVariant(tier)} className="text-[8px] uppercase tracking-widest px-3">{tier}</Badge>}
         </div>
         <div className="flex-1 space-y-4">
           <div>
@@ -427,7 +518,7 @@ export default function DirectoryPersonPage() {
         </div>
         <div className="md:w-48 shrink-0 grid grid-cols-2 md:grid-cols-1 gap-3">
           {isClient ? [
-            { label: 'Subscription', value: person.subscriptionStatus || 'None', color: person.subscriptionStatus === 'active' ? 'text-text-green' : 'text-text-muted' },
+            { label: 'Service Plan', value: clientPlan?.name || (clientSub ? 'Plan' : 'None'), color: clientSub?.status === 'active' ? 'text-text-green' : 'text-text-muted' },
             { label: 'Account', value: (person.accountStatus || 'Unknown').replace(/_/g, ' '), color: 'text-text-primary' },
           ].map(stat => (
             <div key={stat.label} className="p-2.5 rounded-lg bg-bg-primary border border-border-sub">
@@ -496,26 +587,40 @@ export default function DirectoryPersonPage() {
                 <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
                   <BarChart2 size={11} /> Subscription
                 </h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] text-text-muted uppercase font-bold">Status</span>
-                    <Badge variant={person.subscriptionStatus === 'active' ? 'active' : 'outline'} className="text-[9px] uppercase">
-                      {person.subscriptionStatus || 'None'}
-                    </Badge>
+                {/* From the client's subscription record (Service Plans). */}
+                {clientSub ? (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-text-muted uppercase font-bold">Plan</span>
+                      <span className="text-[11px] font-bold text-text-primary">{clientPlan?.name || clientSub.planId}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-text-muted uppercase font-bold">Status</span>
+                      <Badge variant={clientSub.status === 'active' ? 'active' : 'outline'} className="text-[9px] uppercase">
+                        {SUBSCRIPTION_STATUS_LABELS[clientSub.status]}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-text-muted uppercase font-bold">Billing</span>
+                      <span className="text-[10px] text-text-primary font-mono">{formatMoney(subscriptionAmount(clientSub, clientPlan))} · {INTERVAL_LABELS[clientSub.interval]}</span>
+                    </div>
+                    {clientSub.startDate && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] text-text-muted uppercase font-bold">Since</span>
+                        <span className="text-[10px] text-text-primary font-mono">{formatDate(clientSub.startDate)}</span>
+                      </div>
+                    )}
+                    {clientSub.nextBillingDate && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] text-text-muted uppercase font-bold">Next Bill</span>
+                        <span className="text-[10px] text-text-primary font-mono">{formatDate(clientSub.nextBillingDate)}</span>
+                      </div>
+                    )}
                   </div>
-                  {person.subscriptionStartDate && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] text-text-muted uppercase font-bold">Start Date</span>
-                      <span className="text-[10px] text-text-primary font-mono">{formatDate(person.subscriptionStartDate)}</span>
-                    </div>
-                  )}
-                  {person.subscriptionExpiryDate && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] text-text-muted uppercase font-bold">Expiry</span>
-                      <span className="text-[10px] text-text-primary font-mono">{formatDate(person.subscriptionExpiryDate)}</span>
-                    </div>
-                  )}
-                </div>
+                ) : (
+                  <p className="text-[11px] text-text-muted">Not on a service plan.</p>
+                )}
+                <a href="/admin/plans" className="text-[10px] font-bold uppercase text-brand-red hover:underline">Manage on Service Plans →</a>
               </div>
               {(person as any).managedSites && (person as any).managedSites.length > 0 && (
                 <div className="lg:col-span-2 p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
@@ -535,25 +640,6 @@ export default function DirectoryPersonPage() {
             </div>
           ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {isTech && (
-              <div className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
-                  <Star size={11} className="text-brand-red" /> Reliability
-                </h3>
-                <div className="flex items-center gap-4">
-                  <div className="text-4xl font-black font-mono text-text-primary">{reliabilityScore}</div>
-                  <div>
-                    <Badge variant={getTierBadgeVariant(tier)} className="text-[9px] uppercase">{tier}</Badge>
-                    <p className="text-[9px] text-text-muted uppercase mt-1">{penaltyEvents.length} events logged</p>
-                  </div>
-                </div>
-                {reliabilityScore > 0 && (
-                  <div className="h-1.5 rounded-full bg-bg-primary overflow-hidden">
-                    <div className="h-full bg-brand-red rounded-full transition-all" style={{ width: `${Math.min(reliabilityScore, 100)}%` }} />
-                  </div>
-                )}
-              </div>
-            )}
             <div className="p-4 rounded-xl border border-border-sub bg-bg-secondary space-y-2">
               <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
                 <Activity size={11} /> Recent Assignments
@@ -645,8 +731,33 @@ export default function DirectoryPersonPage() {
                   onClick={() => setIsEditOpen(true)}
                   className="w-full h-8 text-[10px] font-black uppercase tracking-widest mt-2"
                 >
-                  <Pencil size={11} className="mr-1.5" /> Edit Business Profile
+                  <Pencil size={11} className="mr-1.5" /> Edit Billing &amp; Accounting
                 </Button>
+              </div>
+              {customerStatus && (
+                <ReadinessPanel title="QuickBooks Customer" readiness={customerStatus} link={person.accounting?.qboCustomer} />
+              )}
+              <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                  <Landmark size={11} /> Accounting
+                </h3>
+                <div className="space-y-2.5">
+                  <div>
+                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Customer Name in QuickBooks</p>
+                    <p className="text-[11px] text-text-primary">{customerDisplayName(person) || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Billing Address</p>
+                    <p className="text-[11px] text-text-primary">{person.accounting?.billingAddress || person.address || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Sales Tax</p>
+                    <p className="text-[11px] text-text-primary">
+                      {person.accounting?.taxExempt === true ? `Exempt — ${person.accounting.taxExemptReason || 'no reason given'}`
+                        : person.accounting?.taxExempt === false ? 'Taxable' : 'Not set'}
+                    </p>
+                  </div>
+                </div>
               </div>
               {person.billingDetails && (
                 <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
@@ -813,6 +924,9 @@ export default function DirectoryPersonPage() {
         {/* ── AVAILABILITY (tech) ── */}
         {isTech && (
           <TabsContent value="availability" className="m-0 pt-5">
+            {!Object.values(person.availability || {}).some(Boolean) && (
+              <p className="text-[10px] text-text-muted mb-3">No weekly availability has been set for this tech, so every day shows as off.</p>
+            )}
             <div className="rounded-xl border border-border-sub overflow-hidden">
               <div className="p-3 bg-bg-tertiary border-b border-border-sub">
                 <p className="text-[10px] font-black text-text-muted uppercase tracking-widest flex items-center gap-2">
@@ -821,7 +935,7 @@ export default function DirectoryPersonPage() {
               </div>
               <div className="divide-y divide-border-sub">
                 {DAYS.map(day => {
-                  const slot = person.availability?.[day];
+                  const slot = person.availability?.[day.toLowerCase()] ?? person.availability?.[day];
                   const isOff = !slot;
                   return (
                     <div key={day} className={cn('flex items-center justify-between px-4 py-3', isOff && 'bg-bg-tertiary/30')}>
@@ -846,42 +960,41 @@ export default function DirectoryPersonPage() {
           </TabsContent>
         )}
 
-        {/* ── ROLE & DUTIES (staff) ── */}
-        {!isTech && (
-          <TabsContent value="role" className="m-0 pt-5">
-            <div className="space-y-5">
-              <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 mb-3 flex items-center gap-2">
-                  <UserCheck size={11} /> Assigned Roles
+        {/* ── PAY & TAX (tech → QuickBooks Vendor) ── */}
+        {isTech && (
+          <TabsContent value="pay" className="m-0 pt-5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
+                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                  <Landmark size={11} className="text-brand-red" /> Pay &amp; Tax Profile
                 </h3>
-                <div className="flex flex-wrap gap-2">
-                  {roles.map(r => (
-                    <div key={r} className="px-3 py-2 rounded-lg border border-border-sub bg-bg-primary">
-                      <p className="text-[10px] font-bold text-text-primary uppercase">{r.replace(/_/g, ' ')}</p>
-                    </div>
-                  ))}
-                </div>
+                {[
+                  { label: 'Worker Classification', value: person.accounting?.workerType ? WORKER_TYPE_LABELS[person.accounting.workerType] : 'Not set' },
+                  { label: 'Payout Method', value: person.payoutPreferences?.method
+                    ? `${person.payoutPreferences.method}${person.payoutPreferences.notes ? ` — ${person.payoutPreferences.notes}` : ''}` : 'Not on file' },
+                  { label: 'Project Hourly Rate', value: person.hourlyRate ? `$${person.hourlyRate.toFixed(2)} / hr` : 'Not set' },
+                  { label: 'Legal Name (W-9)', value: person.accounting?.payeeLegalName || '—' },
+                  { label: 'Business Name', value: person.accounting?.payeeBusinessName || '—' },
+                  { label: 'Tax ID', value: person.accounting?.taxIdLast4
+                    ? `${person.accounting.taxIdType || 'ID'} ending ${person.accounting.taxIdLast4}` : '—' },
+                  { label: '1099 Mailing Address', value: person.address || '—' },
+                  { label: 'W-9', value: hasW9OnFile(documents) ? 'Approved, on file' : documents.some(d => d.type === 'w9') ? 'Uploaded — needs approval' : 'Missing' },
+                ].map(row => (
+                  <div key={row.label} className="flex justify-between gap-4 text-[11px]">
+                    <span className="text-[9px] font-black text-text-muted uppercase tracking-widest pt-0.5">{row.label}</span>
+                    <span className="text-text-primary text-right">{row.value}</span>
+                  </div>
+                ))}
+                <Button size="sm" variant="outline" onClick={() => setIsEditOpen(true)} className="w-full h-8 text-[10px] font-black uppercase tracking-widest mt-2">
+                  <Pencil size={11} className="mr-1.5" /> Edit Pay &amp; Tax
+                </Button>
               </div>
-              <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary">
-                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 mb-3 flex items-center gap-2">
-                  <Shield size={11} /> Permission Summary
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {ALL_PERMISSIONS.slice(0, 18).map(perm => {
-                    const granted = hasPermission(person, perm);
-                    return granted ? (
-                      <div key={perm} className="flex items-center gap-1.5 p-1.5 rounded bg-text-green/5 border border-text-green/20">
-                        <CheckSquare size={10} className="text-text-green shrink-0" />
-                        <p className="text-[8px] font-bold text-text-primary truncate">{permissionLabel(perm)}</p>
-                      </div>
-                    ) : null;
-                  }).filter(Boolean)}
-                </div>
-              </div>
+              {vendorStatus && (
+                <ReadinessPanel title="QuickBooks Vendor (1099)" readiness={vendorStatus} link={person.accounting?.qboVendor} />
+              )}
             </div>
           </TabsContent>
         )}
-
 
         {/* ── DOCUMENTS ── */}
         <TabsContent value="documents" className="m-0 pt-5">
@@ -902,7 +1015,7 @@ export default function DirectoryPersonPage() {
                   <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Uploaded</TableHead>
                   <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Expiry</TableHead>
                   <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</TableHead>
-                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted w-20">Action</TableHead>
+                  <TableHead className="text-[9px] font-black uppercase tracking-widest text-text-muted w-36">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -912,7 +1025,14 @@ export default function DirectoryPersonPage() {
                   const expired = daysToExpiry !== null && daysToExpiry < 0;
                   return (
                     <TableRow key={d.id} className={cn('border-border-sub', expiringSoon && 'bg-amber-500/5', expired && 'bg-text-red/5')}>
-                      <TableCell className="font-bold text-[11px] text-text-primary">{d.name}</TableCell>
+                      <TableCell className="font-bold text-[11px] text-text-primary">
+                        {d.url ? (
+                          <a href={d.url} target="_blank" rel="noopener noreferrer" className="hover:text-brand-red inline-flex items-center gap-1">
+                            {d.name} <ExternalLink size={10} className="text-text-muted" />
+                          </a>
+                        ) : d.name}
+                        {d._legacy && <span className="ml-1.5 text-[8px] text-text-muted uppercase">(older upload)</span>}
+                      </TableCell>
                       <TableCell>
                         <Badge className={`text-[8px] h-5 uppercase border ${DOC_TYPE_COLORS[d.type] || DOC_TYPE_COLORS.other}`}>
                           {DOC_TYPE_LABELS[d.type] || d.type}
@@ -936,11 +1056,21 @@ export default function DirectoryPersonPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {d.approvalStatus === 'pending' && (
-                          <Button size="sm" variant="ghost" className="h-6 text-[9px] font-bold text-text-green hover:bg-text-green/10" onClick={() => handleApproveDoc(d.id)}>
-                            Approve
+                        <div className="flex items-center gap-1">
+                          {!d._legacy && d.approvalStatus !== 'approved' && (
+                            <Button size="sm" variant="ghost" className="h-6 px-2 text-[9px] font-bold text-text-green hover:bg-text-green/10" onClick={() => handleReviewDoc(d, 'approved')}>
+                              Approve
+                            </Button>
+                          )}
+                          {!d._legacy && d.approvalStatus === 'pending' && (
+                            <Button size="sm" variant="ghost" className="h-6 px-2 text-[9px] font-bold text-text-red hover:bg-text-red/10" onClick={() => handleReviewDoc(d, 'rejected')}>
+                              Reject
+                            </Button>
+                          )}
+                          <Button size="icon" variant="ghost" className="h-6 w-6 text-text-muted hover:text-text-red" onClick={() => handleDeleteDoc(d)} title="Delete document">
+                            <Trash2 size={11} />
                           </Button>
-                        )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -959,135 +1089,121 @@ export default function DirectoryPersonPage() {
         <TabsContent value="permissions" className="m-0 pt-5">
           <div className="space-y-6">
             <div className="space-y-3">
-              <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
-                <Shield size={11} /> Portal Access
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {[
-                  { role: 'super_admin', label: 'Admin Portal', desc: 'Full platform access' },
-                  { role: 'field_technician', label: 'Technician Portal', desc: 'Field app access' },
-                  { role: 'client', label: 'Client Portal', desc: 'Client dashboard access' },
-                ].map(portal => {
-                  const active = roles.includes(portal.role);
-                  return (
-                    <div
-                      key={portal.role}
-                      className={cn(
-                        'p-3 rounded-lg border cursor-pointer transition-all',
-                        active ? 'bg-brand-red/10 border-brand-red/30 text-text-primary' : 'border-border-sub bg-bg-secondary text-text-muted hover:border-border-main'
-                      )}
-                      onClick={() => handleToggleRole(portal.role, !active)}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-[10px] font-black uppercase tracking-wider">{portal.label}</p>
-                        {active ? <CheckSquare size={13} className="text-brand-red" /> : <Square size={13} className="text-text-muted" />}
-                      </div>
-                      <p className="text-[9px] text-text-muted">{portal.desc}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="space-y-3">
               <div className="flex items-center justify-between border-b border-border-sub pb-2">
                 <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
-                  <CheckSquare size={11} /> Permission Overrides
+                  <Shield size={11} /> Portal Access &amp; Permissions
                 </h3>
-                <Button size="sm" onClick={handleSavePerms} disabled={!permsDirty || savingPerms} className="h-7 text-[9px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white disabled:opacity-40">
-                  {savingPerms ? 'Saving...' : 'Save Access & Permissions'}
+                <Button size="sm" onClick={handleSavePerms} disabled={!canEditAccess || !permsDirty || savingPerms} className="h-7 text-[9px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white disabled:opacity-40">
+                  {savingPerms ? 'Saving...' : 'Save Permissions'}
                 </Button>
               </div>
-              <p className="text-[9px] text-text-muted uppercase tracking-wider">Overrides take precedence over role defaults. Sections reflect active portal access.</p>
-              {!activePortals.admin && !activePortals.tech && !activePortals.client ? (
+              {!canEditAccess && (
+                <p className="text-[9px] text-amber-400">View only — only a super admin can change permissions.</p>
+              )}
+              {userPortals.length === 0 ? (
                 <div className="py-12 text-center">
                   <Shield size={24} className="mx-auto text-text-muted mb-3 opacity-30" />
-                  <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">No Active Portal Access</p>
-                  <p className="text-[9px] text-text-muted mt-1">Assign a role above to manage permissions</p>
+                  <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">No Portal Access</p>
+                  <p className="text-[9px] text-text-muted mt-1">
+                    <button onClick={() => setIsEditOpen(true)} className="text-brand-red font-bold hover:underline">Assign a subrole in Edit Profile</button> to give this user a portal.
+                  </p>
                 </div>
               ) : (
-                <div className="space-y-6 pt-1">
-                  {(['admin', 'tech', 'client'] as const).map(portal => {
-                    if (!activePortals[portal]) return null;
-                    const portalLabel = portal === 'admin' ? 'Admin Portal' : portal === 'tech' ? 'Technician Portal' : 'Client Portal';
-                    const dotColor = portal === 'admin' ? 'bg-brand-red' : portal === 'tech' ? 'bg-blue-400' : 'bg-text-green';
+                <>
+                  <p className="text-[9px] text-text-muted">
+                    Select a portal to see and change this user&apos;s permissions in it. Portals come from subroles —{' '}
+                    <button onClick={() => setIsEditOpen(true)} className="text-brand-red font-bold hover:underline">change subroles in Edit Profile</button>.
+                  </p>
+                  <div className={cn('grid gap-3', userPortals.length > 2 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2')}>
+                    {userPortals.map(portal => {
+                      const perms = Object.values(PORTAL_PERMISSION_SECTIONS[portal]).flat();
+                      const on = perms.filter(effectivePerm).length;
+                      const overrides = perms.filter(p => permOverrides[p] !== undefined).length;
+                      const selected = portal === selectedPortal;
+                      return (
+                        <button
+                          key={portal}
+                          type="button"
+                          onClick={() => setSelectedPortal(portal)}
+                          aria-pressed={selected}
+                          className={cn('p-3 rounded-lg border text-left transition-all',
+                            selected ? 'bg-brand-red/10 border-brand-red text-text-primary' : 'border-border-sub bg-bg-secondary text-text-secondary hover:border-border-main')}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                              <span className={cn('inline-block w-2 h-2 rounded-full', PORTAL_META[portal].dot)} />
+                              {PORTAL_META[portal].label}
+                            </p>
+                            {selected ? <ChevronDown size={12} className="text-brand-red" /> : <ChevronRight size={12} className="text-text-muted" />}
+                          </div>
+                          <p className="text-[9px] text-text-muted mt-1.5 truncate">
+                            {roles.filter(r => SUBROLE_DEFINITIONS[r as keyof typeof SUBROLE_DEFINITIONS]?.portal === portal)
+                              .map(r => SUBROLE_DEFINITIONS[r as keyof typeof SUBROLE_DEFINITIONS].label).join(', ') || 'Legacy access'}
+                          </p>
+                          <p className="text-[9px] font-mono mt-1 text-text-secondary">
+                            {on}/{perms.length} on{overrides > 0 && <span className="text-amber-400"> · {overrides} override{overrides !== 1 ? 's' : ''}</span>}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {selectedPortal && (() => {
+                    const sections = PORTAL_PERMISSION_SECTIONS[selectedPortal];
+                    const allPerms = Object.values(sections).flat();
+                    const allOn = allPerms.every(effectivePerm);
                     return (
-                      <div key={portal} className="space-y-3">
+                      <div className="space-y-3 pt-2">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em] flex items-center gap-1.5">
-                            <span className={cn('inline-block w-2 h-2 rounded-full', dotColor)} />
-                            {portalLabel}
+                          <h4 className="text-[10px] font-black text-text-primary uppercase tracking-[0.15em] flex items-center gap-1.5">
+                            <span className={cn('inline-block w-2 h-2 rounded-full', PORTAL_META[selectedPortal].dot)} />
+                            {PORTAL_META[selectedPortal].label} Permissions
                           </h4>
-                          {(() => {
-                            const allPortalPerms = Object.values(PERMISSION_TREE[portal]).flat() as Permission[];
-                            const allPortalSelected = allPortalPerms.every(p => {
-                              const ov = permOverrides[p]; return ov !== undefined ? ov : hasPermission(person, p);
-                            });
-                            const somePortalSelected = allPortalPerms.some(p => {
-                              const ov = permOverrides[p]; return ov !== undefined ? ov : hasPermission(person, p);
-                            });
-                            return (
-                              <button
-                                onClick={() => allPortalSelected ? handleClearAllForPortal(portal) : handleSelectAllForPortal(portal)}
-                                className="h-4 w-4 rounded border border-border-main flex items-center justify-center transition-colors hover:border-text-primary"
-                                title={allPortalSelected ? 'Clear all' : 'Select all'}
-                              >
-                                {allPortalSelected
-                                  ? <CheckSquare size={10} className="text-text-green" />
-                                  : somePortalSelected
-                                    ? <Minus size={10} className="text-text-muted" />
-                                    : null}
-                              </button>
-                            );
-                          })()}
+                          <div className="flex items-center gap-3">
+                            <button onClick={() => setAllPerms(allPerms, !allOn)} className="text-[9px] font-bold uppercase text-text-muted hover:text-text-primary">
+                              {allOn ? 'Turn all off' : 'Turn all on'}
+                            </button>
+                            <button onClick={() => resetPerms(allPerms)} className="text-[9px] font-bold uppercase text-text-muted hover:text-text-primary">
+                              Reset to role defaults
+                            </button>
+                          </div>
                         </div>
-                        {Object.entries(PERMISSION_TREE[portal]).map(([page, perms]) => {
-                          const sectionKey = `${portal}:${page}`;
+                        {selectedPortal === 'sales' && (
+                          <p className="text-[9px] text-text-muted">Sales Portal access is controlled by the CRM permissions below.</p>
+                        )}
+                        {Object.entries(sections).map(([page, perms]) => {
+                          const sectionKey = `${selectedPortal}:${page}`;
                           const isCollapsed = collapsedSections.has(sectionKey);
+                          const allSel = perms.every(effectivePerm);
+                          const someSel = perms.some(effectivePerm);
                           return (
                             <div key={page} className="pl-3 border-l-2 border-border-sub space-y-1.5">
-                              <div
-                                className="flex items-center justify-between cursor-pointer"
-                                onClick={() => setCollapsedSections(prev => {
-                                  const next = new Set(prev);
-                                  if (next.has(sectionKey)) next.delete(sectionKey); else next.add(sectionKey);
-                                  return next;
-                                })}
-                              >
-                                <div className="flex items-center gap-1.5">
+                              <div className="flex items-center justify-between">
+                                <button
+                                  type="button"
+                                  className="flex items-center gap-1.5"
+                                  onClick={() => setCollapsedSections(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(sectionKey)) next.delete(sectionKey); else next.add(sectionKey);
+                                    return next;
+                                  })}
+                                >
                                   {isCollapsed ? <ChevronRight size={10} className="text-text-muted" /> : <ChevronDown size={10} className="text-text-muted" />}
-                                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">{page.replace(/_/g, ' ')}</p>
-                                </div>
-                                <div onClick={e => e.stopPropagation()}>
-                                  {(() => {
-                                    const sectionPerms = perms as Permission[];
-                                    const allSel = sectionPerms.every(p => {
-                                      const ov = permOverrides[p]; return ov !== undefined ? ov : hasPermission(person, p);
-                                    });
-                                    const someSel = sectionPerms.some(p => {
-                                      const ov = permOverrides[p]; return ov !== undefined ? ov : hasPermission(person, p);
-                                    });
-                                    return (
-                                      <button
-                                        onClick={() => allSel ? handleClearAllForPage(sectionPerms) : handleSelectAllForPage(sectionPerms)}
-                                        className="h-4 w-4 rounded border border-border-main flex items-center justify-center transition-colors hover:border-text-primary"
-                                        title={allSel ? 'Clear section' : 'Select all in section'}
-                                      >
-                                        {allSel
-                                          ? <CheckSquare size={10} className="text-text-green" />
-                                          : someSel
-                                            ? <Minus size={10} className="text-text-muted" />
-                                            : null}
-                                      </button>
-                                    );
-                                  })()}
-                                </div>
+                                  <span className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">{page.replace(/_/g, ' ')}</span>
+                                </button>
+                                <button
+                                  onClick={() => setAllPerms(perms, !allSel)}
+                                  className="h-4 w-4 rounded border border-border-main flex items-center justify-center transition-colors hover:border-text-primary"
+                                  title={allSel ? 'Turn section off' : 'Turn section on'}
+                                >
+                                  {allSel ? <CheckSquare size={10} className="text-text-green" /> : someSel ? <Minus size={10} className="text-text-muted" /> : null}
+                                </button>
                               </div>
                               {!isCollapsed && (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
-                                  {(perms as Permission[]).map(perm => {
-                                    const roleDefault = hasPermission(person, perm);
+                                  {perms.map(perm => {
                                     const override = permOverrides[perm];
-                                    const effective = override !== undefined ? override : roleDefault;
+                                    const effective = effectivePerm(perm);
                                     return (
                                       <div key={perm} className={cn('flex items-center justify-between p-2 rounded-lg border transition-all', effective ? 'bg-text-green/5 border-text-green/20' : 'bg-bg-secondary border-border-sub')}>
                                         <div className="min-w-0">
@@ -1096,13 +1212,14 @@ export default function DirectoryPersonPage() {
                                         </div>
                                         <div className="flex items-center gap-1 shrink-0 ml-2">
                                           <button
-                                            onClick={() => handleTogglePerm(perm, effective ? false : true)}
+                                            onClick={() => setPerm(perm, !effective)}
+                                            aria-label={`${effective ? 'Turn off' : 'Turn on'} ${permissionLabel(perm)}`}
                                             className={cn('h-5 w-5 rounded flex items-center justify-center transition-colors border', effective ? 'bg-text-green/20 border-text-green/30 text-text-green' : 'bg-bg-primary border-border-sub text-text-muted hover:border-border-main')}
                                           >
                                             {effective ? <CheckSquare size={11} /> : <Square size={11} />}
                                           </button>
                                           {override !== undefined && (
-                                            <button onClick={() => handleTogglePerm(perm, null)} className="text-[8px] text-text-muted hover:text-text-primary uppercase font-bold px-1" title="Reset to role default">✕</button>
+                                            <button onClick={() => resetPerms([perm])} className="text-[8px] text-text-muted hover:text-text-primary uppercase font-bold px-1" title="Reset to role default">✕</button>
                                           )}
                                         </div>
                                       </div>
@@ -1115,8 +1232,8 @@ export default function DirectoryPersonPage() {
                         })}
                       </div>
                     );
-                  })}
-                </div>
+                  })()}
+                </>
               )}
             </div>
             {/* ── MESSAGE RESTRICTIONS ── */}
@@ -1183,7 +1300,6 @@ export default function DirectoryPersonPage() {
                   <SelectContent className="bg-bg-elevated border-border-main">
                     {allClients
                       .filter(c => !(person.messagingBlockedClientIds || []).includes(c.id))
-                      .filter(c => !restrictSearch || c.name?.toLowerCase().includes(restrictSearch.toLowerCase()))
                       .map(c => (
                         <SelectItem key={c.id} value={c.id} className="text-[10px]">
                           {c.name}{c.clientCompany ? ` — ${c.clientCompany}` : ''}
@@ -1250,18 +1366,7 @@ export default function DirectoryPersonPage() {
         {isTech && (
           <TabsContent value="reliability" className="m-0 pt-5">
             <div className="space-y-5">
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { label: 'Score', value: reliabilityScore, color: reliabilityScore >= 80 ? 'text-text-green' : reliabilityScore >= 60 ? 'text-text-amber' : 'text-text-red' },
-                  { label: 'Tier', value: tier, color: 'text-text-primary' },
-                  { label: 'Events', value: penaltyEvents.length, color: 'text-text-muted' },
-                ].map(s => (
-                  <div key={s.label} className="p-3 rounded-xl border border-border-sub bg-bg-secondary text-center">
-                    <p className="text-[8px] font-black text-text-muted uppercase tracking-widest">{s.label}</p>
-                    <p className={cn('text-xl font-black font-mono mt-1', s.color)}>{s.value}</p>
-                  </div>
-                ))}
-              </div>
+              <p className="text-[10px] text-text-muted">The reliability score is turned off for now; events are still recorded here.</p>
               <div className="space-y-2">
                 <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
                   <BarChart2 size={11} /> Event History ({penaltyEvents.length})
@@ -1384,7 +1489,7 @@ export default function DirectoryPersonPage() {
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" size="sm" onClick={() => { setUploadOpen(false); setUploadFileObj(null); setUploadMode('url'); }} className="text-[10px] font-black uppercase">Cancel</Button>
-            <Button size="sm" onClick={handleUploadDoc} disabled={!uploadForm.name || uploadSaving || (uploadMode === 'file' && !uploadFileObj)} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+            <Button size="sm" onClick={handleUploadDoc} disabled={!uploadForm.name || uploadSaving || (uploadMode === 'file' ? !uploadFileObj : !/^https?:\/\//.test(uploadForm.url.trim()))} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
               {uploadSaving ? 'Uploading...' : 'Upload'}
             </Button>
           </DialogFooter>

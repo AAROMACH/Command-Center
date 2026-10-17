@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -70,13 +71,13 @@ export default function SiteDetailPage() {
             setLoading(false);
         });
 
-        const unsubWO = onSnapshot(collection(db, 'workOrders'), snap => {
+        const unsubWO = onSharedSnapshot('workOrders', snap => {
             setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
-        const unsubInv = onSnapshot(collection(db, 'invoices'), snap => {
+        const unsubInv = onSharedSnapshot('invoices', snap => {
             setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
         });
-        const unsubQ = onSnapshot(collection(db, 'quotes'), snap => {
+        const unsubQ = onSharedSnapshot('quotes', snap => {
             setQuotes(snap.docs.map(d => ({ ...d.data(), id: d.id } as Quote)));
         });
         const unsubNotes = onSnapshot(collection(db, `users/${id}/clientNotes`), snap => {

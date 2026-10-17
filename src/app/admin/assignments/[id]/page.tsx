@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { helperProgressOf } from '@/lib/helper-progress';
 import { useState, useEffect } from 'react';
@@ -106,8 +107,6 @@ function TechCard({ tech, label }: { tech: Technician; label?: string }) {
           <Phone size={8} />
           <Mail size={8} />
           <div className="w-px h-3 bg-border-sub" />
-          <ShieldCheck size={8} style={{ color: 'var(--text-green)' }} />
-          <span className="text-[9px] font-mono text-text-secondary">{(tech.reliabilityScore ?? 0).toFixed(1)}</span>
           <Calendar size={8} />
           <span className="text-[9px] font-mono text-text-secondary">{tech.currentWorkload ?? '—'}</span>
           <Clock size={8} />
@@ -193,7 +192,7 @@ export default function AssignmentDetailPage() {
   }, [assignment, assignmentId]);
 
   // All techs (for dialogs)
-  useEffect(() => onSnapshot(collection(db, 'users'), s => {
+  useEffect(() => onSharedSnapshot('users', s => {
     setAllTechs(s.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
   }), []);
 
@@ -329,7 +328,7 @@ export default function AssignmentDetailPage() {
         }]);
         await setDoc(doc(db, 'workOrders', targetWo.id), sanitize(targetWo));
         await deleteDoc(doc(db, 'assignments', editedOrder.id));
-        toast({ title: 'Registry Updated', description: 'Job returned to the Unassigned pool.' });
+        toast({ title: 'Saved', description: 'Job returned to the Unassigned pool.' });
         router.push('/admin/assignments');
         return;
       }
@@ -344,7 +343,7 @@ export default function AssignmentDetailPage() {
         await setDoc(doc(db, 'assignments', assignmentId), assignmentData);
         await deleteDoc(doc(db, 'workOrders', editedOrder.id));
         await syncWeeklyLogForAdminStatusEdit({ prevStatus: assignment.status, job: { ...(finalUpdate as WorkOrder), id: assignmentId }, techId: newTechId });
-        toast({ title: 'Registry Updated', description: 'Job entry synchronized.' });
+        toast({ title: 'Saved', description: 'Job entry synchronized.' });
         router.push(`/admin/assignments/${assignmentId}`);
         return;
       }
@@ -360,7 +359,7 @@ export default function AssignmentDetailPage() {
       setAssignment(finalUpdate as WorkOrder);
       setIsEditOpen(false);
       setEditedOrder(null);
-      toast({ title: 'Registry Updated', description: 'Job entry synchronized.' });
+      toast({ title: 'Saved', description: 'Job entry synchronized.' });
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
     }

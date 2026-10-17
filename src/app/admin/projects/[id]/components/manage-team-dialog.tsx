@@ -14,6 +14,8 @@ import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { isAssignableTechnician } from '@/lib/utils';
+import { crewFields } from '@/lib/project-access';
+import { NotificationService } from '@/lib/notification-service';
 
 type ManageTeamDialogProps = {
     isOpen: boolean;
@@ -75,11 +77,17 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
     const handleSaveChanges = async () => {
         try {
             const docRef = doc(db, 'projects', project.id);
-            await updateDoc(docRef, { team });
-            toast({ title: 'Team Registry Updated', description: 'Personnel changes synchronized with cloud folder.' });
+            // Keep the crew ids / named lead the security rules read in step.
+            await updateDoc(docRef, { team, ...crewFields(team) });
+            NotificationService.notifyProjectManagers(project.id, 'Crew updated', `${project.name} crew is now ${team.length} ${team.length === 1 ? 'person' : 'people'}.`);
+            const before = new Set((project.team || []).map(m => m.techId));
+            team.filter(m => !before.has(m.techId)).forEach(m => NotificationService.notify(m.techId,
+                'Added to a project', `You're on the crew for ${project.name}${project.location ? ` (${project.location})` : ''} as ${m.role}.`,
+                { id: project.id, type: 'project' }));
+            toast({ title: 'Crew updated', description: 'Crew list saved.' });
             setIsOpen(false);
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
     };
     

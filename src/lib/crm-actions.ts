@@ -88,6 +88,8 @@ export async function handOffToOps(lead: Lead, quotes: Quote[], userId: string, 
     `${lead.companyName} was won${lead.estimatedValue ? ` ($${Math.round(lead.estimatedValue).toLocaleString()})` : ''}${lead.assignedToName ? ` by ${lead.assignedToName}` : ''}.\nProject ${projectId} is on hold — assign a crew and set dates to kick it off.`,
     { id: projectId, type: 'project' },
   );
+  NotificationService.notifyProjectManagers(projectId, 'New project from sales',
+    `${lead.companyName} was won and project ${projectId} is on hold — staff it and set dates to kick it off.`, false);
   return projectId;
 }
 

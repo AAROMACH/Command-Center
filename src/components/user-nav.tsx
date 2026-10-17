@@ -1,4 +1,5 @@
 'use client';
+import { signOutAndClear } from '@/lib/sign-out';
 
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
@@ -78,7 +79,10 @@ export function UserNav() {
                      pathname.startsWith('/client') ? '/client/profile' : '/admin/profile';
   
   const settingsPath = pathname.startsWith('/tech') ? '/tech/settings' : 
-                      pathname.startsWith('/client') ? '/client/settings' : '/admin/settings';
+                      pathname.startsWith('/client') ? '/client/settings' :
+                      pathname.startsWith('/sales') ? '/sales/settings' : '/admin/settings';
+  // Sales has no profile page of its own (the admin one isn't open to it).
+  const showProfile = !pathname.startsWith('/sales');
 
   const plansPath = pathname.startsWith('/admin') ? '/admin/plans' : 
                     pathname.startsWith('/client') ? '/client/billing' : null;
@@ -116,25 +120,19 @@ export function UserNav() {
         
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
+          {showProfile && (
           <DropdownMenuItem onSelect={() => router.push(profilePath)}>
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
           </DropdownMenuItem>
+          )}
           <DropdownMenuItem onSelect={() => router.push(settingsPath)}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => {
-            if (typeof window !== 'undefined') {
-                sessionStorage.removeItem('currentUserId');
-                document.cookie = 'aaromach_session=; path=/; max-age=0; SameSite=Strict';
-                document.cookie = 'aaromach_portals=; path=/; max-age=0; SameSite=Strict';
-            }
-            auth.signOut();
-            router.push('/login');
-        }}>
+        <DropdownMenuItem onSelect={() => { void signOutAndClear(); }}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Sign out</span>
         </DropdownMenuItem>

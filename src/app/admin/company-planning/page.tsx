@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
@@ -34,11 +35,11 @@ export default function CompanyPlanningPage() {
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        const unsubGoals = onSnapshot(collection(db, 'companyGoals'), snap =>
+        const unsubGoals = onSharedSnapshot('companyGoals', snap =>
             setGoals(snap.docs.map(d => ({ ...d.data(), id: d.id } as Goal))));
-        const unsubMilestones = onSnapshot(collection(db, 'companyMilestones'), snap =>
+        const unsubMilestones = onSharedSnapshot('companyMilestones', snap =>
             setMilestones(snap.docs.map(d => ({ ...d.data(), id: d.id } as Milestone))));
-        const unsubTasks = onSnapshot(collection(db, 'recurringTasks'), snap =>
+        const unsubTasks = onSharedSnapshot('recurringTasks', snap =>
             setRecurringTasks(snap.docs.map(d => ({ ...d.data(), id: d.id } as RecurringTask))));
         return () => { unsubGoals(); unsubMilestones(); unsubTasks(); };
     }, []);

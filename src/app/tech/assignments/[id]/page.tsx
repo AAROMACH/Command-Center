@@ -108,8 +108,6 @@ function TechCard({ tech, label }: { tech: Technician; label?: string }) {
           <Phone size={8} />
           <Mail size={8} />
           <div className="w-px h-3 bg-border-sub" />
-          <ShieldCheck size={8} style={{ color: 'var(--text-green)' }} />
-          <span className="text-[9px] font-mono text-text-secondary">{(tech.reliabilityScore ?? 0).toFixed(1)}</span>
           <Calendar size={8} />
           <span className="text-[9px] font-mono text-text-secondary">{tech.currentWorkload ?? '—'}</span>
           <Clock size={8} />

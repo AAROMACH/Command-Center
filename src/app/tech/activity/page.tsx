@@ -3,25 +3,27 @@
 import { fetchHelperJobsRetrying } from '@/lib/tech-assignments';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
-import type { WeeklyLog, WorkOrder, Technician } from '@/lib/types';
-import { Badge } from '@/components/ui/badge';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import type { WeeklyLog, WorkOrder } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Activity, CheckCircle2, Clock, AlertTriangle, ShieldCheck, BarChart2, ClipboardList, Coins, Filter, TrendingUp } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
+import { Activity, AlertTriangle, ArrowDown, ArrowUp, Filter, RotateCcw, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getReliabilityTier, getTierColor } from '@/lib/reliability';
-import { format, parseISO, subWeeks, startOfMonth, endOfMonth } from 'date-fns';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { isAssignedTo, jobDateTimeValue, weekOfValue, parseLocalDate } from '@/lib/jobs';
-import { computeWeeklyLogSettlement } from '@/lib/payroll';
+import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
+import { isAssignedTo } from '@/lib/jobs';
+import { median } from '@/lib/customer-intel';
+import { buildTechJobRows, PAY_STATUS_LABELS, type PayStatus, type TechJobRow } from '@/lib/tech-intel';
+import { HBars, Tip } from '@/app/admin/analytics/components/customer-dashboard';
+import { JobDetailDialog } from '@/components/job-detail-dialog';
+import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
 
 export default function TechActivityPage() {
   const [currentTechId, setCurrentTechId] = useState<string | null>(null);
   const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
   const [assignments, setAssignments] = useState<WorkOrder[]>([]);
-  const [techDoc, setTechDoc] = useState<Technician | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [dateRange, setDateRange] = useState<'4w' | '8w' | 'month' | 'all'>('8w');
 
   useEffect(() => {
     setMounted(true);
@@ -55,311 +57,301 @@ export default function TechActivityPage() {
     );
     const unsubAssignments = () => { unsubLed(); unsubHelped(); };
 
-    const unsubUser = onSnapshot(doc(db, 'users', userId), (snap) => {
-      if (snap.exists()) setTechDoc({ ...snap.data(), id: snap.id } as Technician);
-    });
-
-    return () => { unsubLogs(); unsubAssignments(); unsubUser(); };
+    return () => { unsubLogs(); unsubAssignments(); };
   }, []);
 
-  const reliabilityScore = (techDoc as any)?.reliabilityScore ?? 100;
-  const reliabilityEvents = (techDoc as any)?.reliabilityEvents ?? [];
-  const tier = getReliabilityTier(reliabilityScore);
-  const tierColor = getTierColor(tier);
-
-  const logCounts = useMemo(() => ({
-    draft: weeklyLogs.filter(l => l.status === 'Draft').length,
-    submitted: weeklyLogs.filter(l => l.status === 'Submitted').length,
-    approved: weeklyLogs.filter(l => l.status === 'Approved').length,
-    rejected: weeklyLogs.filter(l => l.status === 'Rejected').length,
-  }), [weeklyLogs]);
-
-  const allItems = useMemo(() => weeklyLogs.flatMap(l => l.items || []), [weeklyLogs]);
-  const pendingVerification = allItems.filter(i => !i.confirmationStatus).length;
-  const disputed = allItems.filter(i => i.confirmationStatus === 'disputed').length;
-
-  const jobCounts = useMemo(() => ({
-    // Checked-out is still open (not completed/filed yet) — same as the admin
-    // side, which only counts 'completed' as done.
-    completed: assignments.filter(a => a.status === 'completed').length,
-    inProgress: assignments.filter(a => a.status === 'in-progress' || a.status === 'on-my-way' || a.status === 'checked-out').length,
-    assigned: assignments.filter(a => a.status === 'assigned' || a.status === 'confirmed').length,
-  }), [assignments]);
-
-  const recentCompleted = useMemo(() =>
-    assignments
-      .filter(a => a.status === 'completed')
-      .sort((a, b) => jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime))
-      .slice(0, 5),
-    [assignments]
-  );
-
-  const jobsPerWeek = useMemo(() => {
-    const grouped: Record<string, number> = {};
-    weeklyLogs.forEach(l => {
-      if (!l.weekOf) return;
-      const week = l.weekOf.slice(0, 10);
-      if (l.status === 'Submitted' || l.status === 'Approved') grouped[week] = (grouped[week] || 0) + 1;
-    });
-    // weekOf is MM-dd-yyyy: sort chronologically (a string sort breaks across
-    // years) and label "MM-dd".
-    return Object.entries(grouped).sort(([a], [b]) => weekOfValue(a) - weekOfValue(b)).slice(-8)
-      .map(([week, count]) => ({ week: week.slice(0, 5), count }));
-  }, [weeklyLogs]);
+  const [f, setF] = useState<Filters>(DEFAULT_FILTERS);
+  const set = (patch: Partial<Filters>) => setF(prev => ({ ...prev, ...patch }));
+  const [sortKey, setSortKey] = useState<SortKey>('date');
+  const [sortDir, setSortDir] = useState<1 | -1>(-1);
+  const sortBy = (k: SortKey) => {
+    if (k === sortKey) setSortDir(d => (d === 1 ? -1 : 1));
+    else { setSortKey(k); setSortDir(k === 'title' || k === 'customer' ? 1 : -1); }
+  };
+  const [openJob, setOpenJob] = useState<WorkOrder | null>(null);
 
   const jobsById = useMemo(() => new Map(assignments.map(a => [a.id, a])), [assignments]);
+  const all = useMemo(() => (currentTechId ? buildTechJobRows(assignments, weeklyLogs, currentTechId) : []), [assignments, weeklyLogs, currentTechId]);
+  const customers = useMemo(() => [...new Set(all.map(r => r.customer))].sort(), [all]);
+  const types = useMemo(() => [...new Set(all.map(r => r.type))].sort(), [all]);
 
-  const earningsTrend = useMemo(() =>
-    weeklyLogs
-      .filter(l => l.status === 'Approved')
-      .sort((a, b) => weekOfValue(a.weekOf) - weekOfValue(b.weekOf))
-      .slice(-8)
-      // weekOf is MM-dd-yyyy → label "MM-dd"; pay at live settlement.
-      .map(l => ({ week: (l.weekOf || '').slice(0, 5), pay: computeWeeklyLogSettlement(l, jobsById) })),
-    [weeklyLogs, jobsById]
-  );
+  const matches = (r: TechJobRow, ignoreCustomer = false) => {
+    if (f.start && (!r.date || r.date < f.start)) return false;
+    if (f.end && (!r.date || r.date > f.end)) return false;
+    if (!ignoreCustomer && f.customer && r.customer !== f.customer) return false;
+    if (f.type && r.type !== f.type) return false;
+    if (f.job === 'completed' && r.status !== 'completed') return false;
+    if (f.job === 'open' && r.status === 'completed') return false;
+    if (f.pay && r.payStatus !== f.pay) return false;
+    return true;
+  };
+  const base = useMemo(() => all.filter(r => matches(r, true)), [all, f]); // eslint-disable-line react-hooks/exhaustive-deps
+  const sel = useMemo(() => (f.customer ? base.filter(r => r.customer === f.customer) : base), [base, f.customer]);
 
-  const rangeStart = useMemo(() => {
-    const now = new Date();
-    if (dateRange === '4w') return subWeeks(now, 4);
-    if (dateRange === '8w') return subWeeks(now, 8);
-    if (dateRange === 'month') return startOfMonth(now);
-    return null;
-  }, [dateRange]);
+  // KPIs
+  const sum = (rows: TechJobRow[]) => rows.reduce((s, r) => s + r.pay, 0);
+  const approved = sel.filter(r => r.payStatus === 'approved');
+  const awaiting = sel.filter(r => r.payStatus === 'submitted' || r.payStatus === 'draft');
+  const notFiled = sel.filter(r => r.payStatus === 'not-filed');
+  const completed = sel.filter(r => r.status === 'completed');
+  const paidCompleted = completed.filter(r => !r.estimated);
+  const med = median(paidCompleted.map(r => r.pay));
+  const helperCount = sel.filter(r => r.role === 'helper').length;
+  const kpis = [
+    { label: 'Approved pay', value: money(sum(approved)), sub: `${count(approved.length)} job${approved.length === 1 ? '' : 's'}`, tone: 'text-text-green' },
+    { label: 'Awaiting approval', value: money(sum(awaiting)), sub: `${count(awaiting.length)} on submitted / draft logs`, tone: 'text-accent-gold' },
+    { label: 'Not filed yet', value: count(notFiled.length), sub: notFiled.length ? `~${money(sum(notFiled))} once logged` : 'all completed jobs are on a log', tone: notFiled.length ? 'text-brand-red' : 'text-text-primary' },
+    { label: 'Completed jobs', value: count(completed.length), sub: helperCount ? `${count(helperCount)} as helper` : `${count(sel.length - completed.length)} open`, tone: 'text-text-primary' },
+    { label: 'Avg pay per job', value: paidCompleted.length ? money(sum(paidCompleted) / paidCompleted.length) : '—', sub: med != null ? `median ${money(med)}` : 'no logged jobs yet', tone: 'text-text-primary' },
+    { label: 'Customers', value: count(new Set(sel.map(r => r.customer)).size), sub: f.customer ? 'focused' : 'in this view', tone: 'text-text-primary' },
+  ];
 
-  const filteredAssignments = useMemo(() => {
-    if (!rangeStart) return assignments;
-    return assignments.filter(a => {
-      if (!a.scheduleDate) return false;
-      const d = parseLocalDate(a.scheduleDate); return !!d && d >= rangeStart;
-    });
-  }, [assignments, rangeStart]);
+  // Charts
+  const monthly = useMemo(() => {
+    const m = new Map<string, { approved: number; pending: number }>();
+    for (const r of sel) {
+      if (!r.date || r.payStatus === 'upcoming') continue;
+      const k = r.date.slice(0, 7);
+      const e = m.get(k) || { approved: 0, pending: 0 };
+      if (r.payStatus === 'approved') e.approved += r.pay; else e.pending += r.pay;
+      m.set(k, e);
+    }
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-12)
+      .map(([month, v]) => ({ month, approved: Math.round(v.approved), pending: Math.round(v.pending) }));
+  }, [sel]);
+  const byCustomer = useMemo(() => {
+    const m = new Map<string, { pay: number; jobs: number }>();
+    for (const r of base) { if (r.payStatus === 'upcoming') continue; const e = m.get(r.customer) || { pay: 0, jobs: 0 }; e.pay += r.pay; e.jobs += 1; m.set(r.customer, e); }
+    return [...m.entries()].map(([key, v]) => ({ key, value: v.pay, extra: `${count(v.jobs)} jobs`, tip: `${money(v.pay)} over ${count(v.jobs)} jobs` }))
+      .sort((a, b) => b.value - a.value).slice(0, 10);
+  }, [base]);
+  const byType = useMemo(() => {
+    const m = new Map<string, { pay: number; jobs: number }>();
+    for (const r of sel) { if (r.payStatus === 'upcoming') continue; const e = m.get(r.type) || { pay: 0, jobs: 0 }; e.pay += r.pay; e.jobs += 1; m.set(r.type, e); }
+    return [...m.entries()].map(([key, v]) => ({ key, value: v.pay, extra: `${count(v.jobs)} jobs · ${money(v.pay / v.jobs)}/job` }))
+      .sort((a, b) => b.value - a.value).slice(0, 10);
+  }, [sel]);
 
-  const filteredLogs = useMemo(() => {
-    if (!rangeStart) return weeklyLogs;
-    return weeklyLogs.filter(l => {
-      if (!l.weekOf) return false;
-      try { return new Date(l.weekOf) >= rangeStart; } catch { return false; }
-    });
-  }, [weeklyLogs, rangeStart]);
+  // History table
+  const q = f.search.trim().toLowerCase();
+  const table = useMemo(() => sel
+    .filter(r => !q || r.title.toLowerCase().includes(q) || r.customer.toLowerCase().includes(q) || r.id.toLowerCase().includes(q))
+    .sort((a, b) => {
+      const va = a[sortKey] ?? '', vb = b[sortKey] ?? '';
+      if (typeof va === 'number' && typeof vb === 'number') return sortDir * (va - vb);
+      return sortDir * String(va).localeCompare(String(vb));
+    }), [sel, q, sortKey, sortDir]);
+  const pager = usePaged(table, PAGE_SIZES_LARGE, 'tech-activity-jobs', [f, sortKey, sortDir]);
 
-  const avgJobsPerWeek = useMemo(() => {
-    const completed = filteredAssignments.filter(a => a.status === 'completed').length;
-    const weeks = dateRange === '4w' ? 4 : dateRange === '8w' ? 8 : dateRange === 'month' ? 4 : Math.max(1, Math.ceil(weeklyLogs.length / 1));
-    return (completed / Math.max(1, weeks)).toFixed(1);
-  }, [filteredAssignments, dateRange, weeklyLogs]);
-
-  const jobsThisMonth = useMemo(() => {
-    const start = startOfMonth(new Date());
-    const end = endOfMonth(new Date());
-    return assignments.filter(a => {
-      if (!a.scheduleDate) return false;
-      const d = parseLocalDate(a.scheduleDate); return !!d && d >= start && d <= end;
-    }).length;
-  }, [assignments]);
-
-  const logTimeliness = useMemo(() => {
-    const approved = filteredLogs.filter(l => l.status === 'Approved').length;
-    const submitted = filteredLogs.filter(l => l.status === 'Submitted').length;
-    const rejected = filteredLogs.filter(l => l.status === 'Rejected').length;
-    const total = approved + submitted + rejected;
-    const rate = total > 0 ? Math.round((approved / total) * 100) : 0;
-    return { approved, submitted, rejected, total, rate };
-  }, [filteredLogs]);
-
-  const assignmentPie = [
-    { name: 'Completed', value: jobCounts.completed, color: 'var(--text-green)' },
-    { name: 'In Progress', value: jobCounts.inProgress, color: 'var(--brand-blue)' },
-    { name: 'Scheduled', value: jobCounts.assigned, color: 'var(--accent-gold)' },
-  ].filter(d => d.value > 0);
+  const pendingVerification = useMemo(() => weeklyLogs.flatMap(l => l.items || []).filter(i => !i.confirmationStatus).length, [weeklyLogs]);
+  const isDefault = JSON.stringify(f) === JSON.stringify(DEFAULT_FILTERS);
 
   if (!mounted) return null;
 
-  const StatTile = ({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) => (
-    <div className="bg-bg-secondary border border-border-sub rounded-xl p-4 flex flex-col gap-1">
-      <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">{label}</p>
-      <p className={cn('text-2xl font-mono font-black leading-none', color || 'text-text-primary')}>{value}</p>
-      {sub && <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">{sub}</p>}
-    </div>
-  );
+  const label = 'text-[9px] font-black uppercase tracking-widest text-text-muted';
+  const control = 'h-8 bg-bg-primary border-border-main text-[10px] font-bold uppercase';
+  const pick = (k: 'customer' | 'type', v: string) => set({ [k]: f[k] === v ? null : v } as Partial<Filters>);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 text-left">
       <header className="page-header text-left">
         <div className="text-left">
           <p className="page-eyebrow flex items-center gap-2"><Activity size={12} /> Overview</p>
           <h1 className="page-title text-left">Activity</h1>
-          <p className="page-subtitle text-[11px] uppercase font-bold text-text-muted tracking-widest mt-1 text-left">Your field performance metrics.</p>
-        </div>
-        <div className="flex items-center gap-2 mt-3 md:mt-0">
-          <Filter size={10} className="text-text-muted shrink-0" />
-          <Select value={dateRange} onValueChange={(v: any) => setDateRange(v)}>
-            <SelectTrigger className="h-8 w-[140px] bg-bg-secondary border-border-main text-[10px] font-bold uppercase">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-bg-elevated border-border-main">
-              <SelectItem value="4w" className="text-[10px] uppercase font-bold">Last 4 Weeks</SelectItem>
-              <SelectItem value="8w" className="text-[10px] uppercase font-bold">Last 8 Weeks</SelectItem>
-              <SelectItem value="month" className="text-[10px] uppercase font-bold">This Month</SelectItem>
-              <SelectItem value="all" className="text-[10px] uppercase font-bold">All Time</SelectItem>
-            </SelectContent>
-          </Select>
+          <p className="page-subtitle text-left">Your jobs, your pay and your history — filter any way you like.</p>
         </div>
       </header>
 
-      {/* Stat tiles */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <StatTile label="Completed Jobs" value={jobCounts.completed} color="text-text-green" />
-        <StatTile label="In Progress" value={jobCounts.inProgress} color="text-blue-400" />
-        <StatTile label="Scheduled" value={jobCounts.assigned} />
-        <StatTile label="Reliability Score" value={reliabilityScore} sub={tier} color={tierColor} />
-        <StatTile label="Pending Verify" value={pendingVerification} color={pendingVerification > 0 ? 'text-accent-gold' : 'text-text-primary'} />
-        <StatTile label="Disputed Items" value={disputed} color={disputed > 0 ? 'text-brand-red' : 'text-text-primary'} />
+      {/* Filters */}
+      <div className="flex flex-wrap items-end gap-3 p-3 bg-bg-secondary/60 border border-border-sub rounded-xl">
+        <div className="flex items-center gap-2 shrink-0 self-center"><Filter size={12} className="text-text-muted" /><span className={label}>Filters</span></div>
+        <label className="flex flex-col gap-1"><span className={label}>From</span>
+          <Input type="date" className={cn(control, 'w-[145px]')} value={f.start ?? ''} max={f.end ?? undefined} onChange={e => set({ start: e.target.value || null })} /></label>
+        <label className="flex flex-col gap-1"><span className={label}>To</span>
+          <Input type="date" className={cn(control, 'w-[145px]')} value={f.end ?? ''} min={f.start ?? undefined} onChange={e => set({ end: e.target.value || null })} /></label>
+        <div className="flex flex-col gap-1"><span className={label}>Customer</span>
+          <Select value={f.customer ?? 'all'} onValueChange={v => set({ customer: v === 'all' ? null : v })}>
+            <SelectTrigger className={cn(control, 'w-[170px]')}><SelectValue /></SelectTrigger>
+            <SelectContent className="bg-bg-elevated border-border-main">
+              <SelectItem value="all" className="text-[10px] font-bold uppercase">All customers</SelectItem>
+              {customers.map(c => <SelectItem key={c} value={c} className="text-[10px] font-bold uppercase">{c}</SelectItem>)}
+            </SelectContent>
+          </Select></div>
+        <div className="flex flex-col gap-1"><span className={label}>Type of work</span>
+          <Select value={f.type ?? 'all'} onValueChange={v => set({ type: v === 'all' ? null : v })}>
+            <SelectTrigger className={cn(control, 'w-[160px]')}><SelectValue /></SelectTrigger>
+            <SelectContent className="bg-bg-elevated border-border-main">
+              <SelectItem value="all" className="text-[10px] font-bold uppercase">All types</SelectItem>
+              {types.map(t => <SelectItem key={t} value={t} className="text-[10px] font-bold uppercase">{t}</SelectItem>)}
+            </SelectContent>
+          </Select></div>
+        <div className="flex flex-col gap-1"><span className={label}>Jobs</span>
+          <Select value={f.job} onValueChange={v => set({ job: v as Filters['job'] })}>
+            <SelectTrigger className={cn(control, 'w-[130px]')}><SelectValue /></SelectTrigger>
+            <SelectContent className="bg-bg-elevated border-border-main">
+              <SelectItem value="all" className="text-[10px] font-bold uppercase">All jobs</SelectItem>
+              <SelectItem value="completed" className="text-[10px] font-bold uppercase">Completed</SelectItem>
+              <SelectItem value="open" className="text-[10px] font-bold uppercase">Open / upcoming</SelectItem>
+            </SelectContent>
+          </Select></div>
+        <div className="flex flex-col gap-1"><span className={label}>Pay status</span>
+          <Select value={f.pay ?? 'all'} onValueChange={v => set({ pay: v === 'all' ? null : v as PayStatus })}>
+            <SelectTrigger className={cn(control, 'w-[140px]')}><SelectValue /></SelectTrigger>
+            <SelectContent className="bg-bg-elevated border-border-main">
+              <SelectItem value="all" className="text-[10px] font-bold uppercase">Any</SelectItem>
+              {(Object.keys(PAY_STATUS_LABELS) as PayStatus[]).map(p => <SelectItem key={p} value={p} className="text-[10px] font-bold uppercase">{PAY_STATUS_LABELS[p]}</SelectItem>)}
+            </SelectContent>
+          </Select></div>
+        {f.customer && (
+          <button onClick={() => set({ customer: null })} className="h-8 px-3 inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 text-amber-500 text-[10px] font-bold">
+            {f.customer} <X size={11} />
+          </button>
+        )}
+        {!isDefault && (
+          <button onClick={() => setF(DEFAULT_FILTERS)} className="h-8 px-3 inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-brand-red hover:underline">
+            <RotateCcw size={11} /> Reset
+          </button>
+        )}
       </div>
 
-      {/* Performance Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-bg-secondary border border-border-sub rounded-xl p-4">
-          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-3 flex items-center gap-1.5"><BarChart2 size={10} className="text-brand-red" /> Logs Per Week</p>
-          {jobsPerWeek.length > 0 ? (
-            <ResponsiveContainer width="100%" height={160}>
-              <BarChart data={jobsPerWeek} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
-                <XAxis dataKey="week" tick={{ fontSize: 8, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 8, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 10 }} cursor={{ fill: 'color-mix(in srgb, var(--brand-red) 8%, transparent)' }} />
-                <Bar dataKey="count" fill="var(--brand-red)" radius={[3, 3, 0, 0]} name="Logs" />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[160px] flex items-center justify-center"><p className="text-[9px] text-text-muted uppercase opacity-40">No log data yet</p></div>
-          )}
+      {pendingVerification > 0 && (
+        <div className="p-3 rounded-lg bg-accent-gold-dim border border-accent-gold/30 flex items-center gap-2">
+          <AlertTriangle size={12} className="text-accent-gold shrink-0" />
+          <p className="text-[10px] font-bold text-accent-gold">{pendingVerification} job{pendingVerification === 1 ? '' : 's'} on your logs waiting for you to confirm — open Logs to review.</p>
         </div>
-        <div className="bg-bg-secondary border border-border-sub rounded-xl p-4">
-          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-3 flex items-center gap-1.5"><Activity size={10} className="text-brand-red" /> Job Status</p>
-          {assignmentPie.length > 0 ? (
-            <ResponsiveContainer width="100%" height={160}>
-              <PieChart>
-                <Pie data={assignmentPie} dataKey="value" cx="50%" cy="50%" outerRadius={60} strokeWidth={0}>
-                  {assignmentPie.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                </Pie>
-                <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 10 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[160px] flex items-center justify-center"><p className="text-[9px] text-text-muted uppercase opacity-40">No assignments yet</p></div>
-          )}
-        </div>
-        <div className="bg-bg-secondary border border-border-sub rounded-xl p-4">
-          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-3 flex items-center gap-1.5"><Coins size={10} className="text-brand-red" /> Earnings Trend</p>
-          {earningsTrend.length > 0 ? (
-            <ResponsiveContainer width="100%" height={160}>
-              <LineChart data={earningsTrend} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-                <XAxis dataKey="week" tick={{ fontSize: 8, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 8, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-main)', borderRadius: 8, fontSize: 10 }} formatter={(v: number) => [`$${v.toFixed(2)}`, 'Payout']} />
-                <Line dataKey="pay" stroke="var(--text-green)" strokeWidth={2} dot={{ r: 3, fill: 'var(--text-green)', strokeWidth: 0 }} activeDot={{ r: 4 }} name="Payout" />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[160px] flex items-center justify-center"><p className="text-[9px] text-text-muted uppercase opacity-40">No approved logs yet</p></div>
-          )}
-        </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Weekly Log Summary */}
-        <div className="bg-bg-secondary border border-border-sub rounded-xl overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-border-sub">
-            <ClipboardList size={12} className="text-brand-red" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Weekly Log Status</p>
-            <span className="ml-auto text-[9px] font-bold text-text-muted">{weeklyLogs.length} total</span>
-          </div>
-          <div className="p-4 grid grid-cols-2 gap-3">
-            {[
-              { label: 'Draft', count: logCounts.draft, color: 'text-accent-gold' },
-              { label: 'Submitted', count: logCounts.submitted, color: 'text-blue-400' },
-              { label: 'Approved', count: logCounts.approved, color: 'text-text-green' },
-              { label: 'Returned', count: logCounts.rejected, color: 'text-brand-red' },
-            ].map(({ label, count, color }) => (
-              <div key={label} className="flex items-center justify-between p-3 rounded-lg bg-bg-primary border border-border-sub">
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">{label}</p>
-                <p className={cn('text-lg font-mono font-black', color)}>{count}</p>
-              </div>
-            ))}
-          </div>
-          {pendingVerification > 0 && (
-            <div className="mx-4 mb-4 p-3 rounded-lg bg-accent-gold-dim border border-accent-gold/30 flex items-center gap-2">
-              <AlertTriangle size={12} className="text-accent-gold shrink-0" />
-              <p className="text-[9px] font-bold uppercase tracking-widest text-accent-gold">
-                {pendingVerification} assignment{pendingVerification !== 1 ? 's' : ''} awaiting your confirmation
-              </p>
+      {all.length === 0 ? (
+        <Card className="bg-bg-secondary border-border-main"><CardContent className="py-16 text-center text-[11px] font-bold uppercase tracking-widest text-text-muted">No jobs yet — your history fills in as you're assigned work.</CardContent></Card>
+      ) : (<>
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+          {kpis.map(k => (
+            <Card key={k.label} className="bg-bg-secondary border-border-main">
+              <CardContent className="p-4 min-w-0">
+                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest truncate">{k.label}</p>
+                <p className={cn('text-xl font-black tabular-nums truncate', k.tone)}>{k.value}</p>
+                <p className="text-[10px] text-text-muted truncate">{k.sub}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <Card className="bg-bg-secondary border-border-main min-w-0 lg:col-span-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-bold uppercase tracking-wide">Pay by month</CardTitle>
+              <CardDescription className="text-[10px]">{f.customer ? `${f.customer} — ` : ''}by work date. Green = approved; gold = submitted, draft or not filed yet.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {monthly.length === 0 ? <p className="py-12 text-center text-[11px] text-text-muted">No completed jobs in this view.</p> : (
+                <ChartContainer config={{ approved: { label: 'Approved', color: 'var(--text-green)' }, pending: { label: 'Pending', color: 'var(--accent-gold)' } } satisfies ChartConfig} className="w-full h-[260px]">
+                  <BarChart data={monthly} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.15} />
+                    <XAxis dataKey="month" tickLine={false} axisLine={false} className="text-[9px]" tickFormatter={monthLabel} minTickGap={8} />
+                    <YAxis tickLine={false} axisLine={false} className="text-[9px]" tickFormatter={v => `$${v}`} width={48} />
+                    <Tooltip cursor={{ opacity: 0.1 }} content={({ payload }) => {
+                      const d = payload?.[0]?.payload as { month: string; approved: number; pending: number } | undefined;
+                      return d ? <Tip title={monthLabel(d.month)} lines={[`${money(d.approved)} approved`, `${money(d.pending)} pending`]} /> : null;
+                    }} />
+                    <Bar dataKey="approved" stackId="p" fill="var(--color-approved)" />
+                    <Bar dataKey="pending" stackId="p" fill="var(--color-pending)" radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ChartContainer>
+              )}
+            </CardContent>
+          </Card>
+          <Card className="bg-bg-secondary border-border-main min-w-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-bold uppercase tracking-wide">Pay by customer</CardTitle>
+              <CardDescription className="text-[10px]">Tap a customer to focus the page on them.</CardDescription>
+            </CardHeader>
+            <CardContent><HBars items={byCustomer} fmt={money} selected={f.customer} onPick={c => pick('customer', c)} color="var(--brand-red)" empty="No completed jobs in this view." /></CardContent>
+          </Card>
+          <Card className="bg-bg-secondary border-border-main min-w-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-bold uppercase tracking-wide">Pay by type of work</CardTitle>
+              <CardDescription className="text-[10px]">Tap a type to filter by it.</CardDescription>
+            </CardHeader>
+            <CardContent><HBars items={byType} fmt={money} selected={f.type} onPick={t => pick('type', t)} color="var(--accent-gold)" empty="No completed jobs in this view." /></CardContent>
+          </Card>
+        </div>
+
+        <Card className="bg-bg-secondary border-border-main">
+          <CardHeader className="pb-2 flex flex-row flex-wrap items-center justify-between gap-3 space-y-0">
+            <div>
+              <CardTitle className="text-sm font-bold uppercase tracking-wide">Job history</CardTitle>
+              <CardDescription className="text-[10px]">{count(table.length)} job{table.length === 1 ? '' : 's'} · tap a job to open it · ~ = estimate until it's on a log</CardDescription>
             </div>
-          )}
-        </div>
+            <div className="relative w-full sm:w-[240px]">
+              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
+              <Input value={f.search} onChange={e => set({ search: e.target.value })} placeholder="Search job, customer or #" className="h-8 pl-7 bg-bg-primary border-border-main text-[11px]" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-0 overflow-x-auto">
+            <table className="w-full text-[11px] tabular-nums">
+              <thead>
+                <tr className="border-b border-border-sub">
+                  {([
+                    ['date', 'Date', ''], ['title', 'Job', ''], ['customer', 'Customer', 'hidden md:table-cell'], ['type', 'Type', 'hidden lg:table-cell'],
+                    ['status', 'Status', 'hidden sm:table-cell'], ['pay', 'My pay', ''], ['payStatus', 'Pay status', ''],
+                  ] as [SortKey, string, string][]).map(([k, text, cls]) => (
+                    <th key={k} className={cn('px-3 py-2 font-black uppercase tracking-widest text-[9px] text-text-muted', k === 'pay' ? 'text-right' : 'text-left', cls)}
+                      aria-sort={k === sortKey ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'}>
+                      <button onClick={() => sortBy(k)} className="inline-flex items-center gap-1 hover:text-text-primary">
+                        {text}{k === sortKey && (sortDir > 0 ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                      </button>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pager.items.map(r => (
+                  <tr key={r.id} onClick={() => setOpenJob(jobsById.get(r.id) || null)} className="border-b border-border-sub/60 cursor-pointer hover:bg-bg-tertiary/40">
+                    <td className="px-3 py-2 whitespace-nowrap">{dayLabel(r.date)}</td>
+                    <td className="px-3 py-2 max-w-[220px]">
+                      <p className="font-bold text-text-primary truncate">{r.title}</p>
+                      <p className="text-[9px] text-text-muted truncate md:hidden">{r.customer}</p>
+                      {r.role === 'helper' && <span className="text-[8px] font-bold uppercase text-text-muted">Helper</span>}
+                    </td>
+                    <td className="px-3 py-2 hidden md:table-cell max-w-[180px] truncate">{r.customer}</td>
+                    <td className="px-3 py-2 hidden lg:table-cell max-w-[160px] truncate">{r.type}</td>
+                    <td className="px-3 py-2 hidden sm:table-cell capitalize whitespace-nowrap">{r.status.replace('-', ' ')}</td>
+                    <td className={cn('px-3 py-2 text-right whitespace-nowrap font-bold', r.estimated ? 'text-text-muted' : 'text-text-primary')}>
+                      {r.pay || !r.estimated ? `${r.estimated ? '~' : ''}${money(r.pay)}` : '—'}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <span className={cn('text-[9px] font-bold uppercase', PAY_TONE[r.payStatus])}>{PAY_STATUS_LABELS[r.payStatus]}</span>
+                      {r.disputed && <span className="ml-1 text-[9px] font-bold uppercase text-brand-red">· Disputed</span>}
+                    </td>
+                  </tr>
+                ))}
+                {table.length === 0 && <tr><td colSpan={7} className="px-3 py-10 text-center text-text-muted">No jobs match.</td></tr>}
+              </tbody>
+            </table>
+          </CardContent>
+          <div className="px-3 pb-3"><ListPager pager={pager} noun="jobs" /></div>
+        </Card>
+        <p className="text-[10px] text-text-muted">
+          My pay = what you're paid for the job: your weekly-log amount (Field Nation jobs pay 50% after the platform fee). Jobs not on a log show an estimate (~); helper jobs are priced by payroll. Time on site isn't shown — Field Nation hours aren't available to the app.
+        </p>
+      </>)}
 
-        {/* Recent Completed Jobs */}
-        <div className="bg-bg-secondary border border-border-sub rounded-xl overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-border-sub">
-            <CheckCircle2 size={12} className="text-text-green" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Recent Completed Jobs</p>
-          </div>
-          <div className="divide-y divide-border-sub">
-            {recentCompleted.length === 0 ? (
-              <div className="py-10 text-center">
-                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">No completed jobs yet</p>
-              </div>
-            ) : (
-              recentCompleted.map(job => (
-                <div key={job.id} className="px-4 py-3 flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate">
-                      {job.title || job.description || job.id}
-                    </p>
-                    <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest mt-0.5 truncate">
-                      {job.clientName || 'Client N/A'}
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="text-[9px] font-mono font-bold text-text-secondary">{job.scheduleDate || '—'}</p>
-                    <Badge variant="active" className="text-[7px] h-3.5 px-1 mt-0.5">Done</Badge>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Performance Metrics */}
-      <div className="bg-bg-secondary border border-border-sub rounded-xl overflow-hidden">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-border-sub">
-          <TrendingUp size={12} className="text-brand-red" />
-          <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Performance Metrics</p>
-          <span className="ml-auto text-[9px] font-bold text-text-muted uppercase tracking-widest">{dateRange === '4w' ? 'Last 4 Wks' : dateRange === '8w' ? 'Last 8 Wks' : dateRange === 'month' ? 'This Month' : 'All Time'}</span>
-        </div>
-        <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-3 rounded-lg border border-border-sub bg-bg-primary space-y-0.5">
-            <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">Avg Jobs / Week</p>
-            <p className="text-xl font-mono font-black text-text-green">{avgJobsPerWeek}</p>
-            <p className="text-[8px] text-text-muted">in selected range</p>
-          </div>
-          <div className="p-3 rounded-lg border border-border-sub bg-bg-primary space-y-0.5">
-            <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">Jobs This Month</p>
-            <p className="text-xl font-mono font-black text-blue-400">{jobsThisMonth}</p>
-            <p className="text-[8px] text-text-muted">scheduled or completed</p>
-          </div>
-          <div className="p-3 rounded-lg border border-border-sub bg-bg-primary space-y-0.5">
-            <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">Log Approval Rate</p>
-            <p className="text-xl font-mono font-black text-accent-gold">{logTimeliness.rate}%</p>
-            <p className="text-[8px] text-text-muted">{logTimeliness.approved} approved / {logTimeliness.total} submitted</p>
-          </div>
-          <div className="p-3 rounded-lg border border-border-sub bg-bg-primary space-y-0.5">
-            <p className="text-[8px] font-black uppercase tracking-widest text-text-muted">Returned Logs</p>
-            <p className={cn('text-xl font-mono font-black', logTimeliness.rejected > 0 ? 'text-brand-red' : 'text-text-primary')}>{logTimeliness.rejected}</p>
-            <p className="text-[8px] text-text-muted">of {logTimeliness.total} logs in range</p>
-          </div>
-        </div>
-      </div>
+      {openJob && <JobDetailDialog isOpen={!!openJob} setIsOpen={(o) => { if (!o) setOpenJob(null); }} mission={openJob} />}
     </div>
   );
 }
+
+type SortKey = 'date' | 'title' | 'customer' | 'type' | 'status' | 'pay' | 'payStatus';
+type Filters = {
+  start: string | null; end: string | null; customer: string | null; type: string | null;
+  job: 'all' | 'completed' | 'open'; pay: PayStatus | null; search: string;
+};
+const DEFAULT_FILTERS: Filters = { start: null, end: null, customer: null, type: null, job: 'all', pay: null, search: '' };
+const PAY_TONE: Record<PayStatus, string> = {
+  approved: 'text-text-green', submitted: 'text-blue-400', draft: 'text-accent-gold',
+  returned: 'text-brand-red', 'not-filed': 'text-brand-red', upcoming: 'text-text-muted',
+};
+const money = (v: number) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: Math.abs(v) >= 1000 ? 0 : 2 });
+const count = (v: number) => v.toLocaleString('en-US');
+const monthLabel = (ym: string) => new Date(`${ym}-01T12:00:00`).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+const dayLabel = (iso: string | null) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—');

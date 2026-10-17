@@ -68,13 +68,15 @@ export default function ClientProfilePage() {
                     setAvatarUrl(data.avatarUrl);
                     setBillingContactName(data.billingDetails?.contactName || '');
                     setBillingEmail(data.billingDetails?.email || '');
-                    setBillingTerms(data.billingDetails?.terms || 'Net 30');
+                    setBillingTerms(data.billingDetails?.terms || '');
                     setBillingDelivery(data.billingDetails?.deliveryMethod || 'Portal');
                     savedSnapshotRef.current = {
                         name: data.name || '',
                         preferredName: data.preferredName || '',
                         phone: data.phone || '',
-                        billingDetails: data.billingDetails || {},
+                        'billingDetails.contactName': data.billingDetails?.contactName || '',
+                        'billingDetails.email': data.billingDetails?.email || '',
+                        'billingDetails.deliveryMethod': data.billingDetails?.deliveryMethod || 'Portal',
                     };
                 }
             });
@@ -108,21 +110,20 @@ export default function ClientProfilePage() {
         if (!currentUser?.id) return;
         setIsSaving(true);
         try {
+            // Dotted paths: payment terms are set by Aaromach (the rules reject
+            // a client changing them), so this save never touches them.
             const updates = {
                 name,
                 preferredName,
                 phone,
-                billingDetails: {
-                    contactName: billingContactName,
-                    email: billingEmail,
-                    terms: billingTerms,
-                    deliveryMethod: billingDelivery,
-                },
+                'billingDetails.contactName': billingContactName,
+                'billingDetails.email': billingEmail,
+                'billingDetails.deliveryMethod': billingDelivery,
             };
             await auditFieldChange('users', currentUser.id, currentUser.id, currentUser.name || currentUser.id, savedSnapshotRef.current, updates);
             await updateDoc(doc(db, 'users', currentUser.id), updates);
             savedSnapshotRef.current = { ...updates };
-            toast({ title: "Profile Registry Updated", description: "Your contact and billing parameters have been committed." });
+            toast({ title: "Profile saved", description: "Your contact and billing parameters have been committed." });
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: err.message });
         } finally {
@@ -319,17 +320,8 @@ export default function ClientProfilePage() {
                                         </div>
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted">Payment Terms</Label>
-                                            <Select value={billingTerms} onValueChange={setBillingTerms}>
-                                                <SelectTrigger className="bg-bg-primary h-11 text-xs uppercase font-bold">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="Net 15">Net 15</SelectItem>
-                                                    <SelectItem value="Net 30">Net 30</SelectItem>
-                                                    <SelectItem value="Net 60">Net 60</SelectItem>
-                                                    <SelectItem value="Due on Receipt">Due on Receipt</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                            <Input value={billingTerms || 'Not set'} readOnly disabled className="bg-bg-primary h-11 text-xs uppercase font-bold" />
+                                            <p className="text-[9px] text-text-muted">Set by Aaromach. Contact us to change your terms.</p>
                                         </div>
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[10px] uppercase font-bold text-text-muted">Invoice Delivery Mode</Label>

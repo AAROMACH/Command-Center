@@ -38,14 +38,14 @@ export default function ForgotPasswordPage() {
       await sendPasswordResetEmail(auth, email);
       setIsSent(true);
       toast({
-        title: "Transmission Success",
+        title: "Sent",
         description: "Recovery instructions sent to the registered address.",
       });
     } catch (error: any) {
       console.error("Reset error:", error);
       toast({
         variant: "destructive",
-        title: "Transmission Failure",
+        title: "Send failed",
         description: error.message || "Unable to process recovery request at this time.",
       });
     } finally {

@@ -56,7 +56,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Activity,
-  Gauge,
   Type,
   FileText,
   RefreshCw,
@@ -77,7 +76,6 @@ import { JobDetailDialog } from "@/components/job-detail-dialog";
 import { WorkOrderId } from "@/components/work-order-id";
 import { isPayAdmin } from "@/lib/permissions";
 import { archiveJobRecord, toUnassignedWorkOrder } from "@/lib/jobs";
-import { getReliabilityTier, getTierBadgeVariant, getTierColor } from "@/lib/reliability";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
@@ -118,6 +116,9 @@ type WorkOrdersTableProps = {
   onToggleDateSort?: () => void;
   mobileAssignOrder?: WorkOrder | null;
   onMobileAssignOrderHandled?: () => void;
+  /** Phone card list asks the (CSS-hidden) table to open its edit form. */
+  mobileEditOrder?: WorkOrder | null;
+  onMobileEditOrderHandled?: () => void;
 };
 
 export const WorkOrdersTable = React.memo(({
@@ -129,6 +130,8 @@ export const WorkOrdersTable = React.memo(({
   onToggleDateSort,
   mobileAssignOrder,
   onMobileAssignOrderHandled,
+  mobileEditOrder,
+  onMobileEditOrderHandled,
 }: WorkOrdersTableProps) => {
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -190,6 +193,12 @@ export const WorkOrdersTable = React.memo(({
     setIsEditDialogOpen(true);
   }, []);
 
+  useEffect(() => {
+    if (!mobileEditOrder) return;
+    handleOpenEditDialog(mobileEditOrder);
+    onMobileEditOrderHandled?.();
+  }, [mobileEditOrder, handleOpenEditDialog, onMobileEditOrderHandled]);
+
   const handleOpenDetail = useCallback((order: WorkOrder) => {
     setDetailJob(order);
     setIsDetailOpen(true);
@@ -199,7 +208,9 @@ export const WorkOrdersTable = React.memo(({
     const matched = technicians
       .filter(isAssignableTechnician)
       .filter(t => (t.name || '').toLowerCase().includes(techSearchQuery.toLowerCase()))
-      .sort((a, b) => (b.reliabilityScore || 0) - (a.reliabilityScore || 0));
+      // Alphabetical — the reliability score was never recalculated, so it
+      // was ranking techs on stale numbers. Removed until it's real.
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     // Deactivated accounts stay visible but drop to the bottom and render
     // disabled/greyed (see isInactiveTechnician usage below).
     return sortTechniciansForDeployment(matched);
@@ -365,7 +376,7 @@ export const WorkOrdersTable = React.memo(({
     setIsEditDialogOpen(false);
     setSelectedOrder(null);
     setEditedOrder(null);
-    toast({ title: "Registry Updated", description: "Job entry synchronized." });
+    toast({ title: "Saved", description: "Job entry synchronized." });
   };
 
   const handleDeleteOrder = () => {
@@ -405,7 +416,7 @@ export const WorkOrdersTable = React.memo(({
         toast({ title: `${label} Archived`, description: "Moved to Archives — recoverable from the Archives page." });
       } catch (e: any) {
         console.error("Archive Error:", e);
-        toast({ variant: "destructive", title: "Archive Failed", description: e?.message || "Could not archive. Please try again." });
+        toast({ variant: "destructive", title: "Archive failed", description: e?.message || "Could not archive. Please try again." });
       }
     })();
   };
@@ -415,7 +426,7 @@ export const WorkOrdersTable = React.memo(({
     const docRef = doc(db, collectionName, woId);
     updateDoc(docRef, updates).catch((e: any) => {
         console.error("Job Update Error:", e);
-        toast({ variant: "destructive", title: "Update Failed", description: e.message });
+        toast({ variant: "destructive", title: "Save failed", description: e.message });
     });
   }, [mode, toast]);
 
@@ -655,7 +666,8 @@ export const WorkOrdersTable = React.memo(({
         mission={detailJob} 
         onEdit={(m) => {
           setIsDetailOpen(false);
-          handleOpenEditDialog(m);
+          // Live record, not the panel's snapshot (see work-orders-client).
+          handleOpenEditDialog(workOrders.find(w => w.id === m.id) ?? m);
         }}
         onUpdate={handleJobUpdate}
       />
@@ -721,8 +733,6 @@ export const WorkOrdersTable = React.memo(({
                 <ScrollArea className="h-[250px] rounded-xl border border-border-sub bg-bg-primary shadow-inner">
                     <div className="divide-y divide-border-sub">
                         {filteredTechniciansRegistry.map(tech => {
-                            const tier = getReliabilityTier(tech.reliabilityScore || 0);
-                            const tierColor = getTierColor(tier);
                             const inactive = isInactiveTechnician(tech);
 
                             return (
@@ -738,16 +748,11 @@ export const WorkOrdersTable = React.memo(({
                                         <div className="text-left">
                                             <div className="flex items-center gap-2">
                                                 <p className="text-xs font-black uppercase tracking-tight text-left">{tech.name}</p>
-                                                <Badge variant={getTierBadgeVariant(tier)} className="text-[7px] h-3.5 uppercase px-1.5">{tier}</Badge>
                                                 {inactive && (
                                                     <Badge variant="outline" className="text-[7px] h-3.5 uppercase px-1.5 border-text-muted/40 text-text-muted">Inactive</Badge>
                                                 )}
                                             </div>
                                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
-                                                <div className="flex items-center gap-1.5">
-                                                    <Gauge size={10} className={tierColor} />
-                                                    <p className={cn("text-[9px] font-black uppercase", tierColor)}>{tech.reliabilityScore || 0}% INDEX</p>
-                                                </div>
                                                 <div className="flex items-center gap-1.5">
                                                     <Navigation size={10} className="text-text-muted" />
                                                     <p className="text-[9px] text-text-muted font-bold uppercase truncate max-w-[120px]">{tech.address || tech.currentLocation}</p>
@@ -780,10 +785,10 @@ export const WorkOrdersTable = React.memo(({
 
       <Dialog open={isEditDialogOpen} onOpenChange={(open) => { if(!open) { setSelectedOrder(null); setEditedOrder(null); } setIsEditDialogOpen(open); }}>
         <DialogContent className="sm:max-w-[750px] bg-bg-elevated border-border-default max-h-[90vh] overflow-hidden flex flex-col p-0 shadow-2xl">
-            <DialogHeader className="p-6 pb-2 text-left border-b border-border-sub bg-bg-tertiary/30 text-left">
+            <DialogHeader className="p-4 sm:p-6 pb-2 text-left border-b border-border-sub bg-bg-tertiary/30 text-left">
                 <div className="flex items-center justify-between">
                     <div className="space-y-1 text-left">
-                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Update Parameters</DialogTitle>
+                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Edit Job</DialogTitle>
                         <p className="text-xs text-text-muted text-left">Adjust manual parameters for record <span className="font-bold text-text-primary">{selectedOrder?.id.toUpperCase()}</span></p>
                     </div>
                 </div>
@@ -795,7 +800,7 @@ export const WorkOrdersTable = React.memo(({
                 // flex-col dialog, so tall content silently got clipped
                 // instead of scrolling. Confirmed with a live browser test.
                 <div className="flex-1 min-h-0 overflow-y-auto">
-                    <div className="px-6 py-4 space-y-6">
+                    <div className="px-4 sm:px-6 py-4 space-y-6">
                         <div className="space-y-4">
                             <div className="space-y-2 text-left">
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
@@ -882,7 +887,7 @@ export const WorkOrdersTable = React.memo(({
                         </div>
 
                         {editedOrder.payType === 'blended' && (
-                            <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50 text-left">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50 text-left">
                                 <div className="space-y-2 text-left">
                                     <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Fixed Base ($)</Label>
                                     <div className="relative">
@@ -919,7 +924,7 @@ export const WorkOrdersTable = React.memo(({
                                         />
                                     </div>
                                 </div>
-                                <p className="col-span-3 text-[9px] text-text-muted uppercase font-bold italic tracking-tighter text-left">Fixed amount for specified hours, then hourly rate applies.</p>
+                                <p className="sm:col-span-3 text-[9px] text-text-muted uppercase font-bold italic tracking-tighter text-left">Fixed amount for specified hours, then hourly rate applies.</p>
                             </div>
                         )}
 
@@ -958,15 +963,17 @@ export const WorkOrdersTable = React.memo(({
                     </div>
                 </div>
             )}
-            <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 shrink-0 flex flex-row items-center justify-between gap-3">
-                <Button variant="destructive-outline" onClick={handleDeleteOrder} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim">
+            {/* Stacks on phones (Save on top, within thumb reach); one row on
+                wider screens. The old single row overflowed a phone. */}
+            <DialogFooter className="bg-bg-tertiary/30 p-4 sm:p-6 border-t border-border-default mt-4 shrink-0 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                <Button variant="destructive-outline" onClick={handleDeleteOrder} className="h-11 w-full sm:w-auto px-8 uppercase font-bold text-[10px] tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim">
                     <Trash2 size={16} className="mr-2" />
                     Delete
                 </Button>
-                <div className="flex gap-3">
-                    <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
-                    <Button onClick={handleSaveChanges} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white shadow-lg">
-                        Commit Registry Updates
+                <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
+                    <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 w-full sm:w-auto px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
+                    <Button onClick={handleSaveChanges} className="h-11 w-full sm:w-auto px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white shadow-lg">
+                        Save Changes
                     </Button>
                 </div>
             </DialogFooter>

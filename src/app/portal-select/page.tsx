@@ -1,4 +1,5 @@
 'use client';
+import { signOutAndClear } from '@/lib/sign-out';
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -100,13 +101,7 @@ export default function PortalSelectPage() {
     router.push(portalPath);
   };
 
-  const handleSignOut = async () => {
-    await signOut(auth);
-    document.cookie = 'aaromach_session=; path=/; max-age=0';
-    document.cookie = 'aaromach_portals=; path=/; max-age=0';
-    sessionStorage.removeItem('currentUserId');
-    router.push('/login');
-  };
+  const handleSignOut = () => signOutAndClear();
 
   const availablePortals = useMemo(
     () => userData ? getAvailablePortals(userData) : [],

@@ -1,8 +1,10 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useRef } from 'react';
 import { db, auth } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, doc, updateDoc, arrayUnion, query } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, updateDoc, arrayUnion, query, where } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { uploadFile } from '@/lib/upload';
 import { useDirectory } from '@/hooks/use-directory';
 import type { Technician, Project, AdminMessage } from '@/lib/types';
@@ -63,29 +65,46 @@ export default function TechMessagingPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Techs can read only their own `users` doc — the old whole-collection
-    // listener was denied, so currentUser (and every contact) never loaded.
-    const userId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('currentUserId') : null;
-    const unsubUsers = userId
-      ? onSnapshot(doc(db, 'users', userId), (snap) => {
+    // Techs can read only their own `users` doc. The signed-in user comes
+    // from Firebase Auth — sessionStorage is per-tab, so a new tab was empty.
+    // Messages: this tech's own DMs plus project threads, instead of the
+    // whole ever-growing collection.
+    const slices: Record<'sent' | 'received' | 'project', DirectMessage[]> = { sent: [], received: [], project: [] };
+    const publish = () => {
+      const byId = new Map<string, DirectMessage>();
+      [...slices.sent, ...slices.received, ...slices.project].forEach(m => byId.set(m.id, m));
+      setMessages([...byId.values()]);
+    };
+    let inner: (() => void)[] = [];
+    const stopInner = () => { inner.forEach(u => u()); inner = []; };
+    const unsubAuth = onAuthStateChanged(auth, fbUser => {
+      stopInner();
+      if (!fbUser) { setMessages([]); return; }
+      const listen = (key: keyof typeof slices, q: ReturnType<typeof query>) => onSnapshot(q, snap => {
+        slices[key] = snap.docs.map(d => ({ ...(d.data() as object), id: d.id } as DirectMessage));
+        publish();
+      }, () => { slices[key] = []; publish(); });
+      inner = [
+        onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
           if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id } as Technician);
-        }, () => {})
-      : () => {};
-
-    const unsubMsgs = onSnapshot(collection(db, 'messages'), (snap) => {
-      setMessages(snap.docs.map(d => ({ ...d.data(), id: d.id } as DirectMessage)));
+        }, () => {}),
+        listen('sent', query(collection(db, 'messages'), where('senderId', '==', fbUser.uid))),
+        listen('received', query(collection(db, 'messages'), where('receiverId', '==', fbUser.uid))),
+        listen('project', query(collection(db, 'messages'), where('projectId', '!=', null))),
+      ];
     });
+    const unsubUsers = () => { unsubAuth(); stopInner(); };
 
-    const unsubProjects = onSnapshot(collection(db, 'projects'), (snap) => {
+    const unsubProjects = onSharedSnapshot('projects', (snap) => {
       setAllProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
     });
 
-    const unsubBroadcasts = onSnapshot(collection(db, 'broadcasts'), (snap) => {
+    const unsubBroadcasts = onSharedSnapshot('broadcasts', (snap) => {
       const all = snap.docs.map(d => ({ ...d.data(), id: d.id } as AdminMessage));
       setBroadcasts(all.filter(b => b.targetPortal === 'all' || b.targetPortal === 'tech'));
     });
 
-    return () => { unsubUsers(); unsubMsgs(); unsubProjects(); unsubBroadcasts(); };
+    return () => { unsubUsers(); unsubProjects(); unsubBroadcasts(); };
   }, []);
 
   useEffect(() => {

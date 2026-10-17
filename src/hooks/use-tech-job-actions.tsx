@@ -33,7 +33,7 @@ export function useTechJobActions(techId: string | null, techName: string) {
       toast({ title: r.title, description: r.completion ? completionToastText(r.completion) : r.description });
       return true;
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Update Failed', description: e?.message || 'Please try again.' });
+      toast({ variant: 'destructive', title: 'Save failed', description: e?.message || 'Please try again.' });
       return false;
     } finally {
       setBusyId(null);

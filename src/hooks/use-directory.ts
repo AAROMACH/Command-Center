@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useEffect, useState } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -23,7 +24,7 @@ export function useDirectory(): Technician[] {
     useEffect(() => {
         if (loading || !user?.id) return;
         if (isAdmin) {
-            return onSnapshot(collection(db, 'users'),
+            return onSharedSnapshot('users',
                 snap => setPeople(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician))),
                 () => setPeople([]));
         }
@@ -38,10 +39,16 @@ export function useDirectory(): Technician[] {
                 if (!cancelled && Array.isArray(entries)) setPeople(entries as Technician[]);
             } catch { /* keep the last list */ }
         };
+        let lastLoad = Date.now();
         load();
         // New contacts (a tech added to the project, a new admin) show up when
-        // the user comes back to the tab.
-        const onFocus = () => { if (document.visibilityState === 'visible') load(); };
+        // the user comes back to the tab — at most every 5 minutes, not on
+        // every tab switch.
+        const onFocus = () => {
+            if (document.visibilityState !== 'visible' || Date.now() - lastLoad < 5 * 60_000) return;
+            lastLoad = Date.now();
+            load();
+        };
         document.addEventListener('visibilitychange', onFocus);
         return () => { cancelled = true; document.removeEventListener('visibilitychange', onFocus); };
     }, [loading, user?.id, isAdmin]);

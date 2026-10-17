@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
@@ -74,7 +75,7 @@ export default function AdminClientsPage() {
         let loaded = 0;
         const check = () => { loaded++; if (loaded >= 2) setLoading(false); };
 
-        const unsubC = onSnapshot(collection(db, 'users'), snap => {
+        const unsubC = onSharedSnapshot('users', snap => {
             setClients(
                 snap.docs
                     .map(d => ({ ...d.data(), id: d.id } as Technician))
@@ -82,17 +83,17 @@ export default function AdminClientsPage() {
             );
             check();
         }, check);
-        const unsubS = onSnapshot(collection(db, 'sites'), snap => {
+        const unsubS = onSharedSnapshot('sites', snap => {
             setSites(snap.docs.map(d => ({ ...d.data(), id: d.id } as Site)));
             check();
         }, check);
-        const unsubWO = onSnapshot(collection(db, 'workOrders'), snap => {
+        const unsubWO = onSharedSnapshot('workOrders', snap => {
             setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
-        const unsubQ = onSnapshot(collection(db, 'quotes'), snap => {
+        const unsubQ = onSharedSnapshot('quotes', snap => {
             setQuotes(snap.docs.map(d => ({ ...d.data(), id: d.id } as Quote)));
         });
-        const unsubI = onSnapshot(collection(db, 'invoices'), snap => {
+        const unsubI = onSharedSnapshot('invoices', snap => {
             setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
         });
 
@@ -165,7 +166,6 @@ export default function AdminClientsPage() {
                 skills: [],
                 availability: {},
                 workPreferences: { preferredRadius: 0, maxTravelDistance: 0, preferredJobTypes: [], availabilityOverride: false },
-                reliabilityScore: 0,
                 currentWorkload: 0,
                 currentLocation: '',
                 avatarUrl: '',

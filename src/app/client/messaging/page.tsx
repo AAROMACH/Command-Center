@@ -38,7 +38,7 @@ type ThreadKey =
   | { type: 'dm'; contactId: string; contactName: string; contactAvatar?: string }
   | { type: 'project'; projectId: string; projectName: string };
 
-const ADMIN_ROLES = ['super_admin', 'dispatch_admin', 'project_manager', 'payroll_admin'];
+const ADMIN_ROLES = ['super_admin', 'dispatch_admin', 'payroll_admin'];
 
 export default function ClientMessagingPage() {
   const { toast } = useToast();

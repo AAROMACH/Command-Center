@@ -19,8 +19,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import type { AppRole, Technician } from '@/lib/types';
 import { createDocId } from '@/lib/generateId';
+import { canEditUserAccess, canEditUserPay, canGrantProjectManager, NON_ADMIN_ROLES } from '@/lib/profile-permissions';
 import { ID_PREFIXES } from '@/lib/constants';
 import { ROLE_DATA } from '@/lib/constants/roles';
+import { ROLE_GROUP_LABELS } from '@/lib/permissions';
 import { 
   User, 
   ChevronRight, 
@@ -70,7 +72,6 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
     clientCompany: '',
     availability: {},
     skills: [],
-    reliabilityScore: 100,
     currentWorkload: 0,
     hourlyRate: 0,
     avatarUrl: 'https://picsum.photos/seed/newuser/40/40',
@@ -96,7 +97,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
       console.warn("Google Maps API Handshake Restricted.");
       toast({
         variant: "destructive",
-        title: "Registry Security Error",
+        title: "Google Maps unavailable",
         description: "Google Maps API referer or activation restriction active. Please authorize this workstation URL in your Cloud Console.",
       });
     };
@@ -195,14 +196,27 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
             };
             onSave(newPerson);
             toast({
-                title: "Operative Linked",
+                title: "Person linked",
                 description: `Firestore profile created and linked to existing auth account for ${formData.email}.`
             });
             handleReset();
             setIsOpen(false);
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Enrollment Failed", description: e.message });
+            toast({ variant: "destructive", title: "Could not add person", description: e.message });
         }
+        return;
+    }
+
+    // Same split as firestore.rules: any admin adds techs, leads, sales and
+    // clients; admin roles need a super admin. Checked before the login is
+    // created so a refused profile never leaves an orphaned account.
+    const me = technicians.find(t => t.id === auth.currentUser?.uid);
+    if ((formData.roles || []).some(r => !NON_ADMIN_ROLES.includes(r)) && !canEditUserAccess(me)) {
+        toast({ variant: "destructive", title: "Super admin only", description: "Only a super admin can add someone with an admin role." });
+        return;
+    }
+    if ((formData.roles || []).includes('project_manager') && !canGrantProjectManager(me)) {
+        toast({ variant: "destructive", title: "Dispatch or super admin only", description: "Only a dispatch admin or super admin can add a Project Manager." });
         return;
     }
 
@@ -215,7 +229,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         const res = await fetch('/api/admin/create-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-            body: JSON.stringify({ email: formData.email }),
+            body: JSON.stringify({ email: formData.email, roles: formData.roles || [] }),
         });
         const created = await res.json().catch(() => ({}));
         const uid: string | null = res.ok ? created.uid : null;
@@ -230,7 +244,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                     description: "This email already has a Firebase Auth account. Paste their Firebase UID in the field below to link the profile."
                 });
             } else {
-                toast({ variant: "destructive", title: "Enrollment Failed", description: error ?? 'Auth user creation failed.' });
+                toast({ variant: "destructive", title: "Could not add person", description: error ?? 'Auth user creation failed.' });
             }
             return;
         }
@@ -243,6 +257,8 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
             userId,
             role: (formData.roles || [])[0] || ''
         };
+        // Pay is payroll's (rules): only send a rate someone allowed to set it entered.
+        if (!(canEditUserPay(me) && (newPerson.hourlyRate || 0) > 0)) delete (newPerson as Partial<Technician>).hourlyRate;
         onSave(newPerson);
 
         // The server only creates the account; this actually emails the
@@ -255,7 +271,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
             emailed = false;
         }
         toast({
-            title: "Operative Enrolled",
+            title: "Person added",
             description: emailed
                 ? `Auth account created. Password setup email sent to ${formData.email}.`
                 : `Auth account created, but the password email couldn't be sent. Use "Forgot password" on the login page for ${formData.email}.`,
@@ -264,7 +280,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         handleReset();
         setIsOpen(false);
     } catch (e: any) {
-        toast({ variant: "destructive", title: "Enrollment Failed", description: e.message });
+        toast({ variant: "destructive", title: "Could not add person", description: e.message });
     }
 };
   
@@ -278,7 +294,6 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
         clientCompany: '',
         availability: {},
         skills: [],
-        reliabilityScore: 100,
         currentWorkload: 0,
         hourlyRate: 0,
         avatarUrl: 'https://picsum.photos/seed/newuser/40/40',
@@ -307,7 +322,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
 
   const currentPermissions = useMemo(() => {
     const roles = formData.roles || [];
-    const allOptions = [...ROLE_DATA.admin, ...ROLE_DATA.tech, ...ROLE_DATA.client, ...ROLE_DATA.office];
+    const allOptions = [...ROLE_DATA.admin, ...ROLE_DATA.external, ...ROLE_DATA.tech, ...ROLE_DATA.client];
     const perms = new Set<string>();
     roles.forEach(roleId => {
         const option = allOptions.find(o => o.id === roleId);
@@ -403,7 +418,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
                     <Lock size={16} />
                     <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Authorization Grid</h3>
                 </div>
-                {isFieldTech && (
+                {isFieldTech && canEditUserPay(technicians.find(t => t.id === auth.currentUser?.uid)) && (
                     <div className="space-y-1 text-right">
                         <Label className="text-[10px] uppercase font-bold text-text-muted">Project Base Rate ($/hr)</Label>
                         <div className="relative w-32 ml-auto">
@@ -423,7 +438,7 @@ export function AddPersonnelDialog({ isOpen, setIsOpen, onSave }: AddPersonnelDi
              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {(Object.keys(ROLE_DATA) as Array<keyof typeof ROLE_DATA>).map((category) => (
                     <div key={category} className="space-y-4">
-                        <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1 capitalize text-left">{category}</h4>
+                        <h4 className="text-[9px] font-black uppercase tracking-widest text-text-muted border-b border-border-sub pb-1 text-left">{ROLE_GROUP_LABELS[category]}</h4>
                         <div className="space-y-2">
                             {ROLE_DATA[category].map(role => {
                                 const isSelected = (formData.roles || []).includes(role.id);

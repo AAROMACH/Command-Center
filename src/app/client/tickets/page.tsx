@@ -122,7 +122,7 @@ export default function ClientTicketsPage() {
         console.warn("Google Maps API Handshake Restricted.");
         toast({
           variant: "destructive",
-          title: "Registry Security Error",
+          title: "Google Maps unavailable",
           description: "Google Maps API referer or activation restriction active.",
         });
       };
@@ -229,7 +229,7 @@ export default function ClientTicketsPage() {
       if (!file) return;
 
       if (attachments.length >= 5) {
-          toast({ variant: 'destructive', title: 'Registry Full', description: 'Maximum 5 evidence assets authorized per request.' });
+          toast({ variant: 'destructive', title: 'Limit reached', description: 'Maximum 5 evidence assets authorized per request.' });
           return;
       }
 
@@ -238,7 +238,7 @@ export default function ClientTicketsPage() {
           const storagePath = `ticketAttachments/pending/${Date.now()}-${file.name}`;
           const { url } = await uploadFile(storagePath, file);
           setAttachments(prev => [...prev, { name: file.name, type: isImage ? 'image' : 'doc', url }]);
-          toast({ title: "Asset Buffered", description: `${file.name} ready for intake.` });
+          toast({ title: "File ready", description: `${file.name} ready for intake.` });
       } catch (err: any) {
           toast({ variant: 'destructive', title: 'Upload Failed', description: err.message });
       } finally {

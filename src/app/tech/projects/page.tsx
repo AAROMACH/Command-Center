@@ -1,10 +1,16 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { useDirectory } from '@/hooks/use-directory';
-import type { Project, Technician } from '@/lib/types';
-import { Briefcase, Search, LayoutList, LayoutGrid } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
+import { useToast } from '@/hooks/use-toast';
+import { canManageProjects, isOnProject } from '@/lib/project-access';
+import { NewProjectDialog } from '@/app/admin/projects/components/new-project-dialog';
+import type { Project } from '@/lib/types';
+import { Briefcase, Search, LayoutList, LayoutGrid, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { ProjectsClient } from './components/projects-client';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
@@ -15,6 +21,21 @@ export default function TechProjectsPage() {
     const technicians = useDirectory();
     const [searchQuery, setSearchQuery] = useState("");
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    // A Project Manager sees every project (and can start one); everyone
+    // else sees the projects they're on.
+    const { user } = useAuth();
+    const { toast } = useToast();
+    const isPM = canManageProjects(user);
+    const [scope, setScope] = useState<'all' | 'mine'>('all');
+    const [newOpen, setNewOpen] = useState(false);
+    const handleNewProject = async (p: Project) => {
+        try {
+            await setDoc(doc(db, 'projects', p.id), { ...p });
+            toast({ title: 'Project created', description: `${p.name} is ready to staff.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not create project', description: e.message });
+        }
+    };
 
     useEffect(() => {
         const userId = sessionStorage.getItem('currentUserId');
@@ -22,7 +43,7 @@ export default function TechProjectsPage() {
 
         if (userId) {
             // Live listener for projects where this tech is part of the team
-            const unsubProj = onSnapshot(collection(db, 'projects'), (snap) => {
+            const unsubProj = onSharedSnapshot('projects', (snap) => {
                 const projects = snap.docs.map(d => ({ ...d.data(), id: d.id } as Project));
                 // We filter client-side for immediate reactivity to team changes
                 setAllProjects(projects);
@@ -35,14 +56,14 @@ export default function TechProjectsPage() {
     const techProjects = useMemo(() => {
         if (!currentTechId) return [];
         return allProjects
-            .filter(p => (p.team || []).some(member => member.techId === currentTechId))
+            .filter(p => (isPM && scope === 'all') || isOnProject(p, currentTechId))
             .filter(p => 
                 (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                 p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (p.client || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (p.location || '').toLowerCase().includes(searchQuery.toLowerCase())
             );
-    }, [allProjects, currentTechId, searchQuery]);
+    }, [allProjects, currentTechId, searchQuery, isPM, scope]);
 
     const activeProjects = techProjects.filter(p => p.status === 'active');
     const onHoldProjects = techProjects.filter(p => p.status === 'on-hold');
@@ -53,7 +74,7 @@ export default function TechProjectsPage() {
             <div className="flex h-[400px] items-center justify-center">
                 <div className="text-center space-y-4">
                     <div className="h-8 w-8 border-4 border-brand-red border-t-transparent rounded-full animate-spin mx-auto" />
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Synchronizing Registry...</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Loading...</p>
                 </div>
             </div>
         );
@@ -67,10 +88,25 @@ export default function TechProjectsPage() {
                         <Briefcase size={12} />
                         Strategic Deployments
                     </p>
-                    <h1 className="page-title">My Projects</h1>
-                    <p className="page-subtitle text-left">Manage your large-scale, multi-day deployments.</p>
+                    <h1 className="page-title">{isPM && scope === 'all' ? 'All Projects' : 'My Projects'}</h1>
+                    <p className="page-subtitle text-left">{isPM ? 'Create, staff and run every project.' : 'Manage your large-scale, multi-day deployments.'}</p>
                 </div>
                 <div className="page-header-right">
+                    {isPM && (
+                        <>
+                            <div className="flex items-center border border-border-main rounded-md overflow-hidden h-9">
+                                {(['all', 'mine'] as const).map((s, i) => (
+                                    <button key={s} onClick={() => setScope(s)}
+                                        className={`px-3 h-full text-[10px] font-bold uppercase tracking-widest transition-colors ${i ? 'border-l border-border-main' : ''} ${scope === s ? 'bg-brand-red text-white' : 'bg-bg-secondary text-text-muted hover:text-text-primary'}`}>
+                                        {s === 'all' ? 'All' : 'Mine'}
+                                    </button>
+                                ))}
+                            </div>
+                            <Button size="sm" className="h-9 text-[10px]" onClick={() => setNewOpen(true)}>
+                                <Plus size={13} className="mr-1.5" /> New Project
+                            </Button>
+                        </>
+                    )}
                     <div className="search-wrap">
                         <Search />
                         <input
@@ -114,6 +150,7 @@ export default function TechProjectsPage() {
                     <ProjectsClient projects={completedProjects} technicians={technicians} viewMode={viewMode} />
                 </TabsContent>
             </Tabs>
+            {isPM && <NewProjectDialog isOpen={newOpen} setIsOpen={setNewOpen} onSave={handleNewProject} />}
         </div>
     );
 }

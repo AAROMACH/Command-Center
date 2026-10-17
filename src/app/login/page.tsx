@@ -53,7 +53,7 @@ export default function LoginPage() {
     try {
       await applyPersistence();
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
-      toast({ title: "Authorization Successful", description: "Terminal access granted." });
+      toast({ title: "Approved", description: "Access granted." });
       await handleRedirect(userCredential.user);
     } catch {
       toast({ variant: "destructive", title: "Access Denied", description: "Invalid credentials. Please verify your email and password." });
@@ -85,7 +85,6 @@ export default function LoginPage() {
           roles: [],
           approvalStatus: 'pending',
           accountStatus: 'inactive',
-          reliabilityScore: 100,
           currentWorkload: 0,
           skills: [],
           currentLocation: "",
@@ -98,17 +97,19 @@ export default function LoginPage() {
           createdVia: "google_sso",
         });
       } else {
-        // Sync Google profile fields if they changed
+        // Fill in Google profile fields only when the account has none. This
+        // used to overwrite them on every sign-in, undoing any name or photo
+        // the user or an admin had set in the app.
         const existing = snap.data();
         const updates: Record<string, string> = {};
-        if (firebaseUser.photoURL && existing.avatarUrl !== firebaseUser.photoURL) updates.avatarUrl = firebaseUser.photoURL;
-        if (firebaseUser.displayName && existing.name !== firebaseUser.displayName) updates.name = firebaseUser.displayName;
+        if (firebaseUser.photoURL && !existing.avatarUrl) updates.avatarUrl = firebaseUser.photoURL;
+        if (firebaseUser.displayName && !existing.name) updates.name = firebaseUser.displayName;
         if (Object.keys(updates).length > 0) {
           await setDoc(doc(db, "users", firebaseUser.uid), updates, { merge: true });
         }
       }
 
-      toast({ title: "Google Sign-In Successful", description: "Terminal access granted." });
+      toast({ title: "Google Sign-In Successful", description: "Access granted." });
       await handleRedirect(firebaseUser);
     } catch (err: any) {
       const code: string = err.code || "";

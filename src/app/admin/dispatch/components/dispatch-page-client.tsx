@@ -1,9 +1,10 @@
 
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, doc, setDoc, addDoc, onSnapshot, query, where, updateDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, onSnapshot, query, where, updateDoc, deleteDoc, arrayUnion, getDocs, writeBatch } from 'firebase/firestore';
 import { DispatchTabs } from "./dispatch-tabs";
 import { RequestsTabs } from "../../requests/components/requests-tabs";
 import { WorkOrdersClient } from "./work-orders-client";
@@ -121,21 +122,54 @@ export function DispatchPageClient() {
     return result;
   };
 
+  /**
+   * Only the top-level fields that differ between the snapshot a board was
+   * rendered from and its edited copy. Saving the whole local copy overwrote
+   * anything changed since — a tech checking in, another admin's edit — with
+   * stale values. Fields missing from the edited copy are left alone, as
+   * before (updateDoc never cleared them either).
+   */
+  const changedFields = (before: any, after: any): Record<string, any> => {
+    const a = sanitize(before || {});
+    const b = sanitize(after);
+    const out: Record<string, any> = {};
+    for (const key of Object.keys(b)) {
+      if (key === 'id') continue;
+      if (JSON.stringify(a[key]) !== JSON.stringify(b[key])) out[key] = b[key];
+    }
+    return out;
+  };
+
+  /** Write each changed job's changed fields in one batch (≤ 500 per commit). */
+  const saveChangedJobs = async (collectionName: 'workOrders' | 'assignments', updated: WorkOrder[], current: WorkOrder[]) => {
+    const byId = new Map(current.map(j => [j.id, j]));
+    // Skip jobs no longer in this collection (deleted or moved by someone
+    // else) — one missing doc would otherwise fail the whole batch.
+    const writes = updated
+      .filter(j => byId.has(j.id))
+      .map(j => ({ id: j.id, fields: changedFields(byId.get(j.id), j) }))
+      .filter(w => Object.keys(w.fields).length > 0);
+    for (let i = 0; i < writes.length; i += 500) {
+      const batch = writeBatch(db);
+      writes.slice(i, i + 500).forEach(w => batch.update(doc(db, collectionName, w.id), w.fields));
+      await batch.commit();
+    }
+  };
+
   // 1. Initialize Data Listeners
   useEffect(() => {
-    const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
+    const unsubWO = onSharedSnapshot('workOrders', (snap) => {
       setAllWorkOrders(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder)));
       setLoaded(l => l.wo ? l : { ...l, wo: true });
     });
-    const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
+    const unsubAsmt = onSharedSnapshot('assignments', (snap) => {
       setAllAssignments(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as WorkOrder)));
       setLoaded(l => l.asmt ? l : { ...l, asmt: true });
     });
-    const unsubTech = onSnapshot(
-      collection(db, 'users'),
+    const unsubTech = onSharedSnapshot('users',
       (snap) => { setTechnicians(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Technician))); }
     );
-    const unsubReq = onSnapshot(collection(db, 'clientRequests'), (snap) => {
+    const unsubReq = onSharedSnapshot('clientRequests', (snap) => {
       // Only dispatchable service tickets belong in the dispatch funnel —
       // client-intake / partnership applications are reviewed on /admin/requests.
       setAllRequests(
@@ -152,19 +186,26 @@ export function DispatchPageClient() {
       );
       setLoaded(l => l.req ? l : { ...l, req: true });
     });
-    // Archived deletions — so re-importing a work order number that was deleted
-    // and archived is still flagged as a duplicate.
-    const unsubArchive = onSnapshot(collection(db, 'activityArchive'), (snap) => {
-      setArchivedJobs(snap.docs.map(doc => doc.data()));
-    }, () => { /* archive rule may be undeployed; dup check still covers active jobs */ });
-    const unsubRoutes = onSnapshot(collection(db, 'routes'), (snap) => {
+    const unsubRoutes = onSharedSnapshot('routes', (snap) => {
       setRoutes(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Route)));
     }, () => { /* routes rule may be undeployed; Routes tab degrades to empty */ });
 
     return () => {
-      unsubWO(); unsubAsmt(); unsubTech(); unsubReq(); unsubArchive(); unsubRoutes();
+      unsubWO(); unsubAsmt(); unsubTech(); unsubReq(); unsubRoutes();
     };
   }, []);
+
+  // Archived deletions — so re-importing a work order number that was deleted
+  // and archived is still flagged as a duplicate. The archive only grows, so
+  // it's read once when the Import dialog opens instead of streamed all day.
+  useEffect(() => {
+    if (!isImportDialogOpen) return;
+    let cancelled = false;
+    getDocs(collection(db, 'activityArchive'))
+      .then(snap => { if (!cancelled) setArchivedJobs(snap.docs.map(d => d.data())); })
+      .catch(() => { /* archive rule may be undeployed; dup check still covers active jobs */ });
+    return () => { cancelled = true; };
+  }, [isImportDialogOpen]);
 
   // Optimistic-diff writer: update local state immediately, then only touch
   // the route docs that actually changed (never blindly rewrite every route
@@ -448,7 +489,7 @@ export function DispatchPageClient() {
       await deleteDoc(doc(db, 'assignments', wo.id));
       toast({ title: "Moved to Unassigned", description: "Job reset to unassigned for redispatch." });
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Update Failed", description: e.message });
+      toast({ variant: "destructive", title: "Save failed", description: e.message });
     }
   };
 
@@ -464,7 +505,7 @@ export function DispatchPageClient() {
       });
       toast({ title: "Job Archived", description: "Moved to Archives — recoverable from the Archives page." });
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Archive Failed", description: e.message });
+      toast({ variant: "destructive", title: "Archive failed", description: e.message });
     }
   };
 
@@ -549,42 +590,44 @@ export function DispatchPageClient() {
                 // Find and process assignments
                 const newlyAssigned = updated.filter(u => u.status === 'assigned' && u.assignedTechnicianId && !allAssignments.some(a => a.workOrderId === u.id));
                 
-                for (const wo of newlyAssigned) {
-                    const asmtId = await makeAssignmentId();
-                    const asmtRef = doc(db, 'assignments', asmtId);
-                    const woRef = doc(db, 'workOrders', wo.id);
-                    
-                    const asmtData = sanitize({
-                        ...wo,
-                        id: asmtId,
-                        workOrderId: wo.id,
-                        techId: wo.assignedTechnicianId,
-                        assignedAt: new Date().toISOString(),
-                        updatedAt: new Date().toISOString()
-                    });
-                    
-                    await setDoc(asmtRef, asmtData);
-                    await deleteDoc(woRef);
-                    
-                    await NotificationService.notify(
+                // Each newly assigned job moves from workOrders to assignments.
+                // Both writes go in one batch so a job is never in both or neither.
+                const moves: { wo: WorkOrder; asmtId: string }[] = [];
+                for (const wo of newlyAssigned) moves.push({ wo, asmtId: await makeAssignmentId() });
+                if (moves.length) {
+                    const now = new Date().toISOString();
+                    for (let i = 0; i < moves.length; i += 250) {
+                        const batch = writeBatch(db);
+                        moves.slice(i, i + 250).forEach(({ wo, asmtId }) => {
+                            batch.set(doc(db, 'assignments', asmtId), sanitize({
+                                ...wo,
+                                id: asmtId,
+                                workOrderId: wo.id,
+                                techId: wo.assignedTechnicianId,
+                                assignedAt: now,
+                                updatedAt: now,
+                            }));
+                            batch.delete(doc(db, 'workOrders', wo.id));
+                        });
+                        try {
+                            await batch.commit();
+                        } catch (e: any) {
+                            toast({ variant: 'destructive', title: 'Assignment failed', description: e.message });
+                            return;
+                        }
+                    }
+                    await Promise.all(moves.map(({ wo, asmtId }) => NotificationService.notify(
                         wo.assignedTechnicianId!,
                         "Priority Mission Dispatched",
                         `New mission [${wo.id.toUpperCase()}] assigned. Confirm schedule via terminal.`,
                         { id: asmtId, type: 'assignment' }
-                    );
+                    )));
                 }
 
-                // Surgically update unassigned changes to minimize network overhead
-                const unassignedChanges = updated.filter(u => {
-                    if (u.status !== 'unassigned') return false;
-                    const current = allWorkOrders.find(wo => wo.id === u.id);
-                    return !current || JSON.stringify(sanitize(current)) !== JSON.stringify(sanitize(u));
-                });
-
-                for (const wo of unassignedChanges) {
-                    const docRef = doc(db, 'workOrders', wo.id);
-                    await updateDoc(docRef, sanitize(wo)).catch(e => console.error("WO Update Error:", e));
-                }
+                // Unassigned jobs that were edited: changed fields only, batched.
+                const unassigned = updated.filter(u => u.status === 'unassigned' && allWorkOrders.some(wo => wo.id === u.id));
+                await saveChangedJobs('workOrders', unassigned, allWorkOrders)
+                    .catch(e => toast({ variant: 'destructive', title: 'Save failed', description: e.message }));
               }}
               reviewQueueJobs={reviewQueueJobs}
               onActiveTabChange={setDispatchSubtab}
@@ -620,10 +663,8 @@ export function DispatchPageClient() {
                       allWorkOrders={allAssignments} 
                       technicians={technicians} 
                       onWorkOrdersChange={(updated) => {
-                        updated.forEach(wo => {
-                          const docRef = doc(db, 'assignments', wo.id);
-                          updateDoc(docRef, sanitize(wo)).catch(e => console.error("Update error", e));
-                        });
+                        saveChangedJobs('assignments', updated, allAssignments)
+                          .catch(e => toast({ variant: 'destructive', title: 'Save failed', description: e.message }));
                       }}
                       mode="assigned"
                       dateAsc={dateAsc}
@@ -638,10 +679,8 @@ export function DispatchPageClient() {
                       allWorkOrders={allAssignments} 
                       technicians={technicians} 
                       onWorkOrdersChange={(updated) => {
-                        updated.forEach(wo => {
-                          const docRef = doc(db, 'assignments', wo.id);
-                          updateDoc(docRef, sanitize(wo)).catch(e => console.error("Update error", e));
-                        });
+                        saveChangedJobs('assignments', updated, allAssignments)
+                          .catch(e => toast({ variant: 'destructive', title: 'Save failed', description: e.message }));
                       }}
                       mode="assigned"
                       dateAsc={dateAsc}

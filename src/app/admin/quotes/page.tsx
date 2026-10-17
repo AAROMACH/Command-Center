@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
@@ -830,12 +831,12 @@ export default function AdminQuotesPage() {
   }, []);
 
   useEffect(() => {
-    const u1 = onSnapshot(collection(db, 'quotes'), snap => {
+    const u1 = onSharedSnapshot('quotes', snap => {
       setQuotes(snap.docs.map(d => ({ ...d.data(), id: d.id } as Quote)));
       setLoading(false);
     }, () => setLoading(false));
 
-    const u2 = onSnapshot(collection(db, 'users'), snap => {
+    const u2 = onSharedSnapshot('users', snap => {
       setClients(
         snap.docs
           .map(d => ({ ...d.data(), id: d.id } as Technician))

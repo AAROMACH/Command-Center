@@ -197,7 +197,10 @@ export type Technician = {
     phone: string;
   };
   currentLocation: string;
-  reliabilityScore: number;
+  /** @deprecated Never recalculated after signup, so it was removed from the
+   *  UI and tech ranking. Old documents still carry it; nothing reads it. */
+  reliabilityScore?: number;
+  /** @deprecated See reliabilityScore. */
   reliabilityTier?: ReliabilityTier;
   currentWorkload: number;
   skills: string[];
@@ -205,9 +208,15 @@ export type Technician = {
   availability: Record<string, { start: string; end: string } | null>;
   clientCompany?: string; 
   businessType?: string;
+  /** @deprecated Placeholder fields from the old Plans page — never real
+   *  data, no longer read or written. Plans live in `subscriptions`
+   *  (lib/billing.ts). */
   planId?: string;
-  subscriptionStatus?: 'active' | 'pending' | 'none';
+  /** @deprecated See planId. */
+  subscriptionStatus?: string;
+  /** @deprecated See planId. */
   subscriptionStartDate?: string;
+  /** @deprecated See planId. */
   subscriptionExpiryDate?: string;
   managedSites?: { id: string; name: string; location: string }[];
   workPreferences: {
@@ -220,6 +229,10 @@ export type Technician = {
     method: 'ACH' | 'Check' | 'Zelle' | 'Venmo' | string;
     notes?: string;
   };
+  /** Admin-only accounting profile — what QuickBooks needs to create this
+   *  user as a Vendor (a paid tech) or a Customer (a client). See
+   *  lib/accounting-readiness.ts. */
+  accounting?: UserAccounting;
   billingDetails?: {
     contactName: string;
     email: string;
@@ -262,6 +275,45 @@ export type Technician = {
   serviceArea?: string;
 };
 
+/** A record's link to its QuickBooks Online counterpart, written by the sync. */
+export type QboLink = {
+  id: string;
+  syncToken?: string;
+  syncedAt?: string;
+  error?: string | null;
+};
+
+export type WorkerType = '1099_contractor' | 'w2_employee' | 'not_paid';
+
+/**
+ * Accounting fields kept off billingDetails on purpose: clients edit
+ * billingDetails from their own profile, while everything here is admin-only
+ * (firestore.rules blocks self-writes to `accounting`).
+ *
+ * Never store a full SSN/EIN here — only the last 4 for matching. The full
+ * number lives on the W-9 document and in QuickBooks.
+ */
+export type UserAccounting = {
+  // ── Payee (tech → QuickBooks Vendor) ──
+  workerType?: WorkerType | null;
+  /** Name exactly as on W-9 line 1. */
+  payeeLegalName?: string | null;
+  /** W-9 line 2 (LLC / DBA), when the tech is paid as a business. */
+  payeeBusinessName?: string | null;
+  taxIdType?: 'SSN' | 'EIN' | null;
+  taxIdLast4?: string | null;
+  // ── Customer (client → QuickBooks Customer) ──
+  /** Customer name in QuickBooks; defaults to clientCompany. */
+  customerDisplayName?: string | null;
+  billingAddress?: string | null;
+  /** undefined = not decided yet (blocks invoicing readiness). */
+  taxExempt?: boolean | null;
+  taxExemptReason?: string | null;
+  // ── Links (written by the QuickBooks sync, never by hand) ──
+  qboVendor?: QboLink;
+  qboCustomer?: QboLink;
+};
+
 export type Recommendation = {
   recommendedTechnicianId: string;
   reasoning: string;
@@ -286,8 +338,11 @@ export type Project = {
   startDate: string;
   startTime?: string;
   estimatedDuration: string;
+  /** Crew ids, derived from `team` on every team change (lib/project-access crewFields). */
   assignedTechnicianIds: string[]; 
   team: ProjectTeamMember[];
+  /** The named lead (team role "Project Lead"); derived from `team`. */
+  projectLeadId?: string | null;
   phases: Phase[];
   scope: string;
   onsiteContactName?: string;
@@ -328,6 +383,8 @@ export type Task = {
   requiresOther?: boolean;
   otherRequirementLabel?: string;
   estimatedHours?: number;
+  /** Crew member this task is assigned to (set by the PM or project lead). */
+  assignedTechId?: string | null;
   photoUrl?: string;
   textValue?: string;
   numericValue?: number;

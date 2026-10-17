@@ -127,6 +127,14 @@ export type Permission =
   | 'tech.projects.create_task'
   | 'tech.projects.assign_task'
   | 'tech.projects.complete_task'
+  // Project Lead: crew boss on projects where they are the named lead.
+  | 'tech.projects.lead'
+  // Project Manager: every project, not just ones they are on.
+  | 'tech.projects.view_all'
+  | 'tech.projects.manage'
+  | 'tech.projects.create'
+  | 'tech.projects.staff'
+  | 'tech.projects.close'
   | 'tech.logs.view'
   | 'tech.logs.create'
   | 'tech.logs.submit'
@@ -207,6 +215,8 @@ export const ALL_PERMISSIONS: Permission[] = [
   'tech.assignments.check_in', 'tech.assignments.check_out', 'tech.assignments.complete',
   'tech.assignments.report_issue', 'tech.schedule.view', 'tech.projects.view',
   'tech.projects.create_task', 'tech.projects.assign_task', 'tech.projects.complete_task',
+  'tech.projects.lead', 'tech.projects.view_all', 'tech.projects.manage', 'tech.projects.create',
+  'tech.projects.staff', 'tech.projects.close',
   'tech.logs.view', 'tech.logs.create', 'tech.logs.submit', 'tech.logs.unsubmit_own', 'tech.logs.move_assignment',
   'tech.earnings.view', 'tech.messages.view', 'tech.messages.send',
   'tech.profile.view', 'tech.profile.edit',
@@ -287,7 +297,11 @@ export const PERMISSION_TREE: PermissionTree = {
       'tech.assignments.report_issue',
     ],
     schedule: ['tech.schedule.view'],
-    projects: ['tech.projects.view', 'tech.projects.create_task', 'tech.projects.assign_task', 'tech.projects.complete_task'],
+    projects: [
+      'tech.projects.view', 'tech.projects.create_task', 'tech.projects.assign_task', 'tech.projects.complete_task',
+      'tech.projects.lead', 'tech.projects.view_all', 'tech.projects.manage', 'tech.projects.create',
+      'tech.projects.staff', 'tech.projects.close',
+    ],
     logs: [
       'tech.logs.view', 'tech.logs.create', 'tech.logs.submit',
       'tech.logs.unsubmit_own', 'tech.logs.move_assignment',
@@ -333,8 +347,22 @@ export type Portal = {
 // from this map.
 export type SubrolePortal = 'admin' | 'tech' | 'client' | 'sales';
 
+/**
+ * How Directory groups roles. Admin = office operations; External = limited
+ * accounts for people outside operations (Sales now, a bookkeeper later) who
+ * only get their own portal; Technician = field roles; Client.
+ */
+export type RoleGroup = 'admin' | 'external' | 'tech' | 'client';
+export const ROLE_GROUP_LABELS: Record<RoleGroup, string> = {
+  admin: 'Admin',
+  external: 'External Access',
+  tech: 'Technician',
+  client: 'Client',
+};
+
 export type SubroleDefinition = {
   portal: SubrolePortal;
+  group: RoleGroup;
   label: string;
   description: string;
   permissions: Permission[];
@@ -353,6 +381,7 @@ const FIELD_TECH_PERMISSIONS: Permission[] = [
 export const SUBROLE_DEFINITIONS: Record<AppRole, SubroleDefinition> = {
   super_admin: {
     portal: 'admin',
+    group: 'admin',
     label: 'Super Admin',
     description: 'Full Admin Portal authority — every page, permission management and administrative overrides.',
     // Full admin portal (all admin.* permissions). Tech/Client access is NOT
@@ -361,6 +390,7 @@ export const SUBROLE_DEFINITIONS: Record<AppRole, SubroleDefinition> = {
   },
   dispatch_admin: {
     portal: 'admin',
+    group: 'admin',
     label: 'Dispatch Admin',
     description: 'Logistics and scheduling — dispatch hub, technician assignment, routes and requests.',
     permissions: [
@@ -377,6 +407,7 @@ export const SUBROLE_DEFINITIONS: Record<AppRole, SubroleDefinition> = {
   },
   payroll_admin: {
     portal: 'admin',
+    group: 'admin',
     label: 'Payroll Admin',
     description: 'Weekly-log review, reimbursements, invoicing and payroll processing.',
     permissions: [
@@ -388,16 +419,19 @@ export const SUBROLE_DEFINITIONS: Record<AppRole, SubroleDefinition> = {
       'admin.reports.view', 'admin.reports.generate',
     ],
   },
+  // A technician role (Tech Portal), not an admin: runs every project —
+  // create, staff, phases and tasks, documents, crew timesheets, close —
+  // without pay (project payouts and rates stay with payroll / super admin).
   project_manager: {
-    portal: 'admin',
+    portal: 'tech',
+    group: 'tech',
     label: 'Project Manager',
-    description: 'Project lifecycle — creation, phases, tasks and closeout oversight.',
+    description: 'Runs every project from the Tech Portal — create, staff, phases, tasks, documents, timesheets and closeout. No pay or admin access.',
     permissions: [
-      'admin.dashboard.view', 'admin.requests.view', 'admin.assignments.view', 'admin.schedule.view',
-      'admin.projects.view', 'admin.projects.manage', 'admin.projects.create', 'admin.projects.edit',
-      'admin.projects.archive', 'admin.projects.create_phase', 'admin.projects.create_task',
-      'admin.projects.assign_task', 'admin.projects.complete_task', 'admin.projects.reopen_task', 'admin.projects.close',
-      'admin.directory.view', 'admin.reports.view', 'admin.reports.generate',
+      ...FIELD_TECH_PERMISSIONS,
+      'tech.projects.create_task', 'tech.projects.assign_task', 'tech.projects.lead',
+      'tech.projects.view_all', 'tech.projects.manage', 'tech.projects.create',
+      'tech.projects.staff', 'tech.projects.close',
     ],
   },
   // Its own portal (/sales) — no Admin Portal access. The CRM action
@@ -405,6 +439,7 @@ export const SUBROLE_DEFINITIONS: Record<AppRole, SubroleDefinition> = {
   // abilities inside /admin/crm; none of them unlock an admin page.
   sales: {
     portal: 'sales',
+    group: 'external',
     label: 'Sales',
     description: 'Sales Portal — pipeline, My Day, accounts, site surveys and quotes. No Admin Portal access.',
     permissions: [
@@ -416,21 +451,28 @@ export const SUBROLE_DEFINITIONS: Record<AppRole, SubroleDefinition> = {
   },
   field_technician: {
     portal: 'tech',
+    group: 'tech',
     label: 'Field Technician',
     description: 'Field work — assignments, trips, check-in/out, weekly logs and earnings.',
     permissions: FIELD_TECH_PERMISSIONS,
   },
+  // Crew boss: on projects where they are the named lead (Manage Team →
+  // "Project Lead") they plan phases and tasks, assign tasks to the crew and
+  // upload documents. Can't create projects, change the crew or see pay; on
+  // other projects they work as a field tech.
   project_lead: {
     portal: 'tech',
+    group: 'tech',
     label: 'Project Lead',
-    description: 'On-site lead — all Field Technician abilities plus project task coordination.',
+    description: 'Crew boss on projects where they are the named lead — phases, tasks, task assignments and documents. Field Technician everywhere else.',
     permissions: [
       ...FIELD_TECH_PERMISSIONS,
-      'tech.projects.create_task', 'tech.projects.assign_task',
+      'tech.projects.create_task', 'tech.projects.assign_task', 'tech.projects.lead',
     ],
   },
   client: {
     portal: 'client',
+    group: 'client',
     label: 'Client User',
     description: 'Client Portal — tickets, service requests, projects, quotes and invoices.',
     permissions: [
@@ -456,6 +498,14 @@ export const SUBROLES_BY_PORTAL: Record<SubrolePortal, AppRole[]> = {
   sales: APP_ROLES.filter(r => SUBROLE_DEFINITIONS[r].portal === 'sales'),
 };
 
+// Subroles grouped for Directory pickers (Admin / External / Technician / Client).
+export const SUBROLES_BY_GROUP: Record<RoleGroup, AppRole[]> = {
+  admin: APP_ROLES.filter(r => SUBROLE_DEFINITIONS[r].group === 'admin'),
+  external: APP_ROLES.filter(r => SUBROLE_DEFINITIONS[r].group === 'external'),
+  tech: APP_ROLES.filter(r => SUBROLE_DEFINITIONS[r].group === 'tech'),
+  client: APP_ROLES.filter(r => SUBROLE_DEFINITIONS[r].group === 'client'),
+};
+
 // Map a legacy free-text `role` value (e.g. "Technician", "Dispatcher") to a
 // valid subrole. Returns null when the value maps to nothing (including the
 // removed safety_officer / training_coordinator) — never write unmapped
@@ -471,7 +521,10 @@ export function normalizeLegacyRole(role: string | null | undefined): AppRole | 
   if (r.includes('lead')) return 'project_lead';
   if (r.includes('tech')) return 'field_technician';
   if (r.includes('sales')) return 'sales';
-  if (r.includes('manager')) return 'project_manager';
+  // Only "Project Manager" — a generic "Manager"/"Office Manager" used to mean
+  // an admin, and Project Manager is a tech role now. Unmapped → an admin
+  // assigns a real role.
+  if (r.includes('project') && r.includes('manager')) return 'project_manager';
   // Catch-all so pre-subrole admin accounts are never locked out by an
   // unrecognised free-text title (e.g. "Administrator", "Owner", "Operator").
   if (r.includes('admin') || r.includes('owner') || r.includes('operator')) return 'super_admin';
@@ -556,13 +609,18 @@ export function hasPortalSubrole(user: RoleLike | null | undefined, portal: Subr
   return getSubroles(user).some(role => SUBROLE_DEFINITIONS[role]?.portal === portal);
 }
 
-// The 4 admin-portal management subroles. Kept for firestore.rules/storage.rules
-// parity (their isAdmin() recognises exactly these). Sales unlocks the admin
-// portal but is not a blanket admin, so it is excluded here on purpose.
+// The 3 admin-portal subroles. Kept for firestore.rules/storage.rules parity
+// (their isAdmin() recognises exactly these). Project Manager is a tech role
+// and Sales an external one, so neither is an admin.
+export const ADMIN_ROLES: AppRole[] = ['super_admin', 'dispatch_admin', 'payroll_admin'];
 export function isAdmin(user: RoleLike | null | undefined): boolean {
   if (!user) return false;
-  const adminRoles: AppRole[] = ['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager'];
+  const adminRoles = ADMIN_ROLES;
   return getSubroles(user).some(role => adminRoles.includes(role));
+}
+
+export function isProjectManager(user: RoleLike | null | undefined): boolean {
+  return getSubroles(user).includes('project_manager');
 }
 
 export function isSales(user: RoleLike | null | undefined): boolean {
@@ -608,7 +666,11 @@ export function getPortalAccess(user: Technician | null | undefined): { admin: b
   // never DENY access, and the permission-derived portal grant that caused the
   // stray-access bug is intentionally not consulted.
   const legacy = user.portalAccess || {};
-  const legacyAdmin = legacy.admin === true || hasLegacyRemovedAdminRole(user);
+  // The legacy admin flag only rescues pre-subrole accounts (no typed roles):
+  // an old Project Manager doc can still carry portalAccess.admin, which would
+  // land them in an admin portal whose reads the rules now deny.
+  const hasTypedRoles = (user.roles || []).some(r => (APP_ROLES as string[]).includes(r));
+  const legacyAdmin = (legacy.admin === true && !hasTypedRoles) || hasLegacyRemovedAdminRole(user);
   return {
     admin: hasPortalSubrole(user, 'admin') || legacyAdmin,
     tech: hasPortalSubrole(user, 'tech') || legacy.tech === true,

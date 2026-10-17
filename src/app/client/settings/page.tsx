@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { resolveNotificationPrefs, withNotificationPref } from '@/lib/notification-prefs';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -20,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { TERMINOLOGY } from '@/lib/constants';
 import type { Technician, NotificationPreferences } from '@/lib/types';
 import { FontPreferenceSetting } from '@/components/font-preference-setting';
+import { ThemeToggleSetting } from '@/components/theme-toggle-setting';
 
 export default function ClientSettingsPage() {
     const [mounted, setMounted] = useState(false);
@@ -28,30 +31,33 @@ export default function ClientSettingsPage() {
 
     useEffect(() => {
         setMounted(true);
-        const userId = sessionStorage.getItem('currentUserId');
-        if (userId) {
-            const unsub = onSnapshot(doc(db, 'users', userId), (snap) => {
+        // Firebase Auth, not sessionStorage (per-tab — a new tab got a dead page).
+        let unsubUser: (() => void) | undefined;
+        const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
+            unsubUser?.();
+            unsubUser = undefined;
+            if (!fbUser) { setCurrentUser(null); return; }
+            unsubUser = onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
                 if (snap.exists()) setCurrentUser({ ...snap.data(), id: snap.id } as Technician);
             });
-            return () => unsub();
-        }
+        });
+        return () => { unsubAuth(); unsubUser?.(); };
     }, []);
 
     const handleTogglePreference = async (type: keyof NotificationPreferences) => {
         if (!currentUser) return;
-        const currentPrefs = currentUser.notificationPreferences || { email: true, sms: true, push: true };
-        const updatedPrefs = { ...currentPrefs, [type]: !currentPrefs[type] };
+        const updatedPrefs = withNotificationPref(currentUser.notificationPreferences, type, !resolveNotificationPrefs(currentUser.notificationPreferences)[type]);
 
         try {
             await updateDoc(doc(db, 'users', currentUser.id), {
                 notificationPreferences: updatedPrefs
             });
             toast({
-                title: "Alert Protocol Updated",
-                description: `Organizational ${type.toUpperCase()} notifications transitioned to ${updatedPrefs[type] ? 'ACTIVE' : 'DISABLED'}.`,
+                title: "Notification settings saved",
+                description: `${type === 'push' ? 'In-app' : type === 'sms' ? 'Text' : 'Email'} notifications ${updatedPrefs[type] ? 'on' : 'off'}.`,
             });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
+            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
     };
 
@@ -66,7 +72,7 @@ export default function ClientSettingsPage() {
                         Client Terminal
                     </p>
                     <h1 className="page-title text-left">Settings</h1>
-                    <p className="page-subtitle text-left">Manage organizational communication and terminal parameters.</p>
+                    <p className="page-subtitle text-left">Your notifications, display and account status.</p>
                 </div>
             </header>
 
@@ -84,9 +90,9 @@ export default function ClientSettingsPage() {
                         </CardHeader>
                         <CardContent className="space-y-3">
                             {[
-                                { id: 'email', label: 'Email Briefings', desc: 'Transmission of project milestone completions and billing manifests.' },
-                                { id: 'sms', label: 'SMS Critical Pings', desc: 'Emergency site status alerts and technician arrival verifications.' },
-                                { id: 'push', label: 'Push Terminal', desc: 'In-app real-time status updates and activity feed alerts.' },
+                                { id: 'email', label: 'Email', desc: 'Project updates, quotes and invoices sent to your email.' },
+                                { id: 'sms', label: 'Text Message', desc: 'Urgent site and technician-arrival alerts texted to you.' },
+                                { id: 'push', label: 'In-App', desc: 'Alerts in the bell at the top of the portal.' },
                             ].map((item) => (
                                 <div key={item.id} className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary/50 border border-border-sub hover:border-text-muted transition-all">
                                     <div className="space-y-0.5 text-left">
@@ -94,7 +100,7 @@ export default function ClientSettingsPage() {
                                         <p className="text-[10px] text-text-muted uppercase font-medium">{item.desc}</p>
                                     </div>
                                     <Switch 
-                                        checked={!!currentUser?.notificationPreferences?.[item.id as keyof NotificationPreferences]} 
+                                        checked={resolveNotificationPrefs(currentUser?.notificationPreferences)[item.id as keyof NotificationPreferences]} 
                                         onCheckedChange={() => handleTogglePreference(item.id as keyof NotificationPreferences)}
                                     />
                                 </div>
@@ -109,6 +115,7 @@ export default function ClientSettingsPage() {
                         <Type size={14} className="text-brand-red" />
                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Display</h3>
                     </div>
+                    <ThemeToggleSetting />
                     <FontPreferenceSetting />
                 </section>
 
@@ -126,12 +133,18 @@ export default function ClientSettingsPage() {
                             <div className="p-6 rounded-lg bg-bg-secondary/50 border border-border-sub flex items-center justify-between">
                                 <div className="text-left space-y-1">
                                     <p className="text-sm font-bold uppercase text-text-primary">{currentUser?.clientCompany || 'Independent Account'}</p>
-                                    <p className="text-[10px] text-text-muted uppercase tracking-widest">Authorized Strategic Partner</p>
+                                    <p className="text-[10px] text-text-muted uppercase tracking-widest">Client account</p>
                                 </div>
-                                <div className="flex items-center gap-2 px-4 py-2 rounded bg-green-dim border border-green-border text-text-green">
-                                    <ShieldCheck size={18} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Verified Registry</span>
-                                </div>
+                                {(() => {
+                                    const pending = currentUser?.approvalStatus === 'pending';
+                                    const inactive = currentUser?.accountStatus === 'inactive' || currentUser?.accountStatus === 'on_hold';
+                                    return (
+                                        <div className={`flex items-center gap-2 px-4 py-2 rounded border ${pending || inactive ? 'bg-accent-gold-dim border-accent-gold/40 text-accent-gold' : 'bg-green-dim border-green-border text-text-green'}`}>
+                                            <ShieldCheck size={18} />
+                                            <span className="text-[10px] font-black uppercase tracking-widest">{pending ? 'Pending approval' : inactive ? 'On hold' : 'Active'}</span>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </CardContent>
                     </Card>

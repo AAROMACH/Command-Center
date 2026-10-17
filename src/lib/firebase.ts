@@ -1,6 +1,9 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import {
+  getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  type Firestore,
+} from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
@@ -18,7 +21,23 @@ export const app = !getApps().length
   : getApp();
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+// On-device cache: listeners re-attached after a page change (or a reload)
+// start from IndexedDB and only fetch what changed, instead of downloading
+// whole collections again. Shared across open tabs. Falls back to the default
+// in-memory cache on the server, when IndexedDB is unavailable (private
+// windows), or if Firestore was already initialized (hot reload).
+// Cleared on sign-out — see lib/sign-out.ts.
+function createDb(): Firestore {
+  if (typeof window === "undefined") return getFirestore(app);
+  try {
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
+  } catch {
+    return getFirestore(app);
+  }
+}
+export const db = createDb();
 export const storage = getStorage(app);
 
 // Persistence is chosen at login: local persistence (survives browser restarts)

@@ -11,12 +11,12 @@ import {
 } from 'lucide-react';
 
 const SERVICE_TYPES = [
-  'Consultation & Planning',
-  'Technical Support / Troubleshooting',
-  'Installation / Setup',
-  'Maintenance & Repair',
-  'Custom Development / Project Work',
-  'Training / Onboarding',
+  'Site Survey & Estimate',
+  'Service Call / Troubleshooting',
+  'New Installation',
+  'Repair or Replacement',
+  'Moves, Adds & Changes',
+  'Project Work (Multi-Day or Multi-Site)',
   'Other',
 ];
 
@@ -24,7 +24,7 @@ const PRIORITY_OPTIONS = [
   { value: 'low', label: 'Low', desc: 'Routine task, flexible timeline' },
   { value: 'medium', label: 'Medium', desc: 'Standard response time' },
   { value: 'high', label: 'High', desc: 'Urgent — needs fast review' },
-  { value: 'critical', label: 'Critical', desc: 'Business-impacting outage — call us if immediate' },
+  { value: 'critical', label: 'Critical', desc: 'System down and affecting operations — call us if immediate' },
 ];
 
 const CONTACT_METHODS = ['Email', 'Phone Call', 'Text Message (SMS)'];
@@ -282,8 +282,8 @@ export default function PublicServiceRequestPage() {
           <p className="text-[10px] font-black uppercase tracking-[0.25em] text-brand-red">Aaromach</p>
           <h1 className="text-[28px] font-black text-text-primary">Service Request</h1>
           <p className="text-[13px] text-text-secondary max-w-md mx-auto">
-            Submit a service request for technical support, installation, maintenance, or any other service need.
-            No account required.
+            Request a technician for structured cabling, fiber, security cameras, AV, network racks, phone systems or
+            industrial controls — new installs, service calls and repairs. No account required.
           </p>
         </div>
 
@@ -482,14 +482,14 @@ export default function PublicServiceRequestPage() {
               <Textarea
                 value={form.detailedDescription}
                 onChange={(e: any) => set('detailedDescription', e.target.value)}
-                placeholder="Describe the issue, work requested, symptoms, impact, and desired outcome..."
+                placeholder="What needs to be done and where — e.g. 12 new Cat6 drops in the warehouse office, two cameras down on the north lot, clean up and label the main network rack..."
                 rows={5}
               />
               {errors.detailedDescription && <p className="text-[11px] text-brand-red mt-1">{errors.detailedDescription}</p>}
             </div>
 
             <div>
-              <FieldLabel label="Do you have supporting documents, images, or logs?" required />
+              <FieldLabel label="Do you have photos, floor plans or drawings of the area?" required />
               <div className="flex gap-2">
                 {['yes', 'no'].map(v => (
                   <button
@@ -519,7 +519,7 @@ export default function PublicServiceRequestPage() {
                 >
                   <Upload size={20} className="mx-auto mb-2 text-text-muted" />
                   <p className="text-[12px] text-text-secondary">Drop files here or click to upload</p>
-                  <p className="text-[10px] text-text-muted mt-1">Images, PDF, Word, text/CSV · Max 5 files</p>
+                  <p className="text-[10px] text-text-muted mt-1">Photos, floor plans, drawings (images, PDF, Word, CSV) · Max 5 files</p>
                   <input ref={fileRef} type="file" multiple accept={ACCEPTED_TYPES.join(',')} className="hidden"
                     onChange={e => handleFiles(e.target.files)} />
                 </div>
@@ -612,7 +612,7 @@ export default function PublicServiceRequestPage() {
         )}
 
         <p className="text-center text-[10px] text-text-muted">
-          Aaromach · Managed IT &amp; Low-Voltage Services · This form is secure and confidential. ·{' '}
+          Aaromach · Technical Field Services — Cabling, Cameras, AV &amp; Networks · This form is secure and confidential. ·{' '}
           <a href="https://www.aaromach.com/about-us/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline hover:text-text-secondary">Privacy Policy</a>
           {' '}·{' '}
           <a href="https://www.aaromach.com/about-us/terms-of-service" target="_blank" rel="noopener noreferrer" className="underline hover:text-text-secondary">Terms of Service</a>

@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
@@ -69,28 +70,28 @@ export default function FinancialsPage() {
 
     // 1. Initialize Data Listeners
     useEffect(() => {
-        const unsubExp = onSnapshot(collection(db, 'expenses'), (snap) => {
+        const unsubExp = onSharedSnapshot('expenses', (snap) => {
             setExpenses(snap.docs.map(d => ({ ...d.data(), id: d.id } as Expense)));
         });
-        const unsubInv = onSnapshot(collection(db, 'invoices'), (snap) => {
+        const unsubInv = onSharedSnapshot('invoices', (snap) => {
             setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
         });
-        const unsubLog = onSnapshot(collection(db, 'weeklyLogs'), (snap) => {
+        const unsubLog = onSharedSnapshot('weeklyLogs', (snap) => {
             setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
         });
-        const unsubTech = onSnapshot(collection(db, 'users'), (snap) => {
+        const unsubTech = onSharedSnapshot('users', (snap) => {
             setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
         });
-        const unsubProj = onSnapshot(collection(db, 'projects'), (snap) => {
+        const unsubProj = onSharedSnapshot('projects', (snap) => {
             setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id })));
         });
-        const unsubWO = onSnapshot(collection(db, 'workOrders'), (snap) => {
+        const unsubWO = onSharedSnapshot('workOrders', (snap) => {
             setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
-        const unsubAsmt = onSnapshot(collection(db, 'assignments'), (snap) => {
+        const unsubAsmt = onSharedSnapshot('assignments', (snap) => {
             setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
-        const unsubReim = onSnapshot(collection(db, 'reimbursements'), (snap) => {
+        const unsubReim = onSharedSnapshot('reimbursements', (snap) => {
             setReimbursements(snap.docs.map(d => ({ ...d.data(), id: d.id } as Reimbursement)));
         });
 
@@ -152,7 +153,7 @@ export default function FinancialsPage() {
             await updateDoc(doc(db, 'expenses', id), { status });
             toast({ title: `Expense ${status}`, description: `The expense has been successfully ${status.toLowerCase()}.` });
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Update Failed", description: e.message });
+            toast({ variant: "destructive", title: "Save failed", description: e.message });
         }
     };
     
@@ -232,7 +233,7 @@ export default function FinancialsPage() {
         }
 
         if (rows.length === 1) {
-            toast({ title: 'Export Terminal Empty', description: 'No records found matching the specified temporal window.' });
+            toast({ title: 'Nothing to export', description: 'No records found matching the specified temporal window.' });
             return;
         }
 

@@ -335,14 +335,14 @@ export default function TechWeeklyLogPage() {
         const weekOf = format(monday, 'MM-dd-yyyy');
         
         if (weeklyLogs.some(l => l.weekOf === weekOf)) {
-            toast({ variant: 'destructive', title: 'Registry Error', description: `A log for the week of ${weekOf} already exists.` });
+            toast({ variant: 'destructive', title: 'Save failed', description: `A log for the week of ${weekOf} already exists.` });
             return;
         }
 
         try {
             const result = await createDraftWeeklyLog({ weekOf });
             if (result === 'exists') {
-                toast({ variant: 'destructive', title: 'Registry Error', description: `A log for the week of ${weekOf} already exists.` });
+                toast({ variant: 'destructive', title: 'Save failed', description: `A log for the week of ${weekOf} already exists.` });
                 return;
             }
             toast({ title: "Log Initialized", description: `Weekly manifest for ${weekOf} has been created.` });
@@ -361,7 +361,7 @@ export default function TechWeeklyLogPage() {
             await weeklyLogAction('confirmItem', { logId: activeLog.id, itemId });
             toast({ title: "Assignment Verified", description: "Confirmation committed to cloud manifest." });
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Handshake Failed", description: e.message });
+            toast({ variant: "destructive", title: "Connection failed", description: e.message });
         }
     };
 

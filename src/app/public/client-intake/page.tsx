@@ -12,15 +12,16 @@ import {
 } from 'lucide-react';
 
 const SERVICE_INTERESTS = [
-  'Managed IT (Desktops, Servers, Helpdesk)',
-  'Low Voltage Cabling & Infrastructure',
-  'Networking (Switches, Routers)',
-  'WiFi & Wireless Solutions',
+  'Structured Cabling (Copper & Fiber)',
   'Security Cameras (CCTV)',
-  'Multi-Site Support/Rollouts',
-  'Routine Maintenance Agreements',
-  '24/7 Emergency Support',
-  'Specific Project Support (Non-Subscription)',
+  'Audio/Visual Systems',
+  'Network Racks, Switches & Wi-Fi',
+  'Phone Systems (VoIP)',
+  'Industrial Automation & Controls',
+  'Multi-Site Rollouts',
+  'Scheduled Maintenance & Site Inspections',
+  '24/7 Emergency Service',
+  'One-Time Project (No Service Plan)',
   'Other',
 ];
 
@@ -41,9 +42,9 @@ const EMPLOYEE_OPTIONS = [
 ];
 
 const SUBSCRIPTION_TIERS = [
-  { value: 'essential', label: 'Essential', desc: 'Foundational support, basic monitoring' },
-  { value: 'professional', label: 'Professional', desc: 'Comprehensive support, proactive maintenance, enhanced SLA' },
-  { value: 'enterprise', label: 'Enterprise', desc: 'Fully managed services, dedicated resources, rapid response' },
+  { value: 'essential', label: 'Essential', desc: 'On-call service with priority scheduling' },
+  { value: 'professional', label: 'Professional', desc: 'Scheduled site inspections, faster response, labor discounts' },
+  { value: 'enterprise', label: 'Enterprise', desc: 'Dedicated technician, after-hours response, multi-site coverage' },
   { value: 'not_sure', label: "I'm not sure yet", desc: 'Advise me during the review' },
 ];
 
@@ -275,7 +276,8 @@ export default function PublicClientIntakePage() {
           <p className="text-[10px] font-black uppercase tracking-[0.25em] text-brand-red">Aaromach</p>
           <h1 className="text-[28px] font-black text-text-primary">Partner With Aaromach</h1>
           <p className="text-[13px] text-text-secondary max-w-md mx-auto">
-            This is the initial vetting application for businesses seeking ongoing managed IT and low-voltage support subscriptions.
+            For businesses that want an ongoing service partner for cabling, cameras, AV, networks and site maintenance — at one
+            location or many. Tell us about your sites and we&apos;ll recommend a service plan.
           </p>
         </div>
 
@@ -331,7 +333,7 @@ export default function PublicClientIntakePage() {
               </div>
               <div>
                 <FieldLabel label="Job Title" required />
-                <FInput value={form.jobTitle} onChange={(e: any) => set('jobTitle', e.target.value)} placeholder="IT Director" />
+                <FInput value={form.jobTitle} onChange={(e: any) => set('jobTitle', e.target.value)} placeholder="Facilities Manager" />
                 {errors.jobTitle && <p className="text-[11px] text-brand-red mt-1">{errors.jobTitle}</p>}
               </div>
             </div>
@@ -375,7 +377,7 @@ export default function PublicClientIntakePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <FieldLabel label="Number of Locations Requiring Support" required />
+                <FieldLabel label="Number of Sites Needing Service" required />
                 <div className="space-y-1.5">
                   {LOCATION_OPTIONS.map(opt => (
                     <button key={opt.value} type="button" onClick={() => set('numberOfLocations', opt.value)}
@@ -411,20 +413,20 @@ export default function PublicClientIntakePage() {
             <div>
               <FieldLabel label="Primary Operating Region (State/Province or Country)" required />
               <FInput value={form.primaryOperatingRegion} onChange={(e: any) => set('primaryOperatingRegion', e.target.value)}
-                placeholder="e.g. Greater Los Angeles, CA or Pacific Northwest" />
+                placeholder="e.g. Metro Detroit, or Southeast Michigan and Ohio" />
               {errors.primaryOperatingRegion && <p className="text-[11px] text-brand-red mt-1">{errors.primaryOperatingRegion}</p>}
             </div>
 
             <div>
-              <FieldLabel label="Existing IT Provider or Internal Team" />
+              <FieldLabel label="Current Service Provider or In-House Team" />
               <FInput value={form.existingItProviderOrInternalTeam} onChange={(e: any) => set('existingItProviderOrInternalTeam', e.target.value)}
-                placeholder="e.g. Internal IT team of 3, or Company XYZ manages our network" />
+                placeholder="e.g. In-house facilities team, or ABC Electric handles our cabling" />
             </div>
 
             <div>
-              <FieldLabel label="What are your current IT or low-voltage pain points?" required />
+              <FieldLabel label="What problems are you dealing with at your sites today?" required />
               <FTextarea value={form.currentPainPoints} onChange={(e: any) => set('currentPainPoints', e.target.value)}
-                placeholder="What challenges are you facing today? What's not working well with your current setup?" rows={4} />
+                placeholder="e.g. Messy network closets, cameras that keep dropping, no documentation of cable runs, slow response from your current vendor..." rows={4} />
               {errors.currentPainPoints && <p className="text-[11px] text-brand-red mt-1">{errors.currentPainPoints}</p>}
             </div>
 
@@ -491,7 +493,7 @@ export default function PublicClientIntakePage() {
             <div>
               <FieldLabel label="Describe your typical service needs" />
               <FTextarea value={form.typicalServiceNeeds} onChange={(e: any) => set('typicalServiceNeeds', e.target.value)}
-                placeholder="Number of monthly support tickets, expected low-voltage projects per year, recurring maintenance needs, rollout volume, etc." rows={3} />
+                placeholder="e.g. A few service calls a month, two or three cabling projects a year, quarterly camera checks, new-site build-outs..." rows={3} />
             </div>
 
             <div className="flex gap-3">
@@ -575,7 +577,7 @@ export default function PublicClientIntakePage() {
             <div>
               <FieldLabel label="Additional Notes or Questions for the Aaromach Team" />
               <FTextarea value={form.additionalNotesOrQuestions} onChange={(e: any) => set('additionalNotesOrQuestions', e.target.value)}
-                placeholder="Anything else we should know about your organization or requirements?" rows={4} />
+                placeholder="Anything else we should know — site access, working hours, union requirements, upcoming moves or build-outs?" rows={4} />
             </div>
 
             {/* Consent checkboxes */}
@@ -631,7 +633,7 @@ export default function PublicClientIntakePage() {
         )}
 
         <p className="text-center text-[10px] text-text-muted pb-4">
-          Aaromach · Managed IT &amp; Low-Voltage Services · This form is secure and confidential. ·{' '}
+          Aaromach · Technical Field Services — Cabling, Cameras, AV &amp; Networks · This form is secure and confidential. ·{' '}
           <a href="https://www.aaromach.com/about-us/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline hover:text-text-secondary">Privacy Policy</a>
           {' '}·{' '}
           <a href="https://www.aaromach.com/about-us/terms-of-service" target="_blank" rel="noopener noreferrer" className="underline hover:text-text-secondary">Terms of Service</a>

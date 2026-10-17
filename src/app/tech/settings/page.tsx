@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { resolveNotificationPrefs, withNotificationPref } from '@/lib/notification-prefs';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -26,27 +28,30 @@ import { ThemeToggleSetting } from '@/components/theme-toggle-setting';
 export default function TechSettingsPage() {
     const [mounted, setMounted] = useState(false);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
-    const [routePreference, setRoutePreference] = useState<'optimized' | 'by-time' | 'by-mileage'>('optimized');
+    const [routePreference, setRoutePreference] = useState<'optimized' | 'by-time' | 'by-mileage'>('by-time'); // calendar's default
     const [mileageUnit, setMileageUnit] = useState<'mi' | 'km'>('mi');
-    const [calendarSync, setCalendarSync] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
         setMounted(true);
 
-        const userId = sessionStorage.getItem('currentUserId');
-        if (userId) {
-            const unsub = onSnapshot(doc(db, 'users', userId), (snap) => {
+        // Firebase Auth, not sessionStorage — that's per-tab, so a new tab got
+        // an empty page whose toggles did nothing.
+        let unsubUser: (() => void) | undefined;
+        const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
+            unsubUser?.();
+            unsubUser = undefined;
+            if (!fbUser) { setCurrentUser(null); return; }
+            unsubUser = onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
                 if (snap.exists()) {
                     const data = snap.data();
                     setCurrentUser({ ...data, id: snap.id } as Technician);
                     if (data.routePreference) setRoutePreference(data.routePreference);
                     if (data.mileageUnit) setMileageUnit(data.mileageUnit);
-                    if (typeof data.googleCalendarSyncEnabled === 'boolean') setCalendarSync(data.googleCalendarSyncEnabled);
                 }
             });
-            return () => unsub();
-        }
+        });
+        return () => { unsubAuth(); unsubUser?.(); };
     }, []);
 
     const saveField = async (field: string, value: any) => {
@@ -61,19 +66,18 @@ export default function TechSettingsPage() {
 
     const handleTogglePreference = async (type: keyof NotificationPreferences) => {
         if (!currentUser) return;
-        const currentPrefs = currentUser.notificationPreferences || { email: true, sms: true, push: true };
-        const updatedPrefs = { ...currentPrefs, [type]: !currentPrefs[type] };
+        const updatedPrefs = withNotificationPref(currentUser.notificationPreferences, type, !resolveNotificationPrefs(currentUser.notificationPreferences)[type]);
 
         try {
             await updateDoc(doc(db, 'users', currentUser.id), {
                 notificationPreferences: updatedPrefs
             });
             toast({
-                title: "Protocol Synced",
+                title: "Settings saved",
                 description: `${type.toUpperCase()} alerts are now ${updatedPrefs[type] ? 'ACTIVE' : 'DISABLED'} for your profile.`,
             });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Registry Error', description: e.message });
+            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
     };
 
@@ -106,9 +110,9 @@ export default function TechSettingsPage() {
                         </CardHeader>
                         <CardContent className="space-y-3">
                             {[
-                                { id: 'email', label: 'Email Manifests', desc: 'Transmission of formal assignment folders and pay stubs.' },
-                                { id: 'sms', label: 'SMS Tactical Alerts', desc: 'Direct mission staging alerts and emergency pings.' },
-                                { id: 'push', label: 'Push Terminal', desc: 'On-device status alerts and check-in reminders.' },
+                                { id: 'email', label: 'Email', desc: 'Assignments, pay stubs and alerts sent to your email.' },
+                                { id: 'sms', label: 'Text Message', desc: 'Job and schedule alerts texted to your phone.' },
+                                { id: 'push', label: 'In-App', desc: 'Alerts in the bell at the top of the app.' },
                             ].map((item) => (
                                 <div key={item.id} className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary/50 border border-border-sub hover:border-text-muted transition-all">
                                     <div className="space-y-0.5 text-left">
@@ -116,7 +120,7 @@ export default function TechSettingsPage() {
                                         <p className="text-[10px] text-text-muted uppercase font-medium">{item.desc}</p>
                                     </div>
                                     <Switch 
-                                        checked={!!currentUser?.notificationPreferences?.[item.id as keyof NotificationPreferences]} 
+                                        checked={resolveNotificationPrefs(currentUser?.notificationPreferences)[item.id as keyof NotificationPreferences]} 
                                         onCheckedChange={() => handleTogglePreference(item.id as keyof NotificationPreferences)}
                                     />
                                 </div>
@@ -210,13 +214,9 @@ export default function TechSettingsPage() {
                                     <p className="text-xs font-bold uppercase tracking-wider">Enable Sync</p>
                                     <p className="text-[10px] text-text-muted uppercase font-medium">Automatically add assignments to your Google Calendar.</p>
                                 </div>
-                                <Switch
-                                    checked={calendarSync}
-                                    onCheckedChange={(v) => {
-                                        setCalendarSync(v);
-                                        saveField('googleCalendarSyncEnabled', v);
-                                    }}
-                                />
+                                {/* Nothing reads this flag yet — shown as coming soon
+                                    instead of a switch that does nothing. */}
+                                <span className="text-[9px] font-black uppercase tracking-widest text-text-muted border border-border-sub rounded px-2 py-1">Coming soon</span>
                             </div>
                         </CardContent>
                     </Card>

@@ -24,7 +24,7 @@ import {
   RotateCcw, UserPlus,
   Wrench, Flag, Database,
   ClipboardList, ExternalLink, Building2,
-  CheckCircle2, Loader2, Tag,
+  CheckCircle2, Loader2, Tag, Pencil,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { db, auth } from '@/lib/firebase';
@@ -143,7 +143,7 @@ type JobDetailDialogProps = {
   hidePay?: boolean;
 };
 
-export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }: JobDetailDialogProps) {
+export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = false }: JobDetailDialogProps) {
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
   const [adminData, setAdminData] = useState<{ weeklyLog: WeeklyLog | null; jobItem: WeeklyLogItem | null; sessionLogs: AssignmentTimeLog[] }>({ weeklyLog: null, jobItem: null, sessionLogs: [] });
   const [loadingAdmin, setLoadingAdmin] = useState(false);
@@ -500,6 +500,20 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }:
             {mission.title || mission.description}
           </h2>
 
+          {/* Edit — offered by screens that can edit (Dispatch). It was the
+              only way in on a phone, where the table's pencil isn't shown,
+              but this panel never rendered it. Completed jobs stay locked,
+              same as the table. */}
+          {onEdit && mission.status !== 'completed' && (
+            <Button
+              size="sm"
+              onClick={() => onEdit(mission)}
+              className="mb-3 h-9 px-4 text-[10px] font-black uppercase tracking-widest bg-brand-red hover:bg-brand-red/90 text-white"
+            >
+              <Pencil size={12} className="mr-1.5" /> Edit Job
+            </Button>
+          )}
+
           {/* Metadata row */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="flex items-center gap-1.5">
@@ -610,7 +624,6 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, hidePay = false }:
                       <div className="h-px bg-border-sub mx-4" />
                       <div className="flex items-stretch divide-x divide-border-sub">
                         {[
-                          { icon: ShieldCheck, stat: leadTech.reliabilityScore ?? '—', sub: 'Reliability' },
                           { icon: ClipboardList, stat: leadTech.currentWorkload ?? '—', sub: 'Jobs Completed' },
                           { icon: Clock, stat: '—', sub: 'On-Time' },
                         ].map(({ icon: Icon, stat, sub }) => (

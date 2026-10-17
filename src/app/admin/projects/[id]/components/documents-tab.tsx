@@ -24,7 +24,8 @@ import React, { useRef, useState } from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { NotificationService } from '@/lib/notification-service';
 import { uploadFile } from '@/lib/upload';
 import { collection, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
@@ -118,7 +119,7 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
                 originalName: file.name,
                 type: type,
                 label: taskId ? 'Completion Evidence' : phaseId ? 'Phase Asset' : 'Pre-Site Document',
-                uploader: 'System Admin',
+                uploader: auth.currentUser?.displayName || auth.currentUser?.email || 'Team member',
                 uploadDate: format(new Date(), 'MM-dd-yyyy'),
                 size,
                 url,
@@ -129,9 +130,10 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
 
             const docId = await createDocId(ID_PREFIXES.PROJECT_DOCUMENT);
             await setDoc(doc(db, 'projectDocuments', docId), { ...docData, id: docId });
+            NotificationService.notifyProjectManagers(project.id, 'Document added', `${docData.uploader} added "${displayName}" to ${project.name}.`);
             toast({
-                title: "Registry Handshake Successful",
-                description: `${displayName} has been synchronized with the project registry.`,
+                title: "Document uploaded",
+                description: `${displayName} was added to the project.`,
             });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Upload Failed', description: e.message });
@@ -145,7 +147,7 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
     const handleDeleteDoc = async (id: string) => {
         try {
             await deleteDoc(doc(db, 'projectDocuments', id));
-            toast({ variant: "destructive", title: "Asset Deleted", description: "Document removed from project registry." });
+            toast({ variant: "destructive", title: "Asset Deleted", description: "Document deleted." });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Deletion Failed', description: e.message });
         }

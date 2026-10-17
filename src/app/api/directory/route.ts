@@ -31,7 +31,7 @@ export type DirectoryEntry = {
   clientCompany?: string;
 };
 
-const ADMIN_ROLES = ['super_admin', 'dispatch_admin', 'payroll_admin', 'project_manager', 'admin'];
+const ADMIN_ROLES = ['super_admin', 'dispatch_admin', 'payroll_admin', 'admin'];
 
 type UserDoc = RoleLike & {
   name?: string; preferredName?: string; avatarUrl?: string; photoURL?: string; clientCompany?: string;
@@ -54,6 +54,23 @@ const toEntry = (id: string, u: UserDoc): DirectoryEntry => {
   return e;
 };
 
+// The whole `users` read is shared for a minute — every tech and client calls
+// this when their tab regains focus, and it used to re-read every user doc
+// each time. Only the projected, active list is cached; the caller's own doc
+// (and so their access) is still checked fresh on every call.
+const USERS_TTL_MS = 60_000;
+let usersCache: { at: number; rows: Promise<{ id: string; data: UserDoc }[]> } | null = null;
+function activeUsers(fs: FirebaseFirestore.Firestore) {
+  if (!usersCache || Date.now() - usersCache.at > USERS_TTL_MS) {
+    const rows = fs.collection('users').get().then(snap => snap.docs
+      .map(d => ({ id: d.id, data: d.data() as UserDoc }))
+      .filter(u => isActiveDoc(u.data)));
+    rows.catch(() => { usersCache = null; });
+    usersCache = { at: Date.now(), rows };
+  }
+  return usersCache.rows;
+}
+
 const rolesOf = (u: UserDoc) => [...(Array.isArray(u.roles) ? u.roles : []), ...(u.role ? [u.role] : [])];
 
 export async function GET(req: NextRequest) {
@@ -74,9 +91,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const all = (await fs.collection('users').get()).docs
-    .map(d => ({ id: d.id, data: d.data() as UserDoc }))
-    .filter(u => isActiveDoc(u.data));
+  const all = await activeUsers(fs);
 
   let visible = all;
   if (!isAdmin(caller) && isClient(caller)) {

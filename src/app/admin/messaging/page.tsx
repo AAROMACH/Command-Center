@@ -1,8 +1,10 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { db, auth } from '@/lib/firebase';
-import { collection, onSnapshot, doc, setDoc, updateDoc, addDoc, arrayUnion } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, updateDoc, addDoc, arrayUnion, query, where } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { makeMessageId } from '@/lib/doc-ids';
 import { uploadFile } from '@/lib/upload';
 import type { Technician, AdminMessage, Project } from '@/lib/types';
@@ -68,7 +70,7 @@ export default function AdminMessagingPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubTechs = onSnapshot(collection(db, 'users'), (snap) => {
+    const unsubTechs = onSharedSnapshot('users', (snap) => {
       const techs = snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician));
       setTechnicians(techs);
       const userId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('currentUserId') : null;
@@ -82,11 +84,33 @@ export default function AdminMessagingPage() {
     const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('aaromach_broadcast_ledger') : null;
     setMessages(stored ? JSON.parse(stored) : []);
 
-    const unsubDMs = onSnapshot(collection(db, 'messages'), (snap) => {
-      setDirectMessages(snap.docs.map(d => ({ ...d.data(), id: d.id } as DirectMessage)));
+    // This admin's own DMs plus project threads — not every message between
+    // everyone (it streamed the whole, ever-growing collection). Three
+    // queries merged by id; each keeps its own slice.
+    const slices: Record<'sent' | 'received' | 'project', DirectMessage[]> = { sent: [], received: [], project: [] };
+    const publish = () => {
+      const byId = new Map<string, DirectMessage>();
+      [...slices.sent, ...slices.received, ...slices.project].forEach(m => byId.set(m.id, m));
+      setDirectMessages([...byId.values()]);
+    };
+    let dmUnsubs: (() => void)[] = [];
+    const stopDMs = () => { dmUnsubs.forEach(u => u()); dmUnsubs = []; };
+    const unsubAuth = onAuthStateChanged(auth, fbUser => {
+      stopDMs();
+      if (!fbUser) { setDirectMessages([]); return; }
+      const listen = (key: keyof typeof slices, q: ReturnType<typeof query>) => onSnapshot(q, snap => {
+        slices[key] = snap.docs.map(d => ({ ...(d.data() as object), id: d.id } as DirectMessage));
+        publish();
+      }, () => { slices[key] = []; publish(); });
+      dmUnsubs = [
+        listen('sent', query(collection(db, 'messages'), where('senderId', '==', fbUser.uid))),
+        listen('received', query(collection(db, 'messages'), where('receiverId', '==', fbUser.uid))),
+        listen('project', query(collection(db, 'messages'), where('projectId', '!=', null))),
+      ];
     });
+    const unsubDMs = () => { unsubAuth(); stopDMs(); };
 
-    const unsubProjects = onSnapshot(collection(db, 'projects'), (snap) => {
+    const unsubProjects = onSharedSnapshot('projects', (snap) => {
       setAllProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project)));
     });
 
@@ -411,7 +435,7 @@ export default function AdminMessagingPage() {
                 <div className="space-y-0.5 mb-2">
                   {adminTechs.filter(t => {
                     if (contactFilter === 'admins') return t.roles?.includes('super_admin') || t.roles?.includes('dispatch_admin');
-                    if (contactFilter === 'techs') return t.roles?.includes('field_technician') || t.roles?.includes('project_lead');
+                    if (contactFilter === 'techs') return t.roles?.includes('field_technician') || t.roles?.includes('project_lead') || t.roles?.includes('project_manager');
                     if (contactFilter === 'clients') return false;
                     return true;
                   }).map(t => {

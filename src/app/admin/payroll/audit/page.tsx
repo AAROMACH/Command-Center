@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
@@ -140,22 +141,22 @@ export default function PayrollAuditPage() {
     const currentUser = technicians.find(t => t.id === currentUserId) || null;
 
     useEffect(() => {
-        const unsubT = onSnapshot(collection(db, 'users'), snap => {
+        const unsubT = onSharedSnapshot('users', snap => {
             setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
         });
-        const unsubL = onSnapshot(collection(db, 'weeklyLogs'), snap => {
+        const unsubL = onSharedSnapshot('weeklyLogs', snap => {
             setWeeklyLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
         });
-        const unsubAdj = onSnapshot(collection(db, 'payrollAdjustments'), snap => {
+        const unsubAdj = onSharedSnapshot('payrollAdjustments', snap => {
             setAdjustments(snap.docs.map(d => ({ ...d.data(), id: d.id })));
         });
-        const unsubWO = onSnapshot(collection(db, 'workOrders'), snap => {
+        const unsubWO = onSharedSnapshot('workOrders', snap => {
             setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
-        const unsubAsmt = onSnapshot(collection(db, 'assignments'), snap => {
+        const unsubAsmt = onSharedSnapshot('assignments', snap => {
             setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
-        const unsubDisputes = onSnapshot(collection(db, 'payrollDisputes'), snap => {
+        const unsubDisputes = onSharedSnapshot('payrollDisputes', snap => {
             setPayrollDisputes(snap.docs.map(d => ({ ...d.data(), id: d.id } as PayrollDispute)));
         });
         return () => { unsubT(); unsubL(); unsubAdj(); unsubWO(); unsubAsmt(); unsubDisputes(); };

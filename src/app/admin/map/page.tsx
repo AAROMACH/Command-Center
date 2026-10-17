@@ -1,4 +1,5 @@
 'use client';
+import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo } from 'react';
@@ -71,7 +72,7 @@ export default function AdminMapPage() {
   const [mobileTab, setMobileTab] = useState<'map' | 'jobs'>('map');
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'workOrders'), (snap) => {
+    const unsub = onSharedSnapshot('workOrders', (snap) => {
       setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
       setLoading(false);
     }, () => setLoading(false));

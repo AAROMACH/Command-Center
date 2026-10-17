@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { User, Search, Loader2, Camera } from "lucide-react";
 import Image from "next/image";
+import { resolveNotificationPrefs, withNotificationPref } from '@/lib/notification-prefs';
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import { useToast } from "@/hooks/use-toast";
 
@@ -31,28 +32,35 @@ export default function ProfilePage() {
 
     const [emailNotif, setEmailNotif] = useState(true);
     const [pushNotif, setPushNotif] = useState(false);
+    const [smsNotif, setSmsNotif] = useState(true);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
 
     useEffect(() => {
         setMounted(true);
+        // The user listener is kept here so it closes on unmount / user change
+        // (returning it from the auth callback never unsubscribed it).
+        let unsubUser: (() => void) | undefined;
         const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
+            unsubUser?.();
+            unsubUser = undefined;
             if (!fbUser) return;
-            const unsubUser = onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
+            unsubUser = onSnapshot(doc(db, 'users', fbUser.uid), (snap) => {
                 if (snap.exists()) {
                     const data = snap.data();
                     setCurrentUser({ ...data, id: snap.id });
                     setName(data.name || '');
                     setEmail(data.email || '');
                     setAvatarUrl(data.avatarUrl);
-                    setEmailNotif(data.notificationPreferences?.email ?? true);
-                    setPushNotif(data.notificationPreferences?.push ?? false);
+                    const prefs = resolveNotificationPrefs(data.notificationPreferences);
+                    setEmailNotif(prefs.email);
+                    setPushNotif(prefs.push);
+                    setSmsNotif(prefs.sms);
                 }
             });
-            return () => unsubUser();
         });
-        return () => unsubAuth();
+        return () => { unsubAuth(); unsubUser?.(); };
     }, []);
 
     const userFallback = useMemo(() => {
@@ -80,7 +88,7 @@ export default function ProfilePage() {
         if (!currentUser?.id) return;
         setIsSaving(true);
         try {
-            await updateDoc(doc(db, 'users', currentUser.id), { name, email });
+            await updateDoc(doc(db, 'users', currentUser.id), { name });
             toast({ title: "Profile Saved", description: "Your personal information has been updated." });
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: err.message });
@@ -89,16 +97,17 @@ export default function ProfilePage() {
         }
     };
 
-    const handleNotifChange = async (key: 'email' | 'push', value: boolean) => {
+    const handleNotifChange = async (key: 'email' | 'push' | 'sms', value: boolean) => {
         if (key === 'email') setEmailNotif(value);
+        else if (key === 'sms') setSmsNotif(value);
         else setPushNotif(value);
         if (!currentUser?.id) return;
         try {
             await updateDoc(doc(db, 'users', currentUser.id), {
-                [`notificationPreferences.${key}`]: value,
+                notificationPreferences: withNotificationPref(currentUser.notificationPreferences, key, value),
             });
         } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: err.message });
+            toast({ variant: 'destructive', title: 'Save failed', description: err.message });
         }
     };
 
@@ -176,7 +185,8 @@ export default function ProfilePage() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="email">Email Address</Label>
-                                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                                    <Input id="email" type="email" value={email} readOnly disabled />
+                                    <p className="text-[10px] text-text-muted">Contact email is managed in the Directory. It isn&apos;t your sign-in email.</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -232,10 +242,23 @@ export default function ProfilePage() {
                                 />
                             </div>
                             <div className="flex items-center justify-between">
-                                <Label htmlFor="push-notifications" className="flex flex-col space-y-1">
-                                    <span>Push Notifications</span>
+                                <Label htmlFor="sms-notifications" className="flex flex-col space-y-1">
+                                    <span>Text Messages</span>
                                     <span className="font-normal leading-snug text-text-muted">
-                                        Get notified on your mobile device.
+                                        Alerts texted to your phone number.
+                                    </span>
+                                </Label>
+                                <Switch
+                                    id="sms-notifications"
+                                    checked={smsNotif}
+                                    onCheckedChange={(v) => handleNotifChange('sms', v)}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="push-notifications" className="flex flex-col space-y-1">
+                                    <span>In-App Notifications</span>
+                                    <span className="font-normal leading-snug text-text-muted">
+                                        Alerts in the bell at the top of the app.
                                     </span>
                                 </Label>
                                 <Switch

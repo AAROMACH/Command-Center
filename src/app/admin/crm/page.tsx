@@ -323,18 +323,22 @@ export default function CRMPage() {
 
   const sortedListLeads = useMemo(() => {
     const sorted = [...filteredLeads];
+    // Every comparator is ascending; 'desc' flips it. Leads with no close
+    // date stay at the bottom in both directions.
     sorted.sort((a, b) => {
+      if (listSort.col === 'close' && !a.expectedCloseDate !== !b.expectedCloseDate) return a.expectedCloseDate ? -1 : 1;
       let cmp = 0;
       if (listSort.col === 'company') cmp = a.companyName.localeCompare(b.companyName);
       else if (listSort.col === 'stage') cmp = STAGES.findIndex(s => s.key === a.stage) - STAGES.findIndex(s => s.key === b.stage);
-      else if (listSort.col === 'value') cmp = (b.estimatedValue || 0) - (a.estimatedValue || 0);
-      else if (listSort.col === 'updated') cmp = (b.updatedAt || '').localeCompare(a.updatedAt || '');
-      else if (listSort.col === 'close') cmp = (a.expectedCloseDate || '9').localeCompare(b.expectedCloseDate || '9');
+      else if (listSort.col === 'value') cmp = (a.estimatedValue || 0) - (b.estimatedValue || 0);
+      // "Last Touch" — sort by the same field the column shows.
+      else if (listSort.col === 'updated') cmp = (lastTouch(a) || '').localeCompare(lastTouch(b) || '');
+      else if (listSort.col === 'close') cmp = (a.expectedCloseDate || '').localeCompare(b.expectedCloseDate || '');
       return listSort.dir === 'asc' ? cmp : -cmp;
     });
     return sorted;
   }, [filteredLeads, listSort]);
-  const pager = usePaged(sortedListLeads, PAGE_SIZES_LARGE, 'crm-leads', []);
+  const pager = usePaged(sortedListLeads, PAGE_SIZES_LARGE, 'crm-leads', [searchQuery, ownerFilter, sourceFilter, serviceFilter, staleOnly, listSort.col, listSort.dir]);
 
   // ── My Day: everything that needs a touch today ──
   const today = todayKey();
@@ -415,8 +419,12 @@ export default function CRMPage() {
     return { winRate, avgDeal, avgCycle, wonCount: won.length, closedCount: closed.length, forecast, bySource, byService, lostReasons, byOwner, actRows };
   }, [filteredLeads, activities, currentUserId, currentUserName]);
 
+  // Numbers and dates start newest/largest first; text starts A→Z.
+  function defaultSortDir(col: typeof listSort['col']): 'asc' | 'desc' {
+    return col === 'value' || col === 'updated' || col === 'close' ? 'desc' : 'asc';
+  }
   function toggleSort(col: typeof listSort['col']) {
-    setListSort(prev => prev.col === col ? { col, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' });
+    setListSort(prev => prev.col === col ? { col, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: defaultSortDir(col) });
   }
 
   async function handleSetStage(lead: Lead, stage: Stage) {
@@ -556,7 +564,7 @@ export default function CRMPage() {
         <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-text-muted cursor-pointer">
           <Checkbox checked={staleOnly} onCheckedChange={v => setStaleOnly(!!v)} /> Stale {STALE_DAYS}d+
         </label>
-        <Select value={listSort.col} onValueChange={(v: any) => setListSort(prev => ({ ...prev, col: v }))}>
+        <Select value={listSort.col} onValueChange={(v: any) => setListSort({ col: v, dir: defaultSortDir(v) })}>
           <SelectTrigger className={filterTrigger}>
             <div className="flex items-center gap-2"><ArrowUpDown size={12} className="text-text-muted" /><SelectValue /></div>
           </SelectTrigger>

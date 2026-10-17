@@ -181,7 +181,7 @@ export default function RequestsPage() {
     }
     return items;
   }, [allRequests, activeTab, sourceFilter, categoryFilter, statusFilter, priorityFilter, searchQuery]);
-  const pager = usePaged(filtered, PAGE_SIZES_SMALL, 'admin-requests', []);
+  const pager = usePaged(filtered, PAGE_SIZES_SMALL, 'admin-requests', [activeTab, sourceFilter, categoryFilter, statusFilter, priorityFilter, searchQuery]);
 
   // ── Actions ──────────────────────────────────────────────────────────────
 

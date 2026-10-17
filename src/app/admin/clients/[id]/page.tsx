@@ -24,7 +24,7 @@ import {
 import { cn } from '@/lib/utils';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import Link from 'next/link';
-import { jobDateTimeValue } from '@/lib/jobs';
+import { jobDateTimeValue, mergeJobs } from '@/lib/jobs';
 import { money } from '@/lib/financial-summary';
 
 const ACCOUNT_STATUS_OPTIONS = [
@@ -72,6 +72,7 @@ export default function ClientWorkspacePage() {
     const [contacts, setContacts] = useState<ClientContact[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+    const [assignments, setAssignments] = useState<WorkOrder[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [quotes, setQuotes] = useState<Quote[]>([]);
     const [clientDocuments, setClientDocuments] = useState<ClientDocument[]>([]);
@@ -159,17 +160,20 @@ export default function ClientWorkspacePage() {
             unsubs.push(
                 listen<Project>('projects', query(collection(db, 'projects'), where('client', '==', clientName)), setProjects),
                 listen<WorkOrder>('workOrders', query(collection(db, 'workOrders'), where('clientName', '==', clientName)), setWorkOrders),
+                // Assigning a job moves it from workOrders into assignments.
+                listen<WorkOrder>('assignments', query(collection(db, 'assignments'), where('clientName', '==', clientName)), setAssignments),
             );
         } else {
             setProjects([]);
             setWorkOrders([]);
+            setAssignments([]);
         }
         return () => unsubs.forEach(u => u());
     }, [id, clientName, loading]);
 
     const clientSites = useMemo(() => sites.filter(s => s.clientName === clientName || s.clientId === id), [sites, clientName, id]);
     const clientProjects = useMemo(() => projects.filter(p => p.client === clientName), [projects, clientName]);
-    const clientWOs = useMemo(() => workOrders.filter(wo => wo.clientName === clientName), [workOrders, clientName]);
+    const clientWOs = useMemo(() => mergeJobs(workOrders, assignments).filter(wo => wo.clientName === clientName), [workOrders, assignments, clientName]);
     const clientInvoices = useMemo(() => invoices.filter(inv => inv.clientName === clientName || inv.clientId === id), [invoices, clientName, id]);
     const clientQuotes = useMemo(() => quotes.filter(q => q.customerName === clientName || q.clientId === id), [quotes, clientName, id]);
 
@@ -184,7 +188,7 @@ export default function ClientWorkspacePage() {
         if (jobsStatusFilter === 'completed') return clientWOs.filter(wo => wo.status === 'completed');
         return clientWOs.filter(wo => wo.status === jobsStatusFilter);
     }, [clientWOs, jobsStatusFilter]);
-    const jobsPager = usePaged(filteredJobs, PAGE_SIZES_LARGE, 'client-jobs', []);
+    const jobsPager = usePaged(filteredJobs, PAGE_SIZES_LARGE, 'client-jobs', [jobsStatusFilter]);
 
     const stats = useMemo(() => ({
         openWOs: clientWOs.filter(wo => wo.status !== 'completed').length,

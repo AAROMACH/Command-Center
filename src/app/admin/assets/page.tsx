@@ -183,7 +183,7 @@ export default function AssetsAndMaterialsPage() {
             return true;
         });
     }, [assets, assetCatFilter, statusFilter, conditionFilter, search]);
-    const assetPager = usePaged(filteredAssets, PAGE_SIZES_LARGE, 'assets', []);
+    const assetPager = usePaged(filteredAssets, PAGE_SIZES_LARGE, 'assets', [assetCatFilter, statusFilter, conditionFilter, search]);
 
     const filteredMaterials = useMemo(() => {
         const q = search.toLowerCase();
@@ -199,7 +199,7 @@ export default function AssetsAndMaterialsPage() {
             return true;
         });
     }, [materials, matCatFilter, matStatusFilter, search]);
-    const materialPager = usePaged(filteredMaterials, PAGE_SIZES_LARGE, 'materials', []);
+    const materialPager = usePaged(filteredMaterials, PAGE_SIZES_LARGE, 'materials', [matCatFilter, matStatusFilter, search]);
 
     // ── Summary stats ──────────────────────────────────────────────────────
 

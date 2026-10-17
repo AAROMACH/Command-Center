@@ -87,7 +87,7 @@ export default function AccountsPage() {
         : sort === 'recent' ? b.last.localeCompare(a.last)
         : b.pipeline - a.pipeline || b.won - a.won);
   }, [companies, contacts, leads, search, sort]);
-  const pager = usePaged(rows, PAGE_SIZES_LARGE, 'crm-accounts', []);
+  const pager = usePaged(rows, PAGE_SIZES_LARGE, 'crm-accounts', [search, sort]);
 
   const unlinkedLeads = leads.filter(l => l.companyName?.trim() && !l.companyId).length;
   const selected = rows.find(r => r.company.id === selectedId) || null;

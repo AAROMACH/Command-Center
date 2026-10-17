@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { jobDateTimeValue } from '@/lib/jobs';
+import { jobDateTimeValue, mergeJobs } from '@/lib/jobs';
 
 const ACCOUNT_STATUS_OPTIONS = [
     { value: 'lead', label: 'Lead' },
@@ -51,6 +51,7 @@ export default function AdminClientsPage() {
     const [clients, setClients] = useState<Technician[]>([]);
     const [sites, setSites] = useState<Site[]>([]);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+    const [assignments, setAssignments] = useState<WorkOrder[]>([]);
     const [quotes, setQuotes] = useState<Quote[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
@@ -90,6 +91,10 @@ export default function AdminClientsPage() {
         const unsubWO = onSharedSnapshot('workOrders', snap => {
             setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
+        // Assigning a job moves it from workOrders into assignments.
+        const unsubA = onSharedSnapshot('assignments', snap => {
+            setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+        });
         const unsubQ = onSharedSnapshot('quotes', snap => {
             setQuotes(snap.docs.map(d => ({ ...d.data(), id: d.id } as Quote)));
         });
@@ -97,14 +102,15 @@ export default function AdminClientsPage() {
             setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
         });
 
-        return () => { unsubC(); unsubS(); unsubWO(); unsubQ(); unsubI(); };
+        return () => { unsubC(); unsubS(); unsubWO(); unsubA(); unsubQ(); unsubI(); };
     }, []);
 
     const enrichedClients = useMemo(() => {
+        const jobs = mergeJobs(workOrders, assignments);
         return clients.map(client => {
             const company = client.clientCompany || client.name || '';
             const clientSites = sites.filter(s => s.clientName === company || s.clientId === client.id);
-            const clientWOs = workOrders.filter(wo => wo.clientName === company);
+            const clientWOs = jobs.filter(wo => wo.clientName === company);
             const openJobs = clientWOs.filter(wo => wo.status !== 'completed').length;
             const activeQuotes = quotes.filter(q => q.customerName === company || q.clientId === client.id).filter(q => q.status === 'sent' || q.status === 'viewed').length;
             const openInvoices = invoices.filter(inv => inv.clientName === company || inv.clientId === client.id).filter(inv => inv.status !== 'paid' && inv.status !== 'void').length;
@@ -113,7 +119,7 @@ export default function AdminClientsPage() {
                 .sort((a, b) => jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime))[0]?.scheduleDate || null;
             return { client, company, siteCount: clientSites.length, openJobs, activeQuotes, openInvoices, lastJob };
         });
-    }, [clients, sites, workOrders, quotes, invoices]);
+    }, [clients, sites, workOrders, assignments, quotes, invoices]);
 
     const filtered = useMemo(() => {
         let list = enrichedClients.filter(ec => {
@@ -133,7 +139,7 @@ export default function AdminClientsPage() {
             return 0;
         });
     }, [enrichedClients, search, sortBy, statusFilter]);
-    const pager = usePaged(filtered, PAGE_SIZES_SMALL, 'admin-sites', []);
+    const pager = usePaged(filtered, PAGE_SIZES_SMALL, 'admin-sites', [search, sortBy, statusFilter]);
 
     const stats = useMemo(() => ({
         total: clients.length,

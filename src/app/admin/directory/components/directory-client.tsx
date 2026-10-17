@@ -151,7 +151,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchQuery, activeTab, itemsPerPage]);
+    }, [searchQuery, activeTab, itemsPerPage, sortBy, showInactive]);
 
     const handleRowClick = (person: Technician) => {
         router.push('/admin/directory/' + person.id);
@@ -325,7 +325,11 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
     const totalRecords = activeTab === 'technicians' ? filteredTechnicians.length : 
                        activeTab === 'staff' ? filteredStaff.length :
                        activeTab === 'clients' ? filteredCompanies.length : 0;
-    const totalPages = Math.ceil(totalRecords / itemsPerPage);
+    const totalPages = Math.max(1, Math.ceil(totalRecords / itemsPerPage));
+    // Never sit past the last page when rows disappear (e.g. live updates).
+    useEffect(() => {
+        if (currentPage > totalPages) setCurrentPage(totalPages);
+    }, [currentPage, totalPages]);
 
     const getPrimaryRoleLabel = (person: Technician) => {
         if (person.roles && person.roles.length > 0) {

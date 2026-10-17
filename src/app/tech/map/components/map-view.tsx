@@ -1,6 +1,7 @@
 'use client';
 
 import 'leaflet/dist/leaflet.css';
+import { statusTone, TONE_HEX } from '@/lib/status-styles';
 import { useEffect, useRef, useState } from 'react';
 import type { WorkOrder } from '@/lib/types';
 
@@ -10,16 +11,11 @@ type MapViewProps = {
   onSelectJob: (job: WorkOrder) => void;
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  'in-progress': '#22c55e',
-  'on-my-way': '#3b82f6',
-  'confirmed': '#3b82f6',
-  'assigned': '#94a3b8',
-  default: '#94a3b8',
-};
+// Shared status colors (lib/status-styles.ts) — same as badges everywhere.
+const STATUS_COLORS = { default: TONE_HEX.neutral };
 
 function getColor(status: string) {
-  return STATUS_COLORS[status] || STATUS_COLORS.default;
+  return status ? TONE_HEX[statusTone('job', status)] : STATUS_COLORS.default;
 }
 
 async function geocodeLocation(location: string): Promise<[number, number] | null> {

@@ -382,8 +382,9 @@ export default function ActivityAuditPage() {
     // New jobs live in activityArchive with a restorable JSON snapshot; older
     // jobs may still be soft-archived in their source collection. Dedupe by id
     // so a legacy record and its archive snapshot never appear twice.
+    // Search is the Archive tab's own FilterBar (history-tabs) — the page's
+    // global search box is hidden on that tab, so don't prefilter here.
     const archiveItems = useMemo(() => {
-        const q = searchQuery.trim().toLowerCase();
         const items = new Map<string, ArchiveItem>();
 
         [...workOrders, ...assignments].filter(isArchivedJob).forEach(job => {
@@ -421,12 +422,10 @@ export default function ActivityAuditPage() {
 
         return Array.from(items.values())
             .filter(item => matchesArchiveRange(item.archivedAt))
-            .filter(item => !q || [item.id, item.identifier, item.title, item.clientName, item.techName, item.kind]
-                .some(v => (v || '').toString().toLowerCase().includes(q)))
             .sort((a, b) => archiveSortDir === 'desc'
                 ? (b.archivedAt || '').localeCompare(a.archivedAt || '')
                 : (a.archivedAt || '').localeCompare(b.archivedAt || ''));
-    }, [archivedEvents, workOrders, assignments, technicians, matchesArchiveRange, archiveSortDir, searchQuery]);
+    }, [archivedEvents, workOrders, assignments, technicians, matchesArchiveRange, archiveSortDir]);
 
     const handleArchiveEvent = async (event: TimelineEvent) => {
         try {
@@ -765,7 +764,9 @@ export default function ActivityAuditPage() {
 
         return events
             .filter(e => !!e.timestamp)
-            .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+            // Timestamps mix ISO datetimes and 'MM-dd-yyyy' dates (weekOf,
+            // invoice dates) — sort by parsed time, not as text.
+            .sort((a, b) => (parseLocalDate(b.timestamp)?.getTime() || 0) - (parseLocalDate(a.timestamp)?.getTime() || 0));
     }, [assignments, workOrders, weeklyLogs, invoices, technicians]);
 
     const filteredTimelineEvents = useMemo(() => {
@@ -1115,6 +1116,9 @@ export default function ActivityAuditPage() {
             </header>
 
             <div className="space-y-6 text-left">
+                {/* Hidden on the Archive tab, which has its own search in its
+                    FilterBar — one search box per list. */}
+                {activeTab !== 'archive' && (
                 <div className="relative group text-left">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted group-focus-within:text-brand-red transition-colors" />
                     <Input
@@ -1124,10 +1128,11 @@ export default function ActivityAuditPage() {
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                 </div>
+                )}
 
-                {/* The Archive tab's unified list already filters on searchQuery
-                    in place (see archiveItems) — only the
-                    other tabs fall back to the cross-category search results. */}
+                {/* The Archive tab ignores the global search (see archiveItems) —
+                    only the other tabs fall back to the cross-category search
+                    results. */}
                 {(!searchQuery || activeTab === 'archive') ? (
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full text-left">
                         <div className="flex justify-center text-left">

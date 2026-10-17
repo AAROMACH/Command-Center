@@ -161,9 +161,16 @@ export default function TechEarningsPage() {
     const settlementOf = (log: WeeklyLog) => computeWeeklyLogSettlement(log, jobsById);
 
     const filteredLogs = useMemo(() => {
-        let results = weeklyLogs;
+        let results = [...weeklyLogs];
         if (logSearchQuery) {
-            results = results.filter(l => (l.weekOf || '').toLowerCase().includes(logSearchQuery.toLowerCase()));
+            // Week text, or any job on the log (id / title / client).
+            const q = logSearchQuery.toLowerCase();
+            results = results.filter(l => (l.weekOf || '').toLowerCase().includes(q)
+                || (l.items || []).some(item => {
+                    const job = jobsById.get(item.workOrderId);
+                    return [item.workOrderId, job?.id, job?.title, job?.description, job?.clientName]
+                        .some(v => (v || '').toLowerCase().includes(q));
+                }));
         }
         if (dateRange?.from) {
             results = results.filter(log => {
@@ -182,7 +189,7 @@ export default function TechEarningsPage() {
             return 0;
         });
     }, [weeklyLogs, logSearchQuery, logSortBy, dateRange, jobsById]);
-    const logsPager = usePaged(filteredLogs, PAGE_SIZES_LARGE, 'tech-earnings-logs', []);
+    const logsPager = usePaged(filteredLogs, PAGE_SIZES_LARGE, 'tech-earnings-logs', [logSearchQuery, logSortBy, dateRange]);
 
     // Reimbursements added from job verification during weekly log review —
     // these live in an embedded array on each weeklyLogs doc, separate from
@@ -473,6 +480,16 @@ export default function TechEarningsPage() {
                                         <Calendar initialFocus mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} />
                                     </PopoverContent>
                                 </Popover>
+                                <Select value={logSortBy} onValueChange={(v) => setLogSortBy(v as LogSortOption)}>
+                                    <SelectTrigger className="h-9 w-[140px] bg-bg-primary border-border-main text-[10px] font-bold uppercase tracking-widest">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="date-desc" className="text-[10px] uppercase font-bold">Newest</SelectItem>
+                                        <SelectItem value="date-asc" className="text-[10px] uppercase font-bold">Oldest</SelectItem>
+                                        <SelectItem value="payout-desc" className="text-[10px] uppercase font-bold">Highest Pay</SelectItem>
+                                    </SelectContent>
+                                </Select>
                                 <div className="search-wrap !mb-0 w-[180px]">
                                     <Search className="h-3.5 w-3.5" />
                                     <input className="search-input !w-full !h-9 !text-[10px] font-bold uppercase" placeholder="Filter records..." value={logSearchQuery} onChange={(e) => setLogSearchQuery(e.target.value)} />

@@ -54,6 +54,20 @@ const ASSIGNMENT_SOURCES = [
   'Client'
 ];
 
+// Missing/unknown priorities rank after 'low' so sorts never compare NaN.
+const PRIORITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+const priorityRank = (p?: string | null) => PRIORITY_RANK[String(p || '').toLowerCase()] ?? 4;
+
+// Requests store source as 'manual', 'app', 'client_portal',
+// 'public_service_request', … — map to the Job Source filter's labels.
+function requestSourceLabel(source?: string | null): string | undefined {
+  const s = String(source || '').toLowerCase();
+  if (!s) return undefined;
+  if (s === 'manual') return 'Manual';
+  if (s.includes('import')) return 'Imported';
+  return 'Client';
+}
+
 type SortOption = 'priority' | 'date' | 'client' | 'status' | 'pay' | 'tech' | 'type' | 'assigned';
 
 const DISPATCH_SORT_OPTIONS: SortOptionDef[] = [
@@ -350,8 +364,9 @@ export function DispatchPageClient() {
     return results.sort((a, b) => {
         switch (sortBy) {
             case 'priority':
-                const prio = { critical: 0, high: 1, medium: 2, low: 3 };
-                return prio[a.priority as keyof typeof prio] - prio[b.priority as keyof typeof prio];
+                // Missing/unknown priorities rank last; ties fall back to date.
+                return (priorityRank(a.priority) - priorityRank(b.priority))
+                    || (jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime));
             case 'client': return (a.clientName || '').localeCompare(b.clientName || '');
             case 'status': return compareJobStatus(a, b);
             case 'pay': return (b.pay || 0) - (a.pay || 0);
@@ -429,24 +444,39 @@ export function DispatchPageClient() {
           } catch (e) { return false; }
       })());
 
-      return matchesSearch && matchesPriority && matchesType && matchesDate;
+      // Same Source checkboxes as the job lists, matched against the
+      // request's stored values. The Status checkboxes are job statuses
+      // (assigned, in progress…) — they don't apply to requests.
+      const matchesSource = activeSources.length === 0 || activeSources.includes(requestSourceLabel((req as { source?: string }).source) || '');
+
+      return matchesSearch && matchesPriority && matchesType && matchesDate && matchesSource;
     });
 
+    const dateOf = (r: ServiceRequest) => toDateSafe(r.submittedDate)?.getTime() || 0;
     return results.sort((a, b) => {
-        if (sortBy === 'priority') {
-            const prio = { critical: 0, high: 1, medium: 2, low: 3 };
-            return prio[a.priority as keyof typeof prio] - prio[b.priority as keyof typeof prio];
+        switch (sortBy) {
+            case 'priority':
+                return (priorityRank(a.priority) - priorityRank(b.priority)) || (dateOf(b) - dateOf(a));
+            case 'client': return (a.clientName || '').localeCompare(b.clientName || '');
+            case 'type': return (a.requestType || '').localeCompare(b.requestType || '');
+            // Status / Tech / Labor Rate / Recently Assigned are job fields a
+            // request doesn't have — those sorts fall back to date.
+            default: {
+                const da = dateOf(a);
+                const db = dateOf(b);
+                return dateAsc ? da - db : db - da;
+            }
         }
-        if (sortBy === 'client') return (a.clientName || '').localeCompare(b.clientName || '');
-        if (sortBy === 'type') return (a.requestType || '').localeCompare(b.requestType || '');
-        const da = toDateSafe(a.submittedDate)?.getTime() || 0;
-        const db = toDateSafe(b.submittedDate)?.getTime() || 0;
-        return dateAsc ? da - db : db - da;
     });
-  }, [allRequests, searchQuery, dateRange, activePriorities, activeTypes, sortBy, dateAsc]);
+  }, [allRequests, searchQuery, dateRange, activePriorities, activeTypes, activeSources, activeStatuses, sortBy, dateAsc]);
+
+  // Search/filter/sort state as one key — the job lists' pagers go back to
+  // page 1 when it changes.
+  const jobFilterKey = JSON.stringify([searchQuery, dateRange?.from, dateRange?.to, activePriorities, activeTypes, activeSources, activeStatuses, sortBy]);
 
   // Filters badge counts checkbox filters only (search and date have their own controls).
-  const activeFilterCount = activePriorities.length + activeTypes.length + activeSources.length + activeStatuses.length;
+  // Job-status checkboxes don't apply on the Requests tab, so don't count them there.
+  const activeFilterCount = activePriorities.length + activeTypes.length + activeSources.length + (activeMasterTab === 'requests' ? 0 : activeStatuses.length);
 
   // Jobs a tech marked Cancelled / Did Not Do sit in the Dispatch Hub's Review
   // Queue until an admin explicitly resolves them — never left ambiguous in
@@ -584,6 +614,7 @@ export function DispatchPageClient() {
 
         <TabsContent value="dispatch" className="mt-0">
            <DispatchTabs
+              filterKey={jobFilterKey}
               workOrders={filteredOrders.filter(wo => !wo.assignedTechnicianId)}
               technicians={technicians}
               onWorkOrdersChange={async (updated) => {
@@ -670,6 +701,7 @@ export function DispatchPageClient() {
                       dateAsc={dateAsc}
                       isDateSortActive={sortBy === 'date'}
                       onToggleDateSort={toggleDateSort}
+                      filterKey={jobFilterKey}
                    />
                 </TabsContent>
 
@@ -686,6 +718,7 @@ export function DispatchPageClient() {
                       dateAsc={dateAsc}
                       isDateSortActive={sortBy === 'date'}
                       onToggleDateSort={toggleDateSort}
+                      filterKey={jobFilterKey}
                    />
                 </TabsContent>
             </Tabs>

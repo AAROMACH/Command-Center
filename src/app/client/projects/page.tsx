@@ -65,10 +65,12 @@ export default function ClientProjectsPage() {
     }, [projectIdsKey]);
 
     const filteredProjects = useMemo(() => {
+        // Older projects may lack name/location — guard every field.
+        const q = searchQuery.toLowerCase();
         return allProjects.filter(p => 
-            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.location.toLowerCase().includes(searchQuery.toLowerCase())
+            (p.name || '').toLowerCase().includes(q) ||
+            (p.id || '').toLowerCase().includes(q) ||
+            (p.location || '').toLowerCase().includes(q)
         );
     }, [allProjects, searchQuery]);
 

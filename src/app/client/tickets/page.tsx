@@ -173,10 +173,12 @@ export default function ClientTicketsPage() {
             );
         }
 
-        return results.sort((a, b) => {
+        return [...results].sort((a, b) => {
             if (sortBy === 'priority') {
-                const prio = { critical: 0, high: 1, medium: 2, low: 3 };
-                return prio[a.priority as keyof typeof prio] - prio[b.priority as keyof typeof prio];
+                // Missing/unknown priorities rank last; ties fall back to newest.
+                const prio: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+                return ((prio[a.priority as string] ?? 4) - (prio[b.priority as string] ?? 4))
+                    || (b.submittedDate || '').localeCompare(a.submittedDate || '');
             }
             if (sortBy === 'oldest') return (a.submittedDate || '').localeCompare(b.submittedDate || '');
             if (sortBy === 'type') return (a.requestType || '').localeCompare(b.requestType || '');
@@ -330,7 +332,7 @@ export default function ClientTicketsPage() {
                 </TabsList>
 
                 <TabsContent value="requested" className="space-y-4 mt-0">
-                    <TicketList requests={myRequests.filter(r => r.status === 'new' || r.status === 'reviewed')} />
+                    <TicketList requests={myRequests.filter(r => ['new', 'reviewed', 'pending_review'].includes(r.status as string))} />
                 </TabsContent>
                 
                 <TabsContent value="approved" className="space-y-4 mt-0">
@@ -338,7 +340,7 @@ export default function ClientTicketsPage() {
                 </TabsContent>
 
                 <TabsContent value="closed" className="space-y-4 mt-0">
-                    <TicketList requests={myRequests.filter(r => r.status === 'closed' || r.status === 'rejected')} />
+                    <TicketList requests={myRequests.filter(r => ['closed', 'rejected', 'denied', 'archived'].includes(r.status as string))} />
                 </TabsContent>
             </Tabs>
 

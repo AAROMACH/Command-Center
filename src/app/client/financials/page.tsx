@@ -54,7 +54,7 @@ export default function ClientFinancialsPage() {
             )
             .sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
     }, [myInvoices, searchQuery]);
-    const invoicePager = usePaged(filteredInvoices, PAGE_SIZES_LARGE, 'client-financials-invoices', []);
+    const invoicePager = usePaged(filteredInvoices, PAGE_SIZES_LARGE, 'client-financials-invoices', [searchQuery]);
 
     const metrics = useMemo(() => {
         const outstanding = filteredInvoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').reduce((acc, inv) => acc + money(inv.total), 0);

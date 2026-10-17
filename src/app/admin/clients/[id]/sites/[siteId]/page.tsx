@@ -20,6 +20,7 @@ import {
 import { cn } from '@/lib/utils';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import Link from 'next/link';
+import { mergeJobs } from '@/lib/jobs';
 
 const CDOC_TYPE_LABELS: Record<string, string> = {
     contract: 'Contract', blueprint: 'Blueprint', compliance: 'Compliance',
@@ -33,6 +34,7 @@ export default function SiteDetailPage() {
 
     const [site, setSite] = useState<Site | null>(null);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+    const [assignments, setAssignments] = useState<WorkOrder[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [quotes, setQuotes] = useState<Quote[]>([]);
     const [siteNotes, setSiteNotes] = useState<ClientNote[]>([]);
@@ -74,6 +76,10 @@ export default function SiteDetailPage() {
         const unsubWO = onSharedSnapshot('workOrders', snap => {
             setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
+        // Assigning a job moves it from workOrders into assignments.
+        const unsubA = onSharedSnapshot('assignments', snap => {
+            setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+        });
         const unsubInv = onSharedSnapshot('invoices', snap => {
             setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
         });
@@ -93,19 +99,19 @@ export default function SiteDetailPage() {
             setSiteDocs(docs);
         });
 
-        return () => { unsubWO(); unsubInv(); unsubQ(); unsubNotes(); unsubDocs(); };
+        return () => { unsubWO(); unsubA(); unsubInv(); unsubQ(); unsubNotes(); unsubDocs(); };
     }, [id, siteId]);
 
     const siteWOs = useMemo(() => {
         if (!site) return [];
-        return workOrders.filter(wo =>
+        return mergeJobs(workOrders, assignments).filter(wo =>
             wo.clientName === clientName && (
                 wo.location === site.location ||
                 wo.location === site.name ||
                 wo.location?.includes(site.name)
             )
         );
-    }, [workOrders, site, clientName]);
+    }, [workOrders, assignments, site, clientName]);
 
     const openJobs = useMemo(() => siteWOs.filter(wo => wo.status !== 'completed'), [siteWOs]);
     const completedJobs = useMemo(() => siteWOs.filter(wo => wo.status === 'completed'), [siteWOs]);

@@ -1,5 +1,6 @@
 'use client';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
+import { statusTone, TONE_BADGE, TONE_DOT } from '@/lib/status-styles';
 
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo } from 'react';
@@ -44,20 +45,11 @@ const STATUS_ORDER: Record<string, number> = {
 };
 
 function getStatusVariant(status: string): any {
-  switch (status) {
-    case 'in-progress': return 'inprogress';
-    case 'completed': return 'completed';
-    case 'confirmed': case 'on-my-way': return 'active';
-    default: return 'scheduled';
-  }
+  return TONE_BADGE[statusTone('job', status)];
 }
 
 function getAccentColor(status: string) {
-  if (status === 'in-progress') return 'bg-text-green';
-  if (status === 'on-my-way' || status === 'confirmed') return 'bg-blue-400';
-  if (status === 'assigned') return 'bg-amber-400';
-  if (status === 'completed') return 'bg-border-main';
-  return 'bg-brand-red';
+  return TONE_DOT[statusTone('job', status)];
 }
 
 function toISODate(d: Date) {

@@ -95,7 +95,7 @@ export default function ClientDashboardPage() {
         if (!currentUser) return [];
         const slaLimit = myPlan?.benefits.responseHours || DEFAULT_RESPONSE_HOURS;
         return myRequests
-            .filter(r => r.status === 'new' || r.status === 'reviewed')
+            .filter(r => ['new', 'reviewed', 'pending_review'].includes(r.status as string))
             .map(r => {
                 try {
                     const submitted = parseLocalDate(r.submittedDate) ?? new Date(NaN);
@@ -233,7 +233,7 @@ export default function ClientDashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-3xl font-bold text-text-primary">
-                            {myRequests.filter(r => r.status === 'new' || r.status === 'reviewed' || r.status === 'approved').length}
+                            {myRequests.filter(r => ['new', 'reviewed', 'pending_review', 'approved'].includes(r.status as string)).length}
                         </p>
                     </CardContent>
                 </Card>

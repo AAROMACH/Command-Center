@@ -1,6 +1,7 @@
 'use client';
 
 import 'leaflet/dist/leaflet.css';
+import { statusTone, TONE_HEX } from '@/lib/status-styles';
 import { useEffect, useRef, useState } from 'react';
 import type { WorkOrder } from '@/lib/types';
 import { displayWorkOrderNumber } from '@/lib/work-order-identity';
@@ -13,18 +14,11 @@ type AdminMapViewProps = {
   onResolveCoords?: (jobId: string, lat: number, lng: number, address: string) => void;
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  'in-progress': '#22c55e',
-  'on-my-way': '#3b82f6',
-  'confirmed': '#3b82f6',
-  'assigned': '#f59e0b',
-  'scheduled': '#e53e3e',
-  'completed': '#64748b',
-  default: '#94a3b8',
-};
+// Shared status colors (lib/status-styles.ts) — same as badges everywhere.
+const STATUS_COLORS = { default: TONE_HEX.neutral };
 
 function getColor(status: string) {
-  return STATUS_COLORS[status] || STATUS_COLORS.default;
+  return status ? TONE_HEX[statusTone('job', status)] : STATUS_COLORS.default;
 }
 
 // Pick the most specific address available. Prefer a value with a street number

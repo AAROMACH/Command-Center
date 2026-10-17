@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
 import { isAssignedTo } from '@/lib/jobs';
 import { median } from '@/lib/customer-intel';
+import { statusTone, TONE_TEXT } from '@/lib/status-styles';
 import { buildTechJobRows, PAY_STATUS_LABELS, type PayStatus, type TechJobRow } from '@/lib/tech-intel';
 import { HBars, Tip } from '@/app/admin/analytics/components/customer-dashboard';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
@@ -347,10 +348,8 @@ type Filters = {
   job: 'all' | 'completed' | 'open'; pay: PayStatus | null; search: string;
 };
 const DEFAULT_FILTERS: Filters = { start: null, end: null, customer: null, type: null, job: 'all', pay: null, search: '' };
-const PAY_TONE: Record<PayStatus, string> = {
-  approved: 'text-text-green', submitted: 'text-blue-400', draft: 'text-accent-gold',
-  returned: 'text-brand-red', 'not-filed': 'text-brand-red', upcoming: 'text-text-muted',
-};
+// Shared status colors (lib/status-styles.ts).
+const PAY_TONE = Object.fromEntries((Object.keys(PAY_STATUS_LABELS) as PayStatus[]).map(p => [p, TONE_TEXT[statusTone('pay', p)]])) as Record<PayStatus, string>;
 const money = (v: number) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: Math.abs(v) >= 1000 ? 0 : 2 });
 const count = (v: number) => v.toLocaleString('en-US');
 const monthLabel = (ym: string) => new Date(`${ym}-01T12:00:00`).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });

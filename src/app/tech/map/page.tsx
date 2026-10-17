@@ -1,6 +1,7 @@
 'use client';
 
 import { subscribeTechAssignments } from '@/lib/tech-assignments';
+import { statusTone, TONE_BADGE, TONE_DOT } from '@/lib/status-styles';
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
@@ -37,21 +38,12 @@ const MapView = dynamic(() => import('./components/map-view'), {
   ),
 });
 
-function getStatusVariant(status: string) {
-  switch (status) {
-    case 'in-progress': return 'inprogress';
-    case 'completed': return 'completed';
-    case 'confirmed': return 'active';
-    case 'on-my-way': return 'active';
-    default: return 'scheduled';
-  }
+function getStatusVariant(status: string): any {
+  return TONE_BADGE[statusTone('job', status)];
 }
 
 function getAccentColor(status: string) {
-  if (status === 'in-progress') return 'bg-text-green';
-  if (status === 'on-my-way' || status === 'confirmed') return 'bg-blue-400';
-  if (status === 'checked-out') return 'bg-border-main';
-  return 'bg-brand-red';
+  return TONE_DOT[statusTone('job', status)];
 }
 
 function formatScheduleDate(dateStr: string) {

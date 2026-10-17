@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { mergeJobs } from '@/lib/jobs';
 
 const TABS = ['Site Info', 'Assignment History', 'Pay History', 'Notes', 'Documents'] as const;
 type Tab = typeof TABS[number];
@@ -29,7 +30,10 @@ export default function SiteDetailPage() {
   const siteId = params.id as string;
   const [site, setSite] = useState<Site | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('Site Info');
-  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [woDocs, setWoDocs] = useState<WorkOrder[]>([]);
+  const [assignmentDocs, setAssignmentDocs] = useState<WorkOrder[]>([]);
+  // Assigning a job moves it from workOrders into assignments — read both.
+  const workOrders = useMemo(() => mergeJobs(woDocs, assignmentDocs), [woDocs, assignmentDocs]);
   const [notes, setNotes] = useState<SiteNote[]>([]);
   const [noteText, setNoteText] = useState('');
   const [saving, setSaving] = useState(false);
@@ -49,7 +53,11 @@ export default function SiteDetailPage() {
 
     const unsubWO = onSnapshot(
       query(collection(db, 'workOrders'), where('siteId', '==', siteId)),
-      (snap) => setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)))
+      (snap) => setWoDocs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)))
+    );
+    const unsubAsg = onSnapshot(
+      query(collection(db, 'assignments'), where('siteId', '==', siteId)),
+      (snap) => setAssignmentDocs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)))
     );
 
     const unsubNotes = onSnapshot(
@@ -60,7 +68,7 @@ export default function SiteDetailPage() {
       }
     );
 
-    return () => { unsubSite(); unsubWO(); unsubNotes(); };
+    return () => { unsubSite(); unsubWO(); unsubAsg(); unsubNotes(); };
   }, [siteId]);
 
   useEffect(() => {

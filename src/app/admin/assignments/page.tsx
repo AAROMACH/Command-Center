@@ -296,8 +296,10 @@ export default function AssignmentsHubPage() {
   [filteredWorkOrders]);
   const activePager = usePaged(activeWorkOrders, PAGE_SIZES_LARGE, 'admin-assignments-active', [deferredSearch, dateRange, sortBy, activePriorities, activeSources, activeStatuses, dateAsc]);
 
+  // History = archived, completed or cancelled — so every job lands in
+  // exactly one tab (the Cancelled filter works, CSV count matches).
   const archivedWorkOrders = useMemo(() =>
-    filteredWorkOrders.filter(wo => isArchivedJob(wo) || isCompletedJob(wo)),
+    filteredWorkOrders.filter(wo => isArchivedJob(wo) || isCompletedJob(wo) || wo.status === 'cancelled'),
   [filteredWorkOrders]);
   const historyPager = usePaged(archivedWorkOrders, PAGE_SIZES_LARGE, 'admin-assignments-history', [deferredSearch, dateRange, sortBy, activePriorities, activeSources, activeStatuses, dateAsc]);
 

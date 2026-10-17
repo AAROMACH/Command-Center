@@ -257,7 +257,7 @@ export default function FinancialsPage() {
         const q = searchQuery.toLowerCase();
         return invoices.filter(inv => (inv.invoiceNumber || '').toLowerCase().includes(q) || (inv.clientName || '').toLowerCase().includes(q));
     }, [invoices, searchQuery]);
-    const invoicePager = usePaged(filteredInvoices, PAGE_SIZES_LARGE, 'financials-invoices', []);
+    const invoicePager = usePaged(filteredInvoices, PAGE_SIZES_LARGE, 'financials-invoices', [searchQuery]);
 
 
     const filteredExpenses = useMemo(() => {
@@ -291,6 +291,13 @@ export default function FinancialsPage() {
                                             const newRows = reimbursements
                                                 .filter(r => reimTypeFilter === 'all' || r.type === reimTypeFilter)
                                                 .filter(r => reimStatusFilter === 'all' || r.status === reimStatusFilter)
+                                                .filter(r => {
+                                                    const q = searchQuery.toLowerCase();
+                                                    if (!q) return true;
+                                                    const amt = r.type === 'mileage' ? (r.distanceMiles || 0) * (r.mileageRate || mileageRate) : r.amount;
+                                                    return [r.techName, r.description, r.vendorName, r.relatedJobId, r.relatedJobTitle, (amt || 0).toFixed(2)]
+                                                        .some(v => (v || '').toLowerCase().includes(q));
+                                                })
                                                 .map(r => ({
                                                     id: r.id,
                                                     source: 'reimbursement' as const,
@@ -316,8 +323,8 @@ export default function FinancialsPage() {
                                             return [...legacyRows, ...newRows]
                                                 .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
-    }, [filteredExpenses, reimbursements, reimTypeFilter, reimStatusFilter, mileageRate]);
-    const reimbPager = usePaged(reimbRows, PAGE_SIZES_LARGE, 'financials-reimbursements', [reimTypeFilter, reimStatusFilter]);
+    }, [filteredExpenses, reimbursements, reimTypeFilter, reimStatusFilter, mileageRate, searchQuery]);
+    const reimbPager = usePaged(reimbRows, PAGE_SIZES_LARGE, 'financials-reimbursements', [reimTypeFilter, reimStatusFilter, searchQuery]);
 
     return (
         <div className="text-left animate-in fade-in duration-700">

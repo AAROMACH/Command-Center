@@ -22,6 +22,8 @@ type WorkOrdersClientProps = {
   dateAsc?: boolean;
   isDateSortActive?: boolean;
   onToggleDateSort?: () => void;
+  /** Changes whenever the parent's search/filters change — sends the mobile pager back to page 1. */
+  filterKey?: string;
 };
 
 const PAY_PILL: Record<string, string> = {
@@ -82,7 +84,7 @@ export function WorkOrdersClient(props: WorkOrdersClientProps) {
   const [mobileEditOrder, setMobileEditOrder] = useState<WorkOrder | null>(null);
   const clearMobileEditOrder = useCallback(() => setMobileEditOrder(null), []);
   // The desktop table pages itself; the phone card list pages here.
-  const mobilePager = usePaged(workOrders, PAGE_SIZES_LARGE, 'dispatch-mobile-cards');
+  const mobilePager = usePaged(workOrders, PAGE_SIZES_LARGE, 'dispatch-mobile-cards', [props.filterKey, props.dateAsc, props.isDateSortActive]);
 
   const handleCardClick = (wo: WorkOrder) => {
     setSelectedJob(wo);

@@ -209,28 +209,27 @@ export default function TechAssignmentsPage() {
         techWorkOrders.filter(wo => wo.status !== 'unassigned' && wo.status !== 'completed' && wo.status !== 'cancelled'),
     [techWorkOrders]);
 
-    const sortedActive = useMemo(() => {
-        return [...activeAssignments].sort((a, b) => {
-            if (sortBy === 'priority') {
-                const prio = { critical: 0, high: 1, medium: 2, low: 3 };
-                return prio[a.priority as keyof typeof prio] - prio[b.priority as keyof typeof prio];
-            }
-            if (sortBy === 'pay') return b.pay - a.pay;
-            const da = jobDateTimeValue(a.scheduleDate, a.scheduleTime);
-            const db = jobDateTimeValue(b.scheduleDate, b.scheduleTime);
-            return dateAsc ? da - db : db - da;
-        });
-    }, [activeAssignments, sortBy, dateAsc]);
-    const activePager = usePaged(sortedActive, PAGE_SIZES_SMALL, 'tech-assignments-active', []);
+    // One comparator for Active and History. Missing/unknown priorities
+    // rank last; priority and pay ties fall back to newest date.
+    const compareJobs = useCallback((a: WorkOrder, b: WorkOrder) => {
+        const da = jobDateTimeValue(a.scheduleDate, a.scheduleTime);
+        const db = jobDateTimeValue(b.scheduleDate, b.scheduleTime);
+        if (sortBy === 'priority') {
+            const prio: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+            return ((prio[a.priority as string] ?? 4) - (prio[b.priority as string] ?? 4)) || (db - da);
+        }
+        if (sortBy === 'pay') return ((b.pay || 0) - (a.pay || 0)) || (db - da);
+        return dateAsc ? da - db : db - da;
+    }, [sortBy, dateAsc]);
 
-    const completedAssignments = useMemo(() => {
-        return techWorkOrders.filter(wo => wo.status === 'completed').sort((a, b) => {
-            const da = jobDateTimeValue(a.scheduleDate, a.scheduleTime);
-            const db = jobDateTimeValue(b.scheduleDate, b.scheduleTime);
-            return dateAsc ? da - db : db - da;
-        });
-    }, [techWorkOrders, dateAsc]);
-    const historyPager = usePaged(completedAssignments, PAGE_SIZES_LARGE, 'tech-assignments-history', []);
+    const sortedActive = useMemo(() => [...activeAssignments].sort(compareJobs), [activeAssignments, compareJobs]);
+    const pagerResetKeys = [deferredSearch, dateRange, activePriorities, sortBy, dateAsc];
+    const activePager = usePaged(sortedActive, PAGE_SIZES_SMALL, 'tech-assignments-active', pagerResetKeys);
+
+    const completedAssignments = useMemo(() =>
+        techWorkOrders.filter(wo => wo.status === 'completed').sort(compareJobs),
+    [techWorkOrders, compareJobs]);
+    const historyPager = usePaged(completedAssignments, PAGE_SIZES_LARGE, 'tech-assignments-history', pagerResetKeys);
 
     // Clicking a date column header sorts by date and toggles soonest/latest.
     const toggleDateSort = () => {

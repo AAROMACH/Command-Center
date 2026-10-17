@@ -39,7 +39,7 @@ export default function ClientBillingPage() {
                 inv.status.toLowerCase().includes(searchQuery.toLowerCase())
             );
     }, [liveInvoices, searchQuery]);
-    const invoicePager = usePaged(myInvoices, PAGE_SIZES_LARGE, 'client-billing-invoices', []);
+    const invoicePager = usePaged(myInvoices, PAGE_SIZES_LARGE, 'client-billing-invoices', [searchQuery]);
 
     if (!mounted || !currentUser) return null;
 

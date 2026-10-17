@@ -62,7 +62,7 @@ export default function ClientsPage() {
     ),
     [clients, searchQuery]
   );
-  const pager = usePaged(filteredClients, PAGE_SIZES_SMALL, 'crm-clients', []);
+  const pager = usePaged(filteredClients, PAGE_SIZES_SMALL, 'crm-clients', [searchQuery]);
 
   const pendingSiteReqs = useMemo(() =>
     siteRequests.filter(r => r.status === 'pending').length,

@@ -8,9 +8,13 @@
        Soft gray canvas + white surfaces so cards read with depth instead of
        white-on-white. */
     --bg-primary: #e7eaf0;   /* app canvas — deeper cool gray so white cards lift */
+    --bg-primary-rgb: 231 234 240;
     --bg-secondary: #ffffff;  /* cards / surfaces — pop against the canvas */
+    --bg-secondary-rgb: 255 255 255;
     --bg-tertiary: #e2e7ef;   /* sunken — clearly darker than surface (hover / headers) */
+    --bg-tertiary-rgb: 226 231 239;
     --bg-elevated: #ffffff;   /* dialogs, popovers, dropdowns */
+    --bg-elevated-rgb: 255 255 255;
 
     /* Account-level display font (Settings → Display Font). Overridden by
        [data-font] on <html>, set from Technician.uiFontPreference — see
@@ -23,50 +27,88 @@
     --app-mono-font: 'JetBrains Mono', monospace;
 
     --brand-red: #CC2200;
+
+    --brand-red-rgb: 204 34 0;
     --brand-red-hover: #E02500;
+    --brand-red-hover-rgb: 224 37 0;
     --brand-red-dim: #ffeeee;
+    --brand-red-dim-rgb: 255 238 238;
 
     --brand-cyan: #0095A8;
+
+    --brand-cyan-rgb: 0 149 168;
 
     /* Blue = "in progress / info" semantic and the Tech-portal accent.
        Emerald = the Client-portal accent (its own labeled dimension, kept
        distinct from the status green). */
     --brand-blue: #2563eb;
+    --brand-blue-rgb: 37 99 235;
     --brand-emerald: #059669;
+    --brand-emerald-rgb: 5 150 105;
     --brand-purple: #6d28d9;
+    --brand-purple-rgb: 109 40 217;
 
     --accent-gold: #C89B3C;
+
+    --accent-gold-rgb: 200 155 60;
     --accent-gold-dim: #fdf8eb;
+    --accent-gold-dim-rgb: 253 248 235;
 
     --text-primary: #000000;
+
+    --text-primary-rgb: 0 0 0;
     --text-secondary: #262626;
+    --text-secondary-rgb: 38 38 38;
     --text-muted: #596273;   /* deeper slate so muted labels/ghost text read */
+    --text-muted-rgb: 89 98 115;
     --text-red: #CC2200;
+    --text-red-rgb: 204 34 0;
     --text-gold: #8b6c2a;
+    --text-gold-rgb: 139 108 42;
     --text-green: #1f8a55;
+    --text-green-rgb: 31 138 85;
 
     --border-main: #bcc4d1;  /* stronger — outline buttons/inputs/cards read clearly */
+
+    --border-main-rgb: 188 196 209;
     --border-sub: #d3dae4;
+    --border-sub-rgb: 211 218 228;
     --border-alert: #ffcccc;
+    --border-alert-rgb: 255 204 204;
     --border-gold: #f5e6cc;
+    --border-gold-rgb: 245 230 204;
     --border-green: #ccebd8;
+    --border-green-rgb: 204 235 216;
     --green-border: #ccebd8;  /* alias: Tailwind `green-border` maps to this */
+    --green-border-rgb: 204 235 216;
     --green-dim: #eef9f3;
+    --green-dim-rgb: 238 249 243;
 
     /* Status Colors */
     --status-scheduled: #666666;
+    --status-scheduled-rgb: 102 102 102;
     --status-inprogress: #C89B3C;
+    --status-inprogress-rgb: 200 155 60;
     --status-completed: #1f8a55;
+    --status-completed-rgb: 31 138 85;
     --status-on-hold: #C89B3C;
+    --status-on-hold-rgb: 200 155 60;
     --status-missed: #CC2200;
+    --status-missed-rgb: 204 34 0;
     --status-pending: #C89B3C;
+    --status-pending-rgb: 200 155 60;
     --status-approved: #1f8a55;
+    --status-approved-rgb: 31 138 85;
 
     /* Priority ramp (severity scale, its own dimension) */
     --priority-critical: #CC2200;
+    --priority-critical-rgb: 204 34 0;
     --priority-high: #E0662A;
+    --priority-high-rgb: 224 102 42;
     --priority-medium: #C89B3C;
+    --priority-medium-rgb: 200 155 60;
     --priority-low: #596273;
+    --priority-low-rgb: 89 98 115;
 
     /* ShadCN Theme Mapping (HSL) - Light */
     --background: 220 19% 94%;
@@ -105,44 +147,79 @@
   .dark {
     /* Design System Palette - Dark Mode */
     --bg-primary: #121212;
+    --bg-primary-rgb: 18 18 18;
     --bg-secondary: #1e1e1e;   /* surface lifts off canvas */
+    --bg-secondary-rgb: 30 30 30;
     --bg-tertiary: #2e2e2e;    /* sunken clearly distinct from surface */
+    --bg-tertiary-rgb: 46 46 46;
     --bg-elevated: #333333;
+    --bg-elevated-rgb: 51 51 51;
 
     --brand-red: #CC2200;
+
+    --brand-red-rgb: 204 34 0;
     --brand-red-hover: #E02500;
+    --brand-red-hover-rgb: 224 37 0;
     --brand-red-dim: #3a0a00;
+    --brand-red-dim-rgb: 58 10 0;
 
     --brand-cyan: #00e5ff;
 
+    --brand-cyan-rgb: 0 229 255;
+
     /* Blue / emerald lifted for legibility on the dark canvas */
     --brand-blue: #60a5fa;
+    --brand-blue-rgb: 96 165 250;
     --brand-emerald: #10b981;
+    --brand-emerald-rgb: 16 185 129;
     --brand-purple: #a78bfa;
+    --brand-purple-rgb: 167 139 250;
 
     --accent-gold: #C89B3C;
+
+    --accent-gold-rgb: 200 155 60;
     --accent-gold-dim: #2a1f00;
+    --accent-gold-dim-rgb: 42 31 0;
 
     --text-primary: #FFFFFF;
+
+    --text-primary-rgb: 255 255 255;
     --text-secondary: #B4B4B4;
+    --text-secondary-rgb: 180 180 180;
     --text-muted: #8a8f99;     /* lifted so muted/ghost text is legible */
+    --text-muted-rgb: 138 143 153;
     --text-red: #FF4422;
+    --text-red-rgb: 255 68 34;
     --text-gold: #C89B3C;
+    --text-gold-rgb: 200 155 60;
     --text-green: #44CC88;
+    --text-green-rgb: 68 204 136;
 
     --border-main: #3d3d3d;    /* stronger outline against surface */
+
+    --border-main-rgb: 61 61 61;
     --border-sub: #2c2c2c;
+    --border-sub-rgb: 44 44 44;
     --border-alert: #5a1000;
+    --border-alert-rgb: 90 16 0;
     --border-gold: #4a3500;
+    --border-gold-rgb: 74 53 0;
     --border-green: #0f3a1a;
+    --border-green-rgb: 15 58 26;
     --green-border: #1f5a33;   /* alias: Tailwind `green-border` maps to this */
+    --green-border-rgb: 31 90 51;
     --green-dim: #0a1f0f;
+    --green-dim-rgb: 10 31 15;
 
     /* Priority ramp (severity scale, its own dimension) */
     --priority-critical: #FF4422;
+    --priority-critical-rgb: 255 68 34;
     --priority-high: #F97316;
+    --priority-high-rgb: 249 115 22;
     --priority-medium: #C89B3C;
+    --priority-medium-rgb: 200 155 60;
     --priority-low: #8a8f99;
+    --priority-low-rgb: 138 143 153;
 
     /* ShadCN Theme Mapping (HSL) - Dark */
     --background: 0 0% 7%;
@@ -264,8 +341,10 @@
   .tab:hover {
     @apply text-text-primary;
   }
-  .tab.active {
-    @apply bg-brand-red text-white;
+  /* Radix Tabs marks the selected trigger with data-state, not a class. */
+  .tab.active,
+  .tab[data-state="active"] {
+    @apply bg-brand-red text-white shadow-none;
   }
   .tab-count {
     @apply ml-1 opacity-80;

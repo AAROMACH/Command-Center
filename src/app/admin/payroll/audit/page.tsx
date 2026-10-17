@@ -1,5 +1,6 @@
 'use client';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
+import { statusTone, TONE_BADGE } from '@/lib/status-styles';
 
 import { useState, useMemo, useEffect } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
@@ -407,10 +408,11 @@ export default function PayrollAuditPage() {
         URL.revokeObjectURL(url);
     };
 
-    const statusVariant = (s: string): any => s === 'Approved' ? 'active' : s === 'Submitted' ? 'scheduled' : s === 'Rejected' ? 'destructive' : 'onhold';
+    // Shared status colors (lib/status-styles.ts).
+    const statusVariant = (s: string): any => TONE_BADGE[statusTone('log', s)];
 
     // Paged lists (see components/list-pager.tsx).
-    const logsPager = usePaged(filteredLogs, PAGE_SIZES_LARGE, 'payroll-audit-logs');
+    const logsPager = usePaged(filteredLogs, PAGE_SIZES_LARGE, 'payroll-audit-logs', [searchQuery, statusFilter, dateFrom, dateTo]);
     const stubTechPager = usePaged(approvedLogsByTech, PAGE_SIZES_SMALL, 'payroll-stub-techs');
     const [allStubsFor, setAllStubsFor] = useState<Set<string>>(new Set());
     const sortedDisputes = useMemo(() => [...payrollDisputes].sort((a, b) => (a.status === b.status ? (b.createdAt || '').localeCompare(a.createdAt || '') : a.status === 'open' ? -1 : 1)), [payrollDisputes]);

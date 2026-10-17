@@ -95,7 +95,6 @@ import { DateRange } from "react-day-picker";
 import { cn, formatCityState } from '@/lib/utils';
 import { isArchivedJob, archiveJobRecord, jobTechId, weekOfValue, parseLocalDate, mergeJobs, jobDateTimeValue } from '@/lib/jobs';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
-import { IntelligenceTerminal } from './components/intelligence-terminal';
 import type { Technician, WorkOrder, WeeklyLog, TimeOffRequest, AdminMessage, Invoice, Project } from '@/lib/types';
 import { format, parseISO, subDays, isAfter, addHours, isSameDay, startOfDay, isWithinInterval } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';

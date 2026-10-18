@@ -63,6 +63,7 @@ import { differenceInMinutes, parseISO, format } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { db, auth } from '@/lib/firebase';
+import { NotificationService } from '@/lib/notification-service';
 import { doc, setDoc, updateDoc, deleteDoc, arrayUnion, collection, query, where, onSnapshot, runTransaction } from 'firebase/firestore';
 import { isLockedLog } from '@/lib/weekly-log-core';
 import { isSuperAdmin } from '@/lib/permissions';
@@ -269,7 +270,7 @@ function ImportedJobAudit({
 
              <div className="grid grid-cols-4 gap-1.5 min-w-0 w-full sm:flex sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-1 sm:w-auto sm:pl-3 sm:border-l border-border-sub/50">
                 <div className="flex flex-col items-start gap-0.5 min-w-0 sm:flex-row sm:items-center sm:gap-1 sm:w-auto whitespace-nowrap">
-                    <span className="text-[11px] font-medium text-text-muted" title="Field Nation fee">FN fee (15.85%)</span>
+                    <span className="text-[11px] font-medium text-text-muted" title="Field Nation fee (15.85%)">FN fee<span className="hidden sm:inline"> (15.85%)</span></span>
                     <span className="text-[12px] font-mono font-bold text-text-primary">${totalFnFee.toFixed(2)}</span>
                 </div>
                 <div className="flex flex-col items-start gap-0.5 min-w-0 sm:flex-row sm:items-center sm:gap-1 sm:w-auto whitespace-nowrap">
@@ -374,6 +375,8 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                 resolvedAt: new Date().toISOString(),
                 resolvedBy: adminName,
             });
+            const dispute = payrollDisputes.find(d => d.id === disputeId);
+            if (dispute) NotificationService.disputeResolved(dispute).catch(() => {});
             toast({ title: "Dispute resolved" });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Could not resolve', description: e.message });
@@ -437,6 +440,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         setLocalLog({ ...localLog, reimbursements: updated } as WeeklyLog);
         try {
             await updateDoc(doc(db, 'weeklyLogs', localLog.id), { reimbursements: updated });
+            const r = (localLog.reimbursements || []).find(x => x.id === reimbId);
+            if (r && localLog.techId) NotificationService.notify(localLog.techId,
+                decision === 'approved' ? 'Reimbursement approved' : 'Reimbursement rejected',
+                `Your $${(Number(r.amount) || 0).toFixed(2)} reimbursement (${r.description || 'expense'}) on your log for ${localLog.weekOf} was ${decision === 'approved' ? 'approved' : 'not approved'}.`,
+                { id: localLog.id, type: 'weeklyLog' }, { portal: 'tech', inAppOnly: decision === 'approved' }).catch(() => {});
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Update failed', description: e.message });
         }
@@ -456,6 +464,14 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                 const logRef = doc(db, 'weeklyLogs', localLog.id);
                 await updateDoc(logRef, { status, totalPayout: finalTotal, ...(status === 'Approved' ? { mergeReviewRequired: false } : {}) });
                 onStatusChange(localLog.id, status, finalTotal);
+                if (localLog.techId && status !== localLog.status) {
+                    const msg = status === 'Approved'
+                        ? { title: 'Weekly log approved', body: `Your log for ${localLog.weekOf} was approved — $${finalTotal.toFixed(2)}.` }
+                        : status === 'Rejected'
+                            ? { title: 'Weekly log rejected', body: `Your log for ${localLog.weekOf} was rejected. Check it under Logs and talk to payroll.` }
+                            : { title: 'Weekly log returned', body: `Your log for ${localLog.weekOf} was sent back to Draft for corrections. Fix it and submit again.` };
+                    NotificationService.notify(localLog.techId, msg.title, msg.body, { id: localLog.id, type: 'weeklyLog' }, { portal: 'tech' }).catch(() => {});
+                }
                 const adminId = auth.currentUser?.uid ?? '';
                 const adminName = auth.currentUser?.displayName ?? 'Admin';
                 await auditEvent(
@@ -519,6 +535,9 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                 unsubmitReason: null,
                 unsubmitRequestedAt: null
             });
+            if (localLog.techId) NotificationService.notify(localLog.techId, 'Weekly log reopened',
+                `Your request was approved — your log for ${localLog.weekOf} is a Draft again. Make your changes and submit it.`,
+                { id: localLog.id, type: 'weeklyLog' }, { portal: 'tech' }).catch(() => {});
             const adminId = auth.currentUser?.uid ?? '';
             const adminName = auth.currentUser?.displayName ?? 'Admin';
             await auditEvent(
@@ -856,6 +875,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                     </div>
                                     <DialogDescription className="text-[12px] text-text-muted text-left">
                                         Week of <span className="font-semibold text-text-primary">{(() => { try { const [m, d, y] = (localLog.weekOf || '').split('-'); return format(new Date(+y, +m - 1, +d), 'MMMM d, yyyy'); } catch { return localLog.weekOf; } })()}</span>
+                                        {' · '}{totalJobsCount} {totalJobsCount === 1 ? 'job' : 'jobs'}
                                         {localLog.submittedAt && <> · Submitted {format(parseISO(localLog.submittedAt), 'MMM d, h:mm a')}</>}
                                     </DialogDescription>
                                 </div>
@@ -863,12 +883,8 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             <StatusBadge kind="log" value={localLog.status} className="h-7 px-3 shrink-0 self-start sm:self-center" />
                         </div>
                         {/* Summary strip */}
-                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                             <div className="rounded-xl border border-border-main bg-bg-primary px-3 py-2.5">
-                                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Jobs</p>
-                                <p className="text-lg font-bold tabular-nums text-text-primary leading-tight">{totalJobsCount}</p>
-                            </div>
-                            <div className="rounded-xl border border-border-main bg-bg-primary px-3 py-2.5 col-span-2 sm:col-span-1">
                                 <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Verified</p>
                                 <p className={cn("text-lg font-bold tabular-nums leading-tight", isManifestFullyAudited ? "text-text-green" : "text-accent-gold")}>{auditCompleteCount} <span className="text-[11px] text-text-muted font-semibold">of {totalJobsCount}</span></p>
                                 <div className="mt-1.5 h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
@@ -885,9 +901,9 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                     <p className={cn("text-lg font-bold tabular-nums leading-tight", n ? "text-accent-gold" : "text-text-primary")}>{n}</p>
                                 ); })()}
                             </div>
-                            <div className="rounded-xl border border-green-border/40 bg-green-dim/40 px-3 py-2.5 col-span-2 sm:col-span-1">
+                            <div className="rounded-xl border border-green-border/40 bg-green-dim/40 px-3 py-2.5">
                                 <p className="text-[10px] font-semibold uppercase tracking-wider text-text-green">Total pay</p>
-                                <p className="text-xl font-bold font-mono tabular-nums text-text-green leading-tight">${calculatedTotalPayout.toFixed(2)}</p>
+                                <p className="text-lg font-bold font-mono tabular-nums text-text-green leading-tight">${calculatedTotalPayout.toFixed(2)}</p>
                             </div>
                         </div>
                     </DialogHeader>
@@ -973,7 +989,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                     <Tabs defaultValue="verified" className="flex flex-col sm:flex-1 sm:min-h-0 sm:overflow-hidden">
                         <div className="px-4 sm:px-8 border-b border-border-sub bg-bg-secondary flex flex-col sm:flex-row sm:justify-between sm:items-center shrink-0">
-                            <TabsList className="h-11 sm:h-12 bg-transparent p-0 gap-5 sm:gap-8 justify-start w-full sm:w-auto overflow-x-auto no-scrollbar">
+                            <TabsList className="h-auto min-h-11 sm:h-12 bg-transparent p-0 gap-x-5 sm:gap-8 justify-start w-full sm:w-auto">
                                 <TabsTrigger value="verified" className="tab-trigger-payroll flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0">
                                     <CheckCircle2 size={14} />
                                     <span>Jobs</span>
@@ -1061,7 +1077,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     <div className={cn("order-1 sm:order-2 flex-1 flex flex-col gap-2", !isImported && "sm:flex-row sm:items-center sm:justify-between")}>
                                                         <div className="min-w-0 text-left">
                                                             <div className="flex items-center gap-2 text-left flex-wrap">
-                                                                <p className="text-[13px] font-semibold text-text-primary break-words sm:truncate text-left">{displayTitle}</p>
+                                                                <p className="text-[13px] font-semibold text-text-primary break-words text-left">{displayTitle}</p>
                                                                 {isImported && <Badge variant="info" className="text-[10px] font-semibold uppercase tracking-wide px-1.5">Imported</Badge>}
                                                                 {item.isHelper && (
                                                                     <CounterpartPayBadge workOrderId={item.workOrderId} wantHelper={false} allWeeklyLogs={allWeeklyLogs} allTechnicians={allTechnicians} />
@@ -1217,7 +1233,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     <div className="order-1 sm:order-2 flex-1 flex flex-col gap-2">
                                                         <div className="min-w-0 text-left">
                                                             <div className="flex items-center gap-2 text-left flex-wrap">
-                                                                <p className="text-[13px] font-semibold text-text-primary break-words sm:truncate text-left">{displayTitle}</p>
+                                                                <p className="text-[13px] font-semibold text-text-primary break-words text-left">{displayTitle}</p>
                                                                 {isImported && <Badge variant="info" className="text-[10px] font-semibold uppercase tracking-wide px-1.5">Imported</Badge>}
                                                                 {item.isHelper && (
                                                                     <CounterpartPayBadge workOrderId={item.workOrderId} wantHelper={false} allWeeklyLogs={allWeeklyLogs} allTechnicians={allTechnicians} />
@@ -1274,7 +1290,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                     <ShieldAlert size={12}/> Disputed: {item.disputeReason}
                                                                 </p>
                                                                 {item.disputeNotes && (
-                                                                    <p className="text-[12px] text-text-secondary leading-snug text-left truncate mt-0.5" title={item.disputeNotes}>
+                                                                    <p className="text-[12px] text-text-secondary leading-snug text-left break-words mt-0.5">
                                                                         {item.disputeNotes}
                                                                     </p>
                                                                 )}
@@ -1337,7 +1353,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                                                         <div className="flex-1 text-left min-w-0">
                                                             <div className="flex items-center gap-2 text-left flex-wrap">
-                                                                <p className="text-[13px] font-semibold text-text-primary text-left truncate max-w-[220px]">{report.summary || 'Missing job'}</p>
+                                                                <p className="text-[13px] font-semibold text-text-primary text-left break-words min-w-0">{report.summary || 'Missing job'}</p>
                                                                 <Badge variant="onhold" className="text-[10px] font-semibold uppercase tracking-wide px-1.5">Added by tech · was missing</Badge>
                                                                 <Badge variant="outline" className="text-[10px] font-semibold uppercase tracking-wide px-1.5">{report.jobType || 'Manual'}</Badge>
                                                             </div>

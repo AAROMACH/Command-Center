@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
-import { deliverNotification } from '@/lib/server/notify-delivery';
+import { deliverNotification, opsAdmins, NOTIFY_PORTALS, type NotifyEntity, type NotifyPortal } from '@/lib/server/notify-delivery';
 
 /**
  * Sends a notification (in-app record + email/SMS per the recipient's
@@ -17,6 +17,14 @@ import { deliverNotification } from '@/lib/server/notify-delivery';
  *  - any other approved, active account: the admin audiences, an admin
  *    `userId`, or themselves — never an arbitrary user (this route sends from
  *    the company's verified email/SMS identity, so it must not be a relay).
+ *  - a brand-new account still waiting for approval: only `kind:
+ *    'access_request'`, once — the text is composed here, not by the caller.
+ *
+ * Every record carries a `portal` so someone with more than one portal sees
+ * admin alerts in the Admin Portal and their own job alerts in the Tech
+ * Portal. Admin audiences are 'admin'; Project Managers work from the Tech
+ * Portal, so theirs are 'tech'; a direct alert uses the caller's `portal` or
+ * is inferred from the recipient's roles.
  */
 
 type Audience = 'admins' | 'payroll_admins' | 'project_managers';
@@ -25,10 +33,17 @@ type NotifyPayload = {
   audience?: Audience;
   title: string;
   body: string;
-  entity?: { id: string; type: 'assignment' | 'project' | 'request' | 'lead' };
+  entity?: NotifyEntity;
   /** Routine activity: in-app record only, no email/SMS. */
   inAppOnly?: boolean;
+  /** Which portal's bell shows it (direct alerts only; audiences are fixed). */
+  portal?: NotifyPortal;
+  /** A server-composed alert. */
+  kind?: 'access_request';
 };
+
+const AUDIENCE_PORTAL: Record<Audience, NotifyPortal> = { admins: 'admin', payroll_admins: 'admin', project_managers: 'tech' };
+const ENTITY_TYPES = new Set<NotifyEntity['type']>(['assignment', 'project', 'request', 'lead', 'weeklyLog', 'user']);
 
 const ADMIN_ROLES = ['super_admin', 'dispatch_admin', 'payroll_admin'];
 const AUDIENCE_ROLES: Record<Audience, string[]> = {
@@ -86,6 +101,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
+  const fs = getFirestore(adminApp);
+
+  // A new sign-up tells the ops admins once. Pending accounts can't do
+  // anything else here.
+  if (payload.kind === 'access_request') {
+    const ref = fs.collection('users').doc(callerId);
+    const snap = await ref.get();
+    const u = snap.data() || {};
+    if (!snap.exists || u.approvalStatus !== 'pending' || u.accessRequestNotifiedAt) {
+      return NextResponse.json({ status: 'skipped' });
+    }
+    await ref.update({ accessRequestNotifiedAt: new Date().toISOString() });
+    const who = [u.name, u.email].filter(Boolean).join(' · ') || 'Someone';
+    await deliverNotification(fs, await opsAdmins(fs), {
+      title: 'Access request',
+      body: `${who} signed up and is waiting for approval. Approve or deny them in the Directory.`,
+      entity: { id: callerId, type: 'user' }, sentBy: callerId, portal: 'admin',
+    });
+    return NextResponse.json({ status: 'sent' });
+  }
+
   const title = typeof payload.title === 'string' ? payload.title.trim().slice(0, 200) : '';
   const body = typeof payload.body === 'string' ? payload.body.trim().slice(0, 4000) : '';
   const { userId, audience } = payload;
@@ -93,7 +129,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Need title, body and a userId or audience' }, { status: 400 });
   }
 
-  const fs = getFirestore(adminApp);
   const callerSnap = await fs.collection('users').doc(callerId).get();
   const caller = callerSnap.data() || {};
   if (!callerSnap.exists || !isActive(caller) || rolesOf(caller).length === 0) {
@@ -108,6 +143,9 @@ export async function POST(req: NextRequest) {
     // Never notify someone about their own action.
     recipients = snap.docs.map(d => ({ id: d.id, data: d.data() })).filter(r => r.id !== callerId);
   } else {
+    // Never notify someone about their own action (an admin who assigns a
+    // job to themselves already knows).
+    if (String(userId) === callerId) return NextResponse.json({ status: 'skipped', recipients: 0 });
     const snap = await fs.collection('users').doc(String(userId)).get();
     if (!snap.exists) return NextResponse.json({ error: 'Unknown user' }, { status: 404 });
     const data = snap.data() || {};
@@ -118,8 +156,13 @@ export async function POST(req: NextRequest) {
     recipients = [{ id: snap.id, data }];
   }
 
-  const entity = payload.entity && typeof payload.entity.id === 'string' ? payload.entity : undefined;
-  const sent = await deliverNotification(fs, recipients, { title, body, entity, sentBy: callerId, inAppOnly: payload.inAppOnly === true });
+  const entity = payload.entity && typeof payload.entity.id === 'string' && ENTITY_TYPES.has(payload.entity.type)
+    ? { id: payload.entity.id.slice(0, 200), type: payload.entity.type } : undefined;
+  // Audiences have a fixed portal; a direct alert may name one, otherwise
+  // it is inferred per recipient in deliverNotification.
+  const portal: NotifyPortal | undefined = audience ? AUDIENCE_PORTAL[audience]
+    : payload.portal && NOTIFY_PORTALS.includes(payload.portal) ? payload.portal : undefined;
+  const sent = await deliverNotification(fs, recipients, { title, body, entity, sentBy: callerId, inAppOnly: payload.inAppOnly === true, portal });
 
   return NextResponse.json({ status: sent > 0 ? 'sent' : 'recorded', recipients: recipients.length });
 }

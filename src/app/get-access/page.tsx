@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { auth, db } from "@/lib/firebase";
+import { NotificationService } from '@/lib/notification-service';
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
@@ -78,6 +79,8 @@ export default function GetAccessPage() {
         updatedAt: new Date().toISOString(),
         createdVia: "self_registration",
       });
+      // Ask the ops admins to approve the new account (sent once).
+      NotificationService.requestAccess().catch(() => {});
 
       toast({ title: "Access requested", description: "An admin will review your account shortly." });
       router.push("/pending-approval");

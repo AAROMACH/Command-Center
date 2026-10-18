@@ -9,6 +9,24 @@ import {
   disputeItem, fileJob, jobsOnOwnLogs, moveItem, removeJobFromDrafts, requestUnsubmit, submitLog, unsubmitLog,
   type CarriedFigures,
 } from '@/lib/server/weekly-log-server';
+import { deliverNotification, payrollAdmins } from '@/lib/server/notify-delivery';
+
+/**
+ * Tells payroll (super_admin + payroll_admin) about a tech's change to their
+ * own log. Edits to a Draft are in-app only — payroll acts once it's
+ * submitted, and the submission alert sums them up. Never fails the request.
+ */
+async function tellPayroll(callerId: string, logId: string, build: (log: Record<string, any>) => { title: string; body: string; inAppOnly: boolean }) {
+  try {
+    const fs = getFirestore(adminApp);
+    const log = (await fs.collection('weeklyLogs').doc(logId).get()).data() || {};
+    const recipients = (await payrollAdmins(fs)).filter(r => r.id !== callerId);
+    const { title, body, inAppOnly } = build(log);
+    await deliverNotification(fs, recipients, { title, body, inAppOnly, entity: { id: logId, type: 'weeklyLog' }, sentBy: callerId, portal: 'admin' });
+  } catch (e) {
+    console.error('[weekly-log] payroll alert failed', e);
+  }
+}
 
 /**
  * The only way a technician changes a weekly log (see
@@ -87,24 +105,64 @@ export async function POST(req: NextRequest) {
         await confirmItem(uid, String(body.logId), String(body.itemId));
         return NextResponse.json({ ok: true });
 
-      case 'disputeItem':
+      case 'disputeItem': {
         await disputeItem(uid, String(body.logId), String(body.itemId), body.reason, body.notes);
+        await tellPayroll(uid, String(body.logId), log => {
+          const item = (log.items || []).find((i: WeeklyLogItem) => i.id === body.itemId);
+          return {
+            title: 'Job disputed on weekly log',
+            body: `${callerName} disputed ${item?.workOrderId ? `job ${String(item.workOrderId).toUpperCase()}` : 'a job'} on their log for ${log.weekOf || 'this week'}. Reason: ${String(body.reason || '').replace(/_/g, ' ')}.`,
+            inAppOnly: true,
+          };
+        });
         return NextResponse.json({ ok: true });
+      }
 
-      case 'addReimbursement':
-        return NextResponse.json({ result: await addReimbursement(uid, String(body.logId), {
+      case 'addReimbursement': {
+        const result = await addReimbursement(uid, String(body.logId), {
           itemId: body.itemId, amount: body.amount, description: body.description, note: body.note, receiptUrl: body.receiptUrl,
-        }) });
+        });
+        await tellPayroll(uid, String(body.logId), log => ({
+          title: 'Reimbursement requested',
+          body: `${callerName} added a $${(Number(body.amount) || 0).toFixed(2)} reimbursement (${String(body.description || '').slice(0, 120)}) to their log for ${log.weekOf || 'this week'}.`,
+          inAppOnly: true,
+        }));
+        return NextResponse.json({ result });
+      }
 
       case 'deleteReimbursement':
         await deleteReimbursement(uid, String(body.logId), String(body.reimbId));
         return NextResponse.json({ ok: true });
 
-      case 'addMissingReport':
-        return NextResponse.json({ result: await addMissingReport(uid, String(body.logId), body.report || {}) });
+      case 'addMissingReport': {
+        const result = await addMissingReport(uid, String(body.logId), body.report || {});
+        await tellPayroll(uid, String(body.logId), log => ({
+          title: 'Missing job reported',
+          body: `${callerName} reported a job missing from their log for ${log.weekOf || 'this week'}: ${String(body.report?.location || '').slice(0, 120)} on ${String(body.report?.date || '').slice(0, 20)}.`,
+          inAppOnly: true,
+        }));
+        return NextResponse.json({ result });
+      }
 
-      case 'submit':
-        return NextResponse.json({ result: await submitLog(uid, String(body.logId), callerName) });
+      case 'submit': {
+        const result = await submitLog(uid, String(body.logId), callerName);
+        await tellPayroll(uid, String(body.logId), log => {
+          const disputed = (log.items || []).filter((i: WeeklyLogItem) => i.confirmationStatus === 'disputed').length;
+          const reimb = (log.reimbursements || []).filter((r: { status?: string }) => r.status === 'pending').length;
+          const missing = (log.missingAssignmentReports || []).length;
+          const flags = [
+            disputed && `${disputed} disputed job${disputed === 1 ? '' : 's'}`,
+            reimb && `${reimb} reimbursement${reimb === 1 ? '' : 's'} to review`,
+            missing && `${missing} missing-job report${missing === 1 ? '' : 's'}`,
+          ].filter(Boolean);
+          return {
+            title: 'Weekly log submitted',
+            body: `${callerName} submitted their log for ${log.weekOf || 'the week'} — ${(log.items || []).length} job${(log.items || []).length === 1 ? '' : 's'}, $${(Number(result) || 0).toFixed(2)}.${flags.length ? ` Needs review: ${flags.join(', ')}.` : ''}`,
+            inAppOnly: false,
+          };
+        });
+        return NextResponse.json({ result });
+      }
 
       case 'moveItem':
         if (!hasPermission(caller, 'tech.logs.move_assignment')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -120,6 +178,11 @@ export async function POST(req: NextRequest) {
 
       case 'requestUnsubmit':
         await requestUnsubmit(uid, String(body.logId), body.reason);
+        await tellPayroll(uid, String(body.logId), log => ({
+          title: 'Log reopen requested',
+          body: `${callerName} asked to reopen their ${log.status || ''} log for ${log.weekOf || 'the week'}. Reason: ${String(body.reason || '').slice(0, 300)}`,
+          inAppOnly: false,
+        }));
         return NextResponse.json({ ok: true });
 
       default:

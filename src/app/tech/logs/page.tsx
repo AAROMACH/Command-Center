@@ -446,6 +446,7 @@ export default function TechWeeklyLogPage() {
             NotificationService.notifyPayrollAdmins(
                 "Payroll dispute filed",
                 `${currentUser?.name || 'A technician'} disputed ${disputeSubject} on the weekly log for ${activeLog.weekOf}. Reason: ${payrollDisputeReason.replace(/_/g, ' ')}.`,
+                { id: activeLog.id, type: 'weeklyLog' },
             ).catch(() => {});
             toast({ title: "Dispute filed", description: "An admin will review this against your weekly log." });
             setIsPayrollDisputeOpen(false);
@@ -946,7 +947,7 @@ export default function TechWeeklyLogPage() {
                                 </div>
                                 <div className="min-w-0 text-left flex-1">
                                     <div className="flex flex-wrap items-center gap-2 text-left">
-                                        <h3 className="text-[14px] font-semibold text-text-primary truncate max-w-[420px] text-left">{report.summary || 'Missing job'}</h3>
+                                        <h3 className="text-[14px] font-semibold text-text-primary break-words text-left min-w-0">{report.summary || 'Missing job'}</h3>
                                         <Badge variant="pending" className="text-[10px] uppercase tracking-wide">Reported missing</Badge>
                                         {report.jobType && <Badge variant="outline" className="text-[10px] uppercase tracking-wide">{report.jobType}</Badge>}
                                     </div>
@@ -1230,8 +1231,9 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
             <CardContent className="p-0 text-left">
                 <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-6 text-left">
                     <div className="flex flex-wrap items-center gap-4 sm:gap-6 flex-1 min-w-0 text-left">
+                        {/* Phones: the status badge says the same thing, so the icon gives its width to the title. */}
                         <div className={cn(
-                            "h-10 w-10 rounded-xl border flex items-center justify-center shrink-0 shadow-inner",
+                            "hidden sm:flex h-10 w-10 rounded-xl border items-center justify-center shrink-0 shadow-inner",
                             isDisputed ? "bg-brand-red-dim text-text-red border-brand-red/30" : 
                             isConfirmed ? "bg-green-dim text-text-green border-green-border/30" : "bg-bg-tertiary border-border-sub text-text-muted"
                         )}>
@@ -1239,7 +1241,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                         </div>
                         <div className="min-w-0 text-left flex-1">
                             <div className="flex flex-wrap items-center gap-2 text-left">
-                                <h3 className="text-[14px] font-semibold text-text-primary truncate max-w-[520px] text-left">{shown.title || shown.description}</h3>
+                                <h3 className="text-[14px] font-semibold text-text-primary break-words text-left min-w-0">{shown.title || shown.description}</h3>
                                 {item.isHelper && <Badge variant="outline" className="text-[10px] uppercase tracking-wide">Helper</Badge>}
                                 {isConfirmed && <StatusBadge kind="log" value="approved" label="Confirmed" />}
                                 {isDisputed && <StatusBadge kind="log" value="rejected" label="Disputed" />}

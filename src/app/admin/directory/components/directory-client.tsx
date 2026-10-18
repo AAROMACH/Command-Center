@@ -65,6 +65,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO } from 'date-fns';
 import { useSearchParams } from 'next/navigation';
 import { db, auth } from "@/lib/firebase";
+import { NotificationService } from '@/lib/notification-service';
 import { doc, updateDoc, setDoc, deleteDoc, addDoc, collection } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -813,8 +814,10 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                             &quot;{req.reason}&quot;
                                                         </div>
                                                         <div className="flex gap-2">
-                                                            <Button variant="outline" size="sm" className="flex-1 h-7 text-[11px] font-bold border-border-alert text-text-red hover:bg-brand-red-dim" onClick={() => updateDoc(doc(db, 'timeOffRequests', req.id), { status: 'denied' })}>Deny</Button>
-                                                            <Button variant="default" size="sm" className="flex-1 h-7 text-[11px] font-bold bg-text-green hover:bg-text-green/90" onClick={() => updateDoc(doc(db, 'timeOffRequests', req.id), { status: 'approved' })}>Approve</Button>
+                                                            <Button variant="outline" size="sm" className="flex-1 h-7 text-[11px] font-bold border-border-alert text-text-red hover:bg-brand-red-dim" onClick={() => updateDoc(doc(db, 'timeOffRequests', req.id), { status: 'denied' }).then(() => NotificationService.notify(req.techId, 'Time off not approved',
+                                                                `Your ${req.type} request for ${req.startDate} to ${req.endDate} was denied. Talk to dispatch if you have questions.`, undefined, { portal: 'tech' }))}>Deny</Button>
+                                                            <Button variant="default" size="sm" className="flex-1 h-7 text-[11px] font-bold bg-text-green hover:bg-text-green/90" onClick={() => updateDoc(doc(db, 'timeOffRequests', req.id), { status: 'approved' }).then(() => NotificationService.notify(req.techId, 'Time off approved',
+                                                                `Your ${req.type} request for ${req.startDate} to ${req.endDate} was approved.`, undefined, { portal: 'tech' }))}>Approve</Button>
                                                         </div>
                                                     </CardContent>
                                                 </Card>

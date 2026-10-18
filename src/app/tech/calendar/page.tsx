@@ -136,8 +136,9 @@ export default function TechCalendarPage() {
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [drawerJob, setDrawerJob] = useState<JobWithSrc | null>(null);
-  // Phones skip the month grid: a day picker, then the day's list or map.
-  const [mobileTab, setMobileTab] = useState<'list' | 'map'>('list');
+  // Phones: Day list (week strip + that day's jobs), Calendar (month grid —
+  // tapping a day opens its list), or Map. Desktop shows all three at once.
+  const [mobileTab, setMobileTab] = useState<'list' | 'calendar' | 'map'>('list');
   const [isMapExpanded, setIsMapExpanded] = useState(false);
 
   const [currentTech, setCurrentTech] = useState<Technician | null>(null);
@@ -344,8 +345,18 @@ export default function TechCalendarPage() {
 
       <div className="flex flex-col rounded-xl border border-border-main bg-bg-secondary shadow-sm overflow-hidden">
 
-        {/* ── Topbar ── */}
-        <div className="hidden md:flex min-h-[52px] shrink-0 items-center gap-2 px-3 sm:px-4 py-1.5 border-b border-border-sub">
+        {/* Phones: Day list → Calendar → Map */}
+        <div className="tabs md:hidden flex-nowrap px-3 pt-3 pb-2 border-b border-border-sub" role="tablist">
+          {([['list', 'Day list'], ['calendar', 'Calendar'], ['map', 'Map']] as const).map(([t, label]) => (
+            <button key={t} type="button" role="tab" aria-selected={mobileTab === t} onClick={() => setMobileTab(t)}
+              className={cn('tab flex-1 text-center', mobileTab === t && 'active')}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Topbar (month navigation) ── */}
+        <div className={cn(mobileTab === 'calendar' ? 'flex' : 'hidden', 'md:flex min-h-[52px] shrink-0 items-center gap-2 px-3 sm:px-4 py-1.5 border-b border-border-sub')}>
           <div className="flex items-center gap-1">
             <button onClick={() => setMonthDate(d => subMonths(d, 1))} aria-label="Previous month"
               className="h-10 w-10 sm:h-8 sm:w-8 flex items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-bg-primary transition-colors">
@@ -365,7 +376,7 @@ export default function TechCalendarPage() {
         </div>
 
         {/* ── Phones: day picker (week strip) ── */}
-        <div className="md:hidden border-b border-border-sub px-3 py-2.5 space-y-2.5">
+        <div className={cn(mobileTab === 'calendar' ? 'hidden' : 'block', 'md:hidden border-b border-border-sub px-3 py-2.5 space-y-2.5')}>
           <div className="flex items-center gap-1">
             <button onClick={() => pickDay(addDays(selectedDate, -1))} aria-label="Previous day"
               className="h-10 w-10 flex items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-bg-primary transition-colors">
@@ -408,7 +419,7 @@ export default function TechCalendarPage() {
         </div>
 
         {/* ── Full-width Monthly Calendar (md and up) ── */}
-        <div className="hidden md:block border-b border-border-sub">
+        <div className={cn(mobileTab === 'calendar' ? 'block' : 'hidden', 'md:block border-b border-border-sub')}>
           <div className="grid grid-cols-7 bg-bg-tertiary border-b border-border-sub">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
               <div key={d} className="py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-text-muted">{d}</div>
@@ -425,9 +436,14 @@ export default function TechCalendarPage() {
               return (
                 <div
                   key={idx}
-                  onClick={() => inMonth && handleSelectDate(day)}
+                  onClick={() => {
+                    if (!inMonth) return;
+                    handleSelectDate(day);
+                    // Phones: a tapped day opens its job list.
+                    if (window.matchMedia('(max-width: 767px)').matches) setMobileTab('list');
+                  }}
                   className={cn(
-                    'min-h-[80px] p-1.5 flex flex-col gap-0.5 transition-colors',
+                    'min-h-[56px] md:min-h-[80px] p-1 md:p-1.5 flex flex-col gap-0.5 transition-colors',
                     inMonth ? 'cursor-pointer' : 'opacity-25 pointer-events-none',
                     inMonth && !isCurrentDay && !isSelectedDay && 'hover:bg-bg-tertiary',
                     isCurrentDay && 'bg-brand-red/5',
@@ -440,6 +456,15 @@ export default function TechCalendarPage() {
                     !isCurrentDay && isSelectedDay  && 'text-brand-red',
                     !isCurrentDay && !isSelectedDay && 'text-text-muted',
                   )}>{format(day, 'd')}</span>
+                  {/* Phones: a dot per job — cells are too narrow for titles */}
+                  {dayJobs.length > 0 && (
+                    <div className="flex md:hidden flex-wrap gap-0.5 pl-0.5 pointer-events-none">
+                      {dayJobs.slice(0, 4).map(wo => (
+                        <span key={wo.id} className={cn('h-1.5 w-1.5 rounded-full', TONE_DOT[statusTone('job', wo.status)])} />
+                      ))}
+                    </div>
+                  )}
+                  <div className="hidden md:contents">
                   {visible.map((wo, i) => (
                     <CalendarChip
                       key={wo.id}
@@ -453,6 +478,7 @@ export default function TechCalendarPage() {
                       +{overflow} more
                     </span>
                   )}
+                  </div>
                 </div>
               );
             })}
@@ -486,16 +512,6 @@ export default function TechCalendarPage() {
           <span className="hidden md:inline ml-auto text-[11px] text-text-muted font-medium">
             {format(selectedDate, 'EEE, MMM d')} · {selectedDateJobs.length} job{selectedDateJobs.length !== 1 ? 's' : ''}
           </span>
-        </div>
-
-        {/* Phones: switch the day section between its job list and map */}
-        <div className="tabs md:hidden flex-nowrap px-3 pt-3" role="tablist">
-          {([['list', 'Day list'], ['map', 'Map']] as const).map(([t, label]) => (
-            <button key={t} type="button" role="tab" aria-selected={mobileTab === t} onClick={() => setMobileTab(t)}
-              className={cn('tab flex-1 text-center', mobileTab === t && 'active')}>
-              {label}
-            </button>
-          ))}
         </div>
 
         {/* ── Below section: Map + Job List + Drawer ── */}

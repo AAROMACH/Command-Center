@@ -280,7 +280,8 @@ export function DispatchPageClient() {
                 client.id, 
                 "New Assignment Staged", 
                 `A new work order [${order.title}] has been created for your site at ${order.location}.`,
-                { id: order.id, type: 'assignment' }
+                { id: order.id, type: 'assignment' },
+                { portal: 'client' }
             );
         }
     } catch (e: any) {
@@ -308,12 +309,13 @@ export function DispatchPageClient() {
         });
         toast({ title: "Request logged", description: "Service request added to Requests." });
         
-        const adminIds = technicians.filter(t => t.roles?.includes('super_admin') || t.roles?.includes('dispatch_admin')).map(t => t.id);
-        await NotificationService.broadcast(
-            adminIds,
-            "Urgent Intake Ticket",
-            `New service request received from ${request.clientName} for site ${request.location}.`,
-            { id: request.id, type: 'request' }
+        // Logged by an admin, so the other admins get an in-app heads-up only
+        // (the server leaves out whoever logged it).
+        await NotificationService.notifyAdmins(
+            "New service request",
+            `${request.clientName} — ${request.location}. Logged by dispatch.`,
+            { id: request.id, type: 'request' },
+            { inAppOnly: true }
         );
     } catch (e: any) {
         toast({ variant: "destructive", title: "Save failed", description: e.message });
@@ -653,7 +655,8 @@ export function DispatchPageClient() {
                         wo.assignedTechnicianId!,
                         "New job assigned",
                         `Job ${wo.id.toUpperCase()} was assigned to you. Confirm the schedule in the Tech Portal.`,
-                        { id: asmtId, type: 'assignment' }
+                        { id: asmtId, type: 'assignment' },
+                        { portal: 'tech' }
                     )));
                 }
 

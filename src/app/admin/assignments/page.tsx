@@ -574,15 +574,23 @@ export default function AssignmentsHubPage() {
         title="Assignments"
         subtitle="Scheduled jobs and job history."
         actions={
-        <div className="flex flex-wrap items-center gap-3 text-left">
+        <div className="flex w-full flex-wrap items-center gap-3 text-left sm:w-auto">
             <SearchField
               value={searchQuery}
               onChange={setSearchQuery}
               placeholder="Search tech, ID or title…"
-              className="basis-full md:basis-auto md:w-[300px]"
+              className="min-w-0 flex-1 md:flex-none md:w-[300px]"
               inputClassName="sm:h-10"
             />
-            
+            {/* Every job matching the search / filters / dates — both tabs,
+                any status — not just the page on screen. Sits beside the
+                search on phones, after the filters from sm up. */}
+            <Button variant="outline" className="h-11 shrink-0 sm:order-last sm:h-10" disabled={filteredWorkOrders.length === 0}
+              onClick={() => exportAssignmentsCsv(filteredWorkOrders, id => techById.get(id)?.name, isPayAdmin(currentUser))}
+              title={`Export ${filteredWorkOrders.length} job${filteredWorkOrders.length === 1 ? '' : 's'} with locations`}>
+              <Download size={14} className="mr-1.5" /> CSV ({filteredWorkOrders.length})
+            </Button>
+
             <div className="flex w-full gap-2 sm:w-auto">
               <SortControl
                 value={sortBy}
@@ -608,13 +616,6 @@ export default function AssignmentsHubPage() {
                 </FilterSection>
               </FiltersPopover>
               <DateRangeButton value={dateRange} onChange={setDateRange} />
-              {/* Every job matching the search / filters / dates — both tabs,
-                  any status — not just the page on screen. */}
-              <Button variant="outline" className="h-10 shrink-0" disabled={filteredWorkOrders.length === 0}
-                onClick={() => exportAssignmentsCsv(filteredWorkOrders, id => techById.get(id)?.name, isPayAdmin(currentUser))}
-                title={`Export ${filteredWorkOrders.length} job${filteredWorkOrders.length === 1 ? '' : 's'} with locations`}>
-                <Download size={14} className="mr-1.5" /> CSV ({filteredWorkOrders.length})
-              </Button>
             </div>
         </div>
         }

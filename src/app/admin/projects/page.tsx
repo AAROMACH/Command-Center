@@ -184,12 +184,12 @@ export default function ProjectsPage() {
         title="Projects"
         subtitle="Large network and cabling projects, managed in phases."
         actions={
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <SearchField value={searchQuery} onChange={setSearchQuery} placeholder="Search projects…" className="w-full sm:w-[220px]" />
             
-            <div className="flex items-center gap-2">
+            <div className="flex w-full items-center gap-2 sm:w-auto">
                 <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                    <SelectTrigger className="w-[160px] h-10 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-wider">
+                    <SelectTrigger className="min-w-0 flex-1 sm:w-[160px] sm:flex-none h-10 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-wider">
                         <SelectValue placeholder="Sort by" />
                     </SelectTrigger>
                     <SelectContent>
@@ -199,7 +199,7 @@ export default function ProjectsPage() {
                         <SelectItem value="progress" className="text-[10px] font-bold">Progress %</SelectItem>
                     </SelectContent>
                 </Select>
-                <div className="flex items-center border border-border-main rounded-md overflow-hidden h-10">
+                <div className="flex shrink-0 items-center border border-border-main rounded-md overflow-hidden h-10">
                     <button onClick={() => setViewMode('list')} className={cn('px-2.5 h-full flex items-center transition-colors', viewMode === 'list' ? 'bg-brand-red text-white' : 'bg-bg-secondary text-text-muted hover:text-text-primary')}>
                         <LayoutList size={14} />
                     </button>
@@ -210,9 +210,9 @@ export default function ProjectsPage() {
 
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className={cn("h-10", hasActiveFilters && "border-brand-red text-brand-red")}>
-                      <SlidersHorizontal size={14} className="mr-2"/>
-                      Filter
+                    <Button variant="outline" size="sm" aria-label="Filter" className={cn("h-10 shrink-0", hasActiveFilters && "border-brand-red text-brand-red")}>
+                      <SlidersHorizontal size={14} className="sm:mr-2"/>
+                      <span className="hidden sm:inline">Filter</span>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
@@ -264,9 +264,9 @@ export default function ProjectsPage() {
                   </PopoverContent>
                 </Popover>
 
-                <Button variant="default" size="default" onClick={() => setIsNewDialogOpen(true)}>
+                <Button variant="default" size="default" className="shrink-0" onClick={() => setIsNewDialogOpen(true)}>
                     <Plus size={14} className="mr-2"/>
-                    New project
+                    New<span className="hidden sm:inline">&nbsp;project</span>
                 </Button>
             </div>
         </div>

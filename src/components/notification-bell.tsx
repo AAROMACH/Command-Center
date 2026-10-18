@@ -31,12 +31,16 @@ export function NotificationBell() {
   const [links, setLinks] = useState<Record<string, string>>({});
   const router = useRouter();
 
+  // The portal being viewed. Someone with several portals (a super admin who
+  // also works jobs) sees only that portal's alerts here.
+  const portal = portalOf(pathname);
+
   useEffect(() => {
     if (!user?.id) return;
     const q = query(collection(db, 'notifications'), where('userId', '==', user.id));
     return onSnapshot(q, (snap) => {
-      const unread = snap.docs.map(d => d.data()).filter(n => n.type === 'push' && !n.read);
-      const portal = pathname.startsWith('/tech') ? 'tech' : pathname.startsWith('/client') ? 'client' : pathname.startsWith('/sales') ? 'sales' : 'admin';
+      const unread = snap.docs.map(d => d.data())
+        .filter(n => n.type === 'push' && !n.read && notificationPortals(n).includes(portal));
       setLinks(Object.fromEntries(unread
         .map(n => [`notif:${n.id}`, entityHref(portal, n.relatedEntityType, n.relatedEntityId)])
         .filter(([, href]) => !!href)));
@@ -45,13 +49,13 @@ export function NotificationBell() {
           id: `notif:${n.id}`,
           subject: String(n.title || '').replace(/^\[AAROMACH\]\s*/, ''),
           body: n.body,
-          type: /approved|won|new project/i.test(n.title) ? 'success' : /rejected|stale|overdue/i.test(n.body) ? 'warning' : 'info',
+          type: /approved|won|new project/i.test(n.title) ? 'success' : /rejected|stale|overdue|dispute/i.test(`${n.title} ${n.body}`) ? 'warning' : 'info',
           timestamp: n.timestamp,
           targetPortal: 'all',
           senderName: 'Command Center',
         } as AdminMessage)));
     }, () => setPersonal([]));
-  }, [user?.id, pathname]);
+  }, [user?.id, portal]);
   const [open, setOpen] = useState(false);
   // "View all" expands the popover list past the 3 most recent.
   const [showAll, setShowAll] = useState(false);
@@ -59,7 +63,7 @@ export function NotificationBell() {
 
   // Listen to Firestore broadcasts in real-time
   useEffect(() => {
-    const currentPortal = pathname.includes('/tech') ? 'tech' : pathname.includes('/client') ? 'client' : pathname.startsWith('/sales') ? 'sales' : 'admin';
+    const currentPortal = portal;
     const q = query(collection(db, 'broadcasts'));
     const unsub = onSnapshot(q, (snap) => {
         const now = new Date();
@@ -74,10 +78,10 @@ export function NotificationBell() {
         setFirestoreBroadcasts(docs);
     });
     return () => unsub();
-  }, [pathname]);
+  }, [portal]);
 
   const fetchMessages = useCallback(() => {
-    const currentPortal = pathname.includes('/tech') ? 'tech' : pathname.includes('/client') ? 'client' : pathname.startsWith('/sales') ? 'sales' : 'admin';
+    const currentPortal = portal;
     const now = new Date();
 
     // 1. Load Broadcast Ledger (Custom messages from same device/session)
@@ -122,7 +126,7 @@ export function NotificationBell() {
     const sorted = unique.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     setMessages(sorted);
-  }, [pathname, firestoreBroadcasts, personal, user?.acknowledgedBroadcastIds]);
+  }, [portal, firestoreBroadcasts, personal, user?.acknowledgedBroadcastIds]);
 
   useEffect(() => {
     fetchMessages();
@@ -329,12 +333,41 @@ function stampLabel(ts: string): string {
   } catch { return ''; }
 }
 
+type Portal = 'admin' | 'tech' | 'client' | 'sales';
+const PORTALS: Portal[] = ['admin', 'tech', 'client', 'sales'];
+
+/** /admin → admin, /tech → tech, /client → client, /sales → sales. */
+function portalOf(pathname: string): Portal {
+  if (pathname.startsWith('/tech')) return 'tech';
+  if (pathname.startsWith('/client')) return 'client';
+  if (pathname.startsWith('/sales')) return 'sales';
+  return 'admin';
+}
+
+// Titles of alerts written before records carried a portal, by where they
+// belong. Anything not listed shows in every portal so no old alert is lost.
+const LEGACY_ADMIN = /status alert|job completed|payroll dispute|deal won|urgent intake|sold project|waiting on kickoff/i;
+const LEGACY_TECH = /new job assigned|added to a project|tasks? assigned to you|crew (checked|updated)|task completed|project tasks complete|document added|project (status changed|closed)/i;
+
+/** Which portals' bells show this notification record. */
+function notificationPortals(n: Record<string, any>): Portal[] {
+  if (PORTALS.includes(n.portal)) return [n.portal];
+  const title = String(n.title || '');
+  if (LEGACY_ADMIN.test(title)) return ['admin'];
+  if (LEGACY_TECH.test(title)) return ['tech'];
+  if (/new assignment staged/i.test(title)) return ['client'];
+  if (n.relatedEntityType === 'lead') return ['sales', 'admin'];
+  return PORTALS;
+}
+
 /** The page a notification's linked record opens in the viewer's portal. */
-function entityHref(portal: 'admin' | 'tech' | 'client' | 'sales', type?: string, id?: string): string {
+function entityHref(portal: Portal, type?: string, id?: string): string {
   if (!type || !id) return '';
   if (type === 'project') return portal === 'tech' ? `/tech/projects/${id}` : portal === 'client' ? '/client/projects' : portal === 'admin' ? `/admin/projects/${id}` : '';
   if (type === 'assignment') return portal === 'tech' ? `/tech/assignments/${id}` : portal === 'admin' ? `/admin/assignments/${id}` : '';
   if (type === 'request') return portal === 'admin' ? '/admin/requests' : portal === 'client' ? '/client/tickets' : '';
   if (type === 'lead') return portal === 'sales' ? '/sales/pipeline' : portal === 'admin' ? '/admin/crm' : '';
+  if (type === 'weeklyLog') return portal === 'tech' ? '/tech/logs' : portal === 'admin' ? '/admin/payroll/audit' : '';
+  if (type === 'user') return portal === 'admin' ? `/admin/directory/${id}` : '';
   return '';
 }

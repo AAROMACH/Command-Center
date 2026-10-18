@@ -408,7 +408,7 @@ export default function AdminCalendarPage() {
       <div className="flex flex-col rounded-xl border border-border-sub bg-bg-secondary overflow-hidden">
 
         {/* ── Topbar ── */}
-        <div className="h-[52px] shrink-0 flex items-center gap-2 px-4 border-b border-border-sub">
+        <div className="min-h-[52px] shrink-0 flex flex-wrap items-center gap-2 px-4 py-2 md:h-[52px] md:flex-nowrap md:py-0 border-b border-border-sub">
           <div className="flex items-center gap-1">
             <button onClick={() => setMonthDate(d => subMonths(d, 1))}
               className="h-7 w-7 flex items-center justify-center rounded text-text-muted hover:text-text-primary hover:bg-bg-primary transition-colors">
@@ -424,7 +424,7 @@ export default function AdminCalendarPage() {
               Today
             </button>
           </div>
-          <span className="text-[16px] font-medium text-text-primary ml-1">{format(monthDate, 'MMMM yyyy')}</span>
+          <span className="whitespace-nowrap text-[16px] font-medium text-text-primary ml-1">{format(monthDate, 'MMMM yyyy')}</span>
 
           {unassignedCount > 0 && (
             <div className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md bg-brand-red/10 text-brand-red font-medium ml-1 shrink-0">
@@ -432,9 +432,9 @@ export default function AdminCalendarPage() {
             </div>
           )}
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="flex w-full items-center gap-2 md:ml-auto md:w-auto">
             <Select value={filterTech} onValueChange={setFilterTech}>
-              <SelectTrigger className="h-7 text-[11px] w-[120px] bg-bg-primary border-border-sub">
+              <SelectTrigger className="h-7 text-[11px] min-w-0 flex-1 md:w-[120px] md:flex-none bg-bg-primary border-border-sub">
                 <Users size={10} className="mr-1 text-text-muted shrink-0" />
                 <SelectValue placeholder="All techs" />
               </SelectTrigger>
@@ -444,7 +444,7 @@ export default function AdminCalendarPage() {
               </SelectContent>
             </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="h-7 text-[11px] w-[110px] bg-bg-primary border-border-sub">
+              <SelectTrigger className="h-7 text-[11px] min-w-0 flex-1 md:w-[110px] md:flex-none bg-bg-primary border-border-sub">
                 <Filter size={10} className="mr-1 text-text-muted shrink-0" />
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
@@ -454,7 +454,7 @@ export default function AdminCalendarPage() {
               </SelectContent>
             </Select>
             <button onClick={handleExportIcs}
-              className="h-7 px-2.5 flex items-center gap-1.5 text-[11px] text-text-secondary hover:text-text-primary rounded-md border border-border-sub hover:border-border-main bg-bg-primary transition-colors">
+              className="h-7 px-2.5 shrink-0 flex items-center gap-1.5 text-[11px] text-text-secondary hover:text-text-primary rounded-md border border-border-sub hover:border-border-main bg-bg-primary transition-colors">
               <Download size={12} /><span className="hidden sm:inline">Export</span>
             </button>
           </div>

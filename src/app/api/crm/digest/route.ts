@@ -92,6 +92,7 @@ export async function POST(req: NextRequest) {
       title: `Your CRM day — ${today}`,
       body: `${parts.join('\n\n')}\n\nOpen My Day in the CRM to work the list.`,
       sentBy: 'system',
+      portal: (r.data.roles || []).includes('sales') ? 'sales' : 'admin',
     });
     repMessages++;
   }
@@ -104,6 +105,7 @@ export async function POST(req: NextRequest) {
       body: waiting.map(p => `  • ${p.name}${p.handoffAt ? ` — handed off ${String(p.handoffAt).slice(0, 10)}` : ''}${p.soldBy ? ` by ${p.soldBy}` : ''}`).join('\n')
         + '\n\nAssign a crew and set a start date to move them to active.',
       sentBy: 'system',
+      portal: 'admin',
     });
   }
 

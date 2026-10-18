@@ -344,7 +344,7 @@ export default function AdminMessagingPage() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={cn(
-              'text-[13px] font-medium px-4 py-3 border-b-2 transition-colors whitespace-nowrap',
+              'flex-1 sm:flex-none text-[13px] font-medium px-2 sm:px-4 py-3 border-b-2 transition-colors whitespace-nowrap',
               activeTab === tab
                 ? 'border-brand-red text-brand-red'
                 : 'border-transparent text-text-muted hover:text-text-secondary'

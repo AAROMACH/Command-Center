@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { db } from "@/lib/firebase";
+import { NotificationService } from '@/lib/notification-service';
 import { collection, onSnapshot, query, where, doc, setDoc } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
@@ -219,6 +220,9 @@ export default function ClientTicketsPage() {
         try {
             const ticketId = await createDocId(ID_PREFIXES.CLIENT_REQUEST);
             await setDoc(doc(db, 'clientRequests', ticketId), { ...newTicket, id: ticketId });
+            NotificationService.notifyAdmins('New client request',
+                `${newTicket.clientName}${newTicket.location ? ` — ${newTicket.location}` : ''}: ${String(newTicket.description || '').slice(0, 200)}${newTicket.priority ? ` (priority: ${newTicket.priority})` : ''}`,
+                { id: ticketId, type: 'request' }).catch(() => {});
             toast({
                 title: "Request sent",
                 description: "We'll review your request and follow up shortly.",

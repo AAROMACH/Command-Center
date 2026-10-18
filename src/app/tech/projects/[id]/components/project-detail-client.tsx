@@ -774,6 +774,12 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
                 allDone ? 'Project tasks complete' : 'Task completed',
                 `${nameOf(currentUserId || '')} completed "${task.name}" on ${project.name}.${allDone ? '\nEvery task is done — ready to close out.' : ''}`,
                 !allDone);
+            // Admins hear only the milestone, not every checked-off task.
+            if (allDone) {
+                NotificationService.notifyAdmins('Project tasks complete',
+                    `Every task on ${project.name} is done (last: "${task.name}" by ${nameOf(currentUserId || '')}). Ready to close out.`,
+                    { id: project.id, type: 'project' }).catch(() => {});
+            }
         }
     };
 
@@ -874,7 +880,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             });
 
             toast({ title: 'Checked out', description: `Your hours were logged.` });
-            NotificationService.notifyProjectManagers(project.id, 'Crew checked out', `${nameOf(currentUserId || '')} checked out of ${project.name} after ${hoursWorked}h.`);
+            // No PM alert on check-out — the check-in alert and the daily log cover it.
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
@@ -912,7 +918,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
                 </div>
             </div>
 
-            <div className="detail-tabs overflow-x-auto sm:justify-center">
+            <div className="detail-tabs">
                 <button className={`detail-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Overview</button>
                 <button className={`detail-tab ${activeTab === 'milestones' ? 'active' : ''}`} onClick={() => setActiveTab('milestones')}>Milestones</button>
                 {canLead && <button className={`detail-tab ${activeTab === 'plan' ? 'active' : ''}`} onClick={() => setActiveTab('plan')}>Plan</button>}

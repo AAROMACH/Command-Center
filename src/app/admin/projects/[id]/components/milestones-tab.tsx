@@ -297,7 +297,7 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
             fresh.forEach((names, techId) => NotificationService.notify(techId,
                 names.length === 1 ? 'Task assigned to you' : `${names.length} tasks assigned to you`,
                 `${project.name}: ${names.slice(0, 5).join(', ')}${names.length > 5 ? '…' : ''}`,
-                { id: project.id, type: 'project' }));
+                { id: project.id, type: 'project' }, { portal: 'tech' }));
             setIsEditing(false);
             toast({ title: "Tasks saved", description: "Phases and tasks saved." });
         } catch (e: any) {

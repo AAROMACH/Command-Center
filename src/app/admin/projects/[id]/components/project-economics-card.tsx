@@ -29,7 +29,7 @@ export function ProjectEconomicsCard({ project, projectEconomics }: { project: P
                             </Badge>
                         </div>
                         
-                        <div className="grid grid-cols-5 gap-px bg-border-sub border border-border-sub rounded-lg overflow-hidden mb-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-px bg-border-sub border border-border-sub rounded-lg overflow-hidden mb-4">
                             <div className="bg-bg-primary p-3 space-y-1">
                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Master Budget</p>
                                 <p className="text-xs font-mono font-bold text-text-primary">
@@ -54,7 +54,7 @@ export function ProjectEconomicsCard({ project, projectEconomics }: { project: P
                                     {project.projectBudget ? formatCurrency(projectEconomics.remainingBudget) : 'TBD'}
                                 </p>
                             </div>
-                            <div className="bg-bg-primary p-3 space-y-1">
+                            <div className="col-span-2 sm:col-span-1 bg-bg-primary p-3 space-y-1">
                                 <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
                                     {projectEconomics.isActualProfit ? 'Actual Profit' : 'Est. Profit'}
                                 </p>

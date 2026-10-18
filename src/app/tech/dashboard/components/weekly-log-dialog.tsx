@@ -98,7 +98,7 @@ export function WeeklyLogDialog({ isOpen, setIsOpen, log, onSubmitted, jobs }: W
                                             <TableRow key={item.id || item.workOrderId || `log-item-${index}`} className="border-border-sub">
                                                 <TableCell className="py-2 text-left">
                                                     <div className="id-text">{(wo?.id || item.workOrderId || 'N/A').toUpperCase()}</div>
-                                                    <div className="text-[12px] text-text-secondary truncate max-w-[200px] text-left">{wo?.title || wo?.description || 'Job details unavailable'}</div>
+                                                    <div className="text-[12px] text-text-secondary break-words text-left">{wo?.title || wo?.description || 'Job details unavailable'}</div>
                                                 </TableCell>
                                                 <TableCell className="py-2">
                                                     <StatusBadge kind="log" value={item.confirmationStatus === 'confirmed' ? 'approved' : item.confirmationStatus === 'disputed' ? 'rejected' : 'submitted'} label={item.confirmationStatus ? (item.confirmationStatus === 'confirmed' ? 'Confirmed' : 'Disputed') : 'To review'} />

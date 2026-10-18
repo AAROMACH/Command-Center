@@ -78,6 +78,7 @@ import { WorkOrderId } from "@/components/work-order-id";
 import { isPayAdmin } from "@/lib/permissions";
 import { archiveJobRecord, toUnassignedWorkOrder } from "@/lib/jobs";
 import { db } from "@/lib/firebase";
+import { NotificationService } from '@/lib/notification-service';
 import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { PAY_TYPE_LABELS, ID_PREFIXES } from '@/lib/constants';
 import { createDocId } from '@/lib/generateId';
@@ -245,6 +246,7 @@ export const WorkOrdersTable = React.memo(({
 
       await setDoc(assignmentRef, assignmentData);
       await deleteDoc(woRef);
+      NotificationService.notifyJobChange(selectedOrder, assignmentData, assignmentId).catch(() => {});
 
       setIsDialogOpen(false);
       setSelectedOrder(null);
@@ -336,6 +338,7 @@ export const WorkOrdersTable = React.memo(({
       setDoc(doc(db, 'workOrders', targetWo.id), sanitize(targetWo))
         .then(() => deleteDoc(doc(db, 'assignments', editedOrder.id)))
         .then(() => runAudit('assignments'))
+        .then(() => NotificationService.notifyJobChange(selectedOrder, finalUpdate))
         .catch((e: any) => {
           console.error("Unassign Error:", e);
           toast({ variant: "destructive", title: "Save failed", description: e.message });
@@ -353,6 +356,7 @@ export const WorkOrdersTable = React.memo(({
           await setDoc(doc(db, 'assignments', assignmentId), assignmentData);
           await deleteDoc(doc(db, 'workOrders', editedOrder.id));
           runAudit('workOrders');
+          NotificationService.notifyJobChange(selectedOrder, finalUpdate, assignmentId).catch(() => {});
         } catch (e: any) {
           console.error("Assign Error:", e);
           toast({ variant: "destructive", title: "Save failed", description: e.message });
@@ -363,6 +367,7 @@ export const WorkOrdersTable = React.memo(({
       const docRef = doc(db, collectionName, editedOrder.id);
       updateDoc(docRef, sanitize({ ...finalUpdate })).then(async () => {
         runAudit(collectionName);
+        if (collectionName === 'assignments') NotificationService.notifyJobChange(selectedOrder, finalUpdate).catch(() => {});
         if (collectionName === 'assignments' && newTechId !== prevTechId) {
           const moved = await moveJobLogOnSwap({ job: finalUpdate as WorkOrder, fromTechIds: [prevTechId, selectedOrder.assignedTechnicianId], toTechId: newTechId });
           const note = describeSwapLogMove(moved, technicians.find(t => t.id === prevTechId)?.name || 'the previous tech', technicians.find(t => t.id === newTechId)?.name || 'the new tech');

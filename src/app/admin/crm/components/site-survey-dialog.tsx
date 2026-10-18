@@ -185,7 +185,7 @@ export function SiteSurveyDialog({ open, lead, survey, currentUserId, currentUse
         </DialogHeader>
 
         {/* Section tabs */}
-        <div className="flex gap-1 px-5 pt-3 overflow-x-auto shrink-0">
+        <div className="flex flex-wrap gap-1 px-5 pt-3 shrink-0">
           {ordered.map(s => (
             <button key={s.key} onClick={() => setSection(s.key)}
               className={cn('px-3 h-8 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap border transition-colors',

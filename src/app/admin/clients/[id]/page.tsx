@@ -373,7 +373,7 @@ export default function ClientWorkspacePage() {
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <div className="overflow-x-auto">
-                    <TabsList className="border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-6 mb-6 min-w-max w-full">
+                    <TabsList className="grid grid-cols-3 sm:flex border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-x-3 gap-y-1 sm:gap-6 mb-6 w-full sm:min-w-max">
                         {[
                             { value: 'overview', label: 'Overview' },
                             { value: 'sites', label: `Sites (${clientSites.length})` },
@@ -500,7 +500,7 @@ export default function ClientWorkspacePage() {
                 {/* Contacts */}
                 <TabsContent value="contacts" className="m-0">
                     <div className="flex items-center justify-between mb-4 gap-3">
-                        <div className="flex items-center gap-2 overflow-x-auto">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
                             {['all', 'main', 'billing', 'site', 'emergency', 'decision_maker'].map(f => (
                                 <button
                                     key={f}
@@ -556,7 +556,7 @@ export default function ClientWorkspacePage() {
 
                 {/* Jobs */}
                 <TabsContent value="jobs" className="m-0">
-                    <div className="flex items-center gap-2 mb-4 overflow-x-auto">
+                    <div className="flex flex-wrap items-center gap-2 mb-4">
                         {[
                             { value: 'all', label: 'All' },
                             { value: 'open', label: 'Open' },

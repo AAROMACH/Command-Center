@@ -5,6 +5,7 @@ import { statusTone, TONE_BADGE } from '@/lib/status-styles';
 import { useState, useMemo, useEffect } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { db, auth } from '@/lib/firebase';
+import { NotificationService } from '@/lib/notification-service';
 import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, where, runTransaction } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -186,6 +187,7 @@ export default function PayrollAuditPage() {
                 'payrollDisputes', dispute.id, adminId, adminName, 'resolved_dispute',
                 `Resolved ${dispute.reason.replace(/_/g, ' ')} dispute from ${dispute.techName} for week of ${dispute.weekOf}.`
             ).catch(() => {});
+            NotificationService.disputeResolved(dispute).catch(() => {});
             toast({ title: 'Dispute resolved' });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Could Not Resolve', description: e.message });
@@ -233,14 +235,13 @@ export default function PayrollAuditPage() {
             .filter(log => {
                 if (techFilter !== 'all' && log.techId !== techFilter) return false;
                 if (statusFilter !== 'all' && log.status !== statusFilter) return false;
-                // weekOf is 'MM-dd-yyyy' (the week's Monday) but the date
-                // inputs give 'yyyy-MM-dd' — compare real dates, and keep any
-                // week that overlaps the chosen range.
+                // Filter on the log's own "week of" date (the week's Monday,
+                // 'MM-dd-yyyy'), never when it was submitted. The date inputs
+                // give 'yyyy-MM-dd', so compare real dates.
                 const weekStart = weekOfTime(log.weekOf);
                 if (dateFrom || dateTo) {
                     if (weekStart === null) return false;
-                    const weekEnd = weekStart + 6 * DAY_MS;
-                    if (dateFrom && weekEnd < inputDateTime(dateFrom)) return false;
+                    if (dateFrom && weekStart < inputDateTime(dateFrom)) return false;
                     if (dateTo && weekStart > inputDateTime(dateTo)) return false;
                 }
                 return true;
@@ -796,14 +797,14 @@ export default function PayrollAuditPage() {
 
             {/* Tabs */}
             <Tabs defaultValue="weekly" className="w-full">
-                <TabsList className="border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-4 sm:gap-8 justify-start mb-4 flex-nowrap overflow-x-auto max-w-full">
+                <TabsList className="border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-x-4 sm:gap-8 justify-start mb-4 w-full sm:w-auto">
                     {[
                         { value: 'weekly', label: 'Weekly', count: filteredLogs.length },
-                        { value: 'history', label: 'Paystub history', count: approvedLogsByTech.length },
+                        { value: 'history', label: 'Paystub history', short: 'Paystubs', count: approvedLogsByTech.length },
                         { value: 'adjustments', label: 'Adjustments', count: adjustments.length + payrollDisputes.filter(d => d.status === 'open').length },
                     ].map(t => (
                         <TabsTrigger key={t.value} value={t.value} className="tab-underline">
-                            {t.label}
+                            {'short' in t ? <><span className="sm:hidden">{t.short}</span><span className="hidden sm:inline">{t.label}</span></> : t.label}
                             {t.count > 0 && <span className="text-[10px] font-bold bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">{t.count}</span>}
                         </TabsTrigger>
                     ))}
@@ -822,7 +823,8 @@ export default function PayrollAuditPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
+                        {/* Even 3 + 2 grid on phones; one inline row from sm up. */}
+                        <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
                             {(['all', 'Draft', 'Submitted', 'Approved', 'Rejected'] as const).map(s => (
                                 <button
                                     key={s}
@@ -836,10 +838,11 @@ export default function PayrollAuditPage() {
                                 </button>
                             ))}
                         </div>
-                        <div className="flex items-center gap-2">
-                            <input type="date" className="h-9 px-3 rounded-lg border border-border-main bg-bg-primary text-[12px] font-bold text-text-primary" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="From" />
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[12px] font-medium text-text-muted">Week of</span>
+                            <input type="date" className="h-9 min-w-0 px-3 rounded-lg border border-border-main bg-bg-primary text-[12px] font-bold text-text-primary" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Week of — from" aria-label="Week of, from" />
                             <span className="text-[11px] text-text-muted">to</span>
-                            <input type="date" className="h-9 px-3 rounded-lg border border-border-main bg-bg-primary text-[12px] font-bold text-text-primary" value={dateTo} onChange={e => setDateTo(e.target.value)} title="To" />
+                            <input type="date" className="h-9 min-w-0 px-3 rounded-lg border border-border-main bg-bg-primary text-[12px] font-bold text-text-primary" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Week of — to" aria-label="Week of, to" />
                             {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[11px] text-brand-red font-bold hover:underline">Clear</button>}
                         </div>
                     </div>

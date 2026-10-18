@@ -322,30 +322,30 @@ export default function DashboardPage() {
                 }
             />
 
-            {/* Financial KPIs — compact top strip */}
-            <div className="flex flex-wrap items-center gap-2 mb-4 px-1">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary">
+            {/* Financial KPIs — even 2×2 box on phones/tablets, one row on desktop */}
+            <div className="grid grid-cols-2 lg:flex lg:flex-wrap lg:items-center gap-2 mb-4 px-1">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary min-w-0">
                     <Banknote size={11} className="text-text-green shrink-0" />
                     <div>
                         <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Revenue this month</p>
                         <p className="text-[12px] font-bold font-mono text-text-green">${financialKpis.mtdRevenue.toLocaleString()}</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary min-w-0">
                     <TrendingUp size={11} className="text-text-green shrink-0" />
                     <div>
                         <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Profit this month</p>
                         <p className={cn('text-[12px] font-bold font-mono', financialKpis.mtdProfit >= 0 ? 'text-text-green' : 'text-text-red')}>${financialKpis.mtdProfit.toLocaleString()}</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary min-w-0">
                     <TrendingUp size={11} className="text-accent-gold shrink-0" />
                     <div>
                         <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Outstanding</p>
                         <p className="text-[12px] font-bold font-mono text-accent-gold">${financialKpis.outstanding.toLocaleString()}</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary min-w-0">
                     <Zap size={11} className="text-brand-red shrink-0" />
                     <div>
                         <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Upcoming payroll</p>

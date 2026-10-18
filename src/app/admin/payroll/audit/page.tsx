@@ -39,6 +39,7 @@ import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
+import { EmptyState } from '@/components/empty-state';
 import { SearchField } from '@/components/search-field';
 
 // Within a group of duplicate weekly logs for the same tech+week, picks the
@@ -96,7 +97,12 @@ export default function PayrollAuditPage() {
     const router = useRouter();
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
-    const [searchQuery, setSearchQuery] = useState('');
+    // Weekly tab: one technician (or all), picked from an A–Z list.
+    const [techFilter, setTechFilter] = useState<string>('all');
+    // Paystub history: by technician, or everyone for one week.
+    const [historyView, setHistoryView] = useState<'tech' | 'week'>('tech');
+    const [historyTech, setHistoryTech] = useState<string>('');
+    const [historyWeek, setHistoryWeek] = useState<string>('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
@@ -225,9 +231,7 @@ export default function PayrollAuditPage() {
     const filteredLogs = useMemo(() => {
         return weeklyLogs
             .filter(log => {
-                const tech = technicians.find(t => t.id === log.techId);
-                const techName = (tech?.name || '').toLowerCase();
-                if (searchQuery && !techName.includes(searchQuery.toLowerCase())) return false;
+                if (techFilter !== 'all' && log.techId !== techFilter) return false;
                 if (statusFilter !== 'all' && log.status !== statusFilter) return false;
                 // weekOf is 'MM-dd-yyyy' (the week's Monday) but the date
                 // inputs give 'yyyy-MM-dd' — compare real dates, and keep any
@@ -242,7 +246,7 @@ export default function PayrollAuditPage() {
                 return true;
             })
             .sort(byWeekDesc);
-    }, [weeklyLogs, technicians, searchQuery, statusFilter, dateFrom, dateTo]);
+    }, [weeklyLogs, technicians, techFilter, statusFilter, dateFrom, dateTo]);
 
     const totals = useMemo(() => ({
         approved: filteredLogs.filter(l => l.status === 'Approved').reduce((s, l) => s + settlementOf(l), 0),
@@ -415,8 +419,25 @@ export default function PayrollAuditPage() {
     const statusVariant = (s: string): any => TONE_BADGE[statusTone('log', s)];
 
     // Paged lists (see components/list-pager.tsx).
-    const logsPager = usePaged(filteredLogs, PAGE_SIZES_LARGE, 'payroll-audit-logs', [searchQuery, statusFilter, dateFrom, dateTo]);
-    const stubTechPager = usePaged(approvedLogsByTech, PAGE_SIZES_SMALL, 'payroll-stub-techs');
+    const logsPager = usePaged(filteredLogs, PAGE_SIZES_LARGE, 'payroll-audit-logs', [techFilter, statusFilter, dateFrom, dateTo]);
+    // Everyone who has ever had a weekly log, A–Z — the dropdown lists.
+    const loggingTechs = useMemo(() => {
+        const ids = new Set(weeklyLogs.map(l => l.techId));
+        return [...ids].map(id => ({ id, name: technicians.find(t => t.id === id)?.name || id }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }, [weeklyLogs, technicians]);
+    // Weeks that have any log, newest first.
+    const logWeeks = useMemo(() => [...new Set(weeklyLogs.map(l => l.weekOf).filter(Boolean))]
+        .sort((a, b) => (weekOfTime(b) ?? 0) - (weekOfTime(a) ?? 0)), [weeklyLogs]);
+    const historyTechEntry = approvedLogsByTech.find(([id]) => id === historyTech)?.[1];
+    const weekLogs = useMemo(() => weeklyLogs.filter(l => l.weekOf === historyWeek)
+        .sort((a, b) => (technicians.find(t => t.id === a.techId)?.name || '').localeCompare(technicians.find(t => t.id === b.techId)?.name || '')),
+        [weeklyLogs, historyWeek, technicians]);
+    const weekNoLog = useMemo(() => {
+        if (!historyWeek) return [];
+        const has = new Set(weekLogs.map(l => l.techId));
+        return loggingTechs.filter(t => !has.has(t.id));
+    }, [historyWeek, weekLogs, loggingTechs]);
     const [allStubsFor, setAllStubsFor] = useState<Set<string>>(new Set());
     // One search box for disputes and adjustments: tech, week, reason, notes, amount.
     const adjQuery = adjSearch.trim().toLowerCase();
@@ -777,14 +798,14 @@ export default function PayrollAuditPage() {
                 <TabsContent value="weekly" className="m-0 space-y-4">
                     {/* Filters */}
                     <div className="flex flex-wrap gap-3 p-3 bg-bg-secondary/60 border border-border-sub rounded-xl">
-                        <div className="relative flex-1 min-w-[180px]">
-                            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                            <input
-                                className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-main bg-bg-primary text-[12px] font-bold tracking-wide text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-red transition-colors"
-                                placeholder="Search by tech name..."
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                            />
+                        <div className="flex-1 min-w-[200px]">
+                            <Select value={techFilter} onValueChange={setTechFilter}>
+                                <SelectTrigger className="h-9" aria-label="Technician"><SelectValue placeholder="All technicians" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All technicians</SelectItem>
+                                    {loggingTechs.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="flex items-center gap-2">
                             {(['all', 'Draft', 'Submitted', 'Approved', 'Rejected'] as const).map(s => (
@@ -814,47 +835,118 @@ export default function PayrollAuditPage() {
 
                 {/* ── Paystub History ── */}
                 <TabsContent value="history" className="m-0 space-y-3">
-                    {approvedLogsByTech.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
-                            <Receipt size={28} className="text-text-muted mx-auto mb-3" />
-                            <p className="text-[11px] font-bold text-text-muted">No approved logs yet</p>
+                    <div className="flex flex-wrap items-center gap-3 p-3 bg-bg-secondary/60 border border-border-sub rounded-xl">
+                        <div className="tabs flex-nowrap" role="tablist" aria-label="History view">
+                            {([['tech', 'By technician'], ['week', 'By week']] as const).map(([v, label]) => (
+                                <button key={v} type="button" role="tab" aria-selected={historyView === v}
+                                    className={cn('tab', historyView === v && 'active')} onClick={() => setHistoryView(v)}>{label}</button>
+                            ))}
                         </div>
-                    ) : stubTechPager.items.map(([techId, { tech, logs }]) => (
-                        <div key={techId} className="rounded-xl border border-border-sub bg-bg-secondary overflow-hidden">
-                            <div className="flex items-center justify-between px-4 py-3 bg-bg-tertiary/30 border-b border-border-sub">
-                                <div>
-                                    <p className="text-[12px] font-bold text-text-primary">{tech?.name || techId}</p>
-                                    <p className="text-[11px] text-text-muted">{logs.length} approved logs · ${logs.reduce((s, l) => s + settlementOf(l), 0).toFixed(2)} total</p>
-                                </div>
-                                <Badge variant="active" className="text-[10px] h-4">{logs.length} stubs</Badge>
-                            </div>
-                            <div className="divide-y divide-border-sub">
-                                {(allStubsFor.has(techId) ? logs : logs.slice(0, 12)).map(log => (
-                                    <div key={log.id} className="flex items-center justify-between px-4 py-2.5">
+                        {historyView === 'tech' ? (
+                            <Select value={historyTech} onValueChange={setHistoryTech}>
+                                <SelectTrigger className="h-9 w-full sm:w-72" aria-label="Technician"><SelectValue placeholder="Choose a technician" /></SelectTrigger>
+                                <SelectContent>
+                                    {approvedLogsByTech.map(([id, { tech, logs }]) => (
+                                        <SelectItem key={id} value={id}>{tech?.name || id} ({logs.length})</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <Select value={historyWeek} onValueChange={setHistoryWeek}>
+                                <SelectTrigger className="h-9 w-full sm:w-72" aria-label="Week"><SelectValue placeholder="Choose a week" /></SelectTrigger>
+                                <SelectContent>
+                                    {logWeeks.map(w => <SelectItem key={w} value={w}>Week of {w}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        )}
+                    </div>
+
+                    {historyView === 'tech' ? (
+                        approvedLogsByTech.length === 0 ? (
+                            <EmptyState icon={Receipt} title="No approved logs yet" description="Paystubs appear here once a weekly log is approved." />
+                        ) : !historyTech || !historyTechEntry ? (
+                            <EmptyState icon={Receipt} title="Choose a technician" description="Pick a name above to see their paystubs." />
+                        ) : (() => {
+                            const { tech, logs } = historyTechEntry;
+                            const techId = historyTech;
+                            return (
+                                <div className="rounded-xl border border-border-sub bg-bg-secondary overflow-hidden">
+                                    <div className="flex items-center justify-between px-4 py-3 bg-bg-tertiary/30 border-b border-border-sub">
                                         <div>
-                                            <p className="text-[12px] font-bold text-text-primary font-mono">Week of {log.weekOf}</p>
-                                            <p className="text-[11px] text-text-muted">{log.items?.length || 0} items</p>
+                                            <p className="text-[13px] font-semibold text-text-primary">{tech?.name || techId}</p>
+                                            <p className="text-[12px] text-text-muted">{logs.length} approved logs · ${logs.reduce((s, l) => s + settlementOf(l), 0).toFixed(2)} total</p>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <p className="text-[12px] font-bold font-mono text-text-green">${settlementOf(log).toFixed(2)}</p>
-                                            <button className="text-[12px] text-text-muted hover:text-text-primary font-bold border border-border-sub rounded px-2 py-0.5 hover:border-border-main transition-colors" onClick={() => downloadPaystub(log, tech, techId, jobsById)}>
-                                                <Download size={9} className="inline mr-0.5" /> Stub
-                                            </button>
-                                        </div>
+                                        <Badge variant="active" className="text-[10px] h-5">{logs.length} stubs</Badge>
                                     </div>
-                                ))}
+                                    <div className="divide-y divide-border-sub">
+                                        {(allStubsFor.has(techId) ? logs : logs.slice(0, 12)).map(log => (
+                                            <div key={log.id} className="flex items-center justify-between px-4 py-2.5">
+                                                <div>
+                                                    <p className="text-[12px] font-semibold text-text-primary font-mono">Week of {log.weekOf}</p>
+                                                    <p className="text-[11px] text-text-muted">{log.items?.length || 0} items</p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-[12px] font-semibold font-mono text-text-green">${settlementOf(log).toFixed(2)}</p>
+                                                    <Button variant="outline" size="sm" onClick={() => openReview(log)}><Receipt size={12} className="mr-1.5" /> Audit log</Button>
+                                                    <Button variant="outline" size="sm" onClick={() => downloadPaystub(log, tech, techId, jobsById)}><Download size={12} className="mr-1.5" /> Stub</Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {logs.length > 12 && (
+                                        <button
+                                            className="w-full px-4 py-2 text-[12px] font-medium text-text-muted hover:text-text-primary border-t border-border-sub"
+                                            onClick={() => setAllStubsFor(prev => { const n = new Set(prev); n.has(techId) ? n.delete(techId) : n.add(techId); return n; })}
+                                        >
+                                            {allStubsFor.has(techId) ? 'Show latest 12' : `Show all ${logs.length} stubs`}
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })()
+                    ) : !historyWeek ? (
+                        <EmptyState icon={Receipt} title="Choose a week" description="Pick a week above to see who turned in a log." />
+                    ) : (
+                        <div className="space-y-3">
+                            {/* Who turned in a log this week, by status */}
+                            <div className="flex flex-wrap gap-2 text-[12px]">
+                                <span className="rounded-full border border-border-sub bg-bg-secondary px-3 py-1 font-medium text-text-primary">{weekLogs.length} {weekLogs.length === 1 ? 'log' : 'logs'}</span>
+                                {(['Submitted', 'Approved', 'Rejected', 'Draft'] as const).map(st => {
+                                    const n = weekLogs.filter(l => l.status === st).length;
+                                    return n ? <Badge key={st} variant={statusVariant(st)} className="h-6 px-2.5 text-[12px]">{n} {st.toLowerCase()}</Badge> : null;
+                                })}
                             </div>
-                            {logs.length > 12 && (
-                                <button
-                                    className="w-full px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-text-muted hover:text-text-primary border-t border-border-sub"
-                                    onClick={() => setAllStubsFor(prev => { const n = new Set(prev); n.has(techId) ? n.delete(techId) : n.add(techId); return n; })}
-                                >
-                                    {allStubsFor.has(techId) ? 'Show latest 12' : `Show all ${logs.length} stubs`}
-                                </button>
+                            <div className="rounded-xl border border-border-sub bg-bg-secondary overflow-hidden divide-y divide-border-sub">
+                                {weekLogs.map(log => {
+                                    const tech = technicians.find(t => t.id === log.techId);
+                                    return (
+                                        <div key={log.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
+                                            <div className="min-w-0">
+                                                <p className="text-[13px] font-semibold text-text-primary">{tech?.name || log.techId}</p>
+                                                <p className="text-[11px] text-text-muted">
+                                                    {log.items?.length || 0} items · {log.status !== 'Draft' && log.submittedAt ? `submitted ${format(parseISO(log.submittedAt), 'MM/dd/yy')}` : 'not submitted yet'}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant={statusVariant(log.status)} className="text-[10px] h-5">{log.status}</Badge>
+                                                <p className="text-[12px] font-semibold font-mono text-text-primary">${settlementOf(log).toFixed(2)}</p>
+                                                <Button variant="outline" size="sm" onClick={() => openReview(log)}><Receipt size={12} className="mr-1.5" /> Audit log</Button>
+                                                {log.status === 'Approved' && (
+                                                    <Button variant="outline" size="sm" onClick={() => downloadPaystub(log, tech, log.techId, jobsById)}><Download size={12} className="mr-1.5" /> Stub</Button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            {weekNoLog.length > 0 && (
+                                <div className="rounded-xl border border-dashed border-border-sub p-3">
+                                    <p className="text-[12px] font-semibold text-text-primary mb-1">No log this week ({weekNoLog.length})</p>
+                                    <p className="text-[12px] text-text-muted">{weekNoLog.map(t => t.name).join(', ')}</p>
+                                </div>
                             )}
                         </div>
-                    ))}
-                    <ListPager pager={stubTechPager} noun="techs" />
+                    )}
                 </TabsContent>
 
                 {/* ── Adjustments ── */}

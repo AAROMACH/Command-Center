@@ -47,7 +47,6 @@ import { ReceiptUploadDialog } from './components/receipt-upload-dialog';
 import { CheckInDialog } from './components/check-in-dialog';
 import { LogSelectionDialog } from './components/log-selection-dialog';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
-import { NotificationBell } from '@/components/notification-bell';
 import { PortalSwitchButton } from '@/components/portal-switch-button';
 import { TERMINOLOGY } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
@@ -196,7 +195,7 @@ export default function TechDashboardPage() {
                 icon={Activity}
                 title={`Hi, ${tech.name?.split(' ')[0] || 'there'}`}
                 subtitle="Your jobs, schedule and logs for today."
-                actions={<div className="flex items-center gap-2"><NotificationBell /><PortalSwitchButton /></div>}
+                actions={<PortalSwitchButton />}
             />
 
             {/* Stat cards */}

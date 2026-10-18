@@ -33,7 +33,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { NotificationBell } from '@/components/notification-bell';
 import { cn } from '@/lib/utils';
 import { jobDateTimeValue } from '@/lib/jobs';
 
@@ -198,7 +197,6 @@ export default function ClientDashboardPage() {
                 icon={LayoutDashboard}
                 title="Dashboard"
                 subtitle={`Jobs, requests and invoices for ${currentUser?.clientCompany || currentUser?.name || 'your account'}.`}
-                actions={<NotificationBell />}
             />
 
             {/* Response-time countdown for open requests */}

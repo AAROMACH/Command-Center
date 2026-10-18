@@ -115,8 +115,9 @@ export function AlertBand() {
         query(collection(db, 'invoices'), where('clientName', '==', company)),
         (snap) => setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)))
       ));
-    } else {
-      // Admin: filtered to only the status values needed for alerts
+    } else if (pathname.startsWith('/admin')) {
+      // Admin: filtered to only the status values needed for alerts. (Sales
+      // has no admin alerts and the rules refuse these reads for it.)
       unsubs.push(onSharedSnapshot('users',
         (snap) => setTechnicians(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)))
       ));
@@ -323,8 +324,8 @@ export function AlertBand() {
 
   return (
     <>
-      <div className="flex items-center justify-between border-b border-border-main bg-sidebar px-4 md:px-8 py-2 overflow-hidden">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="flex items-center justify-between border-b border-border-main bg-sidebar px-2 md:px-8 py-2 overflow-hidden">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
           {alerts.map((alert) => (
             <div
               key={alert.id}
@@ -334,7 +335,7 @@ export function AlertBand() {
               aria-label={`Alert: ${alert.text}`}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), handleAlertClick(alert))}
               className={cn(
-                'flex cursor-pointer items-center gap-2 rounded-md px-3 py-1 text-[12px] font-medium transition-all hover:opacity-80 active:scale-[0.98] whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red',
+                'flex cursor-pointer items-center gap-1.5 md:gap-2 rounded-md px-2 md:px-3 py-1 text-[12px] font-medium transition-all hover:opacity-80 active:scale-[0.98] whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red',
                 {
                   'border border-border-alert bg-brand-red-dim text-text-red': alert.type === 'critical',
                   'border border-border-gold bg-accent-gold-dim text-accent-gold': alert.type === 'warning',

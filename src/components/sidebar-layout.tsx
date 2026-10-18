@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AlertBand } from "@/components/alert-band";
+import { MessagesMenu } from "@/components/messages-menu";
+import { NotificationBell } from "@/components/notification-bell";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { getAvailablePortals } from "@/lib/permissions";
@@ -40,8 +42,13 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-2 px-2 py-1.5 border-r border-border-sub">
               <SidebarTrigger className="text-text-muted hover:text-text-primary h-7 w-7" />
             </div>
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 min-w-0 overflow-hidden">
               <AlertBand />
+            </div>
+            {/* Messages + notifications on every page — small, out of the way */}
+            <div className="flex items-center gap-0.5 px-1.5 shrink-0 border-l border-border-sub">
+              <MessagesMenu />
+              <NotificationBell compact />
             </div>
           </div>
           {/* Page content */}

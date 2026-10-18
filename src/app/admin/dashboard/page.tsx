@@ -28,7 +28,6 @@ import { Badge } from '@/components/ui/badge';
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { getAvailablePortals, isTech } from '@/lib/permissions';
 import { useRouter } from 'next/navigation';
-import { NotificationBell } from '@/components/notification-bell';
 import { PortalSwitchButton } from '@/components/portal-switch-button';
 import { PageHeader } from '@/components/page-header';
 import { TONE_DOT, statusTone } from '@/lib/status-styles';
@@ -318,7 +317,6 @@ export default function DashboardPage() {
                 subtitle="Today's jobs, open requests and what needs attention."
                 actions={
                     <div className="flex items-center gap-3">
-                        <NotificationBell />
                         <PortalSwitchButton />
                     </div>
                 }

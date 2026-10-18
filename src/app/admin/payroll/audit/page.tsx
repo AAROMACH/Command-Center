@@ -471,44 +471,59 @@ export default function PayrollAuditPage() {
                     const isExpanded = expandedLogs.has(log.id);
                     return (
                         <div key={log.id} className="rounded-xl border border-border-sub bg-bg-secondary overflow-hidden">
-                            <div className="w-full flex items-center gap-3 p-3 hover:bg-bg-tertiary transition-colors text-left">
+                            <div className="w-full flex items-center gap-2 sm:gap-3 p-3 hover:bg-bg-tertiary transition-colors text-left">
+                                {/* Phones: name + amount on top, week · items · submitted underneath.
+                                    sm and up: four aligned columns. */}
                                 <button
                                     onClick={() => toggleExpand(log.id)}
-                                    className="flex-1 min-w-0 grid grid-cols-4 gap-3 items-center text-left"
+                                    className="flex-1 min-w-0 flex flex-col gap-1 sm:grid sm:grid-cols-[minmax(0,1fr)_8rem_7rem_7rem] sm:gap-4 sm:items-center text-left"
                                 >
-                                    <div>
-                                        <p className="text-[12px] font-bold text-text-primary">{tech?.name || log.techId}</p>
-                                        <p className="text-[11px] text-text-muted font-mono">Week of {log.weekOf}</p>
+                                    <div className="min-w-0 flex items-center justify-between gap-2 sm:block">
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2 text-[13px] font-semibold text-text-primary min-w-0">
+                                                <span className="truncate">{tech?.name || log.techId}</span>
+                                                <Badge variant={statusVariant(log.status)} className="sm:hidden text-[10px] h-5 shrink-0">{log.status}</Badge>
+                                            </div>
+                                            <p className="hidden sm:block text-[11px] text-text-muted font-mono whitespace-nowrap">Week of {log.weekOf}</p>
+                                        </div>
+                                        <p className={cn('sm:hidden shrink-0 text-[13px] font-semibold font-mono', log.status === 'Approved' ? 'text-text-green' : 'text-text-primary')}>
+                                            ${settlementOf(log).toFixed(2)}
+                                        </p>
                                     </div>
-                                    <div className="flex flex-col items-start gap-1">
-                                        <Badge variant={statusVariant(log.status)} className="text-[10px] h-4 w-fit">{log.status}</Badge>
-                                        {log.mergeReviewRequired && <span className="text-[10px] font-bold text-accent-gold flex items-center gap-1"><AlertTriangle size={10} /> Needs reapproval</span>}
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:flex-col sm:items-start sm:gap-1">
+                                        <Badge variant={statusVariant(log.status)} className="hidden sm:inline-flex text-[10px] h-5 w-fit">{log.status}</Badge>
+                                        <span className="sm:hidden text-[12px] text-text-muted whitespace-nowrap">
+                                            Week of {log.weekOf} · {log.items?.length || 0} {log.items?.length === 1 ? 'job' : 'jobs'}
+                                            {log.status !== 'Draft' && log.submittedAt ? ` · sent ${format(parseISO(log.submittedAt), 'MM/dd')}` : ''}
+                                        </span>
+                                        {log.mergeReviewRequired && <span className="text-[11px] font-semibold text-accent-gold flex items-center gap-1"><AlertTriangle size={11} /> Needs reapproval</span>}
                                     </div>
-                                    <div className="text-right">
+                                    <div className="hidden sm:block text-right">
                                         <p className={cn('text-[12px] font-bold font-mono', log.status === 'Approved' ? 'text-text-green' : 'text-text-primary')}>
                                             ${settlementOf(log).toFixed(2)}
                                         </p>
-                                        <p className="text-[10px] text-text-muted">{log.items?.length || 0} items</p>
+                                        <p className="text-[10px] text-text-muted">{log.items?.length || 0} {log.items?.length === 1 ? 'job' : 'jobs'}</p>
                                     </div>
                                     <div
-                                        className="text-right text-[11px] text-text-muted leading-tight"
+                                        className="hidden sm:block text-right text-[11px] text-text-muted leading-tight"
                                         title={log.submittedAt ? `Submitted ${format(parseISO(log.submittedAt), 'MM/dd/yyyy h:mm a')}` : 'Not submitted yet'}
                                     >
-                                        {log.submittedAt ? (
-                                            <><span className="block text-[10px] tracking-widest">Submitted</span>{format(parseISO(log.submittedAt), 'MM/dd/yy')}</>
+                                        {log.status !== 'Draft' && log.submittedAt ? (
+                                            <><span className="block text-[10px]">Submitted</span>{format(parseISO(log.submittedAt), 'MM/dd/yy')}</>
                                         ) : 'Not submitted'}
                                     </div>
                                 </button>
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-7 shrink-0 text-[10px] font-bold uppercase tracking-wider"
+                                    className="shrink-0 h-10 w-10 p-0 sm:h-8 sm:w-auto sm:px-3"
                                     onClick={() => openReview(log)}
+                                    aria-label="Audit log"
                                 >
-                                    <Receipt size={11} className="mr-1.5" /> Audit log
+                                    <Receipt size={14} className="sm:mr-1.5" /><span className="hidden sm:inline">Audit log</span>
                                 </Button>
-                                <button onClick={() => toggleExpand(log.id)} className="shrink-0 p-1 text-text-muted" aria-label="Expand">
-                                    {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                <button onClick={() => toggleExpand(log.id)} className="shrink-0 flex h-10 w-8 items-center justify-center text-text-muted" aria-label={isExpanded ? 'Collapse' : 'Expand'}>
+                                    {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                                 </button>
                             </div>
                             {isExpanded && log.items && log.items.length > 0 && (
@@ -781,7 +796,7 @@ export default function PayrollAuditPage() {
 
             {/* Tabs */}
             <Tabs defaultValue="weekly" className="w-full">
-                <TabsList className="border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-start mb-4">
+                <TabsList className="border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-4 sm:gap-8 justify-start mb-4 flex-nowrap overflow-x-auto max-w-full">
                     {[
                         { value: 'weekly', label: 'Weekly', count: filteredLogs.length },
                         { value: 'history', label: 'Paystub history', count: approvedLogsByTech.length },
@@ -807,7 +822,7 @@ export default function PayrollAuditPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             {(['all', 'Draft', 'Submitted', 'Approved', 'Rejected'] as const).map(s => (
                                 <button
                                     key={s}

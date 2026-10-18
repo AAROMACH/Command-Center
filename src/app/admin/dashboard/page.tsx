@@ -29,6 +29,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { getAvailablePortals, isTech } from '@/lib/permissions';
 import { useRouter } from 'next/navigation';
 import { NotificationBell } from '@/components/notification-bell';
+import { PortalSwitchButton } from '@/components/portal-switch-button';
 import { PageHeader } from '@/components/page-header';
 import { TONE_DOT, statusTone } from '@/lib/status-styles';
 import { EmptyState } from '@/components/empty-state';
@@ -48,7 +49,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn, compareScheduleTime, isInactiveTechnician } from '@/lib/utils';
-import type { WorkOrder, Technician, Project, WeeklyLog, SiteRequest, ServiceRequest, TimeOffRequest, Invoice } from '@/lib/types';
+import type { WorkOrder, Technician, Project, WeeklyLog, SiteRequest, ServiceRequest, TimeOffRequest, Invoice, PayrollDispute } from '@/lib/types';
 import { isArchivedJob, jobTechId, parseLocalDate, mergeJobs } from '@/lib/jobs';
 import { computeWeeklyLogSettlement } from '@/lib/payroll';
 import { money, computeFinancialSummary } from '@/lib/financial-summary';
@@ -69,6 +70,8 @@ export default function DashboardPage() {
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     const [isPendingDialogOpen, setIsPendingDialogOpen] = useState(false);
+    const [isAttentionOpen, setIsAttentionOpen] = useState(false);
+    const [openDisputes, setOpenDisputes] = useState<PayrollDispute[]>([]);
     const slaRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
 
@@ -123,6 +126,10 @@ export default function DashboardPage() {
             )
         );
 
+        const unsubDisputes = onSnapshot(
+            query(collection(db, 'payrollDisputes'), where('status', '==', 'open')),
+            snap => setOpenDisputes(snap.docs.map(d => ({ ...d.data(), id: d.id } as PayrollDispute))),
+            () => setOpenDisputes([]));
         const unsubTOR = onSnapshot(
             query(collection(db, 'timeOffRequests'), where('status', '==', 'pending')),
             (snap) => setTimeOffRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeOffRequest)))
@@ -152,7 +159,7 @@ export default function DashboardPage() {
 
         return () => {
             unsubUser(); unsubWO(); unsubAsmt(); unsubTech(); unsubProj(); unsubDone(); unsubDoneWO();
-            unsubLogs(); unsubSite(); unsubClientReq(); unsubTOR(); unsubInv();
+            unsubLogs(); unsubSite(); unsubClientReq(); unsubTOR(); unsubDisputes(); unsubInv();
         };
     }, []);
 
@@ -182,6 +189,47 @@ export default function DashboardPage() {
     const pendingLogs = useMemo(() =>
         weeklyLogs.filter(l => l.status === 'Submitted' && !inactiveTechIds.has(l.techId)),
     [weeklyLogs, inactiveTechIds]);
+
+    // Needs attention: things that cost money or a customer if they sit —
+    // each line links to where it's fixed. Routine queues (pending logs, open
+    // requests) have their own tiles and aren't repeated here.
+    const attention = useMemo(() => {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const soon = today.getTime() + 2 * 86_400_000;
+        const items: { id: string; n: number; text: string; detail: string; href: string }[] = [];
+        const add = (id: string, n: number, one: string, many: string, detail: string, href: string) => {
+            if (n > 0) items.push({ id, n, text: `${n} ${n === 1 ? one : many}`, detail, href });
+        };
+        add('disputes', openDisputes.length, 'payroll dispute', 'payroll disputes',
+            'A tech disputed pay on a log that was already sent.', '/admin/payroll/audit');
+        const submitted = weeklyLogs.filter(l => l.status === 'Submitted');
+        add('disputed-items', submitted.reduce((n, l) => n + (l.items || []).filter(i => i.confirmationStatus === 'disputed').length, 0),
+            'disputed job on a submitted log', 'disputed jobs on submitted logs', 'Decide before approving the log.', '/admin/payroll/audit');
+        add('missing', submitted.reduce((n, l) => n + (l.missingAssignmentReports || []).filter(r => !r.isAudited).length, 0),
+            'job reported missing from a log', 'jobs reported missing from logs', 'Check and approve the pay, or decline.', '/admin/payroll/audit');
+        add('reapprove', weeklyLogs.filter(l => l.mergeReviewRequired).length,
+            'approved log needs reapproval', 'approved logs need reapproval', 'A duplicate log was merged into it.', '/admin/payroll/audit');
+        add('unassigned-soon', unassignedJobs.filter(wo => { const d = parseLocalDate(wo.scheduleDate); return !!d && d.getTime() < soon; }).length,
+            'unassigned job due within 2 days', 'unassigned jobs due within 2 days', 'Assign a technician.', '/admin/dispatch');
+        add('overdue-jobs', assignments.filter(wo => { const d = parseLocalDate(wo.scheduleDate); return wo.status !== 'cancelled' && !!d && d.getTime() < today.getTime(); }).length,
+            'job past its date and not completed', 'jobs past their date and not completed', 'Follow up with the tech.', '/admin/assignments');
+        add('overdue-invoices', invoices.filter(i => {
+            if (['paid', 'void', 'cancelled', 'draft'].includes(i.status)) return false;
+            const d = parseLocalDate(i.dueDate);
+            return i.status === 'overdue' || (!!d && d.getTime() < today.getTime());
+        }).length, 'overdue invoice', 'overdue invoices', 'Past the due date and unpaid.', '/admin/financials');
+        add('time-off', timeOffRequests.filter(t => { const d = parseLocalDate(t.startDate); return !!d && d.getTime() < soon; }).length,
+            'time-off request starting within 2 days', 'time-off requests starting within 2 days', 'Approve or deny before it starts.', '#requests');
+        return items;
+    }, [openDisputes, weeklyLogs, unassignedJobs, assignments, invoices, timeOffRequests]);
+
+    const completedThisWeek = useMemo(() => {
+        const start = new Date(); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); // Monday
+        return completedJobs.filter(wo => {
+            const d = parseLocalDate((wo as WorkOrder & { completedAt?: string }).completedAt?.slice(0, 10) || wo.scheduleDate);
+            return !!d && d.getTime() >= start.getTime();
+        }).length;
+    }, [completedJobs]);
 
     // Every job the dashboard knows about, finished ones included — the
     // payroll and financial cards must see the same jobs Financials does.
@@ -260,12 +308,6 @@ export default function DashboardPage() {
         };
     }, [invoices, weeklyLogs, jobsById, pendingPay]);
 
-    const availablePortals = useMemo(() => getAvailablePortals(currentUser), [currentUser]);
-    const techPortal = useMemo(() => availablePortals.find(p => p.id === 'tech'), [availablePortals]);
-
-    const handleSwapPortal = useCallback(() => {
-        if (techPortal) router.push(techPortal.path);
-    }, [router, techPortal]);
 
     return (
         <div className="animate-in fade-in duration-500 text-left">
@@ -277,12 +319,7 @@ export default function DashboardPage() {
                 actions={
                     <div className="flex items-center gap-3">
                         <NotificationBell />
-                        {availablePortals.length > 1 && techPortal && (
-                            <Button variant="outline" size="sm" onClick={handleSwapPortal}>
-                                <MonitorUp size={12} className="mr-1.5 text-text-muted" />
-                                Switch to Tech Portal
-                            </Button>
-                        )}
+                        <PortalSwitchButton />
                     </div>
                 }
             />
@@ -352,18 +389,45 @@ export default function DashboardPage() {
             </div>
 
             {/* Stat tiles */}
-            <StatGrid className="mb-8 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5">
+            <StatGrid className="mb-8 grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
                 <StatCard icon={Wrench} label="Active jobs" value={activeAssignmentsCount} sub="Assigned and in progress" tone="done"
                     onClick={() => router.push('/admin/dispatch?subtab=assignments')} />
-                <StatCard icon={AlertCircle} label="Unassigned" value={unassignedJobs.length} sub="Need a technician" tone={unassignedJobs.length ? 'problem' : undefined}
-                    onClick={() => router.push('/admin/dispatch')} />
-                <StatCard icon={FolderKanban} label="Projects on hold" value={projects.filter(p => p.status === 'on-hold').length} sub="Paused projects"
-                    onClick={() => router.push('/admin/projects')} />
                 <StatCard icon={ClipboardList} label="Pending logs" value={pendingLogs.length} sub="Waiting for review" tone={pendingLogs.length ? 'progress' : undefined}
                     onClick={() => router.push('/admin/payroll/audit')} />
-                <StatCard icon={Clock} label="Open requests" value={pendingRequests.total} sub="Waiting for action" tone={pendingRequests.total ? 'problem' : undefined}
+                <StatCard icon={Clock} label="Open requests" value={pendingRequests.total} sub="Waiting for action" tone={pendingRequests.total ? 'progress' : undefined}
                     onClick={() => setIsPendingDialogOpen(true)} />
+                <StatCard icon={AlertCircle} label="Needs attention" value={attention.reduce((t, a) => t + a.n, 0)}
+                    sub={attention.length === 0 ? 'Nothing urgent' : attention.length === 1 ? attention[0].text : `${attention.length} kinds of issue — tap to see`} tone={attention.length ? 'problem' : 'done'}
+                    onClick={() => setIsAttentionOpen(true)} />
             </StatGrid>
+
+            {/* NEEDS ATTENTION */}
+            <Dialog open={isAttentionOpen} onOpenChange={setIsAttentionOpen}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader className="text-left">
+                        <DialogTitle className="text-base font-semibold">Needs attention</DialogTitle>
+                        <DialogDescription>Items that cost money or a customer if they wait. Tap one to go fix it.</DialogDescription>
+                    </DialogHeader>
+                    {attention.length === 0 ? (
+                        <EmptyState compact icon={AlertCircle} title="Nothing urgent" description="Disputes, overdue jobs and invoices show up here." />
+                    ) : (
+                        <div className="divide-y divide-border-sub rounded-lg border border-border-sub">
+                            {attention.map(a => (
+                                <Link key={a.id} href={a.href === '#requests' ? '#' : a.href}
+                                    onClick={e => { setIsAttentionOpen(false); if (a.href === '#requests') { e.preventDefault(); setIsPendingDialogOpen(true); } }}
+                                    className="flex items-center gap-3 p-3 hover:bg-bg-tertiary transition-colors">
+                                    <AlertCircle size={16} className="shrink-0 text-brand-red" />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-[13px] font-semibold text-text-primary">{a.text}</p>
+                                        <p className="text-[12px] text-text-muted">{a.detail}</p>
+                                    </div>
+                                    <ChevronRight size={16} className="shrink-0 text-text-muted" />
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
 
             {/* Today's Schedule Strip */}
             {todayJobs.length > 0 && (
@@ -568,18 +632,19 @@ export default function DashboardPage() {
                     <Card>
                         <CardHeader className="pb-3 text-left">
                             <CardTitle>Business snapshot</CardTitle>
-                            <CardDescription>Current financial & project status.</CardDescription>
+                            <CardDescription>Projects, invoices and this week's finished work.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-0">
                             {[
-                                { label: 'Pending Pay', value: `$${pendingPay.toLocaleString(undefined, { maximumFractionDigits: 0 })}` },
-                                { label: 'Active Jobs', value: activeAssignmentsCount },
-                                { label: 'Pending Invoices', value: invoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').length },
-                                { label: 'Open Projects', value: projects.filter(p => p.status === 'active').length },
+                                // Nothing here repeats the tiles or the money strip above.
+                                { label: 'Jobs completed this week', value: completedThisWeek },
+                                { label: 'Active projects', value: projects.filter(p => p.status === 'active').length },
+                                { label: 'Projects on hold', value: projects.filter(p => p.status === 'on-hold').length },
+                                { label: 'Invoices sent, not paid', value: invoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').length },
                             ].map(({ label, value }) => (
                                 <div key={label} className="flex items-center justify-between py-2.5 border-b border-border-sub last:border-0">
-                                    <span className="text-[10px] font-bold text-text-muted uppercase tracking-wide">{label}</span>
-                                    <span className="text-[10px] font-mono font-bold text-text-primary">{value}</span>
+                                    <span className="text-[13px] text-text-secondary">{label}</span>
+                                    <span className="text-[13px] font-mono font-semibold text-text-primary">{value}</span>
                                 </div>
                             ))}
                         </CardContent>
@@ -600,7 +665,7 @@ export default function DashboardPage() {
 
                     <Tabs defaultValue="tickets" className="flex-1 overflow-hidden flex flex-col">
                         <div className="px-6 border-b border-border-sub bg-bg-secondary/30">
-                            <TabsList className="h-12 bg-transparent p-0 gap-8 justify-start">
+                            <TabsList className="h-auto min-h-12 bg-transparent p-0 gap-x-4 sm:gap-x-8 gap-y-1 flex-wrap justify-start">
                                 <TabsTrigger value="tickets" className="tab-trigger-dashboard flex items-center gap-2">
                                     <ClipboardList size={14} /> Requests <Badge variant="outline" className="h-4 px-1.5 text-[10px]">{pendingRequests.tickets.length}</Badge>
                                 </TabsTrigger>

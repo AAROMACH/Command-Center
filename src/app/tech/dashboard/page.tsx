@@ -5,7 +5,8 @@ import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, doc, updateDoc, onSnapshot, query, where, setDoc, arrayUnion } from 'firebase/firestore';
-import { isArchivedJob, isAssignedTo } from '@/lib/jobs';
+import { isArchivedJob, isAssignedTo, parseLocalDate } from '@/lib/jobs';
+import { canAccessPath } from '@/lib/route-permissions';
 import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
 import { computeWeeklyLogSettlement } from '@/lib/payroll';
 import { Badge } from '@/components/ui/badge';
@@ -47,6 +48,7 @@ import { CheckInDialog } from './components/check-in-dialog';
 import { LogSelectionDialog } from './components/log-selection-dialog';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { NotificationBell } from '@/components/notification-bell';
+import { PortalSwitchButton } from '@/components/portal-switch-button';
 import { TERMINOLOGY } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
 import { format, startOfWeek, parseISO } from 'date-fns';
@@ -68,6 +70,8 @@ export default function TechDashboardPage() {
     useHelperLogSync(currentTechId);
     const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>([]);
     const [unsubmittedLogs, setUnsubmittedLogs] = useState<WeeklyLog[]>([]);
+    // Logs payroll sent back: the tech has to fix and resubmit these.
+    const [returnedLogs, setReturnedLogs] = useState<WeeklyLog[]>([]);
     
     const [isLogSelectionOpen, setIsLogSelectionOpen] = useState(false);
     const [selectedLog, setSelectedLog] = useState<WeeklyLog | null>(null);
@@ -101,6 +105,10 @@ export default function TechDashboardPage() {
         const unsubAsmt = subscribeTechAssignments(userId, setAllWorkOrders);
 
         const logQ = query(collection(db, 'weeklyLogs'), where('techId', '==', userId), where('status', '==', 'Draft'));
+        const unsubReturned = onSnapshot(
+            query(collection(db, 'weeklyLogs'), where('techId', '==', userId), where('status', '==', 'Rejected')),
+            snap => setReturnedLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog))),
+            () => setReturnedLogs([]));
         const unsubLogs = onSnapshot(logQ, (snap) => {
             setUnsubmittedLogs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog)));
         });
@@ -108,7 +116,7 @@ export default function TechDashboardPage() {
         return () => {
             unsubTech();
             unsubAsmt();
-            unsubLogs();
+            unsubLogs(); unsubReturned();
         };
     }, [router]);
 
@@ -145,6 +153,8 @@ export default function TechDashboardPage() {
 
 
     const jobsById = useMemo(() => new Map(allWorkOrders.map(j => [j.id, j])), [allWorkOrders]);
+    // Project managers have no pay pages, so no pay tile either.
+    const seesPay = !tech || canAccessPath(tech, '/tech/earnings');
 
     // Live settlement: raw item.jobPay ignores the Field Nation fee/split and
     // overstated FN jobs.
@@ -154,12 +164,11 @@ export default function TechDashboardPage() {
 
     const weeklyJobCount = useMemo(() => {
         const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+        const weekEnd = weekStart.getTime() + 7 * 86_400_000;
+        // parseLocalDate reads both 'yyyy-MM-dd' and 'MM-dd-yyyy' (imported jobs).
         return allWorkOrders.filter(wo => {
-            if (!wo.scheduleDate) return false;
-            try {
-                const d = new Date(wo.scheduleDate + 'T12:00:00');
-                return d >= weekStart;
-            } catch { return false; }
+            const d = parseLocalDate(wo.scheduleDate);
+            return !!d && d.getTime() >= weekStart.getTime() && d.getTime() < weekEnd;
         }).length;
     }, [allWorkOrders]);
 
@@ -187,14 +196,14 @@ export default function TechDashboardPage() {
                 icon={Activity}
                 title={`Hi, ${tech.name?.split(' ')[0] || 'there'}`}
                 subtitle="Your jobs, schedule and logs for today."
-                actions={<NotificationBell />}
+                actions={<div className="flex items-center gap-2"><NotificationBell /><PortalSwitchButton /></div>}
             />
 
             {/* Stat cards */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className={cn("grid grid-cols-2 gap-3", seesPay && "md:grid-cols-3")}>
                 <StatCard label="Jobs this week" icon={Briefcase} value={weeklyJobCount} sub={`${allWorkOrders.length} assigned in total`} onClick={() => router.push('/tech/assignments')} />
-                <StatCard label="Expected pay" icon={DollarSign} tone="done" value={`$${expectedEarnings.toFixed(0)}`} sub="From open logs" onClick={() => router.push('/tech/calendar')} />
-                <StatCard label="Logs to submit" icon={TrendingUp} value={unsubmittedLogs.length} sub="Draft weekly logs" onClick={() => router.push('/tech/logs')} className="col-span-2 md:col-span-1" />
+                {seesPay && <StatCard label="Expected pay" icon={DollarSign} tone="done" value={`$${expectedEarnings.toFixed(0)}`} sub="From open logs" onClick={() => router.push('/tech/earnings')} />}
+                <StatCard label="Logs to submit" icon={TrendingUp} value={unsubmittedLogs.length} sub="Draft weekly logs" onClick={() => router.push('/tech/logs')} className={seesPay ? 'col-span-2 md:col-span-1' : undefined} />
             </div>
 
             <MyTasksCard techId={currentTechId} />
@@ -302,6 +311,24 @@ export default function TechDashboardPage() {
                             <span className="text-[13px] font-medium">Check in</span>
                         </Button>
                     </div>
+
+                    {/* Returned logs — fix and resubmit */}
+                    {returnedLogs.length > 0 && (
+                        <div className="space-y-2">
+                            <p className="section-label px-1">Sent back by payroll</p>
+                            {returnedLogs.map(log => (
+                                <Card key={log.id} className="rounded-xl shadow-sm bg-bg-secondary border-brand-red/40 cursor-pointer hover:border-brand-red transition-all" onClick={() => router.push('/tech/logs')}>
+                                    <CardContent className="p-3 flex items-center justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <p className="text-[13px] font-semibold text-text-primary">Week of {log.weekOf}</p>
+                                            <p className="text-[12px] text-text-muted">Fix what payroll flagged, then resubmit.</p>
+                                        </div>
+                                        <span className="shrink-0 text-[12px] font-semibold text-brand-red">Fix →</span>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
 
                     {/* Pending logs */}
                     {unsubmittedLogs.length > 0 && (

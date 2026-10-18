@@ -35,6 +35,9 @@ import { effectiveJobPay, computeWeeklyLogSettlement } from '@/lib/payroll';
 import { downloadPaystub } from '@/lib/paystub';
 import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-context';
+import { PayrollTicketDecision } from '@/components/payroll-ticket-decision';
+import { PAYROLL_TICKET_CARDS } from '@/lib/disputes';
 import { PayrollReviewDialog } from '@/app/admin/financials/components/payroll-review-dialog';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { displayWorkOrderNumber } from '@/lib/work-order-identity';
@@ -89,7 +92,7 @@ function duplicateGroupSignature(group: WeeklyLog[]): string {
         status: log.status,
         items: (log.items || []).map(item => [item.id, item.workOrderId, item.jobPay, item.confirmationStatus, item.isAdminReviewed]),
         reimbursements: (log.reimbursements || []).map(r => [r.id, r.amount, r.status]),
-        reports: (log.missingAssignmentReports || []).map(r => [r.id, r.pay, r.finalPay]),
+        reports: (log.missingAssignmentReports || []).map(r => [r.id, r.pay, r.finalPay, !!r.isAudited]),
         totalPayout: log.totalPayout,
     })));
 }
@@ -117,7 +120,8 @@ export default function PayrollAuditPage() {
     // each log's own review dialog. See payroll-review-dialog.tsx's
     // "Post-Approval Disputes" tab for the per-log view of the same data.
     const [payrollDisputes, setPayrollDisputes] = useState<PayrollDispute[]>([]);
-    const [resolvingDisputeId, setResolvingDisputeId] = useState<string | null>(null);
+    const { hasPermission } = useAuth();
+    const canDecideTickets = hasPermission('admin.logs.approve');
     const [adjSearch, setAdjSearch] = useState('');
     // Weekly-log audit review (moved here from the Accounting page).
     const [reviewLog, setReviewLog] = useState<WeeklyLog | null>(null);
@@ -172,29 +176,6 @@ export default function PayrollAuditPage() {
         });
         return () => { unsubT(); unsubL(); unsubAdj(); unsubWO(); unsubAsmt(); unsubDisputes(); };
     }, []);
-
-    const handleResolvePayrollDispute = async (dispute: PayrollDispute) => {
-        setResolvingDisputeId(dispute.id);
-        try {
-            const adminId = auth.currentUser?.uid || currentUser?.id || '';
-            const adminName = auth.currentUser?.displayName || currentUser?.name || 'Admin';
-            await updateDoc(doc(db, 'payrollDisputes', dispute.id), {
-                status: 'resolved',
-                resolvedAt: new Date().toISOString(),
-                resolvedBy: adminName,
-            });
-            await auditEvent(
-                'payrollDisputes', dispute.id, adminId, adminName, 'resolved_dispute',
-                `Resolved ${dispute.reason.replace(/_/g, ' ')} dispute from ${dispute.techName} for week of ${dispute.weekOf}.`
-            ).catch(() => {});
-            NotificationService.disputeResolved(dispute).catch(() => {});
-            toast({ title: 'Dispute resolved' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Could Not Resolve', description: e.message });
-        } finally {
-            setResolvingDisputeId(null);
-        }
-    };
 
     const openReview = (log: WeeklyLog) => { setReviewLog(log); setReviewOpen(true); };
 
@@ -988,9 +969,7 @@ export default function PayrollAuditPage() {
                             <div className="space-y-2">
                                 {disputePager.items.map(dispute => {
                                     const isOpenDispute = dispute.status === 'open';
-                                    const reasonLabel = dispute.reason === 'incorrect_pay' ? 'Incorrect pay'
-                                        : dispute.reason === 'missing_reimbursement' ? 'Missing reimbursement'
-                                        : 'Missing job';
+                                    const reasonLabel = PAYROLL_TICKET_CARDS[dispute.reason]?.title || 'Pay is wrong';
                                     const relatedJob = dispute.workOrderId ? jobsById.get(dispute.workOrderId) : undefined;
                                     const relatedLog = weeklyLogs.find(l => l.id === dispute.weeklyLogId);
                                     return (
@@ -1010,8 +989,10 @@ export default function PayrollAuditPage() {
                                                 <p className="text-[12px] text-text-secondary leading-relaxed mt-1">{dispute.notes}</p>
                                                 <p className="text-[10px] text-text-muted font-mono mt-1">
                                                     {new Date(dispute.createdAt).toLocaleString()}
-                                                    {!isOpenDispute && dispute.resolvedBy && ` · Resolved by ${dispute.resolvedBy}`}
                                                 </p>
+                                                <div className="mt-2">
+                                                    <PayrollTicketDecision dispute={dispute} canDecide={canDecideTickets} fallbackName={currentUser?.name} />
+                                                </div>
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0">
                                                 {relatedLog && (
@@ -1019,17 +1000,7 @@ export default function PayrollAuditPage() {
                                                         <Receipt size={12} className="mr-1.5" /> View Log
                                                     </Button>
                                                 )}
-                                                {isOpenDispute ? (
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="h-8 text-[10px] font-bold uppercase tracking-wider border-text-green text-text-green hover:bg-green-dim"
-                                                        disabled={resolvingDisputeId === dispute.id}
-                                                        onClick={() => handleResolvePayrollDispute(dispute)}
-                                                    >
-                                                        <CheckCircle size={13} className="mr-1.5" /> Mark Resolved
-                                                    </Button>
-                                                ) : (
+                                                {!isOpenDispute && (
                                                     <Badge variant="active" className="h-6 px-3 text-[10px] uppercase tracking-wider">Resolved</Badge>
                                                 )}
                                             </div>

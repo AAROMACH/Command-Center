@@ -38,7 +38,7 @@ export function effectiveJobPay(item: WeeklyLogItem, job: WorkOrder | undefined)
  * A weekly log's true settlement total: tech payout after the FN fee/split,
  * excluding disputed items (a disputed job isn't necessarily getting paid
  * until the dispute is resolved, so it shouldn't move the total either
- * way). `jobsById` is optional — omit it and every item falls back to its
+ * way) and missing-job reports payroll hasn't approved yet. `jobsById` is optional — omit it and every item falls back to its
  * stored jobPay (no Imported-job pay recalculation).
  */
 export function computeWeeklyLogSettlement(
@@ -55,7 +55,9 @@ export function computeWeeklyLogSettlement(
   const reimbursementPayCents = (log.reimbursements || [])
     .filter(r => r.status !== 'pending' && r.status !== 'rejected')
     .reduce((s, r) => s + payCents(netOfFieldNationFee(r.amount)), 0);
-  const reportPayCents = (log.missingAssignmentReports || []).reduce((s, r) =>
+  // A job the tech reported missing is only paid once payroll says Yes
+  // (isAudited) — never just because the tech added it.
+  const reportPayCents = (log.missingAssignmentReports || []).filter(r => r.isAudited).reduce((s, r) =>
     s + (r.jobType === 'Imported'
       ? payCents(r.finalPay || 0) + payCents(netOfFieldNationFee(r.auditReimbursement || 0))
       : payCents(r.pay || 0)), 0);

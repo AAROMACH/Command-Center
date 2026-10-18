@@ -78,11 +78,15 @@ export const NotificationService = {
     return post({ audience: 'project_managers', title, body, entity: { id: projectId, type: 'project' }, inAppOnly: routine });
   },
 
-  /** Tells the tech payroll resolved their dispute. */
-  async disputeResolved(d: { techId?: string; reason?: string; workOrderId?: string | null; weekOf?: string; weeklyLogId?: string }) {
+  /** Tells the tech payroll resolved their dispute. `outcome` is payroll's
+   *  answer in plain words (lib/disputes.ts), e.g. "Payroll fixed your pay — …". */
+  async disputeResolved(d: { techId?: string; reason?: string; workOrderId?: string | null; weekOf?: string; weeklyLogId?: string }, outcome?: string) {
     if (!d.techId) return;
+    const about = `your ${String(d.reason || '').replace(/_/g, ' ')} dispute${d.workOrderId ? ` on job ${d.workOrderId.toUpperCase()}` : ''} for the week of ${d.weekOf || '—'}`;
     return this.notify(d.techId, 'Payroll dispute resolved',
-      `Payroll resolved your ${String(d.reason || '').replace(/_/g, ' ')} dispute${d.workOrderId ? ` on job ${d.workOrderId.toUpperCase()}` : ''} for the week of ${d.weekOf || '—'}. Check Logs in the Tech Portal for any changes.`,
+      outcome
+        ? `${outcome}. (About ${about}.) Check Logs in the Tech Portal for any changes.`
+        : `Payroll resolved ${about}. Check Logs in the Tech Portal for any changes.`,
       d.weeklyLogId ? { id: d.weeklyLogId, type: 'weeklyLog' } : undefined, { portal: 'tech' });
   },
 

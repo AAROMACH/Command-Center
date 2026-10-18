@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: true });
 
       case 'disputeItem': {
-        await disputeItem(uid, String(body.logId), String(body.itemId), body.reason, body.notes);
+        await disputeItem(uid, String(body.logId), String(body.itemId), body.reason, body.notes, body.kind);
         await tellPayroll(uid, String(body.logId), log => {
           const item = (log.items || []).find((i: WeeklyLogItem) => i.id === body.itemId);
           return {

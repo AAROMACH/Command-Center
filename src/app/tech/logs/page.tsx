@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_SMALL, PAGE_SIZES_LARGE } from '@/components/list-pager';
-import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog, PayrollDispute } from '@/lib/types';
+import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog, PayrollDispute, DisputeKind, DisputeResolution } from '@/lib/types';
 import { externalWorkOrderId, displayWorkOrderNumber, fieldNationUrl, isImported } from '@/lib/work-order-identity';
 import { hasPermission } from '@/lib/permissions';
 import { computeWeeklyLogSettlement, effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
@@ -88,16 +88,8 @@ import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { NotificationService } from '@/lib/notification-service';
 import { techDisplayName } from '@/lib/utils';
+import { TECH_DISPUTE_OPTIONS, DISPUTE_CARDS, decisionText, disputeKindOf, isLegacyOtherReason } from '@/lib/disputes';
 
-const DISPUTE_REASONS = [
-    "Hours logged are incorrect",
-    "Another tech did this job",
-    "I did not do this job",
-    "Revisit needed — not complete",
-    "Wrong date on my log",
-    "Duplicate entry",
-    "Other",
-];
 
 // Sortable timestamp for a job's scheduled date + time. Accepts ISO
 // (YYYY-MM-DD) and M/D/YYYY dates and "h:mm AM/PM" or 24h times; undated jobs
@@ -375,10 +367,11 @@ export default function TechWeeklyLogPage() {
         }
     };
 
-    const handleDispute = async (itemId: string, reason: string, notes?: string) => {
+    const handleDispute = async (itemId: string, kind: DisputeKind, notes?: string) => {
         if (!activeLog || isLocked) return;
+        const reason = TECH_DISPUTE_OPTIONS.find(o => o.kind === kind)?.label || DISPUTE_CARDS[kind].title;
         try {
-            await weeklyLogAction('disputeItem', { logId: activeLog.id, itemId, reason, notes: notes || null });
+            await weeklyLogAction('disputeItem', { logId: activeLog.id, itemId, reason, kind, notes: notes || null });
             toast({ title: "Dispute saved", description: "Payroll will review this job." });
         } catch (e: any) {
             toast({ variant: "destructive", title: "Could not save dispute", description: e.message });
@@ -948,7 +941,13 @@ export default function TechWeeklyLogPage() {
                                 <div className="min-w-0 text-left flex-1">
                                     <div className="flex flex-wrap items-center gap-2 text-left">
                                         <h3 className="text-[14px] font-semibold text-text-primary break-words text-left min-w-0">{report.summary || 'Missing job'}</h3>
-                                        <Badge variant="pending" className="text-[10px] uppercase tracking-wide">Reported missing</Badge>
+                                        {report.resolution?.decision === 'no' ? (
+                                            <Badge variant="outline" className="text-[10px] uppercase tracking-wide">Not paid</Badge>
+                                        ) : report.isAudited ? (
+                                            <StatusBadge kind="log" value="approved" label="Added by payroll" />
+                                        ) : (
+                                            <Badge variant="pending" className="text-[10px] uppercase tracking-wide">Reported missing</Badge>
+                                        )}
                                         {report.jobType && <Badge variant="outline" className="text-[10px] uppercase tracking-wide">{report.jobType}</Badge>}
                                     </div>
                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-1 text-[12px] text-text-muted text-left">
@@ -969,10 +968,27 @@ export default function TechWeeklyLogPage() {
                                         <span className="flex items-center gap-1.5 text-left"><CalendarIcon size={10} className="shrink-0"/> {report.date}{report.time ? ` · ${report.time}` : ''}</span>
                                         {report.pay != null && <span className="text-text-green">${report.pay.toFixed(2)}</span>}
                                     </div>
+                                    {report.resolution ? (
+                                        <p className="text-[12px] font-semibold text-text-primary mt-1.5 break-words text-left">{decisionText('missing', report.resolution)}</p>
+                                    ) : !report.isAudited && (
+                                        <p className="text-[11px] text-text-muted mt-1.5 text-left">Waiting for payroll to decide. Not paid until then.</p>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
                     ))}
+                    {/* Flagged jobs payroll took off this log (duplicate copy removed,
+                        or sent back to Dispatch) — the line is gone, so show the answer. */}
+                    {((activeLog as WeeklyLog & { history?: any[] }).history || [])
+                        .filter(h => h?.type === 'dispute_removed' && h.resolution && !(activeLog.items || []).some(i => i.id === h.itemId))
+                        .map((h, idx) => (
+                            <div key={`removed-${idx}`} className="p-3 rounded-xl border border-border-sub bg-bg-tertiary/30 text-left">
+                                <p className="text-[12px] text-text-muted text-left">
+                                    <span className="font-mono font-semibold text-text-primary">{String(h.workOrderId || '').toUpperCase()}</span> · removed from this log
+                                </p>
+                                <p className="text-[12px] font-semibold text-text-primary mt-0.5 break-words text-left">{decisionText(h.kind, h.resolution)}</p>
+                            </div>
+                        ))}
                 </div>
             </div>
 
@@ -1165,7 +1181,7 @@ export default function TechWeeklyLogPage() {
     );
 }
 
-function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId, onDisputeJob, hasOpenPayrollDispute }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, reason: string, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null, onDisputeJob?: (item: WeeklyLogItem) => void, hasOpenPayrollDispute?: boolean }) {
+function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId, onDisputeJob, hasOpenPayrollDispute }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, kind: DisputeKind, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null, onDisputeJob?: (item: WeeklyLogItem) => void, hasOpenPayrollDispute?: boolean }) {
     const job = workOrders.find(wo => wo.id === item.workOrderId);
     const itemReimbursements = reimbursements.filter(r => r.workOrderId === item.workOrderId);
     const settledReimbursement = itemReimbursements
@@ -1174,9 +1190,11 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
     const requestedReimbursement = itemReimbursements
         .filter(r => r.status === 'pending')
         .reduce((acc, r) => acc + (r.amount || 0), 0);
-    const [isDisputing, setIsDisputing] = useState(item.confirmationStatus === 'disputed');
-    const [reason, setReason] = useState(item.disputeReason || "");
+    const [isDisputing, setIsDisputing] = useState(item.confirmationStatus === 'disputed' && !item.resolution);
+    const [kind, setKind] = useState<string>(item.disputeKind || item.disputeReason ? disputeKindOf(item) : '');
     const [notes, setNotes] = useState(item.disputeNotes || "");
+    const noteRequired = !!TECH_DISPUTE_OPTIONS.find(o => o.kind === kind)?.noteRequired;
+    const decision = item.resolution && (item.disputeKind || item.disputeReason) ? decisionText(disputeKindOf(item), item.resolution) : null;
     const [isReimbursing, setIsReimbursing] = useState(false);
     const [reimbAmount, setReimbAmount] = useState('');
     const [reimbDesc, setReimbDesc] = useState('');
@@ -1446,24 +1464,25 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                             
                             <div className="space-y-4 text-left">
                                 <RadioGroup 
-                                    value={reason} 
-                                    onValueChange={setReason}
-                                    className="grid grid-cols-1 md:grid-cols-2 gap-2 text-left"
+                                    value={kind} 
+                                    onValueChange={setKind}
+                                    className="grid grid-cols-1 md:grid-cols-3 gap-2 text-left"
                                 >
-                                    {DISPUTE_REASONS.map((r, idx) => (
-                                        <div key={idx} className="flex items-center space-x-2 p-2 rounded hover:bg-bg-tertiary transition-colors cursor-pointer text-left">
-                                            <RadioGroupItem value={r} id={`r-${item.id}-${idx}`} />
-                                            <Label htmlFor={`r-${item.id}-${idx}`} className="text-[13px] font-medium text-text-primary cursor-pointer flex-1 text-left">{r}</Label>
+                                    {TECH_DISPUTE_OPTIONS.map(o => (
+                                        <div key={o.kind} className="flex items-center space-x-2 p-2 rounded hover:bg-bg-tertiary transition-colors cursor-pointer text-left">
+                                            <RadioGroupItem value={o.kind} id={`r-${item.id}-${o.kind}`} />
+                                            <Label htmlFor={`r-${item.id}-${o.kind}`} className="text-[13px] font-medium text-text-primary cursor-pointer flex-1 text-left">{o.label}</Label>
                                         </div>
                                     ))}
                                 </RadioGroup>
+                                <p className="text-[12px] text-text-muted text-left">Job missing from your log? Use <span className="font-semibold text-text-primary">Report missing job</span> instead.</p>
 
                                 <div className="space-y-2 text-left">
-                                    <Label className="text-[12px] font-semibold text-text-muted ml-1 text-left">{reason === 'Other' ? 'Please explain (required)' : 'More detail (optional)'}</Label>
+                                    <Label className="text-[12px] font-semibold text-text-muted ml-1 text-left">{noteRequired ? 'What is wrong? (required)' : 'More detail (optional)'}</Label>
                                     <Textarea
                                         value={notes}
                                         onChange={e => setNotes(e.target.value)}
-                                        placeholder={reason === 'Other' ? "Describe the reason for this dispute..." : "Add any details for payroll..."}
+                                        placeholder={noteRequired ? "e.g. Pay should be $150, or this was on Oct 14" : "Add any details for payroll..."}
                                         className="bg-bg-secondary h-20 text-xs font-medium leading-relaxed text-left"
                                     />
                                 </div>
@@ -1474,8 +1493,8 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                 <Button 
                                     size="sm" 
                                     className="h-10 sm:h-8 bg-brand-red hover:bg-brand-red-hover text-white"
-                                    disabled={!reason || (reason === 'Other' && !notes.trim())}
-                                    onClick={() => { onDispute(item.id, reason, notes); setIsDisputing(false); }}
+                                    disabled={!kind || (noteRequired && !notes.trim())}
+                                    onClick={() => { onDispute(item.id, kind as DisputeKind, notes); setIsDisputing(false); }}
                                 >
                                     Save dispute
                                 </Button>
@@ -1488,18 +1507,38 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                     <div className="px-4 pb-4 animate-in fade-in duration-300 text-left">
                          <div className="p-3 rounded-lg bg-brand-red-dim/10 border border-brand-red/10 text-left">
                             <p className="text-[12px] font-semibold text-brand-red mb-1 flex items-center gap-1.5 text-left">
-                                <ShieldAlert size={12}/> Disputed: {item.disputeReason}
+                                <ShieldAlert size={12}/> Disputed: {isLegacyOtherReason(item) ? item.disputeReason : DISPUTE_CARDS[disputeKindOf(item)].title}
                             </p>
                             {item.disputeNotes && (
                                 <p className="text-[12px] text-text-secondary leading-relaxed text-left">
                                     &quot;{item.disputeNotes}&quot;
                                 </p>
                             )}
+                            <p className="text-[11px] text-text-muted mt-1 text-left">Waiting for payroll to decide. Not paid until then.</p>
                         </div>
                     </div>
                 )}
+
+                {decision && <PayrollDecisionLine text={decision} resolution={item.resolution!} />}
             </CardContent>
         </Card>
+    );
+}
+
+/** Payroll's answer to a flagged job, as the tech sees it on their log. */
+function PayrollDecisionLine({ text, resolution }: { text: string; resolution: DisputeResolution }) {
+    return (
+        <div className="px-4 pb-4 text-left">
+            <div className={cn(
+                "p-3 rounded-lg border text-left",
+                resolution.decision === 'yes' ? "bg-green-dim/20 border-green-border/40" : "bg-bg-tertiary/40 border-border-sub"
+            )}>
+                <p className="text-[12px] font-semibold text-text-primary break-words text-left">{text}</p>
+                <p className="text-[11px] text-text-muted mt-0.5 text-left">
+                    {resolution.by}{resolution.at ? ` · ${new Date(resolution.at).toLocaleDateString()}` : ''}
+                </p>
+            </div>
+        </div>
     );
 }
 

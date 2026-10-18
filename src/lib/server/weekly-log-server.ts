@@ -3,8 +3,9 @@ import 'server-only';
 import { getFirestore, type DocumentReference, type DocumentSnapshot, type Firestore } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
 import { ID_PREFIXES } from '@/lib/constants';
-import type { FinancialRecord, MissingAssignmentReport, WeeklyLog, WeeklyLogItem, WorkOrder } from '@/lib/types';
+import type { DisputeKind, FinancialRecord, MissingAssignmentReport, WeeklyLog, WeeklyLogItem, WorkOrder } from '@/lib/types';
 import { computeWeeklyLogSettlement } from '@/lib/payroll';
+import { TECH_DISPUTE_OPTIONS, disputeKindOf } from '@/lib/disputes';
 import { externalWorkOrderId } from '@/lib/work-order-identity';
 import {
   assignedTechOf, canSubmitWeek, isLockedLog, reportingWeekOf, weekOfForScheduleDate,
@@ -254,19 +255,28 @@ export const confirmItem = (techId: string, logId: string, itemId: string) =>
     findItem(log, itemId);
     return {
       items: (log.items || []).map(i => i.id === itemId
-        ? { ...i, confirmationStatus: 'confirmed', outcomeCode: 'worked_completed', disputeReason: null, disputeNotes: null }
+        ? { ...i, confirmationStatus: 'confirmed', outcomeCode: 'worked_completed', disputeReason: null, disputeNotes: null, disputeKind: null, resolution: null }
         : i),
     };
   });
 
-export const disputeItem = (techId: string, logId: string, itemId: string, reason: unknown, notes: unknown) =>
+/** A tech flags a job. `kind` picks payroll's yes/no card (lib/disputes.ts);
+ *  a fresh dispute always clears any earlier payroll decision. */
+export const disputeItem = (techId: string, logId: string, itemId: string, reason: unknown, notes: unknown, kind?: unknown) =>
   withOwnLog(logId, techId, { draftOnly: true }, log => {
     findItem(log, itemId);
     const r = str(reason, 200);
     if (!r) throw new WeeklyLogError('A dispute reason is required.');
+    const disputeKind = TECH_DISPUTE_OPTIONS.some(o => o.kind === kind)
+      ? kind as Exclude<DisputeKind, 'missing'>
+      : disputeKindOf({ disputeReason: r });
+    const n = str(notes, 2000);
+    if (TECH_DISPUTE_OPTIONS.find(o => o.kind === disputeKind)?.noteRequired && !n) {
+      throw new WeeklyLogError('Add a note saying what is wrong.');
+    }
     return {
       items: (log.items || []).map(i => i.id === itemId
-        ? { ...i, confirmationStatus: 'disputed', outcomeCode: 'worked_revisit', disputeReason: r, disputeNotes: str(notes, 2000) || null }
+        ? { ...i, confirmationStatus: 'disputed', outcomeCode: 'worked_revisit', disputeReason: r, disputeNotes: n || null, disputeKind, resolution: null }
         : i),
     };
   });
@@ -336,6 +346,7 @@ export async function addMissingReport(techId: string, logId: string, input: Rec
     time: str(input.time, 20) || undefined,
     location: str(input.location, 300),
     summary: str(input.summary, 2000),
+    disputeKind: 'missing',
     jobType,
     externalWorkOrderId: jobType === 'Imported' ? str(input.externalWorkOrderId, 50) || undefined : undefined,
     pay: Number.isFinite(pay) && pay >= 0 && pay <= 100000 ? Math.round(pay * 100) / 100 : undefined,

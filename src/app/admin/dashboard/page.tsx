@@ -202,9 +202,9 @@ export default function DashboardPage() {
         add('disputes', openDisputes.length, 'payroll dispute', 'payroll disputes',
             'A tech disputed pay on a log that was already sent.', '/admin/payroll/audit');
         const submitted = weeklyLogs.filter(l => l.status === 'Submitted');
-        add('disputed-items', submitted.reduce((n, l) => n + (l.items || []).filter(i => i.confirmationStatus === 'disputed').length, 0),
-            'disputed job on a submitted log', 'disputed jobs on submitted logs', 'Decide before approving the log.', '/admin/payroll/audit');
-        add('missing', submitted.reduce((n, l) => n + (l.missingAssignmentReports || []).filter(r => !r.isAudited).length, 0),
+        add('disputed-items', submitted.reduce((n, l) => n + (l.items || []).filter(i => i.confirmationStatus === 'disputed' && !i.resolution).length, 0),
+            'flagged job waiting for a decision', 'flagged jobs waiting for a decision', 'Payroll decides yes or no before approving the log.', '/admin/payroll/audit');
+        add('missing', submitted.reduce((n, l) => n + (l.missingAssignmentReports || []).filter(r => !r.isAudited && r.resolution?.decision !== 'no').length, 0),
             'job reported missing from a log', 'jobs reported missing from logs', 'Check and approve the pay, or decline.', '/admin/payroll/audit');
         add('reapprove', weeklyLogs.filter(l => l.mergeReviewRequired).length,
             'approved log needs reapproval', 'approved logs need reapproval', 'A duplicate log was merged into it.', '/admin/payroll/audit');

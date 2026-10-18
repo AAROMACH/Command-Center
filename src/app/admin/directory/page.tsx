@@ -6,6 +6,8 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { DirectoryClient } from "./components/directory-client";
 import { Users } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { PageLoading } from "@/components/empty-state";
 import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from "@/lib/types";
 
 export default function DirectoryPage() {
@@ -47,18 +49,14 @@ export default function DirectoryPage() {
 
   return (
     <div>
-      <header className="page-header">
-        <div>
-          <p className="page-eyebrow flex items-center gap-2 !text-brand-red">
-            <Users size={12} />
-            OPERATIONS DIRECTORY
-          </p>
-          <h1 className="page-title">PERSONNEL</h1>
-          <p className="page-subtitle">Manage technical staff, command personnel, and client stakeholders.</p>
-        </div>
-      </header>
+      <PageHeader
+        eyebrow="People"
+        icon={Users}
+        title="Directory"
+        subtitle="Technicians, office staff and client contacts."
+      />
 
-      <Suspense fallback={<div className="p-8 text-center text-text-muted text-[10px] uppercase tracking-widest">Loading Registry...</div>}>
+      <Suspense fallback={<PageLoading label="Loading directory…" />}>
         <DirectoryClient
           technicians={technicians}
           timeOffRequests={timeOffRequests}

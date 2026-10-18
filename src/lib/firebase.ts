@@ -1,10 +1,10 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, connectAuthEmulator } from "firebase/auth";
 import {
   getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  type Firestore,
+  connectFirestoreEmulator, type Firestore,
 } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { getStorage, connectStorageEmulator } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -39,6 +39,18 @@ function createDb(): Firestore {
 }
 export const db = createDb();
 export const storage = getStorage(app);
+
+// Local development / screenshot testing against the Firebase emulators.
+// Off unless NEXT_PUBLIC_USE_EMULATORS=1 is set at build/dev time.
+if (process.env.NEXT_PUBLIC_USE_EMULATORS === "1" && typeof window !== "undefined") {
+  const w = window as Window & { __ccEmulators?: boolean };
+  if (!w.__ccEmulators) {
+    w.__ccEmulators = true;
+    connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+    connectFirestoreEmulator(db, "127.0.0.1", 8080);
+    connectStorageEmulator(storage, "127.0.0.1", 9199);
+  }
+}
 
 // Persistence is chosen at login: local persistence (survives browser restarts)
 // when "Remember Me" is on, session persistence otherwise. We intentionally do

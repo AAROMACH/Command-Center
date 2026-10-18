@@ -24,12 +24,19 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { ViewToggle, useViewMode } from '@/components/view-toggle';
+import { PageHeader } from '@/components/page-header';
+import { EmptyState, LoadingState } from '@/components/empty-state';
+import { SearchField } from '@/components/search-field';
+import { SortControl } from '@/components/list-toolbar';
+import { downloadCsv } from '@/app/admin/reports/components/history-tabs';
+import { TONE_BADGE, statusLabel, type Tone } from '@/lib/status-styles';
+import { parseLocalDate } from '@/lib/jobs';
 import { format, parseISO } from 'date-fns';
 import {
   FileSearch, Plus, Send, Copy, Clock, CheckCircle2, XCircle,
   Archive, RotateCcw, Trash2, ExternalLink, ChevronRight,
   Building2, User, Mail, Phone, DollarSign, FileText, Loader2,
-  Edit3, ArrowRight, Settings,
+  Edit3, ArrowRight, Settings, Download,
 } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -50,15 +57,30 @@ function calcTotals(items: QuoteLineItem[]) {
   return { subtotal, taxAmount, total: subtotal + taxAmount };
 }
 
-function statusCls(s: QuoteStatus) {
-  if (s === 'draft') return 'bg-bg-tertiary text-text-muted border-border-sub';
-  if (s === 'sent') return 'bg-blue-500/10 text-blue-400 border-blue-500/30';
-  if (s === 'viewed') return 'bg-purple-500/10 text-purple-400 border-purple-500/30';
-  if (s === 'approved') return 'bg-text-green/10 text-text-green border-text-green/30';
-  if (s === 'rejected' || s === 'expired') return 'bg-brand-red/10 text-brand-red border-brand-red/30';
-  if (s === 'changes_requested') return 'bg-amber-400/10 text-amber-400 border-amber-400/30';
-  return 'bg-bg-tertiary text-text-muted border-border-sub';
+// Quote status → shared status tone (lib/status-styles.ts).
+const QUOTE_TONE: Record<string, Tone> = {
+  draft: 'scheduled', sent: 'progress', viewed: 'info', changes_requested: 'progress', approved: 'done',
+  converted_to_work_order: 'done', converted_to_project: 'done', converted_to_invoice: 'done',
+  rejected: 'problem', expired: 'problem', archived: 'neutral', superseded: 'neutral',
+};
+const QUOTE_LABEL: Record<string, string> = {
+  converted_to_work_order: 'Converted to job', converted_to_project: 'Converted to project', converted_to_invoice: 'Invoiced',
+};
+
+function QuoteStatusBadge({ status }: { status: QuoteStatus }) {
+  return (
+    <Badge variant={TONE_BADGE[QUOTE_TONE[status] || 'neutral']} className="shrink-0 whitespace-nowrap text-[10px] font-semibold uppercase tracking-wide">
+      {QUOTE_LABEL[status] || statusLabel(status)}
+    </Badge>
+  );
 }
+
+const QUOTE_SORTS = [
+  { value: 'date', label: 'Created' },
+  { value: 'total', label: 'Total' },
+  { value: 'customer', label: 'Customer' },
+  { value: 'expires', label: 'Expiring' },
+];
 
 function fmtMoney(n: number) {
   return `$${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
@@ -288,7 +310,7 @@ function NewQuoteDialog({
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="bg-bg-elevated border-border-main max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-[13px] font-black uppercase tracking-widest">New Quote</DialogTitle>
+          <DialogTitle className="text-base font-semibold">New quote</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5 py-2">
@@ -296,9 +318,9 @@ function NewQuoteDialog({
           <div className="flex gap-2">
             {(['in_app_client', 'external_customer'] as const).map(t => (
               <button key={t} type="button" onClick={() => setCustomerType(t)}
-                className={cn('flex-1 py-2 text-[9px] font-black uppercase tracking-widest rounded border transition-colors',
+                className={cn('flex-1 py-2 text-[12px] font-medium rounded-md border transition-colors',
                   customerType === t ? 'bg-brand-red/10 text-brand-red border-brand-red/30' : 'border-border-sub text-text-muted hover:border-border-main')}>
-                {t === 'in_app_client' ? 'App Client' : 'External Customer'}
+                {t === 'in_app_client' ? 'App client' : 'Outside customer'}
               </button>
             ))}
           </div>
@@ -306,14 +328,14 @@ function NewQuoteDialog({
           {/* Customer info */}
           {customerType === 'in_app_client' ? (
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Client</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client</Label>
               <Select value={clientId} onValueChange={setClientId}>
                 <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main">
                   <SelectValue placeholder="Select client..." />
                 </SelectTrigger>
                 <SelectContent className="bg-bg-elevated border-border-main">
                   {clients.map(c => (
-                    <SelectItem key={c.id} value={c.id} className="text-[10px]">
+                    <SelectItem key={c.id} value={c.id}>
                       {c.clientCompany || c.name}
                     </SelectItem>
                   ))}
@@ -323,19 +345,19 @@ function NewQuoteDialog({
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Name</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Name</Label>
                 <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Jane Smith" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Company</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Company</Label>
                 <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={customerCompany} onChange={e => setCustomerCompany(e.target.value)} placeholder="Acme Corp" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Email *</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Email *</Label>
                 <Input type="email" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="jane@acme.com" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Phone</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Phone</Label>
                 <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="555-000-0000" />
               </div>
             </div>
@@ -343,30 +365,30 @@ function NewQuoteDialog({
 
           {/* Quote info */}
           <div className="space-y-3 border-t border-border-sub pt-4">
-            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Quote Details</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Quote Details</p>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Title *</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Title *</Label>
               <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={title} onChange={e => setTitle(e.target.value)} placeholder="Security camera installation — 4 units" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Description</Label>
-              <textarea rows={2} className="w-full text-[11px] bg-bg-secondary border border-border-main rounded-md p-2 text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-brand-red/40"
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Description</Label>
+              <textarea rows={2} className="w-full text-[12px] bg-bg-secondary border border-border-main rounded-md p-2 text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-brand-red/40"
                 value={description} onChange={e => setDescription(e.target.value)} placeholder="Brief overview of the project..." />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Scope Summary</Label>
-              <textarea rows={2} className="w-full text-[11px] bg-bg-secondary border border-border-main rounded-md p-2 text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-brand-red/40"
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Scope Summary</Label>
+              <textarea rows={2} className="w-full text-[12px] bg-bg-secondary border border-border-main rounded-md p-2 text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-brand-red/40"
                 value={scopeSummary} onChange={e => setScopeSummary(e.target.value)} placeholder="What's included in this quote..." />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Expiration Date</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Expiration Date</Label>
                 <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={expirationDate} onChange={e => setExpirationDate(e.target.value)} />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Terms</Label>
-              <textarea rows={2} className="w-full text-[11px] bg-bg-secondary border border-border-main rounded-md p-2 text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-brand-red/40"
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Terms</Label>
+              <textarea rows={2} className="w-full text-[12px] bg-bg-secondary border border-border-main rounded-md p-2 text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-brand-red/40"
                 value={terms} onChange={e => setTerms(e.target.value)} />
             </div>
           </div>
@@ -374,8 +396,8 @@ function NewQuoteDialog({
           {/* Line Items */}
           <div className="space-y-2 border-t border-border-sub pt-4">
             <div className="flex items-center justify-between">
-              <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Line Items</p>
-              <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase" onClick={addLineItem}>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Line Items</p>
+              <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" onClick={addLineItem}>
                 <Plus size={10} className="mr-1" /> Add Item
               </Button>
             </div>
@@ -383,7 +405,7 @@ function NewQuoteDialog({
               {lineItems.map((item, idx) => (
                 <div key={item.id} className="rounded-lg border border-border-sub bg-bg-secondary p-3 space-y-2">
                   <div className="space-y-1">
-                    <Label className="text-[8px] font-black uppercase tracking-widest text-text-muted">Preset</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Preset</Label>
                     <Select onValueChange={v => handlePremadeItemSelect(idx, v)}>
                       <SelectTrigger className="h-7 text-[10px] bg-bg-tertiary border-border-sub">
                         <SelectValue placeholder="Select preset or enter below..." />
@@ -391,9 +413,9 @@ function NewQuoteDialog({
                       <SelectContent className="bg-bg-elevated border-border-main">
                         {PRESET_CATALOG.map(group => (
                           <SelectGroup key={group.group}>
-                            <SelectLabel className="text-[8px] font-black uppercase tracking-widest text-text-muted px-2 py-1">{group.group}</SelectLabel>
+                            <SelectLabel className="text-[10px] font-bold uppercase tracking-wider text-text-muted px-2 py-1">{group.group}</SelectLabel>
                             {group.items.map(p => (
-                              <SelectItem key={p.id} value={p.id} className="text-[10px]">{p.name}</SelectItem>
+                              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                             ))}
                           </SelectGroup>
                         ))}
@@ -402,12 +424,12 @@ function NewQuoteDialog({
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <Label className="text-[8px] font-black uppercase tracking-widest text-text-muted">Item Name</Label>
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Item Name</Label>
                       <Input className="h-7 text-[10px] bg-bg-tertiary border-border-sub" value={item.name}
                         onChange={e => updateLineItem(idx, 'name', e.target.value)} placeholder="Labor — installation" />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[8px] font-black uppercase tracking-widest text-text-muted">Category</Label>
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Category</Label>
                       <Select value={item.category} onValueChange={v => updateLineItem(idx, 'category', v)}>
                         <SelectTrigger className="h-7 text-[10px] bg-bg-tertiary border-border-sub">
                           <SelectValue />
@@ -422,28 +444,28 @@ function NewQuoteDialog({
                   </div>
                   <div className="grid grid-cols-3 gap-2 items-end">
                     <div className="space-y-1">
-                      <Label className="text-[8px] font-black uppercase tracking-widest text-text-muted">Qty</Label>
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Qty</Label>
                       <Input type="number" className="h-7 text-[10px] bg-bg-tertiary border-border-sub" value={item.quantity}
                         onChange={e => updateLineItem(idx, 'quantity', parseFloat(e.target.value) || 0)} />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[8px] font-black uppercase tracking-widest text-text-muted">Unit Price</Label>
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Unit Price</Label>
                       <Input type="number" className="h-7 text-[10px] bg-bg-tertiary border-border-sub" value={item.unitPrice}
                         onChange={e => updateLineItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)} />
                     </div>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-black text-text-primary">{fmtMoney(item.total)}</span>
+                      <span className="text-[12px] font-bold text-text-primary">{fmtMoney(item.total)}</span>
                       <button type="button" onClick={() => removeLineItem(idx)} className="text-text-muted hover:text-brand-red transition-colors">
                         <Trash2 size={12} />
                       </button>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-1.5 text-[9px] text-text-muted cursor-pointer">
+                    <label className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer">
                       <input type="checkbox" checked={item.taxable} onChange={e => updateLineItem(idx, 'taxable', e.target.checked)} className="accent-brand-red" />
                       Taxable
                     </label>
-                    <label className="flex items-center gap-1.5 text-[9px] text-text-muted cursor-pointer">
+                    <label className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer">
                       <input type="checkbox" checked={item.required} onChange={e => updateLineItem(idx, 'required', e.target.checked)} className="accent-brand-red" />
                       Required
                     </label>
@@ -454,15 +476,15 @@ function NewQuoteDialog({
             <div className="text-right space-y-0.5 pt-2">
               <p className="text-[10px] text-text-muted">Subtotal: <span className="text-text-primary font-bold">{fmtMoney(subtotal)}</span></p>
               <p className="text-[10px] text-text-muted">Tax (8%): <span className="text-text-primary font-bold">{fmtMoney(taxAmount)}</span></p>
-              <p className="text-[12px] font-black text-text-primary">Total: {fmtMoney(total)}</p>
+              <p className="text-[12px] font-bold text-text-primary">Total: {fmtMoney(total)}</p>
             </div>
           </div>
 
           {/* Optional Choices */}
           <div className="space-y-2 border-t border-border-sub pt-4">
             <div className="flex items-center justify-between">
-              <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Optional Add-Ons</p>
-              <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase" onClick={addOptionalGroup}>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Optional Add-Ons</p>
+              <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" onClick={addOptionalGroup}>
                 <Plus size={10} className="mr-1" /> Add Group
               </Button>
             </div>
@@ -480,7 +502,7 @@ function NewQuoteDialog({
                     <button type="button" onClick={() => removeOption(gIdx, oIdx)} className="text-text-muted hover:text-brand-red"><Trash2 size={11} /></button>
                   </div>
                 ))}
-                <Button size="sm" variant="ghost" className="h-6 text-[9px] font-bold uppercase text-text-muted" onClick={() => addOption(gIdx)}>
+                <Button size="sm" variant="ghost" className="h-6 text-[11px] font-bold text-text-muted" onClick={() => addOption(gIdx)}>
                   <Plus size={9} className="mr-1" /> Add Option
                 </Button>
               </div>
@@ -489,10 +511,10 @@ function NewQuoteDialog({
         </div>
 
         <DialogFooter className="gap-2 pt-2">
-          <Button variant="outline" size="sm" onClick={onClose} className="text-[10px] font-black uppercase">Cancel</Button>
-          <Button size="sm" onClick={handleSave} disabled={saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+          <Button variant="outline" size="sm" onClick={onClose} className="text-[10px] font-bold">Cancel</Button>
+          <Button size="sm" onClick={handleSave} disabled={saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
             {saving && <Loader2 size={11} className="animate-spin mr-1.5" />}
-            Save as Draft
+            Save as draft
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -509,21 +531,19 @@ function QuoteCard({ quote, onClick }: { quote: Quote; onClick: () => void }) {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[12px] font-bold text-text-primary truncate">{quote.title}</p>
-          <p className="text-[10px] text-text-muted">{quote.customerName || quote.customerCompany}</p>
+          <p className="text-[12px] text-text-muted">{quote.customerName || quote.customerCompany}</p>
         </div>
-        <span className={cn('text-[8px] px-2 py-0.5 rounded border font-black uppercase tracking-widest shrink-0', statusCls(quote.status))}>
-          {quote.status.replace(/_/g, ' ')}
-        </span>
+        <QuoteStatusBadge status={quote.status} />
       </div>
-      <div className="flex items-center gap-3 text-[10px] text-text-muted">
-        <span className="font-mono text-[9px]">{quote.quoteNumber}</span>
-        <span className="font-black text-text-primary">{fmtMoney(quote.total)}</span>
+      <div className="flex items-center gap-3 text-[12px] text-text-muted">
+        <span className="font-mono">{quote.quoteNumber}</span>
+        <span className="font-bold text-text-primary">{fmtMoney(quote.total)}</span>
         {quote.expirationDate && (
-          <span className="flex items-center gap-1"><Clock size={9} />Exp {quote.expirationDate}</span>
+          <span className="flex items-center gap-1"><Clock size={12} />Expires {quote.expirationDate}</span>
         )}
       </div>
       {quote.lineItems.length > 0 && (
-        <p className="text-[9px] text-text-muted">{quote.lineItems.length} line item{quote.lineItems.length !== 1 ? 's' : ''}</p>
+        <p className="text-[11px] text-text-muted">{quote.lineItems.length} line item{quote.lineItems.length !== 1 ? 's' : ''}</p>
       )}
     </button>
   );
@@ -535,17 +555,15 @@ function QuoteRow({ quote, onClick }: { quote: Quote; onClick: () => void }) {
       className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border-sub bg-bg-secondary hover:border-border-main transition-colors text-left">
       <div className="flex-1 min-w-0">
         <p className="text-[12px] font-bold text-text-primary truncate">{quote.title}</p>
-        <p className="text-[10px] text-text-muted truncate">
+        <p className="text-[12px] text-text-muted truncate">
           <span className="font-mono">{quote.quoteNumber}</span> · {quote.customerName || quote.customerCompany}
         </p>
       </div>
       {quote.expirationDate && (
-        <span className="hidden md:flex items-center gap-1 text-[10px] text-text-muted shrink-0"><Clock size={9} />Exp {quote.expirationDate}</span>
+        <span className="hidden md:flex items-center gap-1 text-[12px] text-text-muted shrink-0"><Clock size={12} />Expires {quote.expirationDate}</span>
       )}
-      <span className="text-[11px] font-black text-text-primary shrink-0">{fmtMoney(quote.total)}</span>
-      <span className={cn('text-[8px] px-2 py-0.5 rounded border font-black uppercase tracking-widest shrink-0', statusCls(quote.status))}>
-        {quote.status.replace(/_/g, ' ')}
-      </span>
+      <span className="text-[12px] font-bold text-text-primary shrink-0">{fmtMoney(quote.total)}</span>
+      <QuoteStatusBadge status={quote.status} />
     </button>
   );
 }
@@ -613,25 +631,23 @@ function QuoteDetailSheet({
     <Sheet open={!!quote} onOpenChange={v => !v && onClose()}>
       <SheetContent className="w-full sm:max-w-lg bg-bg-secondary border-border-main overflow-y-auto">
         <SheetHeader className="pb-4 border-b border-border-sub">
-          <SheetTitle className="text-[13px] font-black uppercase tracking-widest">{quote.title}</SheetTitle>
+          <SheetTitle className="text-base font-semibold">{quote.title}</SheetTitle>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[9px] font-mono text-text-muted">{quote.quoteNumber}</span>
-            <span className={cn('text-[8px] px-2 py-0.5 rounded border font-black uppercase tracking-widest', statusCls(quote.status))}>
-              {quote.status.replace(/_/g, ' ')}
-            </span>
-            <span className="text-[10px] font-black text-text-primary">{fmtMoney(quote.total)}</span>
+            <span className="text-[11px] font-mono text-text-muted">{quote.quoteNumber}</span>
+            <QuoteStatusBadge status={quote.status} />
+            <span className="text-[12px] font-bold text-text-primary">{fmtMoney(quote.total)}</span>
           </div>
         </SheetHeader>
 
         <div className="py-4 space-y-5">
           {/* Customer */}
           <div className="space-y-1">
-            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Customer</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Customer</p>
             <p className="text-[13px] font-bold text-text-primary">{quote.customerName}</p>
             {quote.leadId && (
-              <a href={paths.pipeline + `?lead=${quote.leadId}`} className="text-[10px] font-bold uppercase tracking-wider text-brand-red hover:underline">Linked CRM lead →</a>
+              <a href={paths.pipeline + `?lead=${quote.leadId}`} className="text-[12px] font-medium text-brand-red hover:underline">Open CRM lead →</a>
             )}
-            {quote.customerCompany && <p className="text-[11px] text-text-secondary">{quote.customerCompany}</p>}
+            {quote.customerCompany && <p className="text-[12px] text-text-secondary">{quote.customerCompany}</p>}
             {quote.customerEmail && (
               <p className="text-[11px] text-text-muted flex items-center gap-1"><Mail size={10} />{quote.customerEmail}</p>
             )}
@@ -643,34 +659,34 @@ function QuoteDetailSheet({
           {/* Scope */}
           {quote.scopeSummary && (
             <div className="space-y-1">
-              <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Scope</p>
-              <p className="text-[11px] text-text-secondary leading-relaxed">{quote.scopeSummary}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Scope</p>
+              <p className="text-[12px] text-text-secondary leading-relaxed">{quote.scopeSummary}</p>
             </div>
           )}
 
           {/* Line items */}
           <div className="space-y-1">
-            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Line Items</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Line Items</p>
             <div className="rounded-lg border border-border-sub overflow-hidden">
               {quote.lineItems.map(item => (
                 <div key={item.id} className="flex items-center justify-between px-3 py-2 border-b border-border-sub last:border-0">
                   <div className="min-w-0">
-                    <p className="text-[10px] font-bold text-text-primary truncate">{item.name}</p>
-                    <p className="text-[9px] text-text-muted">{item.quantity} × {fmtMoney(item.unitPrice)} · {item.category}</p>
+                    <p className="text-[12px] font-bold text-text-primary truncate">{item.name}</p>
+                    <p className="text-[11px] text-text-muted">{item.quantity} × {fmtMoney(item.unitPrice)} · {item.category}</p>
                   </div>
-                  <span className="text-[11px] font-black text-text-primary shrink-0 ml-3">{fmtMoney(item.total)}</span>
+                  <span className="text-[12px] font-bold text-text-primary shrink-0 ml-3">{fmtMoney(item.total)}</span>
                 </div>
               ))}
               <div className="px-3 py-2 bg-bg-tertiary space-y-0.5">
-                <div className="flex justify-between text-[9px] text-text-muted">
+                <div className="flex justify-between text-[11px] text-text-muted">
                   <span>Subtotal</span><span>{fmtMoney(quote.subtotal)}</span>
                 </div>
                 {quote.taxAmount > 0 && (
-                  <div className="flex justify-between text-[9px] text-text-muted">
+                  <div className="flex justify-between text-[11px] text-text-muted">
                     <span>Tax</span><span>{fmtMoney(quote.taxAmount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-[11px] font-black text-text-primary border-t border-border-sub pt-1 mt-1">
+                <div className="flex justify-between text-[12px] font-bold text-text-primary border-t border-border-sub pt-1 mt-1">
                   <span>Total</span><span>{fmtMoney(quote.total)}</span>
                 </div>
               </div>
@@ -680,10 +696,10 @@ function QuoteDetailSheet({
           {/* Optional choices */}
           {quote.optionalChoices.length > 0 && (
             <div className="space-y-1">
-              <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Optional Add-Ons</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Optional Add-Ons</p>
               {quote.optionalChoices.map(g => (
                 <div key={g.id} className="rounded-lg border border-border-sub p-3 space-y-1.5">
-                  <p className="text-[10px] font-bold text-text-primary">{g.title}</p>
+                  <p className="text-[12px] font-bold text-text-primary">{g.title}</p>
                   {g.options.map(o => (
                     <div key={o.id} className="flex items-center justify-between text-[10px]">
                       <span className={cn(o.selected ? 'text-text-green font-bold' : 'text-text-muted')}>{o.label}</span>
@@ -698,30 +714,30 @@ function QuoteDetailSheet({
           {/* Approval info */}
           {quote.approvedAt && (
             <div className="rounded-lg bg-text-green/5 border border-text-green/20 p-3 space-y-1">
-              <p className="text-[9px] font-black uppercase tracking-widest text-text-green">Approved</p>
-              <p className="text-[11px] text-text-primary">{quote.approvedByName} — {quote.approvedByEmail}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-green">Approved</p>
+              <p className="text-[12px] text-text-primary">{quote.approvedByName} — {quote.approvedByEmail}</p>
               <p className="text-[10px] text-text-muted">{format(parseISO(quote.approvedAt), 'MMM d, yyyy h:mm a')}</p>
-              {quote.approvalNote && <p className="text-[10px] text-text-secondary italic">"{quote.approvalNote}"</p>}
+              {quote.approvalNote && <p className="text-[12px] text-text-secondary">"{quote.approvalNote}"</p>}
             </div>
           )}
           {quote.rejectionReason && (
             <div className="rounded-lg bg-brand-red/5 border border-brand-red/20 p-3 space-y-1">
-              <p className="text-[9px] font-black uppercase tracking-widest text-brand-red">Rejected</p>
-              <p className="text-[10px] text-text-secondary italic">"{quote.rejectionReason}"</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-brand-red">Rejected</p>
+              <p className="text-[12px] text-text-secondary">"{quote.rejectionReason}"</p>
             </div>
           )}
 
           {/* Public link */}
           {publicUrl && (
             <div className="rounded-lg border border-border-sub p-3 space-y-2">
-              <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Approval Link</p>
-              <p className="text-[9px] text-text-muted font-mono break-all">{publicUrl}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Approval Link</p>
+              <p className="text-[11px] text-text-muted font-mono break-all">{publicUrl}</p>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase flex-1" onClick={handleCopyLink}>
+                <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold flex-1" onClick={handleCopyLink}>
                   <Copy size={10} className="mr-1" /> Copy Link
                 </Button>
                 <a href={publicUrl} target="_blank" rel="noreferrer">
-                  <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase">
+                  <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold">
                     <ExternalLink size={10} />
                   </Button>
                 </a>
@@ -732,8 +748,8 @@ function QuoteDetailSheet({
           {/* In-app client delivery note */}
           {quote.customerType === 'in_app_client' && quote.status !== 'draft' && (
             <div className="rounded-lg border border-border-sub p-3 space-y-1">
-              <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Client Delivery</p>
-              <p className="text-[9px] text-text-muted leading-relaxed">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client Delivery</p>
+              <p className="text-[11px] text-text-muted leading-relaxed">
                 This quote is visible to the client in their portal. No external link is required.
               </p>
             </div>
@@ -741,62 +757,62 @@ function QuoteDetailSheet({
 
           {/* Actions */}
           <div className="border-t border-border-sub pt-4 space-y-2">
-            <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">Actions</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Actions</p>
             <div className="grid grid-cols-2 gap-2">
               {quote.status === 'draft' && (
                 <>
-                  <Button size="sm" className="h-8 text-[9px] font-bold uppercase bg-brand-red hover:bg-brand-red/90 text-white col-span-2"
+                  <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white col-span-2"
                     onClick={handleSend} disabled={acting}>
-                    <Send size={11} className="mr-1.5" />Send Quote
+                    <Send size={14} className="mr-1.5" />Send quote
                   </Button>
-                  <Button size="sm" variant="outline" className="h-8 text-[9px] font-bold uppercase border-brand-red/30 text-brand-red hover:bg-brand-red/5"
+                  <Button size="sm" variant="outline" className="h-8 border-brand-red/30 text-brand-red hover:bg-brand-red/5"
                     onClick={() => act({ status: 'archived' })} disabled={acting}>
-                    <Archive size={11} className="mr-1.5" />Archive
+                    <Archive size={14} className="mr-1.5" />Archive
                   </Button>
                 </>
               )}
               {(quote.status === 'sent' || quote.status === 'viewed') && (
                 <>
-                  <Button size="sm" variant="outline" className="h-8 text-[9px] font-bold uppercase col-span-2"
+                  <Button size="sm" variant="outline" className="h-8 col-span-2"
                     onClick={handleSend} disabled={acting}>
-                    <RotateCcw size={11} className="mr-1.5" />Resend
+                    <RotateCcw size={14} className="mr-1.5" />Resend
                   </Button>
                   {publicUrl && (
-                    <Button size="sm" variant="outline" className="h-8 text-[9px] font-bold uppercase"
+                    <Button size="sm" variant="outline" className="h-8"
                       onClick={handleCopyLink} disabled={acting}>
-                      <Copy size={11} className="mr-1.5" />Copy Link
+                      <Copy size={14} className="mr-1.5" />Copy link
                     </Button>
                   )}
-                  <Button size="sm" variant="outline" className="h-8 text-[9px] font-bold uppercase border-brand-red/30 text-brand-red hover:bg-brand-red/5"
+                  <Button size="sm" variant="outline" className="h-8 border-brand-red/30 text-brand-red hover:bg-brand-red/5"
                     onClick={() => act({ status: 'expired' })} disabled={acting}>
-                    <Clock size={11} className="mr-1.5" />Mark Expired
+                    <Clock size={14} className="mr-1.5" />Mark expired
                   </Button>
                 </>
               )}
               {quote.status === 'approved' && (
                 <>
-                  <Button size="sm" className="h-8 text-[9px] font-bold uppercase bg-blue-600 hover:bg-blue-600/90 text-white"
+                  <Button size="sm" variant="outline" className="h-8"
                     onClick={() => handleConvert('work_order')} disabled={acting || !!quote.convertedToWorkOrderId}>
-                    <ArrowRight size={11} className="mr-1.5" />→ Work Order
+                    <ArrowRight size={14} className="mr-1.5" />Convert to job
                   </Button>
-                  <Button size="sm" className="h-8 text-[9px] font-bold uppercase bg-purple-600 hover:bg-purple-600/90 text-white"
+                  <Button size="sm" variant="outline" className="h-8"
                     onClick={() => handleConvert('project')} disabled={acting || !!quote.convertedToProjectId}>
-                    <ArrowRight size={11} className="mr-1.5" />→ Project
+                    <ArrowRight size={14} className="mr-1.5" />Convert to project
                   </Button>
-                  <Button size="sm" className="h-8 text-[9px] font-bold uppercase bg-text-green hover:bg-text-green/90 text-white col-span-2"
+                  <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white col-span-2"
                     onClick={() => handleConvert('invoice')} disabled={acting || !!quote.convertedToInvoiceId}>
-                    <ArrowRight size={11} className="mr-1.5" />→ Invoice
+                    <ArrowRight size={14} className="mr-1.5" />Create invoice
                   </Button>
-                  <Button size="sm" variant="outline" className="h-8 text-[9px] font-bold uppercase col-span-2"
+                  <Button size="sm" variant="outline" className="h-8 col-span-2"
                     onClick={() => act({ status: 'archived' })} disabled={acting}>
-                    <Archive size={11} className="mr-1.5" />Archive
+                    <Archive size={14} className="mr-1.5" />Archive
                   </Button>
                 </>
               )}
               {(quote.status === 'rejected' || quote.status === 'expired') && (
-                <Button size="sm" variant="outline" className="h-8 text-[9px] font-bold uppercase col-span-2"
+                <Button size="sm" variant="outline" className="h-8 col-span-2"
                   onClick={() => act({ status: 'archived' })} disabled={acting}>
-                  <Archive size={11} className="mr-1.5" />Archive
+                  <Archive size={14} className="mr-1.5" />Archive
                 </Button>
               )}
             </div>
@@ -818,6 +834,10 @@ export default function AdminQuotesPage() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useViewMode('quotes');
   const [prefillLead, setPrefillLead] = useState<Lead | null>(null);
+  const [tab, setTab] = useState('draft');
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('date');
+  const [sortAsc, setSortAsc] = useState(false);
 
   // /admin/quotes?leadId=… (from the CRM drawer) opens New Quote prefilled.
   useEffect(() => {
@@ -847,49 +867,82 @@ export default function AdminQuotesPage() {
     return () => { u1(); u2(); };
   }, []);
 
-  const draft     = quotes.filter(q => q.status === 'draft');
-  const sent      = quotes.filter(q => q.status === 'sent' || q.status === 'viewed' || q.status === 'changes_requested');
-  const approved  = quotes.filter(q => q.status === 'approved' || q.status === 'converted_to_work_order' || q.status === 'converted_to_project' || q.status === 'converted_to_invoice');
-  const rejected  = quotes.filter(q => q.status === 'rejected' || q.status === 'expired' || q.status === 'archived' || q.status === 'superseded');
+  // Search + sort apply to every tab; tab counts follow the search.
+  const shown = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const rows = q ? quotes.filter(x => [x.title, x.quoteNumber, x.customerName, x.customerCompany, x.customerEmail]
+      .some(v => (v || '').toLowerCase().includes(q))) : quotes;
+    const when = (x: Quote) => new Date(x.createdAt || 0).getTime() || 0;
+    const exp = (x: Quote) => (x.expirationDate ? parseLocalDate(x.expirationDate)?.getTime() : undefined) ?? Number.MAX_SAFE_INTEGER;
+    const who = (x: Quote) => (x.customerCompany || x.customerName || '').toLowerCase();
+    return [...rows].sort((a, b) => {
+      switch (sortBy) {
+        case 'total': return (b.total || 0) - (a.total || 0);
+        case 'customer': return who(a).localeCompare(who(b)) || when(b) - when(a);
+        case 'expires': return exp(a) - exp(b);
+        default: return sortAsc ? when(a) - when(b) : when(b) - when(a);
+      }
+    });
+  }, [quotes, search, sortBy, sortAsc]);
+
+  const draft     = shown.filter(q => q.status === 'draft');
+  const sent      = shown.filter(q => q.status === 'sent' || q.status === 'viewed' || q.status === 'changes_requested');
+  const approved  = shown.filter(q => q.status === 'approved' || q.status === 'converted_to_work_order' || q.status === 'converted_to_project' || q.status === 'converted_to_invoice');
+  const rejected  = shown.filter(q => q.status === 'rejected' || q.status === 'expired' || q.status === 'archived' || q.status === 'superseded');
 
   function TabCount({ n }: { n: number }) {
     if (!n) return null;
     return (
-      <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-brand-red text-white text-[8px] font-black min-w-[16px] h-4 px-1">
+      <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-brand-red text-white text-[10px] font-bold min-w-[16px] h-4 px-1">
         {n}
       </span>
     );
   }
 
   const grid = (items: Quote[], key: string) => (
-    <QuoteList items={items} viewMode={viewMode} onSelect={setSelectedQuote} storageKey={`quotes-${key}`} />
+    loading ? <LoadingState label="Loading quotes…" /> :
+    <QuoteList items={items} viewMode={viewMode} onSelect={setSelectedQuote} storageKey={`quotes-${key}`}
+      resetKeys={[search, sortBy, sortAsc]} searching={!!search.trim()} onClearSearch={() => setSearch('')} />
   );
+
+  const tabRows: Record<string, Quote[]> = { draft, sent, approved, rejected };
+  const exportCsv = () => {
+    const rows = tabRows[tab] || [];
+    downloadCsv(`quotes_${tab}`, ['Quote #', 'Title', 'Customer', 'Company', 'Email', 'Status', 'Subtotal', 'Tax', 'Total', 'Created', 'Sent', 'Expires', 'Quote ID'],
+      rows.map(q => [q.quoteNumber, q.title, q.customerName, q.customerCompany, q.customerEmail, QUOTE_LABEL[q.status] || statusLabel(q.status),
+        q.subtotal?.toFixed(2), q.taxAmount?.toFixed(2), q.total?.toFixed(2),
+        q.createdAt ? format(new Date(q.createdAt), 'MM/dd/yyyy') : '', q.sentAt ? format(new Date(q.sentAt), 'MM/dd/yyyy') : '', q.expirationDate || '', q.id]));
+  };
 
   return (
     <div className="space-y-6">
-      <header className="page-header">
-        <div className="text-left">
-          <p className="page-eyebrow flex items-center gap-2">
-            <FileSearch size={12} />
-            Quote Management
-          </p>
-          <h1 className="page-title">Quotes</h1>
-          <p className="page-subtitle">Create, send, and track client quotes through to conversion.</p>
-        </div>
-        <div className="page-header-right items-center gap-2">
+      <PageHeader
+        eyebrow="Sales"
+        icon={FileSearch}
+        title="Quotes"
+        subtitle="Create, send and track quotes until the client approves them."
+        actions={<>
           <ViewToggle value={viewMode} onChange={setViewMode} />
-          <Button onClick={() => setIsNewOpen(true)} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase tracking-widest h-9">
-            <Plus size={13} className="mr-1.5" />New Quote
+          <Button onClick={() => setIsNewOpen(true)} className="bg-brand-red hover:bg-brand-red/90 text-white h-9">
+            <Plus size={14} className="mr-1.5" />New quote
           </Button>
-        </div>
-      </header>
+        </>}
+      />
 
-      <Tabs defaultValue="draft" className="w-full">
+      <div className="flex flex-wrap items-center gap-2">
+        <SearchField className="flex-1 min-w-[220px]" value={search} onChange={setSearch} placeholder="Search title, quote #, customer, email…" />
+        <SortControl value={sortBy} onChange={setSortBy} options={QUOTE_SORTS} dateAsc={sortAsc} onToggleDirection={() => setSortAsc(v => !v)} />
+        <Button variant="outline" className="h-11 sm:h-9" onClick={exportCsv} disabled={!(tabRows[tab] || []).length}>
+          <Download size={14} className="mr-1.5" /> Export CSV
+        </Button>
+      </div>
+
+      <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="tabs flex-wrap h-auto gap-1 p-1 mb-4">
           <TabsTrigger value="draft" className="tab">Draft<TabCount n={draft.length} /></TabsTrigger>
           <TabsTrigger value="sent" className="tab">Sent<TabCount n={sent.length} /></TabsTrigger>
           <TabsTrigger value="approved" className="tab">Approved<TabCount n={approved.length} /></TabsTrigger>
-          <TabsTrigger value="rejected" className="tab">Rejected / Expired<TabCount n={rejected.length} /></TabsTrigger>
+          <TabsTrigger value="rejected" className="tab">Rejected / expired<TabCount n={rejected.length} /></TabsTrigger>
         </TabsList>
 
         <TabsContent value="draft" className="mt-0">{grid(draft, '0')}</TabsContent>
@@ -919,19 +972,22 @@ export default function AdminQuotesPage() {
 }
 
 /** One section of quotes, paged (25/50/100) so a busy pipeline doesn't render every quote. */
-function QuoteList({ items, viewMode, onSelect, storageKey }: {
+function QuoteList({ items, viewMode, onSelect, storageKey, resetKeys, searching, onClearSearch }: {
   items: Quote[];
   viewMode: string;
   onSelect: (q: Quote) => void;
   storageKey: string;
+  resetKeys: unknown[];
+  searching: boolean;
+  onClearSearch: () => void;
 }) {
-  const pager = usePaged(items, PAGE_SIZES_LARGE, storageKey);
+  const pager = usePaged(items, PAGE_SIZES_LARGE, storageKey, resetKeys);
   if (items.length === 0) {
-    return (
-      <div className="py-16 text-center text-text-muted">
-        <FileSearch size={28} className="mx-auto mb-3 opacity-20" />
-        <p className="text-[11px]">No quotes in this section</p>
-      </div>
+    return searching ? (
+      <EmptyState icon={FileSearch} title="No quotes match this search"
+        action={<Button size="sm" variant="outline" onClick={onClearSearch}>Clear search</Button>} />
+    ) : (
+      <EmptyState icon={FileSearch} title="No quotes here yet" description="Quotes move between these tabs as you send them and clients respond." />
     );
   }
   return (

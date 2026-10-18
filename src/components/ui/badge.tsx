@@ -21,7 +21,7 @@ const badgeVariants = cva(
         active: "border-green-border bg-green-dim text-text-green",
         onhold: "border-gold-border bg-accent-gold-dim text-accent-gold",
         "on-hold": "border-gold-border bg-accent-gold-dim text-accent-gold",
-        completed: "border-blue-500/30 bg-blue-500/10 text-blue-500",
+        completed: "border-green-border bg-green-dim text-text-green",
         // Assignment Status
         high: "border-border-red bg-brand-red-dim text-text-red",
         medium: "border-gold-border bg-accent-gold-dim text-accent-gold",
@@ -31,6 +31,13 @@ const badgeVariants = cva(
         "checked-out": "border-border-sub bg-bg-tertiary text-text-primary",
         missed: "border-border-red bg-brand-red-dim text-text-red",
         pending: "border-accent-gold/50 bg-accent-gold-dim text-accent-gold",
+        // Shared status map (lib/status-styles.ts) — one meaning per color.
+        info: "border-brand-blue/30 bg-brand-blue/10 text-brand-blue",
+        draft: "border-border-sub bg-bg-tertiary text-text-muted",
+        submitted: "border-accent-gold/50 bg-accent-gold-dim text-accent-gold",
+        approved: "border-green-border bg-green-dim text-text-green",
+        paid: "border-green-border bg-green-dim text-text-green",
+        disputed: "border-border-red bg-brand-red-dim text-text-red",
       },
     },
     defaultVariants: {

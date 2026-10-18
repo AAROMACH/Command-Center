@@ -13,7 +13,7 @@ export function NewArrivalPing({ count, className }: { count: number; className?
             aria-label={label}
             title={label}
             className={cn(
-                'inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand-red text-[10px] font-black leading-none text-white animate-bounce motion-reduce:animate-none',
+                'inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand-red text-[10px] font-bold leading-none text-white animate-bounce motion-reduce:animate-none',
                 className,
             )}
         >

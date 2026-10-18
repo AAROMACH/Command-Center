@@ -28,6 +28,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PageHeader } from '@/components/page-header';
+import { SearchField } from '@/components/search-field';
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
@@ -115,7 +117,7 @@ export default function ProjectsPage() {
     setActiveStatuses([]);
     setActiveClients([]);
     setSortBy('date');
-    toast({ title: "Filters Cleared", description: "Operational registry constraints removed." });
+    toast({ title: "Filters cleared" });
   };
 
   const filteredProjects = useMemo(() => {
@@ -176,36 +178,25 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="page-header">
-        <div className="text-left">
-          <p className="page-eyebrow flex items-center gap-2">
-            <FolderKanban size={12} />
-            Infrastructure Deployment Control
-          </p>
-          <h1 className="page-title">Projects</h1>
-          <p className="page-subtitle">Large-scale network and cabling deployments with phase-based job management.</p>
-        </div>
-        <div className="page-header-right items-center">
-            <div className="search-wrap">
-              <Search />
-              <input 
-                className="search-input !w-[220px]" 
-                placeholder="Search project folders..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+      <PageHeader
+        eyebrow="Jobs"
+        icon={FolderKanban}
+        title="Projects"
+        subtitle="Large network and cabling projects, managed in phases."
+        actions={
+        <div className="flex flex-wrap items-center gap-2">
+            <SearchField value={searchQuery} onChange={setSearchQuery} placeholder="Search projects…" className="w-full sm:w-[220px]" />
             
             <div className="flex items-center gap-2">
                 <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                    <SelectTrigger className="w-[160px] h-10 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-widest">
-                        <SelectValue placeholder="Sort By" />
+                    <SelectTrigger className="w-[160px] h-10 bg-bg-secondary border-border-main text-[10px] uppercase font-bold tracking-wider">
+                        <SelectValue placeholder="Sort by" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="date" className="text-[10px] uppercase font-bold">Start Date</SelectItem>
-                        <SelectItem value="name" className="text-[10px] uppercase font-bold">Project Name</SelectItem>
-                        <SelectItem value="client" className="text-[10px] uppercase font-bold">Client Entity</SelectItem>
-                        <SelectItem value="progress" className="text-[10px] uppercase font-bold">Progress %</SelectItem>
+                        <SelectItem value="date" className="text-[10px] font-bold">Start date</SelectItem>
+                        <SelectItem value="name" className="text-[10px] font-bold">Project name</SelectItem>
+                        <SelectItem value="client" className="text-[10px] font-bold">Client</SelectItem>
+                        <SelectItem value="progress" className="text-[10px] font-bold">Progress %</SelectItem>
                     </SelectContent>
                 </Select>
                 <div className="flex items-center border border-border-main rounded-md overflow-hidden h-10">
@@ -227,9 +218,9 @@ export default function ProjectsPage() {
                   <PopoverContent className="w-[280px] p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
                       <div className="p-4 border-b border-border-sub bg-bg-tertiary text-left">
                         <div className="flex items-center justify-between">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Filters</p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-text-primary">Filters</p>
                           {hasActiveFilters && (
-                            <button onClick={resetFilters} className="text-[9px] font-bold text-brand-red hover:underline flex items-center gap-1">
+                            <button onClick={resetFilters} className="text-[11px] font-bold text-brand-red hover:underline flex items-center gap-1">
                               <X size={10} /> Reset
                             </button>
                           )}
@@ -237,7 +228,7 @@ export default function ProjectsPage() {
                       </div>
                       <div className="p-4 space-y-6 text-left">
                         <div className="space-y-3">
-                          <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Status Audit</p>
+                          <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Status</p>
                           <div className="space-y-2">
                             {['active', 'on-hold', 'completed'].map(status => (
                               <div key={status} className="flex items-center space-x-2">
@@ -246,14 +237,14 @@ export default function ProjectsPage() {
                                   checked={activeStatuses.includes(status)}
                                   onCheckedChange={() => toggleStatus(status)}
                                 />
-                                <Label htmlFor={`status-${status}`} className="text-[10px] uppercase font-semibold cursor-pointer capitalize">{status}</Label>
+                                <Label htmlFor={`status-${status}`} className="text-[10px] font-semibold cursor-pointer capitalize">{status}</Label>
                               </div>
                             ))}
                           </div>
                         </div>
 
                         <div className="space-y-3">
-                          <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Client Entities</p>
+                          <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Client Entities</p>
                           <ScrollArea className="h-[120px]">
                             <div className="space-y-2 pr-4">
                               {clients.map(client => (
@@ -263,7 +254,7 @@ export default function ProjectsPage() {
                                     checked={activeClients.includes(client)}
                                     onCheckedChange={() => toggleClient(client)}
                                   />
-                                  <Label htmlFor={`client-${client}`} className="text-[10px] uppercase font-semibold cursor-pointer truncate">{client}</Label>
+                                  <Label htmlFor={`client-${client}`} className="text-[10px] font-semibold cursor-pointer truncate">{client}</Label>
                                 </div>
                               ))}
                             </div>
@@ -275,11 +266,12 @@ export default function ProjectsPage() {
 
                 <Button variant="default" size="default" onClick={() => setIsNewDialogOpen(true)}>
                     <Plus size={14} className="mr-2"/>
-                    New Project
+                    New project
                 </Button>
             </div>
         </div>
-      </header>
+        }
+      />
 
       <div className="w-full space-y-6">
         <ProjectsTabs

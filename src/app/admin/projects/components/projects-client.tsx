@@ -121,7 +121,7 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
     if (projects.length === 0) {
         return (
             <div className="table-wrap">
-                <div className="empty-state !py-12 text-center text-text-muted italic uppercase text-[10px] font-bold tracking-widest border-none">
+                <div className="empty-state !py-12 text-center text-text-muted uppercase text-[10px] font-bold tracking-wider border-none">
                     No projects found in this category.
                 </div>
             </div>
@@ -154,13 +154,13 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
                                 </div>
                             </div>
                             <div className="text-left">
-                                <h3 className="text-base font-black text-text-primary uppercase tracking-wide leading-tight">
+                                <h3 className="text-base font-bold text-text-primary tracking-wide leading-tight">
                                     {group.client.clientCompany || group.client.name}
                                 </h3>
                                 {group.client.clientCompany && group.client.clientCompany !== group.client.name && (
-                                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest leading-tight mt-0.5">{group.client.name}</p>
+                                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider leading-tight mt-0.5">{group.client.name}</p>
                                 )}
-                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest mt-0.5">
+                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider mt-0.5">
                                     {group.client.businessType || 'Strategic Partner'} • {group.projects.length} {statusLabel} {group.projects.length === 1 ? 'Project' : 'Projects'}
                                 </p>
                             </div>
@@ -184,8 +184,8 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
                         <th className="text-center w-[160px] pl-0">Status & ID</th>
                         <th className="text-left pl-0">Project Identification</th>
                         <th className="text-center">Project Lead</th>
-                        <th className="text-left pl-0">Site Coordinates</th>
-                        <th className="text-left pl-0">Schedule Date</th>
+                        <th className="text-left pl-0">Location</th>
+                        <th className="text-left pl-0">Date</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -204,13 +204,13 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
                                     <td className="pl-0 pt-4 pb-2">
                                         <div className="flex flex-col items-center justify-center gap-1.5">
                                             <div className="cell-id !text-[10px] font-mono font-bold !mt-0 !text-center">{(project.id || '').toUpperCase()}</div>
-                                            <Badge variant={project.status} className="capitalize text-[8px] h-4 px-1.5 tracking-widest">{project.status}</Badge>
+                                            <Badge variant={project.status} className="capitalize text-[10px] h-4 px-1.5 tracking-wider">{project.status}</Badge>
                                         </div>
                                     </td>
                                     <td className="text-left pl-0 pt-4 pb-2">
                                         <div className="flex flex-col min-w-0">
-                                          <div className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors">{project.name}</div>
-                                          <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{project.client}</div>
+                                          <div className="text-xs font-bold text-text-primary tracking-wide leading-tight group-hover:text-brand-red transition-colors">{project.name}</div>
+                                          <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-1">{project.client}</div>
                                         </div>
                                     </td>
                                     <td className="pt-4 pb-2">
@@ -221,15 +221,15 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
                                                         <AvatarImage src={lead.avatarUrl} />
                                                         <AvatarFallback className="text-[10px]">{lead.name ? lead.name.charAt(0) : 'U'}</AvatarFallback>
                                                     </Avatar>
-                                                    <span className="text-[10px] font-bold text-text-primary uppercase">{lead.name}</span>
+                                                    <span className="text-[10px] font-bold text-text-primary">{lead.name}</span>
                                                 </div>
                                             ) : (
-                                                <span className="text-[10px] text-text-muted italic uppercase font-bold tracking-widest">Unallocated</span>
+                                                <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider">Unallocated</span>
                                             )}
                                         </div>
                                     </td>
                                     <td className="pt-4 pb-2 pl-0">
-                                        <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase">
+                                        <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold">
                                             <MapPin size={11} className="text-brand-red shrink-0" />
                                             <span className="whitespace-normal text-left">{formatCityState(project.location)}</span>
                                         </div>
@@ -258,7 +258,7 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
                                                 </div>
                                                 <div className={cn("progress-pct font-mono font-bold ml-2 shrink-0", `text-${progressColor}`)}>{Math.round(progress)}%</div>
                                             </div>
-                                            <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest shrink-0">{completedTasks}/{totalTasks} targets</span>
+                                            <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider shrink-0">{completedTasks}/{totalTasks} targets</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -271,7 +271,7 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
             {projects.length > 0 && (
               <div className="bg-bg-tertiary/50 px-4 py-3 flex items-center justify-between border-t border-border-sub">
                 <div className="flex items-center gap-4">
-                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
                     Showing <span className="text-text-primary">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-text-primary">{Math.min(currentPage * itemsPerPage, projects.length)}</span> of <span className="text-text-primary">{projects.length}</span> entries
                   </p>
                 </div>
@@ -287,7 +287,7 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
                     <ChevronLeft size={14} />
                   </Button>
                   <div className="flex items-center gap-1 px-2 text-left">
-                    <span className="text-[10px] font-bold text-text-primary uppercase tracking-widest">Page {currentPage} of {totalPages}</span>
+                    <span className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Page {currentPage} of {totalPages}</span>
                   </div>
                   <Button 
                     variant="outline" 
@@ -340,13 +340,13 @@ function ProjectCard({ project, technicians }: { project: Project; technicians: 
                     <div className="flex items-center gap-3">
                         <div className="flex flex-col items-center">
                             <span className="font-mono text-[10px] text-brand-red font-bold">{(project.id || '').toUpperCase()}</span>
-                            <Badge variant={project.status} className="h-4 uppercase text-[7px] tracking-widest mt-1">
+                            <Badge variant={project.status} className="h-4 uppercase text-[10px] tracking-wider mt-1">
                                 {project.status}
                             </Badge>
                         </div>
                         <div className="flex flex-col min-w-0 text-left">
-                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide leading-tight group-hover:text-brand-red transition-colors whitespace-normal">{project.name}</p>
-                            <p className="text-[9px] text-text-muted uppercase font-bold tracking-tight mt-0.5">{project.client}</p>
+                            <p className="text-xs font-bold text-text-primary tracking-wide leading-tight group-hover:text-brand-red transition-colors whitespace-normal">{project.name}</p>
+                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-tight mt-0.5">{project.client}</p>
                         </div>
                     </div>
                 </div>
@@ -371,9 +371,9 @@ function ProjectCard({ project, technicians }: { project: Project; technicians: 
                             <div className="flex items-center gap-2 pt-1">
                                 <Avatar className="h-5 w-5 border border-border-sub">
                                     <AvatarImage src={lead.avatarUrl} />
-                                    <AvatarFallback className="text-[7px]">{lead.name ? lead.name.charAt(0) : 'U'}</AvatarFallback>
+                                    <AvatarFallback className="text-[10px]">{lead.name ? lead.name.charAt(0) : 'U'}</AvatarFallback>
                                 </Avatar>
-                                <span className="text-[9px] font-bold text-text-primary uppercase">Lead: {lead.name}</span>
+                                <span className="text-[11px] font-bold text-text-primary">Lead: {lead.name}</span>
                             </div>
                         )}
                     </div>

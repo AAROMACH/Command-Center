@@ -52,7 +52,7 @@ export function ProjectsTabs({ projects, technicians, dateRange, setDateRange, s
                             )}>
                                 <CalendarIcon size={12} className={cn("mr-2", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
                                 <span className={cn(
-                                    "text-[10px] font-bold uppercase tracking-widest whitespace-nowrap",
+                                    "text-[10px] font-bold uppercase tracking-wider whitespace-nowrap",
                                     dateRange?.from ? "text-text-primary" : "text-text-muted"
                                 )}>
                                     {dateRange?.from ? (

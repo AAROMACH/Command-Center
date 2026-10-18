@@ -28,7 +28,7 @@ export function ChangePasswordDialog({ isOpen, setIsOpen }: { isOpen: boolean, s
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      toast({ variant: 'destructive', title: 'Validation Error', description: 'New passwords do not match.' });
+      toast({ variant: 'destructive', title: 'Passwords don’t match', description: 'Enter the same new password in both boxes.' });
       return;
     }
 
@@ -36,7 +36,7 @@ export function ChangePasswordDialog({ isOpen, setIsOpen }: { isOpen: boolean, s
     const user = auth.currentUser;
 
     if (!user || !user.email) {
-      toast({ variant: 'destructive', title: 'Auth Error', description: 'No active session found.' });
+      toast({ variant: 'destructive', title: 'You’re signed out', description: 'Sign in again, then change your password.' });
       setIsLoading(false);
       return;
     }
@@ -49,7 +49,7 @@ export function ChangePasswordDialog({ isOpen, setIsOpen }: { isOpen: boolean, s
       // Update password
       await updatePassword(user, newPassword);
       
-      toast({ title: 'Success', description: 'Your access key has been updated.' });
+      toast({ title: 'Password updated', description: 'Use your new password next time you sign in.' });
       setIsOpen(false);
       // Reset form
       setCurrentPassword('');
@@ -59,10 +59,10 @@ export function ChangePasswordDialog({ isOpen, setIsOpen }: { isOpen: boolean, s
       console.error('Password update error:', error);
       toast({ 
         variant: 'destructive', 
-        title: 'Save failed', 
+        title: 'Could not update password', 
         description: error.code === 'auth/wrong-password' 
-          ? 'Current password provided is incorrect.' 
-          : error.message || 'Unable to update credentials.' 
+          ? 'Your current password is incorrect.' 
+          : error.message || 'Please try again.' 
       });
     } finally {
       setIsLoading(false);
@@ -71,61 +71,61 @@ export function ChangePasswordDialog({ isOpen, setIsOpen }: { isOpen: boolean, s
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[400px] bg-bg-elevated border-border-default shadow-2xl">
+      <DialogContent className="sm:max-w-[400px] bg-bg-elevated border-border-default shadow-xl">
         <DialogHeader>
           <div className="flex items-center gap-2 mb-1">
             <Key className="text-brand-red h-5 w-5" />
-            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Change Access Key</DialogTitle>
+            <DialogTitle className="text-lg font-semibold text-text-primary">Change password</DialogTitle>
           </div>
-          <DialogDescription className="text-xs">Update your credentials. You will be required to re-authenticate with your current password.</DialogDescription>
+          <DialogDescription className="text-[13px]">Enter your current password to confirm it’s you, then choose a new one.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleUpdate} className="space-y-4 py-4">
           <div className="space-y-2 text-left">
-            <Label className="text-[10px] uppercase font-bold text-text-muted">Current Password</Label>
+            <Label className="text-[12px] font-medium text-text-secondary">Current password</Label>
             <Input 
               type="password" 
               required 
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="bg-bg-primary h-10 text-xs" 
+              className="bg-bg-primary" 
             />
           </div>
           
           <Separator className="bg-border-sub" />
 
           <div className="space-y-2 text-left">
-            <Label className="text-[10px] uppercase font-bold text-text-muted">New Password</Label>
+            <Label className="text-[12px] font-medium text-text-secondary">New password</Label>
             <Input 
               type="password" 
               required 
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="bg-bg-primary h-10 text-xs" 
+              className="bg-bg-primary" 
             />
           </div>
           <div className="space-y-2 text-left">
-            <Label className="text-[10px] uppercase font-bold text-text-muted">Confirm New Password</Label>
+            <Label className="text-[12px] font-medium text-text-secondary">Confirm new password</Label>
             <Input 
               type="password" 
               required 
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="bg-bg-primary h-10 text-xs" 
+              className="bg-bg-primary" 
             />
           </div>
 
-          <div className="p-3 rounded bg-bg-secondary border border-border-sub flex items-start gap-2">
+          <div className="p-3 rounded-md bg-bg-secondary border border-border-sub flex items-start gap-2">
             <ShieldCheck size={14} className="text-text-green shrink-0 mt-0.5" />
-            <p className="text-[9px] text-text-muted uppercase font-bold leading-tight text-left">
-              Security Protocol: Password updates require a valid handshake with the primary authentication server.
+            <p className="text-[12px] text-text-muted leading-snug text-left">
+              Your new password takes effect right away.
             </p>
           </div>
 
           <DialogFooter className="pt-4">
-            <Button type="submit" disabled={isLoading} className="w-full h-11 bg-brand-red hover:bg-brand-red-hover text-white">
+            <Button type="submit" disabled={isLoading} className="w-full h-10">
               {isLoading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Check className="mr-2 h-4 w-4" />}
-              Commit Update
+              Update password
             </Button>
           </DialogFooter>
         </form>

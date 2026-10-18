@@ -97,14 +97,14 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
         if (!extractedData.merchant || !extractedData.amount || !extractedData.relatedId) {
             toast({
                 variant: 'destructive',
-                title: 'Incomplete Data',
-                description: 'Fill in merchant, amount, and select an assignment or project.',
+                title: 'Missing details',
+                description: 'Enter the vendor and amount, and pick a job or project.',
             });
             return;
         }
         const amount = parseFloat(extractedData.amount);
         if (isNaN(amount) || amount <= 0) {
-            toast({ variant: 'destructive', title: 'Invalid Amount', description: 'Enter a valid dollar amount.' });
+            toast({ variant: 'destructive', title: 'Invalid amount', description: 'Enter a valid dollar amount.' });
             return;
         }
 
@@ -145,13 +145,13 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
             await addDoc(collection(db, 'reimbursements'), reimbursementDoc);
 
             toast({
-                title: 'Receipt Submitted',
-                description: `$${amount.toFixed(2)} expense record created and pending review.`,
+                title: 'Receipt submitted',
+                description: `$${amount.toFixed(2)} sent for review.`,
             });
             resetAndClose();
         } catch (err) {
             console.error('Receipt save error:', err);
-            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not submit receipt. Please try again.' });
+            toast({ variant: 'destructive', title: 'Could not submit receipt', description: 'Could not submit receipt. Please try again.' });
         } finally {
             setIsSaving(false);
         }
@@ -198,9 +198,9 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
                 <DialogHeader className="p-6 pb-2 text-left">
                     <div className="flex items-center gap-2 mb-1">
                         <Receipt className="text-brand-red h-5 w-5" />
-                        <DialogTitle className="text-lg font-bold uppercase tracking-widest">Receipt Console</DialogTitle>
+                        <DialogTitle className="text-lg font-semibold">Add a receipt</DialogTitle>
                     </div>
-                    <DialogDescription className="text-xs uppercase font-bold text-text-muted">Photo identification required for all field expense records.</DialogDescription>
+                    <DialogDescription className="text-[12px] text-text-muted">Every expense needs a photo of the receipt.</DialogDescription>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -223,13 +223,13 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
                                         <Camera size={48} />
                                     </div>
                                 </div>
-                                <p className="text-sm font-bold uppercase tracking-widest mb-1 text-text-primary">Capture Receipt Photo</p>
-                                <p className="text-xs text-text-muted uppercase font-medium">Take a photo or select from your device</p>
+                                <p className="text-[14px] font-semibold mb-1 text-text-primary">Take a receipt photo</p>
+                                <p className="text-[12px] text-text-muted">Take a photo or select from your device</p>
                             </div>
 
                             <div className="p-4 rounded-lg bg-bg-secondary/50 border border-border-sub text-center">
-                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest leading-relaxed">
-                                    Terminal Note: Receipt photo required to initiate expense record. Manual fields unlock after capture.
+                                <p className="text-[12px] text-text-muted leading-relaxed">
+                                    Add the photo first — the other fields open after that.
                                 </p>
                             </div>
                         </div>
@@ -243,9 +243,9 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
                             <div className="space-y-3">
                                 <div className="flex items-center justify-center gap-2 text-accent-gold">
                                     <Sparkles size={18} />
-                                    <p className="text-sm font-bold uppercase tracking-widest">Processing Receipt</p>
+                                    <p className="text-[14px] font-semibold">Processing receipt</p>
                                 </div>
-                                <p className="text-xs text-text-muted font-mono max-w-[300px] mx-auto uppercase">Preparing expense entry form...</p>
+                                <p className="text-[12px] text-text-muted max-w-[300px] mx-auto">Getting the form ready…</p>
                             </div>
                             <div className="px-12">
                                 <Progress value={extractionProgress} className="h-1 bg-bg-secondary" />
@@ -258,8 +258,8 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
                             {receiptImage && (
                                 <div className="relative aspect-[4/3] w-full rounded-lg overflow-hidden border border-border-sub bg-bg-primary">
                                     <div className="absolute top-2 left-2 z-10">
-                                        <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2 py-1 rounded border border-white/10 text-[9px] font-bold uppercase text-white tracking-widest">
-                                            <Eye size={10} /> Original Capture
+                                        <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2 py-1 rounded border border-white/10 text-[10px] font-semibold uppercase text-white tracking-wider">
+                                            <Eye size={10} /> Your photo
                                         </div>
                                     </div>
                                     <Image
@@ -273,16 +273,16 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5 text-left">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Merchant / Vendor</Label>
+                                    <Label className="text-[12px] font-semibold text-text-muted">Vendor</Label>
                                     <Input
                                         placeholder="e.g. Home Depot"
                                         value={extractedData.merchant}
                                         onChange={(e) => setExtractedData({...extractedData, merchant: e.target.value})}
-                                        className="h-10 text-xs bg-bg-primary border-border-sub focus:border-brand-red uppercase font-bold"
+                                        className="h-10 text-xs bg-bg-primary border-border-sub focus:border-brand-red font-bold"
                                     />
                                 </div>
                                 <div className="space-y-1.5 text-left">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Total Amount ($)</Label>
+                                    <Label className="text-[12px] font-semibold text-text-muted">Total amount ($)</Label>
                                     <Input
                                         placeholder="0.00"
                                         value={extractedData.amount}
@@ -293,7 +293,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
                             </div>
 
                             <div className="space-y-1.5 text-left">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Transaction Date</Label>
+                                <Label className="text-[12px] font-semibold text-text-muted">Date</Label>
                                 <Input
                                     type="date"
                                     value={extractedData.date}
@@ -303,14 +303,14 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
                             </div>
 
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Link to Assignment or Project</Label>
+                                <Label className="text-[12px] font-semibold text-text-muted">Job or project</Label>
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                                     <Input
-                                        placeholder="Search assignments and projects..."
+                                        placeholder="Search jobs and projects"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="h-10 pl-9 text-xs bg-bg-primary border-border-sub focus:border-brand-red uppercase font-bold"
+                                        className="h-10 pl-9 text-xs bg-bg-primary border-border-sub focus:border-brand-red font-bold"
                                     />
                                 </div>
 
@@ -331,15 +331,15 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
                                                         <div className="flex items-center gap-3">
                                                             <item.icon size={14} className={isSelected ? 'text-white' : 'text-text-muted'} />
                                                             <div>
-                                                                <p className={cn('text-[10px] font-bold uppercase', isSelected ? 'text-white' : 'text-text-primary')}>{item.name}</p>
-                                                                <p className={cn('text-[8px] uppercase tracking-widest', isSelected ? 'text-white/80' : 'text-text-muted')}>{item.type}</p>
+                                                                <p className={cn('text-[13px] font-medium', isSelected ? 'text-white' : 'text-text-primary')}>{item.name}</p>
+                                                                <p className={cn('text-[11px]', isSelected ? 'text-white/80' : 'text-text-muted')}>{item.type}</p>
                                                             </div>
                                                         </div>
                                                         {isSelected && <Check size={14} />}
                                                     </button>
                                                 );
                                             }) : (
-                                                <div className="text-center py-8 text-[10px] text-text-muted uppercase font-bold">No matches found</div>
+                                                <div className="text-center py-8 text-[12px] text-text-muted">No matches</div>
                                             )}
                                         </div>
                                     </ScrollArea>
@@ -350,17 +350,17 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
                 </div>
 
                 <DialogFooter className="border-t border-border-default p-6 bg-bg-secondary/30">
-                    <Button variant="outline" onClick={resetAndClose} disabled={isSaving} className="h-10 flex-1 uppercase font-bold text-[10px] tracking-widest">
+                    <Button variant="outline" onClick={resetAndClose} disabled={isSaving} className="h-10 flex-1">
                         <X size={16} className="mr-2" /> Cancel
                     </Button>
                     {step === 'review' && (
                         <Button
                             onClick={handleSave}
-                            className="h-10 bg-brand-red hover:bg-brand-red-hover flex-1 uppercase font-bold text-[10px] tracking-widest"
+                            className="h-10 bg-brand-red hover:bg-brand-red-hover flex-1"
                             disabled={!extractedData.relatedId || isSaving}
                         >
                             {isSaving ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Upload size={16} className="mr-2" />}
-                            {isSaving ? 'Uploading...' : 'Submit Receipt'}
+                            {isSaving ? 'Uploading...' : 'Submit receipt'}
                         </Button>
                     )}
                 </DialogFooter>

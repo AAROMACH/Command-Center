@@ -9,10 +9,9 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { format, parseISO, isAfter } from 'date-fns';
+import { format, parseISO, isAfter, isToday } from 'date-fns';
 import type { AdminMessage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
@@ -54,6 +53,9 @@ export function NotificationBell() {
     }, () => setPersonal([]));
   }, [user?.id, pathname]);
   const [open, setOpen] = useState(false);
+  // "View all" expands the popover list past the 3 most recent.
+  const [showAll, setShowAll] = useState(false);
+  useEffect(() => { if (!open) setShowAll(false); }, [open]);
 
   // Listen to Firestore broadcasts in real-time
   useEffect(() => {
@@ -198,11 +200,11 @@ export function NotificationBell() {
               : 'text-text-muted',
           )} />
           <span className="min-w-0 flex flex-col leading-tight">
-            <span className="text-[9px] font-black uppercase tracking-wide text-text-primary truncate">{latest.subject}</span>
-            <span className="text-[8px] text-text-muted uppercase tracking-widest truncate">{latest.body}</span>
+            <span className="text-[12px] font-semibold text-text-primary truncate">{latest.subject}</span>
+            <span className="text-[11px] text-text-muted truncate">{latest.body}</span>
           </span>
           {messages.length > 1 && (
-            <span className="shrink-0 ml-0.5 h-4 min-w-4 px-1 rounded-full bg-bg-primary border border-border-sub text-[8px] font-mono font-bold text-text-muted flex items-center justify-center">
+            <span className="shrink-0 ml-0.5 h-5 min-w-5 px-1.5 rounded-full bg-bg-primary border border-border-sub text-[11px] font-semibold text-text-muted flex items-center justify-center">
               +{messages.length - 1}
             </span>
           )}
@@ -217,32 +219,34 @@ export function NotificationBell() {
           className="relative h-10 gap-2 border-border-main bg-bg-secondary px-3 group"
         >
           <Bell size={18} className="text-text-muted group-hover:text-brand-red transition-colors" aria-hidden="true" />
-          <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-text-muted group-hover:text-text-primary">
+          <span className="hidden sm:inline text-[13px] font-medium text-text-muted group-hover:text-text-primary">
             Alerts
           </span>
           {messages.length > 0 && (
             <div
-              className="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand-red border border-bg-primary shadow-[0_0_8px_rgba(204,34,0,0.6)]"
+              className="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand-red ring-2 ring-bg-secondary"
               aria-hidden="true"
             />
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-        <div className="p-4 border-b border-border-sub bg-bg-tertiary flex items-center justify-between">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-primary">Operational Message Center</h3>
-            <Badge variant="outline" className="text-[8px] bg-bg-primary border-border-sub font-mono">{messages.length} Active</Badge>
+      <PopoverContent className="w-[22rem] max-w-[calc(100vw-2rem)] p-0 bg-bg-elevated border-border-main shadow-md overflow-hidden" align="end">
+        <div className="px-4 py-3 border-b border-border-sub flex items-center justify-between">
+            <h3 className="text-[14px] font-semibold text-text-primary">Notifications</h3>
+            {messages.length > 0 && (
+                <Badge variant="outline" className="text-[11px] font-medium bg-bg-primary border-border-sub">{messages.length} unread</Badge>
+            )}
         </div>
-        <ScrollArea className="max-h-[350px]">
+        <div className={cn('overflow-y-auto overscroll-contain', showAll ? 'max-h-[min(480px,65vh)]' : 'max-h-[360px]')}>
             {messages.length > 0 ? (
                 <div className="divide-y divide-border-sub">
-                    {messages.slice(0, 3).map((msg) => {
+                    {(showAll ? messages : messages.slice(0, 3)).map((msg) => {
                         const Icon = getIcon(msg.type);
                         return (
                             <div key={msg.id}
                                 onClick={links[msg.id] ? () => { setOpen(false); handleClearMessage(msg.id, msg.subject); router.push(links[msg.id]); } : undefined}
-                                className={cn("p-4 hover:bg-bg-tertiary/50 transition-all group relative pr-12", links[msg.id] ? 'cursor-pointer' : 'cursor-default')}>
-                                <div className="flex gap-4">
+                                className={cn("px-4 py-3 hover:bg-bg-tertiary/50 transition-colors group relative pr-12", links[msg.id] ? 'cursor-pointer' : 'cursor-default')}>
+                                <div className="flex gap-3">
                                     <div className={cn(
                                         "p-2 rounded-lg shrink-0 h-fit transition-colors",
                                         msg.type === 'critical' ? "bg-brand-red-dim text-text-red border border-brand-red/30" :
@@ -252,21 +256,18 @@ export function NotificationBell() {
                                     )}>
                                         <Icon size={14} />
                                     </div>
-                                    <div className="space-y-1 min-w-0">
+                                    <div className="space-y-0.5 min-w-0 flex-1">
                                         <div className="flex justify-between items-start gap-2">
-                                            <div className="flex items-center gap-1.5">
-                                                <p className="text-[10px] font-bold text-text-primary uppercase tracking-wide leading-tight line-clamp-1">{msg.subject}</p>
-                                                {msg.isLocked && <Lock size={10} className="text-brand-red" />}
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                <p className="text-[13px] font-semibold text-text-primary leading-tight line-clamp-1">{msg.subject}</p>
+                                                {msg.isLocked && <Lock size={11} className="text-brand-red shrink-0" />}
                                             </div>
-                                            <span className="text-[8px] text-text-muted font-mono whitespace-nowrap">{format(parseISO(msg.timestamp), 'h:mm a')}</span>
+                                            <span className="text-[11px] text-text-muted whitespace-nowrap">{stampLabel(msg.timestamp)}</span>
                                         </div>
-                                        <p className="text-[9px] text-text-secondary leading-relaxed uppercase font-medium line-clamp-2 text-left">{msg.body}</p>
-                                        <div className="flex items-center gap-1.5 pt-1.5 opacity-60">
-                                            <div className="h-4 w-4 rounded-full bg-bg-tertiary border border-border-sub flex items-center justify-center text-[7px] font-bold">
-                                                {(msg.senderName || 'A').charAt(0)}
-                                            </div>
-                                            <span className="text-[8px] text-text-muted font-bold uppercase tracking-widest">Admin: {msg.senderName}</span>
-                                        </div>
+                                        <p className="text-[12px] text-text-secondary leading-relaxed line-clamp-2 text-left">{msg.body}</p>
+                                        {msg.senderName && (
+                                            <p className="text-[11px] text-text-muted pt-0.5">From {msg.senderName}</p>
+                                        )}
                                     </div>
                                 </div>
                                 
@@ -274,15 +275,16 @@ export function NotificationBell() {
                                 {!msg.isLocked && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleClearMessage(msg.id, msg.subject); }}
-                                        aria-label={`Acknowledge: ${msg.subject}`}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-brand-red"
+                                        aria-label={`Mark as read: ${msg.subject}`}
+                                        title="Mark as read"
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-all md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-brand-red"
                                     >
                                         <Eye size={16} aria-hidden="true" />
                                     </button>
                                 )}
 
                                 {msg.isLocked && (
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-brand-red opacity-30" title="Locked Directive">
+                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-text-muted/60" title="Pinned by an admin — can't be dismissed">
                                         <Lock size={16} />
                                     </div>
                                 )}
@@ -291,23 +293,40 @@ export function NotificationBell() {
                     })}
                 </div>
             ) : (
-                <div className="p-12 text-center space-y-2">
-                    <CheckCircle2 size={24} className="mx-auto text-text-green opacity-20" />
-                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em]">All directives acknowledged</p>
+                <div className="px-6 py-10 text-center space-y-2">
+                    <CheckCircle2 size={24} className="mx-auto text-text-green/60" />
+                    <p className="text-[13px] font-medium text-text-primary">You&apos;re all caught up</p>
+                    <p className="text-[12px] text-text-muted">New alerts and messages will show up here.</p>
                 </div>
             )}
-        </ScrollArea>
+        </div>
         {messages.length > 3 && (
-            <div className="p-2.5 border-t border-border-sub bg-bg-tertiary/50 text-center">
-                <p className="text-[8px] font-bold text-text-muted uppercase tracking-[0.2em]">
-                    Showing 3 most recent · {messages.length - 3} more active
+            <div className="px-4 py-2 border-t border-border-sub flex items-center justify-between gap-2">
+                <p className="text-[12px] text-text-muted">
+                    {showAll ? `Showing all ${messages.length}` : `Showing 3 of ${messages.length}`}
                 </p>
+                <button
+                    type="button"
+                    onClick={() => setShowAll(v => !v)}
+                    className="text-[12px] font-medium text-brand-red hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red rounded-sm"
+                >
+                    {showAll ? 'Show less' : 'View all'}
+                </button>
             </div>
         )}
       </PopoverContent>
     </Popover>
     </div>
   );
+}
+
+/** "3:15 PM" for today, "Oct 14" for anything older. */
+function stampLabel(ts: string): string {
+  try {
+    const d = parseISO(ts);
+    if (isNaN(d.getTime())) return '';
+    return isToday(d) ? format(d, 'h:mm a') : format(d, 'MMM d');
+  } catch { return ''; }
 }
 
 /** The page a notification's linked record opens in the viewer's portal. */

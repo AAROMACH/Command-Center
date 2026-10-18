@@ -1,6 +1,8 @@
 'use client';
 
+import { statusLabel } from '@/lib/status-styles';
 import 'leaflet/dist/leaflet.css';
+import { statusTone, TONE_HEX } from '@/lib/status-styles';
 import { useEffect, useRef, useState } from 'react';
 import type { WorkOrder } from '@/lib/types';
 
@@ -10,16 +12,11 @@ type MapViewProps = {
   onSelectJob: (job: WorkOrder) => void;
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  'in-progress': '#22c55e',
-  'on-my-way': '#3b82f6',
-  'confirmed': '#3b82f6',
-  'assigned': '#94a3b8',
-  default: '#94a3b8',
-};
+// Shared status colors (lib/status-styles.ts) — same as badges everywhere.
+const STATUS_COLORS = { default: TONE_HEX.neutral };
 
 function getColor(status: string) {
-  return STATUS_COLORS[status] || STATUS_COLORS.default;
+  return status ? TONE_HEX[statusTone('job', status)] : STATUS_COLORS.default;
 }
 
 async function geocodeLocation(location: string): Promise<[number, number] | null> {
@@ -184,23 +181,23 @@ export default function MapView({ jobs, selectedJob, onSelectJob }: MapViewProps
       const marker = leaflet.marker([job.lat, job.lng], { icon })
         .addTo(map)
         .bindPopup(`
-          <div style="font-family: monospace; min-width: 180px; padding: 4px;">
-            <p style="font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; margin: 0 0 6px 0; color: #111;">
+          <div style="font-family: inherit; min-width: 180px; padding: 4px;">
+            <p style="font-size: 13px; font-weight: 600; margin: 0 0 6px 0; color: #111;">
               ${job.title || job.description || `Job ${job.id.slice(0, 6).toUpperCase()}`}
             </p>
-            <p style="font-size: 10px; color: #555; margin: 0 0 4px 0;">📍 ${job.location || 'TBD'}</p>
-            <p style="font-size: 10px; color: #555; margin: 0 0 4px 0;">📅 ${job.scheduleDate || 'TBD'} ${job.scheduleTime ? '@ ' + job.scheduleTime : ''}</p>
+            <p style="font-size: 12px; color: #555; margin: 0 0 4px 0;">📍 ${job.location || 'TBD'}</p>
+            <p style="font-size: 12px; color: #555; margin: 0 0 4px 0;">📅 ${job.scheduleDate || 'TBD'} ${job.scheduleTime ? '@ ' + job.scheduleTime : ''}</p>
             <div style="
               display: inline-block;
               background: ${color};
               color: white;
-              font-size: 9px;
-              font-weight: 900;
+              font-size: 10px;
+              font-weight: 600;
               text-transform: uppercase;
               padding: 2px 6px;
               border-radius: 3px;
               margin-top: 4px;
-            ">${job.status}</div>
+            >${statusLabel(job.status)}</div>
           </div>
         `, { maxWidth: 240 })
         .on('click', () => onSelectJob(job));
@@ -214,16 +211,16 @@ export default function MapView({ jobs, selectedJob, onSelectJob }: MapViewProps
       {geocoding && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-bg-elevated border border-border-main rounded-lg px-4 py-2 flex items-center gap-2 shadow-lg">
           <div className="h-3 w-3 border-2 border-brand-red border-t-transparent rounded-full animate-spin" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
-            Resolving {geocodedCount}/{jobs.filter(j => !j.lat && !j.lng && j.location).length} locations...
+          <span className="text-[12px] font-medium text-text-muted">
+            Finding {geocodedCount}/{jobs.filter(j => !j.lat && !j.lng && j.location).length} locations…
           </span>
         </div>
       )}
       {!geocoding && effectiveJobs.length === 0 && jobs.length > 0 && (
         <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-bg-primary/80 rounded-lg">
           <div className="text-center space-y-2">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted">No geocodable locations found</p>
-            <p className="text-[10px] text-text-muted uppercase">Jobs may have incomplete address data</p>
+            <p className="text-[13px] font-semibold text-text-primary">Couldn't place these jobs on the map</p>
+            <p className="text-[12px] text-text-muted">Their addresses may be incomplete.</p>
           </div>
         </div>
       )}

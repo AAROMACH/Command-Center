@@ -18,7 +18,23 @@ import { RevenueChart } from './components/revenue-chart';
 import { MetricBreakdownSheet, type MetricKey } from './components/metric-breakdown-sheet';
 import { computeFinancialSummary, monthBreakdown } from '@/lib/financial-summary';
 import { computeWeeklyLogSettlement } from '@/lib/payroll';
-import { mergeJobs } from '@/lib/jobs';
+import { mergeJobs, parseLocalDate } from '@/lib/jobs';
+import { PageHeader } from '@/components/page-header';
+import { SearchField } from '@/components/search-field';
+import { EmptyState } from '@/components/empty-state';
+import { StatusBadge } from '@/components/status-badge';
+import { SortControl } from '@/components/list-toolbar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { downloadCsv } from '@/app/admin/reports/components/history-tabs';
+import { statusLabel } from '@/lib/status-styles';
+
+const INVOICE_SORTS = [
+    { value: 'date', label: 'Due date' },
+    { value: 'issued', label: 'Issue date' },
+    { value: 'total', label: 'Total' },
+    { value: 'client', label: 'Client' },
+    { value: 'number', label: 'Invoice #' },
+];
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -51,6 +67,9 @@ export default function FinancialsPage() {
     const [reimTypeFilter, setReimTypeFilter] = useState<'all' | 'receipt' | 'mileage'>('all');
     const [reimStatusFilter, setReimStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'paid'>('all');
     const [searchQuery, setSearchQuery] = useState("");
+    const [invStatusFilter, setInvStatusFilter] = useState('all');
+    const [invSort, setInvSort] = useState('date');
+    const [invSortAsc, setInvSortAsc] = useState(false);
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'summary');
 
     const [isInvoiceEditorOpen, setIsInvoiceEditorOpen] = useState(false);
@@ -168,11 +187,11 @@ export default function FinancialsPage() {
 
             if (id) {
                 await setDoc(doc(db, 'invoices', id), cleanedData);
-                toast({ title: 'Invoice Updated', description: `Invoice ${savedInvoice.invoiceNumber} has been successfully updated.` });
+                toast({ title: 'Invoice updated', description: `Invoice ${savedInvoice.invoiceNumber} was updated.` });
             } else {
                 const newId = await createDocId(ID_PREFIXES.INVOICE);
                 await setDoc(doc(db, 'invoices', newId), { ...data, id: newId });
-                toast({ title: 'Invoice Created', description: `Invoice ${savedInvoice.invoiceNumber} has been successfully staged.` });
+                toast({ title: 'Invoice created', description: `Invoice ${savedInvoice.invoiceNumber} was created.` });
             }
             setIsInvoiceEditorOpen(false);
         } catch (e: any) {
@@ -206,7 +225,7 @@ export default function FinancialsPage() {
             invoices.forEach(inv => {
                 const d = startOfDay(parseISO(inv.issueDate));
                 if (isWithinInterval(d, { start, end })) {
-                    rows.push(['INV', inv.invoiceNumber, inv.issueDate, inv.clientName, 'Invoice Settlement', inv.total.toString(), inv.status]);
+                    rows.push(['INV', inv.invoiceNumber, inv.issueDate, inv.clientName, 'Invoice', inv.total.toString(), inv.status]);
                 }
             });
         }
@@ -248,16 +267,38 @@ export default function FinancialsPage() {
         link.click();
         document.body.removeChild(link);
         
-        toast({ title: 'Export Dispatched', description: 'General ledger manifest has been generated and transmitted.' });
+        toast({ title: 'Ledger exported', description: 'Your CSV download has started.' });
         setIsExportDialogOpen(false);
     };
 
 
+    // Status options come from the invoices that exist, with counts.
+    const invoiceStatusOptions = useMemo(() => {
+        const counts = new Map<string, number>();
+        invoices.forEach(inv => { const k = (inv.status || 'draft').toLowerCase(); counts.set(k, (counts.get(k) || 0) + 1); });
+        return [...counts.entries()].sort(([a], [b]) => a.localeCompare(b));
+    }, [invoices]);
     const filteredInvoices = useMemo(() => {
         const q = searchQuery.toLowerCase();
-        return invoices.filter(inv => (inv.invoiceNumber || '').toLowerCase().includes(q) || (inv.clientName || '').toLowerCase().includes(q));
-    }, [invoices, searchQuery]);
-    const invoicePager = usePaged(filteredInvoices, PAGE_SIZES_LARGE, 'financials-invoices', []);
+        const rows = invoices
+            .filter(inv => invStatusFilter === 'all' || (inv.status || 'draft').toLowerCase() === invStatusFilter)
+            .filter(inv => !q || [inv.invoiceNumber, inv.clientName, (Number(inv.total) || 0).toFixed(2)].some(v => (v || '').toLowerCase().includes(q)));
+        const day = (v?: string | null) => (v ? parseLocalDate(v)?.getTime() ?? (new Date(v).getTime() || 0) : 0);
+        return [...rows].sort((a, b) => {
+            switch (invSort) {
+                case 'issued': return day(b.issueDate) - day(a.issueDate);
+                case 'total': return (Number(b.total) || 0) - (Number(a.total) || 0);
+                case 'client': return (a.clientName || '').localeCompare(b.clientName || '');
+                case 'number': return (b.invoiceNumber || '').localeCompare(a.invoiceNumber || '', undefined, { numeric: true });
+                default: return invSortAsc ? day(a.dueDate) - day(b.dueDate) : day(b.dueDate) - day(a.dueDate);
+            }
+        });
+    }, [invoices, searchQuery, invStatusFilter, invSort, invSortAsc]);
+    const invoicePager = usePaged(filteredInvoices, PAGE_SIZES_LARGE, 'financials-invoices', [searchQuery, invStatusFilter, invSort, invSortAsc]);
+    const exportInvoicesCsv = () => downloadCsv('invoices',
+        ['Invoice #', 'Client', 'Issue date', 'Due date', 'Status', 'Subtotal', 'Tax', 'Total', 'Invoice ID'],
+        filteredInvoices.map(inv => [inv.invoiceNumber, inv.clientName, inv.issueDate, inv.dueDate, statusLabel(inv.status),
+            (Number((inv as any).subtotal) || 0).toFixed(2), (Number((inv as any).taxAmount ?? (inv as any).tax) || 0).toFixed(2), (Number(inv.total) || 0).toFixed(2), inv.id]));
 
 
     const filteredExpenses = useMemo(() => {
@@ -291,6 +332,13 @@ export default function FinancialsPage() {
                                             const newRows = reimbursements
                                                 .filter(r => reimTypeFilter === 'all' || r.type === reimTypeFilter)
                                                 .filter(r => reimStatusFilter === 'all' || r.status === reimStatusFilter)
+                                                .filter(r => {
+                                                    const q = searchQuery.toLowerCase();
+                                                    if (!q) return true;
+                                                    const amt = r.type === 'mileage' ? (r.distanceMiles || 0) * (r.mileageRate || mileageRate) : r.amount;
+                                                    return [r.techName, r.description, r.vendorName, r.relatedJobId, r.relatedJobTitle, (amt || 0).toFixed(2)]
+                                                        .some(v => (v || '').toLowerCase().includes(q));
+                                                })
                                                 .map(r => ({
                                                     id: r.id,
                                                     source: 'reimbursement' as const,
@@ -316,44 +364,37 @@ export default function FinancialsPage() {
                                             return [...legacyRows, ...newRows]
                                                 .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
-    }, [filteredExpenses, reimbursements, reimTypeFilter, reimStatusFilter, mileageRate]);
-    const reimbPager = usePaged(reimbRows, PAGE_SIZES_LARGE, 'financials-reimbursements', [reimTypeFilter, reimStatusFilter]);
+    }, [filteredExpenses, reimbursements, reimTypeFilter, reimStatusFilter, mileageRate, searchQuery]);
+    const reimbPager = usePaged(reimbRows, PAGE_SIZES_LARGE, 'financials-reimbursements', [reimTypeFilter, reimStatusFilter, searchQuery]);
 
     return (
         <div className="text-left animate-in fade-in duration-700">
-            <header className="page-header text-left">
-                <div className="text-left">
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <Banknote size={12} />
-                        FINANCIAL OPERATIONS HUB
-                    </p>
-                    <h1 className="page-title">ACCOUNTING</h1>
-                    <p className="page-subtitle text-left">Consolidated management of client revenue, technician payroll, and project overhead.</p>
-                </div>
-                <div className="page-header-right items-center">
-                    <div className="search-wrap">
-                        <Search />
-                        <input className="search-input !w-full md:!w-[250px]" placeholder="Filter ledger data..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                    </div>
-                    <Button variant="outline" onClick={() => setIsExportDialogOpen(true)} className="h-10 text-[10px]">⇩ EXPORT GENERAL LEDGER</Button>
-                    <Button variant="secondary" onClick={() => setIsClosePeriodOpen(true)} className="h-10 text-[10px]">
-                        {userIsSuperAdmin ? "CLOSE FISCAL PERIOD" : "REQUEST PERIOD CLOSURE"}
+            <PageHeader
+                eyebrow="Finance"
+                icon={Banknote}
+                title="Accounting"
+                subtitle="Client revenue, technician pay and reimbursements in one place."
+                actions={<>
+                    <SearchField className="w-full md:w-[260px]" placeholder="Search invoices and reimbursements…" value={searchQuery} onChange={setSearchQuery} />
+                    <Button variant="outline" onClick={() => setIsExportDialogOpen(true)} className="h-9"><Download size={14} className="mr-1.5" />Export ledger</Button>
+                    <Button variant="secondary" onClick={() => setIsClosePeriodOpen(true)} className="h-9">
+                        {userIsSuperAdmin ? "Close period" : "Request period close"}
                     </Button>
-                </div>
-            </header>
+                </>}
+            />
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full text-left">
                 <div className="flex items-center justify-between gap-4">
                     <TabsList className="tabs !p-0 !bg-bg-tertiary">
-                        <TabsTrigger value="summary" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">SUMMARY</TabsTrigger>
-                        <TabsTrigger value="invoices" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">INVOICES</TabsTrigger>
-                        <TabsTrigger value="reimbursements" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white">REIMBURSEMENTS</TabsTrigger>
+                        <TabsTrigger value="summary" className="tab">Summary</TabsTrigger>
+                        <TabsTrigger value="invoices" className="tab">Invoices</TabsTrigger>
+                        <TabsTrigger value="reimbursements" className="tab">Reimbursements</TabsTrigger>
                     </TabsList>
                     <button
                         onClick={() => router.push('/admin/payroll/audit')}
-                        className="tab !px-8 !py-4 rounded-lg border border-border-main text-[10px] font-black uppercase tracking-widest transition-colors bg-bg-tertiary text-text-muted hover:text-text-primary hover:bg-bg-primary"
+                        className="h-9 px-4 rounded-md border border-border-main text-[13px] font-medium transition-colors bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-bg-tertiary"
                     >
-                        PAYROLL AUDIT ↗
+                        Payroll audit ↗
                     </button>
                 </div>
                 
@@ -368,11 +409,11 @@ export default function FinancialsPage() {
                                     onClick={() => setOpenMetric(metric.key)}
                                     onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenMetric(metric.key); } }}
                                     title="Show how this is calculated"
-                                    className="bg-bg-tertiary border-border-subtle shadow-sm hover:border-text-muted transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
+                                    className="bg-bg-secondary border-border-main rounded-xl shadow-sm hover:border-text-muted transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
                                 >
                                     <CardHeader className="pb-4">
                                         <div className="flex justify-between items-start">
-                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">{metric.title}</span>
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{metric.title}</span>
                                             <metric.TrendIcon size={16} className={cn(
                                                 metric.trendType === 'positive' ? 'text-text-green' :
                                                 metric.trendType === 'negative' ? 'text-text-red' :
@@ -388,12 +429,12 @@ export default function FinancialsPage() {
                                         )}>
                                             {metric.value}
                                         </p>
-                                        <p className={cn("text-[9px] font-black tracking-widest uppercase mt-3",
+                                        <p className={cn("text-[12px] font-medium mt-3",
                                             metric.trendType === 'positive' ? 'text-text-green' : 'text-text-muted'
                                         )}>
                                             {metric.trend}
                                         </p>
-                                        <p className="text-[8px] font-bold uppercase tracking-widest text-text-muted mt-2">View breakdown →</p>
+                                        <p className="text-[12px] font-medium text-text-muted mt-2">View breakdown →</p>
                                     </CardContent>
                                 </Card>
                             ))}
@@ -406,14 +447,14 @@ export default function FinancialsPage() {
                             allInvoices={invoices}
                         />
 
-                        <Card className="bg-bg-secondary border-border-main shadow-xl overflow-hidden">
+                        <Card className="bg-bg-secondary border-border-main rounded-xl shadow-sm overflow-hidden">
                             <CardHeader className="border-b border-border-sub bg-bg-tertiary/20">
                                 <div className="flex items-center justify-between">
                                     <div className="text-left">
-                                        <CardTitle className="text-base">Strategic Cash Flow Analysis</CardTitle>
-                                        <CardDescription className="text-[10px] uppercase font-bold text-text-muted">Monthly comparison of realized revenue vs field operational expenses.</CardDescription>
+                                        <CardTitle className="text-base">Cash flow</CardTitle>
+                                        <CardDescription className="text-[12px] text-text-muted">Revenue collected vs. field costs, by month.</CardDescription>
                                     </div>
-                                    <Badge variant="outline" className="bg-bg-primary text-[8px] uppercase tracking-widest">Rolling 6-Month Audit</Badge>
+                                    <Badge variant="outline" className="bg-bg-primary text-[10px] font-semibold uppercase tracking-wide">Last 6 months</Badge>
                                 </div>
                             </CardHeader>
                             <CardContent className="p-8">
@@ -426,36 +467,62 @@ export default function FinancialsPage() {
                          <Card>
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <div className="text-left">
-                                    <CardTitle>Client Invoices</CardTitle>
-                                    <CardDescription>Manage and track all client invoices.</CardDescription>
+                                    <CardTitle className="text-base">Client invoices</CardTitle>
+                                    <CardDescription>Create and track every client invoice.</CardDescription>
                                 </div>
-                                <Button onClick={() => { setSelectedInvoice(null); setIsInvoiceEditorOpen(true); }} className="h-9 px-6"><Plus size={14} className="mr-2"/>Create New Invoice</Button>
+                                <Button onClick={() => { setSelectedInvoice(null); setIsInvoiceEditorOpen(true); }} className="h-9 px-4"><Plus size={14} className="mr-2"/>New invoice</Button>
                             </CardHeader>
+                            <div className="flex flex-wrap items-center gap-2 px-6 pb-4">
+                                <Select value={invStatusFilter} onValueChange={setInvStatusFilter}>
+                                    <SelectTrigger className="h-11 sm:h-9 w-[170px] bg-bg-secondary border-border-main" aria-label="Status">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All statuses ({invoices.length})</SelectItem>
+                                        {invoiceStatusOptions.map(([k, n]) => <SelectItem key={k} value={k}>{statusLabel(k)} ({n})</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <SortControl value={invSort} onChange={setInvSort} options={INVOICE_SORTS} dateAsc={invSortAsc} onToggleDirection={() => setInvSortAsc(v => !v)} />
+                                {invStatusFilter !== 'all' && (
+                                    <Button variant="ghost" size="sm" className="h-9 text-brand-red" onClick={() => setInvStatusFilter('all')}><X size={14} className="mr-1" />Reset</Button>
+                                )}
+                                <Button variant="outline" className="h-11 sm:h-9 ml-auto" onClick={exportInvoicesCsv} disabled={filteredInvoices.length === 0}>
+                                    <Download size={14} className="mr-1.5" />Export CSV ({filteredInvoices.length})
+                                </Button>
+                            </div>
                             <CardContent className="table-wrap p-0">
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="hover:bg-transparent border-border-sub">
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-6">Invoice #</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Client</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Due Date</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Total</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
+                                            <TableHead className="pl-6">Invoice #</TableHead>
+                                            <TableHead>Client</TableHead>
+                                            <TableHead>Due date</TableHead>
+                                            <TableHead>Total</TableHead>
+                                            <TableHead>Status</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {invoicePager.items.map((invoice) => (
                                             <TableRow key={invoice.id} onClick={() => { setSelectedInvoice(invoice); setIsInvoiceEditorOpen(true); }} className="cursor-pointer border-border-sub hover:bg-bg-tertiary transition-colors text-left">
                                                 <TableCell className="font-mono font-bold text-brand-red text-xs pl-6">{invoice.invoiceNumber}</TableCell>
-                                                <TableCell className="text-sm font-semibold uppercase">{invoice.clientName}</TableCell>
+                                                <TableCell className="text-sm font-semibold">{invoice.clientName}</TableCell>
                                                 <TableCell className="text-xs text-text-muted">{invoice.dueDate}</TableCell>
                                                 <TableCell className="font-mono text-sm font-bold text-text-primary tabular-nums">${(Number(invoice.total) || 0).toFixed(2)}</TableCell>
                                                 <TableCell>
-                                                    <Badge variant={invoice.status === 'paid' ? 'active' : invoice.status === 'sent' ? 'onhold' : 'pending'} className="capitalize text-[8px] h-4">{invoice.status}</Badge>
+                                                    <StatusBadge kind="invoice" value={invoice.status} />
                                                 </TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
                                 </Table>
+                                {filteredInvoices.length === 0 && (
+                                    <div className="p-4">
+                                        {invoices.length === 0
+                                            ? <EmptyState compact icon={FileText} title="No invoices yet" description="Create an invoice to bill a client." />
+                                            : <EmptyState compact icon={FileText} title="No invoices match these filters"
+                                                action={<Button size="sm" variant="outline" onClick={() => { setSearchQuery(''); setInvStatusFilter('all'); }}>Reset filters</Button>} />}
+                                    </div>
+                                )}
                                 <div className="px-4"><ListPager pager={invoicePager} noun="invoices" /></div>
                             </CardContent>
                         </Card>
@@ -471,8 +538,8 @@ export default function FinancialsPage() {
                                         <button
                                             key={v}
                                             onClick={() => setReimTypeFilter(v)}
-                                            className={cn('px-3 h-full text-[10px] font-bold uppercase tracking-widest transition-colors', reimTypeFilter === v ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
-                                        >{v === 'all' ? 'All Types' : v === 'receipt' ? 'Receipt' : 'Mileage'}</button>
+                                            className={cn('px-3 h-full text-[12px] font-medium transition-colors', reimTypeFilter === v ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
+                                        >{v === 'all' ? 'All types' : v === 'receipt' ? 'Receipt' : 'Mileage'}</button>
                                     </>
                                 ))}
                             </div>
@@ -483,12 +550,12 @@ export default function FinancialsPage() {
                                         <button
                                             key={v}
                                             onClick={() => setReimStatusFilter(v)}
-                                            className={cn('px-3 h-full text-[10px] font-bold uppercase tracking-widest transition-colors', reimStatusFilter === v ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
-                                        >{v === 'all' ? 'All Status' : v}</button>
+                                            className={cn('px-3 h-full text-[12px] font-medium transition-colors', reimStatusFilter === v ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}
+                                        >{v === 'all' ? 'All statuses' : statusLabel(v)}</button>
                                     </>
                                 ))}
                             </div>
-                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest ml-auto">
+                            <p className="text-[12px] font-medium text-text-muted ml-auto">
                                 Mileage rate: <span className="text-text-primary">${mileageRate.toFixed(2)}/mi</span>
                             </p>
                         </div>
@@ -496,58 +563,53 @@ export default function FinancialsPage() {
                         <Card>
                             <CardHeader className="text-left">
                                 <CardTitle>Reimbursements</CardTitle>
-                                <CardDescription>Unified receipt and mileage reimbursement review. Approve, reject, or mark paid.</CardDescription>
+                                <CardDescription>Receipts and mileage submitted by techs. Approve, reject or mark paid.</CardDescription>
                             </CardHeader>
                             <CardContent className="table-wrap p-0">
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="hover:bg-transparent border-border-sub">
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-6">Date</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Technician</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Type</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Details</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Amount</TableHead>
-                                            <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
+                                            <TableHead className="pl-6">Date</TableHead>
+                                            <TableHead>Technician</TableHead>
+                                            <TableHead>Type</TableHead>
+                                            <TableHead>Details</TableHead>
+                                            <TableHead>Amount</TableHead>
+                                            <TableHead>Status</TableHead>
                                             <TableHead className="text-right pr-6"></TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {reimbPager.total === 0 ? (
                                                 <TableRow>
-                                                    <TableCell colSpan={7} className="text-center py-12 text-xs text-text-muted uppercase tracking-widest">
+                                                    <TableCell colSpan={7} className="text-center py-12 text-xs text-text-muted">
                                                         No reimbursements match the current filters.
                                                     </TableCell>
                                                 </TableRow>
                                         ) : reimbPager.items.map(row => (
                                                 <TableRow key={`${row.source}-${row.id}`} className="border-border-sub hover:bg-bg-tertiary transition-colors text-left">
                                                     <TableCell className="text-xs text-text-muted pl-6">{row.date}</TableCell>
-                                                    <TableCell className="text-sm font-semibold uppercase">{row.techName}</TableCell>
+                                                    <TableCell className="text-sm font-semibold">{row.techName}</TableCell>
                                                     <TableCell>
                                                         <Badge
-                                                            variant={row.type === 'mileage' ? 'onhold' : 'default'}
-                                                            className="text-[8px] h-4 uppercase flex items-center gap-1 w-fit"
+                                                            variant="scheduled"
+                                                            className="text-[10px] h-5 font-semibold uppercase tracking-wide flex items-center gap-1 w-fit"
                                                         >
                                                             {row.type === 'mileage' ? <><Car size={8} />&nbsp;Mileage</> : 'Receipt'}
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="font-bold text-text-primary text-xs uppercase truncate max-w-[200px]">{row.details}</div>
-                                                        {row.sub && <div className="text-[10px] text-text-muted uppercase font-bold tracking-tight">{row.sub}</div>}
-                                                        {row.notes && <div className="text-[9px] text-text-muted italic mt-0.5 truncate max-w-[200px]">{row.notes}</div>}
+                                                        <div className="font-bold text-text-primary text-xs truncate max-w-[200px]">{row.details}</div>
+                                                        {row.sub && <div className="text-[11px] text-text-muted">{row.sub}</div>}
+                                                        {row.notes && <div className="text-[11px] text-text-muted mt-0.5 truncate max-w-[200px]">{row.notes}</div>}
                                                     </TableCell>
                                                     <TableCell className="font-mono text-sm font-bold text-text-primary tabular-nums">${row.amount.toFixed(2)}</TableCell>
                                                     <TableCell>
-                                                        <Badge
-                                                            variant={row.status === 'approved' || row.status === 'paid' ? 'active' : row.status === 'pending' ? 'onhold' : 'missed'}
-                                                            className="text-[8px] h-4 uppercase"
-                                                        >
-                                                            {row.status}
-                                                        </Badge>
+                                                        <StatusBadge kind={row.status === 'paid' ? 'log' : 'request'} value={row.status} />
                                                     </TableCell>
                                                     <TableCell className="text-right pr-6">
                                                         {row.status === 'pending' && (
                                                             <div className="flex gap-2 justify-end">
-                                                                <Button size="sm" variant="destructive-outline" className="h-7 text-[9px]"
+                                                                <Button size="sm" variant="destructive-outline" className="h-7 text-[11px]"
                                                                     onClick={async () => {
                                                                         try {
                                                                             if (row.source === 'expense') {
@@ -559,7 +621,7 @@ export default function FinancialsPage() {
                                                                         } catch { toast({ variant: 'destructive', title: 'Error' }); }
                                                                     }}
                                                                 >Deny</Button>
-                                                                <Button size="sm" className="h-7 text-[9px] bg-brand-red hover:bg-brand-red/90 text-white"
+                                                                <Button size="sm" className="h-7 text-[11px] bg-brand-red hover:bg-brand-red/90 text-white"
                                                                     onClick={async () => {
                                                                         try {
                                                                             if (row.source === 'expense') {
@@ -574,14 +636,14 @@ export default function FinancialsPage() {
                                                             </div>
                                                         )}
                                                         {row.status === 'approved' && row.source === 'reimbursement' && (
-                                                            <Button size="sm" className="h-7 text-[9px] bg-text-green/10 text-text-green border border-text-green/20 hover:bg-text-green hover:text-white"
+                                                            <Button size="sm" className="h-8 bg-text-green/10 text-text-green border border-text-green/20 hover:bg-text-green hover:text-white"
                                                                 onClick={async () => {
                                                                     try {
                                                                         await updateDoc(doc(db, 'reimbursements', row.id), { status: 'paid', paidAt: new Date().toISOString() });
                                                                         toast({ title: 'Marked as paid' });
                                                                     } catch { toast({ variant: 'destructive', title: 'Error' }); }
                                                                 }}
-                                                            >Mark Paid</Button>
+                                                            >Mark paid</Button>
                                                         )}
                                                     </TableCell>
                                                 </TableRow>
@@ -601,35 +663,35 @@ export default function FinancialsPage() {
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-2 mb-1">
                             <ShieldAlert className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">
-                                {userIsSuperAdmin ? "Authorize Fiscal Closure" : "Request Period Closure"}
+                            <DialogTitle className="text-lg font-semibold">
+                                {userIsSuperAdmin ? "Close this period" : "Request period close"}
                             </DialogTitle>
                         </div>
                         <DialogDescription className="text-xs">
-                            {userIsSuperAdmin ? "This action permanently locks the general ledger for the current period." : "You are submitting a closure request for Super Admin authorization."}
+                            {userIsSuperAdmin ? "This action permanently locks the general ledger for the current period." : "A super admin needs to approve closing the period."}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="p-6 space-y-6">
                         <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 space-y-2 text-left">
-                            <p className="text-[10px] font-black text-brand-red uppercase tracking-widest mb-1">Safety Lock Required</p>
-                            <p className="text-[11px] text-text-secondary leading-relaxed uppercase font-medium">Closing the period transitions all financial records to read-only archival state.</p>
+                            <p className="text-[10px] font-bold text-brand-red uppercase tracking-wider mb-1">Please confirm</p>
+                            <p className="text-[12px] text-text-secondary leading-relaxed font-medium">Closing the period makes every financial record for it read-only.</p>
                         </div>
                         {userIsSuperAdmin ? (
                             <div className="space-y-3 pt-2 text-left">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Type <span className="text-text-primary">CLOSE</span> to confirm terminal lock</Label>
-                                <Input placeholder="Type 'CLOSE'..." value={confirmationText} onChange={(e) => setConfirmationText(e.target.value)} className="h-11 bg-bg-primary text-center font-mono text-sm tracking-widest uppercase font-bold" />
+                                <Label className="text-[10px] font-bold text-text-muted">Type <span className="text-text-primary">CLOSE</span> to confirm</Label>
+                                <Input placeholder="Type CLOSE" value={confirmationText} onChange={(e) => setConfirmationText(e.target.value)} className="h-11 bg-bg-primary text-center font-mono text-sm font-bold" />
                             </div>
                         ) : (
                             <div className="flex items-center gap-3 p-4 rounded-lg bg-bg-secondary border border-border-sub">
                                 <Info size={16} className="text-text-muted" />
-                                <p className="text-[10px] text-text-muted uppercase font-bold leading-tight">Your account level requires external sign-off from a Super Admin to finalize closure.</p>
+                                <p className="text-[12px] text-text-muted leading-snug">A super admin must approve before the period closes.</p>
                             </div>
                         )}
                     </div>
                     <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex gap-3">
-                        <Button variant="outline" onClick={() => { setIsClosePeriodOpen(false); setConfirmationText(""); }} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Cancel</Button>
-                        <Button onClick={() => { toast({ title: userIsSuperAdmin ? "Period Finalized" : "Request Sent" }); setIsClosePeriodOpen(false); }} disabled={userIsSuperAdmin && confirmationText !== "CLOSE"} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11">
-                            {userIsSuperAdmin ? "Execute Global Lock" : "Submit Request"}
+                        <Button variant="outline" onClick={() => { setIsClosePeriodOpen(false); setConfirmationText(""); }} className="flex-1  h-11">Cancel</Button>
+                        <Button onClick={() => { toast({ title: userIsSuperAdmin ? "Period closed" : "Request sent" }); setIsClosePeriodOpen(false); }} disabled={userIsSuperAdmin && confirmationText !== "CLOSE"} className="flex-1 bg-brand-red hover:bg-brand-red-hover  h-11">
+                            {userIsSuperAdmin ? "Close period" : "Send request"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -641,28 +703,28 @@ export default function FinancialsPage() {
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-2 mb-1">
                             <Download className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">General Ledger Export</DialogTitle>
+                            <DialogTitle className="text-lg font-semibold">Export general ledger</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs uppercase font-bold text-text-muted">Configure the parameters for your financial data extraction.</DialogDescription>
+                        <DialogDescription className="text-[12px] text-text-muted">Choose the dates and records to include.</DialogDescription>
                     </DialogHeader>
                     <div className="p-6 space-y-6 text-left">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">From Date</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">From</Label>
                                 <Input type="date" value={exportConfig.from} onChange={e => setExportConfig({...exportConfig, from: e.target.value})} className="h-10 bg-bg-primary text-xs" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">To Date</Label>
+                                <Label className="text-[10px] font-bold text-text-muted">To</Label>
                                 <Input type="date" value={exportConfig.to} onChange={e => setExportConfig({...exportConfig, to: e.target.value})} className="h-10 bg-bg-primary text-xs" />
                             </div>
                         </div>
                         <div className="space-y-3">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted">Manifest Categories</Label>
+                            <Label className="text-[10px] font-bold text-text-muted">Include</Label>
                             <div className="space-y-2">
                                 {[
-                                    { id: 'invoices', label: 'Client Invoices' },
+                                    { id: 'invoices', label: 'Client invoices' },
                                     { id: 'expenses', label: 'Field Expenses' },
-                                    { id: 'payroll', label: 'Operative Payroll' }
+                                    { id: 'payroll', label: 'Technician pay' }
                                 ].map(type => (
                                     <div key={type.id} className="flex items-center space-x-3 p-3 rounded-lg border border-border-sub bg-bg-primary hover:border-brand-red transition-all cursor-pointer" onClick={() => {
                                         setExportConfig(prev => ({
@@ -671,15 +733,15 @@ export default function FinancialsPage() {
                                         }));
                                     }}>
                                         <Checkbox checked={exportConfig.types.includes(type.id)} className="h-4 w-4" />
-                                        <span className="text-xs font-bold uppercase tracking-wide text-text-primary">{type.label}</span>
+                                        <span className="text-xs font-bold tracking-wide text-text-primary">{type.label}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     </div>
                     <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex gap-3">
-                        <Button variant="outline" onClick={() => setIsExportDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Abort</Button>
-                        <Button onClick={handleExecuteExport} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white">Execute Export</Button>
+                        <Button variant="outline" onClick={() => setIsExportDialogOpen(false)} className="flex-1  h-11">Cancel</Button>
+                        <Button onClick={handleExecuteExport} className="flex-1 bg-brand-red hover:bg-brand-red-hover  h-11 text-white">Export CSV</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

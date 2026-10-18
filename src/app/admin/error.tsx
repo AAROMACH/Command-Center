@@ -21,14 +21,14 @@ export default function AdminError({
         <AlertTriangle size={32} className="text-text-red" />
       </div>
       <div className="space-y-2">
-        <h2 className="text-lg font-bold uppercase tracking-widest text-text-primary">System Error</h2>
+        <h2 className="text-lg font-bold text-text-primary">System Error</h2>
         <p className="text-sm text-text-muted max-w-sm">
           An unexpected error occurred loading this page. Your data is safe.
         </p>
       </div>
       <Button
         onClick={reset}
-        className="h-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white"
+        className="h-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider text-white"
       >
         <RotateCcw size={14} className="mr-2" />
         Retry

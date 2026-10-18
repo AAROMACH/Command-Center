@@ -16,7 +16,7 @@ import {
 } from '@/lib/billing';
 import { savePlan } from '@/lib/billing-actions';
 
-const labelCls = 'text-[10px] font-black uppercase tracking-widest text-text-muted';
+const labelCls = 'text-[10px] font-bold uppercase tracking-wider text-text-muted';
 const inputCls = 'h-10 text-xs bg-bg-secondary border-border-main';
 const INTERVALS: BillingInterval[] = ['month', 'quarter', 'year'];
 
@@ -78,7 +78,7 @@ export function PlanEditorDialog({
     <Dialog open={open} onOpenChange={v => { if (!v && !saving) onClose(); }}>
       <DialogContent className="sm:max-w-[640px] max-h-[90vh] p-0 flex flex-col bg-bg-elevated border-border-main">
         <DialogHeader className="p-4 sm:p-6 pb-3 border-b border-border-sub text-left">
-          <DialogTitle className="text-[13px] font-black uppercase tracking-widest">{plan?.id ? 'Edit Plan' : 'New Plan'}</DialogTitle>
+          <DialogTitle className="text-base font-semibold">{plan?.id ? 'Edit plan' : 'New plan'}</DialogTitle>
           <DialogDescription className="text-xs">
             Prices and benefits here are what clients are billed and what the app enforces (response time, labor discount).
           </DialogDescription>
@@ -143,7 +143,7 @@ export function PlanEditorDialog({
                 return (
                   <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg border border-border-sub bg-bg-secondary">
                     <Switch checked={!!p} onCheckedChange={v => togglePrice(i, v)} aria-label={`${INTERVAL_LABELS[i]} billing`} />
-                    <span className="w-24 text-[11px] font-bold uppercase tracking-wider">{INTERVAL_LABELS[i]}</span>
+                    <span className="w-24 text-[11px] font-bold tracking-wider">{INTERVAL_LABELS[i]}</span>
                     {p ? (
                       <div className="relative flex-1 max-w-[180px]">
                         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-text-muted">$</span>
@@ -177,13 +177,13 @@ export function PlanEditorDialog({
                 <Label className={labelCls}>Response Time (hours)</Label>
                 <Input type="number" min="1" className={`${inputCls} font-mono`} value={draft.benefits.responseHours || ''}
                   onChange={e => setBenefit('responseHours', Math.max(1, parseFloat(e.target.value) || 0))} />
-                <p className="text-[9px] text-text-muted">Drives the client&apos;s request SLA clock.</p>
+                <p className="text-[11px] text-text-muted">Drives the client&apos;s request SLA clock.</p>
               </div>
               <div className="space-y-1">
                 <Label className={labelCls}>Labor Discount (%)</Label>
                 <Input type="number" min="0" max="100" className={`${inputCls} font-mono`} value={draft.benefits.laborDiscountPct || ''}
                   onChange={e => setBenefit('laborDiscountPct', parseFloat(e.target.value) || 0)} placeholder="0" />
-                <p className="text-[9px] text-text-muted">Off labor on this client&apos;s quotes and invoices.</p>
+                <p className="text-[11px] text-text-muted">Off labor on this client&apos;s quotes and invoices.</p>
               </div>
               <div className="space-y-1">
                 <Label className={labelCls}>Included Site Visits</Label>
@@ -207,7 +207,7 @@ export function PlanEditorDialog({
               </div>
             </div>
             <div className="flex items-center justify-between p-2.5 rounded-lg border border-border-sub bg-bg-secondary">
-              <span className="text-[11px] font-bold uppercase tracking-wider">After-hours emergency dispatch</span>
+              <span className="text-[11px] font-bold tracking-wider">After-hours emergency dispatch</span>
               <Switch checked={draft.benefits.afterHoursDispatch} onCheckedChange={v => setBenefit('afterHoursDispatch', v)} />
             </div>
           </section>
@@ -233,8 +233,8 @@ export function PlanEditorDialog({
         </div>
 
         <DialogFooter className="p-4 sm:p-6 border-t border-border-sub flex flex-col-reverse sm:flex-row gap-2">
-          <Button variant="outline" onClick={onClose} disabled={saving} className="h-10 w-full sm:w-auto text-[10px] font-black uppercase">Cancel</Button>
-          <Button onClick={handleSave} disabled={saving} className="h-10 w-full sm:w-auto bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+          <Button variant="outline" onClick={onClose} disabled={saving} className="h-10 w-full sm:w-auto text-[10px] font-bold">Cancel</Button>
+          <Button onClick={handleSave} disabled={saving} className="h-10 w-full sm:w-auto bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
             {saving ? <Loader2 size={12} className="mr-1.5 animate-spin" /> : null} Save Plan
           </Button>
         </DialogFooter>

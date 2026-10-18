@@ -1,4 +1,8 @@
 'use client';
+import { PageHeader } from '@/components/page-header';
+import { StatCard, StatGrid } from '@/components/stat-card';
+import { PageLoading } from '@/components/empty-state';
+import { StatusBadge } from '@/components/status-badge';
 import { useClientSubscriptions, useServicePlans } from '@/hooks/use-billing';
 import { isLiveSubscription, SUBSCRIPTION_STATUS_LABELS } from '@/lib/billing';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
@@ -20,8 +24,10 @@ import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { mergeJobs } from '@/lib/jobs';
 
 const TABS = ['Site Info', 'Assignment History', 'Pay History', 'Notes', 'Documents'] as const;
+const TAB_LABELS: Record<string, string> = { 'Site Info': 'Site info', 'Assignment History': 'Job history', 'Pay History': 'Pay history' };
 type Tab = typeof TABS[number];
 
 export default function SiteDetailPage() {
@@ -29,7 +35,10 @@ export default function SiteDetailPage() {
   const siteId = params.id as string;
   const [site, setSite] = useState<Site | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('Site Info');
-  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [woDocs, setWoDocs] = useState<WorkOrder[]>([]);
+  const [assignmentDocs, setAssignmentDocs] = useState<WorkOrder[]>([]);
+  // Assigning a job moves it from workOrders into assignments — read both.
+  const workOrders = useMemo(() => mergeJobs(woDocs, assignmentDocs), [woDocs, assignmentDocs]);
   const [notes, setNotes] = useState<SiteNote[]>([]);
   const [noteText, setNoteText] = useState('');
   const [saving, setSaving] = useState(false);
@@ -49,7 +58,11 @@ export default function SiteDetailPage() {
 
     const unsubWO = onSnapshot(
       query(collection(db, 'workOrders'), where('siteId', '==', siteId)),
-      (snap) => setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)))
+      (snap) => setWoDocs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)))
+    );
+    const unsubAsg = onSnapshot(
+      query(collection(db, 'assignments'), where('siteId', '==', siteId)),
+      (snap) => setAssignmentDocs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)))
     );
 
     const unsubNotes = onSnapshot(
@@ -60,7 +73,7 @@ export default function SiteDetailPage() {
       }
     );
 
-    return () => { unsubSite(); unsubWO(); unsubNotes(); };
+    return () => { unsubSite(); unsubWO(); unsubAsg(); unsubNotes(); };
   }, [siteId]);
 
   useEffect(() => {
@@ -124,9 +137,7 @@ export default function SiteDetailPage() {
 
   if (!site) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-6 h-6 border-2 border-brand-red border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageLoading label="Loading site…" />
     );
   }
 
@@ -135,48 +146,29 @@ export default function SiteDetailPage() {
 
   return (
     <div className="space-y-5">
-      <header className="page-header">
-        <div className="text-left">
-          <Link href="/admin/sites" className="flex items-center gap-1.5 text-[9px] font-black text-text-muted uppercase tracking-widest hover:text-text-primary mb-2">
-            <ChevronLeft size={11} />
-            Back to Sites
-          </Link>
-          <p className="page-eyebrow flex items-center gap-2">
-            <Building2 size={12} />
-            Site Detail
-          </p>
-          <h1 className="page-title">{site.name}</h1>
-          {site.clientName && <p className="page-subtitle">{site.clientName}</p>}
-        </div>
-        <div className="page-header-right gap-3">
-          <Badge variant={site.status === 'active' ? 'active' : 'completed'} className="text-[9px] uppercase h-6 px-3">
+      <PageHeader
+        back={{ href: '/admin/sites', label: 'Clients' }}
+        eyebrow="Site"
+        icon={Building2}
+        title={site.name}
+        subtitle={site.clientName || undefined}
+        actions={<>
+          <Badge variant={site.status === 'active' || !site.status ? 'approved' : 'draft'} className="h-6 px-3 text-[10px] font-semibold uppercase tracking-wide">
             {site.status || 'active'}
           </Badge>
-          <Button size="sm" variant="outline" onClick={() => setIsEditing(true)} className="h-8 text-[10px] font-black uppercase tracking-widest">
-            Edit Site
+          <Button size="sm" variant="outline" onClick={() => setIsEditing(true)} className="h-9">
+            Edit site
           </Button>
-        </div>
-      </header>
+        </>}
+      />
 
       {/* Stats strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-bg-secondary rounded-xl border border-border-sub p-3 space-y-1 text-left">
-          <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-1.5"><Activity size={9} />Total Jobs</p>
-          <p className="text-2xl font-black font-mono text-text-primary">{workOrders.length}</p>
-        </div>
-        <div className="bg-bg-secondary rounded-xl border border-border-sub p-3 space-y-1 text-left">
-          <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-1.5"><CheckCircle2 size={9} className="text-text-green" />Completed</p>
-          <p className="text-2xl font-black font-mono text-text-green">{completedJobs.length}</p>
-        </div>
-        <div className="bg-bg-secondary rounded-xl border border-border-sub p-3 space-y-1 text-left">
-          <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-1.5"><Clock size={9} className="text-accent-gold" />Active</p>
-          <p className="text-2xl font-black font-mono text-accent-gold">{activeJobs.length}</p>
-        </div>
-        <div className="bg-bg-secondary rounded-xl border border-green-500/20 p-3 space-y-1 text-left">
-          <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-1.5"><DollarSign size={9} className="text-text-green" />Total Paid</p>
-          <p className="text-2xl font-black font-mono text-text-green">${totalPay.toFixed(0)}</p>
-        </div>
-      </div>
+      <StatGrid className="md:grid-cols-4 xl:grid-cols-4">
+        <StatCard label="Total jobs" value={workOrders.length} icon={Activity} />
+        <StatCard label="Completed" value={completedJobs.length} icon={CheckCircle2} tone="done" />
+        <StatCard label="Active" value={activeJobs.length} icon={Clock} tone="progress" />
+        <StatCard label="Total paid" value={`$${totalPay.toFixed(0)}`} icon={DollarSign} />
+      </StatGrid>
 
       {/* Tabs */}
       <div className="flex gap-0 border-b border-border-sub -mt-2">
@@ -185,13 +177,13 @@ export default function SiteDetailPage() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={cn(
-              'text-[10px] font-black uppercase tracking-widest px-4 py-3 border-b-2 transition-colors whitespace-nowrap',
+              'text-[13px] font-medium px-4 py-3 border-b-2 transition-colors whitespace-nowrap',
               activeTab === tab
                 ? 'border-brand-red text-brand-red'
                 : 'border-transparent text-text-muted hover:text-text-secondary'
             )}
           >
-            {tab}
+            {TAB_LABELS[tab] || tab}
           </button>
         ))}
       </div>
@@ -203,29 +195,29 @@ export default function SiteDetailPage() {
             <>
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Site Name</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Site Name</Label>
                   <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={editForm.name || ''} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Client</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client</Label>
                   <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={editForm.clientName || ''} onChange={e => setEditForm(f => ({ ...f, clientName: e.target.value }))} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Location</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Location</Label>
                   <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={editForm.location || ''} onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Manager</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Manager</Label>
                     <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={editForm.managerName || ''} onChange={e => setEditForm(f => ({ ...f, managerName: e.target.value }))} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Phone</Label>
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Phone</Label>
                     <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={editForm.managerPhone || ''} onChange={e => setEditForm(f => ({ ...f, managerPhone: e.target.value }))} />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Status</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Status</Label>
                   <Select value={editForm.status || 'active'} onValueChange={v => setEditForm(f => ({ ...f, status: v as any }))}>
                     <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main">
                       <SelectValue />
@@ -238,10 +230,10 @@ export default function SiteDetailPage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" onClick={handleSaveInfo} disabled={saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+                <Button size="sm" onClick={handleSaveInfo} disabled={saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
                   {saving ? 'Saving...' : 'Save'}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => { setIsEditing(false); setEditForm(site); }} className="text-[10px] font-black uppercase">
+                <Button size="sm" variant="outline" onClick={() => { setIsEditing(false); setEditForm(site); }} className="text-[10px] font-bold">
                   Cancel
                 </Button>
               </div>
@@ -267,16 +259,16 @@ export default function SiteDetailPage() {
         <div className="space-y-2">
           {workOrders.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border-sub p-12 text-center">
-              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">No assignments linked to this site</p>
+              <p className="text-[13px] text-text-muted">No jobs linked to this site yet</p>
             </div>
           ) : (
             workOrders.map(wo => (
               <div key={wo.id} className="bg-bg-secondary border border-border-sub rounded-xl p-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-black uppercase text-text-primary truncate">{wo.title || wo.description || wo.id}</p>
-                  <p className="text-[9px] text-text-muted mt-0.5">{wo.scheduleDate} {wo.scheduleTime && `· ${wo.scheduleTime}`}</p>
+                  <p className="text-[12px] font-bold text-text-primary truncate">{wo.title || wo.description || wo.id}</p>
+                  <p className="text-[11px] text-text-muted mt-0.5">{wo.scheduleDate} {wo.scheduleTime && `· ${wo.scheduleTime}`}</p>
                 </div>
-                <Badge variant="scheduled" className="text-[7px] uppercase shrink-0">{wo.status}</Badge>
+                <StatusBadge kind="job" value={wo.status} />
               </div>
             ))
           )}
@@ -288,8 +280,8 @@ export default function SiteDetailPage() {
         <div className="space-y-4">
           <div className="bg-bg-secondary border border-green-border/20 rounded-xl p-4 flex items-center justify-between">
             <div>
-              <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">Total Paid (Completed Jobs)</p>
-              <p className="text-2xl font-black font-mono text-text-green">${totalPay.toFixed(2)}</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">Total paid (completed jobs)</p>
+              <p className="text-2xl font-bold tabular-nums text-text-green">${totalPay.toFixed(2)}</p>
             </div>
             <DollarSign size={24} className="text-text-green/30" />
           </div>
@@ -297,10 +289,10 @@ export default function SiteDetailPage() {
             {workOrders.filter(wo => wo.status === 'completed').map(wo => (
               <div key={wo.id} className="bg-bg-secondary border border-border-sub rounded-xl p-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-black uppercase text-text-primary truncate">{wo.title || wo.id}</p>
-                  <p className="text-[9px] text-text-muted mt-0.5">{wo.scheduleDate}</p>
+                  <p className="text-[12px] font-bold text-text-primary truncate">{wo.title || wo.id}</p>
+                  <p className="text-[11px] text-text-muted mt-0.5">{wo.scheduleDate}</p>
                 </div>
-                <p className="text-[12px] font-black font-mono text-text-green shrink-0">${(wo.finalPay || wo.pay || 0).toFixed(2)}</p>
+                <p className="text-[12px] font-bold font-mono text-text-green shrink-0">${(wo.finalPay || wo.pay || 0).toFixed(2)}</p>
               </div>
             ))}
           </div>
@@ -317,23 +309,23 @@ export default function SiteDetailPage() {
               onChange={e => setNoteText(e.target.value)}
               className="min-h-[80px] text-[11px] bg-bg-secondary border-border-main resize-none"
             />
-            <Button size="sm" onClick={handleAddNote} disabled={!noteText.trim()} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+            <Button size="sm" onClick={handleAddNote} disabled={!noteText.trim()} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
               <Plus size={11} className="mr-1.5" />
               Add Note
             </Button>
           </div>
           <div className="space-y-2">
             {notes.length === 0 ? (
-              <p className="text-[10px] text-text-muted uppercase tracking-widest text-center py-8">No notes yet</p>
+              <p className="text-[13px] text-text-muted text-center py-8">No notes yet</p>
             ) : notes.map(note => (
               <div key={note.id} className="bg-bg-secondary border border-border-sub rounded-xl p-3">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-[11px] text-text-secondary leading-relaxed flex-1">{note.text}</p>
+                  <p className="text-[12px] text-text-secondary leading-relaxed flex-1">{note.text}</p>
                   <button onClick={() => handleDeleteNote(note.id)} className="text-text-muted hover:text-text-red transition-colors shrink-0">
                     <Trash2 size={12} />
                   </button>
                 </div>
-                <p className="text-[9px] font-bold text-text-muted/60 uppercase tracking-widest mt-2">
+                <p className="text-[11px] text-text-muted mt-2">
                   {note.author} · {note.createdAt ? format(parseISO(note.createdAt), 'MMM d, yyyy h:mm a') : ''}
                 </p>
               </div>
@@ -346,8 +338,8 @@ export default function SiteDetailPage() {
       {activeTab === 'Documents' && (
         <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
           <FileText size={32} className="text-text-muted mx-auto mb-3" />
-          <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">Document management</p>
-          <p className="text-[9px] text-text-muted mt-1">File upload and document storage coming soon.</p>
+          <p className="text-[11px] font-bold text-text-muted">Document management</p>
+          <p className="text-[11px] text-text-muted mt-1">File upload and document storage coming soon.</p>
         </div>
       )}
     </div>
@@ -359,8 +351,8 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
     <div className="flex items-start gap-3">
       <Icon size={13} className="text-brand-red shrink-0 mt-0.5" />
       <div>
-        <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">{label}</p>
-        <p className="text-[11px] text-text-primary font-medium mt-0.5">{value}</p>
+        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{label}</p>
+        <p className="text-[12px] text-text-primary font-medium mt-0.5">{value}</p>
       </div>
     </div>
   );
@@ -373,21 +365,21 @@ function SiteSubscriptionCard({ clientId }: { clientId: string }) {
   const plan = plans.find(p => p.id === sub?.planId);
   return (
     <div className="bg-bg-secondary border border-border-sub rounded-xl p-4 space-y-2">
-      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Service Plan</p>
+      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Service Plan</p>
       {sub ? (
         <>
           <div className="flex items-center gap-2">
             <p className="text-[12px] font-bold text-text-primary">{plan?.name || sub.planId}</p>
-            <Badge variant={sub.status === 'active' ? 'active' : sub.status === 'pending' ? 'scheduled' : 'outline'} className="text-[8px] h-5 px-2">
+            <Badge variant={sub.status === 'active' ? 'approved' : sub.status === 'pending' ? 'inprogress' : 'draft'} className="text-[10px] h-5 px-2 font-semibold uppercase tracking-wide">
               {SUBSCRIPTION_STATUS_LABELS[sub.status]}
             </Badge>
           </div>
           {plan && <p className="text-[10px] text-text-muted">{plan.benefits.responseHours}h response · {plan.benefits.laborDiscountPct}% off labor</p>}
         </>
       ) : (
-        <p className="text-[11px] text-text-muted">No plan.</p>
+        <p className="text-[12px] text-text-muted">No plan.</p>
       )}
-      <Link href="/admin/plans" className="text-[10px] font-bold uppercase text-brand-red hover:underline">Manage on Service Plans →</Link>
+      <Link href="/admin/plans" className="text-[10px] font-bold text-brand-red hover:underline">Manage on Service Plans →</Link>
     </div>
   );
 }

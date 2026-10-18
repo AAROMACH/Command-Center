@@ -49,6 +49,10 @@ import {
     DialogClose
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { PageHeader } from '@/components/page-header';
+import { EmptyState } from '@/components/empty-state';
+import { StatCard } from '@/components/stat-card';
+import { StatusBadge } from '@/components/status-badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
@@ -121,7 +125,7 @@ export default function SiteDetailPage() {
             siteProjects,
             contact: 'Site Manager',
             documents: [
-                { id: 'sd-1', name: 'Site_Safety_Protocol_v2.pdf', size: '1.2MB', date: '01/15/2024' },
+                { id: 'sd-1', name: 'Site_Safety_Plan_v2.pdf', size: '1.2MB', date: '01/15/2024' },
                 { id: 'sd-2', name: 'MDF_Rack_Layout_Final.pdf', size: '3.4MB', date: '03/22/2024' }
             ]
         };
@@ -138,111 +142,75 @@ export default function SiteDetailPage() {
 
     if (!mounted) return null;
     if (!siteData) return (
-        <div className="p-24 text-center">
-            <p className="text-text-muted uppercase font-bold tracking-widest">Site Coordinate Not Found</p>
-            <Button variant="link" onClick={() => router.push('/client/sites')} className="mt-4">Return to Registry</Button>
-        </div>
+        <EmptyState icon={MapPin} title="Site not found" description="This site may have been removed or isn't on your account."
+            action={<Button variant="outline" size="sm" onClick={() => router.push('/client/sites')}>Back to sites</Button>} />
     );
 
+    const openCount = siteData.activeAssignments.length;
     return (
-        <div className="space-y-8 relative">
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => router.push('/client/sites')} className="h-10 w-10 text-text-muted hover:text-text-primary">
-                    <ChevronLeft size={24} />
-                </Button>
-                <div className="text-left">
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <MapPin size={12} />
-                        Managed Coordinate
-                    </p>
-                    <h1 className="page-title">{siteData.name}</h1>
-                </div>
-            </div>
+        <div className="space-y-6 relative">
+            <PageHeader
+                back={{ href: '/client/sites', label: 'Sites' }}
+                eyebrow="Site"
+                icon={MapPin}
+                title={siteData.name}
+                subtitle={siteData.location}
+            />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="space-y-6">
-                    <Card className="bg-bg-secondary border-border-main overflow-hidden shadow-sm">
+                    <Card className="rounded-xl bg-bg-secondary border-border-main overflow-hidden shadow-sm">
                         <div className="relative aspect-video w-full bg-bg-primary border-b border-border-sub">
                              {MAPS_API_KEY ? (
                                 <iframe 
                                     src={`https://www.google.com/maps/embed/v1/place?key=${MAPS_API_KEY}&q=${encodeURIComponent(siteData.location)}`} 
                                     width="100%" 
                                     height="100%" 
-                                    style={{ border: 0, filter: 'grayscale(0.8) invert(1)' }} 
+                                    style={{ border: 0 }} 
                                     allowFullScreen={true} 
                                     loading="lazy"
                                     className="absolute top-0 left-0"
                                 ></iframe>
                              ) : (
                                 <div className="absolute inset-0 flex items-center justify-center bg-bg-tertiary">
-                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">MAPS_API_KEY Restricted</p>
+                                    <p className="text-[12px] text-text-muted">Map unavailable</p>
                                 </div>
                              )}
                         </div>
                         <CardContent className="p-5 space-y-4">
                             <div className="space-y-1 text-left">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Address</p>
-                                <p className="text-sm font-bold text-text-primary uppercase tracking-tight">{siteData.location}</p>
+                                <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Address</p>
+                                <p className="text-[13px] font-medium text-text-primary">{siteData.location}</p>
                             </div>
-                            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-sub">
-                                <div className="space-y-1 text-left">
-                                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5"><Phone size={10}/> Site Contact</p>
-                                    <p className="text-[10px] font-bold text-text-primary uppercase">{siteData.contact}</p>
-                                </div>
-                                <div className="space-y-1 text-right">
-                                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5 justify-end"><ShieldCheck size={10}/> Access Tier</p>
-                                    <p className="text-[10px] font-bold text-text-primary uppercase">Tier 1 Internal</p>
-                                </div>
+                            <div className="space-y-1 pt-3 border-t border-border-sub text-left">
+                                <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider flex items-center gap-1.5"><Phone size={12}/> Site contact</p>
+                                <p className="text-[13px] text-text-primary">{siteData.contact}</p>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-bg-tertiary/30 border-border-sub">
-                        <CardHeader className="pb-3 text-left">
-                            <CardTitle className="text-[10px] uppercase tracking-widest flex items-center gap-2">
-                                <Activity size={14} className="text-brand-red"/> Operational Pulse
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Total Visits</p>
-                                    <p className="text-2xl font-bold text-text-primary">{siteData.historicalAssignments.length + siteData.activeAssignments.length}</p>
-                                    <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">all time</p>
-                                </div>
-                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Open Tickets</p>
-                                    <p className="text-2xl font-bold text-text-primary">{siteData.activeAssignments.length}</p>
-                                    <p className={cn("text-[8px] uppercase font-bold tracking-widest", siteData.activeAssignments.length > 0 ? "text-accent-gold" : "text-text-green")}>
-                                        {siteData.activeAssignments.length > 0 ? 'Active Queue' : 'Clean'}
-                                    </p>
-                                </div>
-                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-center space-y-1">
-                                    <p className="text-[8px] font-black text-text-muted uppercase tracking-[0.2em]">Uptime Tier</p>
-                                    <p className="text-2xl font-bold text-text-primary">99.9%</p>
-                                    <p className="text-[8px] text-text-muted uppercase font-bold tracking-widest">Contract SLA</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <div className="grid grid-cols-3 gap-3">
+                        <StatCard label="Visits" value={siteData.historicalAssignments.length + openCount} sub="All time" />
+                        <StatCard label="Open jobs" value={openCount} tone={openCount > 0 ? 'progress' : 'done'} sub={openCount > 0 ? 'In progress' : 'All clear'} />
+                        <StatCard label="Projects" value={siteData.siteProjects.length} sub="At this site" />
+                    </div>
                 </div>
 
                 <div className="lg:col-span-2">
                     <Tabs defaultValue="activity" className="w-full">
-                        <TabsList className="tabs !p-0 !bg-bg-tertiary mb-6">
-                            <TabsTrigger value="activity" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white uppercase font-bold text-[11px] tracking-widest">Active Activity</TabsTrigger>
-                            <TabsTrigger value="history" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white uppercase font-bold text-[11px] tracking-widest">Job History</TabsTrigger>
-                            <TabsTrigger value="documents" className="tab !px-8 !py-4 data-[state=active]:bg-brand-red data-[state=active]:text-white uppercase font-bold text-[11px] tracking-widest">Documents</TabsTrigger>
+                        <TabsList className="tabs mb-4">
+                            <TabsTrigger value="activity" className="tab">Open jobs</TabsTrigger>
+                            <TabsTrigger value="history" className="tab">Job history</TabsTrigger>
+                            <TabsTrigger value="documents" className="tab">Documents</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="activity" className="space-y-6 mt-0">
                             <div className="space-y-3">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] text-left">Active Assignment Registry</p>
-                                <div className="space-y-2">
+                                                                <div className="space-y-2">
                                     {siteData.activeAssignments.length > 0 ? siteData.activeAssignments.map(wo => (
                                         <Card 
                                             key={wo.id} 
-                                            className="bg-bg-secondary border-border-main hover:border-text-muted transition-all cursor-pointer"
+                                            className="rounded-xl bg-bg-secondary border-border-main shadow-sm hover:border-text-muted transition-all cursor-pointer"
                                             onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}
                                         >
                                             <CardContent className="p-4 flex items-center justify-between">
@@ -251,25 +219,21 @@ export default function SiteDetailPage() {
                                                         <Wrench size={16} />
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
+                                                        <p className="text-[13px] font-semibold text-text-primary">{wo.description}</p>
                                                         <div className="flex items-center gap-3 mt-1">
-                                                            <span className="text-[9px] text-brand-red font-mono font-bold">ID: {wo.id.toUpperCase()}</span>
+                                                            <span className="text-[11px] text-text-muted font-mono">{wo.id.toUpperCase()}</span>
                                                             <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
-                                                            <span className="text-[9px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1">
-                                                                <Clock size={10}/> Scheduled: {wo.scheduleTime}
+                                                            <span className="text-[12px] text-text-muted flex items-center gap-1">
+                                                                <Clock size={12}/> {formatDateDisplay(wo.scheduleDate)}{wo.scheduleTime ? ` · ${wo.scheduleTime}` : ''}
                                                             </span>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <Badge variant={wo.status === 'in-progress' ? 'inprogress' : 'scheduled'} className="uppercase h-5 text-[8px] tracking-widest">
-                                                    {wo.status}
-                                                </Badge>
+                                                <StatusBadge kind="job" value={wo.status} className="shrink-0" />
                                             </CardContent>
                                         </Card>
                                     )) : (
-                                        <div className="p-12 text-center bg-bg-secondary/30 rounded-lg border-2 border-dashed border-border-main">
-                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest italic">Awaiting further dispatch</p>
-                                        </div>
+                                        <EmptyState compact icon={Wrench} title="No open jobs at this site" />
                                     )}
                                 </div>
                             </div>
@@ -280,7 +244,7 @@ export default function SiteDetailPage() {
                                 {siteData.historicalAssignments.length > 0 ? siteData.historicalAssignments.map(wo => (
                                     <div 
                                         key={wo.id} 
-                                        className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:border-text-muted transition-colors cursor-pointer"
+                                        className="p-4 rounded-xl bg-bg-secondary border border-border-main shadow-sm flex items-center justify-between group hover:border-text-muted transition-colors cursor-pointer"
                                         onClick={() => { setSelectedJob(wo); setIsJobOpen(true); }}
                                     >
                                         <div className="flex items-center gap-4 text-left">
@@ -288,17 +252,14 @@ export default function SiteDetailPage() {
                                                 <CheckCircle2 size={16} />
                                             </div>
                                             <div>
-                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{wo.description}</p>
-                                                <p className="text-[9px] text-text-muted uppercase tracking-widest mt-0.5">Completed: {formatDateDisplay(wo.scheduleDate)} • {wo.id.toUpperCase()}</p>
+                                                <p className="text-[13px] font-semibold text-text-primary">{wo.description}</p>
+                                                <p className="text-[12px] text-text-muted mt-0.5">Completed {formatDateDisplay(wo.scheduleDate)} · {wo.id.toUpperCase()}</p>
                                             </div>
                                         </div>
-                                        <Badge variant="active" className="text-[9px]">FINALIZED</Badge>
+                                        <StatusBadge kind="job" value="completed" />
                                     </div>
                                 )) : (
-                                    <div className="p-24 text-center bg-bg-secondary/30 rounded-lg border-2 border-dashed border-border-main">
-                                        <History size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No historical records found for this coordinate.</p>
-                                    </div>
+                                    <EmptyState icon={History} title="No completed jobs at this site yet" />
                                 )}
                             </div>
                         </TabsContent>
@@ -306,17 +267,17 @@ export default function SiteDetailPage() {
                         <TabsContent value="documents" className="space-y-4 mt-0">
                             <div className="space-y-2">
                                 {siteData.documents.map(doc => (
-                                    <div key={doc.id} className="p-4 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between group hover:border-text-muted transition-colors">
+                                    <div key={doc.id} className="p-4 rounded-xl bg-bg-secondary border border-border-main shadow-sm flex items-center justify-between group hover:border-text-muted transition-colors">
                                         <div className="flex items-center gap-4 text-left">
-                                            <div className="p-2 bg-bg-tertiary rounded border border-border-sub text-brand-red">
+                                            <div className="p-2 bg-bg-tertiary rounded-md border border-border-sub text-text-muted">
                                                 <FileText size={18} />
                                             </div>
                                             <div className="text-left">
-                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide">{doc.name}</p>
-                                                <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">{doc.size} • Uploaded {doc.date}</p>
+                                                <p className="text-[13px] font-semibold text-text-primary">{doc.name}</p>
+                                                <p className="text-[12px] text-text-muted mt-0.5">{doc.size} · Uploaded {doc.date}</p>
                                             </div>
                                         </div>
-                                        <Button variant="ghost" size="icon" className="text-text-muted hover:text-text-primary">
+                                        <Button variant="ghost" size="icon" aria-label="Download" className="text-text-muted hover:text-text-primary">
                                             <Download size={18} />
                                         </Button>
                                     </div>

@@ -208,13 +208,13 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
         return (
             <div key={item.id} className="grid grid-cols-[1.2fr,2fr,60px,100px,60px,40px] gap-2 items-center p-2 rounded-lg border border-border-sub bg-bg-primary">
                 <Select onValueChange={(val) => handlePremadeItemSelect(item.id, val)}>
-                    <SelectTrigger className="h-8 bg-bg-secondary text-[10px] uppercase font-bold"><SelectValue placeholder="Preset..."/></SelectTrigger>
+                    <SelectTrigger className="h-8 bg-bg-secondary text-[10px] font-bold"><SelectValue placeholder="Preset..."/></SelectTrigger>
                     <SelectContent>
                         {premadeLineItems.map(group => (
                             <SelectGroup key={group.group}>
-                                <SelectLabel className="text-[8px] font-black uppercase text-brand-red tracking-widest px-2 py-1.5">{group.group}</SelectLabel>
+                                <SelectLabel className="text-[10px] font-bold uppercase text-brand-red tracking-wider px-2 py-1.5">{group.group}</SelectLabel>
                                 {group.items.filter(pi => pi.category === item.category).map(pi => (
-                                    <SelectItem key={pi.id} value={pi.id} className="text-[10px] uppercase font-bold">{pi.description}</SelectItem>
+                                    <SelectItem key={pi.id} value={pi.id}>{pi.description}</SelectItem>
                                 ))}
                             </SelectGroup>
                         ))}
@@ -243,7 +243,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                 </div>
                 {isLabor ? (
                     <div className="flex flex-col items-center gap-1">
-                        <Label className="text-[6px] font-black uppercase text-text-muted text-center leading-none">Emergency Protocol (1.5x)</Label>
+                        <Label className="text-[10px] font-bold text-text-muted text-center leading-none">Emergency rate (1.5×)</Label>
                         <Switch 
                             checked={!!item.isEmergencyProtocol} 
                             onCheckedChange={(val) => handleLineItemChange(item.id, 'isEmergencyProtocol', val)}
@@ -260,12 +260,12 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetContent className="sm:max-w-[1000px] w-full bg-bg-elevated border-border-default overflow-y-auto">
                 <SheetHeader className="pb-4 border-b border-border-sub">
-                    <SheetTitle className="flex items-center gap-2 text-lg uppercase font-bold tracking-widest text-left">
+                    <SheetTitle className="flex items-center gap-2 text-lg font-semibold text-left">
                         <FileText size={20} className="text-brand-red"/>
-                        {invoice ? 'Audit Invoice Registry' : 'Initialize Client Settlement'}
+                        {invoice ? 'Edit invoice' : 'New invoice'}
                     </SheetTitle>
-                    <SheetDescription className="text-xs uppercase font-bold text-text-muted tracking-widest text-left">
-                        {invoice ? `Registry Ref: ${invoice.invoiceNumber}` : 'Populate parameters for strategic billing.'}
+                    <SheetDescription className="text-[12px] text-text-muted text-left">
+                        {invoice ? `Invoice ${invoice.invoiceNumber}` : 'Add the client, dates and line items.'}
                     </SheetDescription>
                 </SheetHeader>
                 
@@ -273,24 +273,24 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                     <div className="p-4 rounded-lg border border-border-sub bg-bg-primary/50 space-y-6 text-left">
                         <div className="grid grid-cols-2 gap-6">
                              <div className="space-y-2 text-left">
-                                <Label htmlFor="clientId" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Client Entity</Label>
+                                <Label htmlFor="clientId" className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Client</Label>
                                 <Select value={invoiceData.clientId} onValueChange={(val) => handleSelectChange('clientId', val)}>
                                     <SelectTrigger id="clientId" className="h-10 bg-bg-secondary"><SelectValue placeholder="Select target client..." /></SelectTrigger>
                                     <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.clientCompany || c.name}</SelectItem>)}</SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-2 text-left">
-                                <Label htmlFor="relatedId" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Related Mission (Proj/WO)</Label>
+                                <Label htmlFor="relatedId" className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Related project or job</Label>
                                 <Select value={invoiceData.projectId || invoiceData.workOrderId} onValueChange={(val) => handleSelectChange('relatedId', val)}>
-                                    <SelectTrigger id="relatedId" className="h-10 bg-bg-secondary"><SelectValue placeholder="Link mission registry..." /></SelectTrigger>
+                                    <SelectTrigger id="relatedId" className="h-10 bg-bg-secondary"><SelectValue placeholder="Link a project or job…" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectGroup>
-                                            <SelectLabel className="px-2 py-1.5 text-[9px] font-black uppercase text-text-muted tracking-widest">Active Projects</SelectLabel>
-                                            {projects.map(p => <SelectItem key={p.id} value={p.id} className="text-xs uppercase font-bold">{p.name}</SelectItem>)}
+                                            <SelectLabel className="px-2 py-1.5 text-[10px] font-bold uppercase text-text-muted tracking-wider">Active projects</SelectLabel>
+                                            {projects.map(p => <SelectItem key={p.id} value={p.id} className="text-xs font-bold">{p.name}</SelectItem>)}
                                         </SelectGroup>
                                          <SelectGroup>
-                                            <SelectLabel className="px-2 py-1.5 text-[9px] font-black uppercase text-text-muted tracking-widest">Assignments Pool</SelectLabel>
-                                            {workOrders.map(wo => <SelectItem key={wo.id} value={wo.id} className="text-xs uppercase font-bold">{wo.id.toUpperCase()} - {wo.description}</SelectItem>)}
+                                            <SelectLabel className="px-2 py-1.5 text-[10px] font-bold uppercase text-text-muted tracking-wider">Jobs</SelectLabel>
+                                            {workOrders.map(wo => <SelectItem key={wo.id} value={wo.id} className="text-xs font-bold">{wo.id.toUpperCase()} - {wo.description}</SelectItem>)}
                                         </SelectGroup>
                                     </SelectContent>
                                 </Select>
@@ -298,15 +298,15 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                         </div>
                          <div className="grid grid-cols-3 gap-6">
                              <div className="space-y-2 text-left">
-                                <Label htmlFor="invoiceNumber" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Invoice ID</Label>
-                                <Input id="invoiceNumber" name="invoiceNumber" value={invoiceData.invoiceNumber || ''} onChange={handleInputChange} className="h-10 bg-bg-secondary font-mono text-xs uppercase font-bold" />
+                                <Label htmlFor="invoiceNumber" className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Invoice ID</Label>
+                                <Input id="invoiceNumber" name="invoiceNumber" value={invoiceData.invoiceNumber || ''} onChange={handleInputChange} className="h-10 bg-bg-secondary font-mono text-xs font-bold" />
                             </div>
                             <div className="space-y-2 text-left">
-                                <Label htmlFor="issueDate" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Issue Date</Label>
+                                <Label htmlFor="issueDate" className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Issue date</Label>
                                 <Input id="issueDate" name="issueDate" type="date" value={invoiceData.issueDate || ''} onChange={handleInputChange} className="h-10 bg-bg-secondary text-xs" />
                             </div>
                              <div className="space-y-2 text-left">
-                                <Label htmlFor="dueDate" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Due Date</Label>
+                                <Label htmlFor="dueDate" className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Due date</Label>
                                 <Input id="dueDate" name="dueDate" type="date" value={invoiceData.dueDate || ''} onChange={handleInputChange} className="h-10 bg-bg-secondary text-xs" />
                             </div>
                          </div>
@@ -316,14 +316,14 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                         {/* LABOR REGISTRY */}
                         <div className="space-y-4">
                             <div className="flex items-center justify-between px-1">
-                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                                <h3 className="text-[13px] font-semibold text-text-primary flex items-center gap-2">
                                     <Hammer size={14} className="text-brand-red" />
-                                    Labor Registry (Tax Exempt)
+                                    Labor (not taxed)
                                 </h3>
-                                <Badge variant="outline" className="text-[9px] font-mono text-text-muted h-5">{laborItems.length} Entries</Badge>
+                                <Badge variant="outline" className="text-[11px] font-mono text-text-muted h-5">{laborItems.length} Entries</Badge>
                             </div>
                             <div className="space-y-2">
-                                <div className="grid grid-cols-[1.2fr,2fr,60px,100px,60px,40px] gap-2 items-center text-[9px] font-black uppercase tracking-widest text-text-muted px-2">
+                                <div className="grid grid-cols-[1.2fr,2fr,60px,100px,60px,40px] gap-2 items-center text-[10px] font-bold uppercase tracking-wider text-text-muted px-2">
                                     <span>Preset</span>
                                     <span>Description</span>
                                     <span className="text-center">Hrs</span>
@@ -342,14 +342,14 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                         {/* MATERIAL REGISTRY */}
                         <div className="space-y-4">
                             <div className="flex items-center justify-between px-1">
-                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+                                <h3 className="text-[13px] font-semibold text-text-primary flex items-center gap-2">
                                     <Package size={14} className="text-accent-gold" />
-                                    Material Registry (8% Tax)
+                                    Materials (8% tax)
                                 </h3>
-                                <Badge variant="outline" className="text-[9px] font-mono text-text-muted h-5">{materialItems.length} Entries</Badge>
+                                <Badge variant="outline" className="text-[11px] font-mono text-text-muted h-5">{materialItems.length} Entries</Badge>
                             </div>
                             <div className="space-y-2">
-                                <div className="grid grid-cols-[1.2fr,2fr,60px,100px,60px,40px] gap-2 items-center text-[9px] font-black uppercase tracking-widest text-text-muted px-2">
+                                <div className="grid grid-cols-[1.2fr,2fr,60px,100px,60px,40px] gap-2 items-center text-[10px] font-bold uppercase tracking-wider text-text-muted px-2">
                                     <span>Preset</span>
                                     <span>Part / Asset Identification</span>
                                     <span className="text-center">QTY</span>
@@ -367,26 +367,26 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
 
                     <div className="grid grid-cols-2 gap-8 pt-4 text-left">
                          <div className="space-y-2 text-left">
-                            <Label htmlFor="notes" className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Tactical Audit Notes</Label>
-                            <Textarea id="notes" name="notes" placeholder="Terms, wiring standards, or payment protocol..." value={invoiceData.notes || ''} onChange={handleInputChange} className="min-h-[150px] bg-bg-primary text-xs leading-relaxed"/>
+                            <Label htmlFor="notes" className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Notes</Label>
+                            <Textarea id="notes" name="notes" placeholder="Terms, scope notes or payment instructions…" value={invoiceData.notes || ''} onChange={handleInputChange} className="min-h-[150px] bg-bg-primary text-xs leading-relaxed"/>
                         </div>
                         <div className="p-6 rounded-lg bg-bg-secondary border border-border-sub space-y-3 shadow-inner text-left">
-                            <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
+                            <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider">
                                 <span className="text-text-muted">
                                     Labor Subtotal {isAnyMultiplierActive ? "(Multiplier Applied)" : ""}
                                 </span>
                                 <span className="font-mono text-text-primary">${laborSubtotal.toFixed(2)}</span>
                             </div>
-                             <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
+                             <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider">
                                 <span className="text-text-muted">Materials Subtotal</span>
                                 <span className="font-mono text-text-primary">${materialsSubtotal.toFixed(2)}</span>
                             </div>
-                             <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-accent-gold">
+                             <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-accent-gold">
                                 <span className="flex items-center gap-1.5"><Zap size={10}/> Material Tax (8.0%)</span>
                                 <span className="font-mono">${tax.toFixed(2)}</span>
                             </div>
                              <div className="flex justify-between items-center border-t border-dashed border-border-sub pt-4 mt-4">
-                                <span className="text-xs font-black uppercase tracking-[0.2em] text-text-primary">Final Settlement</span>
+                                <span className="text-xs font-bold text-text-primary">Final Settlement</span>
                                 <span className="text-2xl font-mono font-bold text-text-green">${total.toFixed(2)}</span>
                             </div>
                         </div>
@@ -396,7 +396,7 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                 <div className="flex justify-between items-center pt-6 border-t border-border-sub mt-4 sticky bottom-0 bg-bg-elevated py-4">
                     <div>
                         <Select value={invoiceData.status} onValueChange={(val) => handleSelectChange('status', val)}>
-                            <SelectTrigger className="w-[160px] h-10 bg-bg-primary text-[10px] uppercase font-bold tracking-widest"><SelectValue placeholder="Status" /></SelectTrigger>
+                            <SelectTrigger className="w-[160px] h-10 bg-bg-primary"><SelectValue placeholder="Status" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="draft">DRAFT</SelectItem>
                                 <SelectItem value="sent">TRANSMITTED</SelectItem>
@@ -407,8 +407,8 @@ export function InvoiceEditor({ isOpen, setIsOpen, invoice, clients, projects, w
                         </Select>
                     </div>
                     <div className="flex gap-3">
-                        <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Discard</Button>
-                        <Button onClick={handleSave} className="h-10 px-12 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover">Commit Invoice</Button>
+                        <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8">Discard</Button>
+                        <Button onClick={handleSave} className="h-10 px-12 bg-brand-red hover:bg-brand-red-hover">Save invoice</Button>
                     </div>
                 </div>
             </SheetContent>

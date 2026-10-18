@@ -34,6 +34,10 @@ import { setDoc } from 'firebase/firestore';
 import { startOfWeek } from 'date-fns';
 import { isAssignedTo, parseLocalDate } from '@/lib/jobs';
 import { techDisplayName } from '@/lib/utils';
+import { PageHeader } from '@/components/page-header';
+import { statusLabel } from '@/lib/status-styles';
+import { EmptyState, PageLoading } from '@/components/empty-state';
+import { StatusBadge } from '@/components/status-badge';
 
 const AssignmentMap = dynamic(
   () => import('@/app/admin/assignments/[id]/assignment-map'),
@@ -50,8 +54,8 @@ function getTechBg(name: string): string {
 function getStatusLabel(status: string) {
   return ({
     unassigned: 'Unassigned', assigned: 'Assigned', confirmed: 'Confirmed',
-    'on-my-way': 'En Route', 'in-progress': 'In Progress',
-    'checked-out': 'Checked Out', completed: 'Completed',
+    'on-my-way': 'On my way', 'in-progress': 'In progress',
+    'checked-out': 'Checked out', completed: 'Completed',
   } as Record<string, string>)[status] || status;
 }
 
@@ -79,21 +83,21 @@ function parseScheduleDate(s: string): Date | null {
 
 function TechCard({ tech, label }: { tech: Technician; label?: string }) {
   const bg = getTechBg(tech.name);
-  const isPrimary = label === 'PRIMARY';
+  const isPrimary = label === 'Lead';
   return (
     <div className="flex items-center gap-3 p-3 bg-bg-primary/40 rounded-xl border border-border-sub h-full">
       <div
-        className="h-9 w-9 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0 uppercase"
+        className="h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"
         style={{ background: bg }}
       >
         {tech.name.charAt(0)}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 mb-1">
-          <p className="text-[11px] font-black uppercase text-text-primary truncate">{tech.name}</p>
+          <p className="text-[13px] font-semibold text-text-primary truncate">{tech.name}</p>
           {label && (
             <span
-              className="shrink-0 text-[7px] font-black uppercase tracking-widest px-1.5 py-px rounded border"
+              className="shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-px rounded-full border"
               style={{
                 background: isPrimary ? 'color-mix(in srgb, var(--text-green) 10%, transparent)' : 'color-mix(in srgb, var(--accent-gold) 10%, transparent)',
                 color: isPrimary ? 'var(--text-green)' : 'var(--accent-gold)',
@@ -109,9 +113,9 @@ function TechCard({ tech, label }: { tech: Technician; label?: string }) {
           <Mail size={8} />
           <div className="w-px h-3 bg-border-sub" />
           <Calendar size={8} />
-          <span className="text-[9px] font-mono text-text-secondary">{tech.currentWorkload ?? '—'}</span>
+          <span className="text-[11px] font-mono text-text-secondary">{tech.currentWorkload ?? '—'}</span>
           <Clock size={8} />
-          <span className="text-[9px] font-mono text-text-secondary">—</span>
+          <span className="text-[11px] font-mono text-text-secondary">—</span>
         </div>
       </div>
     </div>
@@ -244,23 +248,12 @@ export default function TechAssignmentDetailPage() {
     return item ? effectiveJobPay(item, assignment ?? undefined) : 0;
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center py-24">
-      <p className="text-xs font-bold uppercase text-text-muted tracking-widest animate-pulse">Loading assignment...</p>
-    </div>
-  );
+  if (loading) return <PageLoading label="Loading job…" />;
 
   if (!assignment) return (
     <div className="space-y-4">
-      <Button variant="ghost" size="sm" className="h-8 text-[10px] uppercase font-bold text-text-muted"
-        onClick={() => router.push('/tech/assignments')}>
-        <ArrowLeft size={13} className="mr-1.5" /> Back
-      </Button>
-      <div className="py-24 text-center border border-dashed border-border-sub rounded-xl">
-        <AlertTriangle size={32} className="mx-auto text-text-muted mb-2 opacity-40" />
-        <p className="text-xs font-bold uppercase text-text-muted">Assignment not found</p>
-        <p className="text-[10px] text-text-muted mt-1 uppercase">{assignmentId}</p>
-      </div>
+      <PageHeader back={{ href: '/tech/assignments', label: 'My jobs' }} title="Job not found" />
+      <EmptyState icon={AlertTriangle} title="We couldn't find this job" description={`It may have been removed or reassigned. (${assignmentId})`} />
     </div>
   );
 
@@ -275,16 +268,16 @@ export default function TechAssignmentDetailPage() {
   const endTime = (assignment as any).scheduleEndTime;
 
   const riskLabel =
-    assignment.slaStatus === 'at-risk' ? 'At Risk'
+    assignment.slaStatus === 'at-risk' ? 'At risk'
     : assignment.slaStatus === 'breached' ? 'Breached'
-    : (assignment.revisitCount || 0) > 0 ? 'At Risk'
-    : assignment.slaStatus === 'on-track' ? 'On Track'
+    : (assignment.revisitCount || 0) > 0 ? 'At risk'
+    : assignment.slaStatus === 'on-track' ? 'On track'
     : assignment.slaStatus === 'met' ? 'Met'
     : '—';
 
   const dateObj = parseScheduleDate(assignment.scheduleDate);
-  const dayName  = dateObj ? format(dateObj, 'EEEE').toUpperCase() : '—';
-  const monthStr = dateObj ? format(dateObj, 'MMM').toUpperCase() : '—';
+  const dayName  = dateObj ? format(dateObj, 'EEEE') : '—';
+  const monthStr = dateObj ? format(dateObj, 'MMM') : '—';
   const dayNum   = dateObj ? format(dateObj, 'd') : '—';
   const yearStr  = dateObj ? format(dateObj, 'yyyy') : '—';
 
@@ -294,9 +287,9 @@ export default function TechAssignmentDetailPage() {
   const jobDetailRows: { label: string; value?: string; icon: React.ElementType }[] = [
     { label: 'Client',      value: assignment.clientName,                                          icon: Users },
     { label: 'Location',    value: assignment.location,                                             icon: MapPin },
-    { label: 'Job Type',    value: assignment.jobType || assignment.projectType,                   icon: Wrench },
+    { label: 'Job type',    value: assignment.jobType || assignment.projectType,                   icon: Wrench },
     { label: 'Pay',         value: payLabel,                                                        icon: DollarSign },
-    { label: 'Work Order',  value: assignment.externalWorkOrderId || assignmentId.toUpperCase(),   icon: ExternalLink },
+    { label: 'Work order',  value: assignment.externalWorkOrderId || assignmentId.toUpperCase(),   icon: ExternalLink },
     { label: 'Source',      value: assignment.source || '—',                                       icon: Activity },
   ];
 
@@ -309,12 +302,12 @@ export default function TechAssignmentDetailPage() {
         : undefined },
     { icon: ShieldCheck,   label: 'Status',     value: getStatusLabel(status),
       color: status === 'confirmed' || status === 'completed' ? 'var(--text-green)' : undefined },
-    { icon: AlertTriangle, label: 'Risk Level', value: riskLabel,
-      color: riskLabel === 'At Risk' || riskLabel === 'Breached' ? 'var(--accent-gold)' : undefined },
-    { icon: DollarSign,    label: 'Pay Type',   value: assignment.payType
+    { icon: AlertTriangle, label: 'Risk', value: riskLabel,
+      color: riskLabel === 'At risk' || riskLabel === 'Breached' ? 'var(--accent-gold)' : undefined },
+    { icon: DollarSign,    label: 'Pay type',   value: assignment.payType
         ? assignment.payType.charAt(0).toUpperCase() + assignment.payType.slice(1) : '—',
       color: undefined },
-    { icon: DollarSign,    label: 'Pay Amount', value: payLabel, color: 'var(--text-green)' },
+    { icon: DollarSign,    label: 'Pay', value: payLabel, color: 'var(--text-green)' },
   ];
 
   // Tech action buttons — only show ones relevant to current status
@@ -326,25 +319,25 @@ export default function TechAssignmentDetailPage() {
       cls: 'bg-text-green hover:bg-text-green/90 text-white border-0',
     },
     {
-      key: 'start-trip', label: 'Start Trip', icon: Play,
+      key: 'start-trip', label: 'Start trip', icon: Play,
       show: canStartTrip(assignment),
       handler: handleStartTrip,
-      cls: 'bg-blue-600 hover:bg-blue-500 text-white border-0',
+      cls: 'bg-brand-blue hover:bg-brand-blue/90 text-white border-0',
     },
     {
-      key: 'check-in', label: 'Check In', icon: LogIn,
+      key: 'check-in', label: 'Check in', icon: LogIn,
       show: canCheckIn(assignment),
       handler: handleCheckIn,
       cls: 'bg-text-green hover:bg-text-green/90 text-white border-0',
     },
     {
-      key: 'check-out', label: 'Check Out', icon: LogOut,
+      key: 'check-out', label: 'Check out', icon: LogOut,
       show: canCheckOut(assignment),
       handler: handleCheckOut,
       cls: '',
     },
     {
-      key: 'complete', label: 'Mark Complete', icon: CheckCircle2,
+      key: 'complete', label: 'Mark complete', icon: CheckCircle2,
       show: canComplete(assignment),
       handler: handleMarkComplete,
       cls: 'bg-text-green hover:bg-text-green/90 text-white border-0',
@@ -364,37 +357,25 @@ export default function TechAssignmentDetailPage() {
     <div className="space-y-5 text-left pb-24">
 
       {/* Back ───────────────────────────────────────────────────────────── */}
-      <Button variant="ghost" size="sm"
-        className="h-8 text-[10px] uppercase font-bold text-text-muted -ml-2"
-        onClick={() => router.push('/tech/assignments')}>
-        <ArrowLeft size={13} className="mr-1.5" /> Back to Assignments
-      </Button>
-
       {/* Header ─────────────────────────────────────────────────────────── */}
       <div className="space-y-2">
-        <div className="flex items-start gap-3 flex-wrap">
-          <h1 className="text-xl font-black uppercase tracking-tight text-text-primary leading-none">
-            {assignment.title || assignment.description?.split('\n')[0]?.slice(0, 80) || assignmentId.toUpperCase()}
-          </h1>
-          <ShieldCheck size={18} className="shrink-0 mt-0.5" style={{ color: 'var(--text-green)' }} />
-          {assignment.priority && (
-            <span
-              className="text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded border shrink-0 self-start"
-              style={{ background: 'color-mix(in srgb, var(--accent-gold) 10%, transparent)', color: 'var(--accent-gold)', borderColor: 'color-mix(in srgb, var(--accent-gold) 30%, transparent)' }}
-            >
-              {assignment.priority} Priority
-            </span>
-          )}
-        </div>
+        <PageHeader
+          className="!mb-2"
+          back={{ href: '/tech/assignments', label: 'My jobs' }}
+          eyebrow="Job"
+          icon={Wrench}
+          title={assignment.title || assignment.description?.split('\n')[0]?.slice(0, 80) || assignmentId.toUpperCase()}
+          subtitle={assignment.clientName || undefined}
+        />
 
         <div className="flex items-center gap-2 flex-wrap">
-          <span
-            className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded"
-            style={{ background: 'color-mix(in srgb, var(--text-green) 12%, transparent)', color: 'var(--text-green)', border: '1px solid color-mix(in srgb, var(--text-green) 25%, transparent)' }}
-          >
-            <Check size={9} /> {getStatusLabel(status)}
-          </span>
-          <span className="text-[10px] font-mono font-bold text-text-muted uppercase">{assignmentId.toUpperCase()}</span>
+          <StatusBadge kind="job" value={status} label={getStatusLabel(status)} />
+          {assignment.priority && (
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border border-accent-gold/30 bg-accent-gold/10 text-accent-gold">
+              {assignment.priority} priority
+            </span>
+          )}
+          <span className="id-text">{assignmentId.toUpperCase()}</span>
           {assignment.shortId && (
             <>
               <span className="text-text-muted text-[10px]">•</span>
@@ -402,7 +383,7 @@ export default function TechAssignmentDetailPage() {
             </>
           )}
           {assignment.source && (
-            <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded bg-brand-blue/10 text-brand-blue border border-brand-blue/20">
+            <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-brand-blue/10 text-brand-blue border border-brand-blue/20">
               <span className="h-1.5 w-1.5 rounded-full inline-block bg-brand-blue" />
               {assignment.source}
             </span>
@@ -411,37 +392,35 @@ export default function TechAssignmentDetailPage() {
       </div>
 
       {/* Team (read-only for techs) ──────────────────────────────────────── */}
-      <div className="bg-bg-secondary rounded-xl border border-border-sub p-4">
-        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 mb-4">
-          <Users size={11} className="text-brand-red" /> Team
+      <div className="bg-bg-secondary rounded-xl border border-border-main shadow-sm p-4">
+        <p className="section-label flex items-center gap-2 mb-4">
+          <Users size={12} className="text-brand-red" /> Team
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {tech && <TechCard tech={tech} label="PRIMARY" />}
+          {tech && <TechCard tech={tech} label="Lead" />}
           {helperTechs.map(ht => (
-            <TechCard key={ht.id} tech={ht} label="HELPER" />
+            <TechCard key={ht.id} tech={ht} label="Helper" />
           ))}
           {!tech && helperTechs.length === 0 && (
             <div className="col-span-full py-6 text-center">
-              <p className="text-[9px] font-bold uppercase text-text-muted opacity-40">No team assigned</p>
+              <p className="text-[12px] text-text-muted">No team assigned</p>
             </div>
           )}
         </div>
       </div>
 
       {/* Page view tabs */}
-      <div className="flex gap-0 border-b border-border-sub">
-        {(['overview', 'history'] as const).map(v => (
+      <div className="flex gap-5 border-b border-border-sub" role="tablist">
+        {([['overview', 'Overview'], ['history', 'History']] as const).map(([v, text]) => (
           <button
             key={v}
+            role="tab"
+            aria-selected={detailView === v}
+            data-state={detailView === v ? 'active' : 'inactive'}
             onClick={() => setDetailView(v)}
-            className={cn(
-              'px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-colors',
-              detailView === v
-                ? 'text-text-primary border-b-2 border-brand-red -mb-px'
-                : 'text-text-muted hover:text-text-primary'
-            )}
+            className="tab-underline -mb-px min-h-[40px]"
           >
-            {v}
+            {text}
           </button>
         ))}
       </div>
@@ -453,51 +432,51 @@ export default function TechAssignmentDetailPage() {
       <div className="grid grid-cols-1 md:grid-cols-6 gap-5">
 
         {/* Job Details */}
-        <div className="md:col-span-2 bg-bg-secondary rounded-xl border border-border-sub p-4">
-          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 mb-3">
-            <Briefcase size={11} className="text-brand-red" /> Job Details
+        <div className="md:col-span-2 bg-bg-secondary rounded-xl border border-border-main shadow-sm p-4">
+          <p className="section-label flex items-center gap-2 mb-3">
+            <Briefcase size={12} className="text-brand-red" /> Job details
           </p>
           <div>
             {jobDetailRows.map(({ label, value, icon: Icon }) => (
               <div key={label} className="flex items-start gap-3 py-2 border-b border-border-sub last:border-0">
                 <Icon size={11} className="text-text-muted shrink-0 mt-0.5" />
-                <span className="text-[9px] font-black uppercase tracking-widest text-text-muted w-20 shrink-0 leading-tight">{label}</span>
-                <span className="text-[11px] font-bold text-text-primary min-w-0 break-words">{value || '—'}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted w-20 shrink-0 leading-tight pt-0.5">{label}</span>
+                <span className="text-[13px] font-medium text-text-primary min-w-0 break-words">{value || '—'}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Schedule */}
-        <div className="md:col-span-1 bg-bg-secondary rounded-xl border border-border-sub p-4">
-          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 mb-3">
+        <div className="md:col-span-1 bg-bg-secondary rounded-xl border border-border-main shadow-sm p-4">
+          <p className="section-label flex items-center gap-2 mb-3">
             <Calendar size={11} className="text-brand-red" /> Schedule
           </p>
           <div className="space-y-4">
             {/* Date row */}
             <div className="flex items-baseline gap-3">
-              <p className="font-black text-text-primary leading-none" style={{ fontSize: '3.25rem', fontVariantNumeric: 'tabular-nums' }}>{dayNum}</p>
+              <p className="font-bold text-text-primary leading-none" style={{ fontSize: '3.25rem', fontVariantNumeric: 'tabular-nums' }}>{dayNum}</p>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted leading-none">{monthStr}</p>
-                <p className="text-[8px] font-black uppercase tracking-[0.12em] text-text-muted leading-none mt-0.5">{dayName} · {yearStr}</p>
+                <p className="text-[13px] font-semibold text-text-primary leading-none">{monthStr}</p>
+                <p className="text-[12px] text-text-muted leading-none mt-1">{dayName} · {yearStr}</p>
               </div>
             </div>
             {/* Time row */}
             <div className="space-y-2 border-t border-border-sub pt-3">
               <div>
-                <p className="text-[8px] font-black uppercase tracking-[0.15em] text-text-muted flex items-center gap-1 mb-1">
-                  <Clock size={8} /> Start Window
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted flex items-center gap-1 mb-1">
+                  <Clock size={10} /> Start
                 </p>
-                <p className="text-2xl font-black text-text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                <p className="text-2xl font-bold text-text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>
                   {formatTime(assignment.scheduleTime)}
                 </p>
               </div>
               {endTime && (
                 <div>
-                  <p className="text-[8px] font-black uppercase tracking-[0.15em] text-text-muted flex items-center gap-1 mb-1">
-                    <Clock size={8} /> End Window
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted flex items-center gap-1 mb-1">
+                    <Clock size={10} /> End
                   </p>
-                  <p className="text-2xl font-black text-text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  <p className="text-2xl font-bold text-text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>
                     {formatTime(endTime)}
                   </p>
                 </div>
@@ -507,21 +486,20 @@ export default function TechAssignmentDetailPage() {
         </div>
 
         {/* Map */}
-        <div className="md:col-span-3 bg-bg-secondary rounded-xl border border-border-sub overflow-hidden flex flex-col">
+        <div className="md:col-span-3 bg-bg-secondary rounded-xl border border-border-main shadow-sm overflow-hidden flex flex-col">
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-border-sub shrink-0 gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
               <MapPin size={11} style={{ color: 'var(--text-green)' }} className="shrink-0" />
-              <span className="text-[10px] font-bold text-text-primary truncate">{assignment.location || '—'}</span>
+              <span className="text-[12px] font-medium text-text-primary truncate">{assignment.location || '—'}</span>
             </div>
             <button
-              className="text-[8px] font-black uppercase tracking-widest flex items-center gap-0.5 shrink-0 transition-colors"
-              style={{ color: 'var(--text-green)' }}
+              className="h-10 sm:h-8 px-2 text-[12px] font-semibold text-text-green flex items-center gap-1 shrink-0 transition-colors hover:underline"
               onClick={() => window.open(
                 `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(assignment.location || '')}`,
                 '_blank', 'noopener'
               )}
             >
-              View Full Map <ExternalLink size={8} />
+              Open map <ExternalLink size={12} />
             </button>
           </div>
 
@@ -536,10 +514,10 @@ export default function TechAssignmentDetailPage() {
               { icon: Activity,   label: 'Traffic',  value: '—' },
             ].map(({ icon: Icon, label, value }) => (
               <div key={label} className="py-2 px-1 text-center">
-                <p className="text-[7px] font-black uppercase tracking-widest text-text-muted flex items-center justify-center gap-0.5 mb-0.5">
-                  <Icon size={7} /> {label}
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted flex items-center justify-center gap-1 mb-0.5">
+                  <Icon size={10} /> {label}
                 </p>
-                <p className="text-[11px] font-black text-text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>{value}</p>
+                <p className="text-[12px] font-semibold text-text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>{value}</p>
               </div>
             ))}
           </div>
@@ -551,28 +529,28 @@ export default function TechAssignmentDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
 
         {/* Scope of Work */}
-        <div className="lg:col-span-2 bg-bg-secondary rounded-xl border border-border-sub flex flex-col">
+        <div className="lg:col-span-2 bg-bg-secondary rounded-xl border border-border-main shadow-sm flex flex-col">
           <div className="p-4 flex-1">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2 mb-3">
-              <Wrench size={11} className="text-brand-red" /> Scope of Work
+            <p className="section-label flex items-center gap-2 mb-3">
+              <Wrench size={12} className="text-brand-red" /> Scope of work
             </p>
-            <p className="text-[11px] text-text-secondary leading-relaxed whitespace-pre-wrap">
+            <p className="text-[13px] text-text-secondary leading-relaxed whitespace-pre-wrap">
               {assignment.description || '—'}
             </p>
             {assignment.notes && (
-              <p className="mt-3 pt-3 border-t border-border-sub text-[10px] text-text-muted leading-relaxed italic">
+              <p className="mt-3 pt-3 border-t border-border-sub text-[12px] text-text-muted leading-relaxed">
                 {assignment.notes}
               </p>
             )}
           </div>
 
           {/* Status strip */}
-          <div className="grid grid-cols-5 divide-x divide-border-sub border-t border-border-sub">
+          <div className="grid grid-cols-3 sm:grid-cols-5 divide-x divide-border-sub border-t border-border-sub">
             {statusStripItems.map(({ icon: Icon, label, value, color }) => (
               <div key={label} className="py-3 px-2 flex flex-col items-center text-center gap-1">
-                <Icon size={10} style={color ? { color } : {}} className={cn(!color && 'text-text-muted')} />
-                <p className="text-[7px] font-black uppercase tracking-widest text-text-muted leading-none">{label}</p>
-                <p className={cn('text-[9px] font-black uppercase leading-none', !color && 'text-text-primary')} style={color ? { color } : {}}>
+                <Icon size={12} style={color ? { color } : {}} className={cn(!color && 'text-text-muted')} />
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted leading-none">{label}</p>
+                <p className={cn('text-[12px] font-semibold leading-tight', !color && 'text-text-primary')} style={color ? { color } : {}}>
                   {value}
                 </p>
               </div>
@@ -585,13 +563,13 @@ export default function TechAssignmentDetailPage() {
 
           {/* Always-visible utility buttons */}
           <div className="grid grid-cols-2 gap-2">
-            <Button size="sm" variant="outline" className="h-9 text-[9px] font-black uppercase tracking-widest gap-1.5 px-3 justify-start"
+            <Button size="sm" variant="outline" className="h-10 gap-1.5 px-3 justify-start"
               onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(assignment.location || '')}`, '_blank', 'noopener')}>
-              <Navigation size={10} /> Directions
+              <Navigation size={14} /> Directions
             </Button>
-            <Button size="sm" variant="outline" className="h-9 text-[9px] font-black uppercase tracking-widest gap-1.5 px-3 justify-start"
+            <Button size="sm" variant="outline" className="h-10 gap-1.5 px-3 justify-start"
               onClick={() => router.push('/tech/messaging')}>
-              <MessageSquare size={10} /> Message
+              <MessageSquare size={14} /> Message
             </Button>
           </div>
 
@@ -600,10 +578,10 @@ export default function TechAssignmentDetailPage() {
             <div className={cn('grid gap-2', techActions.length >= 2 ? 'grid-cols-2' : 'grid-cols-1')}>
               {techActions.map(action => (
                 <Button key={action.key} size="sm" variant="outline"
-                  className={cn('h-9 text-[9px] font-black uppercase tracking-widest gap-1.5 px-3 justify-start', action.cls)}
+                  className={cn('h-10 gap-1.5 px-3 justify-start', action.cls)}
                   disabled={actionLoading}
                   onClick={action.handler}>
-                  <action.icon size={10} /> {action.label}
+                  <action.icon size={14} /> {action.label}
                 </Button>
               ))}
             </div>
@@ -612,25 +590,25 @@ export default function TechAssignmentDetailPage() {
       </div>
 
       {/* Pay Ledger ─────────────────────────────────────────────────────── */}
-      <div className="bg-bg-secondary rounded-xl border border-border-sub p-4">
-        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-3 flex items-center gap-2">
-          <DollarSign size={11} className="text-brand-red" /> Pay Ledger
+      <div className="bg-bg-secondary rounded-xl border border-border-main shadow-sm p-4">
+        <p className="section-label mb-3 flex items-center gap-2">
+          <DollarSign size={12} className="text-brand-red" /> Pay
         </p>
         {relatedLogs.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {relatedLogs.map(log => (
-              <div key={log.id} className="p-3 rounded-lg bg-bg-primary border border-border-sub">
-                <p className="text-[9px] font-bold uppercase text-text-primary">Week of {log.weekOf}</p>
+              <div key={log.id} className="p-3 rounded-xl bg-bg-primary border border-border-main">
+                <p className="text-[13px] font-semibold text-text-primary">Week of {log.weekOf}</p>
                 <p className="text-sm font-mono font-bold mt-0.5" style={{ color: 'var(--text-green)' }}>
                   ${jobPayIn(log).toFixed(2)}
                 </p>
-                <p className="text-[8px] text-text-muted uppercase">This job&apos;s pay</p>
-                <Badge variant="outline" className="h-4 text-[7px] mt-1 uppercase">{log.status}</Badge>
+                <p className="text-[12px] text-text-muted">This job&apos;s pay</p>
+                <StatusBadge kind="log" value={log.status} className="mt-1" />
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-[9px] text-text-muted opacity-40 font-bold uppercase">No pay logs linked</p>
+          <p className="text-[12px] text-text-muted">Not on a weekly log yet</p>
         )}
       </div>
 
@@ -638,21 +616,21 @@ export default function TechAssignmentDetailPage() {
       )}
 
       {detailView === 'history' && (
-        <div className="bg-bg-secondary rounded-xl border border-border-sub p-4 flex flex-col">
+        <div className="bg-bg-secondary rounded-xl border border-border-main shadow-sm p-4 flex flex-col">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
-              <Activity size={11} className="text-brand-red" /> Event History
+            <p className="section-label flex items-center gap-2">
+              <Activity size={12} className="text-brand-red" /> Job history
             </p>
             <Select value={historyTypeFilter} onValueChange={setHistoryTypeFilter}>
-              <SelectTrigger className="h-7 w-[150px] text-[9px] bg-bg-primary border-border-main uppercase font-bold">
-                <SelectValue placeholder="All Events" />
+              <SelectTrigger className="h-10 sm:h-8 w-[160px] bg-bg-primary border-border-main" aria-label="Event type">
+                <SelectValue placeholder="All events" />
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
-                <SelectItem value="all" className="text-[9px] uppercase font-bold">All Events</SelectItem>
-                <SelectItem value="status" className="text-[9px] uppercase font-bold">Status Changes</SelectItem>
-                <SelectItem value="assignment" className="text-[9px] uppercase font-bold">Assignments</SelectItem>
-                <SelectItem value="note" className="text-[9px] uppercase font-bold">Notes</SelectItem>
-                <SelectItem value="dispatch" className="text-[9px] uppercase font-bold">Dispatch</SelectItem>
+                <SelectItem value="all" className="text-[13px]">All events</SelectItem>
+                <SelectItem value="status" className="text-[13px]">Status changes</SelectItem>
+                <SelectItem value="assignment" className="text-[13px]">Assignments</SelectItem>
+                <SelectItem value="note" className="text-[13px]">Notes</SelectItem>
+                <SelectItem value="dispatch" className="text-[13px]">Dispatch</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -668,8 +646,8 @@ export default function TechAssignmentDetailPage() {
                   let evDate: Date | null = null;
                   evDate = parseLocalDate(ev.date) ?? undefined as any;
                   const dateStr = evDate ? format(evDate, 'MM-dd-yyyy') : ev.date?.slice(0, 10) || '';
-                  const timeStr = evDate ? format(evDate, 'h:mm a').toUpperCase() : '';
-                  const typeLabel = (ev.type || 'event').replace(/_/g, ' ').toUpperCase();
+                  const timeStr = evDate ? format(evDate, 'h:mm a') : '';
+                  const typeLabel = statusLabel(ev.type || 'event');
                   return (
                     <div key={i} className="flex gap-3 py-2.5 border-b border-border-sub last:border-0">
                       <div className="flex flex-col items-center shrink-0 pt-1">
@@ -681,24 +659,22 @@ export default function TechAssignmentDetailPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 mb-0.5">
                           <div>
-                            <span className="text-[8px] font-mono text-text-muted">{dateStr}</span>
-                            {timeStr && <span className="text-[8px] font-mono text-text-muted ml-2">{timeStr}</span>}
+                            <span className="text-[11px] font-mono text-text-muted">{dateStr}</span>
+                            {timeStr && <span className="text-[11px] font-mono text-text-muted ml-2">{timeStr}</span>}
                           </div>
                           {ev.user && (
-                            <span className="text-[8px] font-black uppercase text-text-muted shrink-0 tracking-wide">{ev.user}</span>
+                            <span className="text-[11px] font-medium text-text-muted shrink-0">{ev.user}</span>
                           )}
                         </div>
-                        <p className="text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ color: dotColor }}>{typeLabel}</p>
-                        {ev.details && <p className="text-[10px] text-text-secondary leading-snug">{ev.details}</p>}
+                        <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: dotColor }}>{typeLabel}</p>
+                        {ev.details && <p className="text-[12px] text-text-secondary leading-snug">{ev.details}</p>}
                       </div>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="flex-1 flex items-center justify-center py-8">
-                <p className="text-[9px] font-bold uppercase text-text-muted opacity-40">No history recorded</p>
-              </div>
+              <EmptyState compact icon={Activity} title="No history yet" />
             );
           })()}
         </div>

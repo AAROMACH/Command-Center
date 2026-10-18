@@ -70,15 +70,15 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { href: "/admin/dashboard",        label: "Dashboard",        icon: LayoutDashboard, permission: "admin.dashboard.view" },
       { href: "/admin/requests",         label: "Requests",         icon: Inbox,           permission: "admin.requests.view" },
-      { href: "/admin/reports",          label: "Archives",         icon: Activity,        permission: "admin.reports.view" },
-      { href: "/admin/analytics",        label: "Intel",              icon: BarChart2,     permission: "admin.reports.view" },
+      { href: "/admin/reports",          label: "History",          icon: Activity,        permission: "admin.reports.view" },
+      { href: "/admin/analytics",        label: "Insights",         icon: BarChart2,     permission: "admin.reports.view" },
       { href: "/admin/company-planning", label: "Company Planning", icon: Flag,            permission: "admin.reports.view" },
     ],
   },
   {
     label: "Operations",
     items: [
-      { href: "/admin/dispatch",     label: "Dispatch Hub", icon: Wrench,      permission: "admin.dispatch.view" },
+      { href: "/admin/dispatch",     label: "Dispatch",     icon: Wrench,      permission: "admin.dispatch.view" },
       { href: "/admin/calendar",     label: "Schedule",     icon: CalendarDays, permission: "admin.schedule.view" },
       { href: "/admin/assignments",  label: "Assignments",  icon: ClipboardList, permission: "admin.assignments.view" },
       { href: "/admin/projects",     label: "Projects",     icon: Briefcase,   permission: "admin.projects.view" },
@@ -97,7 +97,7 @@ const adminNavGroups: NavGroup[] = [
       { href: "/admin/crm",    label: "CRM",           icon: Target,     permission: "admin.crm.view" },
       { href: "/admin/crm/accounts", label: "Accounts", icon: Users,   permission: "admin.crm.view" },
       { href: "/admin/plans",  label: "Service Plans", icon: BookOpen,   permission: "admin.reports.view" },
-      { href: "/admin/sites",  label: "Clients",       icon: Building2,  permission: "admin.clients.view" },
+      { href: "/admin/sites",  label: "Client Sites",  icon: Building2,  permission: "admin.clients.view" },
       { href: "/admin/quotes", label: "Quotes",        icon: FileSearch, permission: "admin.crm.view" },
     ],
   },
@@ -163,9 +163,9 @@ const clientNavGroups: NavGroup[] = [
     ],
   },
   {
-    label: "Sales & Clients",
+    label: "Sites & Quotes",
     items: [
-      { href: "/client/sites",   label: "Clients", icon: Building2, permission: "client.sites.view" },
+      { href: "/client/sites",   label: "Sites",   icon: Building2, permission: "client.sites.view" },
       { href: "/client/quotes",  label: "Quotes",  icon: Receipt,   permission: "client.quotes.view" },
     ],
   },
@@ -176,13 +176,13 @@ const clientNavGroups: NavGroup[] = [
     ],
   },
   {
-    label: "People & Communication",
+    label: "Communication",
     items: [
       { href: "/client/messaging", label: "Messages", icon: MessageSquare, permission: "client.messages.view" },
     ],
   },
   {
-    label: "Financials & Assets",
+    label: "Billing",
     items: [
       { href: "/client/financials", label: "Financials", icon: FileText, permission: "client.financials.view" },
     ],
@@ -292,7 +292,7 @@ export function AppSidebar() {
   const pingAssignments = useNewArrivals(ARRIVAL_KEYS.assignments, arrivalData.assignments ?? EMPTY, { ready: arrivalData.assignments !== null, viewing: onAdminAssignments });
   const dispatchPing = isAdminPortal ? pingUnassigned.newCount + pingReview.newCount + pingRequests.newCount : 0;
   const assignmentsPing = isAdminPortal ? pingAssignments.newCount : 0;
-  const portalLabel = isTechPortal ? "Field Terminal" : isClientPortal ? "Client Portal" : isSalesPortal ? "Sales Portal" : "Command Center";
+  const portalLabel = isTechPortal ? "Tech Portal" : isClientPortal ? "Client Portal" : isSalesPortal ? "Sales Portal" : "Command Center";
   const dashboardHref = isTechPortal ? "/tech/dashboard" : isClientPortal ? "/client/dashboard" : isSalesPortal ? "/sales/pipeline" : "/admin/dashboard";
 
   const activeNavGroups = isTechPortal ? techNavGroups : isClientPortal ? clientNavGroups : isSalesPortal ? salesNavGroups : adminNavGroups;
@@ -331,8 +331,8 @@ export function AppSidebar() {
               />
             )}
             <div className="flex flex-col min-w-0 group-data-[collapsible=icon]:hidden">
-              <span className="font-mono text-[13px] font-bold uppercase tracking-tight text-white leading-none truncate">Aaromach</span>
-              <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-brand-red truncate">{portalLabel}</span>
+              <span className="font-mono text-[13px] font-bold tracking-tight text-white leading-none truncate">Aaromach</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-brand-red truncate">{portalLabel}</span>
             </div>
           </Link>
         </div>
@@ -344,10 +344,10 @@ export function AppSidebar() {
             <div key={gi}>
               {group.label && (
                 <div className={cn("px-2 pb-1", gi > 0 ? "pt-4" : "pt-1")}>
-                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#555] group-data-[collapsible=icon]:hidden">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted/70 group-data-[collapsible=icon]:hidden">
                     {group.label}
                   </p>
-                  <div className="h-px bg-[#222] mt-1 group-data-[collapsible=icon]:hidden" />
+                  <div className="h-px bg-border-main mt-1 group-data-[collapsible=icon]:hidden" />
                 </div>
               )}
               <SidebarMenu>
@@ -367,10 +367,10 @@ export function AppSidebar() {
                         isActive={active}
                         tooltip={item.label}
                         className={cn(
-                          "h-9 text-[10px] font-bold uppercase tracking-widest rounded-md transition-colors",
+                          "h-9 text-[13px] font-medium rounded-md transition-colors",
                           active
                             ? "!bg-brand-red/10 !text-brand-red"
-                            : "text-[#888] hover:!bg-bg-tertiary hover:!text-text-primary"
+                            : "text-text-muted hover:!bg-bg-tertiary hover:!text-text-primary"
                         )}
                       >
                         <Link href={item.href}>
@@ -379,7 +379,7 @@ export function AppSidebar() {
                           {isAdminPortal && item.href === "/admin/dispatch" && <NewArrivalPing count={dispatchPing} className="group-data-[collapsible=icon]:hidden" />}
                           {isAdminPortal && item.href === "/admin/assignments" && <NewArrivalPing count={assignmentsPing} className="group-data-[collapsible=icon]:hidden" />}
                           {badge > 0 && (
-                            <span className="ml-auto text-[8px] font-black bg-brand-red text-white rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 group-data-[collapsible=icon]:hidden">
+                            <span className="ml-auto text-[10px] font-bold bg-brand-red text-white rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 group-data-[collapsible=icon]:hidden">
                               {badge > 99 ? "99+" : badge}
                             </span>
                           )}

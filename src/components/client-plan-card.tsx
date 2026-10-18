@@ -73,41 +73,41 @@ export function ClientPlanCard({ client }: { client: Technician | null | undefin
 
   return (
     <>
-      <Card className="border-brand-red/20 bg-brand-red/5">
-        <CardHeader className="pb-2"><CardTitle>Service Plan</CardTitle></CardHeader>
+      <Card className="rounded-xl border-border-main bg-bg-secondary shadow-sm">
+        <CardHeader className="pb-2"><CardTitle className="text-base font-semibold">Service plan</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           {loading ? (
-            <p className="text-xs text-text-muted">Loading…</p>
+            <p className="text-[12px] text-text-muted">Loading plan…</p>
           ) : current ? (
             <>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-bold text-text-primary uppercase tracking-tight">{plan?.name || 'Your plan'}</h3>
-                  {current.status !== 'active' && <Badge variant="destructive" className="text-[8px] h-4 uppercase">{SUBSCRIPTION_STATUS_LABELS[current.status]}</Badge>}
+                  <h3 className="text-lg font-semibold text-text-primary">{plan?.name || 'Your plan'}</h3>
+                  {current.status !== 'active' && <Badge variant="disputed" className="text-[10px] font-semibold uppercase tracking-wide">{SUBSCRIPTION_STATUS_LABELS[current.status]}</Badge>}
                 </div>
-                <p className="text-xs text-text-muted mt-1 font-bold">
+                <p className="text-[13px] text-text-muted mt-1">
                   {formatMoney(subscriptionAmount(current, plan))} · {INTERVAL_LABELS[current.interval]}
                   {current.nextBillingDate && <> · next bill {current.nextBillingDate}</>}
                 </p>
-                {current.cancelAtPeriodEnd && <p className="text-[11px] text-amber-400 mt-1">Ends {current.nextBillingDate || 'at the end of this period'}.</p>}
+                {current.cancelAtPeriodEnd && <p className="text-[12px] text-accent-gold mt-1">Ends {current.nextBillingDate || 'at the end of this period'}.</p>}
               </div>
               {plan && <PlanBenefitList plan={plan} />}
             </>
           ) : (
-            <p className="text-xs text-text-muted">You&apos;re not on a service plan. Plans add priority response and labor discounts.</p>
+            <p className="text-[13px] text-text-muted">You&apos;re not on a service plan. Plans add priority response and labor discounts.</p>
           )}
           {pending && (
-            <div className="p-2.5 rounded-lg border border-accent-gold/40 bg-accent-gold/5 text-[11px] flex items-center justify-between gap-2">
+            <div className="p-2.5 rounded-md border border-accent-gold/40 bg-accent-gold/5 text-[12px] flex items-center justify-between gap-2">
               <span>Requested: <b>{pendingPlan?.name || 'a plan change'}</b> ({INTERVAL_LABELS[pending.interval].toLowerCase()}) — awaiting approval.</span>
-              <button onClick={withdraw} className="text-[10px] font-bold uppercase text-text-muted hover:text-text-primary shrink-0">Withdraw</button>
+              <button onClick={withdraw} className="text-[12px] font-medium text-text-muted hover:text-text-primary shrink-0">Withdraw</button>
             </div>
           )}
         </CardContent>
         {offered.length > 0 && !pending && (
           <CardFooter className="pt-0">
-            <Button variant="outline" className="w-full h-9 text-[10px] font-black uppercase tracking-widest"
+            <Button variant="outline" className="w-full"
               onClick={() => { setChoice(null); setNotes(''); setOpen(true); }}>
-              {current ? 'Change Plan' : 'Choose a Plan'}
+              {current ? 'Change plan' : 'Choose a plan'}
             </Button>
           </CardFooter>
         )}
@@ -116,18 +116,18 @@ export function ClientPlanCard({ client }: { client: Technician | null | undefin
       <Dialog open={open} onOpenChange={v => { if (!v && !sending) setOpen(false); }}>
         <DialogContent className="sm:max-w-[760px] max-h-[90vh] p-0 flex flex-col bg-bg-elevated border-border-main">
           <DialogHeader className="p-4 sm:p-6 pb-3 border-b border-border-sub text-left">
-            <DialogTitle className="text-[13px] font-black uppercase tracking-widest">{current ? 'Change Plan' : 'Choose a Plan'}</DialogTitle>
-            <DialogDescription className="text-xs">Pick a plan and billing option. Your account manager confirms before anything changes.</DialogDescription>
+            <DialogTitle className="text-base font-semibold">{current ? 'Change plan' : 'Choose a plan'}</DialogTitle>
+            <DialogDescription className="text-[13px]">Pick a plan and billing option. Your account manager confirms before anything changes.</DialogDescription>
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 md:grid-cols-3 gap-3">
             {offered.map(p => (
-              <div key={p.id} className={cn('p-4 rounded-lg border flex flex-col gap-2',
+              <div key={p.id} className={cn('p-4 rounded-xl border flex flex-col gap-2',
                 choice?.planId === p.id ? 'border-brand-red ring-1 ring-brand-red bg-brand-red/5' : 'border-border-sub bg-bg-primary')}>
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-black uppercase">{p.name}</p>
-                  {current?.planId === p.id && <Badge variant="outline" className="text-[8px] h-4">Current</Badge>}
+                  <p className="text-sm font-semibold">{p.name}</p>
+                  {current?.planId === p.id && <Badge variant="outline" className="text-[10px] font-semibold uppercase tracking-wide">Current</Badge>}
                 </div>
-                {p.description && <p className="text-[11px] text-text-muted">{p.description}</p>}
+                {p.description && <p className="text-[12px] text-text-muted">{p.description}</p>}
                 <PlanBenefitList plan={p} />
                 <div className="mt-auto pt-2 space-y-1.5">
                   {p.prices.map(pr => {
@@ -137,24 +137,24 @@ export function ClientPlanCard({ client }: { client: Technician | null | undefin
                         className={cn('w-full flex items-center justify-between px-3 py-2 rounded-md border text-left text-xs transition-colors',
                           selected ? 'border-brand-red bg-brand-red/10' : 'border-border-sub hover:border-text-muted')}>
                         <span className="font-mono font-bold">{formatMoney(pr.amount)}</span>
-                        <span className="flex items-center gap-1 text-[10px] text-text-muted uppercase">{INTERVAL_LABELS[pr.interval]}{selected && <Check size={12} className="text-brand-red" />}</span>
+                        <span className="flex items-center gap-1 text-[12px] text-text-muted">{INTERVAL_LABELS[pr.interval]}{selected && <Check size={12} className="text-brand-red" />}</span>
                       </button>
                     );
                   })}
-                  {p.setupFee > 0 && <p className="text-[10px] text-text-muted">+ {formatMoney(p.setupFee)} one-time setup</p>}
+                  {p.setupFee > 0 && <p className="text-[11px] text-text-muted">+ {formatMoney(p.setupFee)} one-time setup</p>}
                 </div>
               </div>
             ))}
             <div className="md:col-span-3 space-y-1">
-              <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Note (optional)</p>
-              <Textarea value={notes} onChange={e => setNotes(e.target.value)} className="text-xs min-h-[60px] resize-none"
+              <p className="text-[12px] font-medium text-text-secondary">Note (optional)</p>
+              <Textarea value={notes} onChange={e => setNotes(e.target.value)} className="text-[13px] min-h-[60px] resize-none"
                 placeholder="Anything we should know — sites to cover, start date…" />
             </div>
           </div>
           <DialogFooter className="p-4 sm:p-6 border-t border-border-sub flex flex-col-reverse sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={sending} className="h-10 w-full sm:w-auto text-[10px] font-black uppercase">Cancel</Button>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={sending} className="w-full sm:w-auto">Cancel</Button>
             <Button onClick={submit} disabled={!choice || sending || (choice.planId === current?.planId && choice.interval === current?.interval)}
-              className="h-10 w-full sm:w-auto bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+              className="w-full sm:w-auto">
               {sending && <Loader2 size={12} className="mr-1.5 animate-spin" />}
               {choice ? `Request ${offered.find(p => p.id === choice.planId)?.name} · ${formatMoney(planPrice(offered.find(p => p.id === choice.planId), choice.interval) || 0)}` : 'Pick a billing option'}
             </Button>
@@ -168,7 +168,7 @@ export function ClientPlanCard({ client }: { client: Technician | null | undefin
 export function PlanBenefitList({ plan }: { plan: ServicePlan }) {
   const b = plan.benefits;
   return (
-    <ul className="space-y-1 text-[11px] text-text-secondary">
+    <ul className="space-y-1 text-[12px] text-text-secondary">
       <li className="flex items-center gap-1.5"><Clock size={11} className="text-text-muted" /> {b.responseHours}-hour response</li>
       {b.laborDiscountPct > 0 && <li className="flex items-center gap-1.5"><Percent size={11} className="text-text-muted" /> {b.laborDiscountPct}% off labor</li>}
       {b.includedVisits > 0 && (

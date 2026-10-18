@@ -75,11 +75,11 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
 
     // Defensive Protocol: Handle referer or activation failures from Google Maps
     window.gm_authFailure = () => {
-      console.warn("Google Maps API Handshake Restricted.");
+      console.warn("Google Maps could not load.");
       toast({
         variant: "destructive",
         title: "Google Maps unavailable",
-        description: "Google Maps API referer or activation restriction active. Please authorize this workstation URL in your Cloud Console.",
+        description: "Address lookup is off on this site. Type the address manually.",
       });
     };
 
@@ -100,7 +100,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
           }
         });
       } catch (e) {
-        console.warn("Places Autocomplete Terminal Restricted.");
+        console.warn("Places autocomplete unavailable.");
       }
     };
 
@@ -111,7 +111,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
       script.async = true;
       script.onload = initAutocomplete;
       script.onerror = () => {
-        console.error("Registry script load failure.");
+        console.error("Maps script failed to load.");
       };
       document.head.appendChild(script);
     } else if (window.google) {
@@ -134,19 +134,19 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
           const place = results[0];
           setFormData(prev => ({ ...prev, location: place.formatted_address }));
           toast({
-            title: "Coordinate Match Verified",
-            description: `Registry updated to verified site: ${place.formatted_address}`,
+            title: "Address verified",
+            description: `Location set to ${place.formatted_address}`,
           });
         } else {
           toast({
             variant: "destructive",
-            title: "Resolution Failed",
-            description: "No verified coordinates found. Verify referer permissions in console.",
+            title: "Address not found",
+            description: "Google could not find that address. Check it and try again.",
           });
         }
       });
     } catch (e) {
-      console.error("Places Service Protocol Error:", e);
+      console.error("Places lookup failed:", e);
     }
   };
 
@@ -186,8 +186,8 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
     setFormData(prev => ({ ...prev, location: site.location }));
     setIsSiteRegistryOpen(false);
     toast({
-        title: "Site Coordinates Applied",
-        description: `Operational target set to ${site.name}.`,
+        title: "Site selected",
+        description: `Location set to ${site.name}.`,
     });
   };
 
@@ -226,7 +226,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
       onsiteContactPhone: '',
     });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+      toast({ variant: 'destructive', title: 'Save failed', description: e.message });
     }
   };
 
@@ -244,46 +244,46 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
             <DialogHeader className="p-6 pb-2 text-left">
               <div className="flex items-center gap-2 mb-1 text-left">
                 <Building2 className="text-brand-red h-5 w-5" />
-                <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Create Record</DialogTitle>
+                <DialogTitle className="text-lg font-bold text-text-primary">Create Record</DialogTitle>
               </div>
-              <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Create a new high-fidelity project entry in the system.</DialogDescription>
+              <DialogDescription className="text-xs font-bold text-text-muted text-left">Create a new high-fidelity project entry in the system.</DialogDescription>
             </DialogHeader>
 
             <div className="space-y-6 px-6 py-4 text-left">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Project Name</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Project Name</Label>
                   <Input 
                     placeholder="e.g., Downtown Fiber Overhaul" 
                     value={formData.name}
                     onChange={e => setFormData({...formData, name: e.target.value})}
-                    className="bg-bg-primary border-border-sub h-10 text-xs font-bold uppercase"
+                    className="bg-bg-primary border-border-sub h-10 text-xs font-bold"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Client Entity</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client Entity</Label>
                   <div className="space-y-1.5">
                     <Input 
                         placeholder="Organization Name" 
                         value={formData.client}
                         onChange={e => setFormData({...formData, client: e.target.value})}
-                        className="bg-bg-primary border-border-sub h-10 text-xs font-bold uppercase tracking-wide focus:border-brand-red transition-all"
+                        className="bg-bg-primary border-border-sub h-10 text-xs font-bold tracking-wide focus:border-brand-red transition-all"
                     />
                     <Button 
                         type="button" 
                         variant="ghost" 
                         size="sm" 
-                        className="h-6 text-[9px] uppercase font-bold tracking-widest text-brand-red hover:bg-brand-red/10 p-0 flex items-center gap-1.5"
+                        className="h-6 text-[10px] uppercase font-bold tracking-wider text-brand-red hover:bg-brand-red/10 p-0 flex items-center gap-1.5"
                         onClick={() => setIsRegistryOpen(true)}
                     >
-                        <Search size={12}/> Search Registry
+                        <Search size={12}/> Find client
                     </Button>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Operational Site Address</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Site address</Label>
                 <div className="space-y-1.5">
                     <div className="relative group">
                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
@@ -299,7 +299,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                                 onClick={resolveAddress}
                                 type="button"
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-brand-red transition-colors"
-                                title="Verify Coordinates"
+                                title="Verify address"
                             >
                                 <SearchCode size={14} />
                             </button>
@@ -311,7 +311,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                         size="sm" 
                         disabled={!selectedClient?.managedSites || selectedClient.managedSites.length === 0}
                         className={cn(
-                            "h-6 text-[9px] uppercase font-bold tracking-widest p-0 flex items-center gap-1.5",
+                            "h-6 text-[10px] uppercase font-bold tracking-wider p-0 flex items-center gap-1.5",
                             (!selectedClient?.managedSites || selectedClient.managedSites.length === 0) 
                                 ? "text-text-muted opacity-50 cursor-not-allowed" 
                                 : "text-accent-gold hover:bg-accent-gold/10"
@@ -325,7 +325,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">On-Site Contact Name</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">On-Site Contact Name</Label>
                   <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                       <Input 
@@ -337,7 +337,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">On-Site Contact Phone</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">On-Site Contact Phone</Label>
                   <div className="relative">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                       <Input 
@@ -352,7 +352,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Start Date</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Start Date</Label>
                   <Input 
                     type="date"
                     value={formData.startDate}
@@ -361,7 +361,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Estimated Duration</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Estimated Duration</Label>
                   <Input 
                     placeholder="e.g., 6 months" 
                     value={formData.estimatedDuration}
@@ -372,18 +372,18 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Scope of Work Briefing</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Scope of work</Label>
                 <Textarea 
                     placeholder="Define primary objectives and technical requirements..." 
                     value={formData.scope}
                     onChange={e => setFormData({...formData, scope: e.target.value})}
-                    className="bg-bg-primary h-24 text-xs font-medium uppercase"
+                    className="bg-bg-primary h-24 text-xs font-medium"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Project Budget ($)</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Project Budget ($)</Label>
                   <Input 
                     type="number"
                     value={formData.projectBudget}
@@ -392,7 +392,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Allocated Hours</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Allocated Hours</Label>
                   <Input 
                     type="number"
                     value={formData.estimatedHours}
@@ -404,8 +404,8 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
             </div>
 
             <DialogFooter className="bg-bg-tertiary/30 -mx-6 -mb-6 p-6 border-t border-border-default mt-4">
-              <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
-              <Button onClick={handleSave} className="h-10 px-10 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover">
+              <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-wider">Cancel</Button>
+              <Button onClick={handleSave} className="h-10 px-10 uppercase font-bold text-[10px] tracking-wider bg-brand-red hover:bg-brand-red-hover">
                 <Check size={16} className="mr-2" />
                 Create Record
               </Button>
@@ -419,7 +419,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                 <DialogHeader className="p-6 pb-2 text-left">
                     <div className="flex items-center gap-2 mb-1">
                         <Users className="text-brand-red h-5 w-5" />
-                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary text-left">Client Registry</DialogTitle>
+                        <DialogTitle className="text-lg font-bold text-text-primary text-left">Select client</DialogTitle>
                     </div>
                     <DialogDescription className="text-xs text-left">Select existing client to link to this project folder.</DialogDescription>
                 </DialogHeader>
@@ -427,10 +427,10 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                         <Input 
-                            placeholder="Filter registry by name or ID..." 
+                            placeholder="Search clients by name or ID…" 
                             value={registrySearch}
                             onChange={(e) => setRegistrySearch(e.target.value)}
-                            className="bg-bg-primary h-10 pl-10 text-xs font-bold uppercase"
+                            className="bg-bg-primary h-10 pl-10 text-xs font-bold"
                         />
                     </div>
                 </div>
@@ -447,24 +447,24 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                                     <Building2 size={16} />
                                 </div>
                                 <div className="flex-1 overflow-hidden">
-                                    <p className="text-xs font-bold text-text-primary uppercase truncate">{client.clientCompany || client.name}</p>
+                                    <p className="text-xs font-bold text-text-primary truncate">{client.clientCompany || client.name}</p>
                                     {client.businessType && (
-                                        <p className="text-[8px] text-accent-gold uppercase font-black tracking-tighter leading-none mt-0.5">{client.businessType}</p>
+                                        <p className="text-[10px] text-accent-gold uppercase font-bold leading-none mt-0.5">{client.businessType}</p>
                                     )}
-                                    <p className="text-[9px] text-text-muted uppercase tracking-widest">ID: {client.id.toUpperCase()}</p>
+                                    <p className="text-[10px] text-text-muted uppercase tracking-wider">ID: {client.id.toUpperCase()}</p>
                                 </div>
                                 <Check size={14} className="text-text-green opacity-0 group-hover:opacity-100 transition-opacity" />
                             </button>
                         ))}
                         {filteredRegistry.length === 0 && (
                             <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
-                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No registry matches found</p>
+                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider ">No matching clients</p>
                             </div>
                         )}
                     </div>
                 </ScrollArea>
                 <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                    <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-9" onClick={() => setIsRegistryOpen(false)}>Close Registry</Button>
+                    <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-wider h-9" onClick={() => setIsRegistryOpen(false)}>Close</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -475,9 +475,9 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                 <DialogHeader className="p-6 pb-2 text-left">
                     <div className="flex items-center gap-2 mb-1">
                         <Navigation className="text-accent-gold h-5 w-5" />
-                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Site Registry</DialogTitle>
+                        <DialogTitle className="text-lg font-bold text-text-primary">Select site</DialogTitle>
                     </div>
-                    <DialogDescription className="text-xs text-left">Select verified coordinates for <span className="text-text-primary font-bold">{formData.client}</span>.</DialogDescription>
+                    <DialogDescription className="text-xs text-left">Pick a saved site for <span className="text-text-primary font-bold">{formData.client}</span>.</DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="flex-1 px-6 py-4 text-left">
                     <div className="space-y-1">
@@ -490,7 +490,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                             >
                                 <div className="flex justify-between items-start gap-3">
                                     <div className="space-y-0.5 text-left">
-                                        <p className="text-xs font-bold text-text-primary uppercase tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
+                                        <p className="text-xs font-bold text-text-primary tracking-tight group-hover:text-accent-gold transition-colors">{site.name}</p>
                                         <p className="text-[10px] text-text-muted flex items-center gap-1.5">
                                             <MapPin size={10} className="text-brand-red shrink-0" />
                                             <span className="truncate">{site.location}</span>
@@ -502,13 +502,13 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                         ))}
                         {(!selectedClient?.managedSites || selectedClient.managedSites.length === 0) && (
                             <div className="text-center py-12 border border-dashed border-border-sub rounded-lg bg-bg-primary/50">
-                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest italic">No verified sites on record for this client</p>
+                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider ">No saved sites for this client</p>
                             </div>
                         )}
                     </div>
                 </ScrollArea>
                 <DialogFooter className="p-4 bg-bg-secondary/30 border-t border-border-default">
-                    <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-widest h-9" onClick={() => setIsSiteRegistryOpen(false)}>Close Terminal</Button>
+                    <Button variant="outline" className="w-full text-[10px] uppercase font-bold tracking-wider h-9" onClick={() => setIsSiteRegistryOpen(false)}>Close</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

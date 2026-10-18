@@ -27,6 +27,7 @@ type DispatchTabsProps = {
   onActiveTabChange?: (tab: string) => void;
   newCounts?: { unassigned: number; review: number };
   newIds?: { unassigned: Set<string>; review: Set<string> };
+  filterKey?: string;
 };
 
 export function DispatchTabs({
@@ -42,6 +43,7 @@ export function DispatchTabs({
   dateAsc,
   isDateSortActive,
   onToggleDateSort,
+  filterKey,
   onActiveTabChange,
   newCounts,
   newIds,
@@ -86,6 +88,7 @@ export function DispatchTabs({
               dateAsc={dateAsc}
               isDateSortActive={isDateSortActive}
               onToggleDateSort={onToggleDateSort}
+              filterKey={filterKey}
           />
       </TabsContent>
 

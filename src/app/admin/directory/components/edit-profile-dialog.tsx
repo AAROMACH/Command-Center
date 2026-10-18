@@ -48,7 +48,8 @@ const ROLE_ICONS: Partial<Record<AppRole, typeof User>> = Object.fromEntries(
 
 const PORTAL_GROUPS: { portal: SubrolePortal; label: string; icon: typeof User; accent: string }[] = [
   { portal: 'admin', label: 'Admin Subroles', icon: ShieldCheck, accent: 'text-brand-red' },
-  { portal: 'sales', label: 'External Access', icon: Handshake, accent: 'text-amber-400' },
+  // ui-check-ignore: Handshake is the icon name
+  { portal: 'sales', label: 'External Access', icon: Handshake, accent: 'text-accent-gold' },
   { portal: 'tech', label: 'Tech Subroles', icon: Wrench, accent: 'text-brand-blue' },
   { portal: 'client', label: 'Client Subroles', icon: Building2, accent: 'text-brand-emerald' },
 ];
@@ -61,7 +62,7 @@ type AccountKinds = { tech: boolean; client: boolean; personnel: boolean };
 const SECTIONS = [
   { id: 'basic', label: 'Basic Info', icon: User, show: (_: AccountKinds) => true },
   { id: 'status', label: 'Status & Access', icon: Shield, show: (_: AccountKinds) => true },
-  { id: 'work', label: 'Work Info', icon: Briefcase, show: (k: AccountKinds) => k.personnel },
+  { id: 'work', label: 'Work info', icon: Briefcase, show: (k: AccountKinds) => k.personnel },
   { id: 'pay', label: 'Pay & Tax', icon: Landmark, show: (k: AccountKinds) => k.tech },
   { id: 'emergency', label: 'Emergency', icon: Heart, show: (k: AccountKinds) => k.personnel },
   { id: 'client', label: 'Billing & Tax', icon: Building2, show: (k: AccountKinds) => k.client },
@@ -180,9 +181,9 @@ function personToForm(p: Technician): FormState {
   };
 }
 
-const labelCls = 'text-[10px] font-black uppercase tracking-widest text-text-muted';
+const labelCls = 'text-[10px] font-bold uppercase tracking-wider text-text-muted';
 const inputCls = 'h-9 text-[11px] bg-bg-secondary border-border-main focus-visible:ring-brand-red';
-const sectionHeading = 'text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 mb-4 flex items-center gap-2';
+const sectionHeading = 'text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 mb-4 flex items-center gap-2';
 
 export function EditProfileDialog({ open, onClose, person }: EditProfileDialogProps) {
   const [section, setSection] = useState<SectionId>('basic');
@@ -377,9 +378,9 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
     <Dialog open={open} onOpenChange={v => { if (!v && !saving) onClose(); }}>
       <DialogContent className="bg-bg-elevated border-border-main max-w-3xl p-0 gap-0 overflow-hidden max-h-[90vh] flex flex-col">
         <DialogHeader className="px-5 pt-5 pb-4 border-b border-border-sub shrink-0">
-          <DialogTitle className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+          <DialogTitle className="text-base font-semibold flex items-center gap-2">
             <User size={14} className="text-brand-red" />
-            Edit Profile — {person.name}
+            Edit profile — {person.name}
           </DialogTitle>
         </DialogHeader>
 
@@ -394,7 +395,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                   onClick={() => setSection(s.id)}
                   className={cn(
                     'flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all',
-                    'text-[10px] font-black uppercase tracking-wider',
+                    'text-[10px] font-bold uppercase tracking-wider',
                     activeSection === s.id
                       ? 'bg-brand-red/10 text-brand-red border border-brand-red/20'
                       : 'text-text-muted hover:bg-bg-tertiary hover:text-text-secondary border border-transparent',
@@ -443,7 +444,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                         <Input className={cn(inputCls, 'pl-7')} value={form.email} onChange={e => set('email', e.target.value)} placeholder="user@example.com" />
                       </div>
                       {form.email.trim() !== (person.email || '') && (
-                        <p className="text-[9px] text-amber-400 normal-case tracking-normal">Contact email only — this does not change the address they sign in with.</p>
+                        <p className="text-[11px] text-accent-gold normal-case tracking-normal">Contact email only — this does not change the address they sign in with.</p>
                       )}
                     </div>
                     <div className="space-y-1">
@@ -485,9 +486,9 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                       <Select value={form.approvalStatus} onValueChange={v => set('approvalStatus', v as FormState['approvalStatus'])}>
                         <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-bg-elevated border-border-main">
-                          <SelectItem value="pending" className="text-[11px]">Pending</SelectItem>
-                          <SelectItem value="approved" className="text-[11px]">Approved</SelectItem>
-                          <SelectItem value="denied" className="text-[11px]">Denied</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="denied">Denied</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -497,7 +498,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                         <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-bg-elevated border-border-main">
                           {accountStatusOptions.map(s => (
-                            <SelectItem key={s} value={s} className="text-[11px]">{s.replace(/_/g, ' ')}</SelectItem>
+                            <SelectItem key={s} value={s}>{s.replace(/_/g, ' ')}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -507,11 +508,11 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                   <div className="space-y-3">
                     <div>
                       <Label className={labelCls}>Subroles</Label>
-                      <p className="text-[9px] text-text-muted normal-case tracking-normal mt-1 leading-relaxed">
+                      <p className="text-[11px] text-text-muted normal-case tracking-normal mt-1 leading-relaxed">
                         Selecting a subrole unlocks its portal and applies its preset permissions. Removing the last subrole in a portal removes access to that portal.
                       </p>
                       {!canAccess && (
-                        <p className="text-[9px] text-amber-400 normal-case tracking-normal mt-1">Only a super admin can change subroles.</p>
+                        <p className="text-[11px] text-accent-gold normal-case tracking-normal mt-1">Only a super admin can change subroles.</p>
                       )}
                     </div>
 
@@ -521,7 +522,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                         <div key={group.portal} className="space-y-1.5">
                           <div className="flex items-center gap-1.5">
                             <GroupIcon size={11} className={group.accent} />
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">{group.label}</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{group.label}</span>
                           </div>
                           <div className="grid grid-cols-2 gap-1.5">
                             {SUBROLES_BY_PORTAL[group.portal].map(role => {
@@ -548,9 +549,9 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-1.5">
                                       <Icon size={11} className={selected ? group.accent : 'text-text-muted'} />
-                                      <span className="text-[10px] font-bold uppercase truncate">{def.label}</span>
+                                      <span className="text-[10px] font-bold truncate">{def.label}</span>
                                     </div>
-                                    <p className="text-[9px] text-text-muted leading-tight mt-0.5">{def.permissions.length} permissions</p>
+                                    <p className="text-[11px] text-text-muted leading-tight mt-0.5">{def.permissions.length} permissions</p>
                                   </div>
                                 </button>
                               );
@@ -568,7 +569,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                         const unlocked = form.roles.some(r => SUBROLE_DEFINITIONS[r]?.portal === group.portal);
                         return (
                           <span key={group.portal} className={cn(
-                            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest border',
+                            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border',
                             unlocked ? cn('border-current', group.accent, 'bg-bg-secondary') : 'border-border-sub text-text-muted/40',
                           )}>
                             <group.icon size={10} /> {group.portal} {unlocked ? '' : '· locked'}
@@ -577,7 +578,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                       })}
                     </div>
                     {form.roles.length === 0 && (
-                      <p className="text-[9px] text-brand-red/80 normal-case tracking-normal">No portal access. Select a subrole to assign portal access and preset permissions.</p>
+                      <p className="text-[11px] text-brand-red/80 normal-case tracking-normal">No portal access. Select a subrole to assign portal access and preset permissions.</p>
                     )}
                   </div>
 
@@ -590,7 +591,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                     >
                       <SelectTrigger className={inputCls}><SelectValue placeholder="Auto (first available)" /></SelectTrigger>
                       <SelectContent className="bg-bg-elevated border-border-main">
-                        <SelectItem value="__none__" className="text-[11px]">Auto (first available)</SelectItem>
+                        <SelectItem value="__none__">Auto (first available)</SelectItem>
                         {(['admin', 'sales', 'tech', 'client'] as SubrolePortal[])
                           .filter(portal => form.roles.some(r => SUBROLE_DEFINITIONS[r]?.portal === portal))
                           .map(portal => (
@@ -598,7 +599,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                           ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-[9px] text-text-muted uppercase tracking-wider">Only unlocked portals can be chosen. Primary Portal does not grant access.</p>
+                    <p className="text-[12px] text-text-muted">Only unlocked portals can be chosen. Primary Portal does not grant access.</p>
                   </div>
                 </div>
               </div>
@@ -634,7 +635,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                     {form.skills.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         {form.skills.map(s => (
-                          <Badge key={s} variant="scheduled" className="text-[9px] uppercase px-2 py-0.5 gap-1 h-auto">
+                          <Badge key={s} variant="scheduled" className="text-[11px] px-2 py-0.5 gap-1 h-auto">
                             {s}
                             <button type="button" onClick={() => set('skills', form.skills.filter(x => x !== s))}>
                               <X size={9} />
@@ -662,7 +663,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                     {form.certifications.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         {form.certifications.map(c => (
-                          <Badge key={c} className="text-[9px] uppercase px-2 py-0.5 gap-1 h-auto bg-text-green/10 text-text-green border-text-green/20">
+                          <Badge key={c} className="text-[11px] px-2 py-0.5 gap-1 h-auto bg-text-green/10 text-text-green border-text-green/20">
                             {c}
                             <button type="button" onClick={() => set('certifications', form.certifications.filter(x => x !== c))}>
                               <X size={9} />
@@ -681,7 +682,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
               <div>
                 <h3 className={sectionHeading}><Landmark size={11} /> Pay &amp; Tax</h3>
                 {!canPay && (
-                  <p className="text-[9px] text-amber-400 mb-3">Only payroll admins and super admins can change pay and tax details.</p>
+                  <p className="text-[11px] text-accent-gold mb-3">Only payroll admins and super admins can change pay and tax details.</p>
                 )}
                 <fieldset disabled={!canPay} className="space-y-4 disabled:opacity-60">
                   <div className="grid grid-cols-2 gap-3">
@@ -690,9 +691,9 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                       <Select value={form.workerType || '__unset__'} onValueChange={v => set('workerType', v === '__unset__' ? '' : v)}>
                         <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-bg-elevated border-border-main">
-                          <SelectItem value="__unset__" className="text-[11px]">Not set</SelectItem>
+                          <SelectItem value="__unset__">Not set</SelectItem>
                           {Object.entries(WORKER_TYPE_LABELS).map(([k, v]) => (
-                            <SelectItem key={k} value={k} className="text-[11px]">{v}</SelectItem>
+                            <SelectItem key={k} value={k}>{v}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -704,21 +705,21 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                         <Input className={cn(inputCls, 'pl-7')} type="number" min="0" step="0.01" value={form.hourlyRate}
                           onChange={e => set('hourlyRate', e.target.value)} placeholder="0.00" />
                       </div>
-                      <p className="text-[9px] text-text-muted normal-case tracking-normal">Used for hourly project payouts from timesheets.</p>
+                      <p className="text-[11px] text-text-muted normal-case tracking-normal">Used for hourly project payouts from timesheets.</p>
                     </div>
                   </div>
 
                   <div className="border-t border-border-sub pt-3 space-y-3">
-                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Payout</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Payout</p>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className={labelCls}>Payout Method</Label>
                         <Select value={form.payoutMethod || '__unset__'} onValueChange={v => set('payoutMethod', v === '__unset__' ? '' : v)}>
                           <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                           <SelectContent className="bg-bg-elevated border-border-main">
-                            <SelectItem value="__unset__" className="text-[11px]">Not on file</SelectItem>
+                            <SelectItem value="__unset__">Not on file</SelectItem>
                             {(PAYOUT_METHODS.includes(form.payoutMethod) || !form.payoutMethod ? PAYOUT_METHODS : [form.payoutMethod, ...PAYOUT_METHODS]).map(m => (
-                              <SelectItem key={m} value={m} className="text-[11px]">{m}</SelectItem>
+                              <SelectItem key={m} value={m}>{m}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -728,12 +729,12 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                         <Input className={inputCls} value={form.payoutNotes} onChange={e => set('payoutNotes', e.target.value)} placeholder="e.g. Zelle to phone on file" />
                       </div>
                     </div>
-                    <p className="text-[9px] text-text-muted normal-case tracking-normal">Shown on paystubs. Never enter bank account or routing numbers here — those are collected by QuickBooks Bill Pay.</p>
+                    <p className="text-[11px] text-text-muted normal-case tracking-normal">Shown on paystubs. Never enter bank account or routing numbers here — those are collected by QuickBooks Bill Pay.</p>
                   </div>
 
                   {form.workerType !== 'w2_employee' && form.workerType !== 'not_paid' && (
                     <div className="border-t border-border-sub pt-3 space-y-3">
-                      <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">1099 Payee (from their W-9)</p>
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">1099 Payee (from their W-9)</p>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <Label className={labelCls}>Legal Name (W-9 line 1)</Label>
@@ -750,9 +751,9 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                           <Select value={form.taxIdType || '__unset__'} onValueChange={v => set('taxIdType', v === '__unset__' ? '' : v)}>
                             <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
-                              <SelectItem value="__unset__" className="text-[11px]">Not set</SelectItem>
-                              <SelectItem value="SSN" className="text-[11px]">SSN (individual)</SelectItem>
-                              <SelectItem value="EIN" className="text-[11px]">EIN (business)</SelectItem>
+                              <SelectItem value="__unset__">Not set</SelectItem>
+                              <SelectItem value="SSN">SSN (individual)</SelectItem>
+                              <SelectItem value="EIN">EIN (business)</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -762,7 +763,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                             onChange={e => set('taxIdLast4', e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="1234" />
                         </div>
                       </div>
-                      <p className="text-[9px] text-text-muted normal-case tracking-normal">The full SSN/EIN stays on the W-9 document and in QuickBooks — never in the app. Mailing address for the 1099 is the address under Basic Info.</p>
+                      <p className="text-[11px] text-text-muted normal-case tracking-normal">The full SSN/EIN stays on the W-9 document and in QuickBooks — never in the app. Mailing address for the 1099 is the address under Basic Info.</p>
                     </div>
                   )}
                 </fieldset>
@@ -809,7 +810,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                     </div>
                   </div>
                   <div className="border-t border-border-sub pt-3">
-                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-3">Billing Details</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-3">Billing Details</p>
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
@@ -831,7 +832,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                             <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
                               {['Net 15', 'Net 30', 'Net 60', 'Due on Receipt'].map(t => (
-                                <SelectItem key={t} value={t} className="text-[11px]">{t}</SelectItem>
+                                <SelectItem key={t} value={t}>{t}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -841,9 +842,9 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                           <Select value={form.billingDelivery} onValueChange={v => set('billingDelivery', v)}>
                             <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
-                              <SelectItem value="Email" className="text-[11px]">Email</SelectItem>
-                              <SelectItem value="Portal" className="text-[11px]">Portal</SelectItem>
-                              <SelectItem value="Both" className="text-[11px]">Email &amp; Portal</SelectItem>
+                              <SelectItem value="Email">Email</SelectItem>
+                              <SelectItem value="Portal">Portal</SelectItem>
+                              <SelectItem value="Both">Email &amp; Portal</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -851,7 +852,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                     </div>
                   </div>
                   <div className="border-t border-border-sub pt-3">
-                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-3">Accounting (QuickBooks Customer)</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-3">Accounting (QuickBooks Customer)</p>
                     <div className="space-y-3">
                       <div className="space-y-1">
                         <Label className={labelCls}>Customer Name in QuickBooks</Label>
@@ -869,9 +870,9 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                           <Select value={form.taxStatus || '__unset__'} onValueChange={v => set('taxStatus', (v === '__unset__' ? '' : v) as FormState['taxStatus'])}>
                             <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
-                              <SelectItem value="__unset__" className="text-[11px]">Not set</SelectItem>
-                              <SelectItem value="taxable" className="text-[11px]">Taxable</SelectItem>
-                              <SelectItem value="exempt" className="text-[11px]">Tax exempt</SelectItem>
+                              <SelectItem value="__unset__">Not set</SelectItem>
+                              <SelectItem value="taxable">Taxable</SelectItem>
+                              <SelectItem value="exempt">Tax exempt</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -883,7 +884,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                         )}
                       </div>
                       {form.taxStatus === 'exempt' && (
-                        <p className="text-[9px] text-text-muted normal-case tracking-normal">Upload the exemption certificate under Documents.</p>
+                        <p className="text-[11px] text-text-muted normal-case tracking-normal">Upload the exemption certificate under Documents.</p>
                       )}
                     </div>
                   </div>
@@ -902,7 +903,7 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
                     value={form.adminNotes}
                     onChange={e => set('adminNotes', e.target.value)}
                   />
-                  <p className="text-[9px] text-text-muted uppercase tracking-wider">
+                  <p className="text-[12px] text-text-muted">
                     These notes are only visible to administrators and are never shown to the user.
                   </p>
                 </div>
@@ -912,14 +913,14 @@ export function EditProfileDialog({ open, onClose, person }: EditProfileDialogPr
         </div>
 
         <DialogFooter className="px-5 py-3 border-t border-border-sub shrink-0 flex justify-between items-center">
-          <p className="text-[9px] text-text-muted uppercase tracking-wider">
+          <p className="text-[12px] text-text-muted">
             Changes saved to Firestore with audit log.
           </p>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={onClose} disabled={saving} className="text-[10px] font-black uppercase">
+            <Button variant="outline" size="sm" onClick={onClose} disabled={saving} className="text-[10px] font-bold">
               Cancel
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+            <Button size="sm" onClick={handleSave} disabled={saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
               {saving ? <><Loader2 size={11} className="mr-1.5 animate-spin" /> Saving…</> : 'Save Changes'}
             </Button>
           </div>

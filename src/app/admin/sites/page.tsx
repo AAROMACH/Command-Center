@@ -1,4 +1,9 @@
 'use client';
+import { PageHeader } from '@/components/page-header';
+import { StatCard, StatGrid } from '@/components/stat-card';
+import { EmptyState, LoadingState } from '@/components/empty-state';
+import { SearchField } from '@/components/search-field';
+import { AccountStatusBadge } from '@/app/admin/clients/account-status';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -20,7 +25,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { jobDateTimeValue } from '@/lib/jobs';
+import { jobDateTimeValue, mergeJobs } from '@/lib/jobs';
 
 const ACCOUNT_STATUS_OPTIONS = [
     { value: 'lead', label: 'Lead' },
@@ -28,29 +33,19 @@ const ACCOUNT_STATUS_OPTIONS = [
     { value: 'active', label: 'Active' },
     { value: 'vip', label: 'VIP' },
     { value: 'inactive', label: 'Inactive' },
-    { value: 'on_hold', label: 'On Hold' },
-    { value: 'past_client', label: 'Past Client' },
+    { value: 'on_hold', label: 'On hold' },
+    { value: 'past_client', label: 'Past client' },
     { value: 'collections', label: 'Collections' },
-    { value: 'do_not_service', label: 'Do Not Service' },
+    { value: 'do_not_service', label: 'Do not service' },
 ];
 
-const ACCOUNT_STATUS_COLORS: Record<string, string> = {
-    active: 'bg-text-green/10 text-text-green border-text-green/20',
-    lead: 'bg-blue-400/10 text-blue-400 border-blue-400/20',
-    prospect: 'bg-sky-400/10 text-sky-400 border-sky-400/20',
-    vip: 'bg-purple-400/10 text-purple-400 border-purple-400/20',
-    inactive: 'bg-bg-tertiary text-text-muted border-border-sub',
-    on_hold: 'bg-amber-400/10 text-amber-400 border-amber-400/20',
-    past_client: 'bg-bg-tertiary text-text-muted border-border-sub',
-    collections: 'bg-text-red/10 text-text-red border-text-red/20',
-    do_not_service: 'bg-text-red/10 text-text-red border-text-red/20',
-};
 
 export default function AdminClientsPage() {
     const router = useRouter();
     const [clients, setClients] = useState<Technician[]>([]);
     const [sites, setSites] = useState<Site[]>([]);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+    const [assignments, setAssignments] = useState<WorkOrder[]>([]);
     const [quotes, setQuotes] = useState<Quote[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
@@ -90,6 +85,10 @@ export default function AdminClientsPage() {
         const unsubWO = onSharedSnapshot('workOrders', snap => {
             setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
+        // Assigning a job moves it from workOrders into assignments.
+        const unsubA = onSharedSnapshot('assignments', snap => {
+            setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+        });
         const unsubQ = onSharedSnapshot('quotes', snap => {
             setQuotes(snap.docs.map(d => ({ ...d.data(), id: d.id } as Quote)));
         });
@@ -97,14 +96,15 @@ export default function AdminClientsPage() {
             setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)));
         });
 
-        return () => { unsubC(); unsubS(); unsubWO(); unsubQ(); unsubI(); };
+        return () => { unsubC(); unsubS(); unsubWO(); unsubA(); unsubQ(); unsubI(); };
     }, []);
 
     const enrichedClients = useMemo(() => {
+        const jobs = mergeJobs(workOrders, assignments);
         return clients.map(client => {
             const company = client.clientCompany || client.name || '';
             const clientSites = sites.filter(s => s.clientName === company || s.clientId === client.id);
-            const clientWOs = workOrders.filter(wo => wo.clientName === company);
+            const clientWOs = jobs.filter(wo => wo.clientName === company);
             const openJobs = clientWOs.filter(wo => wo.status !== 'completed').length;
             const activeQuotes = quotes.filter(q => q.customerName === company || q.clientId === client.id).filter(q => q.status === 'sent' || q.status === 'viewed').length;
             const openInvoices = invoices.filter(inv => inv.clientName === company || inv.clientId === client.id).filter(inv => inv.status !== 'paid' && inv.status !== 'void').length;
@@ -113,7 +113,7 @@ export default function AdminClientsPage() {
                 .sort((a, b) => jobDateTimeValue(b.scheduleDate, b.scheduleTime) - jobDateTimeValue(a.scheduleDate, a.scheduleTime))[0]?.scheduleDate || null;
             return { client, company, siteCount: clientSites.length, openJobs, activeQuotes, openInvoices, lastJob };
         });
-    }, [clients, sites, workOrders, quotes, invoices]);
+    }, [clients, sites, workOrders, assignments, quotes, invoices]);
 
     const filtered = useMemo(() => {
         let list = enrichedClients.filter(ec => {
@@ -133,7 +133,7 @@ export default function AdminClientsPage() {
             return 0;
         });
     }, [enrichedClients, search, sortBy, statusFilter]);
-    const pager = usePaged(filtered, PAGE_SIZES_SMALL, 'admin-sites', []);
+    const pager = usePaged(filtered, PAGE_SIZES_SMALL, 'admin-sites', [search, sortBy, statusFilter]);
 
     const stats = useMemo(() => ({
         total: clients.length,
@@ -183,68 +183,55 @@ export default function AdminClientsPage() {
 
     return (
         <div className="space-y-5">
-            <header className="page-header">
-                <div className="text-left">
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <Building2 size={12} />
-                        Client Management
-                    </p>
-                    <h1 className="page-title">Clients</h1>
-                    <p className="page-subtitle">Manage client accounts, sites, contacts, and service history.</p>
-                </div>
-            </header>
+            <PageHeader
+                eyebrow="Clients"
+                icon={Building2}
+                title="Clients"
+                subtitle="Client accounts, their sites, contacts and service history."
+                actions={
+                    <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setIsNewOpen(true)}>
+                        <Plus size={14} className="mr-1.5" />
+                        Add client
+                    </Button>
+                }
+            />
 
             {/* Stats bar */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {[
-                    { label: 'Total Clients', value: stats.total, color: 'text-text-primary' },
-                    { label: 'Active', value: stats.active, color: 'text-text-green' },
-                    { label: 'Leads & Prospects', value: stats.leads, color: 'text-blue-400' },
-                    { label: 'VIP', value: stats.vip, color: 'text-purple-400' },
-                ].map(s => (
-                    <div key={s.label} className="p-3 rounded-xl border border-border-sub bg-bg-secondary text-center">
-                        <p className={cn('text-[22px] font-black font-mono', s.color)}>{s.value}</p>
-                        <p className="text-[8px] font-black text-text-muted uppercase tracking-widest mt-0.5">{s.label}</p>
-                    </div>
-                ))}
-            </div>
+            <StatGrid className="md:grid-cols-4 xl:grid-cols-4">
+                <StatCard label="Total clients" value={stats.total} />
+                <StatCard label="Active" value={stats.active} tone="done" />
+                <StatCard label="Leads & prospects" value={stats.leads} tone="info" />
+                <StatCard label="VIP" value={stats.vip} />
+            </StatGrid>
 
             {/* Search & controls */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-bg-secondary/50 p-4 rounded-xl border border-border-sub shadow-sm">
-                <div className="flex items-center gap-3 w-full md:w-auto flex-1">
-                    <div className="search-wrap flex-1 !mb-0 text-left">
-                        <Search className="h-4 w-4 text-text-muted" />
-                        <input
-                            className="search-input"
-                            placeholder="Search clients, contacts, emails..."
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                        />
-                    </div>
+            <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 bg-bg-secondary p-3 rounded-xl border border-border-main shadow-sm">
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto flex-1">
+                    <SearchField className="flex-1 min-w-[200px]" placeholder="Search clients, contacts, emails…" value={search} onChange={setSearch} />
                     <div className="flex items-center gap-2 bg-bg-primary px-3 h-9 rounded-md border border-border-sub shrink-0">
-                        <p className="text-[9px] font-black text-text-muted uppercase tracking-widest whitespace-nowrap">Status:</p>
+                        <p className="text-[12px] text-text-muted whitespace-nowrap">Status:</p>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-24 h-7 bg-transparent text-[10px] font-bold uppercase border-none shadow-none focus:ring-0">
+                            <SelectTrigger className="w-32 h-7 bg-transparent border-none shadow-none focus:ring-0">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
-                                <SelectItem value="all" className="text-[10px] font-bold uppercase">All</SelectItem>
+                                <SelectItem value="all">All</SelectItem>
                                 {ACCOUNT_STATUS_OPTIONS.map(o => (
-                                    <SelectItem key={o.value} value={o.value} className="text-[10px] font-bold uppercase">{o.label}</SelectItem>
+                                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
                     </div>
                     <div className="flex items-center gap-2 bg-bg-primary px-3 h-9 rounded-md border border-border-sub shrink-0">
-                        <p className="text-[9px] font-black text-text-muted uppercase tracking-widest whitespace-nowrap">Sort:</p>
+                        <p className="text-[12px] text-text-muted whitespace-nowrap">Sort:</p>
                         <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-                            <SelectTrigger className="w-20 h-7 bg-transparent text-[10px] font-bold uppercase border-none shadow-none focus:ring-0">
+                            <SelectTrigger className="w-28 h-7 bg-transparent border-none shadow-none focus:ring-0">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-bg-elevated border-border-main">
-                                <SelectItem value="name" className="text-[10px] font-bold uppercase">Name</SelectItem>
-                                <SelectItem value="status" className="text-[10px] font-bold uppercase">Status</SelectItem>
-                                <SelectItem value="jobs" className="text-[10px] font-bold uppercase">Open Jobs</SelectItem>
+                                <SelectItem value="name">Name</SelectItem>
+                                <SelectItem value="status">Status</SelectItem>
+                                <SelectItem value="jobs">Open jobs</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -252,7 +239,7 @@ export default function AdminClientsPage() {
                 <div className="flex items-center gap-2 w-full md:w-auto justify-end">
                     <div className="flex items-center gap-2 px-3 py-1 bg-bg-primary rounded-full border border-border-sub">
                         <Building2 size={12} className="text-text-muted" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{filtered.length} client{filtered.length !== 1 ? 's' : ''}</span>
+                        <span className="text-[12px] font-medium text-text-muted">{filtered.length} client{filtered.length !== 1 ? 's' : ''}</span>
                     </div>
                     <div className="flex items-center gap-1 bg-bg-primary rounded-md border border-border-sub p-0.5">
                         <button onClick={() => setViewMode('grid')} className={cn('h-7 w-8 flex items-center justify-center rounded transition-colors', viewMode === 'grid' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary')}>
@@ -262,33 +249,20 @@ export default function AdminClientsPage() {
                             <List size={12} />
                         </button>
                     </div>
-                    <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase tracking-widest" onClick={() => setIsNewOpen(true)}>
-                        <Plus size={12} className="mr-1.5" />
-                        Add Client
-                    </Button>
                 </div>
             </div>
 
             {/* Client list */}
             {loading ? (
-                <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-3'}>
-                    {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="h-40 rounded-xl bg-bg-secondary border border-border-sub animate-pulse" />
-                    ))}
-                </div>
+                <LoadingState label="Loading clients…" />
             ) : filtered.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
-                    <Building2 size={32} className="text-text-muted mx-auto mb-3" />
-                    <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">
-                        {search || statusFilter !== 'all' ? 'No clients match your filters' : 'No clients yet'}
-                    </p>
-                    {!search && statusFilter === 'all' && (
-                        <Button size="sm" variant="outline" className="mt-4 text-[10px] font-black uppercase tracking-wider" onClick={() => setIsNewOpen(true)}>
-                            <Plus size={11} className="mr-1.5" />
-                            Add First Client
-                        </Button>
-                    )}
-                </div>
+                (search || statusFilter !== 'all') ? (
+                    <EmptyState icon={Building2} title="No clients match these filters"
+                        action={<Button size="sm" variant="outline" onClick={() => { setSearch(''); setStatusFilter('all'); }}>Reset filters</Button>} />
+                ) : (
+                    <EmptyState icon={Building2} title="No clients yet"
+                        action={<Button size="sm" variant="outline" onClick={() => setIsNewOpen(true)}><Plus size={14} className="mr-1.5" />Add first client</Button>} />
+                )
             ) : viewMode === 'grid' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {pager.items.map(({ client, company, siteCount, openJobs, activeQuotes, openInvoices, lastJob }) => {
@@ -303,17 +277,15 @@ export default function AdminClientsPage() {
                                 <div className="bg-bg-tertiary/50 border-b border-border-sub px-4 py-2.5 flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-2 min-w-0">
                                         <Building2 size={12} className="text-brand-red shrink-0" />
-                                        <p className="text-[11px] font-black uppercase text-text-primary group-hover:text-brand-red transition-colors truncate">{company}</p>
+                                        <p className="text-[12px] font-bold text-text-primary group-hover:text-brand-red transition-colors truncate">{company}</p>
                                     </div>
-                                    <Badge className={cn('text-[7px] uppercase border h-4 shrink-0', ACCOUNT_STATUS_COLORS[status] || ACCOUNT_STATUS_COLORS.active)}>
-                                        {status.replace(/_/g, ' ')}
-                                    </Badge>
+                                    <AccountStatusBadge status={status} />
                                 </div>
 
                                 {/* Contact info */}
                                 <div className="p-4 space-y-2 flex-1">
                                     {client.name && client.clientCompany && (
-                                        <p className="flex items-center gap-1.5 text-[10px] text-text-secondary font-bold">
+                                        <p className="flex items-center gap-1.5 text-[12px] text-text-secondary font-bold">
                                             <User size={10} className="text-text-muted shrink-0" />
                                             {client.name}
                                         </p>
@@ -337,19 +309,19 @@ export default function AdminClientsPage() {
                                     {[
                                         { icon: MapPin, value: siteCount, label: 'Sites', color: '' },
                                         { icon: Briefcase, value: openJobs, label: 'Jobs', color: openJobs > 0 ? 'text-text-amber' : '' },
-                                        { icon: FileText, value: activeQuotes, label: 'Quotes', color: activeQuotes > 0 ? 'text-blue-400' : '' },
-                                        { icon: Receipt, value: openInvoices, label: 'Inv', color: openInvoices > 0 ? 'text-text-red' : '' },
+                                        { icon: FileText, value: activeQuotes, label: 'Quotes', color: activeQuotes > 0 ? 'text-brand-blue' : '' },
+                                        { icon: Receipt, value: openInvoices, label: 'Invoices', color: openInvoices > 0 ? 'text-text-red' : '' },
                                     ].map(m => (
                                         <div key={m.label} className="text-center">
-                                            <p className={cn('text-[13px] font-black font-mono', m.color || 'text-text-secondary')}>{m.value}</p>
-                                            <p className="text-[7px] font-bold text-text-muted uppercase tracking-widest">{m.label}</p>
+                                            <p className={cn('text-[13px] font-bold font-mono', m.color || 'text-text-secondary')}>{m.value}</p>
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{m.label}</p>
                                         </div>
                                     ))}
                                 </div>
 
                                 {/* Footer */}
                                 <div className="bg-bg-tertiary/20 border-t border-border-sub px-4 py-2 flex items-center justify-between">
-                                    <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">
+                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
                                         {lastJob ? `Last job: ${lastJob}` : 'No completed jobs'}
                                     </p>
                                     <ChevronRight size={12} className="text-text-muted group-hover:text-text-primary transition-colors" />
@@ -362,8 +334,8 @@ export default function AdminClientsPage() {
                 /* List view */
                 <div className="rounded-xl border border-border-sub overflow-hidden">
                     <div className="grid grid-cols-[1fr_60px_80px_60px_60px_24px] gap-0 bg-bg-tertiary/50 border-b border-border-sub px-4 py-2">
-                        {['Company', 'Sites', 'Open Jobs', 'Quotes', 'Inv', ''].map(h => (
-                            <p key={h} className="text-[9px] font-black uppercase tracking-widest text-text-muted">{h}</p>
+                        {['Company', 'Sites', 'Open jobs', 'Quotes', 'Invoices', ''].map(h => (
+                            <p key={h} className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{h}</p>
                         ))}
                     </div>
                     {pager.items.map(({ client, company, siteCount, openJobs, activeQuotes, openInvoices }) => {
@@ -376,16 +348,14 @@ export default function AdminClientsPage() {
                             >
                                 <div className="min-w-0 pr-4">
                                     <div className="flex items-center gap-2">
-                                        <p className="text-[11px] font-bold uppercase text-text-primary group-hover:text-brand-red transition-colors truncate">{company}</p>
-                                        <Badge className={cn('text-[7px] uppercase border h-4 shrink-0', ACCOUNT_STATUS_COLORS[status] || ACCOUNT_STATUS_COLORS.active)}>
-                                            {status.replace(/_/g, ' ')}
-                                        </Badge>
+                                        <p className="text-[12px] font-bold text-text-primary group-hover:text-brand-red transition-colors truncate">{company}</p>
+                                        <AccountStatusBadge status={status} />
                                     </div>
-                                    {client.email && <p className="text-[9px] text-text-muted truncate mt-0.5">{client.email}</p>}
+                                    {client.email && <p className="text-[11px] text-text-muted truncate mt-0.5">{client.email}</p>}
                                 </div>
-                                <p className="text-[11px] font-mono text-text-secondary text-center">{siteCount}</p>
+                                <p className="text-[12px] font-mono text-text-secondary text-center">{siteCount}</p>
                                 <p className={cn('text-[11px] font-mono text-center', openJobs > 0 ? 'text-text-amber font-bold' : 'text-text-muted')}>{openJobs}</p>
-                                <p className={cn('text-[11px] font-mono text-center', activeQuotes > 0 ? 'text-blue-400 font-bold' : 'text-text-muted')}>{activeQuotes}</p>
+                                <p className={cn('text-[11px] font-mono text-center', activeQuotes > 0 ? 'text-brand-blue font-bold' : 'text-text-muted')}>{activeQuotes}</p>
                                 <p className={cn('text-[11px] font-mono text-center', openInvoices > 0 ? 'text-text-red font-bold' : 'text-text-muted')}>{openInvoices}</p>
                                 <ChevronRight size={12} className="text-text-muted group-hover:text-text-primary transition-colors" />
                             </div>
@@ -400,52 +370,52 @@ export default function AdminClientsPage() {
             <Dialog open={isNewOpen} onOpenChange={setIsNewOpen}>
                 <DialogContent className="bg-bg-elevated border-border-main max-w-md">
                     <DialogHeader>
-                        <DialogTitle className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+                        <DialogTitle className="text-base font-semibold flex items-center gap-2">
                             <Building2 size={14} className="text-brand-red" /> New Client
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Company Name *</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Company Name *</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="e.g. Acme Corporation" value={form.clientCompany} onChange={e => setForm(f => ({ ...f, clientCompany: e.target.value }))} />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Primary Contact Name *</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Primary Contact Name *</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Full name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Email</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Email</Label>
                                 <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="email@company.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Phone</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Phone</Label>
                                 <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="555-000-0000" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Account Status</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Account Status</Label>
                                 <Select value={form.accountStatus} onValueChange={v => setForm(f => ({ ...f, accountStatus: v }))}>
                                     <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="bg-bg-elevated border-border-main">
                                         {ACCOUNT_STATUS_OPTIONS.map(o => (
-                                            <SelectItem key={o.value} value={o.value} className="text-[11px]">{o.label}</SelectItem>
+                                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest text-text-muted">Billing Terms</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Billing Terms</Label>
                                 <Select value={form.billingTerms} onValueChange={v => setForm(f => ({ ...f, billingTerms: v }))}>
                                     <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="bg-bg-elevated border-border-main">
                                         {['Net 15', 'Net 30', 'Net 60', 'Due on Receipt'].map(t => (
-                                            <SelectItem key={t} value={t} className="text-[11px]">{t}</SelectItem>
+                                            <SelectItem key={t} value={t}>{t}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -453,8 +423,8 @@ export default function AdminClientsPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" size="sm" onClick={() => setIsNewOpen(false)} className="text-[10px] font-black uppercase">Cancel</Button>
-                        <Button size="sm" onClick={handleCreate} disabled={saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-black uppercase">
+                        <Button variant="outline" size="sm" onClick={() => setIsNewOpen(false)} className="text-[10px] font-bold">Cancel</Button>
+                        <Button size="sm" onClick={handleCreate} disabled={saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
                             {saving ? 'Creating...' : 'Create Client'}
                         </Button>
                     </DialogFooter>

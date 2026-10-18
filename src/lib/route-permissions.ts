@@ -11,6 +11,7 @@ import type { Technician } from './types';
 const ROUTE_PERMISSIONS: Array<{ prefix: string; permission: Permission }> = [
   // Admin portal
   { prefix: '/admin/dashboard',        permission: 'admin.dashboard.view' },
+  { prefix: '/admin/style-guide',      permission: 'admin.settings.manage' },
   { prefix: '/admin/requests',         permission: 'admin.requests.view' },
   { prefix: '/admin/reports',          permission: 'admin.reports.view' },
   { prefix: '/admin/analytics',        permission: 'admin.reports.view' },

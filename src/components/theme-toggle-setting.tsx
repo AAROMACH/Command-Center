@@ -35,8 +35,8 @@ export function ThemeToggleSetting() {
       document.documentElement.classList.add('dark');
     }
     toast({
-      title: 'Interface Refined',
-      description: `Terminal visual profile set to ${newTheme.toUpperCase()}.`,
+      title: 'Theme updated',
+      description: `Switched to ${newTheme} mode on this device.`,
     });
   };
 
@@ -45,15 +45,15 @@ export function ThemeToggleSetting() {
   return (
     <Card>
       <CardHeader className="text-left">
-        <CardTitle>Visual Mode</CardTitle>
-        <CardDescription>Customize the tactical visibility of this terminal, on this device.</CardDescription>
+        <CardTitle>Theme</CardTitle>
+        <CardDescription>Choose light or dark mode for this device.</CardDescription>
       </CardHeader>
       <CardContent className="text-left">
-        <div className="flex gap-2 p-1 bg-bg-primary rounded-lg border border-border-sub w-fit">
+        <div className="flex gap-1 p-1 bg-bg-primary rounded-md border border-border-sub w-fit">
           <button
             onClick={() => toggleTheme('dark')}
             className={cn(
-              'px-6 h-9 rounded transition-colors text-[10px] font-bold uppercase tracking-widest',
+              'px-5 h-9 rounded-md transition-colors text-[13px] font-medium',
               theme === 'dark' ? 'bg-brand-red text-white' : 'hover:bg-bg-secondary text-text-muted'
             )}
           >
@@ -62,7 +62,7 @@ export function ThemeToggleSetting() {
           <button
             onClick={() => toggleTheme('light')}
             className={cn(
-              'px-6 h-9 rounded transition-colors text-[10px] font-bold uppercase tracking-widest',
+              'px-5 h-9 rounded-md transition-colors text-[13px] font-medium',
               theme === 'light' ? 'bg-brand-red text-white' : 'hover:bg-bg-secondary text-text-muted'
             )}
           >

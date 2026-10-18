@@ -10,6 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+import { StatCard } from '@/components/stat-card';
+import { EmptyState } from '@/components/empty-state';
+import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import type { Invoice, Technician, TripLog, WeeklyLog, WorkOrder } from '@/lib/types';
 import {
     buildIntelRows, byCustomer, inIntelFilter, median, rateParts,
@@ -49,8 +52,8 @@ const METRICS: Record<Metric, { label: string; fmt: (v: number) => string }> = {
 };
 const HOURLY: Metric[] = ['rate', 'profitRate'];
 
-const label = 'text-[9px] font-black uppercase tracking-widest text-text-muted';
-const control = 'h-8 bg-bg-primary border-border-main text-[10px] font-bold uppercase';
+const label = 'text-[10px] font-bold uppercase tracking-wider text-text-muted';
+const control = 'h-8 bg-bg-primary border-border-main text-[10px] font-bold';
 
 export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onFilteredJobIds }: {
     jobs: WorkOrder[];
@@ -191,6 +194,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
         return sortDir * ((va ?? -Infinity) - (vb ?? -Infinity));
     });
     const maxNet = Math.max(1, ...custs.map(c => c.net));
+    const tablePager = usePaged(tableRows, PAGE_SIZES_LARGE, 'insights-customers', [search, sortKey, sortDir, p.start, p.end, p.type, p.provider, p.minJobs, p.capHours]);
 
     const isDefault = JSON.stringify({ ...p }) === JSON.stringify(DEFAULTS);
     const empty = all.length === 0;
@@ -216,8 +220,8 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                     <Select value={p.type ?? 'all'} onValueChange={v => set({ type: v === 'all' ? null : v })}>
                         <SelectTrigger className={cn(control, 'w-[170px]')}><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-bg-elevated border-border-main">
-                            <SelectItem value="all" className="text-[10px] font-bold uppercase">All types</SelectItem>
-                            {types.map(t => <SelectItem key={t} value={t} className="text-[10px] font-bold uppercase">{t}</SelectItem>)}
+                            <SelectItem value="all" className="text-[10px] font-bold">All types</SelectItem>
+                            {types.map(t => <SelectItem key={t} value={t} className="text-[10px] font-bold">{t}</SelectItem>)}
                         </SelectContent>
                     </Select>
                 </div>
@@ -226,8 +230,8 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                     <Select value={p.provider ?? 'all'} onValueChange={v => set({ provider: v === 'all' ? null : v })}>
                         <SelectTrigger className={cn(control, 'w-[170px]')}><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-bg-elevated border-border-main">
-                            <SelectItem value="all" className="text-[10px] font-bold uppercase">All technicians</SelectItem>
-                            {providers.map(t => <SelectItem key={t} value={t} className="text-[10px] font-bold uppercase">{t}</SelectItem>)}
+                            <SelectItem value="all" className="text-[10px] font-bold">All technicians</SelectItem>
+                            {providers.map(t => <SelectItem key={t} value={t} className="text-[10px] font-bold">{t}</SelectItem>)}
                         </SelectContent>
                     </Select>
                 </div>
@@ -242,36 +246,24 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                 </label>
                 {p.buyer && (
                     <button onClick={() => set({ buyer: null })}
-                        className="h-8 px-3 inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 text-amber-500 text-[10px] font-bold">
+                        className="h-8 px-3 inline-flex items-center gap-1.5 rounded-full border border-brand-red/40 bg-brand-red/10 text-brand-red text-[12px] font-semibold" aria-label={`Clear customer focus ${p.buyer}`}>
                         {p.buyer} <X size={11} />
                     </button>
                 )}
                 {!isDefault && (
                     <button onClick={() => { setSearch(''); setP(DEFAULTS); }}
-                        className="h-8 px-3 inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-brand-red hover:underline">
+                        className="h-8 px-3 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-brand-red hover:underline">
                         <RotateCcw size={11} /> Reset
                     </button>
                 )}
             </div>
 
             {empty ? (
-                <Card className="bg-bg-secondary border-border-main">
-                    <CardContent className="py-16 text-center text-[11px] font-bold uppercase tracking-widest text-text-muted">
-                        No completed jobs yet — the dashboard fills in as jobs are completed.
-                    </CardContent>
-                </Card>
+                <EmptyState title="No completed jobs yet" description="This dashboard fills in as jobs are completed." />
             ) : (<>
                 {/* KPIs */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {kpis.map(k => (
-                        <Card key={k.label} className="bg-bg-secondary border-border-main">
-                            <CardContent className="p-4 min-w-0">
-                                <p className="text-[8px] font-black text-text-muted uppercase tracking-widest truncate">{k.label}</p>
-                                <p className="text-xl font-black text-text-primary tabular-nums truncate">{k.value}</p>
-                                <p className="text-[10px] text-text-muted truncate">{k.sub}</p>
-                            </CardContent>
-                        </Card>
-                    ))}
+                    {kpis.map(k => <StatCard key={k.label} label={k.label} value={k.value} sub={k.sub || undefined} />)}
                 </div>
                 <p className="text-sm text-text-secondary">{takeaway}</p>
 
@@ -279,7 +271,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                     <Card className="bg-bg-secondary border-border-main min-w-0">
                         <CardHeader className="pb-2 flex flex-row items-start justify-between gap-3 space-y-0">
                             <div>
-                                <CardTitle className="text-sm font-bold uppercase tracking-wide">Top customers</CardTitle>
+                                <CardTitle className="text-sm font-bold tracking-wide">Top customers</CardTitle>
                                 <CardDescription className="text-[10px]">
                                     {hourly ? 'Customers with 5+ jobs and 5+ logged hours. ' : ''}Click a bar to focus the page on that customer.
                                 </CardDescription>
@@ -287,7 +279,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                             <Select value={metric} onValueChange={v => set({ metric: v as Metric })}>
                                 <SelectTrigger className={cn(control, 'w-[150px] shrink-0')}><SelectValue /></SelectTrigger>
                                 <SelectContent className="bg-bg-elevated border-border-main">
-                                    {(Object.keys(METRICS) as Metric[]).map(m => <SelectItem key={m} value={m} className="text-[10px] font-bold uppercase">{METRICS[m].label}</SelectItem>)}
+                                    {(Object.keys(METRICS) as Metric[]).map(m => <SelectItem key={m} value={m} className="text-[10px] font-bold">{METRICS[m].label}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </CardHeader>
@@ -298,7 +290,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
 
                     <Card className="bg-bg-secondary border-border-main min-w-0">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-bold uppercase tracking-wide">Volume vs. hourly return</CardTitle>
+                            <CardTitle className="text-sm font-bold tracking-wide">Volume vs. hourly return</CardTitle>
                             <CardDescription className="text-[10px]">Customers with 3+ jobs and 2+ logged hours. Dot size = net pay; dashed lines = medians. Click a dot to focus.</CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -309,8 +301,8 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                                     <ScatterChart margin={{ top: 16, right: 24, bottom: 16, left: 4 }}>
                                         <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
                                         <XAxis type="number" dataKey="jobs" name="Jobs" scale="log" domain={[Math.max(1, Math.min(...scatterPts.map(c => c.jobs)) * 0.8), 'auto']} allowDataOverflow
-                                            tickLine={false} className="text-[9px]" label={{ value: 'Jobs (log scale)', position: 'insideBottom', offset: -8, className: 'text-[9px] fill-current' }} />
-                                        <YAxis type="number" dataKey="rate" name="Net/hr" domain={[0, rateMax]} allowDataOverflow tickLine={false} className="text-[9px]" tickFormatter={v => `$${v}`} width={44} />
+                                            tickLine={false} className="text-[11px]" label={{ value: 'Jobs (log scale)', position: 'insideBottom', offset: -8, className: 'text-[11px] fill-current' }} />
+                                        <YAxis type="number" dataKey="rate" name="Net/hr" domain={[0, rateMax]} allowDataOverflow tickLine={false} className="text-[11px]" tickFormatter={v => `$${v}`} width={44} />
                                         <ZAxis type="number" dataKey="net" range={[40, 420]} />
                                         {medJobs != null && <ReferenceLine x={medJobs} stroke="currentColor" strokeOpacity={0.35} strokeDasharray="4 4" />}
                                         {medRate != null && <ReferenceLine y={medRate} stroke="currentColor" strokeOpacity={0.35} strokeDasharray="4 4" />}
@@ -322,7 +314,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                                             {scatterPts.map(c => (
                                                 <Cell key={c.buyer} fill={c.buyer === p.buyer ? 'var(--brand-red)' : 'var(--accent-gold)'} fillOpacity={p.buyer && c.buyer !== p.buyer ? 0.3 : 0.75} />
                                             ))}
-                                            <LabelList dataKey="label" position="right" className="text-[9px] font-bold fill-current" />
+                                            <LabelList dataKey="label" position="right" className="text-[11px] font-bold fill-current" />
                                         </Scatter>
                                     </ScatterChart>
                                 </ChartContainer>
@@ -332,7 +324,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
 
                     <Card className="bg-bg-secondary border-border-main min-w-0">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-bold uppercase tracking-wide">Net pay by month</CardTitle>
+                            <CardTitle className="text-sm font-bold tracking-wide">Net pay by month</CardTitle>
                             <CardDescription className="text-[10px]">{p.buyer ? `${p.buyer} — ` : ''}by work date.</CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -342,8 +334,8 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                                 <ChartContainer config={{ net: { label: 'Net pay', color: 'var(--brand-red)' } } satisfies ChartConfig} className="w-full h-[300px]">
                                     <BarChart data={monthly} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
                                         <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.15} />
-                                        <XAxis dataKey="month" tickLine={false} axisLine={false} className="text-[9px]" tickFormatter={month} minTickGap={12} />
-                                        <YAxis tickLine={false} axisLine={false} className="text-[9px]" tickFormatter={v => compact(v)} width={48} />
+                                        <XAxis dataKey="month" tickLine={false} axisLine={false} className="text-[11px]" tickFormatter={month} minTickGap={12} />
+                                        <YAxis tickLine={false} axisLine={false} className="text-[11px]" tickFormatter={v => compact(v)} width={48} />
                                         <Tooltip cursor={{ opacity: 0.1 }} content={({ payload }) => {
                                             const d = payload?.[0]?.payload as { month: string; net: number } | undefined;
                                             return d ? <Tip title={month(d.month)} lines={[`${money(d.net)} net`]} /> : null;
@@ -357,7 +349,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
 
                     <Card className="bg-bg-secondary border-border-main min-w-0">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-bold uppercase tracking-wide">Net pay by type of work</CardTitle>
+                            <CardTitle className="text-sm font-bold tracking-wide">Net pay by type of work</CardTitle>
                             <CardDescription className="text-[10px]">{p.buyer ? `${p.buyer} — ` : ''}click a type to filter the page by it.</CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -372,15 +364,15 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                 <Card className="bg-bg-secondary border-border-main">
                     <CardHeader className="pb-2 flex flex-row flex-wrap items-center justify-between gap-3 space-y-0">
                         <div>
-                            <CardTitle className="text-sm font-bold uppercase tracking-wide">All customers</CardTitle>
+                            <CardTitle className="text-sm font-bold tracking-wide">All customers</CardTitle>
                             <CardDescription className="text-[10px]">{count(tableRows.length)} customer{tableRows.length === 1 ? '' : 's'} · click a row to focus</CardDescription>
                         </div>
                         <div className="relative w-full sm:w-[240px]">
                             <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
-                            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search customers" className="h-8 pl-7 bg-bg-primary border-border-main text-[11px]" />
+                            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search customers" aria-label="Search customers" className="h-8 pl-7 bg-bg-primary border-border-main text-[12px]" />
                         </div>
                     </CardHeader>
-                    <CardContent className="p-0 overflow-x-auto max-h-[560px] overflow-y-auto">
+                    <CardContent className="p-0 overflow-x-auto">
                         <table className="w-full text-[11px] tabular-nums">
                             <thead className="sticky top-0 bg-bg-secondary z-10">
                                 <tr className="border-b border-border-sub">
@@ -389,7 +381,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                                         ['hours', 'Hours', 'hidden md:table-cell'], ['rate', 'Net/hr', ''], ['profit', 'Profit', ''], ['profitRate', 'Profit/hr', 'hidden sm:table-cell'], ['feePct', 'Fees %', 'hidden md:table-cell'],
                                         ['last', 'Last job', 'hidden lg:table-cell'], ['mainType', 'Main work', 'hidden lg:table-cell'],
                                     ] as [SortKey, string, string][]).map(([k, text, cls]) => (
-                                        <th key={k} className={cn('px-3 py-2 font-black uppercase tracking-widest text-[9px] text-text-muted', k === 'buyer' || k === 'mainType' ? 'text-left' : 'text-right', cls)}
+                                        <th key={k} className={cn('px-3 py-2 font-bold uppercase tracking-wider text-[10px] text-text-muted', k === 'buyer' || k === 'mainType' ? 'text-left' : 'text-right', cls)}
                                             aria-sort={k === sortKey ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'}>
                                             <button onClick={() => sortBy(k)} className="inline-flex items-center gap-1 hover:text-text-primary">
                                                 {text}{k === sortKey && (sortDir > 0 ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
@@ -399,7 +391,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                                 </tr>
                             </thead>
                             <tbody>
-                                {tableRows.map(c => (
+                                {tablePager.items.map(c => (
                                     <tr key={c.buyer} onClick={() => pickBuyer(c.buyer)}
                                         className={cn('border-b border-border-sub/60 cursor-pointer hover:bg-bg-tertiary/40', c.buyer === p.buyer && 'bg-brand-red/10')}>
                                         <td className="px-3 py-2 text-left font-bold text-text-primary max-w-[220px] truncate">{c.buyer}</td>
@@ -420,11 +412,13 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                                     </tr>
                                 ))}
                                 {tableRows.length === 0 && (
-                                    <tr><td colSpan={12} className="px-3 py-10 text-center text-text-muted">No customers match.</td></tr>
+                                    <tr><td colSpan={12} className="p-4"><EmptyState compact icon={Search} title="No customers match these filters"
+                                        action={!isDefault || search ? <button onClick={() => { setSearch(''); setP(DEFAULTS); }} className="text-[12px] font-semibold text-brand-red hover:underline">Reset filters</button> : undefined} /></td></tr>
                                 )}
                             </tbody>
                         </table>
                     </CardContent>
+                    <div className="px-4"><ListPager pager={tablePager} noun="customers" /></div>
                 </Card>
                 <p className="text-[10px] text-text-muted">
                     Completed jobs only. Gross = paid invoice (pre-tax) or job pay; fees = Field Nation's 15.85% on imported jobs; net = gross − fees; profit = net − tech pay (weekly-log settlement, else the payroll formula).
@@ -438,7 +432,7 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
 export function Tip({ title, lines }: { title: string; lines: string[] }) {
     return (
         <div className="rounded-md border border-border-main bg-bg-elevated px-3 py-2 shadow-xl text-[10px]">
-            <p className="font-black text-text-primary mb-0.5">{title}</p>
+            <p className="font-bold text-text-primary mb-0.5">{title}</p>
             {lines.map(l => <p key={l} className="text-text-muted">{l}</p>)}
         </div>
     );

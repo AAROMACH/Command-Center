@@ -32,17 +32,17 @@ export function CompletionWeekDialog({
   return (
     <Dialog open={open}>
       <DialogContent
-        className="sm:max-w-[460px] bg-bg-elevated border-border-default shadow-2xl [&>button:last-child]:hidden"
+        className="sm:max-w-[460px] bg-bg-elevated border-border-default shadow-xl [&>button:last-child]:hidden"
         onEscapeKeyDown={e => e.preventDefault()}
         onInteractOutside={e => e.preventDefault()}
       >
         <DialogHeader className="text-left">
           <div className="flex items-center gap-2 mb-1">
             <CalendarClock className="text-accent-gold h-5 w-5" />
-            <DialogTitle className="text-base font-bold uppercase tracking-widest">Which Weekly Log?</DialogTitle>
+            <DialogTitle className="text-base font-semibold">Which weekly log?</DialogTitle>
           </div>
-          <p className="text-[11px] text-text-muted leading-relaxed">
-            This assignment was scheduled for the week of <span className="text-text-primary font-bold">{scheduledWeek}</span>, but you are completing it during the week of <span className="text-text-primary font-bold">{reportingWeek}</span>. Which weekly log should contain it?
+          <p className="text-[13px] text-text-muted leading-relaxed">
+            This job was scheduled for the week of <span className="text-text-primary font-semibold">{scheduledWeek}</span>, but you are completing it during the week of <span className="text-text-primary font-semibold">{reportingWeek}</span>. Which weekly log should contain it?
           </p>
         </DialogHeader>
 
@@ -50,11 +50,11 @@ export function CompletionWeekDialog({
           <button
             onClick={onCorrectWeek}
             disabled={!scheduledWeekEligible || busy}
-            className="w-full flex items-center justify-between gap-3 p-3 rounded-lg border border-border-sub bg-bg-secondary hover:border-accent-gold/50 hover:bg-accent-gold/5 transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-border-sub disabled:hover:bg-bg-secondary"
+            className="w-full flex items-center justify-between gap-3 p-3 rounded-md border border-border-sub bg-bg-secondary hover:border-accent-gold/50 hover:bg-accent-gold/5 transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-border-sub disabled:hover:bg-bg-secondary"
           >
             <div>
-              <p className="text-[12px] font-bold text-text-primary">Add to Correct Week</p>
-              <p className="text-[9px] text-text-muted uppercase tracking-widest font-bold">
+              <p className="text-[13px] font-semibold text-text-primary">Add to the scheduled week</p>
+              <p className="text-[12px] text-text-muted">
                 {scheduledWeekEligible ? `Week of ${scheduledWeek}` : 'That week’s log is locked'}
               </p>
             </div>
@@ -64,11 +64,11 @@ export function CompletionWeekDialog({
           <button
             onClick={onCurrentWeek}
             disabled={busy}
-            className="w-full flex items-center justify-between gap-3 p-3 rounded-lg border border-border-sub bg-bg-secondary hover:border-brand-red/50 hover:bg-brand-red/5 transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-between gap-3 p-3 rounded-md border border-border-sub bg-bg-secondary hover:border-brand-red/50 hover:bg-brand-red/5 transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <div>
-              <p className="text-[12px] font-bold text-text-primary">Add to Current Week</p>
-              <p className="text-[9px] text-text-muted uppercase tracking-widest font-bold">Week of {reportingWeek} · flagged as different service week</p>
+              <p className="text-[13px] font-semibold text-text-primary">Add to this week</p>
+              <p className="text-[12px] text-text-muted">Week of {reportingWeek} · marked as done in a different week</p>
             </div>
             <CalendarClock size={14} className="text-brand-red shrink-0" />
           </button>

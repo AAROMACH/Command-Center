@@ -36,6 +36,7 @@ import type { WorkOrder, Project, ServiceRequest, WeeklyLog, TimeOffRequest, Sit
 import { isAssignedTo } from '@/lib/jobs';
 
 type AlertType = 'critical' | 'warning' | 'info' | 'success';
+const PRIORITY_LABEL: Record<AlertType, string> = { critical: 'Needs attention now', warning: 'Needs attention soon', info: 'For your information', success: 'In progress' };
 
 type Alert = {
   id: string;
@@ -163,11 +164,11 @@ export function AlertBand() {
         currentAlerts.push({
           id: 'tech-active',
           type: 'success',
-          text: 'LIVE SESSION',
-          description: `You are currently checked into mission ${activeJob.id.toUpperCase()}. Ensure you finalize the session and upload any site photos before checking out.`,
+          text: 'On site now',
+          description: `You're checked in on job ${activeJob.id.toUpperCase()}. Upload any site photos before you check out.`,
           icon: Play,
           actionPath: '/tech/dashboard',
-          actionLabel: 'Open Session Terminal'
+          actionLabel: 'Open job'
         });
       }
 
@@ -184,10 +185,10 @@ export function AlertBand() {
           id: 'tech-upcoming',
           type: 'info',
           text: `${upcomingJobsCount} upcoming job${upcomingJobsCount > 1 ? 's' : ''}`,
-          description: `You have ${upcomingJobsCount} upcoming assignment(s) scheduled for the next 24 hours. Review site access notes and instructions in your calendar.`,
+          description: `You have ${upcomingJobsCount} job${upcomingJobsCount > 1 ? 's' : ''} in the next 24 hours. Check the site access notes and instructions before you go.`,
           icon: CalendarCheck,
           actionPath: '/tech/assignments?tab=active',
-          actionLabel: 'View Schedule'
+          actionLabel: 'View schedule'
         });
       }
 
@@ -197,10 +198,10 @@ export function AlertBand() {
           id: 'tech-logs',
           type: 'warning',
           text: `${activeWeeklyLogs.length} log${activeWeeklyLogs.length > 1 ? 's' : ''} pending`,
-          description: `Your weekly work log is currently in draft status. Submit for administrative audit to avoid payout delays.`,
+          description: `Your weekly log is still a draft. Submit it for review so your pay isn't delayed.`,
           icon: FileWarning,
           actionPath: '/tech/logs',
-          actionLabel: 'Finalize Logs'
+          actionLabel: 'Open logs'
         });
       }
     } else if (pathname.startsWith('/client')) {
@@ -209,11 +210,11 @@ export function AlertBand() {
         currentAlerts.push({
           id: 'client-projects',
           type: 'info',
-          text: `${projects.length} project${projects.length > 1 ? 's' : ''}`,
-          description: `Aaromach technicians are currently executing phase-based infrastructure deployment across ${projects.length} of your sites.`,
+          text: `${projects.length} active project${projects.length > 1 ? 's' : ''}`,
+          description: `Aaromach technicians are working on ${projects.length} active project${projects.length > 1 ? 's' : ''} at your sites.`,
           icon: Briefcase,
           actionPath: '/client/projects?tab=active',
-          actionLabel: 'Track Progress'
+          actionLabel: 'View projects'
         });
       }
 
@@ -223,10 +224,10 @@ export function AlertBand() {
           id: 'client-tickets',
           type: 'warning',
           text: `${serviceRequests.length} pending ticket${serviceRequests.length > 1 ? 's' : ''}`,
-          description: `Your recently submitted service tickets are currently undergoing administrative audit at the Command Center.`,
+          description: `Your recently submitted tickets are waiting for our team to review them.`,
           icon: ClipboardList,
           actionPath: '/client/tickets?tab=requested',
-          actionLabel: 'View Tickets'
+          actionLabel: 'View tickets'
         });
       }
 
@@ -236,10 +237,10 @@ export function AlertBand() {
           id: 'client-invoices',
           type: 'critical',
           text: `${pendingInvoicesCount} pending invoice${pendingInvoicesCount > 1 ? 's' : ''}`,
-          description: `You have ${pendingInvoicesCount} outstanding invoice(s) awaiting settlement. Review details in the Billing Terminal.`,
+          description: `You have ${pendingInvoicesCount} unpaid invoice${pendingInvoicesCount > 1 ? 's' : ''}. See the details in Billing.`,
           icon: Banknote,
           actionPath: '/client/financials',
-          actionLabel: 'View Billing'
+          actionLabel: 'View billing'
         });
       }
     } else {
@@ -249,10 +250,10 @@ export function AlertBand() {
           id: 'admin-unassigned',
           type: 'critical',
           text: `${workOrders.length} unassigned job${workOrders.length > 1 ? 's' : ''}`,
-          description: `There are ${workOrders.length} missions in the active window requiring operative allocation. Immediate dispatch required.`,
+          description: `${workOrders.length} job${workOrders.length > 1 ? 's need' : ' needs'} a technician assigned.`,
           icon: AlertTriangle,
           actionPath: '/admin/dispatch?tab=dispatch',
-          actionLabel: 'Dispatch Hub'
+          actionLabel: 'Dispatch'
         });
       }
 
@@ -261,10 +262,10 @@ export function AlertBand() {
           id: 'admin-audit',
           type: 'info',
           text: `${activeWeeklyLogs.length} log${activeWeeklyLogs.length > 1 ? 's' : ''} pending`,
-          description: `Field operatives have submitted weekly logs that require financial and operational authorization.`,
+          description: `Technicians have submitted weekly logs that need review and approval.`,
           icon: FileCheck,
           actionPath: '/admin/financials?tab=payroll',
-          actionLabel: 'Payroll Terminal'
+          actionLabel: 'Payroll'
         });
       }
 
@@ -272,11 +273,11 @@ export function AlertBand() {
         currentAlerts.push({
           id: 'admin-personnel-requests',
           type: 'info',
-          text: `${activeTimeOffRequests.length} personnel request${activeTimeOffRequests.length > 1 ? 's' : ''}`,
-          description: `Field staff have submitted absence logs or time-off requests that require administrative review.`,
+          text: `${activeTimeOffRequests.length} time-off request${activeTimeOffRequests.length > 1 ? 's' : ''}`,
+          description: `Technicians have asked for time off and need a decision.`,
           icon: Users,
           actionPath: '/admin/directory?tab=requests&subtab=personnel',
-          actionLabel: 'Review Requests'
+          actionLabel: 'Review requests'
         });
       }
 
@@ -285,10 +286,10 @@ export function AlertBand() {
           id: 'admin-site-requests',
           type: 'warning',
           text: `${siteRequests.length} site request${siteRequests.length > 1 ? 's' : ''}`,
-          description: `Clients have submitted new site coordinates that require verification and authorization before they can be used for assignments.`,
+          description: `Clients have submitted new site locations. Check and approve them before they can be used for jobs.`,
           icon: MapPin,
           actionPath: '/admin/directory?tab=requests&subtab=client',
-          actionLabel: 'Verify Coordinates'
+          actionLabel: 'Review sites'
         });
       }
 
@@ -297,10 +298,10 @@ export function AlertBand() {
           id: 'admin-payroll-disputes',
           type: 'critical',
           text: `${activePayrollDisputes.length} payroll dispute${activePayrollDisputes.length > 1 ? 's' : ''}`,
-          description: `Field operatives have disputed a job or log after payout — these require review before the discrepancy is resolved.`,
+          description: `Technicians have disputed a job or log after payout. Review them to resolve the difference.`,
           icon: AlertTriangle,
           actionPath: '/admin/payroll/audit?tab=adjustments',
-          actionLabel: 'Review Disputes'
+          actionLabel: 'Review disputes'
         });
       }
     }
@@ -331,14 +332,14 @@ export function AlertBand() {
               role="button"
               tabIndex={0}
               aria-label={`Alert: ${alert.text}`}
-              onKeyDown={(e) => e.key === 'Enter' && handleAlertClick(alert)}
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), handleAlertClick(alert))}
               className={cn(
-                'flex cursor-pointer items-center gap-2 rounded-md px-3 py-1 text-[10px] font-bold uppercase tracking-widest transition-all hover:opacity-80 active:scale-[0.98] whitespace-nowrap',
+                'flex cursor-pointer items-center gap-2 rounded-md px-3 py-1 text-[12px] font-medium transition-all hover:opacity-80 active:scale-[0.98] whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red',
                 {
-                  'border border-border-alert bg-brand-red-dim text-text-red shadow-[0_0_10px_color-mix(in_srgb,var(--brand-red)_15%,transparent)]': alert.type === 'critical',
+                  'border border-border-alert bg-brand-red-dim text-text-red': alert.type === 'critical',
                   'border border-border-gold bg-accent-gold-dim text-accent-gold': alert.type === 'warning',
                   'border border-border-main bg-bg-tertiary text-text-secondary': alert.type === 'info',
-                  'border border-green-border bg-green-dim text-text-green animate-pulse': alert.type === 'success',
+                  'border border-green-border bg-green-dim text-text-green': alert.type === 'success',
                 }
               )}
             >
@@ -347,9 +348,9 @@ export function AlertBand() {
             </div>
           ))}
           {alerts.length === 0 && (
-            <div className="flex items-center gap-2 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted opacity-40">
-              <Activity size={12} />
-              Registry Nominal
+            <div className="flex items-center gap-2 px-3 py-1 text-[12px] text-text-muted">
+              <Activity size={13} />
+              Nothing needs attention
             </div>
           )}
         </div>
@@ -371,13 +372,13 @@ export function AlertBand() {
                 </div>
               )}
               <div className="text-left">
-                <DialogTitle className="uppercase tracking-widest text-text-primary text-base">Operational Alert</DialogTitle>
-                <p className={cn(
-                  "text-[10px] font-bold uppercase tracking-widest",
+                <DialogTitle className="text-text-primary text-base font-semibold">{selectedAlert?.text ? selectedAlert.text.charAt(0).toUpperCase() + selectedAlert.text.slice(1) : 'Alert'}</DialogTitle>
+                <DialogDescription className={cn(
+                  "text-[12px]",
                   selectedAlert?.type === 'critical' ? 'text-text-red' : 'text-text-muted'
                 )}>
-                  {selectedAlert?.type} priority
-                </p>
+                  {selectedAlert ? PRIORITY_LABEL[selectedAlert.type] : ''}
+                </DialogDescription>
               </div>
             </div>
           </DialogHeader>
@@ -385,11 +386,11 @@ export function AlertBand() {
           <div className="py-4">
             {selectedAlert && (
               <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub">
-                <p className="text-xs text-text-primary font-bold uppercase mb-2 flex items-center gap-2">
-                  <Info size={14} className="text-brand-red" />
+                <p className="text-[13px] text-text-primary font-semibold mb-1.5 flex items-center gap-2">
+                  <Info size={14} className="text-text-muted" />
                   Details
                 </p>
-                <p className="text-xs text-text-secondary leading-relaxed text-left">
+                <p className="text-[13px] text-text-secondary leading-relaxed text-left">
                   {selectedAlert.description}
                 </p>
               </div>
@@ -397,11 +398,11 @@ export function AlertBand() {
           </div>
 
           <DialogFooter className="border-t border-border-default pt-4 gap-3">
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-10 flex-1 uppercase font-bold text-[10px] tracking-widest">
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1">
               Dismiss
             </Button>
-            <Button onClick={handleAction} className="h-10 flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">
-              {selectedAlert?.actionLabel || 'Take Action'}
+            <Button onClick={handleAction} className="flex-1">
+              {selectedAlert?.actionLabel || 'Open'}
               <ChevronRight size={14} className="ml-1.5" />
             </Button>
           </DialogFooter>

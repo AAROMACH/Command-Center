@@ -42,10 +42,16 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, addDoc, getDoc } from 'firebase/firestore';
 import { uploadFile } from '@/lib/upload';
 import { useToast } from '@/hooks/use-toast';
-import { mergeJobs, weekOfValue } from '@/lib/jobs';
+import { mergeJobs, weekOfValue, parseLocalDate } from '@/lib/jobs';
+import { PageHeader } from '@/components/page-header';
+import { EmptyState, PageLoading } from '@/components/empty-state';
+import { StatusBadge } from '@/components/status-badge';
+import { StatCard } from '@/components/stat-card';
+import { SearchField } from '@/components/search-field';
+import { DateRangeButton } from '@/components/list-toolbar';
 import { effectiveJobPay, computeWeeklyLogSettlement, netOfFieldNationFee } from '@/lib/payroll';
 import { downloadPaystub } from '@/lib/paystub';
-import { displayWorkOrderNumber } from '@/lib/work-order-identity';
+import { displayWorkOrderNumber, externalWorkOrderId } from '@/lib/work-order-identity';
 import { money } from '@/lib/financial-summary';
 
 type LogSortOption = 'date-desc' | 'date-asc' | 'payout-desc' | 'status';
@@ -102,6 +108,7 @@ export default function TechEarningsPage() {
     const [logSearchQuery, setLogSearchQuery] = useState("");
     const [logSortBy, setLogSortBy] = useState<LogSortOption>('date-desc');
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+    const [logStatusFilter, setLogStatusFilter] = useState<string>('all');
     // Which week folders are collapsed in the reimbursement table — open by
     // default, collapse individually to declutter.
     const [collapsedWeeks, setCollapsedWeeks] = useState<Record<string, boolean>>({});
@@ -160,29 +167,50 @@ export default function TechEarningsPage() {
 
     const settlementOf = (log: WeeklyLog) => computeWeeklyLogSettlement(log, jobsById);
 
-    const filteredLogs = useMemo(() => {
-        let results = weeklyLogs;
+    // Search + date range (status applied after, so its menu counts are accurate).
+    const searchedLogs = useMemo(() => {
+        let results = [...weeklyLogs];
         if (logSearchQuery) {
-            results = results.filter(l => (l.weekOf || '').toLowerCase().includes(logSearchQuery.toLowerCase()));
+            // Week, status, or any job on the log (ASMT id / WO # / title / client / city).
+            const q = logSearchQuery.toLowerCase().trim();
+            results = results.filter(l => (l.weekOf || '').toLowerCase().includes(q)
+                || (l.status || '').toLowerCase().includes(q)
+                || (l.items || []).some(item => {
+                    const job = jobsById.get(item.workOrderId);
+                    return [item.workOrderId, job?.id, job && externalWorkOrderId(job), job?.title, job?.description, job?.clientName, job?.location]
+                        .some(v => String(v || '').toLowerCase().includes(q));
+                }));
         }
         if (dateRange?.from) {
+            // A week matches when any of its 7 days falls in the range.
+            const start = startOfDay(dateRange.from).getTime();
+            const end = startOfDay(dateRange.to ?? dateRange.from).getTime();
             results = results.filter(log => {
-                try {
-                    const [m, d, y] = log.weekOf.split('-');
-                    const logDate = startOfDay(new Date(parseInt(y), parseInt(m) - 1, parseInt(d)));
-                    if (dateRange.from && dateRange.to) return logDate >= startOfDay(dateRange.from) && logDate <= startOfDay(dateRange.to);
-                    return isSameDay(logDate, dateRange.from!);
-                } catch { return true; }
+                const ws = parseLocalDate(log.weekOf);
+                if (!ws) return true;
+                return startOfDay(ws).getTime() <= end && addDays(startOfDay(ws), 6).getTime() >= start;
             });
         }
+        return results;
+    }, [weeklyLogs, logSearchQuery, dateRange, jobsById]);
+    const logStatusCounts = useMemo(() => {
+        const c: Record<string, number> = { all: searchedLogs.length };
+        for (const l of searchedLogs) c[l.status] = (c[l.status] || 0) + 1;
+        return c;
+    }, [searchedLogs]);
+    const logFiltersActive = !!logSearchQuery || !!dateRange?.from || logStatusFilter !== 'all';
+    const resetLogFilters = () => { setLogSearchQuery(''); setDateRange(undefined); setLogStatusFilter('all'); };
+    const filteredLogs = useMemo(() => {
+        const results = logStatusFilter === 'all' ? [...searchedLogs] : searchedLogs.filter(l => l.status === logStatusFilter);
         return results.sort((a, b) => {
             if (logSortBy === 'date-desc') return weekOfValue(b.weekOf) - weekOfValue(a.weekOf);
             if (logSortBy === 'date-asc') return weekOfValue(a.weekOf) - weekOfValue(b.weekOf);
             if (logSortBy === 'payout-desc') return settlementOf(b) - settlementOf(a);
+            if (logSortBy === 'status') return (a.status || '').localeCompare(b.status || '') || weekOfValue(b.weekOf) - weekOfValue(a.weekOf);
             return 0;
         });
-    }, [weeklyLogs, logSearchQuery, logSortBy, dateRange, jobsById]);
-    const logsPager = usePaged(filteredLogs, PAGE_SIZES_LARGE, 'tech-earnings-logs', []);
+    }, [searchedLogs, logStatusFilter, logSortBy, jobsById]);
+    const logsPager = usePaged(filteredLogs, PAGE_SIZES_LARGE, 'tech-earnings-logs', [logSearchQuery, logSortBy, dateRange, logStatusFilter]);
 
     // Reimbursements added from job verification during weekly log review —
     // these live in an embedded array on each weeklyLogs doc, separate from
@@ -365,73 +393,52 @@ export default function TechEarningsPage() {
     const calculatedMileageAmount = distanceMilesNum * mileageRate;
 
     if (!mounted || !currentTechId) {
-        return <div className="p-8 text-center uppercase tracking-widest text-text-muted text-xs">Accessing Financial Vault...</div>;
+        return <PageLoading label="Loading your earnings…" />;
     }
 
     return (
         <div className="space-y-6">
-            <header className="page-header">
-                <div>
-                    <p className="page-eyebrow flex items-center gap-2"><Coins size={12} />Financial Intelligence</p>
-                    <h1 className="page-title">Billing Terminal</h1>
-                    <p className="page-subtitle">Historical billing audit and reimbursement tracking.</p>
-                </div>
-            </header>
+            <PageHeader
+                eyebrow="Pay"
+                icon={Coins}
+                title="My earnings"
+                subtitle="Your weekly pay, pay stubs and reimbursements."
+            />
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-border-main border border-border-main rounded-lg overflow-hidden shadow-sm">
-                <div className="bg-bg-secondary p-6">
-                    <div className="flex justify-between items-start mb-2">
-                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Total Settled (YTD)</p>
-                        <CheckCircle2 className="h-4 w-4 text-text-green" />
-                    </div>
-                    <p className="text-3xl font-mono font-bold text-text-green">${metrics.settled.toFixed(2)}</p>
-                </div>
-                <div className="bg-bg-secondary p-6">
-                    <div className="flex justify-between items-start mb-2">
-                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Pending Audit</p>
-                        <ArrowUpRight className="h-4 w-4 text-accent-gold" />
-                    </div>
-                    <p className="text-3xl font-mono font-bold text-accent-gold">${metrics.pending.toFixed(2)}</p>
-                </div>
-                <div className="bg-bg-secondary p-6">
-                    <div className="flex justify-between items-start mb-2">
-                        <p className="text-[10px] uppercase font-bold text-text-muted tracking-widest">Pending Reimbursements</p>
-                        <Receipt className="h-4 w-4 text-text-primary" />
-                    </div>
-                    <p className="text-3xl font-mono font-bold text-text-primary">${metrics.pendingReim.toFixed(2)}</p>
-                </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                <StatCard label="Paid (approved)" icon={CheckCircle2} tone="done" value={`$${metrics.settled.toFixed(2)}`} sub={logFiltersActive ? 'Filtered logs' : 'All approved logs'} />
+                <StatCard label="Waiting on approval" icon={ArrowUpRight} tone="progress" value={`$${metrics.pending.toFixed(2)}`} sub="Submitted logs" />
+                <StatCard label="Reimbursements pending" icon={Receipt} value={`$${metrics.pendingReim.toFixed(2)}`} sub="Waiting on review" className="col-span-2 md:col-span-1" />
             </div>
 
             {/* Project Payouts */}
             {projectPayouts.length > 0 && (
                 <Card>
                     <CardHeader className="pb-4 border-b border-border-sub bg-bg-tertiary/30 text-left">
-                        <CardTitle>Project Earnings</CardTitle>
-                        <CardDescription>Payouts tied to project work — separate from weekly assignment logs.</CardDescription>
+                        <CardTitle className="text-base font-semibold">Project earnings</CardTitle>
+                        <CardDescription className="text-[12px]">Payouts for project work — separate from your weekly logs.</CardDescription>
                     </CardHeader>
-                    <CardContent className="p-0">
+                    <CardContent className="p-0 overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent border-border-sub">
-                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-4">Project</TableHead>
-                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Role</TableHead>
-                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Type</TableHead>
-                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Amount</TableHead>
-                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
-                                    <TableHead className="text-[10px] uppercase font-bold tracking-widest">Notes</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-wider pl-4">Project</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-wider">Role</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-wider">Type</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-wider">Amount</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-wider">Status</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold tracking-wider">Notes</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {projectPayouts.map((pp: any) => (
                                     <TableRow key={pp.id} className="hover:bg-bg-tertiary transition-colors border-border-sub">
-                                        <TableCell className="text-xs font-bold uppercase pl-4">{pp.projectId?.slice(0, 8)}</TableCell>
+                                        <TableCell className="text-xs font-bold pl-4">{pp.projectId?.slice(0, 8)}</TableCell>
                                         <TableCell className="text-xs text-text-muted capitalize">{pp.role}</TableCell>
                                         <TableCell className="text-xs text-text-muted capitalize">{pp.payType?.replace('_', ' ')}</TableCell>
                                         <TableCell className="font-mono text-sm font-bold tabular-nums">${(pp.amount || 0).toFixed(2)}</TableCell>
                                         <TableCell>
-                                            <Badge variant={pp.status === 'paid' ? 'completed' : pp.status === 'approved' ? 'active' : 'scheduled'} className="text-[8px] h-4 uppercase">
-                                                {pp.status}
-                                            </Badge>
+                                            <StatusBadge kind="pay" value={pp.status} />
                                         </TableCell>
                                         <TableCell className="text-xs text-text-muted max-w-[160px] truncate">{pp.notes || '—'}</TableCell>
                                     </TableRow>
@@ -443,49 +450,59 @@ export default function TechEarningsPage() {
             )}
 
             <Tabs defaultValue="logs" className="w-full">
-                <TabsList className="tabs mb-6">
-                    <TabsTrigger value="logs" className="tab">Logs</TabsTrigger>
-                    <TabsTrigger value="reimbursements" className="tab flex items-center gap-1.5"><Receipt size={12}/> Reimbursements</TabsTrigger>
+                <TabsList className="tabs mb-4 h-auto flex-nowrap justify-start bg-transparent p-0">
+                    <TabsTrigger value="logs" className="tab flex items-center gap-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white"><CalendarIcon size={14}/> Weekly pay</TabsTrigger>
+                    <TabsTrigger value="reimbursements" className="tab flex items-center gap-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white"><Receipt size={14}/> Reimbursements</TabsTrigger>
                 </TabsList>
 
                 {/* LOGS TAB */}
                 <TabsContent value="logs" className="mt-0">
                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-border-sub bg-bg-tertiary/30">
+                        <CardHeader className="space-y-3 pb-4 border-b border-border-sub bg-bg-tertiary/30">
                             <div className="text-left">
-                                <CardTitle>Billing Registry</CardTitle>
-                                <CardDescription>Historical weekly log audit and settlement tracking.</CardDescription>
+                                <CardTitle className="text-base font-semibold">Weekly pay</CardTitle>
+                                <CardDescription className="text-[12px]">Tap a week to see its jobs. Pay stubs are ready once a week is approved.</CardDescription>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <div className={cn(
-                                            "flex items-center h-9 rounded-md border border-border-main bg-bg-primary px-3 cursor-pointer hover:bg-bg-tertiary transition-all",
-                                            dateRange?.from && "border-brand-red ring-1 ring-brand-red"
-                                        )}>
-                                            <CalendarIcon size={12} className={cn("mr-2", dateRange?.from ? "text-brand-red" : "text-text-muted")} />
-                                            <span className={cn("text-[10px] font-bold uppercase tracking-widest", dateRange?.from ? "text-text-primary" : "text-text-muted")}>
-                                                {dateRange?.from ? (dateRange.to ? `${format(dateRange.from, "MM-dd")} – ${format(dateRange.to, "MM-dd")}` : format(dateRange.from, "MM-dd")) : "Pick Period"}
-                                            </span>
-                                        </div>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
-                                        <Calendar initialFocus mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} />
-                                    </PopoverContent>
-                                </Popover>
-                                <div className="search-wrap !mb-0 w-[180px]">
-                                    <Search className="h-3.5 w-3.5" />
-                                    <input className="search-input !w-full !h-9 !text-[10px] font-bold uppercase" placeholder="Filter records..." value={logSearchQuery} onChange={(e) => setLogSearchQuery(e.target.value)} />
+                            <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+                                <SearchField value={logSearchQuery} onChange={setLogSearchQuery} placeholder="Search week, job, WO # or client" className="lg:flex-1" />
+                                <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                                    <Select value={logStatusFilter} onValueChange={setLogStatusFilter}>
+                                        <SelectTrigger className="h-11 sm:h-9 sm:w-[160px] bg-bg-secondary border-border-main" aria-label="Status">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {([['all', 'All statuses'], ['Draft', 'Draft'], ['Submitted', 'Submitted'], ['Approved', 'Approved'], ['Rejected', 'Rejected']] as const).map(([v, label]) => (
+                                                <SelectItem key={v} value={v} className="text-[13px]">{label} ({logStatusCounts[v] || 0})</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <Select value={logSortBy} onValueChange={(v) => setLogSortBy(v as LogSortOption)}>
+                                        <SelectTrigger className="h-11 sm:h-9 sm:w-[160px] bg-bg-secondary border-border-main" aria-label="Sort">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="date-desc" className="text-[13px]">Newest week first</SelectItem>
+                                            <SelectItem value="date-asc" className="text-[13px]">Oldest week first</SelectItem>
+                                            <SelectItem value="payout-desc" className="text-[13px]">Highest pay</SelectItem>
+                                            <SelectItem value="status" className="text-[13px]">Status</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <DateRangeButton value={dateRange} onChange={setDateRange} className="col-span-2 sm:col-span-1" />
+                                    {logFiltersActive && (
+                                        <Button variant="ghost" onClick={resetLogFilters} className="col-span-2 h-11 sm:h-9 text-brand-red sm:col-span-1">
+                                            <X size={14} className="mr-1" /> Reset
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent className="p-0">
+                        <CardContent className="p-0 overflow-x-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow className="hover:bg-transparent border-border-sub">
-                                        <TableHead className="text-center text-[10px] uppercase font-bold tracking-widest">Week Period</TableHead>
-                                        <TableHead className="text-center text-[10px] uppercase font-bold tracking-widest">Audit Status</TableHead>
-                                        <TableHead className="text-right text-[10px] uppercase font-bold tracking-widest">Settlement</TableHead>
+                                        <TableHead className="pl-4">Week</TableHead>
+                                        <TableHead className="hidden sm:table-cell">Status</TableHead>
+                                        <TableHead className="text-right">Pay</TableHead>
                                         <TableHead className="w-[110px]" />
                                     </TableRow>
                                 </TableHeader>
@@ -515,33 +532,34 @@ export default function TechEarningsPage() {
                                                         return next;
                                                     })}
                                                 >
-                                                    <TableCell className="font-bold uppercase text-xs text-center">
+                                                    <TableCell className="pl-4 font-semibold text-[13px] whitespace-nowrap">
                                                         <span className="inline-flex items-center gap-1.5">
-                                                            {isExpanded ? <ChevronDown size={12} className="text-text-muted" /> : <ChevronRight size={12} className="text-text-muted" />}
+                                                            {isExpanded ? <ChevronDown size={14} className="text-text-muted" /> : <ChevronRight size={14} className="text-text-muted" />}
                                                             Week of {log.weekOf}
                                                         </span>
+                                                        <div className="mt-1 pl-5 flex flex-wrap gap-1 sm:hidden"><StatusBadge kind="log" value={log.status} />{hasOpenDispute && <Badge variant="destructive" className="text-[10px] uppercase tracking-wide">Dispute under review</Badge>}</div>
                                                     </TableCell>
-                                                    <TableCell className="text-center">
-                                                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                                                            <Badge variant={getStatusVariant(log.status)}>{(log.status || '').toUpperCase()}</Badge>
+                                                    <TableCell className="hidden sm:table-cell">
+                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                            <StatusBadge kind="log" value={log.status} />
                                                             {hasOpenDispute && (
-                                                                <Badge variant="destructive" className="text-[7px] h-4 uppercase tracking-widest animate-pulse">
-                                                                    Dispute Under Review
+                                                                <Badge variant="destructive" className="text-[10px] uppercase tracking-wide">
+                                                                    Dispute under review
                                                                 </Badge>
                                                             )}
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="text-right font-mono font-bold text-text-primary">${settlementOf(log).toFixed(2)}</TableCell>
-                                                    <TableCell className="text-right">
+                                                    <TableCell className="text-right font-mono font-semibold text-text-primary whitespace-nowrap">${settlementOf(log).toFixed(2)}</TableCell>
+                                                    <TableCell className="text-right pr-4">
                                                         {isApproved ? (
                                                             <button
-                                                                className="text-[9px] text-text-muted hover:text-text-primary uppercase font-bold border border-border-sub rounded px-2 py-1 hover:border-border-main transition-colors"
+                                                                className="inline-flex h-10 sm:h-8 items-center whitespace-nowrap text-[12px] text-text-muted hover:text-text-primary font-medium border border-border-main rounded-md px-3 hover:bg-bg-tertiary transition-colors"
                                                                 onClick={(e) => { e.stopPropagation(); downloadPaystub(log, tech || undefined, currentTechId || '', jobsById); }}
                                                             >
-                                                                <Download size={9} className="inline mr-1" /> Stub
+                                                                <Download size={12} className="mr-1.5" /> Pay stub
                                                             </button>
                                                         ) : (
-                                                            <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest">Pending approval</span>
+                                                            <span className="text-[12px] text-text-muted whitespace-nowrap">Not approved yet</span>
                                                         )}
                                                     </TableCell>
                                                 </TableRow>
@@ -549,18 +567,18 @@ export default function TechEarningsPage() {
                                                     <TableRow key={`${log.id}-detail`} className="hover:bg-transparent border-border-sub">
                                                         <TableCell colSpan={4} className="bg-bg-primary/40 p-0">
                                                             {verifiedItems.length === 0 ? (
-                                                                <p className="text-center py-6 text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No verified jobs in this log.</p>
+                                                                <p className="text-center py-6 text-[12px] text-text-muted">No confirmed jobs on this log.</p>
                                                             ) : (
                                                                 <div className="divide-y divide-border-sub">
                                                                     {verifiedItems.map(item => {
                                                                         const job = jobsById.get(item.workOrderId);
                                                                         const pay = effectiveJobPay(item, job);
                                                                         return (
-                                                                            <div key={item.id} className="flex items-center justify-between gap-4 px-6 py-3 text-left">
+                                                                            <div key={item.id} className="flex items-center justify-between gap-4 px-4 sm:px-6 py-3 text-left">
                                                                                 <div className="min-w-0">
-                                                                                    <p className="text-xs font-bold text-text-primary uppercase truncate">{job?.title || job?.description || 'Untitled Job'}</p>
-                                                                                    <p className="text-[9px] text-text-muted font-mono uppercase mt-0.5">
-                                                                                        ASMT: {item.workOrderId?.toUpperCase()}
+                                                                                    <p className="text-[13px] font-semibold text-text-primary truncate">{job?.title || job?.description || 'Untitled job'}</p>
+                                                                                    <p className="text-[11px] text-text-muted font-mono mt-0.5">
+                                                                                        ASMT {item.workOrderId?.toUpperCase()}
                                                                                         {job && ` · WO# ${displayWorkOrderNumber(job)}`}
                                                                                         {job?.scheduleDate && ` · ${job.scheduleDate}`}
                                                                                         {job?.scheduleTime && ` · ${job.scheduleTime}`}
@@ -573,13 +591,11 @@ export default function TechEarningsPage() {
                                                                 </div>
                                                             )}
                                                             {nonRejectedReimbs.length > 0 && (
-                                                                <div className="flex items-center justify-between gap-4 px-6 py-3 border-t border-border-sub bg-bg-secondary/40">
+                                                                <div className="flex items-center justify-between gap-4 px-4 sm:px-6 py-3 border-t border-border-sub bg-bg-secondary/40">
                                                                     <div className="flex items-center gap-2">
                                                                         <Receipt size={12} className="text-accent-gold" />
-                                                                        <span className="text-xs font-bold text-text-primary uppercase">Reimbursements</span>
-                                                                        <Badge variant={isApproved ? 'active' : 'onhold'} className="text-[7px] h-3.5 uppercase">
-                                                                            {isApproved ? 'Approved' : 'Pending'}
-                                                                        </Badge>
+                                                                        <span className="text-[13px] font-semibold text-text-primary">Reimbursements</span>
+                                                                        <StatusBadge kind="pay" value={isApproved ? 'approved' : 'submitted'} label={isApproved ? 'Approved' : 'Pending'} />
                                                                     </div>
                                                                     <span className="shrink-0 text-sm font-mono font-bold text-accent-gold">${reimbTotal.toFixed(2)}</span>
                                                                 </div>
@@ -591,8 +607,14 @@ export default function TechEarningsPage() {
                                         );
                                     })}
                                     {filteredLogs.length === 0 && (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="text-center py-12 text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No billing records found in current registry window.</TableCell>
+                                        <TableRow className="hover:bg-transparent">
+                                            <TableCell colSpan={4} className="p-4">
+                                                {weeklyLogs.length === 0 ? (
+                                                    <EmptyState compact icon={Coins} title="No weekly pay yet" description="Your weekly logs show up here once you have jobs." />
+                                                ) : (
+                                                    <EmptyState compact icon={Search} title="No weeks match these filters" action={<Button variant="outline" onClick={resetLogFilters}>Reset filters</Button>} />
+                                                )}
+                                            </TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
@@ -606,19 +628,19 @@ export default function TechEarningsPage() {
                 <TabsContent value="reimbursements" className="mt-0">
                     <Card>
                         <CardHeader className="pb-4 border-b border-border-sub bg-bg-tertiary/30">
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div className="text-left">
-                                    <CardTitle>Reimbursements</CardTitle>
-                                    <CardDescription>Submit receipt or mileage reimbursements. Approved entries are processed in payroll.</CardDescription>
+                                    <CardTitle className="text-base font-semibold">Reimbursements</CardTitle>
+                                    <CardDescription className="text-[12px]">Submit receipts or mileage. Approved amounts are paid with payroll.</CardDescription>
                                 </div>
-                                <Button size="sm" onClick={() => { setReimType('receipt'); setIsReimDialogOpen(true); }} className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest">
-                                    <Plus size={12} className="mr-1.5" /> Submit Reimbursement
+                                <Button onClick={() => { setReimType('receipt'); setIsReimDialogOpen(true); }} className="h-10 sm:h-9 px-4 bg-brand-red hover:bg-brand-red-hover text-white">
+                                    <Plus size={14} className="mr-1.5" /> Add reimbursement
                                 </Button>
                             </div>
                         </CardHeader>
                         <CardContent className="p-0">
                             {reimbursementWeeks.length === 0 ? (
-                                <p className="text-center py-12 text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No reimbursement requests on file.</p>
+                                <div className="p-4"><EmptyState compact icon={Receipt} title="No reimbursements yet" description="Receipts and mileage you submit show up here." /></div>
                             ) : reimbursementWeeks.map(({ weekOf, items, total }) => {
                                 const [m, d, y] = weekOf.split('-').map(Number);
                                 const weekStart = new Date(y, m - 1, d);
@@ -633,58 +655,56 @@ export default function TechEarningsPage() {
                                         >
                                             <div className="flex items-center gap-2 min-w-0">
                                                 {isCollapsed ? <ChevronRight size={14} className="text-text-muted shrink-0" /> : <ChevronDown size={14} className="text-text-muted shrink-0" />}
-                                                <span className="text-[11px] font-bold uppercase tracking-widest text-text-primary truncate">
+                                                <span className="text-[13px] font-semibold text-text-primary truncate">
                                                     Week of {format(weekStart, 'MMM d')} – {format(weekEnd, 'MMM d, yyyy')}
                                                 </span>
-                                                <span className="text-[10px] text-text-muted font-bold uppercase shrink-0">({items.length})</span>
+                                                <span className="text-[12px] text-text-muted shrink-0">({items.length})</span>
                                             </div>
-                                            <span className="text-xs font-mono font-bold text-text-green shrink-0">${total.toFixed(2)}</span>
+                                            <span className="text-[13px] font-mono font-semibold text-text-green shrink-0">${total.toFixed(2)}</span>
                                         </button>
                                         {!isCollapsed && (
-                                            <Table>
+                                            <div className="overflow-x-auto"><Table>
                                                 <TableHeader>
                                                     <TableRow className="hover:bg-transparent border-border-sub">
-                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest pl-4">Date</TableHead>
-                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Type</TableHead>
-                                                        <TableHead className="text-[10px] uppercase font-bold tracking-widest">Details</TableHead>
-                                                        <TableHead className="text-right text-[10px] uppercase font-bold tracking-widest">Amount</TableHead>
-                                                        <TableHead className="text-center text-[10px] uppercase font-bold tracking-widest">Status</TableHead>
+                                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider pl-4">Date</TableHead>
+                                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider">Type</TableHead>
+                                                        <TableHead className="text-[10px] uppercase font-bold tracking-wider">Details</TableHead>
+                                                        <TableHead className="text-right text-[10px] uppercase font-bold tracking-wider">Amount</TableHead>
+                                                        <TableHead className="text-center text-[10px] uppercase font-bold tracking-wider">Status</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
                                                     {items.map(item => (
                                                         <TableRow key={`${item.source}-${item.id}`} className="hover:bg-bg-tertiary transition-colors border-border-sub">
-                                                            <TableCell className="text-xs font-bold uppercase pl-4">{item.date}</TableCell>
+                                                            <TableCell className="text-[12px] font-medium pl-4 whitespace-nowrap">{item.date}</TableCell>
                                                             <TableCell>
                                                                 <Badge
                                                                     variant={item.type === 'mileage' ? 'onhold' : item.type === 'job' ? 'outline' : 'default'}
-                                                                    className="text-[8px] h-4 uppercase flex items-center gap-1 w-fit"
+                                                                    className="text-[10px] uppercase tracking-wide flex items-center gap-1 w-fit whitespace-nowrap"
                                                                 >
-                                                                    {item.type === 'mileage' ? <><Car size={8} />&nbsp;Mileage</> : item.type === 'job' ? <><Wrench size={8} />&nbsp;Job Reimb.</> : 'Receipt'}
+                                                                    {item.type === 'mileage' ? <><Car size={10} />&nbsp;Mileage</> : item.type === 'job' ? <><Wrench size={10} />&nbsp;Job</> : 'Receipt'}
                                                                 </Badge>
                                                             </TableCell>
                                                             <TableCell>
-                                                                <div className="text-xs text-text-primary truncate max-w-[200px]">{item.label}</div>
-                                                                {item.sub && <div className="text-[10px] text-text-muted">{item.sub}</div>}
+                                                                <div className="text-[13px] text-text-primary truncate max-w-[200px]">{item.label}</div>
+                                                                {item.sub && <div className="text-[12px] text-text-muted">{item.sub}</div>}
                                                                 {item.receiptPhotoUrls?.[0] && (
                                                                     <button
-                                                                        className="text-[9px] text-brand-red hover:underline mt-0.5"
+                                                                        className="text-[12px] text-brand-red hover:underline mt-0.5"
                                                                         onClick={() => window.open(item.receiptPhotoUrls![0], '_blank')}
                                                                     >
                                                                         View receipt
                                                                     </button>
                                                                 )}
                                                             </TableCell>
-                                                            <TableCell className="text-right font-mono text-sm font-bold">${item.amount.toFixed(2)}</TableCell>
+                                                            <TableCell className="text-right font-mono text-[13px] font-semibold whitespace-nowrap">${item.amount.toFixed(2)}</TableCell>
                                                             <TableCell className="text-center">
-                                                                <Badge variant={getStatusVariant(item.status)} className="text-[8px] h-4 uppercase">
-                                                                    {item.status}
-                                                                </Badge>
+                                                                <StatusBadge kind="request" value={item.status} />
                                                             </TableCell>
                                                         </TableRow>
                                                     ))}
                                                 </TableBody>
-                                            </Table>
+                                            </Table></div>
                                         )}
                                     </div>
                                 );
@@ -698,8 +718,8 @@ export default function TechEarningsPage() {
             <Dialog open={isReimDialogOpen} onOpenChange={setIsReimDialogOpen}>
                 <DialogContent className="sm:max-w-[520px] bg-bg-elevated border-border-default">
                     <DialogHeader>
-                        <DialogTitle className="uppercase tracking-widest font-bold text-sm flex items-center gap-2">
-                            <Receipt size={16} className="text-brand-red" /> Submit Reimbursement
+                        <DialogTitle className="text-base font-semibold flex items-center gap-2">
+                            <Receipt size={16} className="text-brand-red" /> Add reimbursement
                         </DialogTitle>
                         <DialogDescription>Choose the type of reimbursement to submit.</DialogDescription>
                     </DialogHeader>
@@ -709,7 +729,7 @@ export default function TechEarningsPage() {
                         <button
                             onClick={() => setReimType('receipt')}
                             className={cn(
-                                'flex-1 py-2.5 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-colors',
+                                'flex-1 h-10 flex items-center justify-center gap-2 text-[13px] font-medium transition-colors',
                                 reimType === 'receipt' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary bg-bg-secondary'
                             )}
                         >
@@ -719,7 +739,7 @@ export default function TechEarningsPage() {
                         <button
                             onClick={() => setReimType('mileage')}
                             className={cn(
-                                'flex-1 py-2.5 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-colors',
+                                'flex-1 h-10 flex items-center justify-center gap-2 text-[13px] font-medium transition-colors',
                                 reimType === 'mileage' ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary bg-bg-secondary'
                             )}
                         >
@@ -732,24 +752,24 @@ export default function TechEarningsPage() {
                         <div className="space-y-4 pt-1">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Purchase Date *</Label>
+                                    <Label className="text-[12px] font-semibold text-text-muted">Purchase date *</Label>
                                     <Input type="date" value={receiptForm.purchaseDate} onChange={e => setReceiptForm(p => ({ ...p, purchaseDate: e.target.value }))} className="h-10 text-xs" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Amount ($) *</Label>
+                                    <Label className="text-[12px] font-semibold text-text-muted">Amount ($) *</Label>
                                     <Input type="number" step="0.01" min="0" value={receiptForm.amount} onChange={e => setReceiptForm(p => ({ ...p, amount: e.target.value }))} className="h-10 text-xs font-mono" placeholder="0.00" />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Vendor Name</Label>
+                                <Label className="text-[12px] font-semibold text-text-muted">Vendor</Label>
                                 <Input value={receiptForm.vendorName} onChange={e => setReceiptForm(p => ({ ...p, vendorName: e.target.value }))} className="h-10 text-xs" placeholder="Store or vendor" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Description *</Label>
+                                <Label className="text-[12px] font-semibold text-text-muted">Description *</Label>
                                 <Input value={receiptForm.description} onChange={e => setReceiptForm(p => ({ ...p, description: e.target.value }))} className="h-10 text-xs" placeholder="What was purchased?" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Related Job (optional)</Label>
+                                <Label className="text-[12px] font-semibold text-text-muted">Related job (optional)</Label>
                                 <Select value={receiptForm.relatedJobId} onValueChange={v => setReceiptForm(p => ({ ...p, relatedJobId: v === '__none__' ? '' : v }))}>
                                     <SelectTrigger className="h-10 text-xs bg-bg-primary border-border-main">
                                         <SelectValue placeholder="Select a job..." />
@@ -765,21 +785,21 @@ export default function TechEarningsPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Notes</Label>
+                                <Label className="text-[12px] font-semibold text-text-muted">Notes</Label>
                                 <Input value={receiptForm.notes} onChange={e => setReceiptForm(p => ({ ...p, notes: e.target.value }))} className="h-10 text-xs" placeholder="Optional notes" />
                             </div>
                             {/* Receipt photo upload */}
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Receipt Photo (optional)</Label>
+                                <Label className="text-[12px] font-semibold text-text-muted">Receipt photo (optional)</Label>
                                 <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleReceiptPhotoSelect} />
                                 {receiptPhotoUrl ? (
                                     <div className="flex items-center gap-3 p-2 rounded-lg border border-border-sub bg-bg-secondary">
                                         <img src={receiptPhotoUrl} alt="Receipt" className="h-12 w-12 rounded object-cover shrink-0 cursor-pointer" onClick={() => window.open(receiptPhotoUrl, '_blank')} />
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-[10px] font-bold text-text-primary">Receipt uploaded</p>
-                                            <p className="text-[9px] text-text-muted">Click image to view</p>
+                                            <p className="text-[12px] font-semibold text-text-primary">Receipt uploaded</p>
+                                            <p className="text-[12px] text-text-muted">Tap the image to view</p>
                                         </div>
-                                        <button onClick={() => setReceiptPhotoUrl(null)} className="text-text-muted hover:text-text-primary p-1">
+                                        <button onClick={() => setReceiptPhotoUrl(null)} aria-label="Remove receipt" className="flex h-10 w-10 items-center justify-center text-text-muted hover:text-text-primary">
                                             <X size={14} />
                                         </button>
                                     </div>
@@ -787,10 +807,10 @@ export default function TechEarningsPage() {
                                     <button
                                         onClick={() => fileInputRef.current?.click()}
                                         disabled={uploading}
-                                        className="w-full h-16 rounded-lg border border-dashed border-border-main flex items-center justify-center gap-2 text-[10px] font-bold uppercase text-text-muted hover:text-text-primary hover:border-brand-red transition-colors"
+                                        className="w-full h-16 rounded-lg border border-dashed border-border-main flex items-center justify-center gap-2 text-[13px] font-medium text-text-muted hover:text-text-primary hover:border-brand-red transition-colors"
                                     >
                                         {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-                                        {uploading ? 'Uploading...' : 'Upload Receipt Photo'}
+                                        {uploading ? 'Uploading...' : 'Upload receipt photo'}
                                     </button>
                                 )}
                             </div>
@@ -802,24 +822,24 @@ export default function TechEarningsPage() {
                         <div className="space-y-4 pt-1">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Date Driven *</Label>
+                                    <Label className="text-[12px] font-semibold text-text-muted">Date driven *</Label>
                                     <Input type="date" value={mileageForm.dateDriven} onChange={e => setMileageForm(p => ({ ...p, dateDriven: e.target.value }))} className="h-10 text-xs" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Distance (miles) *</Label>
+                                    <Label className="text-[12px] font-semibold text-text-muted">Distance (miles) *</Label>
                                     <Input type="number" step="0.1" min="0" value={mileageForm.distanceMiles} onChange={e => setMileageForm(p => ({ ...p, distanceMiles: e.target.value }))} className="h-10 text-xs font-mono" placeholder="0.0" />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">From Location *</Label>
+                                <Label className="text-[12px] font-semibold text-text-muted">From *</Label>
                                 <AddressAutocompleteInput value={mileageForm.fromLocation} onChange={v => setMileageForm(p => ({ ...p, fromLocation: v }))} className="h-10 text-xs" placeholder="Starting address or location" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">To Location *</Label>
+                                <Label className="text-[12px] font-semibold text-text-muted">To *</Label>
                                 <AddressAutocompleteInput value={mileageForm.toLocation} onChange={v => setMileageForm(p => ({ ...p, toLocation: v }))} className="h-10 text-xs" placeholder="Destination address or location" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Related Job (optional)</Label>
+                                <Label className="text-[12px] font-semibold text-text-muted">Related job (optional)</Label>
                                 <Select value={mileageForm.relatedJobId} onValueChange={v => setMileageForm(p => ({ ...p, relatedJobId: v === '__none__' ? '' : v }))}>
                                     <SelectTrigger className="h-10 text-xs bg-bg-primary border-border-main">
                                         <SelectValue placeholder="Select a job..." />
@@ -835,7 +855,7 @@ export default function TechEarningsPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] uppercase font-bold text-text-muted">Notes (optional)</Label>
+                                <Label className="text-[12px] font-semibold text-text-muted">Notes (optional)</Label>
                                 <Input value={mileageForm.notes} onChange={e => setMileageForm(p => ({ ...p, notes: e.target.value }))} className="h-10 text-xs" placeholder="Purpose of trip" />
                             </div>
                             {/* Calculated amount preview */}
@@ -843,7 +863,7 @@ export default function TechEarningsPage() {
                                 <div className="p-3 rounded-lg bg-bg-secondary border border-border-sub flex items-center gap-3">
                                     <Navigation size={14} className="text-brand-red shrink-0" />
                                     <div>
-                                        <p className="text-[10px] font-bold uppercase text-text-muted tracking-widest">Calculated Reimbursement</p>
+                                        <p className="text-[10px] font-semibold uppercase text-text-muted tracking-wider">Reimbursement</p>
                                         <p className="text-sm font-mono font-bold text-text-primary">
                                             {distanceMilesNum.toFixed(1)} mi × ${mileageRate.toFixed(2)}/mi = <span className="text-text-green">${calculatedMileageAmount.toFixed(2)}</span>
                                         </p>
@@ -857,7 +877,7 @@ export default function TechEarningsPage() {
                         <Button
                             variant="outline"
                             onClick={() => setIsReimDialogOpen(false)}
-                            className="flex-1 uppercase font-bold text-[10px] tracking-widest"
+                            className="flex-1 uppercase font-bold text-[10px] tracking-wider"
                         >
                             Cancel
                         </Button>
@@ -867,9 +887,9 @@ export default function TechEarningsPage() {
                                 ? !receiptForm.purchaseDate || !receiptForm.amount || !receiptForm.description
                                 : !mileageForm.dateDriven || !mileageForm.fromLocation || !mileageForm.toLocation || !mileageForm.distanceMiles
                             )}
-                            className="flex-1 bg-brand-red hover:bg-brand-red/90 uppercase font-bold text-[10px] tracking-widest text-white"
+                            className="flex-1 bg-brand-red hover:bg-brand-red/90 uppercase font-bold text-[10px] tracking-wider text-white"
                         >
-                            {submitting ? 'Submitting...' : reimType === 'receipt' ? 'Submit Receipt' : 'Submit Mileage'}
+                            {submitting ? 'Submitting...' : reimType === 'receipt' ? 'Submit receipt' : 'Submit mileage'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

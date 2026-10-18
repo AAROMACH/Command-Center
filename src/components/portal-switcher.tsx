@@ -37,7 +37,7 @@ export function PortalSwitcher({ collapsed = false }: { collapsed?: boolean }) {
           variant="ghost"
           size="sm"
           className={cn(
-            'h-8 gap-1.5 text-[9px] font-black uppercase tracking-widest text-text-muted hover:text-text-primary hover:bg-bg-tertiary border border-border-sub',
+            'h-8 gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary hover:bg-bg-tertiary border border-border-sub',
             collapsed ? 'w-8 px-0 justify-center' : 'w-full justify-between px-2'
           )}
         >
@@ -57,7 +57,7 @@ export function PortalSwitcher({ collapsed = false }: { collapsed?: boolean }) {
               key={portal.id}
               onClick={() => router.push(portal.path)}
               className={cn(
-                'text-[10px] font-bold uppercase tracking-widest gap-2 cursor-pointer',
+                'text-[13px] gap-2 cursor-pointer',
                 isActive ? 'text-brand-red' : 'text-text-muted hover:text-text-primary'
               )}
             >

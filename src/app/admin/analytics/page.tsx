@@ -8,6 +8,8 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { isTech } from '@/lib/permissions';
 import { BarChart2, ShieldAlert, Users, AlertTriangle, Clock, ChevronRight, Mail, Phone, ArrowLeft, RefreshCw, Filter, X, Activity as ActivityIcon } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { PageHeader } from '@/components/page-header';
+import { StatusBadge } from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -34,7 +36,7 @@ import dynamic from 'next/dynamic';
 // Leaflet touches window — load the density map in the browser only.
 const JobDensityMap = dynamic(() => import('./components/job-density-map').then(m => m.JobDensityMap), {
     ssr: false,
-    loading: () => <div className="h-[520px] rounded-lg border border-border-main bg-bg-tertiary/30 flex items-center justify-center text-[10px] font-bold uppercase tracking-widest text-text-muted">Loading map…</div>,
+    loading: () => <div className="h-[520px] rounded-lg border border-border-main bg-bg-tertiary/30 flex items-center justify-center text-[10px] font-bold uppercase tracking-wider text-text-muted">Loading map…</div>,
 });
 import { findUnloggedCompletions, findMismatchedLogEntries, findDesyncedAssignments } from '@/lib/weekly-log-audit';
 import { UnloggedCompletions } from './components/unlogged-completions';
@@ -276,30 +278,26 @@ export default function FieldIntelligencePage() {
 
     return (
         <div className="space-y-5">
-            <header className="page-header">
-                <div className="text-left">
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <BarChart2 size={12} />
-                        Real-time Field Operations
-                    </p>
-                    <h1 className="page-title">Intel</h1>
-                    <p className="page-subtitle">Live field awareness, technician status, and operational analytics.</p>
-                </div>
-            </header>
+            <PageHeader
+                eyebrow="Reports"
+                icon={BarChart2}
+                title="Insights"
+                subtitle="Customer trends, technician performance, app activity and flags."
+            />
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <div className="flex justify-center">
-                    <TabsList className="tabs border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-center mb-8">
-                        <TabsTrigger value="intelligence" className="tab-trigger-activity">Intel</TabsTrigger>
-                        <TabsTrigger value="techs" className="tab-trigger-activity" onClick={() => setSelectedTechId(null)}>
+                <div className="overflow-x-auto">
+                    <TabsList className="tabs mb-6 w-max">
+                        <TabsTrigger value="intelligence" className="tab">Customers</TabsTrigger>
+                        <TabsTrigger value="techs" className="tab" onClick={() => setSelectedTechId(null)}>
                             Techs
                         </TabsTrigger>
-                        <TabsTrigger value="app_activity" className="tab-trigger-activity">App Activity</TabsTrigger>
-                        <TabsTrigger value="insights" className="tab-trigger-activity">Insights</TabsTrigger>
-                        <TabsTrigger value="flags" className="tab-trigger-activity flex items-center gap-3">
+                        <TabsTrigger value="app_activity" className="tab">App activity</TabsTrigger>
+                        <TabsTrigger value="insights" className="tab">Trends</TabsTrigger>
+                        <TabsTrigger value="flags" className="tab flex items-center gap-2">
                             Flags
                             {flagsTotal > 0 && (
-                                <Badge variant="destructive" className="h-5 px-1.5 text-[9px] min-w-[20px] flex items-center justify-center font-black">{flagsTotal}</Badge>
+                                <Badge variant="destructive" className="h-5 px-1.5 text-[11px] min-w-[20px] flex items-center justify-center font-bold">{flagsTotal}</Badge>
                             )}
                         </TabsTrigger>
                     </TabsList>
@@ -311,18 +309,18 @@ export default function FieldIntelligencePage() {
                     <Card className="bg-bg-secondary border-border-main mb-5">
                         <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
                             <div className="min-w-0">
-                                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-text-primary">Job Density — Michigan &amp; Ohio</p>
+                                <p className="text-[11px] font-bold text-text-primary">Job density — Michigan &amp; Ohio</p>
                                 <p className="text-[10px] text-text-muted">{densityJobs.length.toLocaleString()} completed job{densityJobs.length === 1 ? '' : 's'} in the dashboard view below</p>
                             </div>
-                            <Button size="sm" variant="outline" className="h-8 text-[9px] font-black uppercase tracking-widest" onClick={() => setDensityOpen(true)}>
-                                Open Map
+                            <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase tracking-wider" onClick={() => setDensityOpen(true)}>
+                                Open map
                             </Button>
                         </CardContent>
                     </Card>
                     <Dialog open={densityOpen} onOpenChange={setDensityOpen}>
                         <DialogContent className="sm:max-w-4xl bg-bg-elevated border-border-default">
                             <DialogHeader>
-                                <DialogTitle className="text-sm font-black uppercase tracking-widest">Job Density — Michigan &amp; Ohio</DialogTitle>
+                                <DialogTitle className="text-sm font-bold">Job density — Michigan &amp; Ohio</DialogTitle>
                                 <DialogDescription className="text-[10px]">Darker squares = more jobs in that area for the selected filters. Hover a square for the count and top cities.</DialogDescription>
                             </DialogHeader>
                             {densityOpen && <JobDensityMap jobs={densityJobs} />}
@@ -342,8 +340,8 @@ export default function FieldIntelligencePage() {
                         <InnerTabsList className="tabs mb-4">
                             {([
                                 { value: 'anomalies', label: 'Anomalies', count: anomalyCounts },
-                                { value: 'unlogged', label: 'Unlogged Jobs', count: unloggedAudit.rows.length },
-                                { value: 'wrong-tech', label: 'Wrong Tech', count: wrongTechCount },
+                                { value: 'unlogged', label: 'Unlogged jobs', count: unloggedAudit.rows.length },
+                                { value: 'wrong-tech', label: 'Wrong tech', count: wrongTechCount },
                             ] as const).map(t => (
                                 <InnerTabsTrigger key={t.value} value={t.value} className="tab">
                                     {t.label}{t.count > 0 && <span className="tab-count">({t.count})</span>}
@@ -352,12 +350,12 @@ export default function FieldIntelligencePage() {
                         </InnerTabsList>
                         <InnerTabsContent value="anomalies" className="m-0">
                         <div className="space-y-4 text-left">
-                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 px-1">Anomaly Registry</h3>
+                            <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 px-1">Anomalies</h3>
                             {anomalyCounts === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
                                     <ShieldAlert size={28} className="text-text-green" />
-                                    <p className="text-[11px] font-bold text-text-green uppercase tracking-wide">All Clear — No Anomalies Detected</p>
-                                    <p className="text-[10px] text-text-muted uppercase tracking-widest">All work orders assigned. All weekly logs submitted.</p>
+                                    <p className="text-[11px] font-bold text-text-green tracking-wide">All clear — no anomalies</p>
+                                    <p className="text-[10px] text-text-muted uppercase tracking-wider">Every job is assigned and every weekly log is submitted.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-2 text-left">
@@ -365,8 +363,8 @@ export default function FieldIntelligencePage() {
                                         <div key={row.id} className="p-2.5 rounded-lg border border-border-alert bg-brand-red-dim/5 flex gap-3 text-left items-start">
                                             <AlertTriangle size={14} className="text-text-red mt-0.5 shrink-0" />
                                             <div className="space-y-0.5 text-left min-w-0">
-                                                <p className="text-[11px] font-bold text-text-red uppercase tracking-wide truncate">{row.wo.title || row.wo.id}</p>
-                                                <p className="text-[10px] text-text-muted uppercase tracking-widest">Unassigned — no technician allocated</p>
+                                                <p className="text-[11px] font-bold text-text-red tracking-wide truncate">{row.wo.title || row.wo.id}</p>
+                                                <p className="text-[10px] text-text-muted uppercase tracking-wider">Unassigned — no technician yet</p>
                                             </div>
                                         </div>
                                     ) : (() => {
@@ -375,8 +373,8 @@ export default function FieldIntelligencePage() {
                                             <div key={row.id} className="p-2.5 rounded-lg border border-border-warn bg-brand-amber-dim/5 flex gap-3 text-left items-start">
                                                 <Clock size={14} className="text-text-amber mt-0.5 shrink-0" />
                                                 <div className="space-y-0.5 text-left min-w-0">
-                                                    <p className="text-[11px] font-bold text-text-amber uppercase tracking-wide">Week of {row.wl.weekOf}{tech ? ` — ${tech.name}` : ''}</p>
-                                                    <p className="text-[10px] text-text-muted uppercase tracking-widest">Draft log not submitted</p>
+                                                    <p className="text-[11px] font-bold text-text-amber tracking-wide">Week of {row.wl.weekOf}{tech ? ` — ${tech.name}` : ''}</p>
+                                                    <p className="text-[10px] text-text-muted uppercase tracking-wider">Draft log not submitted</p>
                                                 </div>
                                             </div>
                                         );
@@ -398,8 +396,8 @@ export default function FieldIntelligencePage() {
                 <TabsContent value="techs" className="m-0">
                     {selectedTechId && activeTech && techStats ? (
                         <div className="space-y-6 animate-in fade-in duration-300">
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedTechId(null)} className="h-8 text-[10px] uppercase font-bold text-text-muted">
-                                <ArrowLeft size={14} className="mr-2"/> Back to Roster
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedTechId(null)} className="h-8 text-[10px] font-bold text-text-muted">
+                                <ArrowLeft size={14} className="mr-2"/> Back to technicians
                             </Button>
 
                             <div className="flex flex-col lg:flex-row gap-6">
@@ -411,18 +409,18 @@ export default function FieldIntelligencePage() {
                                                 <AvatarFallback className="text-[10px]">{(activeTech.name || 'U').charAt(0)}</AvatarFallback>
                                             </Avatar>
                                             <div>
-                                                <h2 className="text-lg font-bold text-text-primary uppercase tracking-wide">{activeTech.name}</h2>
-                                                <p className="text-[10px] text-text-muted font-mono uppercase tracking-widest">{activeTech.email}</p>
+                                                <h2 className="text-lg font-bold text-text-primary tracking-wide">{activeTech.name}</h2>
+                                                <p className="text-[10px] text-text-muted font-mono uppercase tracking-wider">{activeTech.email}</p>
                                             </div>
                                             <div className="pt-3 border-t border-border-sub/30 space-y-1">
-                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Penalty Points</p>
+                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Penalty points</p>
                                                 <p className={cn("text-4xl font-mono font-bold", techStats.points === 0 ? 'text-text-green' : 'text-accent-gold')}>{techStats.points}</p>
                                             </div>
                                             <div className="flex gap-2">
-                                                <Button variant="outline" size="sm" className="flex-1 h-8 !text-[10px] font-bold uppercase" asChild>
+                                                <Button variant="outline" size="sm" className="flex-1 h-8 !text-[10px] font-bold" asChild>
                                                     <a href={`mailto:${activeTech.email}`}><Mail size={12} className="mr-1.5"/> Email</a>
                                                 </Button>
-                                                <Button variant="outline" size="sm" className="flex-1 h-8 !text-[10px] font-bold uppercase" asChild>
+                                                <Button variant="outline" size="sm" className="flex-1 h-8 !text-[10px] font-bold" asChild>
                                                     <a href={`tel:${activeTech.phone}`}><Phone size={12} className="mr-1.5"/> Call</a>
                                                 </Button>
                                             </div>
@@ -432,41 +430,41 @@ export default function FieldIntelligencePage() {
 
                                 <div className="flex-1 overflow-hidden">
                                     <InnerTabs defaultValue="assignments" className="w-full">
-                                        <InnerTabsList className="tabs bg-bg-secondary/50 border border-border-sub mb-4 h-10 w-full justify-start gap-8 px-4">
-                                            <InnerTabsTrigger value="assignments" className="tab h-full data-[state=active]:bg-brand-red">Assignments ({techStats.myJobs.length})</InnerTabsTrigger>
-                                            <InnerTabsTrigger value="weeklogs" className="tab h-full data-[state=active]:bg-brand-red">Weekly Logs ({techStats.myLogs.length})</InnerTabsTrigger>
+                                        <InnerTabsList className="tabs mb-4">
+                                            <InnerTabsTrigger value="assignments" className="tab">Assignments ({techStats.myJobs.length})</InnerTabsTrigger>
+                                            <InnerTabsTrigger value="weeklogs" className="tab">Weekly logs ({techStats.myLogs.length})</InnerTabsTrigger>
                                         </InnerTabsList>
                                         <InnerTabsContent value="assignments" className="m-0">
                                             <div className="table-wrap p-0">
                                                 <Table>
                                                     <TableHeader className="bg-bg-tertiary">
                                                         <TableRow className="hover:bg-transparent border-border-sub">
-                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest pl-4">Mission</TableHead>
-                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest">Date</TableHead>
-                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest text-center">Status</TableHead>
-                                                            <TableHead className="text-[9px] uppercase font-black tracking-widest text-right pr-4">Admin</TableHead>
+                                                            <TableHead className="text-[10px] uppercase font-bold tracking-wider pl-4">Job</TableHead>
+                                                            <TableHead className="text-[10px] uppercase font-bold tracking-wider">Date</TableHead>
+                                                            <TableHead className="text-[10px] uppercase font-bold tracking-wider text-center">Status</TableHead>
+                                                            <TableHead className="text-[10px] uppercase font-bold tracking-wider text-right pr-4">Admin</TableHead>
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
                                                         {techJobsPager.items.map(wo => (
                                                             <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary cursor-pointer" onClick={() => setManagedJob(wo)}>
                                                                 <TableCell className="pl-4 py-3">
-                                                                    <p className="text-xs font-bold text-text-primary uppercase">{wo.title || wo.description}</p>
-                                                                    <p className="text-[9px] text-text-muted font-mono">{wo.id.toUpperCase()}</p>
+                                                                    <p className="text-xs font-bold text-text-primary">{wo.title || wo.description}</p>
+                                                                    <p className="text-[11px] text-text-muted font-mono">{wo.id.toUpperCase()}</p>
                                                                 </TableCell>
-                                                                <TableCell className="text-[10px] font-mono text-text-secondary uppercase">{formatDateDisplay(wo.scheduleDate)}</TableCell>
+                                                                <TableCell className="text-[10px] font-mono text-text-secondary">{formatDateDisplay(wo.scheduleDate)}</TableCell>
                                                                 <TableCell className="text-center">
-                                                                    <Badge variant={wo.status === 'completed' ? 'active' : 'onhold'} className="h-4 text-[7px] uppercase tracking-widest">{JOB_STATUS_OPTIONS.find(o => o.value === wo.status)?.label || wo.status}</Badge>
+                                                                    <StatusBadge kind="job" value={wo.status} label={JOB_STATUS_OPTIONS.find(o => o.value === wo.status)?.label} />
                                                                 </TableCell>
                                                                 <TableCell className="text-right pr-4">
-                                                                    <Button variant="outline" size="sm" className="h-7 text-[9px] uppercase font-bold" onClick={e => { e.stopPropagation(); setManagedJob(wo); }}>
+                                                                    <Button variant="outline" size="sm" className="h-7 text-[11px] font-bold" onClick={e => { e.stopPropagation(); setManagedJob(wo); }}>
                                                                         Manage
                                                                     </Button>
                                                                 </TableCell>
                                                             </TableRow>
                                                         ))}
                                                         {techStats.myJobs.length === 0 && (
-                                                            <TableRow><TableCell colSpan={4} className="text-center text-text-muted text-[10px] uppercase py-8">No assignments found</TableCell></TableRow>
+                                                            <TableRow><TableCell colSpan={4} className="text-center text-text-muted text-[10px] py-8">No jobs yet</TableCell></TableRow>
                                                         )}
                                                     </TableBody>
                                                 </Table>
@@ -478,18 +476,18 @@ export default function FieldIntelligencePage() {
                                                 {techLogsPager.items.map(log => (
                                                     <div key={log.id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary flex items-center justify-between">
                                                         <div>
-                                                            <p className="text-[10px] font-bold text-text-primary uppercase">Week of {log.weekOf}</p>
+                                                            <p className="text-[10px] font-bold text-text-primary">Week of {log.weekOf}</p>
                                                             {canSeePay ? (
-                                                                <p className="text-[9px] text-text-muted uppercase">Payout: ${computeWeeklyLogSettlement(log, jobsById).toFixed(2)}</p>
+                                                                <p className="text-[11px] text-text-muted">Payout: ${computeWeeklyLogSettlement(log, jobsById).toFixed(2)}</p>
                                                             ) : (
-                                                                <p className="text-[9px] text-text-muted uppercase">{log.items?.length || 0} job{(log.items?.length || 0) !== 1 ? 's' : ''}</p>
+                                                                <p className="text-[11px] text-text-muted">{log.items?.length || 0} job{(log.items?.length || 0) !== 1 ? 's' : ''}</p>
                                                             )}
                                                         </div>
-                                                        <Badge variant={log.status === 'Approved' ? 'active' : log.status === 'Submitted' ? 'scheduled' : 'onhold'} className="h-4 text-[7px] uppercase">{log.status}</Badge>
+                                                        <StatusBadge kind="log" value={log.status} />
                                                     </div>
                                                 ))}
                                                 {techStats.myLogs.length === 0 && (
-                                                    <p className="text-center text-text-muted text-[10px] uppercase py-8">No weekly logs found</p>
+                                                    <p className="text-center text-text-muted text-[10px] py-8">No weekly logs yet</p>
                                                 )}
                                                 <ListPager pager={techLogsPager} noun="logs" />
                                             </div>
@@ -501,8 +499,8 @@ export default function FieldIntelligencePage() {
                     ) : (
                         <div className="space-y-2">
                             <div className="flex justify-between items-center px-1 mb-4">
-                                <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">{staffTechs.length} Technicians</p>
-                                <Button variant="ghost" size="sm" className="h-7 text-[10px] uppercase font-bold text-text-muted" onClick={() => setSelectedTechId(null)}>
+                                <p className="text-[11px] font-bold text-text-muted">{staffTechs.length} Technicians</p>
+                                <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold text-text-muted" onClick={() => setSelectedTechId(null)}>
                                     <RefreshCw size={12} className="mr-1.5"/> Refresh
                                 </Button>
                             </div>
@@ -518,17 +516,17 @@ export default function FieldIntelligencePage() {
                                                 <AvatarFallback className="text-[10px]">{(t.name || 'U').charAt(0)}</AvatarFallback>
                                             </Avatar>
                                             <div>
-                                                <p className="text-sm font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors">{t.name || 'Unnamed Operative'}</p>
-                                                <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">{t.email}</p>
+                                                <p className="text-sm font-bold text-text-primary tracking-wide group-hover:text-brand-red transition-colors">{t.name || 'Unnamed technician'}</p>
+                                                <p className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">{t.email}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-6">
                                             <div className="text-right">
-                                                <p className={cn("text-xs font-bold uppercase", isReliable ? 'text-text-green' : 'text-accent-gold')}>
+                                                <p className={cn("text-xs font-bold", isReliable ? 'text-text-green' : 'text-accent-gold')}>
                                                     {pts} PTS · {isReliable ? 'Reliable' : 'At Risk'}
                                                 </p>
                                             </div>
-                                            <Badge variant={isReliable ? 'active' : 'onhold'} className="h-5 text-[8px] uppercase tracking-widest">
+                                            <Badge variant={isReliable ? 'active' : 'onhold'} className="h-5 text-[10px] uppercase tracking-wider">
                                                 {isReliable ? 'Clean' : 'Audit Required'}
                                             </Badge>
                                             <ChevronRight size={16} className="text-text-muted group-hover:text-text-primary transition-all" />
@@ -545,38 +543,38 @@ export default function FieldIntelligencePage() {
 
                         {/* Tech Reliability Trends */}
                         <div className="lg:col-span-2 space-y-2">
-                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2">Tech Reliability Trends</h3>
+                            <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2">Technician reliability</h3>
                             {techReliability.length === 0 ? (
-                                <p className="text-[10px] text-text-muted uppercase py-4 text-center">No assignment data</p>
+                                <p className="text-[10px] text-text-muted py-4 text-center">No assignment data</p>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                     {techReliability.map(t => (
                                         <div key={t.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-bg-secondary border border-border-main">
                                             <Avatar className="h-8 w-8 border border-border-sub shrink-0">
                                                 <AvatarImage src={t.avatarUrl} />
-                                                <AvatarFallback className="text-[9px]">{(t.name || 'U')[0]}</AvatarFallback>
+                                                <AvatarFallback className="text-[11px]">{(t.name || 'U')[0]}</AvatarFallback>
                                             </Avatar>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-[11px] font-bold text-text-primary uppercase truncate">{t.name}</p>
+                                                <p className="text-[11px] font-bold text-text-primary truncate">{t.name}</p>
                                                 <div className="flex gap-3 mt-1">
                                                     <div className="flex-1">
                                                         <div className="flex justify-between mb-0.5">
-                                                            <span className="text-[8px] text-text-muted uppercase">Completion</span>
-                                                            <span className="text-[8px] font-bold text-text-green">{t.completionRate}%</span>
+                                                            <span className="text-[10px] text-text-muted">Completion</span>
+                                                            <span className="text-[10px] font-bold text-text-green">{t.completionRate}%</span>
                                                         </div>
                                                         <div className="h-1 bg-bg-tertiary rounded-full">
                                                             <div className="h-1 bg-text-green rounded-full" style={{ width: `${t.completionRate}%` }} />
                                                         </div>
                                                     </div>
                                                     <div className="text-right shrink-0">
-                                                        <p className="text-[8px] text-text-muted uppercase">Revisit</p>
-                                                        <p className={cn("text-[8px] font-bold", t.revisitRate > 20 ? 'text-text-red' : 'text-text-muted')}>{t.revisitRate}%</p>
+                                                        <p className="text-[10px] text-text-muted">Revisit</p>
+                                                        <p className={cn("text-[10px] font-bold", t.revisitRate > 20 ? 'text-text-red' : 'text-text-muted')}>{t.revisitRate}%</p>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div className="text-right shrink-0">
                                                 <p className="text-[11px] font-bold text-text-primary">{t.completed}/{t.total}</p>
-                                                <p className="text-[8px] text-text-muted uppercase">Jobs</p>
+                                                <p className="text-[10px] text-text-muted">Jobs</p>
                                             </div>
                                         </div>
                                     ))}
@@ -586,27 +584,27 @@ export default function FieldIntelligencePage() {
 
                         {/* Revisit Rate Flags */}
                         <div className="space-y-2">
-                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                            <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 flex items-center gap-2">
                                 Revisit Rate Flags
-                                {revisitFlags.length > 0 && <Badge variant="destructive" className="h-4 px-1.5 text-[7px]">{revisitFlags.length}</Badge>}
+                                {revisitFlags.length > 0 && <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">{revisitFlags.length}</Badge>}
                             </h3>
                             {revisitFlags.length === 0 ? (
                                 <div className="flex items-center gap-2 py-3 text-text-green">
                                     <ShieldAlert size={14} />
-                                    <p className="text-[10px] font-bold uppercase">No techs above 20% revisit threshold</p>
+                                    <p className="text-[10px] font-bold">No techs above 20% revisit threshold</p>
                                 </div>
                             ) : revisitFlags.map(t => (
                                 <div key={t.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border-alert bg-brand-red-dim/5">
                                     <div className="flex items-center gap-2">
                                         <Avatar className="h-7 w-7 border border-brand-red/30">
                                             <AvatarImage src={t.avatarUrl} />
-                                            <AvatarFallback className="text-[9px]">{(t.name || 'U')[0]}</AvatarFallback>
+                                            <AvatarFallback className="text-[11px]">{(t.name || 'U')[0]}</AvatarFallback>
                                         </Avatar>
-                                        <p className="text-[11px] font-bold text-text-primary uppercase">{t.name}</p>
+                                        <p className="text-[11px] font-bold text-text-primary">{t.name}</p>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-[11px] font-bold text-text-red">{t.revisitRate}% revisit</p>
-                                        <p className="text-[8px] text-text-muted uppercase">{t.revisits} of {t.total} jobs</p>
+                                        <p className="text-[10px] text-text-muted">{t.revisits} of {t.total} jobs</p>
                                     </div>
                                 </div>
                             ))}
@@ -614,21 +612,21 @@ export default function FieldIntelligencePage() {
 
                         {/* Underpaid Work Warnings */}
                         <div className="space-y-2">
-                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2 flex items-center gap-2">
+                            <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 flex items-center gap-2">
                                 Underpaid Work
-                                {underpaidWarnings.length > 0 && <Badge variant="onhold" className="h-4 px-1.5 text-[7px]">{underpaidWarnings.length}</Badge>}
+                                {underpaidWarnings.length > 0 && <Badge variant="onhold" className="h-4 px-1.5 text-[10px]">{underpaidWarnings.length}</Badge>}
                             </h3>
                             {underpaidWarnings.length === 0 ? (
-                                <p className="text-[10px] text-text-muted uppercase py-3">No underpaid jobs detected</p>
+                                <p className="text-[10px] text-text-muted py-3">No underpaid jobs detected</p>
                             ) : underpaidPager.items.map(wo => (
                                 <div key={wo.id} className="flex items-center justify-between p-2 rounded-lg border border-border-warn bg-brand-amber-dim/5">
                                     <div>
-                                        <p className="text-[11px] font-bold text-text-amber uppercase">{wo.title || wo.id}</p>
-                                        <p className="text-[9px] text-text-muted uppercase">{wo.clientName || 'No client'} — {wo.jobType || 'Unknown type'}</p>
+                                        <p className="text-[11px] font-bold text-text-amber">{wo.title || wo.id}</p>
+                                        <p className="text-[11px] text-text-muted">{wo.clientName || 'No client'} — {wo.jobType || 'Unknown type'}</p>
                                     </div>
                                     <div className="text-right shrink-0">
                                         <p className="text-[11px] font-bold text-text-amber">${wo.pay || 0}</p>
-                                        <p className="text-[8px] text-text-muted uppercase">Pay</p>
+                                        <p className="text-[10px] text-text-muted">Pay</p>
                                     </div>
                                 </div>
                             ))}
@@ -638,34 +636,34 @@ export default function FieldIntelligencePage() {
                         {/* Top 10 Clients */}
                         <div className="lg:col-span-2 space-y-2">
                             <div className="border-b border-border-sub pb-2">
-                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Top 10 Clients</h3>
-                                <p className="text-[9px] text-text-muted mt-1 leading-relaxed">
+                                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Top 10 clients</h3>
+                                <p className="text-[11px] text-text-muted mt-1 leading-relaxed">
                                     Ranked by job volume. Same model as Financials: revenue = what each completed job pays into the app (its pay, or its paid invoice before tax) plus paid invoices not tied to a job;
                                     labor = the tech portion; gross profit = the Aaromach portion (revenue − labor − the 15.85% Field Nation fee on FN jobs).
                                 </p>
                             </div>
                             {topClientRows.length === 0 ? (
-                                <p className="text-[10px] text-text-muted uppercase py-3">No client jobs yet</p>
+                                <p className="text-[10px] text-text-muted py-3">No client jobs yet</p>
                             ) : (
                                 <div className="rounded-lg border border-border-sub overflow-hidden">
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead className="text-[9px] uppercase">#</TableHead>
-                                                <TableHead className="text-[9px] uppercase">Client</TableHead>
-                                                <TableHead className="text-[9px] uppercase text-right">Jobs</TableHead>
-                                                <TableHead className="text-[9px] uppercase text-right">Completed</TableHead>
-                                                <TableHead className="text-[9px] uppercase text-right">Revenue</TableHead>
-                                                <TableHead className="text-[9px] uppercase text-right">Labor</TableHead>
-                                                <TableHead className="text-[9px] uppercase text-right">Gross Profit</TableHead>
-                                                <TableHead className="text-[9px] uppercase text-right">Margin</TableHead>
+                                                <TableHead className="text-[11px]">#</TableHead>
+                                                <TableHead className="text-[11px]">Client</TableHead>
+                                                <TableHead className="text-[11px] text-right">Jobs</TableHead>
+                                                <TableHead className="text-[11px] text-right">Completed</TableHead>
+                                                <TableHead className="text-[11px] text-right">Revenue</TableHead>
+                                                <TableHead className="text-[11px] text-right">Labor</TableHead>
+                                                <TableHead className="text-[11px] text-right">Gross profit</TableHead>
+                                                <TableHead className="text-[11px] text-right">Margin</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {topClientRows.map((r, i) => (
                                                 <TableRow key={r.client}>
                                                     <TableCell className="text-[10px] text-text-muted">{i + 1}</TableCell>
-                                                    <TableCell className="text-[10px] font-bold uppercase">{r.client}</TableCell>
+                                                    <TableCell className="text-[10px] font-bold">{r.client}</TableCell>
                                                     <TableCell className="text-[10px] font-mono text-right">{r.jobs}</TableCell>
                                                     <TableCell className="text-[10px] font-mono text-right">{r.completed}</TableCell>
                                                     <TableCell className="text-[10px] font-mono text-right">${r.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</TableCell>
@@ -685,11 +683,11 @@ export default function FieldIntelligencePage() {
                         {/* Top 10 Cities */}
                         <div className="lg:col-span-2 space-y-2">
                             <div className="border-b border-border-sub pb-2">
-                                <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Top 10 Cities</h3>
-                                <p className="text-[9px] text-text-muted mt-1">Where we work most, by job count (cancelled and archived jobs excluded).</p>
+                                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Top 10 cities</h3>
+                                <p className="text-[11px] text-text-muted mt-1">Where we work most, by job count (cancelled and archived jobs excluded).</p>
                             </div>
                             {topCityRows.length === 0 ? (
-                                <p className="text-[10px] text-text-muted uppercase py-3">No job addresses with a city yet</p>
+                                <p className="text-[10px] text-text-muted py-3">No job addresses with a city yet</p>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
                                     {topCityRows.map((c, i) => (
@@ -708,19 +706,19 @@ export default function FieldIntelligencePage() {
 
                         {/* Common Failure Patterns */}
                         <div className="lg:col-span-2 space-y-2">
-                            <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-border-sub pb-2">Common Failure Patterns (Revisits by Job Type)</h3>
+                            <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2">Common failures (revisits by job type)</h3>
                             {failurePatterns.length === 0 ? (
                                 <div className="flex items-center gap-2 py-3 text-text-green">
                                     <ShieldAlert size={14} />
-                                    <p className="text-[10px] font-bold uppercase">No revisit patterns detected</p>
+                                    <p className="text-[10px] font-bold">No revisit patterns detected</p>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                     {failurePatterns.map(({ type, count }) => (
                                         <div key={type} className="p-3 rounded-lg border border-border-warn bg-brand-amber-dim/5 text-center">
                                             <p className="text-2xl font-bold font-mono text-text-amber">{count}</p>
-                                            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mt-1">{type}</p>
-                                            <p className="text-[8px] text-text-muted uppercase">revisit{count !== 1 ? 's' : ''}</p>
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-1">{type}</p>
+                                            <p className="text-[10px] text-text-muted">revisit{count !== 1 ? 's' : ''}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -735,36 +733,36 @@ export default function FieldIntelligencePage() {
                     <div className="space-y-5">
                         <div className="flex flex-wrap items-center gap-3 p-4 bg-bg-secondary rounded-xl border border-border-sub">
                             <Select value={timelineTechFilter} onValueChange={setTimelineTechFilter}>
-                                <SelectTrigger className="h-8 w-[160px] text-[10px] font-bold uppercase bg-bg-primary border-border-main">
+                                <SelectTrigger className="h-8 w-[160px] text-[10px] font-bold bg-bg-primary border-border-main">
                                     <SelectValue placeholder="All Techs" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-bg-elevated border-border-main">
-                                    <SelectItem value="all" className="text-[10px] uppercase font-bold">All Techs</SelectItem>
+                                    <SelectItem value="all" className="text-[10px] font-bold">All techs</SelectItem>
                                     {staffTechs.map(t => (
-                                        <SelectItem key={t.id} value={t.id} className="text-[10px] uppercase font-bold">{t.name}</SelectItem>
+                                        <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold">{t.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                             <Select value={timelineTypeFilter} onValueChange={setTimelineTypeFilter}>
-                                <SelectTrigger className="h-8 w-[160px] text-[10px] font-bold uppercase bg-bg-primary border-border-main">
+                                <SelectTrigger className="h-8 w-[160px] text-[10px] font-bold bg-bg-primary border-border-main">
                                     <SelectValue placeholder="All Events" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-bg-elevated border-border-main">
-                                    <SelectItem value="all" className="text-[10px] uppercase font-bold">All Events</SelectItem>
-                                    <SelectItem value="assignment" className="text-[10px] uppercase font-bold">Assignments</SelectItem>
-                                    <SelectItem value="work_order" className="text-[10px] uppercase font-bold">Work Orders</SelectItem>
-                                    <SelectItem value="log" className="text-[10px] uppercase font-bold">Weekly Logs</SelectItem>
-                                    <SelectItem value="invoice" className="text-[10px] uppercase font-bold">Invoices</SelectItem>
+                                    <SelectItem value="all" className="text-[10px] font-bold">All events</SelectItem>
+                                    <SelectItem value="assignment" className="text-[10px] font-bold">Assignments</SelectItem>
+                                    <SelectItem value="work_order" className="text-[10px] font-bold">Work orders</SelectItem>
+                                    <SelectItem value="log" className="text-[10px] font-bold">Weekly logs</SelectItem>
+                                    <SelectItem value="invoice" className="text-[10px] font-bold">Invoices</SelectItem>
                                 </SelectContent>
                             </Select>
                             <DateRangeButton value={timelineDateRange} onChange={setTimelineDateRange} />
                             {(timelineTechFilter !== 'all' || timelineTypeFilter !== 'all' || timelineDateRange?.from) && (
-                                <Button variant="ghost" size="sm" className="h-8 text-[9px] uppercase font-bold text-text-muted"
+                                <Button variant="ghost" size="sm" className="h-8 text-[11px] font-bold text-text-muted"
                                     onClick={() => { setTimelineTechFilter('all'); setTimelineTypeFilter('all'); setTimelineDateRange(undefined); }}>
                                     <X size={11} className="mr-1" /> Clear
                                 </Button>
                             )}
-                            <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-text-muted">
+                            <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-text-muted">
                                 {filteredTimelineEvents.length} events
                             </span>
                         </div>
@@ -772,7 +770,7 @@ export default function FieldIntelligencePage() {
                         {filteredTimelineEvents.length === 0 ? (
                             <div className="py-24 text-center border border-dashed border-border-sub rounded-xl opacity-40">
                                 <ActivityIcon size={32} className="mx-auto text-text-muted mb-2" />
-                                <p className="text-[10px] font-bold uppercase text-text-muted">No events match the current filter</p>
+                                <p className="text-[10px] font-bold text-text-muted">No events match the current filter</p>
                             </div>
                         ) : (
                             <div className="space-y-1">
@@ -783,24 +781,24 @@ export default function FieldIntelligencePage() {
                                     return (
                                         <div key={event.id} className={cn('flex items-start gap-4 p-3 rounded-lg border border-border-sub border-l-4 bg-bg-secondary hover:bg-bg-tertiary transition-colors', typeColors[event.type] || 'border-l-border-sub')}>
                                             <div className="w-[120px] shrink-0 text-right">
-                                                <p className="text-[9px] font-mono text-text-muted leading-tight">{tsDisplay}</p>
+                                                <p className="text-[11px] font-mono text-text-muted leading-tight">{tsDisplay}</p>
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className={cn('text-[10px] font-black uppercase tracking-wide', event.color)}>{event.eventLabel}</p>
+                                                <p className={cn('text-[10px] font-bold uppercase tracking-wide', event.color)}>{event.eventLabel}</p>
                                                 <p className="text-[11px] font-bold text-text-primary leading-tight mt-0.5 truncate">{event.entity}</p>
                                                 <div className="flex items-center gap-2 mt-0.5">
-                                                    {event.techName && <span className="text-[9px] text-text-muted uppercase font-bold">{event.techName}</span>}
-                                                    {event.techName && event.clientName && <span className="text-text-muted text-[9px]">·</span>}
-                                                    {event.clientName && <span className="text-[9px] text-text-muted uppercase">{event.clientName}</span>}
+                                                    {event.techName && <span className="text-[11px] text-text-muted font-bold">{event.techName}</span>}
+                                                    {event.techName && event.clientName && <span className="text-text-muted text-[11px]">·</span>}
+                                                    {event.clientName && <span className="text-[11px] text-text-muted">{event.clientName}</span>}
                                                 </div>
                                             </div>
-                                            <Badge variant="outline" className="text-[7px] uppercase shrink-0 h-4">{event.type.replace('_', ' ')}</Badge>
+                                            <Badge variant="outline" className="text-[10px] shrink-0 h-4">{event.type.replace('_', ' ')}</Badge>
                                         </div>
                                     );
                                 })}
                                 <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">Show</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Show</span>
                                         {([25, 50, 100] as const).map(n => (
                                             <button
                                                 key={n}
@@ -813,13 +811,13 @@ export default function FieldIntelligencePage() {
                                         ))}
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
                                             {timelinePage * timelinePageSize + 1}–{Math.min((timelinePage + 1) * timelinePageSize, filteredTimelineEvents.length)} of {filteredTimelineEvents.length}
                                         </span>
-                                        <Button variant="outline" size="sm" className="h-8 text-[9px] uppercase font-bold" disabled={timelinePage === 0} onClick={() => setTimelinePage(p => Math.max(0, p - 1))}>
+                                        <Button variant="outline" size="sm" className="h-8 text-[11px] font-bold" disabled={timelinePage === 0} onClick={() => setTimelinePage(p => Math.max(0, p - 1))}>
                                             Previous
                                         </Button>
-                                        <Button variant="outline" size="sm" className="h-8 text-[9px] uppercase font-bold" disabled={timelinePage >= timelinePageCount - 1} onClick={() => setTimelinePage(p => Math.min(timelinePageCount - 1, p + 1))}>
+                                        <Button variant="outline" size="sm" className="h-8 text-[11px] font-bold" disabled={timelinePage >= timelinePageCount - 1} onClick={() => setTimelinePage(p => Math.min(timelinePageCount - 1, p + 1))}>
                                             Next
                                         </Button>
                                     </div>
@@ -834,11 +832,6 @@ export default function FieldIntelligencePage() {
             {/* Admin job controls from the Techs tab (force complete, swap tech, helpers, …). */}
             <JobDetailDialog isOpen={!!managedJob} setIsOpen={open => { if (!open) setManagedJob(null); }} mission={managedJob ? (missions.find(m => m.id === managedJob.id) as WorkOrder) || managedJob : null} hidePay={!canSeePay} />
 
-            <style jsx global>{`
-                .tab-trigger-activity {
-                    @apply px-0 pb-4 pt-0 h-auto bg-transparent rounded-none border-b-2 border-transparent text-[11px] font-black uppercase tracking-[0.2em] text-text-muted data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-brand-red data-[state=active]:shadow-none transition-all;
-                }
-            `}</style>
         </div>
     );
 }

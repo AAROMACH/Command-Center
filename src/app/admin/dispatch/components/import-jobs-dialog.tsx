@@ -240,8 +240,8 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
     setIsOpen(false);
     handleReset();
     toast({
-      title: 'Integration Complete',
-      description: `${finalOrders.length} job${finalOrders.length !== 1 ? 's' : ''} synced.${skipped > 0 ? ` ${skipped} skipped / flagged.` : ''}`,
+      title: 'Import complete',
+      description: `${finalOrders.length} job${finalOrders.length !== 1 ? 's' : ''} imported.${skipped > 0 ? ` ${skipped} skipped / flagged.` : ''}`,
     });
   };
 
@@ -282,14 +282,14 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
         <DialogHeader className="p-6 pb-2">
           <div className="flex items-center gap-2 mb-1">
             <ImportIcon className="text-brand-red h-5 w-5" />
-            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">
-              {step === 'input' ? 'Job Integration Terminal' : 'Import Audit'}
+            <DialogTitle className="text-lg font-bold text-text-primary">
+              {step === 'input' ? 'Import jobs' : 'Review import'}
             </DialogTitle>
           </div>
-          <DialogDescription className="text-xs uppercase font-bold text-text-muted">
+          <DialogDescription className="text-xs font-bold text-text-muted">
             {step === 'input'
-              ? 'Paste unstructured job blocks to convert them into field-ready missions.'
-              : `Reviewing ${rows.length} parsed records. Skip, remove, or approve before import. Double-click a field to edit.`}
+              ? 'Paste job details (one value per line) to turn them into jobs.'
+              : `Reviewing ${rows.length} jobs. Skip, remove or approve each before importing. Double-click a field to edit.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -298,11 +298,11 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
             <div className="space-y-4 h-full min-h-0 flex flex-col">
               <div className="space-y-2 flex-1 min-h-0">
                 <div className="flex items-center justify-between gap-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Data Input Buffer</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Job details</label>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 text-[9px] font-bold uppercase tracking-wider"
+                    className="h-7 text-[10px] font-bold uppercase tracking-wider"
                     onClick={() => setPastedText(t => (t.trim() ? `${t.trimEnd()}\n\n` : '') + JOB_PASTE_TEMPLATE)}
                   >
                     Insert Template
@@ -317,7 +317,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
               </div>
               {/* What goes on each line — Field Nation's paste order. */}
               <div className="p-3 rounded bg-bg-secondary/50 border border-border-sub space-y-2">
-                <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest">One value per line · blank line between jobs</p>
+                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">One value per line · blank line between jobs</p>
                 <div className="grid grid-cols-[auto_auto_1fr] gap-x-3 gap-y-1 text-[10px]">
                   {JOB_PASTE_LINES.map((l, i) => (
                     <div key={i} className="contents">
@@ -327,7 +327,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
                     </div>
                   ))}
                 </div>
-                <p className="text-[9px] text-text-muted uppercase tracking-wider leading-relaxed">
+                <p className="text-[10px] text-text-muted uppercase tracking-wider leading-relaxed">
                   The next screen flags duplicates (active, completed and archived jobs) and lets you skip or remove rows before import.
                 </p>
               </div>
@@ -336,21 +336,21 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
             <div className="space-y-3 h-full min-h-0 flex flex-col">
               {/* Summary + bulk actions */}
               <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2 flex-wrap text-[9px] font-bold uppercase tracking-widest">
+                <div className="flex items-center gap-2 flex-wrap text-[10px] font-bold uppercase tracking-wider">
                   <span className="text-text-green">{counts.ready} ready</span>
                   {counts.duplicate > 0 && <span className="text-brand-red">· {counts.duplicate} duplicate</span>}
                   {counts.review > 0 && <span className="text-accent-gold">· {counts.review} review</span>}
                   {counts.skipped > 0 && <span className="text-text-muted">· {counts.skipped} skipped</span>}
-                  {counts.override > 0 && <span className="text-blue-400">· {counts.override} override</span>}
+                  {counts.override > 0 && <span className="text-brand-blue">· {counts.override} override</span>}
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase" onClick={() => setReviewOnly(v => !v)}>
+                  <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" onClick={() => setReviewOnly(v => !v)}>
                     <Eye size={11} className="mr-1" />{reviewOnly ? 'Show All' : 'Review Only'}
                   </Button>
-                  <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase" onClick={skipAllDuplicates} disabled={counts.duplicate === 0}>
+                  <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" onClick={skipAllDuplicates} disabled={counts.duplicate === 0}>
                     Skip Duplicates
                   </Button>
-                  <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase" onClick={clearSkipped} disabled={counts.skipped === 0}>
+                  <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" onClick={clearSkipped} disabled={counts.skipped === 0}>
                     Clear Skipped
                   </Button>
                 </div>
@@ -374,16 +374,16 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
                                     onChange={e => handleUpdateField(job.rowKey, 'externalWorkOrderId', e.target.value)}
                                     onBlur={() => setEditingField(null)}
                                     onKeyDown={e => e.key === 'Enter' && setEditingField(null)}
-                                    className="h-6 w-32 font-mono text-[10px] font-bold uppercase bg-bg-secondary"
+                                    className="h-6 w-32 font-mono text-[10px] font-bold bg-bg-secondary"
                                   />
                                 ) : (
-                                  <span className="font-mono text-[10px] font-bold text-brand-red uppercase flex items-center gap-2 group-hover:text-text-primary transition-colors cursor-pointer">
+                                  <span className="font-mono text-[10px] font-bold text-brand-red flex items-center gap-2 group-hover:text-text-primary transition-colors cursor-pointer">
                                     WO# {job.externalWorkOrderId || job.id}
                                     <Pencil size={8} className="opacity-0 group-hover:opacity-100" />
                                   </span>
                                 )}
                               </div>
-                              <Badge variant={STATUS_BADGE[job.rowStatus].variant} className="text-[8px] uppercase tracking-widest h-4">
+                              <Badge variant={STATUS_BADGE[job.rowStatus].variant} className="text-[10px] uppercase tracking-wider h-4">
                                 {STATUS_BADGE[job.rowStatus].label}
                               </Badge>
                             </div>
@@ -394,7 +394,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
                                 <p className="text-[10px] font-bold text-brand-red uppercase tracking-wide flex items-center gap-1.5">
                                   <AlertTriangle size={11} /> This work order number already exists.
                                 </p>
-                                <p className="text-[9px] text-text-muted uppercase tracking-widest mt-0.5">
+                                <p className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">
                                   Matched {job.match.label} in {job.match.where}
                                   {job.match.status ? ` · status: ${job.match.status}` : ''}
                                   {job.match.techName ? ` · ${job.match.techName}` : ''}
@@ -411,10 +411,10 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
                                   onChange={e => handleUpdateField(job.rowKey, 'title', e.target.value)}
                                   onBlur={() => setEditingField(null)}
                                   onKeyDown={e => e.key === 'Enter' && setEditingField(null)}
-                                  className="h-7 text-xs font-bold uppercase bg-bg-secondary"
+                                  className="h-7 text-xs font-bold bg-bg-secondary"
                                 />
                               ) : (
-                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide flex items-center gap-2 group-hover:text-brand-red transition-colors cursor-pointer text-left">
+                                <p className="text-xs font-bold text-text-primary tracking-wide flex items-center gap-2 group-hover:text-brand-red transition-colors cursor-pointer text-left">
                                   {job.title || <span className="text-accent-gold">Missing title</span>}
                                   <Pencil size={10} className="opacity-0 group-hover:opacity-100 text-text-muted" />
                                 </p>
@@ -422,12 +422,12 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                              <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left"><Building2 size={12} /><span className="truncate">{job.clientName || '—'}</span></div>
-                              <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left"><MapPin size={12} className="text-brand-red" /><span className="truncate">{job.location || '—'}</span></div>
+                              <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-wider text-left"><Building2 size={12} /><span className="truncate">{job.clientName || '—'}</span></div>
+                              <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-wider text-left"><MapPin size={12} className="text-brand-red" /><span className="truncate">{job.location || '—'}</span></div>
                             </div>
                             <div className="grid grid-cols-3 gap-4">
-                              <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left"><Calendar size={12} /><span>{job.scheduleDate}</span></div>
-                              <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-widest text-left"><Clock size={12} /><span>{job.scheduleTime}</span></div>
+                              <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-wider text-left"><Calendar size={12} /><span>{job.scheduleDate}</span></div>
+                              <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-wider text-left"><Clock size={12} /><span>{job.scheduleTime}</span></div>
                               <div className="text-right">
                                 <span className="text-[10px] font-mono font-bold text-text-green bg-green-dim/5 px-2 py-0.5 rounded border border-green-border/20">
                                   ${job.pay.toFixed(2)} ({PAY_TYPE_LABELS[job.payType as keyof typeof PAY_TYPE_LABELS] || job.payType})
@@ -439,21 +439,21 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
                           {/* Row actions */}
                           <div className="flex flex-col items-end gap-1.5 shrink-0">
                             {job.rowStatus === 'skipped' || job.rowStatus === 'removed' ? (
-                              <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase" onClick={() => setRowStatus(job.rowKey, isDup ? 'duplicate_found' : 'ready')}>
+                              <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" onClick={() => setRowStatus(job.rowKey, isDup ? 'duplicate_found' : 'ready')}>
                                 <RotateCcw size={10} className="mr-1" />Restore
                               </Button>
                             ) : (
                               <>
                                 {isDup && (
-                                  <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase border-blue-400/40 text-blue-400 hover:bg-blue-400/5"
+                                  <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold border-brand-blue/40 text-brand-blue hover:bg-brand-blue/5"
                                     onClick={() => setRowStatus(job.rowKey, 'approved_override', { overrideBy: currentUserName, overrideAt: new Date().toISOString() })}>
-                                    <ShieldAlert size={10} className="mr-1" />Import Anyway
+                                    <ShieldAlert size={10} className="mr-1" />Import anyway
                                   </Button>
                                 )}
-                                <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase" onClick={() => setRowStatus(job.rowKey, 'skipped')}>
+                                <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" onClick={() => setRowStatus(job.rowKey, 'skipped')}>
                                   Skip
                                 </Button>
-                                <Button size="sm" variant="ghost" className="h-7 text-[9px] font-bold uppercase text-text-muted hover:text-brand-red" onClick={() => setRows(prev => prev.filter(p => p.rowKey !== job.rowKey))}>
+                                <Button size="sm" variant="ghost" className="h-7 text-[11px] font-bold text-text-muted hover:text-brand-red" onClick={() => setRows(prev => prev.filter(p => p.rowKey !== job.rowKey))}>
                                   <X size={11} className="mr-1" />Remove
                                 </Button>
                               </>
@@ -464,7 +464,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
                     );
                   })}
                   {visibleRows.length === 0 && (
-                    <div className="p-12 text-center text-[10px] text-text-muted uppercase font-bold tracking-widest">No rows in this view.</div>
+                    <div className="p-12 text-center text-[10px] text-text-muted uppercase font-bold tracking-wider">No rows in this view.</div>
                   )}
                 </div>
               </ScrollArea>
@@ -475,7 +475,7 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
         <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default">
           {step === 'input' ? (
             <>
-              <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
+              <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 uppercase font-bold text-[10px] tracking-wider">Cancel</Button>
               <Button onClick={handleAnalyze} disabled={isProcessing || !pastedText.trim()} className="h-10 px-10">
                 {isProcessing ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <ChevronRight size={16} className="mr-2" />}
                 Analyze Buffer
@@ -483,11 +483,11 @@ export function ImportJobsDialog({ isOpen, setIsOpen, onImport, existingOrders, 
             </>
           ) : (
             <>
-              <Button variant="outline" onClick={() => setStep('input')} className="h-10 px-8 mr-auto uppercase font-bold text-[10px] tracking-widest">
+              <Button variant="outline" onClick={() => setStep('input')} className="h-10 px-8 mr-auto uppercase font-bold text-[10px] tracking-wider">
                 <ArrowLeft size={16} className="mr-2" />
                 Modify Buffer
               </Button>
-              <Button onClick={handleFinalizeImport} disabled={committableCount === 0} className="h-10 px-12 uppercase font-bold text-[10px] tracking-widest bg-brand-red hover:bg-brand-red-hover">
+              <Button onClick={handleFinalizeImport} disabled={committableCount === 0} className="h-10 px-12 uppercase font-bold text-[10px] tracking-wider bg-brand-red hover:bg-brand-red-hover">
                 <CircleCheck size={16} className="mr-2" />
                 Import Clean Rows ({committableCount})
               </Button>

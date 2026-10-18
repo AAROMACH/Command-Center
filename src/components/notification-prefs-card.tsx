@@ -48,13 +48,13 @@ export function NotificationPrefsCard() {
             <CardContent className="space-y-4">
                 {([
                     { id: 'email', label: 'Email', desc: 'Alerts sent to your email address.' },
-                    { id: 'sms', label: 'Text Message', desc: 'Alerts texted to your phone number.' },
-                    { id: 'push', label: 'In-App', desc: 'Alerts in the bell at the top of the app.' },
+                    { id: 'sms', label: 'Text message', desc: 'Alerts texted to your phone number.' },
+                    { id: 'push', label: 'In-app', desc: 'Alerts in the bell at the top of the app.' },
                 ] as const).map(item => (
                     <div key={item.id} className="flex items-center justify-between p-4 rounded-lg border border-border-sub bg-bg-primary">
                         <div className="space-y-1 text-left">
-                            <h4 className="text-xs font-bold uppercase text-text-primary">{item.label}</h4>
-                            <p className="text-[10px] text-text-muted">{item.desc}</p>
+                            <h4 className="text-[13px] font-semibold text-text-primary">{item.label}</h4>
+                            <p className="text-[12px] text-text-muted">{item.desc}</p>
                         </div>
                         <Switch checked={resolved[item.id]} onCheckedChange={() => toggle(item.id)} disabled={!uid} />
                     </div>

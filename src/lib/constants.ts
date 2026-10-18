@@ -7,7 +7,7 @@
 export const TERMINOLOGY = {
   PORTAL: {
     ADMIN: "Command Center",
-    TECH: "Field Terminal",
+    TECH: "Tech Portal",
     CLIENT: "Client Portal",
     SALES: "Sales Portal",
   },
@@ -31,9 +31,9 @@ export const TERMINOLOGY = {
   },
   CONFIG: {
     SETTINGS: "Settings", 
-    SECURITY: "Security Registry",
-    NOTIFICATIONS: "Alert Protocols",
-    INTEGRATIONS: "System Handshakes",
+    SECURITY: "Security",
+    NOTIFICATIONS: "Notifications",
+    INTEGRATIONS: "Integrations",
   },
 } as const;
 
@@ -41,7 +41,7 @@ export const PRIORITY_LABELS = {
   low: "Routine",
   medium: "Standard",
   high: "Priority",
-  critical: "CRITICAL",
+  critical: "Critical",
 } as const;
 
 export const STATUS_LABELS = {

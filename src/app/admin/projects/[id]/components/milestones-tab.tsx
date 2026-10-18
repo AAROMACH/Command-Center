@@ -75,7 +75,7 @@ const PhaseBlock = ({
                     <div className="phase-num">{phase.phaseNumber}</div>
                     {isEditing ? (
                         <input 
-                            className="bg-transparent border-none focus:ring-0 text-xs font-bold text-text-primary p-0 h-auto w-full uppercase"
+                            className="bg-transparent border-none focus:ring-0 text-xs font-bold text-text-primary p-0 h-auto w-full"
                             value={phase.name}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => onEditPhaseName(phase.id, e.target.value)}
@@ -122,14 +122,14 @@ const PhaseBlock = ({
                                 <label htmlFor={`task-${task.id}`} className={cn("task-name", task.isCompleted && 'done')}>{task.name}</label>
                                 
                                 <div className="flex flex-wrap gap-1 mt-1">
-                                    {task.assignedTechId && <div className="inline-flex items-center gap-1 rounded bg-brand-red/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-brand-red border border-brand-red/30">{nameOf(task.assignedTechId)}</div>}
-                                    {task.requiresPhoto && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Camera size={10}/> Photo</div>}
-                                    {task.requiresText && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><FileText size={10}/> Text</div>}
-                                    {task.requiresNumeric && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Hash size={10}/> Number</div>}
-                                    {task.requiresDropdown && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><ListTodo size={10}/> List</div>}
-                                    {task.requiresSignature && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Signature size={10}/> Sign</div>}
-                                    {task.requiresFileUpload && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Upload size={10}/> File</div>}
-                                    {task.requiresOther && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Plus size={10}/> {task.otherRequirementLabel || 'Req.'}</div>}
+                                    {task.assignedTechId && <div className="inline-flex items-center gap-1 rounded bg-brand-red/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-red border border-brand-red/30">{nameOf(task.assignedTechId)}</div>}
+                                    {task.requiresPhoto && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Camera size={10}/> Photo</div>}
+                                    {task.requiresText && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><FileText size={10}/> Text</div>}
+                                    {task.requiresNumeric && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Hash size={10}/> Number</div>}
+                                    {task.requiresDropdown && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><ListTodo size={10}/> List</div>}
+                                    {task.requiresSignature && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Signature size={10}/> Sign</div>}
+                                    {task.requiresFileUpload && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Upload size={10}/> File</div>}
+                                    {task.requiresOther && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Plus size={10}/> {task.otherRequirementLabel || 'Req.'}</div>}
                                 </div>
                             </div>
                             {isEditing && !isReadOnly && (
@@ -327,7 +327,7 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                         onClick={() => !isReadOnly && setIsEditing(true)} 
                         className={cn("h-8 !text-[10px]", isReadOnly && "opacity-50 cursor-not-allowed")}
                     >
-                        {isReadOnly ? 'Registry Locked' : 'Edit Milestones'}
+                        {isReadOnly ? 'Read only' : 'Edit milestones'}
                     </Button>
                 ) : (
                     <div className='flex items-center gap-2'>
@@ -363,14 +363,14 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
             <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
                 <DialogContent className="sm:max-w-xl bg-bg-elevated border-border-default p-0 overflow-hidden flex flex-col max-h-[90vh]">
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30">
-                        <DialogTitle className="uppercase tracking-widest font-bold">Task Parameters</DialogTitle>
+                        <DialogTitle className="font-bold">Task details</DialogTitle>
                         <DialogDescription className="text-[11px]">Define requirements for this project action.</DialogDescription>
                     </DialogHeader>
                     {editingTaskData && (
                         <ScrollArea className="flex-1">
                             <div className="p-6 space-y-5">
                                 <div className="space-y-2 text-left">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Task Identifier / Name</Label>
+                                    <Label className="text-[10px] font-bold text-text-muted">Task Identifier / Name</Label>
                                     <Input 
                                         value={editingTaskData.task.name} 
                                         onChange={(e) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, name: e.target.value }})}
@@ -379,7 +379,7 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                                 </div>
 
                                 <div className="space-y-2 text-left">
-                                    <Label className="text-[10px] uppercase font-bold text-text-muted">Assigned To</Label>
+                                    <Label className="text-[10px] font-bold text-text-muted">Assigned To</Label>
                                     <Select
                                         value={editingTaskData.task.assignedTechId || 'none'}
                                         onValueChange={(v) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, assignedTechId: v === 'none' ? null : v }})}
@@ -390,11 +390,11 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                                             {crew.map(c => <SelectItem key={c.id} value={c.id} className="text-xs">{c.name} · {c.role}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
-                                    {crew.length === 0 && <p className="text-[9px] text-text-muted">Add crew in Manage Team to assign tasks.</p>}
+                                    {crew.length === 0 && <p className="text-[11px] text-text-muted">Add crew in Manage Team to assign tasks.</p>}
                                 </div>
 
                                 <div className="space-y-3">
-                                    <h3 className="text-[9px] font-bold text-brand-red uppercase tracking-[0.2em] border-b border-border-sub pb-1.5 text-left">Submission Requirements</h3>
+                                    <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-wider border-b border-border-sub pb-1.5 text-left">Submission Requirements</h3>
                                     
                                     <div className="grid grid-cols-1 gap-2">
                                         <div className="p-2 rounded-lg bg-bg-secondary border border-border-sub flex items-center justify-between">
@@ -402,7 +402,7 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                                                 <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Camera size={14}/></div>
                                                 <div className="space-y-0 text-left">
                                                     <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">Photo Documentation</p>
-                                                    <p className="text-[9px] text-text-muted leading-tight">Requires field imagery for sign-off.</p>
+                                                    <p className="text-[11px] text-text-muted leading-tight">Requires field imagery for sign-off.</p>
                                                 </div>
                                             </div>
                                             <Switch 
@@ -417,7 +417,7 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                                                 <div className="p-1.5 bg-bg-primary rounded text-text-muted"><FileText size={14}/></div>
                                                 <div className="space-y-0 text-left">
                                                     <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">Text Feedback</p>
-                                                    <p className="text-[9px] text-text-muted leading-tight">Requires a textual description or report.</p>
+                                                    <p className="text-[11px] text-text-muted leading-tight">Requires a textual description or report.</p>
                                                 </div>
                                             </div>
                                             <Switch 
@@ -432,7 +432,7 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                                                 <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Hash size={14}/></div>
                                                 <div className="space-y-0 text-left">
                                                     <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">Numeric Input</p>
-                                                    <p className="text-[9px] text-text-muted leading-tight">Requires numeric data entry (e.g. counts).</p>
+                                                    <p className="text-[11px] text-text-muted leading-tight">Requires numeric data entry (e.g. counts).</p>
                                                 </div>
                                             </div>
                                             <Switch 
@@ -448,7 +448,7 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                                                     <div className="p-1.5 bg-bg-primary rounded text-text-muted"><ListTodo size={14}/></div>
                                                     <div className="space-y-0 text-left">
                                                         <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">Dropdown Selection</p>
-                                                        <p className="text-[9px] text-text-muted leading-tight">Requires selection from a list.</p>
+                                                        <p className="text-[11px] text-text-muted leading-tight">Requires selection from a list.</p>
                                                     </div>
                                                 </div>
                                                 <Switch 
@@ -458,7 +458,7 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                                                 />
                                             </div>
                                             <div className={cn("pt-1.5 transition-all overflow-hidden", editingTaskData.task.requiresDropdown ? "max-h-20 opacity-100" : "max-h-0 opacity-0")}>
-                                                <Label className="text-[8px] uppercase font-bold text-text-muted mb-1 block text-left">Options (Comma separated)</Label>
+                                                <Label className="text-[10px] font-bold text-text-muted mb-1 block text-left">Options (Comma separated)</Label>
                                                 <Input 
                                                     placeholder="e.g. Pass, Fail, N/A"
                                                     value={editingTaskData.task.dropdownOptions?.join(', ') || ''}
@@ -473,7 +473,7 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                                                 <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Signature size={14}/></div>
                                                 <div className="space-y-0 text-left">
                                                     <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">Signature Capture</p>
-                                                    <p className="text-[9px] text-text-muted leading-tight">Requires field sign-off signature.</p>
+                                                    <p className="text-[11px] text-text-muted leading-tight">Requires field sign-off signature.</p>
                                                 </div>
                                             </div>
                                             <Switch 
@@ -488,7 +488,7 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                                                 <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Upload size={14}/></div>
                                                 <div className="space-y-0 text-left">
                                                     <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">File Upload</p>
-                                                    <p className="text-[9px] text-text-muted leading-tight">Requires technical document upload.</p>
+                                                    <p className="text-[11px] text-text-muted leading-tight">Requires technical document upload.</p>
                                                 </div>
                                             </div>
                                             <Switch 
@@ -504,7 +504,7 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                                                     <div className="p-1.5 bg-bg-primary rounded text-text-muted"><Plus size={14}/></div>
                                                     <div className="space-y-0 text-left">
                                                         <p className="text-[10px] font-bold text-text-primary uppercase tracking-tight">Other Completion Criteria</p>
-                                                        <p className="text-[9px] text-text-muted leading-tight">Custom field requirement.</p>
+                                                        <p className="text-[11px] text-text-muted leading-tight">Custom field requirement.</p>
                                                     </div>
                                                 </div>
                                                 <Switch 
@@ -514,7 +514,7 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                                                 />
                                             </div>
                                             <div className={cn("pt-1.5 transition-all overflow-hidden", editingTaskData.task.requiresOther ? "max-h-20 opacity-100" : "max-h-0 opacity-0")}>
-                                                <Label className="text-[8px] uppercase font-bold text-text-muted mb-1 block text-left">Requirement Label</Label>
+                                                <Label className="text-[10px] font-bold text-text-muted mb-1 block text-left">Requirement Label</Label>
                                                 <Input 
                                                     placeholder="e.g. Serial Number, ID Verification"
                                                     value={editingTaskData.task.otherRequirementLabel || ''}
@@ -529,8 +529,8 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                         </ScrollArea>
                     )}
                     <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex gap-3">
-                        <Button variant="outline" onClick={() => setTaskDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-10">Discard</Button>
-                        <Button onClick={handleSaveTaskDetails} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-10">Update Registry</Button>
+                        <Button variant="outline" onClick={() => setTaskDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider h-10">Discard</Button>
+                        <Button onClick={handleSaveTaskDetails} className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider h-10">Save task</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

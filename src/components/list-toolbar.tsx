@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 // beside SearchField: 44px tall on phones, 36px from `sm` up.
 
 const controlBase =
-  'h-11 sm:h-9 rounded-lg border border-border-main bg-bg-secondary text-[10px] font-bold uppercase tracking-widest text-text-primary';
+  'h-11 sm:h-9 rounded-md border border-border-main bg-bg-secondary text-[13px] font-medium text-text-primary';
 
 export type SortOptionDef = { value: string; label: string };
 
@@ -49,7 +49,7 @@ export function SortControl({
         </SelectTrigger>
         <SelectContent>
           {options.map(o => (
-            <SelectItem key={o.value} value={o.value} className="text-[10px] font-bold uppercase">{o.label}</SelectItem>
+            <SelectItem key={o.value} value={o.value} className="text-[13px]">{o.label}</SelectItem>
           ))}
         </SelectContent>
       </Select>
@@ -94,15 +94,15 @@ export function FiltersPopover({
           <SlidersHorizontal size={14} />
           Filters
           {active && (
-            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-red px-1 text-[9px] text-white">{activeCount}</span>
+            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-red px-1 text-[11px] text-white">{activeCount}</span>
           )}
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[min(320px,calc(100vw-2rem))] max-h-[75svh] overflow-y-auto p-0 bg-bg-elevated border-border-main shadow-2xl" align="end">
         <div className="flex items-center justify-between border-b border-border-sub bg-bg-tertiary p-4">
-          <p className="text-[10px] font-black uppercase tracking-widest text-text-primary">Filters</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-text-primary">Filters</p>
           {active && (
-            <button type="button" onClick={onReset} className="flex items-center gap-1 text-[9px] font-bold uppercase text-brand-red hover:underline">
+            <button type="button" onClick={onReset} className="flex items-center gap-1 text-[11px] font-bold text-brand-red hover:underline">
               <X size={10} /> Reset
             </button>
           )}
@@ -117,7 +117,7 @@ export function FilterSection({ title, action, children }: { title: string; acti
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-text-muted">{title}</p>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{title}</p>
         {action}
       </div>
       {children}
@@ -154,7 +154,7 @@ export function CheckboxFilter({
               checked={selected.includes(value)}
               onCheckedChange={checked => onChange(checked ? [...selected, value] : selected.filter(s => s !== value))}
             />
-            <Label htmlFor={`${idPrefix}-${value}`} className="cursor-pointer text-[10px] font-semibold uppercase">{label}</Label>
+            <Label htmlFor={`${idPrefix}-${value}`} className="cursor-pointer text-[13px] font-normal capitalize">{label}</Label>
           </div>
         );
       })}
@@ -212,7 +212,7 @@ export function DateRangeFilter({ value, onChange }: { value: DateRange | undefi
     <FilterSection
       title="Schedule Date"
       action={value?.from ? (
-        <button type="button" onClick={() => onChange(undefined)} className="text-[9px] font-bold uppercase text-brand-red hover:underline">Clear</button>
+        <button type="button" onClick={() => onChange(undefined)} className="text-[11px] font-bold text-brand-red hover:underline">Clear</button>
       ) : undefined}
     >
       <p className="text-[10px] font-semibold text-text-primary">

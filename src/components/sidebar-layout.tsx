@@ -79,12 +79,13 @@ function TechBottomNav() {
           <a
             key={href}
             href={href}
-            className={`flex flex-col items-center gap-0.5 py-2.5 flex-1 transition-colors ${
+            aria-current={isActive(href) ? "page" : undefined}
+            className={`flex flex-col items-center gap-1 py-2.5 min-h-[48px] flex-1 transition-colors ${
               isActive(href) ? "text-brand-red" : "text-sidebar-foreground hover:text-text-primary"
             }`}
           >
             <Icon />
-            <span className="text-[9px] font-semibold uppercase tracking-wide leading-none">{label}</span>
+            <span className="text-[11px] font-medium leading-none">{label}</span>
           </a>
         ))}
       </div>

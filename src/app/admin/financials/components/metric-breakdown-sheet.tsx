@@ -37,7 +37,7 @@ function sumBy<T>(rows: T[], key: (r: T) => string, val: (r: T) => number): [str
 /** Single-series horizontal bar chart — one hue, values labeled at the bar end. */
 function BreakdownBars({ data, emptyText }: { data: { name: string; value: number }[]; emptyText: string }) {
     if (data.length === 0 || data.every(d => d.value === 0)) {
-        return <p className="py-8 text-center text-[10px] font-bold uppercase tracking-widest text-text-muted">{emptyText}</p>;
+        return <p className="py-8 text-center text-[10px] font-bold uppercase tracking-wider text-text-muted">{emptyText}</p>;
     }
     return (
         <ChartContainer config={chartConfig} className="w-full" style={{ height: Math.max(120, data.length * 34 + 24) }}>
@@ -57,7 +57,7 @@ function BreakdownBars({ data, emptyText }: { data: { name: string; value: numbe
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="space-y-2">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">{title}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{title}</p>
             {children}
         </div>
     );
@@ -70,11 +70,11 @@ function InvoiceTable({ rows, extra }: { rows: Invoice[]; extra?: (inv: Invoice)
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead className="text-[9px] uppercase">Invoice</TableHead>
-                        <TableHead className="text-[9px] uppercase">Client</TableHead>
-                        <TableHead className="text-[9px] uppercase">{extra ? 'Due' : 'Issued'}</TableHead>
-                        {extra && <TableHead className="text-[9px] uppercase">Aging</TableHead>}
-                        <TableHead className="text-[9px] uppercase text-right">Total</TableHead>
+                        <TableHead className="text-[11px]">Invoice</TableHead>
+                        <TableHead className="text-[11px]">Client</TableHead>
+                        <TableHead className="text-[11px]">{extra ? 'Due' : 'Issued'}</TableHead>
+                        {extra && <TableHead className="text-[11px]">Aging</TableHead>}
+                        <TableHead className="text-[11px] text-right">Total</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -103,20 +103,20 @@ function JobLinesTable({ rows, techName }: { rows: JobLine[]; techName: (id: str
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead className="text-[9px] uppercase">Job</TableHead>
-                        <TableHead className="text-[9px] uppercase">Tech</TableHead>
-                        <TableHead className="text-[9px] uppercase text-right">Revenue</TableHead>
-                        <TableHead className="text-[9px] uppercase text-right">Tech</TableHead>
-                        <TableHead className="text-[9px] uppercase text-right">FN fee</TableHead>
-                        <TableHead className="text-[9px] uppercase text-right">Aaromach</TableHead>
+                        <TableHead className="text-[11px]">Job</TableHead>
+                        <TableHead className="text-[11px]">Tech</TableHead>
+                        <TableHead className="text-[11px] text-right">Revenue</TableHead>
+                        <TableHead className="text-[11px] text-right">Tech</TableHead>
+                        <TableHead className="text-[11px] text-right">FN fee</TableHead>
+                        <TableHead className="text-[11px] text-right">Aaromach</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {pager.items.map(l => (
                         <TableRow key={l.job.id}>
                             <TableCell className="text-[10px]">
-                                <a href={`/admin/assignments/${l.job.id}`} className="font-mono text-blue-400 hover:underline">{l.job.id.toUpperCase()}</a>
-                                <span className="block text-text-muted truncate max-w-[160px]">{l.job.clientName || '—'}{l.invoice ? ` · inv ${l.invoice.invoiceNumber || l.invoice.id}` : l.imported ? ' · FN' : ''}</span>
+                                <a href={`/admin/assignments/${l.job.id}`} className="font-mono text-brand-blue hover:underline">{l.job.id.toUpperCase()}</a>
+                                <span className="block text-text-muted truncate max-w-[160px]">{l.job.clientName || '—'}{l.invoice ? ` · inv ${l.invoice.invoiceNumber || l.invoice.id}` : l.imported ? '· FN' : ''}</span>
                             </TableCell>
                             <TableCell className="text-[10px]">{techName(jobTechId(l.job) || '') || '—'}</TableCell>
                             <TableCell className="text-[10px] font-mono text-right">{usd(l.revenue)}</TableCell>
@@ -205,11 +205,11 @@ export function MetricBreakdownSheet({
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead className="text-[9px] uppercase">Technician</TableHead>
-                                                <TableHead className="text-[9px] uppercase">Week of</TableHead>
-                                                <TableHead className="text-[9px] uppercase">Jobs</TableHead>
-                                                <TableHead className="text-[9px] uppercase">Submitted</TableHead>
-                                                <TableHead className="text-[9px] uppercase text-right">Settlement</TableHead>
+                                                <TableHead className="text-[11px]">Technician</TableHead>
+                                                <TableHead className="text-[11px]">Week of</TableHead>
+                                                <TableHead className="text-[11px]">Jobs</TableHead>
+                                                <TableHead className="text-[11px]">Submitted</TableHead>
+                                                <TableHead className="text-[11px] text-right">Settlement</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -287,10 +287,10 @@ export function MetricBreakdownSheet({
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="text-[9px] uppercase">Date</TableHead>
-                                            <TableHead className="text-[9px] uppercase">Category</TableHead>
-                                            <TableHead className="text-[9px] uppercase">Description</TableHead>
-                                            <TableHead className="text-[9px] uppercase text-right">Amount</TableHead>
+                                            <TableHead className="text-[11px]">Date</TableHead>
+                                            <TableHead className="text-[11px]">Category</TableHead>
+                                            <TableHead className="text-[11px]">Description</TableHead>
+                                            <TableHead className="text-[11px] text-right">Amount</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -319,9 +319,9 @@ export function MetricBreakdownSheet({
                 {content && (
                     <div className="space-y-6">
                         <SheetHeader className="text-left space-y-2">
-                            <SheetTitle className="text-[11px] font-black uppercase tracking-[0.2em] text-text-muted">{content.title}</SheetTitle>
+                            <SheetTitle className="text-[11px] font-bold text-text-muted">{content.title}</SheetTitle>
                             <p className="text-3xl font-mono font-bold tabular-nums text-text-primary">{content.value}</p>
-                            <SheetDescription className="text-[11px] leading-relaxed text-text-secondary">
+                            <SheetDescription className="text-[12px] leading-relaxed text-text-secondary">
                                 <span className="font-bold text-text-primary">How it’s calculated: </span>{content.how}
                             </SheetDescription>
                         </SheetHeader>

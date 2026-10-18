@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-primary p-4">
-      <Card className="w-full max-w-sm border-border-default bg-bg-secondary shadow-2xl">
+      <Card className="w-full max-w-sm rounded-xl border-border-main bg-bg-secondary shadow-sm">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
             {logo && (
@@ -72,11 +72,11 @@ export default function ForgotPasswordPage() {
             )}
           </div>
           <div>
-            <CardTitle className="text-xl font-bold uppercase tracking-wider text-text-primary">
-              Forgot Password
+            <CardTitle className="text-xl font-semibold text-text-primary">
+              Reset your password
             </CardTitle>
             <CardDescription className="text-text-muted">
-              Initiate password reset protocol
+              We’ll email you a link to set a new password.
             </CardDescription>
           </div>
         </CardHeader>
@@ -84,44 +84,44 @@ export default function ForgotPasswordPage() {
         {isSent ? (
           <CardContent className="space-y-6 py-6 text-center">
             <div className="flex justify-center">
-                <div className="p-4 rounded-full bg-green-dim border border-green-border text-text-green animate-in zoom-in duration-300">
+                <div className="p-4 rounded-full bg-text-green/10 border border-text-green/30 text-text-green animate-in zoom-in duration-300">
                     <CheckCircle2 size={48} />
                 </div>
             </div>
             <div className="space-y-2">
-                <p className="text-sm font-bold text-text-primary uppercase tracking-wide">Protocol Initialized</p>
-                <p className="text-xs text-text-muted leading-relaxed uppercase">
-                    A recovery link has been dispatched to: <br/>
-                    <span className="text-text-primary font-bold">{email}</span>
+                <p className="text-sm font-semibold text-text-primary">Check your email</p>
+                <p className="text-[13px] text-text-muted leading-relaxed">
+                    We sent a password reset link to <br/>
+                    <span className="text-text-primary font-semibold">{email}</span>
                 </p>
             </div>
             <Button 
                 variant="outline" 
-                className="w-full h-11" 
+                className="w-full h-10" 
                 onClick={() => router.push("/login")}
             >
-                <ArrowLeft size={16} className="mr-2"/> Back to Login
+                <ArrowLeft size={16} className="mr-2"/> Back to sign in
             </Button>
           </CardContent>
         ) : (
           <form onSubmit={handleReset}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-text-muted">Email</Label>
+                <Label htmlFor="email" className="text-[12px] font-medium text-text-secondary">Email</Label>
                 <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                     <Input
                         id="email"
                         type="email"
                         required
-                        placeholder=" operative@aaromach.com"
-                        className="bg-bg-primary border-border-sub pl-10"
+                        placeholder="you@company.com"
+                        className="bg-bg-primary border-border-main pl-10 h-10"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                     />
                 </div>
-                <p className="text-[10px] text-text-muted uppercase font-bold tracking-tight">
-                  Enter the email address associated with your operative or client registry.
+                <p className="text-[12px] text-text-muted">
+                  Enter the email you use to sign in.
                 </p>
               </div>
             </CardContent>
@@ -129,15 +129,15 @@ export default function ForgotPasswordPage() {
               <Button 
                 type="submit" 
                 disabled={isLoading}
-                className="w-full h-11 bg-brand-red hover:bg-brand-red-hover text-white font-bold uppercase tracking-widest"
+                className="w-full h-10"
               >
-                {isLoading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : "Send Reset Email"}
+                {isLoading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : "Send reset link"}
               </Button>
               <Link 
                 href="/login" 
-                className="text-[10px] font-bold uppercase text-text-muted hover:text-text-primary transition-colors tracking-[0.2em] flex items-center justify-center gap-2"
+                className="text-[13px] font-medium text-text-muted hover:text-text-primary transition-colors flex items-center justify-center gap-2"
               >
-                <ArrowLeft size={12}/> Back to Login
+                <ArrowLeft size={12}/> Back to sign in
               </Link>
             </CardFooter>
           </form>

@@ -4,6 +4,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { ServiceRequest, Technician, WorkOrder } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/status-badge';
+import { EmptyState } from '@/components/empty-state';
 import { Button } from '@/components/ui/button';
 import { 
   MapPin, 
@@ -170,7 +172,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
         
         const requiresSuper = status === 'rejected' || status === 'approved';
         if (requiresSuper && !userIsSuper) {
-            toast({ variant: 'destructive', title: 'Not allowed', description: 'This authorization path requires Super Admin credentials.' });
+            toast({ variant: 'destructive', title: 'Not allowed', description: 'Only a super admin can approve or reject requests.' });
             return;
         }
 
@@ -180,7 +182,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
         try {
             if (status === 'rejected') {
                 if (!rejectionReason.trim()) {
-                    toast({ variant: 'destructive', title: 'Note Required', description: 'Please provide a reason for the client before rejection.' });
+                    toast({ variant: 'destructive', title: 'Reason required', description: 'Add a reason for the client before rejecting.' });
                     return;
                 }
                 await updateDoc(docRef, { 
@@ -192,7 +194,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                 });
                 toast({
                     variant: "destructive",
-                    title: "Intake Terminated",
+                    title: "Request rejected",
                     description: `Request ${selectedRequest.id.toUpperCase()} has been rejected.`,
                 });
                 setIsRejectionDialogOpen(false);
@@ -200,14 +202,14 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
             } else if (status === 'reviewed') {
                 await updateDoc(docRef, { status: 'reviewed', reviewedAt: now, reviewedBy: currentUser?.name || 'Admin' });
                 toast({
-                    title: "Review Finalized",
+                    title: "Request reviewed",
                     description: `Request ${selectedRequest.id.toUpperCase()} marked as reviewed.`,
                 });
                 setIsReviewOpen(false);
             } else if (status === 'approved') {
                 await updateDoc(docRef, { status: 'approved' });
                 toast({
-                    title: "Intake Approved",
+                    title: "Request approved",
                     description: `Request ${selectedRequest.id.toUpperCase()} approved.`,
                 });
                 setIsReviewOpen(false);
@@ -228,7 +230,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                 setLinkedMission(wo);
                 setIsMissionCardOpen(true);
             } else {
-                toast({ variant: 'destructive', title: 'Data mismatch', description: 'Linked assignment record could not be located in current terminal buffer.' });
+                toast({ variant: 'destructive', title: 'Data mismatch', description: 'The linked job could not be found. It may have been archived.' });
             }
         }
     };
@@ -300,11 +302,11 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                 title: conversionTitle.trim()
             });
 
-            toast({ title: "Record Created", description: "Job data has been transferred from intake." });
+            toast({ title: "Created", description: "The request details were copied to the new record." });
             setIsConversionDialogOpen(false);
             setIsReviewOpen(false);
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Conversion Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Conversion failed', description: e.message });
         }
     };
 
@@ -322,7 +324,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
             )}
         >
             {(verifiedFields.has(field) || (selectedRequest?.status !== 'new' && selectedRequest?.status !== 'rejected')) ? <CheckCircle2 size={10} /> : <Circle size={10} />}
-            <span className="text-[8px] font-black uppercase tracking-widest">{label}</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
         </button>
     );
 
@@ -341,19 +343,19 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                 <table className="tbl">
                     <thead>
                         <tr className="bg-bg-tertiary">
-                            <th style={{ width: "200px" }} className="text-center pl-0">Intake ID / Status</th>
+                            <th style={{ width: "200px" }} className="text-center pl-0">Request / status</th>
                             {!isHistory ? (
                                 <>
-                                    <th className="text-left pl-0">Client Entity</th>
-                                    <th className="text-left pl-0">Technical Category</th>
-                                    <th className="text-left pl-0">Location Coordinates</th>
+                                    <th className="text-left pl-0">Client</th>
+                                    <th className="text-left pl-0">Category</th>
+                                    <th className="text-left pl-0">Location</th>
                                     <th className="text-center">Priority</th>
                                 </>
                             ) : (
                                 <>
-                                    <th className="text-left pl-0">Mission Title</th>
-                                    <th className="text-left pl-0">Scope Briefing</th>
-                                    <th style={{ width: "180px" }} className="text-left pl-0">Audit Timeline</th>
+                                    <th className="text-left pl-0">Title</th>
+                                    <th className="text-left pl-0">Scope</th>
+                                    <th style={{ width: "180px" }} className="text-left pl-0">Timeline</th>
                                     <th style={{ width: "120px" }} className="text-center">Action</th>
                                 </>
                             )}
@@ -364,10 +366,8 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                             <tr key={req.id} className="group hover:bg-bg-tertiary transition-colors cursor-pointer" onClick={() => handleOpenReview(req)}>
                                 <td className="!py-4">
                                     <div className="flex flex-col items-center gap-1.5">
-                                        <div className="font-mono text-[10px] font-bold text-brand-red uppercase">{req.id.toUpperCase()}</div>
-                                        <Badge variant={req.status === 'rejected' ? 'missed' : req.status === 'closed' ? 'active' : 'pending'} className="text-[7px] h-3.5 px-1.5 uppercase">
-                                            {req.status}
-                                        </Badge>
+                                        <div className="font-mono text-[10px] font-bold text-brand-red">{req.id.toUpperCase()}</div>
+                                        <StatusBadge kind="request" value={req.status} />
                                     </div>
                                 </td>
                                 {!isHistory ? (
@@ -375,21 +375,21 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                         <td className="!py-4 text-left pl-0">
                                             <div className="flex items-center gap-2">
                                                 <Building2 size={12} className="text-text-muted" />
-                                                <span className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[150px] text-left">{req.clientName}</span>
+                                                <span className="text-xs font-bold text-text-primary tracking-wide truncate max-w-[150px] text-left">{req.clientName}</span>
                                             </div>
                                         </td>
                                         <td className="!py-4 text-left pl-0">
-                                            <Badge variant="outline" className="text-[9px] uppercase bg-bg-primary border-border-sub">{req.requestType}</Badge>
+                                            <Badge variant="outline" className="text-[11px] bg-bg-primary border-border-sub">{req.requestType}</Badge>
                                         </td>
                                         <td className="!py-4 text-left pl-0">
-                                            <div className="flex items-center gap-1.5 text-[10px] text-text-muted uppercase font-bold tracking-tighter truncate max-w-[150px] text-left">
+                                            <div className="flex items-center gap-1.5 text-[10px] text-text-muted uppercase font-bold truncate max-w-[150px] text-left">
                                                 <MapPin size={10} className="text-brand-red shrink-0" />
                                                 <span className="truncate">{req.location}</span>
                                             </div>
                                         </td>
                                         <td className="!py-4">
                                             <div className="flex justify-center">
-                                                <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : 'medium'} className="text-[7px] h-3.5 px-1.5 uppercase">
+                                                <Badge variant={req.priority === 'critical' || req.priority === 'high' ? 'high' : 'medium'} className="text-[10px] h-3.5 px-1.5">
                                                     {req.priority}
                                                 </Badge>
                                             </div>
@@ -398,8 +398,8 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                 ) : (
                                     <>
                                         <td className="!py-4 text-left pl-0">
-                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate max-w-[200px] text-left">
-                                                {req.title || 'No Title Provided'}
+                                            <p className="text-xs font-bold text-text-primary tracking-wide truncate max-w-[200px] text-left">
+                                                {req.title || 'No title'}
                                             </p>
                                         </td>
                                         <td className="!py-4 text-left pl-0">
@@ -407,10 +407,10 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                         </td>
                                         <td className="!py-4 text-left pl-0">
                                             <div className="flex flex-col gap-0.5 mt-1 border-l border-border-sub pl-2 text-left">
-                                                <p className="text-[8px] text-text-muted uppercase font-bold flex items-center gap-1">
+                                                <p className="text-[10px] text-text-muted font-bold flex items-center gap-1">
                                                     <Plus size={8} /> Created: {req.submittedDate}
                                                 </p>
-                                                <p className={cn("text-[8px] uppercase font-bold flex items-center gap-1", req.status === 'rejected' ? 'text-text-red' : 'text-text-green')}>
+                                                <p className={cn("text-[10px] font-bold flex items-center gap-1", req.status === 'rejected' ? 'text-text-red' : 'text-text-green')}>
                                                     <CheckCircle2 size={8} className={req.status === 'rejected' ? 'text-text-red' : 'text-text-green'} /> Final: {formatDateStr(req.closedAt || req.reviewedAt)}
                                                 </p>
                                             </div>
@@ -420,19 +420,19 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                                 <Button 
                                                     variant="outline" 
                                                     size="sm" 
-                                                    className="h-7 text-[8px] uppercase font-bold border-brand-red text-brand-red hover:bg-brand-red hover:text-white"
+                                                    className="h-7 text-[10px] font-bold border-brand-red text-brand-red hover:bg-brand-red hover:text-white"
                                                     onClick={(e) => { e.stopPropagation(); handleViewMissionCard(req); }}
                                                 >
-                                                    View Mission
+                                                    View job
                                                 </Button>
                                             ) : (
                                                 <Button 
                                                     variant="ghost" 
                                                     size="sm" 
-                                                    className="h-7 text-[8px] uppercase font-bold text-text-muted"
+                                                    className="h-7 text-[10px] font-bold text-text-muted"
                                                     onClick={(e) => { e.stopPropagation(); handleOpenReview(req); }}
                                                 >
-                                                    Audit Detail
+                                                    Details
                                                 </Button>
                                             )}
                                         </td>
@@ -440,6 +440,11 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                 )}
                             </tr>
                         ))}
+                        {paginatedRequests.length === 0 && (
+                            <tr><td colSpan={5} className="p-4">
+                                <EmptyState compact icon={ClipboardList} title="No requests here" />
+                            </td></tr>
+                        )}
                     </tbody>
                 </table>
             </div>
@@ -454,15 +459,13 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                             <div className="space-y-1 text-left">
                                 <div className="flex items-center gap-2 mb-1 text-left">
                                     <ClipboardList className="text-brand-red h-5 w-5" />
-                                    <h2 className="text-lg font-bold uppercase tracking-widest text-text-primary">Mission Intake Terminal</h2>
+                                    <h2 className="text-lg font-bold text-text-primary">Review request</h2>
                                 </div>
-                                <p className="text-xs uppercase font-bold text-text-muted text-left">Audit and verification terminal for client service requests.</p>
+                                <p className="text-xs font-bold text-text-muted text-left">Check each detail, then approve, reject or convert the request.</p>
                             </div>
                             <div className="text-right space-y-1">
-                                <p className="text-[10px] font-black text-brand-red uppercase tracking-widest font-mono">{(selectedRequest?.id || '').toUpperCase()}</p>
-                                <Badge variant={selectedRequest?.status === 'closed' ? 'active' : selectedRequest?.status === 'rejected' ? 'missed' : 'pending'} className="text-[7px] uppercase h-4 tracking-tighter">
-                                    {selectedRequest?.status}
-                                </Badge>
+                                <p className="text-[10px] font-bold text-brand-red uppercase tracking-wider font-mono">{(selectedRequest?.id || '').toUpperCase()}</p>
+                                <StatusBadge kind="request" value={selectedRequest?.status} />
                             </div>
                         </div>
                     </div>
@@ -476,19 +479,19 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                             <CheckCircle2 size={20} />
                                         </div>
                                         <div className="text-left">
-                                            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Registry Linkage Active</p>
-                                            <p className="text-xs font-bold text-text-primary uppercase text-left">
-                                                Converted to {selectedRequest.conversionType === 'project' ? 'Project' : 'Assignment'}: <span className="text-brand-red font-mono">{(selectedRequest.convertedId || '').toUpperCase()}</span>
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Linked record</p>
+                                            <p className="text-xs font-bold text-text-primary text-left">
+                                                Converted to {selectedRequest.conversionType === 'project' ? 'Project' : 'Job'}: <span className="text-brand-red font-mono">{(selectedRequest.convertedId || '').toUpperCase()}</span>
                                             </p>
                                         </div>
                                     </div>
                                     <Button 
                                         variant="outline" 
                                         size="sm" 
-                                        className="h-8 text-[9px] font-bold uppercase"
+                                        className="h-8 text-[11px] font-bold"
                                         onClick={() => handleViewMissionCard(selectedRequest)}
                                     >
-                                        View Mission Terminal <ChevronRight size={12} className="ml-1.5" />
+                                        View job <ChevronRight size={12} className="ml-1.5" />
                                     </Button>
                                 </div>
                             )}
@@ -496,25 +499,25 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                             {(selectedRequest.status === 'closed' || selectedRequest.status === 'rejected') && (
                                 <div className="p-4 rounded-xl bg-bg-tertiary/50 border border-border-sub space-y-4 mb-6">
                                     <div className="flex items-center justify-between border-b border-border-sub pb-2">
-                                        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
-                                            <History size={12}/> Audit Metadata
+                                        <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
+                                            <History size={12}/> Review details
                                         </h3>
                                     </div>
                                     <div className="grid grid-cols-3 gap-6">
                                         <div className="space-y-1 text-left">
-                                            <p className="text-[8px] font-black text-text-muted uppercase">Created On</p>
-                                            <p className="text-xs font-bold text-text-primary uppercase">{selectedRequest.submittedDate}</p>
+                                            <p className="text-[10px] font-bold text-text-muted">Created</p>
+                                            <p className="text-xs font-bold text-text-primary">{selectedRequest.submittedDate}</p>
                                         </div>
                                         {selectedRequest.reviewedBy && (
                                             <div className="space-y-1 text-left">
-                                                <p className="text-[8px] font-black text-text-muted uppercase">Reviewed By</p>
-                                                <p className="text-xs font-bold text-text-primary uppercase">{selectedRequest.reviewedBy}</p>
+                                                <p className="text-[10px] font-bold text-text-muted">Reviewed by</p>
+                                                <p className="text-xs font-bold text-text-primary">{selectedRequest.reviewedBy}</p>
                                             </div>
                                         )}
                                         {selectedRequest.closedAt && (
                                             <div className="space-y-1 text-left">
-                                                <p className="text-[8px] font-black text-text-muted uppercase">Finalized On</p>
-                                                <p className="text-xs font-bold text-text-primary uppercase">{format(parseISO(selectedRequest.closedAt), 'MM-dd-yyyy')}</p>
+                                                <p className="text-[10px] font-bold text-text-muted">Closed</p>
+                                                <p className="text-xs font-bold text-text-primary">{format(parseISO(selectedRequest.closedAt), 'MM-dd-yyyy')}</p>
                                             </div>
                                         )}
                                     </div>
@@ -523,10 +526,10 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
 
                             {selectedRequest.status === 'rejected' && (
                                 <div className="p-4 rounded-xl bg-brand-red-dim/5 border border-brand-red/30 space-y-2 mb-6">
-                                    <p className="text-[9px] font-black text-brand-red uppercase tracking-widest flex items-center gap-2 text-left">
-                                        <ShieldAlert size={12}/> Rejection Justification
+                                    <p className="text-[10px] font-bold text-brand-red uppercase tracking-wider flex items-center gap-2 text-left">
+                                        <ShieldAlert size={12}/> Reason for rejection
                                     </p>
-                                    <p className="text-xs text-text-secondary leading-relaxed uppercase font-medium italic text-left">
+                                    <p className="text-xs text-text-secondary leading-relaxed font-medium text-left">
                                         &quot;{selectedRequest.rejectionReason || 'No reason provided.'}&quot;
                                     </p>
                                 </div>
@@ -536,24 +539,24 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                 <div className="space-y-4">
                                     <div className="space-y-2 text-left">
                                         <div className="flex items-center justify-between px-1">
-                                            <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
-                                                <Building2 size={12}/> Client Entity
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
+                                                <Building2 size={12}/> Client
                                             </p>
                                             <VerifyToggle field="client" label="verify" />
                                         </div>
                                         <div className="p-3 rounded-lg bg-bg-primary border border-border-sub text-left">
-                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide text-left">{selectedRequest.clientName}</p>
+                                            <p className="text-xs font-bold text-text-primary tracking-wide text-left">{selectedRequest.clientName}</p>
                                         </div>
                                     </div>
                                     <div className="space-y-2 text-left">
                                         <div className="flex items-center justify-between px-1">
-                                            <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
-                                                <MapPin size={12}/> Site Coordinates
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
+                                                <MapPin size={12}/> Location
                                             </p>
                                             <VerifyToggle field="location" label="verify" />
                                         </div>
                                         <div className="p-3 rounded-lg bg-bg-primary border border-border-sub text-left">
-                                            <span className="text-xs font-bold text-text-primary uppercase text-left">{selectedRequest.location}</span>
+                                            <span className="text-xs font-bold text-text-primary text-left">{selectedRequest.location}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -561,24 +564,24 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                 <div className="space-y-4">
                                     <div className="space-y-2 text-left">
                                         <div className="flex items-center justify-between px-1">
-                                            <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
-                                                <LayoutDashboard size={12}/> Technical Category
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
+                                                <LayoutDashboard size={12}/> Category
                                             </p>
                                             <VerifyToggle field="category" label="verify" />
                                         </div>
                                         <div className="p-3 rounded-lg bg-bg-primary border border-border-sub text-left">
-                                            <Badge variant="outline" className="text-[10px] uppercase bg-bg-secondary">{selectedRequest.requestType}</Badge>
+                                            <Badge variant="outline" className="text-[10px] bg-bg-secondary">{selectedRequest.requestType}</Badge>
                                         </div>
                                     </div>
                                     <div className="space-y-2 text-left">
                                         <div className="flex items-center justify-between px-1">
-                                            <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
-                                                <AlertTriangle size={12}/> Deployment Priority
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
+                                                <AlertTriangle size={12}/> Priority
                                             </p>
                                             <VerifyToggle field="priority" label="verify" />
                                         </div>
                                         <div className="p-3 rounded-lg bg-bg-primary border border-border-sub text-left">
-                                            <Badge variant={selectedRequest.priority === 'critical' || selectedRequest.priority === 'high' ? 'high' : 'medium'} className="h-5 px-3 uppercase text-[10px]">
+                                            <Badge variant={selectedRequest.priority === 'critical' || selectedRequest.priority === 'high' ? 'high' : 'medium'} className="h-5 px-3 text-[10px]">
                                                 {selectedRequest.priority}
                                             </Badge>
                                         </div>
@@ -588,10 +591,10 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
 
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
-                                    <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Scope Briefing</p>
+                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-left">Scope</p>
                                     <VerifyToggle field="scope" label="verify" />
                                 </div>
-                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub italic text-sm text-text-secondary leading-relaxed uppercase font-medium text-left">
+                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub text-sm text-text-secondary leading-relaxed font-medium text-left">
                                     &quot;{selectedRequest.description}&quot;
                                 </div>
                             </div>
@@ -599,7 +602,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                             {(selectedRequest.imageUrls?.length || 0) > 0 && (
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between px-1">
-                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Visual Evidence Registry</p>
+                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-left">Photos</p>
                                         <VerifyToggle field="photos" label="verify" />
                                     </div>
                                     <div className="grid grid-cols-3 gap-4">
@@ -620,7 +623,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                             {(selectedRequest.documentUrls?.length || 0) > 0 && (
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between px-1">
-                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] text-left">Technical Asset Registry</p>
+                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider text-left">Documents</p>
                                         <VerifyToggle field="documents" label="verify" />
                                     </div>
                                     <div className="space-y-2">
@@ -631,8 +634,8 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                                         <FileText size={18} />
                                                     </div>
                                                     <div className="text-left">
-                                                        <p className="text-sm font-bold text-text-primary uppercase tracking-wide text-left">{docName}</p>
-                                                        <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest mt-0.5 text-left">Tactical Asset · Ready for Download</p>
+                                                        <p className="text-sm font-bold text-text-primary tracking-wide text-left">{docName}</p>
+                                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider mt-0.5 text-left">Document</p>
                                                     </div>
                                                 </div>
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-primary">
@@ -650,23 +653,23 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                         {selectedRequest?.status === 'new' && (
                             <div className="flex flex-col items-center gap-4 w-full">
                                 <div className="flex items-center justify-between w-full">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted">Audit Verification Phase:</p>
-                                    <p className={cn("text-[9px] font-black uppercase tracking-widest", isAllVerified ? "text-text-green" : "text-text-red")}>
-                                        {verifiedFields.size} / 5 Core Indicators Verified
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Verify details</p>
+                                    <p className={cn("text-[10px] font-bold uppercase tracking-wider", isAllVerified ? "text-text-green" : "text-text-red")}>
+                                        {verifiedFields.size} of 5 verified
                                     </p>
                                 </div>
                                 <Button 
                                     disabled={!isAllVerified || (!userIsSuper && !userIsDispatch)}
                                     onClick={() => handleAction('reviewed')} 
                                     className={cn(
-                                        "w-full h-11 text-[10px] uppercase font-bold tracking-[0.15em] transition-all",
+                                        "w-full h-11 text-[10px] uppercase font-bold tracking-wider transition-all",
                                         isAllVerified ? "bg-brand-red hover:bg-brand-red-hover shadow-lg" : "bg-bg-tertiary text-text-muted border border-border-sub"
                                     )}
                                 >
                                     {isAllVerified ? (
-                                        <><SearchCheck size={16} className="mr-2" /> Mark as Reviewed & Confirmed</>
+                                        <><SearchCheck size={16} className="mr-2" /> Mark as reviewed</>
                                     ) : (
-                                        <><Lock size={14} className="mr-2" /> Complete Verification to Proceed</>
+                                        <><Lock size={14} className="mr-2" /> Verify all details to continue</>
                                     )}
                                 </Button>
                             </div>
@@ -675,24 +678,24 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                         {selectedRequest?.status === 'reviewed' && (
                             <div className="flex flex-col gap-4 w-full">
                                 <div className="flex items-center justify-between w-full border-b border-border-sub pb-2">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted">Authorization Decision:</p>
-                                    <Badge variant="active" className="text-[8px] h-4">AUDIT PASSED</Badge>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Decision</p>
+                                    <Badge variant="active" className="text-[10px] h-4">Reviewed</Badge>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3 w-full">
                                     <Button 
                                         variant="destructive-outline" 
                                         disabled={!userIsSuper}
                                         onClick={() => setIsRejectionDialogOpen(true)} 
-                                        className="h-11 uppercase font-bold text-[10px] tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim"
+                                        className="h-11 uppercase font-bold text-[10px] tracking-wider border-brand-red text-text-red hover:bg-brand-red-dim"
                                     >
-                                        <X size={16} className="mr-2" /> Reject Intake
+                                        <X size={16} className="mr-2" /> Reject request
                                     </Button>
                                     <Button 
                                         disabled={!userIsSuper}
                                         onClick={() => handleAction('approved')} 
-                                        className="h-11 bg-text-green hover:bg-text-green/90 uppercase font-bold text-[10px] tracking-widest text-white shadow-lg"
+                                        className="h-11 bg-text-green hover:bg-text-green/90 uppercase font-bold text-[10px] tracking-wider text-white shadow-lg"
                                     >
-                                        <Check size={16} className="mr-2" /> Approve for Deployment
+                                        <Check size={16} className="mr-2" /> Approve request
                                     </Button>
                                 </div>
                             </div>
@@ -701,24 +704,24 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                         {selectedRequest?.status === 'approved' && (
                             <div className="flex flex-col gap-4 w-full">
                                 <div className="flex items-center justify-between w-full border-b border-border-sub pb-2">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted">Tactical Deployment Path:</p>
-                                    <Badge variant="active" className="text-[8px] h-4">AUTHORIZED</Badge>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Next step</p>
+                                    <Badge variant="active" className="text-[10px] h-4">Approved</Badge>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3 w-full">
                                     <Button 
                                         disabled={!userIsSuper}
                                         onClick={() => handleOpenConversion('assignment')} 
-                                        className="h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white shadow-lg"
+                                        className="h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider text-white shadow-lg"
                                     >
-                                        <Wrench size={16} className="mr-2" /> Convert to Assignment
+                                        <Wrench size={16} className="mr-2" /> Convert to job
                                     </Button>
                                     <Button 
                                         disabled={!userIsSuper}
                                         variant="outline"
                                         onClick={() => handleOpenConversion('project')} 
-                                        className="h-11 border-accent-gold text-accent-gold hover:bg-accent-gold/10 uppercase font-bold text-[10px] tracking-widest"
+                                        className="h-11 border-accent-gold text-accent-gold hover:bg-accent-gold/10 uppercase font-bold text-[10px] tracking-wider"
                                     >
-                                        <Briefcase size={16} className="mr-2" /> Convert to Project
+                                        <Briefcase size={16} className="mr-2" /> Convert to project
                                     </Button>
                                 </div>
                             </div>
@@ -728,20 +731,20 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                             <div className="flex flex-col gap-4 w-full">
                                 <div className="p-4 rounded-xl bg-bg-tertiary/50 border border-border-sub flex items-start gap-4 text-left">
                                     <Info size={18} className="text-accent-gold shrink-0 mt-0.5" />
-                                    <p className="text-[10px] text-text-secondary leading-relaxed uppercase font-medium text-left">
-                                        This intake has been finalized. Audit trail preserved in the historical registry. Converted missions are active in their respective logistical hubs.
+                                    <p className="text-[10px] text-text-secondary leading-relaxed font-medium text-left">
+                                        This request is closed. Its history is kept, and any job or project created from it is on its own page.
                                     </p>
                                 </div>
                                 <div className="flex gap-3 w-full">
-                                    <Button variant="outline" className="flex-1 h-11 uppercase font-bold text-[10px] tracking-widest" onClick={() => setIsReviewOpen(false)}>
+                                    <Button variant="outline" className="flex-1 h-11 uppercase font-bold text-[10px] tracking-wider" onClick={() => setIsReviewOpen(false)}>
                                         Close
                                     </Button>
                                     {selectedRequest.status === 'closed' && selectedRequest.convertedId && (
                                         <Button
-                                            className="flex-1 h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest"
+                                            className="flex-1 h-11 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider"
                                             onClick={() => handleViewMissionCard(selectedRequest)}
                                         >
-                                            View Mission Card <ArrowUpRight size={14} className="ml-2" />
+                                            View job <ArrowUpRight size={14} className="ml-2" />
                                         </Button>
                                     )}
                                 </div>
@@ -757,39 +760,39 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-2 mb-1 text-left">
                             <ShieldAlert className="text-brand-red h-5 w-5" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">Rejection Briefing</DialogTitle>
+                            <DialogTitle className="text-lg font-bold text-text-primary">Reject request</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Provide a tactical justification for terminating this intake request.</DialogDescription>
+                        <DialogDescription className="text-xs font-bold text-text-muted text-left">Tell the client why this request is being rejected.</DialogDescription>
                     </DialogHeader>
 
                     <div className="p-6 space-y-4">
                         <div className="p-4 rounded-lg bg-brand-red-dim/10 border border-brand-red/30 space-y-1 text-left">
-                            <p className="text-[10px] font-black text-brand-red uppercase tracking-widest">Mission Termination Handshake</p>
-                            <p className="text-[11px] text-text-secondary leading-relaxed uppercase font-medium">
-                                You are rejecting request <span className="text-text-primary font-bold">{(selectedRequest?.id || '').toUpperCase()}</span>. This will be transmitted to the client entity.
+                            <p className="text-[10px] font-bold text-brand-red uppercase tracking-wider">Rejecting request</p>
+                            <p className="text-[11px] text-text-secondary leading-relaxed font-medium">
+                                You are rejecting request <span className="text-text-primary font-bold">{(selectedRequest?.id || '').toUpperCase()}</span>. The client will see your note.
                             </p>
                         </div>
 
                         <div className="space-y-2 text-left">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1">Manual note to give reason to client (Required)</Label>
+                            <Label className="text-[10px] font-bold text-text-muted ml-1">Reason for the client (required)</Label>
                             <Textarea 
-                                placeholder="e.g., Site access restricted, incomplete data, or out of service scope..." 
+                                placeholder="e.g. Site access restricted, missing details, or outside our service area…" 
                                 value={rejectionReason}
                                 onChange={e => setRejectionReason(e.target.value)}
-                                className="bg-bg-primary border-border-sub min-h-[120px] text-xs leading-relaxed uppercase font-medium"
+                                className="bg-bg-primary border-border-sub min-h-[120px] text-xs leading-relaxed font-medium"
                             />
                         </div>
                     </div>
 
                     <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex gap-3">
-                        <Button variant="outline" onClick={() => setIsRejectionDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Abort</Button>
+                        <Button variant="outline" onClick={() => setIsRejectionDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider h-11">Cancel</Button>
                         <Button 
                             variant="destructive" 
                             disabled={!rejectionReason.trim()}
                             onClick={() => handleAction('rejected')} 
-                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white shadow-lg"
+                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider h-11 text-white shadow-lg"
                         >
-                            <X size={16} className="mr-2" /> Confirm & Reject
+                            <X size={16} className="mr-2" /> Reject request
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -801,24 +804,24 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                     <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                         <div className="flex items-center gap-2 mb-1">
                             {conversionType === 'project' ? <Briefcase className="text-accent-gold h-5 w-5" /> : <Wrench className="text-brand-red h-5 w-5" />}
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary">
-                                {conversionType === 'project' ? 'Initialize Project Registry' : 'Stage New Assignment'}
+                            <DialogTitle className="text-lg font-bold text-text-primary">
+                                {conversionType === 'project' ? 'Create project' : 'Create job'}
                             </DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs uppercase font-bold text-text-muted text-left">Define operational identifiers for the new registry entry.</DialogDescription>
+                        <DialogDescription className="text-xs font-bold text-text-muted text-left">Name the new record. Client and location are copied from the request.</DialogDescription>
                     </DialogHeader>
 
                     <div className="p-6 space-y-6">
                         <div className="space-y-2 text-left">
-                            <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center gap-1.5">
+                            <Label className="text-[10px] font-bold text-text-muted ml-1 flex items-center gap-1.5">
                                 <Type size={12} className="text-brand-red" />
-                                Official Title / Identifier
+                                Title
                             </Label>
                             <Input 
-                                placeholder="e.g. Gotham Data Center Rewiring" 
+                                placeholder="e.g. Data center rewiring" 
                                 value={conversionTitle}
                                 onChange={e => setConversionTitle(e.target.value)}
-                                className="h-11 bg-bg-primary border-border-sub text-xs font-bold uppercase tracking-wide"
+                                className="h-11 bg-bg-primary border-border-sub text-xs font-bold tracking-wide"
                                 autoFocus
                             />
                         </div>
@@ -827,22 +830,22 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                             <div className="space-y-6">
                                 <div className="grid grid-cols-2 gap-4 items-end">
                                     <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center">Pay Model</Label>
+                                        <Label className="text-[10px] font-bold text-text-muted ml-1 flex items-center">Pay type</Label>
                                         <Select value={conversionPayType} onValueChange={(val: any) => setConversionPayType(val)}>
-                                            <SelectTrigger className="h-11 bg-bg-primary text-xs uppercase font-bold">
+                                            <SelectTrigger className="h-11 bg-bg-primary text-xs font-bold">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="fixed" className="text-xs uppercase font-bold">{PAY_TYPE_LABELS.fixed}</SelectItem>
-                                                <SelectItem value="hourly" className="text-xs font-bold uppercase">{PAY_TYPE_LABELS.hourly}</SelectItem>
-                                                <SelectItem value="blended" className="text-xs font-bold uppercase">{PAY_TYPE_LABELS.blended}</SelectItem>
+                                                <SelectItem value="fixed" className="text-xs font-bold">{PAY_TYPE_LABELS.fixed}</SelectItem>
+                                                <SelectItem value="hourly" className="text-xs font-bold">{PAY_TYPE_LABELS.hourly}</SelectItem>
+                                                <SelectItem value="blended" className="text-xs font-bold">{PAY_TYPE_LABELS.blended}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 flex items-center gap-1.5">
+                                        <Label className="text-[10px] font-bold text-text-muted ml-1 flex items-center gap-1.5">
                                             <DollarSign size={12} className="text-text-green" />
-                                            Labor Rate ($)
+                                            Labor rate ($)
                                         </Label>
                                         <div className="relative">
                                             <DollarSign size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-green" />
@@ -860,7 +863,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                 {conversionPayType === 'blended' && (
                                     <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg bg-bg-secondary/50 border border-border-sub text-left">
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Fixed Base ($)</Label>
+                                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Fixed base ($)</Label>
                                             <div className="relative">
                                                 <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
                                                 <Input 
@@ -876,7 +879,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                             </div>
                                         </div>
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Incl. Hours</Label>
+                                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Incl. hours</Label>
                                             <Input 
                                                 type="number"
                                                 value={blendedHours || ''}
@@ -885,7 +888,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                             />
                                         </div>
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Post Rate ($/hr)</Label>
+                                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Then ($/hr)</Label>
                                             <div className="relative">
                                                 <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
                                                 <Input 
@@ -896,7 +899,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                                 />
                                             </div>
                                         </div>
-                                        <p className="col-span-3 text-[9px] text-text-muted uppercase font-bold italic tracking-tighter text-left">Fixed amount for specified hours, then hourly rate applies.</p>
+                                        <p className="col-span-3 text-[11px] text-text-muted text-left">Fixed amount for the included hours, then the hourly rate applies.</p>
                                     </div>
                                 )}
                             </div>
@@ -904,27 +907,27 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
 
                         <div className="p-4 rounded-lg bg-bg-secondary border border-border-sub space-y-3 shadow-inner text-left">
                             <div className="space-y-1 text-left">
-                                <p className="text-[8px] font-black text-text-muted uppercase">Inherited Context</p>
+                                <p className="text-[10px] font-bold text-text-muted">From the request</p>
                                 <div className="flex items-center gap-2">
                                     <Building2 size={12} className="text-brand-red" />
-                                    <p className="text-[10px] font-bold text-text-primary uppercase">{selectedRequest?.clientName}</p>
+                                    <p className="text-[10px] font-bold text-text-primary">{selectedRequest?.clientName}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <MapPin size={12} className="text-brand-red" />
-                                    <p className="text-[10px] font-bold text-text-primary uppercase truncate">{selectedRequest?.location}</p>
+                                    <p className="text-[10px] font-bold text-text-primary truncate">{selectedRequest?.location}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex gap-3">
-                        <Button variant="outline" onClick={() => setIsConversionDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-widest h-11">Abort</Button>
+                        <Button variant="outline" onClick={() => setIsConversionDialogOpen(false)} className="flex-1 uppercase font-bold text-[10px] tracking-wider h-11">Cancel</Button>
                         <Button 
                             disabled={!conversionTitle.trim()}
                             onClick={executeConversion} 
-                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest h-11 text-white shadow-lg"
+                            className="flex-1 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider h-11 text-white shadow-lg"
                         >
-                            <CheckCircle2 size={16} className="mr-2" /> Finalize Registry
+                            <CheckCircle2 size={16} className="mr-2" /> Create
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -37,7 +37,13 @@ import {
   Trash2,
   Check,
   Download,
+  Archive,
+  X,
 } from "lucide-react";
+import { Checkbox } from '@/components/ui/checkbox';
+import { PageHeader } from '@/components/page-header';
+import { EmptyState } from '@/components/empty-state';
+import { StatusBadge } from '@/components/status-badge';
 import type { WorkOrder, Technician, WeeklyLog } from "@/lib/types";
 import { externalWorkOrderId, isImported } from "@/lib/work-order-identity";
 import { format, startOfDay } from 'date-fns';
@@ -123,6 +129,13 @@ export default function AssignmentsHubPage() {
   const [currentUser, setCurrentUser] = useState<Technician | null>(null);
   const [orderToArchive, setOrderToArchive] = useState<WorkOrder | null>(null);
   const [isArchiving, setIsArchiving] = useState(false);
+
+  // Tab + bulk selection. Selection is cleared whenever the visible set can
+  // change (search, filters, dates, tab) so hidden rows are never acted on.
+  const [tab, setTab] = useState<'schedule' | 'archive'>('schedule');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false);
+  const [bulkArchiving, setBulkArchiving] = useState(false);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -296,10 +309,38 @@ export default function AssignmentsHubPage() {
   [filteredWorkOrders]);
   const activePager = usePaged(activeWorkOrders, PAGE_SIZES_LARGE, 'admin-assignments-active', [deferredSearch, dateRange, sortBy, activePriorities, activeSources, activeStatuses, dateAsc]);
 
+  // History = archived, completed or cancelled — so every job lands in
+  // exactly one tab (the Cancelled filter works, CSV count matches).
   const archivedWorkOrders = useMemo(() =>
-    filteredWorkOrders.filter(wo => isArchivedJob(wo) || isCompletedJob(wo)),
+    filteredWorkOrders.filter(wo => isArchivedJob(wo) || isCompletedJob(wo) || wo.status === 'cancelled'),
   [filteredWorkOrders]);
   const historyPager = usePaged(archivedWorkOrders, PAGE_SIZES_LARGE, 'admin-assignments-history', [deferredSearch, dateRange, sortBy, activePriorities, activeSources, activeStatuses, dateAsc]);
+
+  useEffect(() => { setSelectedIds(new Set()); }, [deferredSearch, dateRange, activePriorities, activeSources, activeStatuses, tab]);
+
+  const tabRows = tab === 'schedule' ? activeWorkOrders : archivedWorkOrders;
+  const tabPager = tab === 'schedule' ? activePager : historyPager;
+  // Drop ids that left the list (e.g. archived by someone else meanwhile).
+  const selectedRows = useMemo(() => tabRows.filter(wo => selectedIds.has(wo.id)), [tabRows, selectedIds]);
+  const pageIds = tabPager.items.map(wo => wo.id);
+  const pageAllSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
+  const pageSomeSelected = pageIds.some(id => selectedIds.has(id));
+  const allMatchingSelected = tabRows.length > 0 && selectedRows.length === tabRows.length;
+  const toggleRow = (id: string, on: boolean) => setSelectedIds(prev => {
+    const next = new Set(prev);
+    if (on) next.add(id); else next.delete(id);
+    return next;
+  });
+  // Header checkbox: the filtered rows on screen; when paged, the bulk bar
+  // then offers "Select all N matching".
+  const togglePage = (on: boolean) => setSelectedIds(prev => {
+    const next = new Set(prev);
+    pageIds.forEach(id => (on ? next.add(id) : next.delete(id)));
+    return next;
+  });
+  const selectAllMatching = () => setSelectedIds(new Set(tabRows.map(wo => wo.id)));
+  const clearSelection = () => setSelectedIds(new Set());
+  const archivableSelected = selectedRows.filter(wo => !wo.archived);
 
   const formatDateDisplay = (dateStr: string) => {
     const woDate = parseTacticalDate(dateStr);
@@ -342,7 +383,7 @@ export default function AssignmentsHubPage() {
         requestedBy: currentUser?.id || 'unknown',
         requestedAt: new Date().toISOString()
       };
-      toast({ title: "Pay Change Requested", description: "Financial modifications require authorization." });
+      toast({ title: "Pay change requested", description: "Pay changes need approval from a pay admin." });
     }
 
     const today = format(new Date(), 'MM-dd-yyyy');
@@ -403,7 +444,7 @@ export default function AssignmentsHubPage() {
           }
         })
         .catch((error: any) => {
-          console.error("Registry Update Error:", error);
+          console.error("Assignment update error:", error);
           toast({ variant: "destructive", title: "Save failed", description: error.message });
         });
     }
@@ -411,7 +452,7 @@ export default function AssignmentsHubPage() {
     setIsEditDialogOpen(false);
     setSelectedJob(null);
     setEditedOrder(null);
-    toast({ title: "Updated", description: "Assignment parameters committed to Firestore." });
+    toast({ title: "Saved", description: "Job updated." });
   };
 
   // Step 1: user clicks Delete. Close the edit dialog FIRST (Radix modals cannot
@@ -428,6 +469,41 @@ export default function AssignmentsHubPage() {
   // Step 2: user confirms. Soft-archive instead of destroying: flip status to
   // 'archived', stamp metadata, preserve every existing field (WO numbers,
   // external WO id, tech, logs, notes, history). Never deleteDoc.
+  const archiveAssignment = (order: WorkOrder) => archiveJobRecord({
+    job: order,
+    collectionName: 'assignments',
+    archivedBy: currentUser?.name || currentUser?.id || 'Admin',
+    archiveReason: 'Manually archived from assignments page',
+    techName: technicians.find(t => t.id === jobTechId(order))?.name,
+  });
+
+  // Bulk archive: the same single-job archive, one selected job at a time.
+  // Already-archived jobs are skipped, exactly as the single confirm does.
+  const confirmBulkArchive = async () => {
+    const targets = archivableSelected;
+    if (targets.length === 0) { setBulkArchiveOpen(false); return; }
+    setBulkArchiving(true);
+    let done = 0;
+    const failed: string[] = [];
+    for (const order of targets) {
+      try {
+        await archiveAssignment(order);
+        done++;
+      } catch (e) {
+        console.error("Archive Error:", e);
+        failed.push((order.id || '').toUpperCase());
+      }
+    }
+    setBulkArchiving(false);
+    setBulkArchiveOpen(false);
+    clearSelection();
+    if (failed.length) {
+      toast({ variant: "destructive", title: `Archived ${done} of ${targets.length}`, description: `Could not archive: ${failed.join(', ')}` });
+    } else {
+      toast({ title: "Archived", description: `${done} job${done === 1 ? '' : 's'} moved to History.` });
+    }
+  };
+
   const confirmArchive = async () => {
     const order = orderToArchive;
     if (!order) return;
@@ -437,14 +513,8 @@ export default function AssignmentsHubPage() {
     }
     setIsArchiving(true);
     try {
-      await archiveJobRecord({
-        job: order,
-        collectionName: 'assignments',
-        archivedBy: currentUser?.name || currentUser?.id || 'Admin',
-        archiveReason: 'Manually archived from assignments page',
-        techName: technicians.find(t => t.id === jobTechId(order))?.name,
-      });
-      toast({ title: "Archived", description: "Assignment moved to Archives." });
+      await archiveAssignment(order);
+      toast({ title: "Archived", description: "Job moved to History." });
       setOrderToArchive(null);
     } catch (e: any) {
       console.error("Archive Error:", e);
@@ -464,7 +534,7 @@ export default function AssignmentsHubPage() {
         });
         toast({ title: "Verified", description: `Job ${woId.toUpperCase()} has been confirmed.` });
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Audit Failure', description: e.message });
+        toast({ variant: 'destructive', title: 'Could not verify', description: e.message });
     }
   };
 
@@ -485,23 +555,30 @@ export default function AssignmentsHubPage() {
 
   // Date lives in its own button now, so it isn't counted on Filters.
   const activeFilterCount = activePriorities.length + activeSources.length + activeStatuses.length;
+  const anyFilterOn = activeFilterCount > 0 || !!dateRange?.from || !!deferredSearch.trim();
+  const resetAll = () => { setActivePriorities([]); setActiveSources([]); setActiveStatuses([]); setDateRange(undefined); setSearchQuery(''); };
+  const emptyState = (which: 'active' | 'history', compact?: boolean) => anyFilterOn ? (
+    <EmptyState compact={compact} icon={Search} title="No jobs match these filters"
+      action={<Button variant="outline" size="sm" onClick={resetAll}>Reset filters</Button>} />
+  ) : (
+    <EmptyState compact={compact} icon={which === 'active' ? Activity : CheckCircle2}
+      title={which === 'active' ? 'No active jobs yet' : 'No job history yet'}
+      description={which === 'active' ? 'Assigned jobs show up here.' : 'Completed, cancelled and archived jobs show up here.'} />
+  );
 
   return (
     <div className="space-y-6 text-left">
-      <header className="page-header flex flex-col md:flex-row md:items-end justify-between gap-4 text-left">
-        <div className="text-left">
-          <p className="page-eyebrow flex items-center gap-2 text-left">
-            <CalendarIcon size={12} />
-            Assignment Tracker
-          </p>
-          <h1 className="page-title text-left">Assignments</h1>
-          <p className="page-subtitle text-left">Schedule and history and historical job audit.</p>
-        </div>
+      <PageHeader
+        eyebrow="Jobs"
+        icon={CalendarIcon}
+        title="Assignments"
+        subtitle="Scheduled jobs and job history."
+        actions={
         <div className="flex flex-wrap items-center gap-3 text-left">
             <SearchField
               value={searchQuery}
               onChange={setSearchQuery}
-              placeholder="Search Tech, ID, or Title..."
+              placeholder="Search tech, ID or title…"
               className="basis-full md:basis-auto md:w-[300px]"
               inputClassName="sm:h-10"
             />
@@ -520,41 +597,83 @@ export default function AssignmentsHubPage() {
                 onReset={() => { setActivePriorities([]); setActiveSources([]); setActiveStatuses([]); }}
                 className="shrink-0"
               >
-                <FilterSection title="Job Status">
+                <FilterSection title="Job status">
                   <CheckboxFilter idPrefix="status" options={JOB_STATUS_OPTIONS} selected={activeStatuses} onChange={setActiveStatuses} />
                 </FilterSection>
                 <FilterSection title="Priority">
                   <CheckboxFilter idPrefix="prio" options={['critical', 'high', 'medium', 'low']} selected={activePriorities} onChange={setActivePriorities} />
                 </FilterSection>
-                <FilterSection title="Job Source">
+                <FilterSection title="Job source">
                   <CheckboxFilter idPrefix="source" options={['Imported', 'Manual', 'Client']} selected={activeSources} onChange={setActiveSources} columns={1} />
                 </FilterSection>
               </FiltersPopover>
               <DateRangeButton value={dateRange} onChange={setDateRange} />
               {/* Every job matching the search / filters / dates — both tabs,
                   any status — not just the page on screen. */}
-              <Button variant="outline" className="h-10 shrink-0 text-[10px] font-bold uppercase tracking-widest" disabled={filteredWorkOrders.length === 0}
+              <Button variant="outline" className="h-10 shrink-0" disabled={filteredWorkOrders.length === 0}
                 onClick={() => exportAssignmentsCsv(filteredWorkOrders, id => techById.get(id)?.name, isPayAdmin(currentUser))}
                 title={`Export ${filteredWorkOrders.length} job${filteredWorkOrders.length === 1 ? '' : 's'} with locations`}>
                 <Download size={14} className="mr-1.5" /> CSV ({filteredWorkOrders.length})
               </Button>
             </div>
         </div>
-      </header>
+        }
+      />
 
-      <Tabs defaultValue="schedule" className="w-full text-left">
-        <div className="flex items-center justify-between gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-lg border border-border-sub text-left shadow-sm">
+      <Tabs value={tab} onValueChange={v => setTab(v as 'schedule' | 'archive')} className="w-full text-left">
+        <div className="flex items-center justify-between gap-4 mb-4 text-left">
           <TabsList className="tabs !mb-0 text-left">
             <TabsTrigger value="schedule" className="tab">
-              Active Assignments <span className="tab-count">({activeWorkOrders.length})</span>
+              Active <span className="tab-count">({activeWorkOrders.length})</span>
             </TabsTrigger>
             <TabsTrigger value="archive" className="tab">
-              Job History <span className="tab-count">({archivedWorkOrders.length})</span>
+              History <span className="tab-count">({archivedWorkOrders.length})</span>
             </TabsTrigger>
           </TabsList>
-          {/* Date filtering now lives in the always-visible header "Filters"
-              popover (works in both list and map views, and on mobile). */}
         </div>
+
+        {/* Select-all (phones have no table header) + bulk actions */}
+        {tabRows.length > 0 && (
+          <div className={cn("mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-4 py-2.5 text-[13px]",
+            selectedRows.length > 0 ? "border-brand-red/40 bg-brand-red/5" : "border-border-main bg-bg-secondary md:hidden")}>
+            <label className="flex items-center gap-2 font-medium text-text-primary md:hidden">
+              <Checkbox
+                checked={pageAllSelected ? true : pageSomeSelected ? 'indeterminate' : false}
+                onCheckedChange={c => togglePage(c === true)}
+                aria-label="Select all jobs on this page"
+              />
+              Select all
+            </label>
+            {selectedRows.length > 0 && (
+              <>
+                <span className="font-semibold text-text-primary">{selectedRows.length} selected</span>
+                {!allMatchingSelected && tabRows.length > tabPager.items.length && pageAllSelected && (
+                  <button type="button" onClick={selectAllMatching} className="font-medium text-brand-red hover:underline">
+                    Select all {tabRows.length} matching
+                  </button>
+                )}
+                {allMatchingSelected && tabRows.length > tabPager.items.length && (
+                  <span className="text-text-muted">All {tabRows.length} matching jobs selected</span>
+                )}
+                <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+                  <Button variant="outline" size="sm" className="flex-1 sm:flex-none"
+                    onClick={() => exportAssignmentsCsv(selectedRows, id => techById.get(id)?.name, isPayAdmin(currentUser))}>
+                    <Download size={14} className="mr-1.5" /> Export selected (CSV)
+                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1 border-brand-red/40 text-text-red hover:bg-brand-red/10 sm:flex-none"
+                    disabled={archivableSelected.length === 0}
+                    title={archivableSelected.length === 0 ? 'The selected jobs are already archived' : undefined}
+                    onClick={() => setBulkArchiveOpen(true)}>
+                    <Archive size={14} className="mr-1.5" /> Archive selected
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={clearSelection} aria-label="Clear selection">
+                    <X size={14} className="mr-1" /> Clear
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         <div className="space-y-6 text-left">
             <TabsContent value="schedule" className="mt-0 space-y-6 text-left">
@@ -570,16 +689,19 @@ export default function AssignmentsHubPage() {
                                 onClick={() => handleCardClick(wo)}
                             >
                                 <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
+                                    <div onClick={e => e.stopPropagation()} className="flex shrink-0 items-center pt-0.5">
+                                        <Checkbox checked={selectedIds.has(wo.id)} onCheckedChange={c => toggleRow(wo.id, c === true)} aria-label={`Select job ${(wo.id || '').toUpperCase()}`} className="h-5 w-5" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-1.5">
                                             <WorkOrderId wo={wo} />
                                         </div>
-                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide mt-1 break-words">{wo.title || wo.description}</p>
-                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{wo.clientName}</p>
+                                        <p className="text-[13px] font-semibold text-text-primary mt-1 break-words">{wo.title || wo.description}</p>
+                                        <p className="text-[12px] text-text-muted">{wo.clientName}</p>
                                     </div>
-                                    <Badge variant={wo.status === 'in-progress' ? 'inprogress' : wo.status === 'checked-out' ? 'checked-out' : 'scheduled'} className="text-[8px] h-4 px-1.5 uppercase tracking-widest shrink-0">{wo.status}</Badge>
+                                    <StatusBadge kind="job" value={wo.status} className="shrink-0" />
                                 </div>
-                                <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-text-secondary font-bold uppercase">
+                                <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-text-secondary font-bold">
                                     <div className="flex items-center gap-1.5 min-w-0">
                                         <MapPin size={11} className="text-brand-red shrink-0" />
                                         <span className="truncate">{formatCityState(wo.location)}</span>
@@ -594,12 +716,12 @@ export default function AssignmentsHubPage() {
                                         <div className="flex items-center gap-2 min-w-0">
                                             <Avatar className="h-6 w-6 border border-border-sub">
                                                 <AvatarImage src={tech.avatarUrl} />
-                                                <AvatarFallback className="text-[9px]">{tech.name?.charAt(0)}</AvatarFallback>
+                                                <AvatarFallback className="text-[11px]">{tech.name?.charAt(0)}</AvatarFallback>
                                             </Avatar>
-                                            <span className="text-[10px] font-bold text-text-primary uppercase truncate">{tech.name}</span>
+                                            <span className="text-[10px] font-bold text-text-primary truncate">{tech.name}</span>
                                         </div>
                                     ) : (
-                                        <Button variant="outline" size="sm" className="h-7 !text-[10px] border-brand-red text-brand-red hover:bg-brand-red-dim uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleOpenEditDialog(wo); }}>
+                                        <Button variant="outline" size="sm" className="h-7 !text-[10px] border-brand-red text-brand-red hover:bg-brand-red-dim uppercase font-bold tracking-wider" onClick={(e) => { e.stopPropagation(); handleOpenEditDialog(wo); }}>
                                             <UserPlus size={13} className="mr-1.5"/> Assign
                                         </Button>
                                     )}
@@ -614,31 +736,34 @@ export default function AssignmentsHubPage() {
                             </div>
                         );
                     })}
-                    {activeWorkOrders.length === 0 && (
-                        <div className="p-8 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
-                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] italic">No active jobs found matching search criteria</p>
-                        </div>
-                    )}
+                    {activeWorkOrders.length === 0 && emptyState('active', true)}
                 </div>
                 {/* Desktop: table */}
                 <div className="table-wrap text-left hidden md:block">
                     <table className="tbl">
                         <thead>
                             <tr className="bg-bg-tertiary">
-                                <th className="text-left pl-6 w-[180px]">Status & ID</th>
-                                <th className="text-left pl-0">Assignment Identification</th>
-                                <th className="text-center">Operative</th>
-                                <th className="text-left pl-0">Site Coordinates</th>
+                                <th className="w-10 pl-4">
+                                    <Checkbox
+                                        checked={pageAllSelected ? true : pageSomeSelected ? 'indeterminate' : false}
+                                        onCheckedChange={c => togglePage(c === true)}
+                                        aria-label="Select all jobs on this page"
+                                    />
+                                </th>
+                                <th className="text-left pl-2 w-[180px]">Status &amp; ID</th>
+                                <th className="text-left pl-0">Job</th>
+                                <th className="text-center">Technician</th>
+                                <th className="text-left pl-0">Location</th>
                                 <th className="text-left pl-0">
                                     <button
                                         onClick={toggleDateSort}
-                                        className="inline-flex items-center gap-1.5 uppercase tracking-widest hover:text-brand-red transition-colors"
+                                        className="inline-flex items-center gap-1.5 hover:text-brand-red transition-colors"
                                         title="Sort by date"
                                     >
-                                        Schedule Date
+                                        Scheduled
                                         <ArrowUpDown size={11} className={cn("shrink-0", sortBy === 'date' ? "text-brand-red" : "text-text-muted opacity-50")} />
                                         {sortBy === 'date' && (
-                                            <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Earliest' : 'Latest'}</span>
+                                            <span className="text-[10px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Earliest' : 'Latest'}</span>
                                         )}
                                     </button>
                                 </th>
@@ -650,19 +775,22 @@ export default function AssignmentsHubPage() {
                                 const techId = jobTechId(wo);
                                 const tech = technicians.find(t => t.id === techId);
                                 return (
-                                    <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors text-left" onClick={() => handleCardClick(wo)}>
-                                        <td className="text-left pl-6 py-4">
+                                    <tr key={wo.id} className={cn("cursor-pointer group hover:bg-bg-tertiary transition-colors text-left", selectedIds.has(wo.id) && "bg-brand-red/5")} onClick={() => handleCardClick(wo)}>
+                                        <td className="w-10 pl-4 py-4" onClick={e => e.stopPropagation()}>
+                                            <Checkbox checked={selectedIds.has(wo.id)} onCheckedChange={c => toggleRow(wo.id, c === true)} aria-label={`Select job ${(wo.id || '').toUpperCase()}`} />
+                                        </td>
+                                        <td className="text-left pl-2 py-4">
                                             <div className="flex flex-col items-start gap-1.5 text-left">
                                                 <div className="flex items-center gap-1.5 text-left">
                                                     <WorkOrderId wo={wo} />
                                                 </div>
-                                                <Badge variant={wo.status === 'in-progress' ? 'inprogress' : wo.status === 'checked-out' ? 'checked-out' : 'scheduled'} className="text-[8px] h-4 px-1.5 uppercase tracking-widest">{wo.status}</Badge>
+                                                <StatusBadge kind="job" value={wo.status} />
                                             </div>
                                         </td>
                                         <td className="text-left pl-0 py-4 text-left">
                                             <div className="flex flex-col min-w-0 text-left">
-                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors whitespace-normal text-left">{wo.title || wo.description}</p>
-                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1 text-left">{wo.clientName}</p>
+                                                <p className="text-[13px] font-semibold text-text-primary group-hover:text-brand-red transition-colors whitespace-normal text-left">{wo.title || wo.description}</p>
+                                                <p className="text-[12px] text-text-muted mt-0.5 text-left">{wo.clientName}</p>
                                             </div>
                                         </td>
                                         <td className="py-4 text-center">
@@ -673,13 +801,13 @@ export default function AssignmentsHubPage() {
                                                             <AvatarImage src={tech.avatarUrl} />
                                                             <AvatarFallback>{tech.name?.charAt(0)}</AvatarFallback>
                                                         </Avatar>
-                                                        <span className="text-[10px] font-bold text-text-primary uppercase text-left">{tech.name}</span>
+                                                        <span className="text-[10px] font-bold text-text-primary text-left">{tech.name}</span>
                                                     </div>
                                                 ) : (
                                                     <Button 
                                                     variant="outline" 
                                                     size="sm" 
-                                                    className="h-8 !text-[10px] border-brand-red text-brand-red hover:bg-brand-red-dim uppercase font-bold tracking-widest"
+                                                    className="h-8 !text-[10px] border-brand-red text-brand-red hover:bg-brand-red-dim uppercase font-bold tracking-wider"
                                                     onClick={(e) => { e.stopPropagation(); handleOpenEditDialog(wo); }}
                                                     >
                                                     <UserPlus size={14} className="mr-1.5"/> Assign
@@ -688,7 +816,7 @@ export default function AssignmentsHubPage() {
                                             </div>
                                         </td>
                                         <td className="py-4 pl-0 text-left">
-                                            <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold uppercase text-left">
+                                            <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold text-left">
                                                 <MapPin size={11} className="text-brand-red shrink-0" /><span className="whitespace-normal text-left">{formatCityState(wo.location)}</span>
                                             </div>
                                         </td>
@@ -705,19 +833,19 @@ export default function AssignmentsHubPage() {
                                                         <span className="text-sm font-mono font-bold text-text-green text-right">
                                                             ${(wo.blendedFixedPay || 0).toFixed(2)} + ${(wo.blendedHourlyRate || 0).toFixed(2)}/hr
                                                         </span>
-                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5 text-right">
+                                                        <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider mt-0.5 text-right">
                                                             after {wo.blendedIncludedHours || 0} hrs
                                                         </span>
                                                     </>
                                                 ) : wo.payType === 'hourly' ? (
                                                     <>
                                                         <span className="text-sm font-mono font-bold text-text-green text-right">${(wo.pay || 0).toFixed(2)}/hr</span>
-                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5 text-right">hourly labor rate</span>
+                                                        <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider mt-0.5 text-right">hourly labor rate</span>
                                                     </>
                                                 ) : (
                                                     <>
                                                         <span className="text-sm font-mono font-bold text-text-green text-right">${(wo.pay || 0).toFixed(2)}</span>
-                                                        <span className="text-[8px] text-text-muted uppercase font-bold tracking-widest mt-0.5 text-right">fixed labor rate</span>
+                                                        <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider mt-0.5 text-right">fixed labor rate</span>
                                                     </>
                                                 )}
                                             </div>
@@ -730,12 +858,7 @@ export default function AssignmentsHubPage() {
                 </div>
 
                 <ListPager pager={activePager} noun="jobs" />
-                {activeWorkOrders.length === 0 && (
-                    <div className="p-12 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30 text-left hidden md:block">
-                        <Activity size={32} className="mx-auto text-text-muted mb-4 opacity-20" />
-                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] italic text-center">No active jobs found matching search criteria</p>
-                    </div>
-                )}
+                {activeWorkOrders.length === 0 && <div className="hidden md:block">{emptyState('active')}</div>}
             </TabsContent>
 
             <TabsContent value="archive" className="mt-0 text-left">
@@ -753,19 +876,22 @@ export default function AssignmentsHubPage() {
                                 onClick={() => handleCardClick(wo)}
                             >
                                 <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
+                                    <div onClick={e => e.stopPropagation()} className="flex shrink-0 items-center pt-0.5">
+                                        <Checkbox checked={selectedIds.has(wo.id)} onCheckedChange={c => toggleRow(wo.id, c === true)} aria-label={`Select job ${(wo.id || '').toUpperCase()}`} className="h-5 w-5" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
                                         <div className="flex flex-col leading-tight">
                                             <span className="cell-id font-mono font-bold text-brand-red !text-[10px]">{(wo.id || '').toUpperCase()}</span>
                                             {isImported(wo) && ext && (
-                                                <span className="font-mono font-bold text-brand-cyan text-[9px]">FN #{ext}</span>
+                                                <span className="font-mono font-bold text-brand-cyan text-[11px]">FN #{ext}</span>
                                             )}
                                         </div>
-                                        <p className="text-xs font-bold text-text-primary uppercase tracking-wide mt-1 break-words">{wo.title || wo.description}</p>
-                                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{wo.clientName}</p>
+                                        <p className="text-[13px] font-semibold text-text-primary mt-1 break-words">{wo.title || wo.description}</p>
+                                        <p className="text-[12px] text-text-muted">{wo.clientName}</p>
                                     </div>
-                                    <Badge variant="completed" className="text-[8px] h-4 px-1.5 shrink-0">CLOSED</Badge>
+                                    <StatusBadge kind="job" value={isArchivedJob(wo) ? 'archived' : wo.status} className="shrink-0" />
                                 </div>
-                                <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-text-secondary font-bold uppercase">
+                                <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-text-secondary font-bold">
                                     <div className="flex items-center gap-1.5 min-w-0">
                                         <MapPin size={11} className="text-brand-red shrink-0" />
                                         <span className="truncate">{formatCityState(wo.location)}</span>
@@ -776,11 +902,11 @@ export default function AssignmentsHubPage() {
                                     </div>
                                 </div>
                                 <div className="mt-3 flex items-center justify-between gap-2 pt-3 border-t border-border-sub" onClick={(e) => e.stopPropagation()}>
-                                    <div className="flex items-center gap-1.5 text-[10px] text-text-muted font-bold uppercase min-w-0">
-                                        <User size={11} className="shrink-0" /><span className="truncate">{tech?.name || 'Field Ops'}</span>
+                                    <div className="flex items-center gap-1.5 text-[10px] text-text-muted font-bold min-w-0">
+                                        <User size={11} className="shrink-0" /><span className="truncate">{tech?.name || 'No tech'}</span>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
-                                        <Badge variant="outline" className={cn("h-6 px-3 uppercase text-[9px] tracking-widest font-black", audit.cls)}>{audit.label}</Badge>
+                                        <Badge variant="outline" className={cn("h-6 px-3 uppercase text-[10px] tracking-wider font-bold", audit.cls)}>{audit.label}</Badge>
                                         <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-red" onClick={() => requestArchive(wo)}>
                                             <Trash2 size={13}/>
                                         </Button>
@@ -789,30 +915,33 @@ export default function AssignmentsHubPage() {
                             </div>
                         );
                     })}
-                    {archivedWorkOrders.length === 0 && (
-                        <div className="p-8 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
-                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] italic">No historical records found matching current filters.</p>
-                        </div>
-                    )}
+                    {archivedWorkOrders.length === 0 && emptyState('history', true)}
                 </div>
                 {/* Desktop: table */}
                 <div className="table-wrap text-left hidden md:block">
                     <table className="tbl">
                         <thead>
                             <tr className="bg-bg-tertiary">
-                                <th className="text-left pl-6 w-[180px]">Status &amp; ID</th>
-                                <th className="text-left pl-0">Assignment Identification</th>
-                                <th className="text-center">Deployment Coordinates</th>
+                                <th className="w-10 pl-4">
+                                    <Checkbox
+                                        checked={pageAllSelected ? true : pageSomeSelected ? 'indeterminate' : false}
+                                        onCheckedChange={c => togglePage(c === true)}
+                                        aria-label="Select all jobs on this page"
+                                    />
+                                </th>
+                                <th className="text-left pl-2 w-[180px]">Status &amp; ID</th>
+                                <th className="text-left pl-0">Job</th>
+                                <th className="text-center">Location</th>
                                 <th className="text-center">
                                     <button
                                         onClick={toggleDateSort}
-                                        className="inline-flex items-center gap-1.5 uppercase tracking-widest hover:text-brand-red transition-colors"
+                                        className="inline-flex items-center gap-1.5 hover:text-brand-red transition-colors"
                                         title="Sort by date"
                                     >
-                                        Original Date &amp; Time
+                                        Date &amp; tech
                                         <ArrowUpDown size={11} className={cn("shrink-0", sortBy === 'date' ? "text-brand-red" : "text-text-muted opacity-50")} />
                                         {sortBy === 'date' && (
-                                            <span className="text-[8px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Earliest' : 'Latest'}</span>
+                                            <span className="text-[10px] font-bold text-brand-red normal-case tracking-tight">{dateAsc ? 'Earliest' : 'Latest'}</span>
                                         )}
                                     </button>
                                 </th>
@@ -826,39 +955,42 @@ export default function AssignmentsHubPage() {
                                 const audit = getAuditStatus(wo);
                                 const ext = externalWorkOrderId(wo);
                                 return (
-                                    <tr key={wo.id} className="cursor-pointer group hover:bg-bg-tertiary transition-colors text-left" onClick={() => handleCardClick(wo)}>
+                                    <tr key={wo.id} className={cn("cursor-pointer group hover:bg-bg-tertiary transition-colors text-left", selectedIds.has(wo.id) && "bg-brand-red/5")} onClick={() => handleCardClick(wo)}>
+                                        <td className="w-10 pl-4 py-4" onClick={e => e.stopPropagation()}>
+                                            <Checkbox checked={selectedIds.has(wo.id)} onCheckedChange={c => toggleRow(wo.id, c === true)} aria-label={`Select job ${(wo.id || '').toUpperCase()}`} />
+                                        </td>
                                         {/* Status & ID — internal id + imported (Field Nation) id */}
-                                        <td className="text-left pl-6 py-4">
+                                        <td className="text-left pl-2 py-4">
                                             <div className="flex flex-col items-start gap-1.5">
-                                                <Badge variant="completed" className="text-[8px] h-4 px-1.5 tracking-widest capitalize">{wo.status === 'archived' ? 'Archived' : 'Completed'}</Badge>
+                                                <StatusBadge kind="job" value={isArchivedJob(wo) ? 'archived' : wo.status} />
                                                 <div className="flex flex-col items-start leading-tight">
                                                     <span className="cell-id font-mono font-bold text-brand-red !text-[10px]">{(wo.id || '').toUpperCase()}</span>
                                                     {isImported(wo) && ext && (
-                                                        <span className="font-mono font-bold text-brand-cyan text-[9px]">FN #{ext}</span>
+                                                        <span className="font-mono font-bold text-brand-cyan text-[11px]">FN #{ext}</span>
                                                     )}
                                                 </div>
                                             </div>
                                         </td>
-                                        {/* Assignment Identification + client */}
+                                        {/* Job + client */}
                                         <td className="py-4 text-left">
-                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wide group-hover:text-brand-red transition-colors whitespace-normal text-left">{wo.title || wo.description}</p>
-                                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1"><Briefcase size={11}/> {wo.clientName || 'Unassigned Client'}</div>
+                                            <p className="text-[13px] font-semibold text-text-primary group-hover:text-brand-red transition-colors whitespace-normal text-left">{wo.title || wo.description}</p>
+                                            <div className="flex items-center gap-1.5 text-[12px] text-text-muted mt-0.5"><Briefcase size={11}/> {wo.clientName || 'No client'}</div>
                                         </td>
-                                        {/* Deployment Coordinates */}
+                                        {/* Location */}
                                         <td className="py-4 text-center">
-                                            <div className="flex items-center justify-center gap-2 text-[10px] text-text-secondary font-bold uppercase"><MapPin size={12} className="text-brand-red shrink-0" /><span className="whitespace-normal text-center">{formatCityState(wo.location)}</span></div>
+                                            <div className="flex items-center justify-center gap-2 text-[10px] text-text-secondary font-bold"><MapPin size={12} className="text-brand-red shrink-0" /><span className="whitespace-normal text-center">{formatCityState(wo.location)}</span></div>
                                         </td>
                                         {/* Original Date & Time */}
                                         <td className="py-4 text-center">
                                             <div className="flex flex-col items-center justify-center">
                                                 <div className="flex items-center gap-2 text-[10px] text-text-primary font-bold uppercase tracking-tight"><CalendarIcon size={12} className="text-text-muted" />{formatDateDisplay(wo.scheduleDate)}{wo.scheduleTime ? ` · ${wo.scheduleTime}` : ''}</div>
-                                                <div className="flex items-center gap-1.5 mt-1 text-[10px] text-text-muted font-bold uppercase"><User size={10}/> {tech?.name || 'Field Ops'}</div>
+                                                <div className="flex items-center gap-1.5 mt-1 text-[10px] text-text-muted font-bold"><User size={10}/> {tech?.name || 'No tech'}</div>
                                             </div>
                                         </td>
                                         {/* Audit Status — payroll stage; verification happens during pay review */}
                                         <td className="py-4 text-right pr-6">
                                             <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
-                                                <Badge variant="outline" className={cn("h-7 px-3 uppercase text-[9px] tracking-widest font-black", audit.cls)}>{audit.label}</Badge>
+                                                <Badge variant="outline" className={cn("h-7 px-3 uppercase text-[10px] tracking-wider font-bold", audit.cls)}>{audit.label}</Badge>
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
@@ -872,12 +1004,11 @@ export default function AssignmentsHubPage() {
                                     </tr>
                                 )
                             })}
-                            {archivedWorkOrders.length === 0 && (
-                                <tr><td colSpan={5} className="h-32 text-center text-text-muted uppercase text-[10px] tracking-[0.2em] italic">No historical records found matching current filters.</td></tr>
-                            )}
+
                         </tbody>
                     </table>
                 </div>
+                {archivedWorkOrders.length === 0 && <div className="hidden md:block">{emptyState('history')}</div>}
                 <ListPager pager={historyPager} noun="jobs" />
             </TabsContent>
         </div>
@@ -895,8 +1026,8 @@ export default function AssignmentsHubPage() {
               <DialogHeader className="p-6 pb-2 text-left border-b border-border-sub bg-bg-tertiary/30">
                 <div className="flex items-center justify-between text-left">
                     <div className="space-y-1 text-left">
-                        <DialogTitle className="text-lg font-bold uppercase tracking-widest text-text-primary text-left">Update Assignment Parameters</DialogTitle>
-                        <p className="text-xs text-text-muted text-left">Adjust manual parameters for assignment <span className="font-bold text-text-primary">{(selectedJob?.id || '').toUpperCase()}</span></p>
+                        <DialogTitle className="text-lg font-bold text-text-primary text-left">Edit job</DialogTitle>
+                        <p className="text-xs text-text-muted text-left">Update the details for job <span className="font-bold text-text-primary">{(selectedJob?.id || '').toUpperCase()}</span></p>
                     </div>
                 </div>
               </DialogHeader>
@@ -911,13 +1042,13 @@ export default function AssignmentsHubPage() {
                     <div className="px-6 py-4 space-y-6 text-left">
                         <div className="space-y-4 text-left">
                             <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2 text-left">
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2 text-left">
                                   <Type size={12} className="text-brand-red"/> Job Title
                                 </Label>
-                                <Input placeholder="e.g. Fiber Audit" value={editedOrder.title || ''} onChange={(e) => setEditedOrder({...editedOrder, title: e.target.value})} className="bg-bg-primary border-border-sub h-10 text-xs font-bold uppercase" />
+                                <Input placeholder="e.g. Fiber Audit" value={editedOrder.title || ''} onChange={(e) => setEditedOrder({...editedOrder, title: e.target.value})} className="bg-bg-primary border-border-sub h-10 text-xs font-bold" />
                             </div>
                             <div className="space-y-2 text-left text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-2 text-left">
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2 text-left">
                                   <FileText size={12} className="text-accent-gold"/> Scope of Work
                                 </Label>
                                 <Textarea placeholder="Detailed requirements..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({...editedOrder, description: e.target.value})} className="bg-bg-primary border-border-sub h-24 text-xs text-left" />
@@ -925,20 +1056,20 @@ export default function AssignmentsHubPage() {
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                             <div className="space-y-2 text-left text-left">
-                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Client / Entity</Label>
-                              <Input value={editedOrder.clientName || ''} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold uppercase text-left" />
+                              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-left">Client</Label>
+                              <Input value={editedOrder.clientName || ''} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold text-left" />
                             </div>
                             <div className="space-y-2 text-left text-left">
-                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Site Location</Label>
+                              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-left">Location</Label>
                               <Input value={editedOrder.location || ''} onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})} className="bg-bg-primary h-10 text-xs text-left" />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                           <div className="space-y-2 text-left text-left">
-                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Service Category</Label>
+                              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-left">Service category</Label>
                               <Select value={editedOrder.projectType} onValueChange={(val) => setEditedOrder({...editedOrder, projectType: val})}>
-                                  <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold text-left"><SelectValue /></SelectTrigger>
+                                  <SelectTrigger className="h-10 bg-bg-primary text-xs font-bold text-left"><SelectValue /></SelectTrigger>
                                   <SelectContent>
                                       <SelectItem value="Installation">Installation</SelectItem>
                                       <SelectItem value="Troubleshooting">Troubleshooting</SelectItem>
@@ -949,9 +1080,9 @@ export default function AssignmentsHubPage() {
                               </Select>
                           </div>
                           <div className="space-y-2 text-left text-left">
-                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Priority Level</Label>
+                              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-left">Priority</Label>
                               <Select value={editedOrder.priority} onValueChange={(val: any) => setEditedOrder({...editedOrder, priority: val})}>
-                                  <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold text-left"><SelectValue /></SelectTrigger>
+                                  <SelectTrigger className="h-10 bg-bg-primary text-xs font-bold text-left"><SelectValue /></SelectTrigger>
                                   <SelectContent>
                                       <SelectItem value="low">Low</SelectItem>
                                       <SelectItem value="medium">Medium</SelectItem>
@@ -964,22 +1095,22 @@ export default function AssignmentsHubPage() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                           <div className="space-y-2 text-left text-left">
-                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Schedule Date</Label>
+                              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-left">Date</Label>
                               <Input type="date" value={editedOrder.scheduleDate || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleDate: e.target.value})} className="bg-bg-primary h-10 text-xs text-left" />
                           </div>
                           <div className="space-y-2 text-left text-left">
-                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Start Window</Label>
+                              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-left">Start time</Label>
                               <Input placeholder="e.g. 10:00 AM EST" value={editedOrder.scheduleTime || ''} onChange={(e) => setEditedOrder({...editedOrder, scheduleTime: e.target.value})} className="bg-bg-primary h-10 text-xs text-left" />
                           </div>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                           <div className="space-y-2 text-left text-left">
-                              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Pay Model</Label>
+                              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-left">Pay type</Label>
                               <Select value={editedOrder.payType} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, payType: val })}>
-                                  <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold text-left"><SelectValue /></SelectTrigger>
+                                  <SelectTrigger className="h-10 bg-bg-primary text-xs font-bold text-left"><SelectValue /></SelectTrigger>
                                   <SelectContent>
-                                      <SelectItem value="fixed" className="text-xs uppercase font-bold">{PAY_TYPE_LABELS.fixed}</SelectItem>
+                                      <SelectItem value="fixed" className="text-xs font-bold">{PAY_TYPE_LABELS.fixed}</SelectItem>
                                       <SelectItem value="hourly" className="text-xs font-bold">{PAY_TYPE_LABELS.hourly}</SelectItem>
                                       <SelectItem value="blended" className="text-xs font-bold">{PAY_TYPE_LABELS.blended}</SelectItem>
                                   </SelectContent>
@@ -987,7 +1118,7 @@ export default function AssignmentsHubPage() {
                           </div>
                           {editedOrder.payType !== 'blended' && (
                               <div className="space-y-2 text-left text-left">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Labor Rate ($)</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-left">Labor rate ($)</Label>
                                 <Input type="number" value={editedOrder.pay || 0} onChange={(e) => setEditedOrder({...editedOrder, pay: parseFloat(e.target.value) || 0})} className="bg-bg-primary h-10 text-xs font-mono text-text-green text-left" />
                               </div>
                           )}
@@ -996,7 +1127,7 @@ export default function AssignmentsHubPage() {
                       {editedOrder.payType === 'blended' && (
                           <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50 text-left">
                               <div className="space-y-2 text-left text-left">
-                                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Fixed Base ($)</Label>
+                                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-left">Fixed base ($)</Label>
                                   <div className="relative text-left">
                                       <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
                                       <Input 
@@ -1011,7 +1142,7 @@ export default function AssignmentsHubPage() {
                                   </div>
                               </div>
                               <div className="space-y-2 text-left text-left">
-                                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Incl. Hours</Label>
+                                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-left">Incl. hours</Label>
                                   <Input 
                                       type="number"
                                       value={editedOrder.blendedIncludedHours || ''}
@@ -1020,7 +1151,7 @@ export default function AssignmentsHubPage() {
                                   />
                               </div>
                               <div className="space-y-2 text-left text-left">
-                                  <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted text-left">Post Rate ($/hr)</Label>
+                                  <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-left">Then ($/hr)</Label>
                                   <div className="relative text-left">
                                       <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
                                       <Input 
@@ -1031,38 +1162,38 @@ export default function AssignmentsHubPage() {
                                       />
                                   </div>
                               </div>
-                              <p className="col-span-3 text-[9px] text-text-muted uppercase font-bold italic tracking-tighter text-left">Fixed amount for specified hours, then hourly rate applies.</p>
+                              <p className="col-span-3 text-[10px] text-text-muted uppercase font-bold text-left">Fixed amount for the included hours, then the hourly rate applies.</p>
                           </div>
                       )}
 
                         <Separator className="bg-border-sub text-left" />
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                             <div className="space-y-2 text-left text-left">
-                              <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block text-left">Technician Allocation</Label>
+                              <Label className="text-[10px] font-bold text-text-muted ml-1 text-center block text-left">Technician</Label>
                               <Select value={editedOrder.assignedTechnicianId || editedOrder.techId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? null : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
                                 <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red text-xs text-left">
-                                  <SelectValue placeholder="Select Technician" />
+                                  <SelectValue placeholder="Select technician" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest">UNASSIGNED</SelectItem>
-                                  {sortTechniciansForDeployment(technicians.filter(isAssignableTechnician)).map(tech => <SelectItem key={tech.id} value={tech.id} disabled={isInactiveTechnician(tech)} className="text-xs uppercase font-bold">{tech.name}{isInactiveTechnician(tech) ? ' · Inactive' : ''}</SelectItem>)}
+                                  <SelectItem value="unassigned" className="text-brand-red font-bold">Unassigned</SelectItem>
+                                  {sortTechniciansForDeployment(technicians.filter(isAssignableTechnician)).map(tech => <SelectItem key={tech.id} value={tech.id} disabled={isInactiveTechnician(tech)} className="text-xs font-bold">{tech.name}{isInactiveTechnician(tech) ? ' · Inactive' : ''}</SelectItem>)}
                                 </SelectContent>
                               </Select>
                             </div>
                             <div className="space-y-2 text-left text-left">
-                              <Label className="text-[10px] uppercase font-bold text-text-muted ml-1 text-center block text-left">Operational Status</Label>
+                              <Label className="text-[10px] font-bold text-text-muted ml-1 text-center block text-left">Status</Label>
                               <Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}>
-                                <SelectTrigger className="bg-bg-primary h-11 uppercase font-bold tracking-wider focus:ring-brand-red text-xs text-left">
+                                <SelectTrigger className="bg-bg-primary h-11 font-bold tracking-wider focus:ring-brand-red text-xs text-left">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="unassigned" className="text-xs uppercase font-bold">UNASSIGNED</SelectItem>
-                                  <SelectItem value="assigned" className="text-xs uppercase font-bold">ASSIGNED</SelectItem>
-                                  <SelectItem value="confirmed" className="text-xs uppercase font-bold">CONFIRMED</SelectItem>
-                                  <SelectItem value="on-my-way" className="text-xs uppercase font-bold">ON MY WAY</SelectItem>
-                                  <SelectItem value="in-progress" className="text-xs uppercase font-bold">IN PROGRESS</SelectItem>
-                                  <SelectItem value="checked-out" className="text-xs uppercase font-bold">CHECKED OUT</SelectItem>
-                                  <SelectItem value="completed" className="text-xs uppercase font-bold">COMPLETED</SelectItem>
+                                  <SelectItem value="unassigned" className="text-xs font-bold">Unassigned</SelectItem>
+                                  <SelectItem value="assigned" className="text-xs font-bold">Assigned</SelectItem>
+                                  <SelectItem value="confirmed" className="text-xs font-bold">Confirmed</SelectItem>
+                                  <SelectItem value="on-my-way" className="text-xs font-bold">On my way</SelectItem>
+                                  <SelectItem value="in-progress" className="text-xs font-bold">In progress</SelectItem>
+                                  <SelectItem value="checked-out" className="text-xs font-bold">Checked out</SelectItem>
+                                  <SelectItem value="completed" className="text-xs font-bold">Completed</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -1071,13 +1202,13 @@ export default function AssignmentsHubPage() {
                   </div>
               )}
               <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 shrink-0 flex flex-row items-center justify-between text-left">
-                <Button variant="destructive-outline" onClick={() => requestArchive(selectedJob)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest border-brand-red text-text-red hover:bg-brand-red-dim">
+                <Button variant="destructive-outline" onClick={() => requestArchive(selectedJob)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-wider border-brand-red text-text-red hover:bg-brand-red-dim">
                     <Trash2 size={16} className="mr-2" />
                     Archive
                 </Button>
                 <div className="flex gap-3 text-left">
-                    <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-widest">Cancel</Button>
-                    <Button onClick={handleSaveChanges} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white">Save Changes</Button>
+                    <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-wider">Cancel</Button>
+                    <Button onClick={handleSaveChanges} className="h-11 px-12 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider text-white">Save Changes</Button>
                 </div>
               </DialogFooter>
           </DialogContent>
@@ -1087,9 +1218,9 @@ export default function AssignmentsHubPage() {
       <AlertDialog open={!!orderToArchive} onOpenChange={(open) => { if (!open && !isArchiving) setOrderToArchive(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Move to Archives?</AlertDialogTitle>
+            <AlertDialogTitle>Archive this job?</AlertDialogTitle>
             <AlertDialogDescription>
-              This assignment{orderToArchive?.title ? ` (${orderToArchive.title})` : ''} will be moved to the Archives page.
+              This job{orderToArchive?.title ? ` (${orderToArchive.title})` : ''} will be moved to History.
               Its work order number, tech assignment, logs, notes, and history are preserved and can be restored later.
               It will no longer appear in active assignments.
             </AlertDialogDescription>
@@ -1101,7 +1232,29 @@ export default function AssignmentsHubPage() {
               disabled={isArchiving}
               className="bg-brand-red hover:bg-brand-red-hover text-white"
             >
-              {isArchiving ? 'Archiving…' : 'Move to Archives'}
+              {isArchiving ? 'Archiving…' : 'Archive job'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={bulkArchiveOpen} onOpenChange={(open) => { if (!open && !bulkArchiving) setBulkArchiveOpen(false); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive {archivableSelected.length} job{archivableSelected.length === 1 ? '' : 's'}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The selected jobs will be moved to History. Work order numbers, tech assignments, logs, notes and history are kept and can be restored later.
+              {selectedRows.length > archivableSelected.length && ` ${selectedRows.length - archivableSelected.length} selected job${selectedRows.length - archivableSelected.length === 1 ? ' is' : 's are'} already archived and will be skipped.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkArchiving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); confirmBulkArchive(); }}
+              disabled={bulkArchiving}
+              className="bg-brand-red hover:bg-brand-red-hover text-white"
+            >
+              {bulkArchiving ? 'Archiving…' : `Archive ${archivableSelected.length}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

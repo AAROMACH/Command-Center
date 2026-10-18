@@ -1,5 +1,7 @@
 "use client";
 
+import { PageHeader } from '@/components/page-header';
+import { PageLoading } from '@/components/empty-state';
 import { useState, useEffect } from 'react';
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from 'firebase/auth';
@@ -74,50 +76,41 @@ export default function TechSettingsPage() {
             });
             toast({
                 title: "Settings saved",
-                description: `${type.toUpperCase()} alerts are now ${updatedPrefs[type] ? 'ACTIVE' : 'DISABLED'} for your profile.`,
+                description: `${type === 'sms' ? 'Text' : type === 'push' ? 'In-app' : 'Email'} alerts are now ${updatedPrefs[type] ? 'on' : 'off'}.`,
             });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
     };
 
-    if (!mounted) return null;
+    if (!mounted) return <PageLoading label="Loading settings…" />;
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 text-left pb-24">
-             <header className="page-header text-left">
-                <div className="text-left">
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <SettingsIcon size={12} />
-                        Field Terminal
-                    </p>
-                    <h1 className="page-title text-left">System Settings</h1>
-                    <p className="page-subtitle text-left">Configure your field communication and interface preferences.</p>
-                </div>
-             </header>
+            <PageHeader eyebrow="Tech portal" icon={SettingsIcon} title="Settings" subtitle="Notifications, display and work preferences." />
 
             <div className="space-y-12">
                 {/* NOTIFICATIONS */}
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Bell size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">{TERMINOLOGY.CONFIG.NOTIFICATIONS}</h3>
+                        <h2 className="section-label">{TERMINOLOGY.CONFIG.NOTIFICATIONS}</h2>
                     </div>
                     <Card>
                         <CardHeader className="text-left">
-                            <CardTitle>Field Alert Protocols</CardTitle>
-                            <CardDescription>Choose how you receive mission updates and check-in reminders.</CardDescription>
+                            <CardTitle className="text-base font-semibold">Alerts</CardTitle>
+                            <CardDescription className="text-[12px]">Choose how you hear about job updates and check-in reminders.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-3">
                             {[
                                 { id: 'email', label: 'Email', desc: 'Assignments, pay stubs and alerts sent to your email.' },
-                                { id: 'sms', label: 'Text Message', desc: 'Job and schedule alerts texted to your phone.' },
+                                { id: 'sms', label: 'Text message', desc: 'Job and schedule alerts texted to your phone.' },
                                 { id: 'push', label: 'In-App', desc: 'Alerts in the bell at the top of the app.' },
                             ].map((item) => (
-                                <div key={item.id} className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary/50 border border-border-sub hover:border-text-muted transition-all">
+                                <div key={item.id} className="flex items-center justify-between gap-3 p-4 rounded-lg bg-bg-secondary/50 border border-border-sub hover:border-text-muted transition-all">
                                     <div className="space-y-0.5 text-left">
-                                        <p className="text-xs font-bold uppercase tracking-wider">{item.label}</p>
-                                        <p className="text-[10px] text-text-muted uppercase font-medium">{item.desc}</p>
+                                        <p className="text-[13px] font-semibold">{item.label}</p>
+                                        <p className="text-[12px] text-text-muted">{item.desc}</p>
                                     </div>
                                     <Switch 
                                         checked={resolveNotificationPrefs(currentUser?.notificationPreferences)[item.id as keyof NotificationPreferences]} 
@@ -133,7 +126,7 @@ export default function TechSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Monitor size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Terminal Interface</h3>
+                        <h2 className="section-label">Display</h2>
                     </div>
                     <ThemeToggleSetting />
                     <FontPreferenceSetting />
@@ -143,18 +136,18 @@ export default function TechSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Route size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Work Preferences</h3>
+                        <h2 className="section-label">Work preferences</h2>
                     </div>
                     <Card>
                         <CardHeader className="text-left">
-                            <CardTitle>Route &amp; Mileage</CardTitle>
-                            <CardDescription>Set your default route optimization and distance units.</CardDescription>
+                            <CardTitle className="text-base font-semibold">Route &amp; mileage</CardTitle>
+                            <CardDescription className="text-[12px]">Set your default route optimization and distance units.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4 text-left">
-                            <div className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary/50 border border-border-sub">
+                            <div className="flex items-center justify-between gap-3 p-4 rounded-lg bg-bg-secondary/50 border border-border-sub">
                                 <div className="space-y-0.5 text-left">
-                                    <p className="text-xs font-bold uppercase tracking-wider">Route Preference</p>
-                                    <p className="text-[10px] text-text-muted uppercase font-medium">Default ordering for your daily job route.</p>
+                                    <p className="text-[13px] font-semibold">Route order</p>
+                                    <p className="text-[12px] text-text-muted">Default ordering for your daily job route.</p>
                                 </div>
                                 <Select
                                     value={routePreference}
@@ -163,28 +156,28 @@ export default function TechSettingsPage() {
                                         saveField('routePreference', v);
                                     }}
                                 >
-                                    <SelectTrigger className="h-9 w-[160px] bg-bg-primary border-border-main text-[10px] font-bold uppercase">
+                                    <SelectTrigger className="h-10 sm:h-9 w-[160px] bg-bg-primary border-border-main">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="bg-bg-elevated border-border-main">
-                                        <SelectItem value="optimized" className="text-[10px] font-bold uppercase">Optimized</SelectItem>
-                                        <SelectItem value="by-time" className="text-[10px] font-bold uppercase">By Time</SelectItem>
-                                        <SelectItem value="by-mileage" className="text-[10px] font-bold uppercase">By Mileage</SelectItem>
+                                        <SelectItem value="optimized" className="text-[13px]">Optimized</SelectItem>
+                                        <SelectItem value="by-time" className="text-[13px]">By time</SelectItem>
+                                        <SelectItem value="by-mileage" className="text-[13px]">By mileage</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary/50 border border-border-sub">
+                            <div className="flex items-center justify-between gap-3 p-4 rounded-lg bg-bg-secondary/50 border border-border-sub">
                                 <div className="space-y-0.5 text-left">
-                                    <p className="text-xs font-bold uppercase tracking-wider">Distance Units</p>
-                                    <p className="text-[10px] text-text-muted uppercase font-medium">Miles or kilometers for mileage tracking.</p>
+                                    <p className="text-[13px] font-semibold">Distance units</p>
+                                    <p className="text-[12px] text-text-muted">Miles or kilometers for mileage tracking.</p>
                                 </div>
-                                <div className="flex items-center border border-border-main rounded-lg overflow-hidden h-9 bg-bg-primary">
+                                <div className="flex items-center border border-border-main rounded-md overflow-hidden h-10 sm:h-9 bg-bg-primary shrink-0">
                                     {(['mi', 'km'] as const).map(unit => (
                                         <button
                                             key={unit}
                                             onClick={() => { setMileageUnit(unit); saveField('mileageUnit', unit); }}
                                             className={cn(
-                                                'h-9 px-4 text-[10px] font-bold uppercase tracking-widest transition-colors border-l border-border-main first:border-l-0',
+                                                'h-10 sm:h-9 px-4 text-[13px] font-medium transition-colors border-l border-border-main first:border-l-0',
                                                 mileageUnit === unit ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary'
                                             )}
                                         >
@@ -201,22 +194,22 @@ export default function TechSettingsPage() {
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Calendar size={14} className="text-brand-red" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Calendar Integration</h3>
+                        <h2 className="section-label">Calendar</h2>
                     </div>
                     <Card>
                         <CardHeader className="text-left">
-                            <CardTitle>Google Calendar Sync</CardTitle>
-                            <CardDescription>Sync your job assignments with Google Calendar.</CardDescription>
+                            <CardTitle className="text-base font-semibold">Google Calendar</CardTitle>
+                            <CardDescription className="text-[12px]">Sync your job assignments with Google Calendar.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary/50 border border-border-sub hover:border-text-muted transition-all">
+                            <div className="flex items-center justify-between gap-3 p-4 rounded-lg bg-bg-secondary/50 border border-border-sub hover:border-text-muted transition-all">
                                 <div className="space-y-0.5 text-left">
-                                    <p className="text-xs font-bold uppercase tracking-wider">Enable Sync</p>
-                                    <p className="text-[10px] text-text-muted uppercase font-medium">Automatically add assignments to your Google Calendar.</p>
+                                    <p className="text-[13px] font-semibold">Sync jobs</p>
+                                    <p className="text-[12px] text-text-muted">Automatically add assignments to your Google Calendar.</p>
                                 </div>
                                 {/* Nothing reads this flag yet — shown as coming soon
                                     instead of a switch that does nothing. */}
-                                <span className="text-[9px] font-black uppercase tracking-widest text-text-muted border border-border-sub rounded px-2 py-1">Coming soon</span>
+                                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-text-muted border border-border-sub rounded-full px-2 py-1">Coming soon</span>
                             </div>
                         </CardContent>
                     </Card>

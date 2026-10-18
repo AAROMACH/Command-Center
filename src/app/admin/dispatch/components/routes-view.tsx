@@ -63,7 +63,7 @@ function DraggableJob({ job, routeId, onRemove }: { job: WorkOrder; routeId: str
         <GripVertical size={12} />
       </span>
       <span className="flex-1 min-w-0 truncate text-[10px] font-bold uppercase tracking-wide">{jobLabel(job)}</span>
-      <span className="text-[9px] font-mono text-text-muted shrink-0">${jobPay(job).toFixed(0)}</span>
+      <span className="text-[11px] font-mono text-text-muted shrink-0">${jobPay(job).toFixed(0)}</span>
       <button onClick={onRemove} className="text-text-muted hover:text-brand-red transition-colors shrink-0 opacity-0 group-hover:opacity-100">
         <X size={12} />
       </button>
@@ -202,7 +202,7 @@ export function RoutesView({ routes, allJobPool, technicians, onWorkOrdersChange
       });
       onWorkOrdersChange(jobsToPromote);
       onRoutesChange([]);
-      toast({ title: 'Routes Dispatched', description: `${jobsToPromote.length} job(s) sent to assigned technicians.` });
+      toast({ title: 'Routes assigned', description: `${jobsToPromote.length} job(s) sent to assigned technicians.` });
     } finally {
       setSending(false);
     }
@@ -230,7 +230,7 @@ export function RoutesView({ routes, allJobPool, technicians, onWorkOrdersChange
   return (
     <div className="space-y-4">
       <div className="flex flex-col lg:flex-row items-center justify-between gap-3">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
           {safeRoutes.length} route{safeRoutes.length !== 1 ? 's' : ''} · {safeJobPool.length} unassigned job{safeJobPool.length !== 1 ? 's' : ''}
         </p>
         <div className="flex items-center gap-2">
@@ -238,7 +238,7 @@ export function RoutesView({ routes, allJobPool, technicians, onWorkOrdersChange
             <button
               onClick={() => setMapOpen(o => !o)}
               className={cn(
-                'h-8 px-2.5 rounded flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest transition-colors',
+                'h-8 px-2.5 rounded flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors',
                 mapOpen ? 'bg-brand-red text-white' : 'text-text-muted hover:text-text-primary',
               )}
             >
@@ -290,8 +290,8 @@ export function RoutesView({ routes, allJobPool, technicians, onWorkOrdersChange
           {safeRoutes.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-border-sub rounded-xl">
               <RouteIcon size={28} className="text-text-muted mb-3" />
-              <p className="text-xs font-bold uppercase tracking-widest text-text-muted">No routes yet</p>
-              <p className="text-[10px] text-text-muted uppercase mt-1">Create a route and add jobs to start batch-assigning.</p>
+              <p className="text-xs font-bold text-text-muted">No routes yet</p>
+              <p className="text-[10px] text-text-muted mt-1">Create a route and add jobs to start batch-assigning.</p>
             </div>
           ) : (
             <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
@@ -305,26 +305,26 @@ export function RoutesView({ routes, allJobPool, technicians, onWorkOrdersChange
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
-                          <p className="text-xs font-black uppercase tracking-widest truncate">{route.name}</p>
+                          <p className="text-xs font-bold truncate">{route.name}</p>
                         </div>
                         <button onClick={() => handleDeleteRoute(route.id)} className="text-text-muted hover:text-brand-red transition-colors shrink-0">
                           <X size={14} />
                         </button>
                       </div>
 
-                      <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-widest text-text-muted">
+                      <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-text-muted">
                         <span>{jobs.length} job{jobs.length !== 1 ? 's' : ''}</span>
                         <span className="font-mono">${total.toFixed(0)}</span>
                       </div>
 
                       <Select value={route.technicianId || 'unassigned'} onValueChange={(val) => handleAssignTech(route.id, val)}>
-                        <SelectTrigger className="bg-bg-primary h-9 text-[10px] uppercase font-bold">
-                          <SelectValue placeholder="Assign Technician" />
+                        <SelectTrigger className="bg-bg-primary h-9 text-[10px] font-bold">
+                          <SelectValue placeholder="Assign technician" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="unassigned" className="text-brand-red font-bold uppercase tracking-widest text-[10px]">UNASSIGNED</SelectItem>
+                          <SelectItem value="unassigned" className="text-brand-red font-bold text-[12px]">Unassigned</SelectItem>
                           {assignableTechs.map(tech => (
-                            <SelectItem key={tech.id} value={tech.id} disabled={isInactiveTechnician(tech)} className="text-[10px] uppercase font-bold">
+                            <SelectItem key={tech.id} value={tech.id} disabled={isInactiveTechnician(tech)} className="text-[10px] font-bold">
                               {tech.name}{isInactiveTechnician(tech) ? ' · Inactive' : ''}
                             </SelectItem>
                           ))}
@@ -333,13 +333,13 @@ export function RoutesView({ routes, allJobPool, technicians, onWorkOrdersChange
 
                       <div className="space-y-1.5 min-h-[40px]">
                         {jobs.length === 0 ? (
-                          <p className="text-[9px] text-text-muted uppercase text-center py-3">Drop jobs here or add below</p>
+                          <p className="text-[11px] text-text-muted text-center py-3">Drop jobs here or add below</p>
                         ) : jobs.map(job => (
                           <DraggableJob key={job.id} job={job} routeId={route.id} onRemove={() => handleRemoveJob(route.id, job.id)} />
                         ))}
                       </div>
 
-                      <Button variant="outline" size="sm" className="w-full h-8 text-[9px]" onClick={() => { setAddJobsRouteId(route.id); setAddJobsSearch(''); }}>
+                      <Button variant="outline" size="sm" className="w-full h-8 text-[11px]" onClick={() => { setAddJobsRouteId(route.id); setAddJobsSearch(''); }}>
                         <Plus size={12} className="mr-1.5" /> Add Jobs
                       </Button>
                     </DroppableRoute>
@@ -355,7 +355,7 @@ export function RoutesView({ routes, allJobPool, technicians, onWorkOrdersChange
       <Dialog open={isNewRouteOpen} onOpenChange={setIsNewRouteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New Route</DialogTitle>
+            <DialogTitle>New route</DialogTitle>
             <DialogDescription>Name this route to start grouping jobs into it.</DialogDescription>
           </DialogHeader>
           <Input
@@ -381,13 +381,13 @@ export function RoutesView({ routes, allJobPool, technicians, onWorkOrdersChange
             <DialogDescription>Only unrouted jobs are shown — a job can belong to one route at a time.</DialogDescription>
           </DialogHeader>
           <Input
-            placeholder="Search unrouted jobs..."
+            placeholder="Search unrouted jobs…"
             value={addJobsSearch}
             onChange={e => setAddJobsSearch(e.target.value)}
           />
           <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5">
             {addJobsFiltered.length === 0 ? (
-              <p className="text-[10px] text-text-muted uppercase text-center py-6">No unrouted jobs match.</p>
+              <p className="text-[10px] text-text-muted text-center py-6">No unrouted jobs match.</p>
             ) : addJobsFiltered.map(job => (
               <button
                 key={job.id}
@@ -396,11 +396,11 @@ export function RoutesView({ routes, allJobPool, technicians, onWorkOrdersChange
               >
                 <span className="min-w-0 flex-1">
                   <span className="block text-[10px] font-bold uppercase tracking-wide truncate">{jobLabel(job)}</span>
-                  <span className="flex items-center gap-1 text-[9px] text-text-muted uppercase">
+                  <span className="flex items-center gap-1 text-[11px] text-text-muted">
                     <MapPin size={9} /> {job.location || 'No location'}
                   </span>
                 </span>
-                <span className="text-[9px] font-mono text-text-muted shrink-0">${jobPay(job).toFixed(0)}</span>
+                <span className="text-[11px] font-mono text-text-muted shrink-0">${jobPay(job).toFixed(0)}</span>
               </button>
             ))}
           </div>

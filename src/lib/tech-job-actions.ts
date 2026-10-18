@@ -348,11 +348,12 @@ export async function performTechJobAction(job: Job, action: TechJobAction, ctx:
       const completion = await ctx.completeAndFile(live, () => updateDoc(ref, {
         status: 'completed',
         activeTripLogId: null,
+        // ui-check-ignore: weekly-log-audit matches this stored text
         history: arrayUnion(historyEntry(`Mission finalized at ${now}. Status: CLOSED. Location: [${location}].`, user, 'note')),
       }));
-      NotificationService.notifyAdmins('Status Alert: COMPLETED',
+      NotificationService.notifyAdmins('Job completed',
         `Technician ${user} completed ${live.id.toUpperCase()} at ${location}.`, { id: live.id, type: 'assignment' }).catch(() => {});
-      return { title: 'Mission Finalized', completion };
+      return { title: 'Job completed', completion };
     }
 
     case 'reopen':
@@ -360,8 +361,9 @@ export async function performTechJobAction(job: Job, action: TechJobAction, ctx:
       await removeJobFromDraftLogs(ctx.techId, live.id);
       await updateDoc(ref, {
         status: reopenStatusFor(live),
+        // ui-check-ignore: stored history text, kept stable
         history: arrayUnion(historyEntry(`Mission re-opened at ${now} for correction. Location: [${location}].`, user, 'note')),
       });
-      return { title: 'Mission Re-opened', description: 'Removed from your Draft weekly log until it is completed again.' };
+      return { title: 'Job reopened', description: 'Removed from your Draft weekly log until it is completed again.' };
   }
 }

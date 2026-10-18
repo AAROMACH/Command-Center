@@ -35,6 +35,10 @@ import {
 } from 'lucide-react';
 
 import { ScheduleBox } from './components/schedule-box';
+import { PageHeader } from '@/components/page-header';
+import { PageLoading, EmptyState } from '@/components/empty-state';
+import { StatusBadge } from '@/components/status-badge';
+import { StatCard } from '@/components/stat-card';
 import { MyTasksCard } from './components/my-tasks-card';
 import { useToast } from '@/hooks/use-toast';
 import { WeeklyLogDialog } from './components/weekly-log-dialog';
@@ -172,61 +176,25 @@ export default function TechDashboardPage() {
 
     if (!currentTechId || !tech) {
         return (
-            <div className="flex h-screen items-center justify-center bg-bg-primary">
-                <div className="text-center space-y-4">
-                    <div className="h-8 w-8 border-4 border-brand-red border-t-transparent rounded-full animate-spin mx-auto" />
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Synchronizing Field terminal...</p>
-                </div>
-            </div>
+            <PageLoading label="Loading your day…" />
         );
     }
 
     return (
         <div className="space-y-5">
-            <header className="page-header">
-                <div className="text-left">
-                    <p className="page-eyebrow flex items-center gap-2">
-                        <Activity size={12} />
-                        {TERMINOLOGY.PORTAL.TECH}
-                    </p>
-                    <h1 className="page-title">Field Terminal</h1>
-                    <p className="page-subtitle">Welcome back, {tech.name?.split(' ')[0] || 'Operative'}.</p>
-                </div>
-                <NotificationBell />
-            </header>
+            <PageHeader
+                eyebrow="Tech portal"
+                icon={Activity}
+                title={`Hi, ${tech.name?.split(' ')[0] || 'there'}`}
+                subtitle="Your jobs, schedule and logs for today."
+                actions={<NotificationBell />}
+            />
 
             {/* Stat cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                <Card className="bg-bg-secondary border-border-sub cursor-pointer hover:border-border-main transition-all" onClick={() => router.push('/tech/assignments')}>
-                    <CardContent className="p-3 space-y-1">
-                        <div className="flex items-center justify-between">
-                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Jobs This Week</p>
-                            <Briefcase size={12} className="text-text-muted" />
-                        </div>
-                        <p className="text-2xl font-mono font-bold text-text-primary">{weeklyJobCount}</p>
-                        <p className="text-[8px] text-text-muted uppercase tracking-widest">{allWorkOrders.length} total assigned</p>
-                    </CardContent>
-                </Card>
-                <Card className="bg-bg-secondary border-border-sub cursor-pointer hover:border-border-main transition-all" onClick={() => router.push('/tech/calendar')}>
-                    <CardContent className="p-3 space-y-1">
-                        <div className="flex items-center justify-between">
-                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Expected Pay</p>
-                            <DollarSign size={12} className="text-text-green" />
-                        </div>
-                        <p className="text-2xl font-mono font-bold text-text-green">${expectedEarnings.toFixed(0)}</p>
-                        <p className="text-[8px] text-text-muted uppercase tracking-widest">Pending logs</p>
-                    </CardContent>
-                </Card>
-                <Card className="bg-bg-secondary border-border-sub cursor-pointer hover:border-border-main transition-all" onClick={() => router.push('/tech/logs')}>
-                    <CardContent className="p-3 space-y-1">
-                        <div className="flex items-center justify-between">
-                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted">Logs Pending</p>
-                            <TrendingUp size={12} className="text-accent-gold" />
-                        </div>
-                        <p className="text-2xl font-mono font-bold text-text-primary">{unsubmittedLogs.length}</p>
-                        <p className="text-[8px] text-text-muted uppercase tracking-widest">Draft weekly logs</p>
-                    </CardContent>
-                </Card>
+                <StatCard label="Jobs this week" icon={Briefcase} value={weeklyJobCount} sub={`${allWorkOrders.length} assigned in total`} onClick={() => router.push('/tech/assignments')} />
+                <StatCard label="Expected pay" icon={DollarSign} tone="done" value={`$${expectedEarnings.toFixed(0)}`} sub="From open logs" onClick={() => router.push('/tech/calendar')} />
+                <StatCard label="Logs to submit" icon={TrendingUp} value={unsubmittedLogs.length} sub="Draft weekly logs" onClick={() => router.push('/tech/logs')} className="col-span-2 md:col-span-1" />
             </div>
 
             <MyTasksCard techId={currentTechId} />
@@ -238,68 +206,66 @@ export default function TechDashboardPage() {
                 <div className="flex-1 min-w-0 space-y-4">
                     {activeJob ? (
                         <Card className={cn(
-                            "border-2 bg-bg-secondary cursor-pointer transition-all overflow-hidden",
+                            "rounded-xl border-2 bg-bg-secondary shadow-sm cursor-pointer transition-all overflow-hidden",
                             activeJob.status === 'in-progress' ? "border-text-green shadow-[0_0_15px_color-mix(in_srgb,var(--text-green)_10%,transparent)]" : "border-brand-red bg-brand-red-dim/5"
                         )} onClick={() => { setSelectedJob(activeJob); setIsDetailOpen(true); }}>
                             <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div className="text-left space-y-2 flex-1 min-w-0">
                                     <div className="flex items-center gap-3">
-                                        <span className="text-[10px] font-bold text-brand-red uppercase tracking-widest font-mono">{(activeJob.id || '').toUpperCase()}</span>
-                                        <Badge variant={activeJob.status === 'checked-out' ? 'checked-out' : activeJob.status === 'in-progress' ? 'inprogress' : 'onhold'}>
-                                            {activeJob.status.replace(/-/g, ' ').toUpperCase()}
-                                        </Badge>
+                                        <span className="id-text">{(activeJob.id || '').toUpperCase()}</span>
+                                        <StatusBadge kind="job" value={activeJob.status} />
                                     </div>
-                                    <h3 className="text-lg font-black uppercase tracking-tight text-text-primary leading-tight truncate">
+                                    <h2 className="text-[16px] font-semibold text-text-primary leading-snug">
                                         {activeJob.title || activeJob.description}
-                                    </h3>
+                                    </h2>
                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 text-left">
+                                        <p className="text-[12px] text-text-muted flex items-center gap-1.5 text-left">
                                             <Building2 size={12}/> {activeJob.clientName}
                                         </p>
-                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 truncate max-w-[200px] text-left">
+                                        <p className="text-[12px] text-text-muted flex items-center gap-1.5 truncate max-w-[200px] text-left">
                                             <MapPin size={12} className="text-brand-red"/> {activeJob.location}
                                         </p>
-                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 text-left">
+                                        <p className="text-[12px] text-text-muted flex items-center gap-1.5 text-left">
                                             <CalendarIcon size={12} className="text-accent-gold"/> {activeJob.scheduleDate}
                                         </p>
-                                        <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest flex items-center gap-1.5 text-left">
+                                        <p className="text-[12px] text-text-muted flex items-center gap-1.5 text-left">
                                             <Clock size={12} className="text-accent-gold"/> {activeJob.scheduleTime}
                                         </p>
                                     </div>
                                 </div>
-                                <div className="flex gap-2 shrink-0 self-start md:self-center">
+                                <div className="flex flex-wrap gap-2 shrink-0 self-stretch md:self-center">
                                     {canConfirm(activeJob) && (
-                                        <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'confirmed'); }} className="h-9 px-5 bg-accent-gold text-white text-[10px] font-bold uppercase tracking-widest">
+                                        <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'confirmed'); }} className="h-10 px-5 bg-accent-gold text-white flex-1 md:flex-none">
                                             <Check size={14} className="mr-2"/> Confirm
                                         </Button>
                                     )}
                                     {canStartTrip(activeJob) && (
-                                        <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'on-my-way'); }} className="h-9 px-5 bg-brand-red text-white text-[10px] uppercase font-bold tracking-widest">
-                                            <Navigation size={14} className="mr-2"/> Start Trip
+                                        <Button onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'on-my-way'); }} className="h-10 px-5 bg-brand-red text-white flex-1 md:flex-none">
+                                            <Navigation size={14} className="mr-2"/> Start trip
                                         </Button>
                                     )}
                                     {canCheckIn(activeJob) && (
-                                        <Button disabled={hasActiveSession} className="h-9 px-5 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
-                                            <Play size={14} className="mr-2 fill-current"/> Check In
+                                        <Button disabled={hasActiveSession} className="h-10 px-5 bg-text-green hover:bg-text-green/90 text-white flex-1 md:flex-none" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
+                                            <Play size={14} className="mr-2 fill-current"/> Check in
                                         </Button>
                                     )}
                                     {canCheckOut(activeJob) && (
-                                        <Button variant="outline" className="h-9 px-5 border-text-red text-text-red hover:bg-brand-red-dim text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'checked-out'); }}>
-                                            <LogOut size={14} className="mr-2"/> Check Out
+                                        <Button variant="outline" className="h-10 px-5 border-text-red text-text-red hover:bg-brand-red-dim flex-1 md:flex-none" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'checked-out'); }}>
+                                            <LogOut size={14} className="mr-2"/> Check out
                                         </Button>
                                     )}
                                     {canComplete(activeJob) && activeJob.status === 'in-progress' && (
-                                        <Button className="h-9 px-5 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
-                                            <CheckCircle2 size={14} className="mr-2"/> Finalize
+                                        <Button className="h-10 px-5 bg-text-green hover:bg-text-green/90 text-white flex-1 md:flex-none" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
+                                            <CheckCircle2 size={14} className="mr-2"/> Complete
                                         </Button>
                                     )}
                                     {activeJob.status === 'checked-out' && (
                                         <div className="flex gap-2">
-                                            <Button disabled={hasActiveSession} variant="outline" className="h-9 px-4 border-accent-gold text-accent-gold hover:bg-accent-gold-dim text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
+                                            <Button disabled={hasActiveSession} variant="outline" className="h-10 px-4 border-accent-gold text-accent-gold hover:bg-accent-gold-dim flex-1 md:flex-none" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'in-progress'); }}>
                                                 <RotateCcw size={14} className="mr-2"/> Resume
                                             </Button>
-                                            <Button className="h-9 px-4 bg-text-green hover:bg-text-green/90 text-white text-[10px] uppercase font-bold tracking-widest" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
-                                                <CheckCircle2 size={14} className="mr-2"/> Finalize
+                                            <Button className="h-10 px-4 bg-text-green hover:bg-text-green/90 text-white flex-1 md:flex-none" onClick={(e) => { e.stopPropagation(); handleStatusTransition(activeJob.id, 'completed'); }}>
+                                                <CheckCircle2 size={14} className="mr-2"/> Complete
                                             </Button>
                                         </div>
                                     )}
@@ -307,13 +273,7 @@ export default function TechDashboardPage() {
                             </div>
                         </Card>
                     ) : (
-                        <Card className="border border-border-sub bg-bg-secondary">
-                            <CardContent className="py-8 text-center space-y-2">
-                                <CheckCircle2 size={28} className="mx-auto text-text-green opacity-20" />
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">No Active Mission</p>
-                                <p className="text-[9px] text-text-muted">Stand by — your next assignment will appear here when dispatched.</p>
-                            </CardContent>
-                        </Card>
+                        <EmptyState compact icon={CheckCircle2} title="No job in progress" description="Your next job shows up here when it's assigned to you." />
                     )}
 
                     <ScheduleBox workOrders={allWorkOrders} onStatusTransition={handleStatusTransition} />
@@ -327,34 +287,34 @@ export default function TechDashboardPage() {
                         <div className="grid grid-cols-2 gap-2">
                             <Button variant="outline" className="h-14 flex-col gap-1.5 relative bg-bg-secondary border-border-main hover:border-text-green hover:bg-green-dim/10 transition-all" onClick={() => setIsLogSelectionOpen(true)}>
                                 <ClipboardList size={18} className="text-text-green" />
-                                <span className="text-[9px] font-bold uppercase tracking-wider">Submit Log</span>
+                                <span className="text-[13px] font-medium">Submit log</span>
                                 {unsubmittedLogs.length > 0 && (
-                                    <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[8px] bg-brand-red">{unsubmittedLogs.length}</Badge>
+                                    <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-brand-red">{unsubmittedLogs.length}</Badge>
                                 )}
                             </Button>
                             <Button variant="outline" className="h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-accent-gold hover:bg-accent-gold-dim/10 transition-all" onClick={() => setIsReceiptDialogOpen(true)}>
                                 <Receipt size={18} className="text-accent-gold" />
-                                <span className="text-[9px] font-bold uppercase tracking-wider">Receipt</span>
+                                <span className="text-[13px] font-medium">Add receipt</span>
                             </Button>
                         </div>
                         <Button variant="outline" className="w-full h-14 flex-col gap-1.5 bg-bg-secondary border-border-main hover:border-brand-red hover:bg-brand-red-dim/10 transition-all" onClick={() => setIsCheckInDialogOpen(true)}>
                             <Play size={18} className="text-brand-red" />
-                            <span className="text-[9px] font-bold uppercase tracking-wider">Check In</span>
+                            <span className="text-[13px] font-medium">Check in</span>
                         </Button>
                     </div>
 
                     {/* Pending logs */}
                     {unsubmittedLogs.length > 0 && (
                         <div className="space-y-2">
-                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted px-1">Logs Pending Submission</p>
+                            <p className="section-label px-1">Logs to submit</p>
                             {unsubmittedLogs.map(log => (
-                                <Card key={log.id} className="bg-bg-secondary border-accent-gold/30 cursor-pointer hover:border-accent-gold transition-all" onClick={() => { setSelectedLog(log); }}>
+                                <Card key={log.id} className="rounded-xl shadow-sm bg-bg-secondary border-accent-gold/30 cursor-pointer hover:border-accent-gold transition-all" onClick={() => { setSelectedLog(log); }}>
                                     <CardContent className="p-3 flex items-center justify-between">
                                         <div>
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-primary">Week of {log.weekOf}</p>
-                                            <p className="text-[9px] text-text-muted">{(log.items || []).length} assignments</p>
+                                            <p className="text-[13px] font-semibold text-text-primary">Week of {log.weekOf}</p>
+                                            <p className="text-[12px] text-text-muted">{(log.items || []).length} {(log.items || []).length === 1 ? 'job' : 'jobs'}</p>
                                         </div>
-                                        <span className="text-[9px] font-bold uppercase tracking-widest text-accent-gold">Submit →</span>
+                                        <span className="text-[12px] font-semibold text-accent-gold">Submit →</span>
                                     </CardContent>
                                 </Card>
                             ))}

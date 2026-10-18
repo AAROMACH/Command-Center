@@ -29,20 +29,20 @@ import { Separator } from '@/components/ui/separator';
 const TimesheetLogDetails = ({ log }: { log: ProjectDailyLog }) => (
     <div className="space-y-4">
       <div className="space-y-1">
-        <div className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">Field Activity Report</div>
-        <p className="text-[11px] text-text-secondary leading-relaxed italic">&quot;{log.workSummary}&quot;</p>
+        <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Field Activity Report</div>
+        <p className="text-[11px] text-text-secondary leading-relaxed ">&quot;{log.workSummary}&quot;</p>
       </div>
       
       <div className="flex flex-wrap gap-1">
         {(log.taskIdsCompleted || []).map((taskId) => (
-          <div key={taskId} className="inline-flex items-center gap-1 rounded-full bg-green-dim border border-green-border px-2 py-0.5 text-[9px] font-bold text-text-green uppercase tracking-tighter">
+          <div key={taskId} className="inline-flex items-center gap-1 rounded-full bg-green-dim border border-green-border px-2 py-0.5 text-[10px] font-bold text-text-green uppercase ">
             <Check size={10} /> Task Verified: {taskId.split('-')[1]}
           </div>
         ))}
       </div>
 
       <div className="space-y-2">
-        <div className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">Site Evidence</div>
+        <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Site Evidence</div>
         <div className="flex flex-wrap gap-2">
           {(log.photoUrls || []).map((photoUrl, index) => (
             <div key={index} className="relative h-14 w-20 rounded border border-border-sub bg-bg-tertiary overflow-hidden group cursor-pointer hover:border-brand-red transition-colors">
@@ -69,28 +69,28 @@ const TimesheetCard = ({ log, tech, viewBy, onEdit }: { log: ProjectDailyLog; te
                     <div className="flex items-center gap-2 min-w-[150px]">
                         <Avatar className="h-6 w-6 border border-border-sub">
                             <AvatarImage src={tech.avatarUrl} alt={tech.name}/>
-                            <AvatarFallback className="text-[8px]">{tech.name.charAt(0)}</AvatarFallback>
+                            <AvatarFallback className="text-[10px]">{tech.name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col text-left">
-                            <span className="text-[11px] font-bold text-text-primary uppercase tracking-tight truncate">{tech.name}</span>
-                            {viewBy === 'tech' && <span className="text-[8px] text-text-muted font-bold uppercase">{log.date}</span>}
+                            <span className="text-[11px] font-bold text-text-primary tracking-tight truncate">{tech.name}</span>
+                            {viewBy === 'tech' && <span className="text-[10px] text-text-muted font-bold">{log.date}</span>}
                         </div>
                     </div>
                 )}
                 
                 <div className="flex-1 grid grid-cols-2 gap-6">
                     <div className="flex flex-col text-left">
-                        <span className="text-[8px] font-bold uppercase text-text-muted tracking-widest">Temporal Entry</span>
+                        <span className="text-[10px] font-bold uppercase text-text-muted tracking-wider">Time entry</span>
                         <span className="text-[11px] font-mono font-bold text-text-green">{log.date}</span>
                     </div>
                     <div className="flex flex-col text-left">
-                        <span className="text-[8px] font-bold uppercase text-text-muted tracking-widest">Session Total</span>
+                        <span className="text-[10px] font-bold uppercase text-text-muted tracking-wider">Session Total</span>
                         <span className="text-[11px] font-mono font-bold text-text-primary">{log.totalHours}</span>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <Badge variant="active" className="h-5 text-[8px] uppercase tracking-widest px-2">Verified</Badge>
+                    <Badge variant="active" className="h-5 text-[10px] uppercase tracking-wider px-2">Verified</Badge>
                     <button 
                         onClick={(e) => { e.stopPropagation(); onEdit(log); }}
                         className="p-1 hover:bg-bg-tertiary rounded transition-colors text-text-muted hover:text-brand-red"
@@ -238,7 +238,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
                 });
             }
 
-            toast({ title: 'Saved', description: 'Timesheet parameters have been updated.' });
+            toast({ title: 'Saved', description: 'Timesheet entry updated.' });
             setIsEditLogOpen(false);
             setEditingLog(null);
         } catch (e: any) {
@@ -256,7 +256,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
             await updateDoc(projectRef, {
                 actualHours: Math.max(0, (project.actualHours || 0) - (logToDelete.hoursWorked || 0))
             });
-            toast({ title: 'Deleted', description: 'Timesheet entry removed from operational ledger.' });
+            toast({ title: 'Deleted', description: 'Timesheet entry removed.' });
             setIsEditLogOpen(false);
             setEditingLog(null);
         } catch (e: any) {
@@ -266,7 +266,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
 
     const handleExportTimesheets = () => {
         const rows = [
-            ['DATE', 'OPERATIVE', 'CHECK IN', 'CHECK OUT', 'HOURS', 'SUMMARY']
+            ['DATE', 'TECHNICIAN', 'CHECK IN', 'CHECK OUT', 'HOURS', 'SUMMARY']
         ];
         
         filteredTimesheets.forEach(log => {
@@ -290,7 +290,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast({ title: "Export Complete", description: "Timesheet manifest has been generated." });
+        toast({ title: "Export complete", description: "Timesheet CSV downloaded." });
     };
 
     return (
@@ -301,19 +301,19 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
                         <Clock size={20} />
                     </div>
                     <div className="text-left">
-                        <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Master Project Tally</p>
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Master Project Tally</p>
                         <p className="text-xl font-mono font-bold text-text-primary">{(project.actualHours || 0).toFixed(1)} Total Hours Logged</p>
                     </div>
                 </div>
-                <Button variant="outline" size="sm" className="h-9 px-6 text-[10px] font-bold uppercase tracking-widest border-border-sub" onClick={handleExportTimesheets}>
-                    <Download size={14} className="mr-1.5"/> Export Audit Manifest
+                <Button variant="outline" size="sm" className="h-9 px-6 text-[10px] font-bold uppercase tracking-wider border-border-sub" onClick={handleExportTimesheets}>
+                    <Download size={14} className="mr-1.5"/> Export CSV
                 </Button>
             </div>
 
             <div className="flex flex-wrap justify-between items-center gap-3 p-2 bg-bg-secondary/30 rounded-lg border border-border-sub">
                 <div className="flex items-center gap-1.5 bg-bg-tertiary p-0.5 rounded border border-border-sub">
-                    <Button onClick={() => setViewBy('date')} variant="ghost" className={cn("h-7 px-3 text-[10px] uppercase font-bold", viewBy === 'date' ? "bg-bg-secondary text-brand-red" : "text-text-muted")}>By Date</Button>
-                    <Button onClick={() => setViewBy('tech')} variant="ghost" className={cn("h-7 px-3 text-[10px] uppercase font-bold", viewBy === 'tech' ? "bg-bg-secondary text-brand-red" : "text-text-muted")}>By Tech</Button>
+                    <Button onClick={() => setViewBy('date')} variant="ghost" className={cn("h-7 px-3 text-[10px] font-bold", viewBy === 'date' ? "bg-bg-secondary text-brand-red" : "text-text-muted")}>By Date</Button>
+                    <Button onClick={() => setViewBy('tech')} variant="ghost" className={cn("h-7 px-3 text-[10px] font-bold", viewBy === 'tech' ? "bg-bg-secondary text-brand-red" : "text-text-muted")}>By Tech</Button>
                 </div>
                 
                 <div className="flex items-center gap-3 flex-1 md:flex-none">
@@ -328,7 +328,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
                             variant={"outline"}
                             size="sm"
                             className={cn(
-                              "h-8 w-[200px] justify-start text-left font-normal text-[10px] uppercase tracking-widest",
+                              "h-8 w-[200px] justify-start text-left font-normal text-[10px] uppercase tracking-wider",
                               !date && "text-text-muted"
                             )}
                           >
@@ -361,11 +361,11 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
                         <Button 
                             variant="default" 
                             size="sm" 
-                            className={cn("h-8 !text-[10px] uppercase font-bold tracking-widest bg-brand-red hover:bg-brand-red-hover", isReadOnly && "opacity-50 cursor-not-allowed")}
+                            className={cn("h-8 !text-[10px] uppercase font-bold tracking-wider bg-brand-red hover:bg-brand-red-hover", isReadOnly && "opacity-50 cursor-not-allowed")}
                             onClick={() => !isReadOnly && setIsLogDialogOpen(true)}
                             disabled={isReadOnly}
                         >
-                            <Plus size={14} className="mr-1.5"/> {isReadOnly ? 'Registry Locked' : 'Log Session'}
+                            <Plus size={14} className="mr-1.5"/> {isReadOnly ? 'Read only' : 'Log session'}
                         </Button>
                     </div>
                 </div>
@@ -383,11 +383,11 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
                                                 <AvatarImage src={group.avatarUrl}/>
                                             </Avatar>
                                         )}
-                                        <span className="text-[11px] font-black uppercase tracking-widest text-text-primary">{group.title}</span>
+                                        <span className="text-[11px] font-bold text-text-primary">{group.title}</span>
                                     </div>
-                                    <Badge variant="outline" className="text-[8px] bg-bg-tertiary border-border-sub text-text-muted">{group.logs.length} RECORD(S)</Badge>
+                                    <Badge variant="outline" className="text-[10px] bg-bg-tertiary border-border-sub text-text-muted">{group.logs.length} RECORD(S)</Badge>
                                 </div>
-                                <span className="text-[9px] font-bold text-text-muted uppercase tracking-[0.2em] mr-4">
+                                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider mr-4">
                                     {viewBy === 'date' ? 'Daily Hours:' : 'Tech Total Hours:'} <span className="text-text-primary font-mono text-sm">{group.totalTime}</span>
                                 </span>
                             </AccordionTrigger>
@@ -402,7 +402,7 @@ export function TimesheetsTab({ timesheets, technicians, project }: { timesheets
             ) : (
                  <div className="p-24 text-center border-2 border-dashed border-border-main rounded-lg bg-bg-secondary/30">
                     <CalendarIcon size={48} className="mx-auto text-text-muted mb-4 opacity-20" />
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted italic">No temporal records match the current filter parameters.</p>
+                    <p className="text-xs font-bold text-text-muted ">No timesheet entries match these filters.</p>
                 </div>
             )}
 
@@ -495,58 +495,58 @@ function EditLogDialog({
                 <DialogHeader className="p-6 pb-2 border-b border-border-sub bg-bg-tertiary/30 text-left">
                     <div className="flex items-center gap-2 mb-1">
                         <Pencil className="text-brand-red h-5 w-5" />
-                        <DialogTitle className="text-lg font-bold uppercase tracking-widest">Edit Timesheet Log</DialogTitle>
+                        <DialogTitle className="text-lg font-bold">Edit Timesheet Log</DialogTitle>
                     </div>
-                    <DialogDescription className="text-xs uppercase font-bold text-text-muted">Modify mission duration and reporting details.</DialogDescription>
+                    <DialogDescription className="text-xs font-bold text-text-muted">Change the times and summary for this entry.</DialogDescription>
                 </DialogHeader>
 
                 <div className="p-6 space-y-6 text-left flex-1 overflow-y-auto">
                     <div className="space-y-3">
-                        <h3 className="text-[9px] font-black text-brand-red uppercase tracking-[0.2em] flex items-center gap-2">
+                        <h3 className="text-[10px] font-bold text-brand-red uppercase tracking-wider flex items-center gap-2">
                             <History size={12}/> Technician&apos;s Original Log
                         </h3>
                         <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-bg-secondary border border-border-sub shadow-inner">
                             <div className="space-y-1">
-                                <p className="text-[8px] font-black text-text-muted uppercase">Initial Date</p>
-                                <p className="text-xs font-mono font-bold text-text-primary uppercase">{log.date}</p>
+                                <p className="text-[10px] font-bold text-text-muted">Initial Date</p>
+                                <p className="text-xs font-mono font-bold text-text-primary">{log.date}</p>
                             </div>
                             <div className="space-y-1">
-                                <p className="text-[8px] font-black text-text-muted uppercase">Original Window</p>
-                                <p className="text-xs font-mono font-bold text-text-primary uppercase">
+                                <p className="text-[10px] font-bold text-text-muted">Original Window</p>
+                                <p className="text-xs font-mono font-bold text-text-primary">
                                     {log.checkInTime || 'N/A'} — {log.checkOutTime || 'N/A'}
                                 </p>
                             </div>
                         </div>
                         <div className="flex items-center gap-2 px-2">
                             <span className="text-text-muted"><Info size={12} /></span>
-                            <p className="text-[9px] text-text-muted font-bold uppercase">Reference values shown for audit integrity.</p>
+                            <p className="text-[11px] text-text-muted font-bold">Reference values shown for audit integrity.</p>
                         </div>
                     </div>
 
                     <Separator className="bg-border-sub" />
 
                     <div className="space-y-6">
-                        <h3 className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] px-1">Current Log Parameters</h3>
+                        <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider px-1">Current entry</h3>
                         
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase text-text-muted ml-1">Operative</Label>
+                                <Label className="text-[10px] font-bold text-text-muted ml-1">Technician</Label>
                                 <Select value={formData.techId} onValueChange={(val) => setFormData({...formData, techId: val})}>
-                                    <SelectTrigger className="h-10 bg-bg-primary text-xs uppercase font-bold"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="h-10 bg-bg-primary text-xs font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        {technicians.map(t => <SelectItem key={t.id} value={t.id} className="text-xs uppercase font-bold">{t.name}</SelectItem>)}
+                                        {technicians.map(t => <SelectItem key={t.id} value={t.id} className="text-xs font-bold">{t.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase text-text-muted ml-1">Work Date</Label>
+                                <Label className="text-[10px] font-bold text-text-muted ml-1">Work Date</Label>
                                 <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-10 bg-bg-primary text-xs" />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase text-text-muted ml-1">Check-In Time</Label>
+                                <Label className="text-[10px] font-bold text-text-muted ml-1">Check-In Time</Label>
                                 <Input 
                                     type="time" 
                                     value={formData.checkInTime || '09:00'} 
@@ -555,7 +555,7 @@ function EditLogDialog({
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase text-text-muted ml-1">Check-Out Time</Label>
+                                <Label className="text-[10px] font-bold text-text-muted ml-1">Check-Out Time</Label>
                                 <Input 
                                     type="time" 
                                     value={formData.checkOutTime || '17:00'} 
@@ -566,7 +566,7 @@ function EditLogDialog({
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase text-text-muted ml-1">Field Summary</Label>
+                            <Label className="text-[10px] font-bold text-text-muted ml-1">Field Summary</Label>
                             <Textarea 
                                 value={formData.workSummary} 
                                 onChange={e => setFormData({...formData, workSummary: e.target.value})} 
@@ -578,12 +578,12 @@ function EditLogDialog({
                 </div>
 
                 <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default flex flex-row items-center justify-between gap-3">
-                    <Button variant="outline" className="h-10 px-4 uppercase font-bold text-[10px] tracking-widest shrink-0 border-brand-red text-text-red hover:bg-brand-red-dim" onClick={() => onDelete(log.id)}>
+                    <Button variant="outline" className="h-10 px-4 uppercase font-bold text-[10px] tracking-wider shrink-0 border-brand-red text-text-red hover:bg-brand-red-dim" onClick={() => onDelete(log.id)}>
                         <Trash2 size={16} className="mr-2"/> Purge Record
                     </Button>
                     <div className="flex gap-3">
-                        <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-6 uppercase font-bold text-[10px] tracking-widest">Discard</Button>
-                        <Button onClick={handleSave} className="h-10 px-8 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-widest text-white shadow-lg">
+                        <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-6 uppercase font-bold text-[10px] tracking-wider">Discard</Button>
+                        <Button onClick={handleSave} className="h-10 px-8 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider text-white shadow-lg">
                             <Save size={16} className="mr-2"/> Save Changes
                         </Button>
                     </div>

@@ -82,16 +82,16 @@ export function CloseDealDialog({ lead, outcome, currentUserId, quotes = [], sur
     <Dialog open onOpenChange={v => !v && onClose()}>
       <DialogContent className="bg-bg-elevated border-border-main max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+          <DialogTitle className="text-base font-semibold flex items-center gap-2">
             {won ? <CheckCircle2 size={14} className="text-text-green" /> : <XCircle size={14} className="text-text-red" />}
-            {won ? 'Mark Won' : 'Mark Lost'}
+            {won ? 'Mark won' : 'Mark lost'}
           </DialogTitle>
-          <DialogDescription className="text-[10px] uppercase font-bold text-text-muted">{lead.companyName}</DialogDescription>
+          <DialogDescription className="text-[10px] font-bold text-text-muted">{lead.companyName}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
           {won ? (
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Final Contract Value ($)</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Final Contract Value ($)</Label>
               <Input type="number" min="0" value={value} onChange={e => setValue(e.target.value)} className="h-9 text-xs bg-bg-tertiary border-border-main" />
               {!lead.projectId && (
                 <label className="flex items-center gap-2 pt-2 text-[10px] font-bold uppercase tracking-wider text-text-muted cursor-pointer">
@@ -102,7 +102,7 @@ export function CloseDealDialog({ lead, outcome, currentUserId, quotes = [], sur
           ) : (
             <>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Reason *</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Reason *</Label>
                 <Select value={category || undefined} onValueChange={setCategory}>
                   <SelectTrigger className="h-9 text-xs bg-bg-tertiary border-border-main"><SelectValue placeholder="Why did we lose it?" /></SelectTrigger>
                   <SelectContent className="bg-bg-elevated border-border-main">
@@ -111,22 +111,22 @@ export function CloseDealDialog({ lead, outcome, currentUserId, quotes = [], sur
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Details</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Details</Label>
                 <Input placeholder="Competitor name, price gap, etc." value={detail} onChange={e => setDetail(e.target.value)} className="h-9 text-xs bg-bg-tertiary border-border-main" />
               </div>
             </>
           )}
         </div>
         <DialogFooter className="gap-2">
-          <Button variant="outline" size="sm" onClick={onClose} className="text-[10px] font-black uppercase">Cancel</Button>
+          <Button variant="outline" size="sm" onClick={onClose} className="text-[10px] font-bold">Cancel</Button>
           <Button
             size="sm"
             onClick={save}
             disabled={saving}
-            className={won ? 'bg-text-green hover:bg-text-green/90 text-white text-[10px] font-black uppercase' : 'bg-text-red hover:bg-text-red/90 text-white text-[10px] font-black uppercase'}
+            className={won ? 'bg-text-green hover:bg-text-green/90 text-white text-[10px] font-bold' : 'bg-text-red hover:bg-text-red/90 text-white text-[10px] font-bold'}
           >
             {saving && <Loader2 size={12} className="animate-spin mr-1.5" />}
-            {won ? 'Mark Won' : 'Mark Lost'}
+            {won ? 'Mark won' : 'Mark lost'}
           </Button>
         </DialogFooter>
       </DialogContent>

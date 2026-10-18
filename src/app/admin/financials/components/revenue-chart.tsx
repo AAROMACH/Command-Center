@@ -30,8 +30,8 @@ const chartConfig = {
 export function RevenueChart({ data }: RevenueChartProps) {
     if (!data || data.length === 0) {
         return (
-            <div className="flex items-center justify-center h-[300px] w-full text-xs text-text-muted uppercase font-bold tracking-widest italic opacity-40">
-                Awaiting Sufficient Registry Data for Analysis
+            <div className="flex items-center justify-center h-[300px] w-full text-[13px] text-text-muted">
+                Not enough data to chart yet
             </div>
         );
     }
@@ -44,12 +44,12 @@ export function RevenueChart({ data }: RevenueChartProps) {
                     dataKey="month" 
                     tickLine={false} 
                     axisLine={false} 
-                    className="text-[10px] font-bold uppercase"
+                    className="text-[10px] font-bold"
                 />
                 <YAxis 
                     tickLine={false} 
                     axisLine={false} 
-                    className="text-[9px] font-mono"
+                    className="text-[11px] font-mono"
                     tickFormatter={(v) => `$${v}`}
                 />
                 <Tooltip content={<ChartTooltipContent />} />
@@ -57,7 +57,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
                     verticalAlign="top" 
                     align="right" 
                     iconType="circle" 
-                    wrapperStyle={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.1em', paddingBottom: '20px' }} 
+                    wrapperStyle={{ fontSize: '9px', textTransform: '', fontWeight: 'bold', letterSpacing: '0.1em', paddingBottom: '20px' }} 
                 />
                 <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} />

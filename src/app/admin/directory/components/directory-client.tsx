@@ -44,7 +44,9 @@ import {
     Gauge,
     UserPlus,
     UserX,
-    Clock
+    Clock,
+    Download,
+    Users
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -69,6 +71,10 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { makeSiteId } from '@/lib/doc-ids';
+import { SearchField } from '@/components/search-field';
+import { EmptyState } from '@/components/empty-state';
+import { downloadCsv } from '@/app/admin/reports/components/history-tabs';
+import { statusLabel } from '@/lib/status-styles';
 
 declare global {
   interface Window {
@@ -140,7 +146,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
 
     useEffect(() => {
         window.gm_authFailure = () => {
-            console.warn("Google Maps API Handshake Restricted.");
+            console.warn("Google Maps could not load.");
             toast({
               variant: "destructive",
               title: "Google Maps unavailable",
@@ -151,7 +157,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchQuery, activeTab, itemsPerPage]);
+    }, [searchQuery, activeTab, itemsPerPage, sortBy, showInactive]);
 
     const handleRowClick = (person: Technician) => {
         router.push('/admin/directory/' + person.id);
@@ -268,7 +274,9 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
         return techniciansList
             .filter((tech) =>
                 (tech.name || '').toLowerCase().includes(lowercasedQuery) ||
-                (tech.email || '').toLowerCase().includes(lowercasedQuery)
+                (tech.email || '').toLowerCase().includes(lowercasedQuery) ||
+                (tech.phone || '').toLowerCase().includes(lowercasedQuery) ||
+                (tech.currentLocation || '').toLowerCase().includes(lowercasedQuery)
             )
             .filter((tech) => showInactive || !isInactiveTechnician(tech))
             .sort((a, b) => {
@@ -284,7 +292,9 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
         return staffList
             .filter((s) =>
                 (s.name || '').toLowerCase().includes(lowercasedQuery) ||
-                (s.email || '').toLowerCase().includes(lowercasedQuery)
+                (s.email || '').toLowerCase().includes(lowercasedQuery) ||
+                (s.phone || '').toLowerCase().includes(lowercasedQuery) ||
+                (s.roles || [s.role]).join(' ').toLowerCase().includes(lowercasedQuery)
             )
             .sort((a, b) => {
                 if (sortBy === 'role') return (a.role || '').localeCompare(b.role || '');
@@ -325,13 +335,32 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
     const totalRecords = activeTab === 'technicians' ? filteredTechnicians.length : 
                        activeTab === 'staff' ? filteredStaff.length :
                        activeTab === 'clients' ? filteredCompanies.length : 0;
-    const totalPages = Math.ceil(totalRecords / itemsPerPage);
+    const totalPages = Math.max(1, Math.ceil(totalRecords / itemsPerPage));
+    // Never sit past the last page when rows disappear (e.g. live updates).
+    useEffect(() => {
+        if (currentPage > totalPages) setCurrentPage(totalPages);
+    }, [currentPage, totalPages]);
 
     const getPrimaryRoleLabel = (person: Technician) => {
         if (person.roles && person.roles.length > 0) {
-            return person.roles[0].replace(/_/g, ' ').toUpperCase();
+            return statusLabel(person.roles[0]);
         }
-        return (person.role || '').toUpperCase();
+        return statusLabel(person.role || '');
+    };
+
+    // CSV of the list as filtered on screen (every page). Contact details and
+    // status only — never pay or tax fields.
+    const exportCsv = () => {
+        const roleList = (p: Technician) => (p.roles?.length ? p.roles : [p.role]).filter(Boolean).map(r => statusLabel(r)).join('; ');
+        const status = (p: Technician) => (isInactiveTechnician(p) ? 'Inactive' : p.approvalStatus === 'pending' ? 'Pending approval' : 'Active');
+        if (activeTab === 'clients') {
+            const rows = filteredCompanies.flatMap(c => c.contacts.map(p => [c.name, p.name, roleList(p), p.email, p.phone, p.accountStatus ? statusLabel(p.accountStatus) : status(p), p.id]));
+            downloadCsv('directory_clients', ['Company', 'Name', 'Roles', 'Email', 'Phone', 'Status', 'User ID'], rows);
+            return;
+        }
+        const list = activeTab === 'staff' ? filteredStaff : filteredTechnicians;
+        downloadCsv(`directory_${activeTab === 'staff' ? 'staff' : 'technicians'}`, ['Name', 'Roles', 'Email', 'Phone', 'Status', 'User ID'],
+            list.map(p => [p.name, roleList(p), p.email, p.phone, status(p), p.id]));
     };
 
     const personnelRequestsCount = useMemo(() => 
@@ -413,13 +442,13 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                 <div className="flex flex-col gap-2">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-2">
                         <TabsList className="tabs !mb-0 !p-0 !bg-bg-tertiary w-full md:w-auto h-9">
-                            <TabsTrigger value="technicians" className="tab !px-4 !py-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white h-full">TECHNICIANS</TabsTrigger>
-                            <TabsTrigger value="staff" className="tab !px-4 !py-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white h-full">STAFF</TabsTrigger>
-                            <TabsTrigger value="clients" className="tab !px-4 !py-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white h-full">CLIENTS</TabsTrigger>
-                            <TabsTrigger value="requests" className="tab !px-4 !py-1.5 data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center justify-center gap-2 h-full">
-                                REQUESTS
+                            <TabsTrigger value="technicians" className="tab !px-4 !py-1.5 h-full">Technicians</TabsTrigger>
+                            <TabsTrigger value="staff" className="tab !px-4 !py-1.5 h-full">Staff</TabsTrigger>
+                            <TabsTrigger value="clients" className="tab !px-4 !py-1.5 h-full">Clients</TabsTrigger>
+                            <TabsTrigger value="requests" className="tab !px-4 !py-1.5 flex items-center justify-center gap-2 h-full">
+                                Requests
                                 {pendingRequestsTotalCount > 0 && (
-                                    <Badge variant="destructive" className="h-3.5 px-1.5 min-w-[16px] flex items-center justify-center text-[8px] animate-pulse">
+                                    <Badge variant="destructive" className="h-4 px-1.5 min-w-[16px] flex items-center justify-center text-[10px]">
                                         {pendingRequestsTotalCount}
                                     </Badge>
                                 )}
@@ -431,27 +460,34 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                 variant={activeTab === 'map' ? 'default' : 'outline'} 
                                 size="sm" 
                                 onClick={() => setActiveTab('map')}
-                                className={cn("h-7 px-3 text-[10px]", activeTab === 'map' ? "bg-brand-red" : "border-border-sub bg-bg-tertiary")}
+                                className={cn("h-9 px-3", activeTab === 'map' ? "bg-brand-red" : "border-border-main")}
                             >
-                                <MapIcon size={11} className="mr-1.5"/>
-                                MAP
+                                <MapIcon size={14} className="mr-1.5"/>
+                                Map
                             </Button>
 
-                            <Button variant="default" size="sm" onClick={() => setIsAddPersonnelOpen(true)} className="h-7 px-3 text-[10px]">
-                                <Plus size={11} className="mr-1.5"/>
-                                ADD PERSONNEL
+                            {activeTab !== 'map' && activeTab !== 'requests' && (
+                                <Button variant="outline" size="sm" onClick={exportCsv} disabled={totalRecords === 0} className="h-9 px-3 border-border-main">
+                                    <Download size={14} className="mr-1.5"/>
+                                    Export CSV
+                                </Button>
+                            )}
+
+                            <Button variant="default" size="sm" onClick={() => setIsAddPersonnelOpen(true)} className="h-9 px-3">
+                                <Plus size={14} className="mr-1.5"/>
+                                Add person
                             </Button>
                         </div>
                     </div>
 
                     {activeTab !== 'map' && activeTab !== 'requests' && (
-                        <div className="flex flex-col md:flex-row justify-between items-center gap-2 p-2 rounded-lg bg-bg-secondary/30 border border-border-sub">
+                        <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 p-2 rounded-xl bg-bg-secondary border border-border-main shadow-sm">
                             <div className="flex items-center gap-2">
-                                <div className="flex items-center bg-bg-tertiary rounded-md border border-border-sub p-0.5 h-7">
+                                <div className="flex items-center bg-bg-tertiary rounded-md border border-border-sub p-0.5 h-9">
                                     <Button 
                                         variant="ghost" 
                                         size="icon-sm" 
-                                        className={cn("h-6 w-6", viewMode === 'rows' && "bg-bg-secondary text-brand-red")}
+                                        className={cn("h-7 w-7", viewMode === 'rows' && "bg-bg-secondary text-brand-red")}
                                         onClick={() => setViewMode('rows')}
                                     >
                                         <Rows3 size={11} />
@@ -459,7 +495,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                     <Button 
                                         variant="ghost" 
                                         size="icon-sm" 
-                                        className={cn("h-6 w-6", viewMode === 'grid' && "bg-bg-secondary text-brand-red")}
+                                        className={cn("h-7 w-7", viewMode === 'grid' && "bg-bg-secondary text-brand-red")}
                                         onClick={() => setViewMode('grid')}
                                     >
                                         <LayoutGrid size={11} />
@@ -467,16 +503,16 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                 </div>
                                 <div className="flex items-center gap-1">
                                     <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                                        <SelectTrigger className="w-[110px] bg-bg-tertiary border-border-sub h-7 text-[8px] uppercase font-bold tracking-widest">
+                                        <SelectTrigger className="w-[150px] bg-bg-tertiary border-border-sub h-9" aria-label="Sort by">
                                             <div className="flex items-center gap-1.5">
                                                 <ArrowUpDown size={10} className="text-text-muted" />
                                                 <SelectValue placeholder="Sort" />
                                             </div>
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="name" className="text-[8px] uppercase font-bold">Name</SelectItem>
-                                            {activeTab === 'clients' && <SelectItem value="contacts" className="text-[8px] uppercase font-bold">Density</SelectItem>}
-                                            {activeTab === 'staff' && <SelectItem value="role" className="text-[8px] uppercase font-bold">Role</SelectItem>}
+                                            <SelectItem value="name">Name</SelectItem>
+                                            {activeTab === 'clients' && <SelectItem value="contacts">Most contacts</SelectItem>}
+                                            {activeTab === 'staff' && <SelectItem value="role">Role</SelectItem>}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -485,37 +521,39 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                         variant={showInactive ? 'default' : 'outline'}
                                         size="sm"
                                         onClick={() => setShowInactive(v => !v)}
-                                        className={cn("h-7 px-3 text-[8px] uppercase font-bold tracking-widest gap-1.5", showInactive ? "bg-brand-red" : "border-border-sub bg-bg-tertiary")}
+                                        className={cn("h-9 px-3 gap-1.5", showInactive ? "bg-brand-red" : "border-border-sub bg-bg-tertiary")}
                                     >
-                                        {showInactive ? 'Hide' : 'Show'} Inactive ({inactiveTechCount})
+                                        {showInactive ? 'Hide' : 'Show'} inactive ({inactiveTechCount})
                                     </Button>
                                 )}
                             </div>
 
-                            <div className="search-wrap flex-1 md:flex-none">
-                                <Search className="h-3.5 w-3.5" />
-                                <input 
-                                    className="search-input w-full md:w-[240px] h-7 !text-[11px]" 
-                                    placeholder="Filter registry..." 
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                />
-                            </div>
+                            <SearchField
+                                className="flex-1 md:flex-none md:w-[280px]"
+                                placeholder="Search name, email, phone…"
+                                value={searchQuery}
+                                onChange={setSearchQuery}
+                            />
                         </div>
                     )}
                 </div>
 
                 <div className="w-full mt-3">
                     <TabsContent value="technicians" className="m-0">
+                        {filteredTechnicians.length === 0 && (
+                            searchQuery || (!showInactive && inactiveTechCount > 0)
+                                ? <EmptyState compact icon={Users} title={`No technicians match${searchQuery ? ' this search' : ''}`} action={searchQuery ? <Button size="sm" variant="outline" onClick={() => setSearchQuery('')}>Clear search</Button> : undefined} />
+                                : <EmptyState compact icon={Users} title="No technicians yet" />
+                        )}
                         {/* Rows view is desktop-only; mobile always uses the card grid below. */}
                         {viewMode === 'rows' && (
                             <div className="table-wrap hidden md:block">
-                                <div className="hidden md:grid grid-cols-[2fr,1fr,1.5fr,1.2fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
-                                    <div className="text-left pl-0">TECHNICIAN</div>
-                                    <div className="text-left">ROLE</div>
-                                    <div className="text-left">CONTACT</div>
-                                    <div className="text-left">WORKING LOCATION</div>
-                                    <div className="text-center">STATUS</div>
+                                <div className="hidden md:grid grid-cols-[2fr,1fr,1.5fr,1.2fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[10px] font-bold uppercase tracking-wider border-b border-border-main">
+                                    <div className="text-left pl-0">Technician</div>
+                                    <div className="text-left">Role</div>
+                                    <div className="text-left">Contact</div>
+                                    <div className="text-left">Working location</div>
+                                    <div className="text-center">Status</div>
                                 </div>
                                 <ScrollArea className="h-full">
                                     {paginatedTechnicians.map(tech => {
@@ -527,32 +565,32 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                     <AvatarFallback className="text-[10px]">{(tech.name || 'U').split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                                 </Avatar>
                                                 <div className="flex flex-col items-start min-w-0">
-                                                    <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] truncate w-full text-left">{tech.name || 'Unnamed'}</span>
-                                                    <span className="text-[9px] font-mono text-brand-red uppercase">{tech.id}</span>
+                                                    <span className="font-semibold text-text-primary text-[13px] truncate w-full text-left">{tech.name || 'Unnamed'}</span>
+                                                    <span className="text-[11px] font-mono text-brand-red">{tech.id}</span>
                                                 </div>
                                             </div>
                                             <div className="text-left">
-                                                <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{getPrimaryRoleLabel(tech)}</span>
+                                                <span className="text-[12px] text-text-secondary font-medium">{getPrimaryRoleLabel(tech)}</span>
                                             </div>
                                             <div className="min-w-0 flex flex-col items-start justify-center">
-                                                <div className="flex items-center gap-1.5 text-[10px] text-text-primary truncate">
+                                                <div className="flex items-center gap-1.5 text-[12px] text-text-primary truncate">
                                                     <Mail size={10} className="text-text-muted shrink-0"/>{tech.email}
                                                 </div>
-                                                <div className="flex items-center gap-1.5 text-[9px] text-text-muted mt-0.5">
+                                                <div className="flex items-center gap-1.5 text-[11px] text-text-muted mt-0.5">
                                                     <Phone size={10} className="text-text-muted shrink-0"/>{tech.phone}
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-1.5 text-[10px] text-text-secondary min-w-0">
+                                            <div className="flex items-center gap-1.5 text-[12px] text-text-secondary min-w-0">
                                                 <MapPin size={10} className="text-text-muted shrink-0" />
                                                 <span className="truncate">{tech.currentLocation || '—'}</span>
                                             </div>
                                             <div className="flex items-center justify-center">
                                                 {isInactiveTechnician(tech) ? (
-                                                    <Badge variant="outline" className="text-[8px] h-4 uppercase tracking-widest gap-1 text-text-muted border-border-sub bg-bg-tertiary">
+                                                    <Badge variant="outline" className="text-[10px] h-4 uppercase tracking-wider gap-1 text-text-muted border-border-sub bg-bg-tertiary">
                                                         Inactive
                                                     </Badge>
                                                 ) : (
-                                                    <Badge variant="active" className="text-[8px] h-4 uppercase tracking-widest">ACTIVE</Badge>
+                                                    <Badge variant="active" className="text-[10px] h-4 uppercase tracking-wider">Active</Badge>
                                                 )}
                                             </div>
                                         </div>
@@ -572,17 +610,17 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                     </Avatar>
                                                 </div>
                                                 <div className="mt-3 text-left">
-                                                    <CardTitle className="text-xs uppercase font-black truncate">{tech.name}</CardTitle>
-                                                    <CardDescription className="text-[9px] font-black uppercase text-accent-gold mt-1 tracking-widest">{getPrimaryRoleLabel(tech)}</CardDescription>
+                                                    <CardTitle className="text-[13px] font-semibold truncate">{tech.name}</CardTitle>
+                                                    <CardDescription className="text-[12px] font-medium text-text-secondary mt-1">{getPrimaryRoleLabel(tech)}</CardDescription>
                                                 </div>
                                             </CardHeader>
                                             <CardContent className="p-4 pt-2 space-y-3">
                                                 <div className="space-y-1.5">
-                                                    <div className="flex items-center gap-2 text-[10px] text-text-muted">
+                                                    <div className="flex items-center gap-2 text-[12px] text-text-muted">
                                                         <MapPin size={10} className="text-brand-red"/>
                                                         <span className="truncate">{tech.address || tech.currentLocation}</span>
                                                     </div>
-                                                    <div className="flex items-center gap-2 text-[10px] text-text-muted">
+                                                    <div className="flex items-center gap-2 text-[12px] text-text-muted">
                                                         <Mail size={10}/>
                                                         <span className="truncate">{tech.email}</span>
                                                     </div>
@@ -595,13 +633,18 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                     </TabsContent>
 
                     <TabsContent value="staff" className="m-0">
+                        {filteredStaff.length === 0 && (
+                            searchQuery || (false)
+                                ? <EmptyState compact icon={Users} title={`No staff match${searchQuery ? ' this search' : ''}`} action={searchQuery ? <Button size="sm" variant="outline" onClick={() => setSearchQuery('')}>Clear search</Button> : undefined} />
+                                : <EmptyState compact icon={Users} title="No staff yet" />
+                        )}
                         {/* Rows view is desktop-only; mobile always uses the card grid below. */}
                         {viewMode === 'rows' && (
                             <div className="table-wrap hidden md:block">
-                                <div className="hidden md:grid grid-cols-[2fr,1.2fr,2fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
-                                    <div className="text-left pl-0">STAFF MEMBER</div>
-                                    <div className="text-left">ROLE</div>
-                                    <div className="text-left">CONTACT</div>
+                                <div className="hidden md:grid grid-cols-[2fr,1.2fr,2fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[10px] font-bold uppercase tracking-wider border-b border-border-main">
+                                    <div className="text-left pl-0">Staff member</div>
+                                    <div className="text-left">Role</div>
+                                    <div className="text-left">Contact</div>
                                 </div>
                                 {paginatedStaff.map(s => (
                                     <div key={s.id} className="grid grid-cols-1 gap-1.5 md:gap-0 md:grid-cols-[2fr,1.2fr,2fr] items-start md:items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary transition-colors last:border-none" onClick={() => handleRowClick(s)}>
@@ -610,16 +653,16 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                 <AvatarImage src={s.avatarUrl} />
                                                 <AvatarFallback className="text-[10px]">{(s.name || 'S').split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                             </Avatar>
-                                            <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] text-left">{s.name || 'Unnamed'}</span>
+                                            <span className="font-semibold text-text-primary text-[13px] text-left">{s.name || 'Unnamed'}</span>
                                         </div>
                                         <div className="text-left">
-                                            <span className="text-[10px] text-accent-gold font-black uppercase tracking-widest">{getPrimaryRoleLabel(s)}</span>
+                                            <span className="text-[12px] text-text-secondary font-medium">{getPrimaryRoleLabel(s)}</span>
                                         </div>
                                         <div className="min-w-0 flex flex-col items-start justify-center">
-                                            <div className="flex items-center gap-1.5 text-[10px] text-text-primary truncate">
+                                            <div className="flex items-center gap-1.5 text-[12px] text-text-primary truncate">
                                                 <Mail size={10} className="text-text-muted shrink-0"/>{s.email}
                                             </div>
-                                            <div className="flex items-center gap-1.5 text-[9px] text-text-muted mt-0.5">
+                                            <div className="flex items-center gap-1.5 text-[11px] text-text-muted mt-0.5">
                                                 <Phone size={10} className="text-text-muted shrink-0"/>{s.phone}
                                             </div>
                                         </div>
@@ -636,16 +679,16 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                 <AvatarFallback>{(s.name || 'S').charAt(0)}</AvatarFallback>
                                             </Avatar>
                                             <div className="min-w-0">
-                                                <CardTitle className="text-xs uppercase font-black truncate">{s.name}</CardTitle>
-                                                <CardDescription className="text-[9px] font-black uppercase text-accent-gold mt-1 tracking-widest">{getPrimaryRoleLabel(s)}</CardDescription>
+                                                <CardTitle className="text-[13px] font-semibold truncate">{s.name}</CardTitle>
+                                                <CardDescription className="text-[12px] font-medium text-text-secondary mt-1">{getPrimaryRoleLabel(s)}</CardDescription>
                                             </div>
                                         </CardHeader>
                                         <CardContent className="p-4 pt-2 space-y-2">
-                                            <div className="flex items-center gap-2 text-[10px] text-text-muted">
+                                            <div className="flex items-center gap-2 text-[12px] text-text-muted">
                                                 <Mail size={10}/>
                                                 <span className="truncate">{s.email}</span>
                                             </div>
-                                            <div className="flex items-center gap-2 text-[10px] text-text-muted">
+                                            <div className="flex items-center gap-2 text-[12px] text-text-muted">
                                                 <Phone size={10}/>
                                                 <span>{s.phone}</span>
                                             </div>
@@ -656,14 +699,19 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                     </TabsContent>
 
                     <TabsContent value="clients" className="m-0">
+                        {filteredCompanies.length === 0 && (
+                            searchQuery || (false)
+                                ? <EmptyState compact icon={Building2} title={`No clients match${searchQuery ? ' this search' : ''}`} action={searchQuery ? <Button size="sm" variant="outline" onClick={() => setSearchQuery('')}>Clear search</Button> : undefined} />
+                                : <EmptyState compact icon={Building2} title="No clients yet" />
+                        )}
                         {/* Rows view is desktop-only; mobile always uses the card grid below. */}
                         {viewMode === 'rows' && (
                             <div className="table-wrap hidden md:block">
-                                <div className="hidden md:grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[9px] font-bold uppercase tracking-widest border-b border-border-main">
-                                    <div className="text-left pl-0">CORPORATE ENTITY</div>
-                                    <div className="text-left">CLASSIFICATION</div>
-                                    <div className="text-center">CONTACTS</div>
-                                    <div className="text-center">REGISTRY</div>
+                                <div className="hidden md:grid grid-cols-[2fr,1.5fr,1fr,1fr] items-center px-4 py-2 bg-bg-tertiary text-text-muted text-[10px] font-bold uppercase tracking-wider border-b border-border-main">
+                                    <div className="text-left pl-0">Company</div>
+                                    <div className="text-left">Business type</div>
+                                    <div className="text-center">Contacts</div>
+                                    <div className="text-center"><span className="sr-only">Open</span></div>
                                 </div>
                                 {paginatedCompanies.map(company => (
                                     <div key={company.name} className="grid grid-cols-1 gap-1.5 md:gap-0 md:grid-cols-[2fr,1.5fr,1fr,1fr] items-start md:items-center px-4 py-3 border-b border-border-subtle cursor-pointer hover:bg-bg-tertiary group transition-colors last:border-none" onClick={() => handleCompanyClick(company.name)}>
@@ -671,13 +719,13 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                             <div className="p-1.5 bg-bg-tertiary rounded border border-border-sub group-hover:bg-brand-red-dim transition-colors">
                                                 <Building2 size={14} className="text-text-muted group-hover:text-brand-red transition-colors" />
                                             </div>
-                                            <span className="font-bold text-text-primary uppercase tracking-wide text-[11px] text-left">{company.name}</span>
+                                            <span className="font-semibold text-text-primary text-[13px] text-left">{company.name}</span>
                                         </div>
                                         <div className="flex items-center justify-start">
-                                            <span className="text-[9px] text-accent-gold font-black uppercase tracking-widest">{company.businessType || 'Enterprise'}</span>
+                                            <span className="text-[12px] text-text-secondary font-medium">{company.businessType || '—'}</span>
                                         </div>
                                         <div className="text-center flex items-center justify-center">
-                                            <Badge variant="outline" className="text-[8px] h-4 px-2 bg-bg-primary border-border-sub">{company.contacts.length}</Badge>
+                                            <Badge variant="outline" className="text-[10px] h-4 px-2 bg-bg-primary border-border-sub">{company.contacts.length}</Badge>
                                         </div>
                                         <div className="text-center flex items-center justify-center">
                                             <ChevronRight size={14} className="text-text-muted group-hover:text-text-primary group-hover:translate-x-1 transition-all" />
@@ -693,13 +741,13 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                             <div className="p-2 bg-bg-tertiary rounded w-fit border border-border-sub group-hover:bg-brand-red-dim transition-colors mb-2">
                                                 <Building2 size={18} className="text-text-muted group-hover:text-brand-red transition-colors" />
                                             </div>
-                                            <CardTitle className="text-xs uppercase font-black truncate">{company.name}</CardTitle>
-                                            <CardDescription className="text-[9px] font-black uppercase text-accent-gold mt-1 tracking-widest">{company.businessType || 'Enterprise'}</CardDescription>
+                                            <CardTitle className="text-[13px] font-semibold truncate">{company.name}</CardTitle>
+                                            <CardDescription className="text-[12px] font-medium text-text-secondary mt-1">{company.businessType || '—'}</CardDescription>
                                         </CardHeader>
                                         <CardContent className="p-4 pt-2">
                                             <div className="flex items-center justify-between p-2 rounded bg-bg-primary border border-border-sub">
-                                                <span className="text-[9px] font-bold text-text-muted uppercase">Primary Contacts</span>
-                                                <Badge variant="outline" className="h-4 text-[8px] font-mono">{company.contacts.length}</Badge>
+                                                <span className="text-[11px] font-bold text-text-muted">Contacts</span>
+                                                <Badge variant="outline" className="h-4 text-[10px] font-mono">{company.contacts.length}</Badge>
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -710,22 +758,22 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                     <TabsContent value="requests" className="m-0 animate-in fade-in duration-300">
                         <Tabs defaultValue={searchParams.get('subtab') || "personnel"} className="w-full">
                             <TabsList className="tabs !bg-bg-secondary/50 border border-border-sub mb-6 h-9">
-                                <TabsTrigger value="personnel" className="tab !px-6 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center gap-2">
-                                    PERSONNEL REQUESTS
+                                <TabsTrigger value="personnel" className="tab !px-6 h-full flex items-center gap-2">
+                                    Time off
                                     {personnelRequestsCount > 0 && (
-                                        <Badge variant="destructive" className="h-3.5 px-1.5 text-[8px]">{personnelRequestsCount}</Badge>
+                                        <Badge variant="destructive" className="h-3.5 px-1.5 text-[10px]">{personnelRequestsCount}</Badge>
                                     )}
                                 </TabsTrigger>
-                                <TabsTrigger value="client" className="tab !px-6 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center gap-2">
-                                    SITE REQUESTS
+                                <TabsTrigger value="client" className="tab !px-6 h-full flex items-center gap-2">
+                                    Site requests
                                     {clientRequestsCount > 0 && (
-                                        <Badge variant="destructive" className="h-3.5 px-1.5 text-[8px]">{clientRequestsCount}</Badge>
+                                        <Badge variant="destructive" className="h-3.5 px-1.5 text-[10px]">{clientRequestsCount}</Badge>
                                     )}
                                 </TabsTrigger>
-                                <TabsTrigger value="users" className="tab !px-6 h-full data-[state=active]:bg-brand-red data-[state=active]:text-white flex items-center gap-2">
-                                    USER REQUESTS
+                                <TabsTrigger value="users" className="tab !px-6 h-full flex items-center gap-2">
+                                    Access requests
                                     {pendingUsers.length > 0 && (
-                                        <Badge variant="destructive" className="h-3.5 px-1.5 text-[8px]">{pendingUsers.length}</Badge>
+                                        <Badge variant="destructive" className="h-3.5 px-1.5 text-[10px]">{pendingUsers.length}</Badge>
                                     )}
                                 </TabsTrigger>
                             </TabsList>
@@ -733,11 +781,11 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                             <TabsContent value="personnel" className="mt-0">
                                 <div className="max-w-3xl space-y-4">
                                     <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1">
-                                        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <h3 className="text-[13px] font-semibold text-text-primary flex items-center gap-2">
                                             <CalendarIcon size={14} className="text-brand-red"/>
-                                            Personnel Absence Log
+                                            Time-off requests
                                         </h3>
-                                        <Badge variant="outline" className="text-[8px] uppercase tracking-widest">{personnelRequestsCount} Pending</Badge>
+                                        <Badge variant="outline" className="text-[10px] uppercase tracking-wider">{personnelRequestsCount} Pending</Badge>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {timeOffRequests.filter(r => r.status === 'pending').map(req => {
@@ -752,21 +800,21 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                                     <AvatarFallback>{(tech?.name || 'U').charAt(0)}</AvatarFallback>
                                                                 </Avatar>
                                                                 <div className="text-left">
-                                                                    <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{tech?.name || 'Operative'}</p>
-                                                                    <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{req.type} Request</p>
+                                                                    <p className="text-xs font-bold text-text-primary tracking-wide">{tech?.name || 'Technician'}</p>
+                                                                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">{req.type} Request</p>
                                                                 </div>
                                                             </div>
                                                             <div className="text-right">
-                                                                <p className="text-[10px] font-mono font-bold text-text-primary uppercase">{req.startDate}</p>
-                                                                <p className="text-[8px] text-text-muted uppercase font-bold">to {req.endDate}</p>
+                                                                <p className="text-[12px] font-mono font-bold text-text-primary">{req.startDate}</p>
+                                                                <p className="text-[10px] text-text-muted font-bold">to {req.endDate}</p>
                                                             </div>
                                                         </div>
-                                                        <div className="p-2.5 rounded bg-bg-primary/50 border border-border-sub italic text-[11px] text-text-secondary leading-relaxed text-left">
+                                                        <div className="p-2.5 rounded bg-bg-primary/50 border border-border-sub text-[12px] text-text-secondary leading-relaxed text-left">
                                                             &quot;{req.reason}&quot;
                                                         </div>
                                                         <div className="flex gap-2">
-                                                            <Button variant="outline" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold border-border-alert text-text-red hover:bg-brand-red-dim" onClick={() => updateDoc(doc(db, 'timeOffRequests', req.id), { status: 'denied' })}>Deny</Button>
-                                                            <Button variant="default" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold bg-text-green hover:bg-text-green/90" onClick={() => updateDoc(doc(db, 'timeOffRequests', req.id), { status: 'approved' })}>Approve</Button>
+                                                            <Button variant="outline" size="sm" className="flex-1 h-7 text-[11px] font-bold border-border-alert text-text-red hover:bg-brand-red-dim" onClick={() => updateDoc(doc(db, 'timeOffRequests', req.id), { status: 'denied' })}>Deny</Button>
+                                                            <Button variant="default" size="sm" className="flex-1 h-7 text-[11px] font-bold bg-text-green hover:bg-text-green/90" onClick={() => updateDoc(doc(db, 'timeOffRequests', req.id), { status: 'approved' })}>Approve</Button>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
@@ -776,7 +824,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                     {timeOffRequests.filter(r => r.status === 'pending').length === 0 && (
                                         <div className="p-12 text-center border border-dashed border-border-sub rounded-xl bg-bg-secondary/30">
                                             <ShieldAlert size={32} className="mx-auto text-text-muted mb-2 opacity-20" />
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No pending absence logs</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">No pending absence logs</p>
                                         </div>
                                     )}
                                 </div>
@@ -785,11 +833,11 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                             <TabsContent value="client" className="mt-0">
                                 <div className="max-w-3xl space-y-4">
                                     <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1">
-                                        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <h3 className="text-[13px] font-semibold text-text-primary flex items-center gap-2">
                                             <Building2 size={14} className="text-accent-gold"/>
-                                            Client Coordinate Verification
+                                            Client coordinate verification
                                         </h3>
-                                        <Badge variant="outline" className="text-[8px] uppercase tracking-widest">{clientRequestsCount} Pending</Badge>
+                                        <Badge variant="outline" className="text-[10px] uppercase tracking-wider">{clientRequestsCount} Pending</Badge>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {siteRequests.filter(r => r.status === 'pending').map(req => (
@@ -801,22 +849,22 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                                 <MapPin size={16} />
                                                             </div>
                                                             <div className="text-left">
-                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide">{req.siteName}</p>
-                                                                <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{req.clientName}</p>
+                                                                <p className="text-xs font-bold text-text-primary tracking-wide">{req.siteName}</p>
+                                                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">{req.clientName}</p>
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
-                                                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Submitted</p>
-                                                            <p className="text-[10px] font-mono font-bold text-text-primary">{req.submittedDate}</p>
+                                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Submitted</p>
+                                                            <p className="text-[12px] font-mono font-bold text-text-primary">{req.submittedDate}</p>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2 text-[10px] text-text-secondary bg-bg-primary p-2 rounded border border-border-sub">
+                                                    <div className="flex items-center gap-2 text-[12px] text-text-secondary bg-bg-primary p-2 rounded border border-border-sub">
                                                         <Navigation size={12} className="text-brand-red shrink-0"/>
                                                         <span className="truncate">{req.location}</span>
                                                     </div>
                                                     <div className="flex gap-2">
-                                                        <Button variant="outline" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold border-border-alert text-text-red hover:bg-brand-red-dim" onClick={() => updateDoc(doc(db, 'siteRequests', req.id), { status: 'denied' })}>Reject</Button>
-                                                        <Button variant="default" size="sm" className="flex-1 h-7 text-[9px] uppercase font-bold bg-brand-red" onClick={async () => {
+                                                        <Button variant="outline" size="sm" className="flex-1 h-7 text-[11px] font-bold border-border-alert text-text-red hover:bg-brand-red-dim" onClick={() => updateDoc(doc(db, 'siteRequests', req.id), { status: 'denied' })}>Reject</Button>
+                                                        <Button variant="default" size="sm" className="flex-1 h-7 text-[11px] font-bold bg-brand-red" onClick={async () => {
                                                             await updateDoc(doc(db, 'siteRequests', req.id), { status: 'approved' });
                                                             const siteId = await makeSiteId();
                                                             await setDoc(doc(db, 'sites', siteId), {
@@ -839,7 +887,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                     {siteRequests.filter(r => r.status === 'pending').length === 0 && (
                                         <div className="p-12 text-center border border-dashed border-border-sub rounded-xl bg-bg-secondary/30">
                                             <MapPin size={32} className="mx-auto text-text-muted mb-2 opacity-20" />
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No pending site verifications</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">No pending site verifications</p>
                                         </div>
                                     )}
                                 </div>
@@ -848,11 +896,11 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                             <TabsContent value="users" className="mt-0">
                                 <div className="max-w-3xl space-y-4">
                                     <div className="flex items-center justify-between border-b border-border-sub pb-2 px-1">
-                                        <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <h3 className="text-[13px] font-semibold text-text-primary flex items-center gap-2">
                                             <Clock size={14} className="text-accent-gold"/>
-                                            Pending Access Requests
+                                            Pending access requests
                                         </h3>
-                                        <Badge variant="outline" className="text-[8px] uppercase tracking-widest">{pendingUsers.length} Pending</Badge>
+                                        <Badge variant="outline" className="text-[10px] uppercase tracking-wider">{pendingUsers.length} Pending</Badge>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {pendingUsers.map(user => (
@@ -865,15 +913,15 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                                 <AvatarFallback>{(user.name || 'U').charAt(0).toUpperCase()}</AvatarFallback>
                                                             </Avatar>
                                                             <div className="text-left min-w-0">
-                                                                <p className="text-xs font-bold text-text-primary uppercase tracking-wide truncate">{user.name || 'Unknown User'}</p>
-                                                                <p className="text-[9px] text-text-muted uppercase font-bold tracking-widest truncate">{user.email}</p>
+                                                                <p className="text-xs font-bold text-text-primary tracking-wide truncate">{user.name || 'Unknown User'}</p>
+                                                                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider truncate">{user.email}</p>
                                                             </div>
                                                         </div>
-                                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-accent-gold/40 bg-accent-gold/10 text-accent-gold text-[8px] font-black uppercase tracking-widest shrink-0">
+                                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-accent-gold/40 bg-accent-gold/10 text-accent-gold text-[10px] font-bold uppercase tracking-wider shrink-0">
                                                             <Clock size={8} /> Pending
                                                         </span>
                                                     </div>
-                                                    <div className="flex items-center gap-3 text-[9px] text-text-muted uppercase font-bold tracking-widest">
+                                                    <div className="flex items-center gap-3 text-[10px] text-text-muted uppercase font-bold tracking-wider">
                                                         <span className="px-1.5 py-0.5 rounded bg-bg-tertiary border border-border-sub">
                                                             {user.createdVia === 'google_sso' ? 'Google SSO' : 'Email'}
                                                         </span>
@@ -885,7 +933,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            className="flex-1 h-7 text-[9px] uppercase font-bold border-border-alert text-text-red hover:bg-brand-red-dim"
+                                                            className="flex-1 h-7 text-[11px] font-bold border-border-alert text-text-red hover:bg-brand-red-dim"
                                                             onClick={() => { setSelectedPendingUser(user); setDenyReason(''); setDenyOpen(true); }}
                                                         >
                                                             <UserX size={10} className="mr-1"/> Deny
@@ -893,7 +941,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                         <Button
                                                             variant="default"
                                                             size="sm"
-                                                            className="flex-1 h-7 text-[9px] uppercase font-bold bg-text-green hover:bg-text-green/90"
+                                                            className="flex-1 h-7 text-[11px] font-bold bg-text-green hover:bg-text-green/90"
                                                             onClick={() => { setSelectedPendingUser(user); setSelectedRoles([]); setPrimaryRole(''); setApproveOpen(true); }}
                                                         >
                                                             <UserPlus size={10} className="mr-1"/> Approve
@@ -906,7 +954,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                     {pendingUsers.length === 0 && (
                                         <div className="p-12 text-center border border-dashed border-border-sub rounded-xl bg-bg-secondary/30">
                                             <UserCheck size={32} className="mx-auto text-text-muted mb-2 opacity-20" />
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">No pending access requests</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">No pending access requests</p>
                                         </div>
                                     )}
                                 </div>
@@ -933,7 +981,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                         ></iframe>
                                      ) : (
                                         <div className="absolute inset-0 flex items-center justify-center bg-bg-tertiary">
-                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">MAPS_API_KEY Restricted</p>
+                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">MAPS_API_KEY Restricted</p>
                                         </div>
                                      )}
 
@@ -962,8 +1010,8 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                             </div>
                                                         )}
                                                         <div className="min-w-0 text-left">
-                                                            <CardTitle className="text-xs uppercase truncate">{(selectedMapEntity as any).name || 'Unnamed'}</CardTitle>
-                                                            <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest">
+                                                            <CardTitle className="text-xs truncate">{(selectedMapEntity as any).name || 'Unnamed'}</CardTitle>
+                                                            <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider">
                                                                 {selectedMapEntity.metaType === 'tech' ? (selectedMapEntity as Technician).role : (selectedMapEntity as any).clientCompany}
                                                             </p>
                                                         </div>
@@ -972,18 +1020,18 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                 <CardContent className="p-3 space-y-3 text-left">
                                                     <div className="flex items-start gap-2">
                                                         <MapPin size={12} className="text-brand-red shrink-0 mt-0.5" />
-                                                        <p className="text-[10px] text-text-secondary leading-tight uppercase font-medium">{(selectedMapEntity as any).location}</p>
+                                                        <p className="text-[12px] text-text-secondary leading-tight font-medium">{(selectedMapEntity as any).location}</p>
                                                     </div>
                                                     {selectedMapEntity.metaType === 'tech' ? (
                                                         <div className="flex items-center justify-between pt-1 border-t border-border-sub/30 mt-1">
                                                             <div className="space-y-0.5 text-left">
-                                                                <p className="text-[8px] font-black uppercase text-text-muted tracking-widest">Role</p>
+                                                                <p className="text-[10px] font-bold uppercase text-text-muted tracking-wider">Role</p>
                                                                 <p className="text-xs font-bold text-text-primary">{getPrimaryRoleLabel(selectedMapEntity as Technician)}</p>
                                                             </div>
                                                             <Button 
                                                                 size="sm" 
                                                                 variant="outline" 
-                                                                className="h-6 text-[8px] font-bold uppercase"
+                                                                className="h-6 text-[10px] font-bold"
                                                                 onClick={() => handleRowClick(selectedMapEntity as Technician)}
                                                             >
                                                                 <Eye size={10} className="mr-1"/> Profile
@@ -994,18 +1042,18 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                             {(selectedMapEntity as any).isLive && (
                                                                 <div className="flex items-center gap-2 p-1.5 rounded bg-green-dim border border-green-border mb-1">
                                                                     <div className="h-1.5 w-1.5 rounded-full bg-text-green animate-pulse" />
-                                                                    <span className="text-[8px] font-black text-text-green uppercase tracking-widest">LIVE SESSION ACTIVE</span>
+                                                                    <span className="text-[10px] font-bold text-text-green uppercase tracking-wider">Tech on site now</span>
                                                                 </div>
                                                             )}
                                                             <div className="flex items-center justify-between">
                                                                 <div className="space-y-0.5 text-left">
-                                                                    <p className="text-[8px] font-black uppercase text-text-muted tracking-widest">Access Tier</p>
-                                                                    <p className="text-[10px] font-bold text-text-primary uppercase">Standard Site</p>
+                                                                    <p className="text-[10px] font-bold uppercase text-text-muted tracking-wider">Site type</p>
+                                                                    <p className="text-[12px] font-bold text-text-primary">Standard Site</p>
                                                                 </div>
                                                                 <Button 
                                                                     size="sm" 
                                                                     variant="outline" 
-                                                                    className="h-6 text-[8px] font-bold uppercase"
+                                                                    className="h-6 text-[10px] font-bold"
                                                                     onClick={() => handleCompanyClick((selectedMapEntity as any).clientCompany)}
                                                                 >
                                                                     <ShieldCheck size={10} className="mr-1"/> Audit Site
@@ -1020,7 +1068,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
 
                                     <div className="absolute top-2 right-2 z-10 bg-black/80 backdrop-blur-md p-1 rounded border border-white/10 shadow-2xl">
                                         <div className="flex items-center gap-1.5 px-1.5 py-0.5">
-                                            <Label htmlFor="map-toggle" className="text-[8px] font-black text-white uppercase tracking-tighter cursor-pointer opacity-70">Techs</Label>
+                                            <Label htmlFor="map-toggle" className="text-[10px] font-bold text-white uppercase tracking-tighter cursor-pointer opacity-70">Techs</Label>
                                             <Switch 
                                                 id="map-toggle" 
                                                 className="scale-[0.6] data-[state=unchecked]:bg-brand-red data-[state=checked]:bg-brand-red"
@@ -1030,7 +1078,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                     setSelectedMapAddress(null);
                                                 }} 
                                             />
-                                            <Label htmlFor="map-toggle" className="text-[8px] font-black text-white uppercase tracking-tighter cursor-pointer opacity-70">Sites</Label>
+                                            <Label htmlFor="map-toggle" className="text-[10px] font-bold text-white uppercase tracking-tighter cursor-pointer opacity-70">Sites</Label>
                                         </div>
                                     </div>
                                 </div>
@@ -1038,15 +1086,15 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                             
                             <Card className="bg-bg-secondary border-border-main flex flex-col overflow-hidden">
                                 <div className="p-4 border-b border-border-sub bg-bg-tertiary/50 space-y-3">
-                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
-                                        {mapViewMode === 'techs' ? <User size={14} className="text-brand-red"/> : <Building2 size={14} className="text-accent-gold"/>}
-                                        {mapViewMode === 'techs' ? 'Operative Base Registry' : 'Client Site Locations'}
+                                    <h3 className="text-[13px] font-semibold text-text-primary flex items-center gap-2">
+                                        {mapViewMode === 'techs' ? <User size={14} className="text-brand-red"/> : <Building2 size={14} className="text-accent-gold"/>}x 
+                                        mapViewMode === 'techs' ? 'technician home bases' : 'client site locations'
                                     </h3>
                                     <div className="search-wrap !mb-0 h-8">
                                         <Search className="h-3 w-3" />
                                         <input 
                                             className="search-input !w-full !h-8 !text-[10px]" 
-                                            placeholder="Search registry..." 
+                                            placeholder="Search name or address…" 
                                             value={mapSearch}
                                             onChange={(e) => setMapSearch(e.target.value)}
                                         />
@@ -1077,10 +1125,10 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                                     </div>
                                                     <div className="space-y-0.5 overflow-hidden text-left">
                                                         <div className="flex items-center gap-2">
-                                                            <p className="text-xs font-bold text-text-primary uppercase truncate">{loc.name}</p>
-                                                            {loc.isLive && <Badge variant="active" className="h-3 px-1 text-[6px] animate-pulse">LIVE</Badge>}
+                                                            <p className="text-xs font-bold text-text-primary truncate">{loc.name}</p>
+                                                            {loc.isLive && <Badge variant="active" className="h-4 px-1 text-[10px]">On site</Badge>}
                                                         </div>
-                                                        <p className="text-[9px] text-text-muted uppercase tracking-tight flex items-center gap-1">
+                                                        <p className="text-[10px] text-text-muted uppercase tracking-tight flex items-center gap-1">
                                                             <Navigation size={8}/> {loc.location}
                                                         </p>
                                                     </div>
@@ -1089,7 +1137,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                         ))}
                                         {filteredMapLocations.length === 0 && (
                                             <div className="p-12 text-center">
-                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest italic">No matching coordinates found</p>
+                                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">No locations match</p>
                                             </div>
                                         )}
                                     </div>
@@ -1102,8 +1150,8 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                 {activeTab !== 'map' && activeTab !== 'requests' && totalRecords > 0 && (
                     <div className="mt-3 flex items-center justify-between p-2 bg-bg-secondary rounded-lg border border-border-sub">
                         <div className="flex items-center gap-4">
-                            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">
-                                <span className="text-text-primary">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalRecords)}</span> / {totalRecords}
+                            <p className="text-[12px] text-text-muted">
+                                <span className="text-text-primary font-medium">{(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, totalRecords)}</span> of {totalRecords}
                             </p>
                         </div>
                         
@@ -1113,19 +1161,19 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                 size="icon-sm" 
                                 disabled={currentPage === 1}
                                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                className="h-6 w-6 border-border-sub bg-bg-primary"
+                                className="h-8 w-8 border-border-sub bg-bg-primary"
                             >
                                 <ChevronLeft size={12} />
                             </Button>
                             <div className="flex items-center gap-1 px-2">
-                                <span className="text-[9px] font-bold text-text-primary uppercase tracking-tighter">P{currentPage} / {totalPages}</span>
+                                <span className="text-[12px] font-medium text-text-primary">Page {currentPage} of {totalPages}</span>
                             </div>
                             <Button 
                                 variant="outline" 
                                 size="icon-sm" 
                                 disabled={currentPage === totalPages}
                                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                className="h-6 w-6 border-border-sub bg-bg-primary"
+                                className="h-8 w-8 border-border-sub bg-bg-primary"
                             >
                                 <ChevronRight size={12} />
                             </Button>
@@ -1144,14 +1192,14 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
             <Dialog open={approveOpen} onOpenChange={setApproveOpen}>
                 <DialogContent className="bg-bg-secondary border-border-main max-w-md">
                     <DialogHeader>
-                        <DialogTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                        <DialogTitle className="text-base font-semibold flex items-center gap-2">
                             <UserPlus size={16} className="text-text-green" />
                             Grant Access — {selectedPendingUser?.name}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
                         <div>
-                            <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-3">Assign Roles</p>
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-3">Assign Roles</p>
                             <div className="grid grid-cols-2 gap-2">
                                 {ALL_ROLES.map(r => (
                                     <label key={r.value} className="flex items-center gap-2 cursor-pointer group">
@@ -1172,7 +1220,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                         </div>
                         {selectedRoles.length > 0 && (
                             <div>
-                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-3">Primary Role</p>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-3">Primary Role</p>
                                 <div className="space-y-1.5">
                                     {selectedRoles.map(rv => {
                                         const label = ALL_ROLES.find(r => r.value === rv)?.label || rv;
@@ -1195,12 +1243,12 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                         )}
                     </div>
                     <DialogFooter className="gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setApproveOpen(false)} className="text-[9px] uppercase font-bold">Cancel</Button>
+                        <Button variant="outline" size="sm" onClick={() => setApproveOpen(false)} className="text-[11px] font-bold">Cancel</Button>
                         <Button
                             size="sm"
                             disabled={selectedRoles.length === 0 || !primaryRole || approving}
                             onClick={handleApproveUser}
-                            className="text-[9px] uppercase font-bold bg-text-green hover:bg-text-green/90"
+                            className="text-[11px] font-bold bg-text-green hover:bg-text-green/90"
                         >
                             {approving ? 'Approving...' : 'Grant Access'}
                         </Button>
@@ -1212,17 +1260,17 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
             <Dialog open={denyOpen} onOpenChange={setDenyOpen}>
                 <DialogContent className="bg-bg-secondary border-border-main max-w-sm">
                     <DialogHeader>
-                        <DialogTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                        <DialogTitle className="text-base font-semibold flex items-center gap-2">
                             <UserX size={16} className="text-brand-red" />
                             Deny Access — {selectedPendingUser?.name}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
-                        <p className="text-[11px] text-text-secondary leading-relaxed">
+                        <p className="text-[12px] text-text-secondary leading-relaxed">
                             The user will see a denied message on their pending screen. You may optionally provide a reason.
                         </p>
                         <div>
-                            <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] mb-2">Reason (optional)</p>
+                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">Reason (optional)</p>
                             <Input
                                 value={denyReason}
                                 onChange={e => setDenyReason(e.target.value)}
@@ -1232,12 +1280,12 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                         </div>
                     </div>
                     <DialogFooter className="gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setDenyOpen(false)} className="text-[9px] uppercase font-bold">Cancel</Button>
+                        <Button variant="outline" size="sm" onClick={() => setDenyOpen(false)} className="text-[11px] font-bold">Cancel</Button>
                         <Button
                             size="sm"
                             disabled={denying}
                             onClick={handleDenyUser}
-                            className="text-[9px] uppercase font-bold bg-brand-red hover:bg-brand-red-hover"
+                            className="text-[11px] font-bold bg-brand-red hover:bg-brand-red-hover"
                         >
                             {denying ? 'Denying...' : 'Deny Access'}
                         </Button>
@@ -1251,16 +1299,16 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                     {selectedClientCompany && (
                         <>
                             <SheetHeader className="mb-4">
-                                <SheetTitle className="text-[13px] font-black uppercase tracking-widest flex items-center gap-2">
+                                <SheetTitle className="text-base font-semibold flex items-center gap-2">
                                     <Building2 size={14} className="text-brand-red" />
                                     {selectedClientCompany.name}
                                 </SheetTitle>
                                 {selectedClientCompany.businessType && (
-                                    <p className="text-[10px] text-text-muted uppercase tracking-widest">{selectedClientCompany.businessType}</p>
+                                    <p className="text-[12px] text-text-muted">{selectedClientCompany.businessType}</p>
                                 )}
                             </SheetHeader>
                             <div className="space-y-3">
-                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
                                     Contacts ({selectedClientCompany.contacts.length})
                                 </p>
                                 {selectedClientCompany.contacts.map(contact => (
@@ -1269,24 +1317,24 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                             <div className="flex items-center gap-2 min-w-0">
                                                 <Avatar className="h-7 w-7 shrink-0">
                                                     <AvatarImage src={contact.avatarUrl} />
-                                                    <AvatarFallback className="text-[9px] font-black">{(contact.name || '?').slice(0,2).toUpperCase()}</AvatarFallback>
+                                                    <AvatarFallback className="text-[11px] font-bold">{(contact.name || '?').slice(0,2).toUpperCase()}</AvatarFallback>
                                                 </Avatar>
                                                 <div className="min-w-0">
-                                                    <p className="text-[11px] font-black text-text-primary truncate">{contact.name}</p>
-                                                    <p className="text-[9px] text-text-muted uppercase tracking-wider">{contact.role || 'Client'}</p>
+                                                    <p className="text-[12px] font-bold text-text-primary truncate">{contact.name}</p>
+                                                    <p className="text-[12px] text-text-muted">{contact.role || 'Client'}</p>
                                                 </div>
                                             </div>
-                                            <Badge variant="outline" className={cn('text-[8px] h-4 uppercase shrink-0', contact.approvalStatus === 'approved' ? 'text-text-green border-text-green/30' : 'text-text-muted')}>
+                                            <Badge variant="outline" className={cn('text-[10px] h-4 shrink-0', contact.approvalStatus === 'approved' ? 'text-text-green border-text-green/30' : 'text-text-muted')}>
                                                 {contact.approvalStatus || 'pending'}
                                             </Badge>
                                         </div>
                                         {contact.email && (
-                                            <p className="text-[9px] text-text-muted flex items-center gap-1.5">
+                                            <p className="text-[11px] text-text-muted flex items-center gap-1.5">
                                                 <Mail size={9} /> {contact.email}
                                             </p>
                                         )}
                                         {contact.phone && (
-                                            <p className="text-[9px] text-text-muted flex items-center gap-1.5">
+                                            <p className="text-[11px] text-text-muted flex items-center gap-1.5">
                                                 <Phone size={9} /> {contact.phone}
                                             </p>
                                         )}
@@ -1296,7 +1344,7 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        className="w-full text-[10px] font-black uppercase tracking-widest h-9 mt-2"
+                                        className="w-full text-[10px] font-bold uppercase tracking-wider h-9 mt-2"
                                         onClick={() => { router.push('/admin/clients/' + selectedClientCompany.contacts[0].id); setSelectedClientCompany(null); }}
                                     >
                                         <ExternalLink size={10} className="mr-1.5" /> Open Full Profile

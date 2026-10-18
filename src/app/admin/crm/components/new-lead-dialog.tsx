@@ -66,7 +66,7 @@ function fromLead(l: Lead): Form {
   };
 }
 
-const labelCls = 'text-[10px] font-bold uppercase tracking-widest text-text-muted';
+const labelCls = 'text-[10px] font-bold uppercase tracking-wider text-text-muted';
 const inputCls = 'h-9 text-xs bg-bg-tertiary border-border-main';
 
 export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, lead, leads = [], companies = [], contacts = [], presetCompany, onDeleted }: Props) {
@@ -198,11 +198,11 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="bg-bg-secondary border-border-main sm:max-w-2xl max-h-[90vh] flex flex-col p-0">
         <DialogHeader className="p-6 pb-3">
-          <DialogTitle className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-text-primary">
+          <DialogTitle className="flex items-center gap-2 text-base font-semibold text-text-primary">
             <Target size={16} className="text-brand-red" />
-            {editing ? 'Edit Lead' : 'New Lead'}
+            {editing ? 'Edit lead' : 'New lead'}
           </DialogTitle>
-          <DialogDescription className="text-[10px] text-text-muted uppercase tracking-wider">
+          <DialogDescription className="text-[12px] text-text-muted">
             {editing ? lead!.companyName : 'Add a prospect to the sales pipeline.'}
           </DialogDescription>
         </DialogHeader>
@@ -210,10 +210,10 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
         <ScrollArea className="flex-1 px-6">
           <div className="space-y-5 pb-4">
             {dupes.length > 0 && (
-              <div className="flex gap-2 p-3 rounded-lg border border-amber-400/30 bg-amber-400/10 text-[10px] text-amber-400">
+              <div className="flex gap-2 p-3 rounded-lg border border-accent-gold/30 bg-accent-gold/10 text-[10px] text-accent-gold">
                 <AlertTriangle size={13} className="shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-black uppercase tracking-wider">Possible duplicate</p>
+                  <p className="font-bold uppercase tracking-wider">Possible duplicate</p>
                   {dupes.slice(0, 3).map(d => (
                     <p key={d.id}>{d.companyName}{d.contactName ? ` · ${d.contactName}` : ''} — {STAGES.find(s => s.key === d.stage)?.label}{d.assignedToName ? ` · ${d.assignedToName}` : ''}</p>
                   ))}
@@ -223,7 +223,7 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
 
             {/* Company */}
             <section className="space-y-3">
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">Company</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Company</p>
               <div className="space-y-1.5">
                 <Label className={labelCls}>Company Name *</Label>
                 <Input placeholder="Acme Corp" list="crm-company-options" value={form.companyName} onChange={e => onCompanyChange(e.target.value)} className={inputCls} />
@@ -231,7 +231,7 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
                   {companies.map(c => <option key={c.id} value={c.name} />)}
                 </datalist>
                 {matchedCompany && (
-                  <p className="text-[9px] uppercase font-bold tracking-wider text-text-green">
+                  <p className="text-[10px] uppercase font-bold tracking-wider text-text-green">
                     Existing account · {companyContacts.length} contact{companyContacts.length === 1 ? '' : 's'} · {leads.filter(l => l.companyId === matchedCompany.id && l.id !== lead?.id).length} other deals
                   </p>
                 )}
@@ -259,7 +259,7 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
 
             {/* Contact */}
             <section className="space-y-3">
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">Primary Contact</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Primary Contact</p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className={labelCls}>Name</Label>
@@ -285,7 +285,7 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
 
             {/* Deal */}
             <section className="space-y-3">
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">Deal</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Deal</p>
               <div className="space-y-1.5">
                 <Label className={labelCls}>Services in Scope</Label>
                 <div className="flex flex-wrap gap-1.5">
@@ -297,7 +297,7 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
                         type="button"
                         onClick={() => toggleService(s)}
                         className={cn(
-                          'px-2.5 h-7 rounded-md border text-[9px] font-bold uppercase tracking-wider transition-colors',
+                          'px-2.5 h-7 rounded-md border text-[10px] font-bold uppercase tracking-wider transition-colors',
                           on ? 'bg-brand-red/15 border-brand-red/40 text-text-primary' : 'border-border-main text-text-muted hover:text-text-primary',
                         )}
                       >
@@ -357,17 +357,17 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
             <Button
               variant="ghost"
               size="sm"
-              className="sm:mr-auto text-[10px] uppercase font-bold text-text-muted hover:text-text-red"
+              className="sm:mr-auto text-[10px] font-bold text-text-muted hover:text-text-red"
               onClick={() => setConfirmDelete(true)}
               disabled={saving || deleting}
             >
               <Trash2 size={12} className="mr-1.5" /> Delete Lead
             </Button>
           )}
-          <Button variant="ghost" size="sm" className="text-[10px] uppercase font-bold" onClick={onClose} disabled={saving}>
+          <Button variant="ghost" size="sm" className="text-[10px] font-bold" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button size="sm" className="text-[10px] uppercase font-bold bg-brand-red hover:bg-brand-red/90 text-white" onClick={handleSave} disabled={saving}>
+          <Button size="sm" className="text-[10px] font-bold bg-brand-red hover:bg-brand-red/90 text-white" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 size={12} className="animate-spin mr-1.5" /> : <Target size={12} className="mr-1.5" />}
             {saving ? 'Saving...' : editing ? 'Save Changes' : 'Add Lead'}
           </Button>
@@ -377,11 +377,11 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
       <AlertDialog open={confirmDelete} onOpenChange={v => !deleting && setConfirmDelete(v)}>
         <AlertDialogContent className="bg-bg-elevated border-border-main">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-[13px] font-black uppercase tracking-widest">Delete {lead?.companyName}?</AlertDialogTitle>
+            <AlertDialogTitle className="text-base font-semibold">Delete {lead?.companyName}?</AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-text-muted space-y-2">
               <span className="block">This permanently removes the lead and its activity timeline and tasks. It can't be undone.</span>
               {(lead?.quoteIds?.length || lead?.projectId) ? (
-                <span className="block text-amber-400">
+                <span className="block text-accent-gold">
                   Its {[lead?.quoteIds?.length ? 'quotes' : '', lead?.projectId ? `ops project (${lead.projectId})` : ''].filter(Boolean).join(' and ')} will stay — delete those separately if needed.
                 </span>
               ) : null}
@@ -389,10 +389,10 @@ export function NewLeadDialog({ open, onClose, currentUserId, currentUserName, l
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting} className="text-[10px] font-black uppercase">Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting} className="text-[10px] font-bold">Cancel</AlertDialogCancel>
             <AlertDialogAction
               disabled={deleting}
-              className="bg-text-red hover:bg-text-red/90 text-white text-[10px] font-black uppercase"
+              className="bg-text-red hover:bg-text-red/90 text-white text-[10px] font-bold"
               onClick={async e => {
                 e.preventDefault();
                 if (!lead) return;

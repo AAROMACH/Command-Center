@@ -108,7 +108,7 @@ export function UnloggedCompletions({ rows, excluded, technicians, currentUser }
                 history: arrayUnion({
                     type: 'note',
                     date: format(new Date(), 'MM-dd-yyyy'),
-                    details: `Marked not payable through weekly logs by ${adminName} (Intel → Flags → Unlogged Jobs).`,
+                    details: `Marked not payable through weekly logs by ${adminName} (Insights → Flags → Unlogged jobs).`,
                     user: adminName,
                 }),
             });
@@ -173,19 +173,19 @@ export function UnloggedCompletions({ rows, excluded, technicians, currentUser }
                 <div className="relative flex-1 min-w-[200px]">
                     <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                     <input
-                        className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-main bg-bg-primary text-[11px] font-bold uppercase tracking-wide text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-red transition-colors"
+                        className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-main bg-bg-primary text-[11px] font-bold tracking-wide text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-red transition-colors"
                         placeholder="Search tech, WO #, assignment, client..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                     />
                 </div>
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
                     {visible.length} job{visible.length !== 1 ? 's' : ''} · ${totalPay.toFixed(2)} listed pay
                 </p>
-                <Button variant="outline" size="sm" className="h-9 text-[9px] uppercase font-black tracking-widest" onClick={exportCsv} disabled={visible.length === 0}>
+                <Button variant="outline" size="sm" className="h-9 text-[10px] uppercase font-bold tracking-wider" onClick={exportCsv} disabled={visible.length === 0}>
                     <Download size={11} className="mr-1" /> CSV
                 </Button>
-                <Button size="sm" className="h-9 text-[9px] uppercase font-black tracking-widest bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setConfirmFileAll(true)} disabled={bulkRows.length === 0 || filingAll}>
+                <Button size="sm" className="h-9 text-[10px] uppercase font-bold tracking-wider bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setConfirmFileAll(true)} disabled={bulkRows.length === 0 || filingAll}>
                     {filingAll ? <Loader2 size={11} className="mr-1 animate-spin" /> : null} File All ({bulkRows.length})
                 </Button>
             </div>
@@ -193,7 +193,7 @@ export function UnloggedCompletions({ rows, excluded, technicians, currentUser }
             {visible.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
                     <CheckCircle size={28} className="text-text-green mx-auto mb-3" />
-                    <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest">Every job marked complete is on a weekly log</p>
+                    <p className="text-[11px] font-bold text-text-muted">Every job marked complete is on a weekly log</p>
                 </div>
             ) : (
                 <div className="rounded-xl border border-border-sub bg-bg-secondary divide-y divide-border-sub overflow-hidden">
@@ -204,21 +204,21 @@ export function UnloggedCompletions({ rows, excluded, technicians, currentUser }
                             <div key={r.job.id} className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 py-3 text-left">
                                 <div className="min-w-0 space-y-0.5">
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <a href={`/admin/assignments/${r.job.id}`} className="text-[11px] font-bold font-mono text-blue-400 hover:underline">{r.job.id.toUpperCase()}</a>
+                                        <a href={`/admin/assignments/${r.job.id}`} className="text-[11px] font-bold font-mono text-brand-blue hover:underline">{r.job.id.toUpperCase()}</a>
                                         <span className="text-[10px] font-mono text-text-muted">WO {displayWorkOrderNumber(r.job)}</span>
-                                        {tech && isInactiveTechnician(tech) && <Badge variant="destructive" className="text-[7px] h-4 uppercase">Inactive tech</Badge>}
+                                        {tech && isInactiveTechnician(tech) && <Badge variant="destructive" className="text-[10px] h-4">Inactive tech</Badge>}
                                     </div>
                                     <p className="text-[11px] font-bold text-text-primary truncate">{r.job.title || r.job.description || '—'}</p>
-                                    <p className="text-[9px] text-text-muted uppercase tracking-widest font-bold">
+                                    <p className="text-[10px] text-text-muted uppercase tracking-wider font-bold">
                                         {techName(r.techId)} · {r.job.scheduleDate || 'No date'} · week of {weekOfForScheduleDate(r.job.scheduleDate)} · ${(Number(r.job.pay) || 0).toFixed(2)}
                                     </p>
-                                    <p className="text-[9px] text-accent-gold">{r.source}</p>
+                                    <p className="text-[11px] text-accent-gold">{r.source}</p>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
-                                    <Button size="sm" variant="outline" className="h-8 text-[9px] uppercase font-black tracking-widest" disabled={busy || filingAll} onClick={() => handleExclude(r)}>
+                                    <Button size="sm" variant="outline" className="h-8 text-[10px] uppercase font-bold tracking-wider" disabled={busy || filingAll} onClick={() => handleExclude(r)}>
                                         Not Payable
                                     </Button>
-                                    <Button size="sm" className="h-8 text-[9px] uppercase font-black tracking-widest bg-text-green hover:bg-text-green/90 text-white" disabled={busy || filingAll} onClick={() => handleFile(r)}>
+                                    <Button size="sm" className="h-8 text-[10px] uppercase font-bold tracking-wider bg-text-green hover:bg-text-green/90 text-white" disabled={busy || filingAll} onClick={() => handleFile(r)}>
                                         {busy ? <Loader2 size={11} className="animate-spin" /> : 'File to Log'}
                                     </Button>
                                 </div>
@@ -232,10 +232,10 @@ export function UnloggedCompletions({ rows, excluded, technicians, currentUser }
             {excluded.length > 0 && (
                 <div className="rounded-xl border border-border-sub bg-bg-secondary/40 text-left">
                     <button type="button" onClick={() => setShowExcluded(v => !v)} className="w-full flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
                             {excluded.length} other completed job{excluded.length !== 1 ? 's' : ''} not listed
                         </span>
-                        <span className="text-[9px] text-text-muted">
+                        <span className="text-[11px] text-text-muted">
                             {[
                                 excludedCounts.no_completion_record && `${excludedCounts.no_completion_record} never marked complete in app`,
                                 excludedCounts.on_other_tech_log && `${excludedCounts.on_other_tech_log} on another tech's log`,
@@ -247,10 +247,10 @@ export function UnloggedCompletions({ rows, excluded, technicians, currentUser }
                         <div className="divide-y divide-border-sub border-t border-border-sub">
                             {excluded.map(e => (
                                 <div key={e.job.id} className="px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                                    <a href={`/admin/assignments/${e.job.id}`} className="text-[10px] font-mono font-bold text-blue-400 hover:underline">{e.job.id.toUpperCase()}</a>
+                                    <a href={`/admin/assignments/${e.job.id}`} className="text-[10px] font-mono font-bold text-brand-blue hover:underline">{e.job.id.toUpperCase()}</a>
                                     <span className="text-[10px] font-mono text-text-muted">WO {displayWorkOrderNumber(e.job)}</span>
                                     <span className="text-[10px] text-text-secondary">{techName(e.techId)} · {e.job.scheduleDate || 'No date'}</span>
-                                    <span className="text-[9px] text-text-muted basis-full">{reasonLabel(e)}</span>
+                                    <span className="text-[11px] text-text-muted basis-full">{reasonLabel(e)}</span>
                                 </div>
                             ))}
                         </div>

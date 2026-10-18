@@ -344,7 +344,8 @@ export function AlertBand() {
                 }
               )}
             >
-              <alert.icon className={cn("h-3.5 w-3.5", alert.type === 'success' && 'fill-current')} />
+              {/* Icons hidden on phones so two alerts fit beside the top-bar icons */}
+              <alert.icon className={cn("hidden sm:block h-3.5 w-3.5", alert.type === 'success' && 'fill-current')} />
               <span>{alert.text}</span>
             </div>
           ))}

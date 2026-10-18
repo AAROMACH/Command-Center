@@ -4,7 +4,8 @@ import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
 import { statusLabel } from '@/lib/status-styles';
 import { useState, useMemo, useEffect } from 'react';
-import type { Project, ProjectDailyLog, Technician, ProjectDocument } from '@/lib/types';
+import type { Project, ProjectDailyLog, Technician, ProjectDocument, Task } from '@/lib/types';
+import { TaskCompletionDialog, TaskRequirementIcons, taskHasRequirements } from '@/components/task-completion-dialog';
 import Link from 'next/link';
 import {
   ChevronLeft,
@@ -186,7 +187,7 @@ const PhaseBlock = ({
                             />
                             <span className={cn("task-name", task.isCompleted && "line-through text-text-muted")}>{task.name}</span>
                             {task.assignedTechId && <span className="text-[11px] font-medium text-brand-red border border-brand-red/30 bg-brand-red/10 rounded-full px-2 py-0.5 whitespace-nowrap">{nameOf(task.assignedTechId)}</span>}
-                            {task.requiresPhoto && <Camera size={12} className="text-text-muted" />}
+                            <TaskRequirementIcons task={task} />
                         </div>
                     ))}
                 </div>
@@ -703,55 +704,35 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
     const progress = getProgress(project);
     const progressColor = progress === 100 ? 'green' : progress > 0 ? 'gold' : 'red';
     
+    // Task with requirements → completion form; otherwise toggle directly.
+    const [completing, setCompleting] = useState<{ phaseId: string; task: Task } | null>(null);
+
+    const saveTask = async (phaseId: string, taskId: string, patch: Partial<Task>) => {
+        const task = (project.phases || []).find(ph => ph.id === phaseId)?.tasks?.find(t => t.id === taskId);
+        const updatedPhases = (project.phases || []).map(phase => phase.id !== phaseId ? phase : {
+            ...phase,
+            tasks: (phase.tasks || []).map(t => t.id === taskId ? { ...t, ...patch } : t),
+        });
+        await updateDoc(doc(db, 'projects', project.id), { phases: updatedPhases });
+        toast({ title: patch.isCompleted ? 'Task completed' : 'Task reopened', description: task?.name });
+        if (task && patch.isCompleted) {
+            const allDone = updatedPhases.every(ph => (ph.tasks || []).every(t => t.isCompleted)) && updatedPhases.some(ph => (ph.tasks || []).length);
+            NotificationService.notifyProjectManagers(project.id,
+                allDone ? 'Project tasks complete' : 'Task completed',
+                `${nameOf(currentUserId || '')} completed "${task.name}" on ${project.name}.${allDone ? '\nEvery task is done — ready to close out.' : ''}`,
+                !allDone);
+        }
+    };
+
     const handleTaskToggle = async (phaseId: string, taskId: string) => {
         if (isReadOnly) return;
-
-        const targetPhase = (project.phases || []).find(ph => ph.id === phaseId);
-        const task = (targetPhase?.tasks || []).find(t => t.id === taskId);
-        if (task && !task.isCompleted) {
-            if (task.requiresPhoto && !task.photoUrl) {
-                toast({ variant: 'destructive', title: 'Photo required', description: 'Upload a photo to complete this task.' }); return;
-            }
-            if (task.requiresText && !task.textValue?.trim()) {
-                toast({ variant: 'destructive', title: 'Text required', description: 'Fill in the required text to complete this task.' }); return;
-            }
-            if (task.requiresNumeric && (task.numericValue === undefined || task.numericValue === null)) {
-                toast({ variant: 'destructive', title: 'Count required', description: 'Enter a valid count to complete this task.' }); return;
-            }
-            if (task.requiresFileUpload && !task.fileUrl) {
-                toast({ variant: 'destructive', title: 'Document required', description: 'Upload the required document to complete this task.' }); return;
-            }
-            if (task.requiresSignature && !task.signatureUrl) {
-                toast({ variant: 'destructive', title: 'Signature required', description: 'Collect signature before completing.' }); return;
-            }
-        }
-
-        const updatedPhases = (project.phases || []).map(phase => {
-            if (phase.id === phaseId) {
-                return {
-                    ...phase,
-                    tasks: (phase.tasks || []).map(task => 
-                        task.id === taskId ? { ...task, isCompleted: !task.isCompleted } : task
-                    )
-                };
-            }
-            return phase;
-        });
-
+        const task = (project.phases || []).find(ph => ph.id === phaseId)?.tasks?.find(t => t.id === taskId);
+        if (!task) return;
+        if (!task.isCompleted && taskHasRequirements(task)) { setCompleting({ phaseId, task }); return; }
         try {
-            const docRef = doc(db, 'projects', project.id);
-            await updateDoc(docRef, { phases: updatedPhases });
-            toast({
-                title: "Task updated",
-                description: "Task saved."
-            });
-            if (task && !task.isCompleted) {
-                const allDone = updatedPhases.every(ph => (ph.tasks || []).every(t => t.isCompleted)) && updatedPhases.some(ph => (ph.tasks || []).length);
-                NotificationService.notifyProjectManagers(project.id,
-                    allDone ? 'Project tasks complete' : 'Task completed',
-                    `${nameOf(currentUserId || '')} completed "${task.name}" on ${project.name}.${allDone ? '\nEvery task is done — ready to close out.' : ''}`,
-                    !allDone);
-            }
+            await saveTask(phaseId, taskId, task.isCompleted
+                ? { isCompleted: false, completedAt: '', completedBy: null }
+                : { isCompleted: true, completedAt: new Date().toISOString(), completedBy: currentUserId });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
@@ -879,13 +860,21 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             </div>
 
             <div className="detail-tabs overflow-x-auto sm:justify-center">
-                <button className={`detail-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Briefing</button>
-                <button className={`detail-tab ${activeTab === 'milestones' ? 'active' : ''}`} onClick={() => setActiveTab('milestones')}>Tasks</button>
+                <button className={`detail-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Overview</button>
+                <button className={`detail-tab ${activeTab === 'milestones' ? 'active' : ''}`} onClick={() => setActiveTab('milestones')}>Milestones</button>
                 {canLead && <button className={`detail-tab ${activeTab === 'plan' ? 'active' : ''}`} onClick={() => setActiveTab('plan')}>Plan</button>}
                 <button className={`detail-tab ${activeTab === 'documents' ? 'active' : ''}`} onClick={() => setActiveTab('documents')}>Documents</button>
                 <button className={`detail-tab ${activeTab === 'timesheets' ? 'active' : ''}`} onClick={() => setActiveTab('timesheets')}>Timesheets</button>
             </div>
 
+            <TaskCompletionDialog
+                task={completing?.task ?? null}
+                projectId={project.id}
+                open={!!completing}
+                onOpenChange={o => { if (!o) setCompleting(null); }}
+                onComplete={patch => completing ? saveTask(completing.phaseId, completing.task.id,
+                    { ...patch, completedAt: new Date().toISOString(), completedBy: currentUserId }) : undefined}
+            />
             <div className="tab-content">
                 {activeTab === 'overview' && <OverviewTab project={project} technicians={technicians} />}
                 {activeTab === 'milestones' && <MilestonesTab project={project} onTaskToggle={handleTaskToggle} documents={documents} isReadOnly={isReadOnly} nameOf={nameOf} />}

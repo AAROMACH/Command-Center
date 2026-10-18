@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { NotificationService } from '@/lib/notification-service';
+import { TaskCompletionDialog, TaskRequirementIcons, taskHasRequirements } from '@/components/task-completion-dialog';
 
 type MilestonesTabProps = {
     project: Project;
@@ -129,6 +130,7 @@ const PhaseBlock = ({
                                     {task.requiresDropdown && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><ListTodo size={10}/> List</div>}
                                     {task.requiresSignature && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Signature size={10}/> Sign</div>}
                                     {task.requiresFileUpload && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Upload size={10}/> File</div>}
+                                    {task.isCompleted && <TaskRequirementIcons task={task} />}
                                     {task.requiresOther && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Plus size={10}/> {task.otherRequirementLabel || 'Req.'}</div>}
                                 </div>
                             </div>
@@ -174,28 +176,23 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
         setEditablePhases(project.phases || []);
     }, [project.phases]);
 
+    const [completing, setCompleting] = useState<{ phaseId: string; task: Task } | null>(null);
+    const applyCompletion = (patch: Partial<Task>) => {
+        if (!completing) return;
+        setEditablePhases(phases => phases.map(ph => ph.id !== completing.phaseId ? ph : {
+            ...ph,
+            tasks: (ph.tasks || []).map(t => t.id === completing.task.id ? { ...t, ...patch, completedAt: new Date().toISOString() } : t),
+        }));
+        toast({ title: 'Task completed', description: 'Save changes to keep it.' });
+    };
+
     const handleTaskToggle = (phaseId: string, taskId: string) => {
         if (isReadOnly) return;
 
         const targetPhase = editablePhases.find(ph => ph.id === phaseId);
         const task = (targetPhase?.tasks || []).find(t => t.id === taskId);
-        if (task && !task.isCompleted) {
-            if (task.requiresPhoto && !task.photoUrl) {
-                toast({ variant: 'destructive', title: 'Photo required', description: 'Upload a photo to complete this task.' }); return;
-            }
-            if (task.requiresText && !task.textValue?.trim()) {
-                toast({ variant: 'destructive', title: 'Text required', description: 'Fill in the required text to complete this task.' }); return;
-            }
-            if (task.requiresNumeric && (task.numericValue === undefined || task.numericValue === null)) {
-                toast({ variant: 'destructive', title: 'Count required', description: 'Enter a valid count to complete this task.' }); return;
-            }
-            if (task.requiresFileUpload && !task.fileUrl) {
-                toast({ variant: 'destructive', title: 'Document required', description: 'Upload the required document to complete this task.' }); return;
-            }
-            if (task.requiresSignature && !task.signatureUrl) {
-                toast({ variant: 'destructive', title: 'Signature required', description: 'Collect signature before completing.' }); return;
-            }
-        }
+        // Requirements (photo, notes, signature…) are filled in through the completion form.
+        if (task && !task.isCompleted && taskHasRequirements(task)) { setCompleting({ phaseId, task }); return; }
 
         const newPhases = editablePhases.map(phase => {
             if (phase.id === phaseId) {
@@ -358,6 +355,14 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                     <Plus size={16} className="mr-2"/> Add New Phase
                 </Button>
             )}
+
+            <TaskCompletionDialog
+                task={completing?.task ?? null}
+                projectId={project.id}
+                open={!!completing}
+                onOpenChange={o => { if (!o) setCompleting(null); }}
+                onComplete={applyCompletion}
+            />
 
             {/* TASK DETAIL DIALOG */}
             <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>

@@ -382,6 +382,11 @@ export type Task = {
   requiresFileUpload?: boolean;
   requiresOther?: boolean;
   otherRequirementLabel?: string;
+  /** Values the tech filled in when completing the task. */
+  dropdownValue?: string;
+  otherValue?: string;
+  completedBy?: string | null;
+  completedAt?: string;
   estimatedHours?: number;
   /** Crew member this task is assigned to (set by the PM or project lead). */
   assignedTechId?: string | null;

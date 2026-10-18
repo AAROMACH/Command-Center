@@ -8,6 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { getAvailablePortals } from "@/lib/permissions";
 import { canAccessPath } from "@/lib/route-permissions";
+import { Home, CalendarDays, FileText, Coins, FolderKanban } from "lucide-react";
 
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -59,80 +60,38 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
 
 function TechBottomNav() {
   const pathname = usePathname();
+  const { user } = useAuth();
   const isActive = (href: string) => {
     if (href.endsWith("/dashboard")) return pathname === href;
     return pathname.startsWith(href);
   };
 
+  // Hide tabs the user can't open (e.g. Earnings for project managers).
   const items = [
-    { href: "/tech/dashboard", label: "Home", Icon: HomeIcon },
-    { href: "/tech/assignments", label: "Jobs", Icon: CalendarIcon },
-    { href: "/tech/logs", label: "Logs", Icon: ScrollIcon },
-    { href: "/tech/earnings", label: "Earnings", Icon: CoinsIcon },
-    { href: "/tech/map", label: "Map", Icon: MapIcon },
-  ];
+    { href: "/tech/dashboard", label: "Home", Icon: Home },
+    { href: "/tech/calendar", label: "Schedule", Icon: CalendarDays },
+    { href: "/tech/logs", label: "Logs", Icon: FileText },
+    { href: "/tech/earnings", label: "Earnings", Icon: Coins },
+    { href: "/tech/projects", label: "Projects", Icon: FolderKanban },
+  ].filter(({ href }) => !user || canAccessPath(user, href));
 
   return (
-    <nav className="md:hidden shrink-0 bg-sidebar border-t border-border-main z-50">
+    <nav className="md:hidden shrink-0 bg-sidebar border-t border-border-main z-50 pb-[env(safe-area-inset-bottom)]">
       <div className="flex items-center">
         {items.map(({ href, label, Icon }) => (
           <a
             key={href}
             href={href}
             aria-current={isActive(href) ? "page" : undefined}
-            className={`flex flex-col items-center gap-1 py-2.5 min-h-[48px] flex-1 transition-colors ${
+            className={`flex flex-col items-center gap-1 py-2.5 min-h-[48px] flex-1 min-w-0 transition-colors ${
               isActive(href) ? "text-brand-red" : "text-sidebar-foreground hover:text-text-primary"
             }`}
           >
-            <Icon />
+            <Icon size={18} strokeWidth={2} />
             <span className="text-[11px] font-medium leading-none">{label}</span>
           </a>
         ))}
       </div>
     </nav>
-  );
-}
-
-function HomeIcon() {
-  return (
-    <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-    </svg>
-  );
-}
-function CalendarIcon() {
-  return (
-    <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      <rect x="3" y="4" width="18" height="18" rx="2" />
-      <line x1="16" y1="2" x2="16" y2="6" />
-      <line x1="8" y1="2" x2="8" y2="6" />
-      <line x1="3" y1="10" x2="21" y2="10" />
-    </svg>
-  );
-}
-function ScrollIcon() {
-  return (
-    <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      <path strokeLinecap="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
-      <rect x="9" y="3" width="6" height="4" rx="1" />
-    </svg>
-  );
-}
-function CoinsIcon() {
-  return (
-    <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      <circle cx="8" cy="8" r="5" />
-      <path d="M16 3c1.657 0 3 1.343 3 3v0c0 1.657-1.343 3-3 3" />
-      <path d="M11 13c0 2.761 2.239 5 5 5s5-2.239 5-5-2.239-5-5-5" />
-    </svg>
-  );
-}
-function MapIcon() {
-  return (
-    <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
-      <line x1="8" y1="2" x2="8" y2="18" />
-      <line x1="16" y1="6" x2="16" y2="22" />
-    </svg>
   );
 }

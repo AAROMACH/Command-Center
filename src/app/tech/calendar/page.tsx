@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import {
   format, addMonths, subMonths, startOfMonth, endOfMonth,
-  eachDayOfInterval, getDay, isSameDay, isToday,
+  eachDayOfInterval, getDay, isSameDay, isToday, addDays, startOfWeek,
 } from 'date-fns';
 import { cn, techDisplayName, getTacticalLocation, geocodeAddress, sumRouteMileage, compareScheduleTime, calculateDistance, formatDistance } from '@/lib/utils';
 import { canConfirm, canStartTrip, canCheckIn, canCheckOut, canComplete } from '@/lib/trip-flow';
@@ -136,7 +136,8 @@ export default function TechCalendarPage() {
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [drawerJob, setDrawerJob] = useState<JobWithSrc | null>(null);
-  const [mobileTab, setMobileTab] = useState<'calendar' | 'map' | 'list'>('calendar');
+  // Phones skip the month grid: a day picker, then the day's list or map.
+  const [mobileTab, setMobileTab] = useState<'list' | 'map'>('list');
   const [isMapExpanded, setIsMapExpanded] = useState(false);
 
   const [currentTech, setCurrentTech] = useState<Technician | null>(null);
@@ -275,6 +276,7 @@ export default function TechCalendarPage() {
     setSelectedDate(day);
     closeDrawer();
   };
+  const pickDay = (day: Date) => { handleSelectDate(day); setMonthDate(day); };
 
   // Tech status actions
   const withLoading = async (fn: () => Promise<void>) => {
@@ -331,7 +333,7 @@ export default function TechCalendarPage() {
       <PageHeader
         eyebrow="Schedule"
         icon={CalendarIcon}
-        title="My calendar"
+        title="My schedule"
         subtitle="Your jobs by day, with the day's route on a map."
         actions={
           <Button variant="outline" onClick={handleExportIcs} className="h-10 sm:h-9">
@@ -340,20 +342,10 @@ export default function TechCalendarPage() {
         }
       />
 
-      {/* Mobile view switcher */}
-      <div className="tabs md:hidden flex-nowrap" role="tablist">
-        {([['calendar', 'Calendar'], ['map', 'Map'], ['list', 'Day list']] as const).map(([t, label]) => (
-          <button key={t} type="button" role="tab" aria-selected={mobileTab === t} onClick={() => setMobileTab(t)}
-            className={cn('tab flex-1 text-center', mobileTab === t && 'active')}>
-            {label}
-          </button>
-        ))}
-      </div>
-
       <div className="flex flex-col rounded-xl border border-border-main bg-bg-secondary shadow-sm overflow-hidden">
 
         {/* ── Topbar ── */}
-        <div className="min-h-[52px] shrink-0 flex items-center gap-2 px-3 sm:px-4 py-1.5 border-b border-border-sub">
+        <div className="hidden md:flex min-h-[52px] shrink-0 items-center gap-2 px-3 sm:px-4 py-1.5 border-b border-border-sub">
           <div className="flex items-center gap-1">
             <button onClick={() => setMonthDate(d => subMonths(d, 1))} aria-label="Previous month"
               className="h-10 w-10 sm:h-8 sm:w-8 flex items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-bg-primary transition-colors">
@@ -372,8 +364,51 @@ export default function TechCalendarPage() {
           <span className="text-[15px] sm:text-[16px] font-semibold text-text-primary ml-1">{format(monthDate, 'MMMM yyyy')}</span>
         </div>
 
-        {/* ── Full-width Monthly Calendar ── */}
-        <div className={cn('border-b border-border-sub', mobileTab !== 'calendar' && 'hidden md:block')}>
+        {/* ── Phones: day picker (week strip) ── */}
+        <div className="md:hidden border-b border-border-sub px-3 py-2.5 space-y-2.5">
+          <div className="flex items-center gap-1">
+            <button onClick={() => pickDay(addDays(selectedDate, -1))} aria-label="Previous day"
+              className="h-10 w-10 flex items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-bg-primary transition-colors">
+              <ChevronLeft size={16} />
+            </button>
+            <span className="flex-1 text-center text-[15px] font-semibold text-text-primary">
+              {isToday(selectedDate) ? 'Today' : format(selectedDate, 'EEE, MMM d')}
+            </span>
+            <button onClick={() => pickDay(addDays(selectedDate, 1))} aria-label="Next day"
+              className="h-10 w-10 flex items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-bg-primary transition-colors">
+              <ChevronRight size={16} />
+            </button>
+            {!isToday(selectedDate) && (
+              <button onClick={() => pickDay(new Date())}
+                className="h-10 px-3 text-[12px] font-medium rounded-md border border-border-main text-text-secondary hover:text-text-primary transition-colors">
+                Today
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(selectedDate), i)).map(day => {
+              const n = jobsForDate(day).length;
+              const sel = isSameDay(day, selectedDate);
+              return (
+                <button key={day.toISOString()} type="button" onClick={() => pickDay(day)}
+                  aria-label={`${format(day, 'EEEE, MMM d')}: ${n} job${n === 1 ? '' : 's'}`}
+                  aria-pressed={sel}
+                  className={cn(
+                    'flex flex-col items-center gap-0.5 rounded-lg py-1.5 transition-colors',
+                    sel ? 'bg-brand-red text-white' : 'text-text-secondary hover:bg-bg-tertiary',
+                    !sel && isToday(day) && 'text-brand-red',
+                  )}>
+                  <span className="text-[10px] font-medium uppercase">{format(day, 'EEEEE')}</span>
+                  <span className="text-[14px] font-semibold leading-none">{format(day, 'd')}</span>
+                  <span className={cn('h-1.5 w-1.5 rounded-full', n ? (sel ? 'bg-white' : 'bg-brand-red') : 'bg-transparent')} />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Full-width Monthly Calendar (md and up) ── */}
+        <div className="hidden md:block border-b border-border-sub">
           <div className="grid grid-cols-7 bg-bg-tertiary border-b border-border-sub">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
               <div key={d} className="py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-text-muted">{d}</div>
@@ -425,9 +460,9 @@ export default function TechCalendarPage() {
         </div>
 
         {/* ── Legend ── */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-2 border-b border-border-sub shrink-0">
+        <div className={cn("flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-2 border-b border-border-sub shrink-0 [&>.legend-key]:hidden md:[&>.legend-key]:flex", selectedDateJobs.length ? "flex" : "hidden md:flex")}>
           {([['scheduled', 'Scheduled'], ['info', 'Confirmed / on my way'], ['progress', 'In progress'], ['done', 'Done']] as const).map(([tone, label]) => (
-            <div key={tone} className="flex items-center gap-1.5">
+            <div key={tone} className="legend-key items-center gap-1.5">
               <span className={cn('w-2 h-2 rounded-full', TONE_DOT[tone])} />
               <span className="text-[11px] text-text-muted">{label}</span>
             </div>
@@ -448,18 +483,28 @@ export default function TechCalendarPage() {
               )}
             </div>
           )}
-          <span className="ml-auto text-[11px] text-text-muted font-medium">
+          <span className="hidden md:inline ml-auto text-[11px] text-text-muted font-medium">
             {format(selectedDate, 'EEE, MMM d')} · {selectedDateJobs.length} job{selectedDateJobs.length !== 1 ? 's' : ''}
           </span>
         </div>
 
+        {/* Phones: switch the day section between its job list and map */}
+        <div className="tabs md:hidden flex-nowrap px-3 pt-3" role="tablist">
+          {([['list', 'Day list'], ['map', 'Map']] as const).map(([t, label]) => (
+            <button key={t} type="button" role="tab" aria-selected={mobileTab === t} onClick={() => setMobileTab(t)}
+              className={cn('tab flex-1 text-center', mobileTab === t && 'active')}>
+              {label}
+            </button>
+          ))}
+        </div>
+
         {/* ── Below section: Map + Job List + Drawer ── */}
-        <div className="flex overflow-hidden" style={{ height: 420 }}>
+        <div className="flex overflow-hidden md:h-[420px]">
 
           {/* LEFT: Map */}
           <div className={cn(
             'shrink-0 border-r border-border-sub flex flex-col overflow-hidden transition-all duration-300',
-            mobileTab === 'map' ? 'flex-1 w-full' : (mobileTab !== 'calendar' ? 'hidden md:flex' : 'hidden md:flex'),
+            mobileTab === 'map' ? 'flex-1 w-full h-[360px] md:h-auto' : 'hidden md:flex',
             isMapExpanded ? 'md:w-[600px]' : 'md:w-[360px]',
           )}>
             <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-sub shrink-0">
@@ -496,7 +541,7 @@ export default function TechCalendarPage() {
           {/* CENTER: Job list */}
           <div className={cn(
             'flex-1 min-w-0 flex flex-col overflow-hidden',
-            mobileTab === 'list' ? 'w-full' : (mobileTab !== 'calendar' ? 'hidden md:flex' : 'hidden md:flex'),
+            mobileTab === 'list' ? 'w-full' : 'hidden md:flex',
             drawerJob && 'border-r border-border-sub',
             isMapExpanded && 'md:max-w-[380px]',
           )}>
@@ -508,11 +553,11 @@ export default function TechCalendarPage() {
                 {selectedDateJobs.length} {selectedDateJobs.length === 1 ? 'job' : 'jobs'}
               </span>
             </div>
-            <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+            <div className="flex-1 md:overflow-y-auto p-2 space-y-1.5">
               {loading ? (
                 <LoadingState label="Loading your jobs…" rows={3} />
               ) : selectedDateJobs.length === 0 ? (
-                <EmptyState compact icon={CalendarIcon} title="No jobs this day" description="Pick another day on the calendar." className="h-full border-0" />
+                <EmptyState compact icon={CalendarIcon} title="No jobs this day" description="Pick another day." className="h-full border-0" />
               ) : (
                 selectedDateJobs.map((wo, idx) => {
                   const isSelected = selectedJobId === wo.id;

@@ -320,33 +320,62 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
     );
 };
 
-const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => {
+const DocumentRow = ({ doc, taskName }: { doc: ProjectDocument, taskName?: string }) => (
+    <div className="p-3 rounded-xl border border-border-main bg-bg-secondary flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0 text-left">
+            <div className="p-2 bg-bg-primary rounded border border-border-sub text-brand-red shrink-0">
+                <FileText size={16} />
+            </div>
+            <div className="min-w-0 text-left">
+                <p className="text-[13px] font-semibold text-text-primary truncate">{doc.name}</p>
+                <p className="text-[12px] text-text-muted truncate">
+                    {taskName && !doc.name.startsWith(taskName) ? `${taskName} · ` : ''}{doc.uploader ? `${doc.uploader} · ` : ''}{doc.uploadDate}
+                </p>
+            </div>
+        </div>
+        {doc.url ? (
+            <a href={doc.url} target="_blank" rel="noreferrer" aria-label={`Open ${doc.name}`}
+               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-bg-tertiary">
+                <Download size={16}/>
+            </a>
+        ) : null}
+    </div>
+);
+
+/** Crew view: documents grouped like the admin tab — before the job, then each phase. */
+const DocumentsTab = ({ project, documents }: { project: Project, documents: ProjectDocument[] }) => {
+    const phases = project.phases || [];
+    const phaseIds = new Set(phases.map(p => p.id));
+    const taskName = (phaseId?: string, taskId?: string) =>
+        taskId ? phases.find(p => p.id === phaseId)?.tasks?.find(t => t.id === taskId)?.name : undefined;
+    // Docs tagged with a phase that no longer exists fall back to the general group.
+    const general = documents.filter(d => !d.phaseId || !phaseIds.has(d.phaseId));
+    const groups = [
+        { id: 'general', title: 'Before the job', docs: general },
+        ...phases.map(p => ({ id: p.id, title: `Phase ${p.phaseNumber}: ${p.name.replace(/^Phase\s*\d+\s*:\s*/i, '')}`, docs: documents.filter(d => d.phaseId === p.id) })),
+    ];
+
+    if (documents.length === 0) {
+        return <EmptyState icon={FolderOpen} title="No documents yet" description="Documents added to this project show up here, by phase." />;
+    }
+
     return (
-        <div className="space-y-4 animate-in fade-in duration-300">
-             <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
-                <h3 className="section-label text-left">Project documents</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {documents.map(doc => (
-                    <div key={doc.id} className="p-4 rounded-xl border border-border-main bg-bg-secondary shadow-sm flex items-center justify-between group hover:border-text-muted transition-all">
-                        <div className="flex items-center gap-4 text-left">
-                            <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-brand-red">
-                                <FileText size={18} />
-                            </div>
-                            <div className="text-left">
-                                <p className="text-[13px] font-semibold text-text-primary text-left">{doc.name}</p>
-                                <p className="text-[12px] text-text-muted mt-0.5 text-left">{doc.size} · Uploaded {doc.uploadDate}</p>
-                            </div>
-                        </div>
-                        <Button variant="ghost" size="icon" aria-label="Download" className="h-10 w-10 text-text-muted hover:text-text-primary">
-                            <Download size={16}/>
-                        </Button>
+        <div className="space-y-5 animate-in fade-in duration-300">
+            {groups.map(g => (
+                <section key={g.id} className="space-y-2">
+                    <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
+                        <h3 className="section-label text-left">{g.title}</h3>
+                        <span className="text-[12px] text-text-muted">{g.docs.length} {g.docs.length === 1 ? 'file' : 'files'}</span>
                     </div>
-                ))}
-                {documents.length === 0 && (
-                    <EmptyState className="col-span-full" icon={FolderOpen} title="No documents yet" description="Documents added to this project show up here." />
-                )}
-            </div>
+                    {g.docs.length ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {g.docs.map(d => <DocumentRow key={d.id} doc={d} taskName={taskName(d.phaseId, d.taskId)} />)}
+                        </div>
+                    ) : (
+                        <p className="px-1 text-[12px] text-text-muted">Nothing here yet.</p>
+                    )}
+                </section>
+            ))}
         </div>
     );
 };
@@ -870,6 +899,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             <TaskCompletionDialog
                 task={completing?.task ?? null}
                 projectId={project.id}
+                phaseId={completing?.phaseId}
                 open={!!completing}
                 onOpenChange={o => { if (!o) setCompleting(null); }}
                 onComplete={patch => completing ? saveTask(completing.phaseId, completing.task.id,
@@ -880,7 +910,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
                 {activeTab === 'milestones' && <MilestonesTab project={project} onTaskToggle={handleTaskToggle} documents={documents} isReadOnly={isReadOnly} nameOf={nameOf} />}
                 {/* Lead tools reuse the office editors: phases/tasks/assignees and document upload. */}
                 {activeTab === 'plan' && canLead && <LeadMilestonesTab project={project} technicians={technicians} />}
-                {activeTab === 'documents' && (canLead ? <LeadDocumentsTab project={project} documents={documents} /> : <DocumentsTab documents={documents} />)}
+                {activeTab === 'documents' && (canLead ? <LeadDocumentsTab project={project} documents={documents} /> : <DocumentsTab project={project} documents={documents} />)}
                 {activeTab === 'timesheets' && (
                     <TimesheetsTab 
                         dailyLogs={dailyLogs} 

@@ -3,8 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Camera, FileUp, Loader2, Eraser, FileText, Hash, ListTodo, Signature, Plus } from 'lucide-react';
-import { storage } from '@/lib/firebase';
-import type { Task } from '@/lib/types';
+import { doc, setDoc } from 'firebase/firestore';
+import { format } from 'date-fns';
+import { storage, db, auth } from '@/lib/firebase';
+import { createDocId } from '@/lib/generateId';
+import { ID_PREFIXES } from '@/lib/constants';
+import type { Task, ProjectDocument } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,11 +47,32 @@ export function TaskRequirementIcons({ task }: { task: Partial<Task> }) {
   );
 }
 
-async function upload(projectId: string, taskId: string, kind: string, blob: Blob, name: string): Promise<string> {
+/**
+ * Uploads a completion file and lists it in the project's Documents, under
+ * the task's phase (label "Completion Evidence", same as the admin tab uses).
+ */
+async function upload(projectId: string, phaseId: string | undefined, task: Task, kind: string, blob: Blob, name: string): Promise<string> {
   const safe = name.replace(/[^\w.-]+/g, '_').slice(-80);
-  const r = storageRef(storage, `projectDocuments/${projectId}/task-${taskId}-${kind}-${Date.now()}-${safe}`);
+  const r = storageRef(storage, `projectDocuments/${projectId}/task-${task.id}-${kind}-${Date.now()}-${safe}`);
   await uploadBytes(r, blob, { contentType: blob.type || undefined });
-  return getDownloadURL(r);
+  const url = await getDownloadURL(r);
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  const type: ProjectDocument['type'] = ext === 'pdf' ? 'pdf' : blob.type.startsWith('image/') ? 'img'
+    : ['doc', 'docx', 'txt'].includes(ext) ? 'doc' : ext === 'csv' ? 'csv' : 'other';
+  const label = kind === 'signature' ? 'Signature' : kind === 'photo' ? 'Photo' : 'Document';
+  const id = await createDocId(ID_PREFIXES.PROJECT_DOCUMENT);
+  await setDoc(doc(db, 'projectDocuments', id), {
+    id, projectId, url, type,
+    name: `${task.name} — ${label}`,
+    originalName: name,
+    label: 'Completion Evidence',
+    uploader: auth.currentUser?.displayName || auth.currentUser?.email || 'Team member',
+    uploadDate: format(new Date(), 'MM-dd-yyyy'),
+    size: `${(blob.size / (1024 * 1024)).toFixed(1)} MB`,
+    taskId: task.id,
+    ...(phaseId ? { phaseId } : {}),
+  });
+  return url;
 }
 
 /** Finger / mouse signature pad. Calls onChange with whether anything is drawn. */
@@ -92,9 +117,11 @@ function SignaturePad({ canvasRef, onChange }: { canvasRef: React.RefObject<HTML
  * signature, document, custom field), uploads files to the project's storage
  * folder, then hands back the fields to save with isCompleted: true.
  */
-export function TaskCompletionDialog({ task, projectId, open, onOpenChange, onComplete }: {
+export function TaskCompletionDialog({ task, projectId, phaseId, open, onOpenChange, onComplete }: {
   task: Task | null;
   projectId: string;
+  /** Phase the task sits in — its files are filed under that phase in Documents. */
+  phaseId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onComplete: (patch: Partial<Task>) => Promise<void> | void;
@@ -139,11 +166,11 @@ export function TaskCompletionDialog({ task, projectId, open, onOpenChange, onCo
     setSaving(true);
     try {
       const patch: Partial<Task> = { isCompleted: true };
-      if (task.requiresPhoto && photo) patch.photoUrl = await upload(projectId, task.id, 'photo', photo, photo.name);
-      if (task.requiresFileUpload && file) patch.fileUrl = await upload(projectId, task.id, 'file', file, file.name);
+      if (task.requiresPhoto && photo) patch.photoUrl = await upload(projectId, phaseId, task, 'photo', photo, photo.name);
+      if (task.requiresFileUpload && file) patch.fileUrl = await upload(projectId, phaseId, task, 'file', file, file.name);
       if (task.requiresSignature && signed && sigRef.current) {
         const blob = await new Promise<Blob | null>(res => sigRef.current!.toBlob(res, 'image/png'));
-        if (blob) patch.signatureUrl = await upload(projectId, task.id, 'signature', blob, 'signature.png');
+        if (blob) patch.signatureUrl = await upload(projectId, phaseId, task, 'signature', blob, 'signature.png');
       }
       if (task.requiresText) patch.textValue = text.trim();
       if (task.requiresNumeric) patch.numericValue = Number(count);

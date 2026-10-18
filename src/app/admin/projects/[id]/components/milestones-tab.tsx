@@ -359,6 +359,7 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
             <TaskCompletionDialog
                 task={completing?.task ?? null}
                 projectId={project.id}
+                phaseId={completing?.phaseId}
                 open={!!completing}
                 onOpenChange={o => { if (!o) setCompleting(null); }}
                 onComplete={applyCompletion}

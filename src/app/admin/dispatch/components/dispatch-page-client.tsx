@@ -295,6 +295,21 @@ export function DispatchPageClient() {
             .catch(e => console.error("Import error", e));
     });
     toast({ title: "Import complete", description: `${newOrders.length} job${newOrders.length === 1 ? '' : 's'} imported.` });
+    // One record per import so App Activity can show who imported how many
+    // jobs and when.
+    if (newOrders.length > 0) {
+      const me = typeof window !== 'undefined' ? sessionStorage.getItem('currentUserId') : null;
+      const batchRef = doc(collection(db, 'importBatches'));
+      setDoc(batchRef, {
+        id: batchRef.id,
+        importedAt: new Date().toISOString(),
+        importedBy: me || null,
+        importedByName: technicians.find(t => t.id === me)?.name || 'Admin',
+        count: newOrders.length,
+        jobIds: newOrders.map(o => o.id).slice(0, 500),
+        clients: Array.from(new Set(newOrders.map(o => o.clientName).filter(Boolean))).slice(0, 20),
+      }).catch(e => console.error('Import record failed', e));
+    }
   };
 
   const handleAddNewRequest = async (request: ServiceRequest) => {

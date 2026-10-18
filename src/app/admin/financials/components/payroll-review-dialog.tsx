@@ -454,7 +454,13 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             const finalTotal = calculatedTotalPayout;
             try {
                 const logRef = doc(db, 'weeklyLogs', localLog.id);
-                await updateDoc(logRef, { status, totalPayout: finalTotal, ...(status === 'Approved' ? { mergeReviewRequired: false } : {}) });
+                // Record when (and by whom) a log was approved — Payroll Audit shows
+                // the approval time in place of the submitted time, and App
+                // Activity logs it. Returning/rejecting clears it.
+                const approval = status === 'Approved'
+                    ? { approvedAt: new Date().toISOString(), approvedBy: auth.currentUser?.uid || null, approvedByName: authUser?.name || auth.currentUser?.displayName || 'Admin', mergeReviewRequired: false }
+                    : { approvedAt: null, approvedBy: null, approvedByName: null };
+                await updateDoc(logRef, { status, totalPayout: finalTotal, ...approval });
                 onStatusChange(localLog.id, status, finalTotal);
                 if (localLog.techId && status !== localLog.status) {
                     const msg = status === 'Approved'

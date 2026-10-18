@@ -103,6 +103,7 @@ export default function PayrollAuditPage() {
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
     // Weekly tab: one technician (or all), picked from an A–Z list.
     const [techFilter, setTechFilter] = useState<string>('all');
+    const [techQuery, setTechQuery] = useState('');
     // Paystub history: by technician, or everyone for one week.
     const [historyView, setHistoryView] = useState<'tech' | 'week'>('tech');
     const [historyTech, setHistoryTech] = useState<string>('');
@@ -211,10 +212,29 @@ export default function PayrollAuditPage() {
         return Object.entries(byTech).sort(([, a], [, b]) => (a.tech?.name || '').localeCompare(b.tech?.name || ''));
     }, [weeklyLogs, technicians]);
 
+    // The date shown on a log: when it was submitted, then — once payroll
+    // approves it — when it was approved. Logs approved before approvals were
+    // timestamped just read "Approved".
+    const logStamp = (log: WeeklyLog): { label: string; iso: string | null } => {
+        const approvedAt = (log as { approvedAt?: string | null }).approvedAt;
+        if (log.status === 'Approved') return { label: 'Approved', iso: approvedAt || null };
+        if (log.status !== 'Draft' && log.submittedAt) return { label: 'Submitted', iso: log.submittedAt };
+        return { label: 'Not submitted', iso: null };
+    };
+    const fmtStamp = (iso: string | null, pattern: string) => {
+        if (!iso) return '';
+        try { return format(parseISO(iso), pattern); } catch { return ''; }
+    };
+
     const filteredLogs = useMemo(() => {
         return weeklyLogs
             .filter(log => {
                 if (techFilter !== 'all' && log.techId !== techFilter) return false;
+                if (techQuery.trim()) {
+                    const t = technicians.find(x => x.id === log.techId);
+                    const hay = `${t?.name || ''} ${t?.preferredName || ''}`.toLowerCase();
+                    if (!hay.includes(techQuery.trim().toLowerCase())) return false;
+                }
                 if (statusFilter !== 'all' && log.status !== statusFilter) return false;
                 // Filter on the log's own "week of" date (the week's Monday,
                 // 'MM-dd-yyyy'), never when it was submitted. The date inputs
@@ -228,7 +248,7 @@ export default function PayrollAuditPage() {
                 return true;
             })
             .sort(byWeekDesc);
-    }, [weeklyLogs, technicians, techFilter, statusFilter, dateFrom, dateTo]);
+    }, [weeklyLogs, technicians, techFilter, techQuery, statusFilter, dateFrom, dateTo]);
 
     const totals = useMemo(() => ({
         approved: filteredLogs.filter(l => l.status === 'Approved').reduce((s, l) => s + settlementOf(l), 0),
@@ -401,7 +421,7 @@ export default function PayrollAuditPage() {
     const statusVariant = (s: string): any => TONE_BADGE[statusTone('log', s)];
 
     // Paged lists (see components/list-pager.tsx).
-    const logsPager = usePaged(filteredLogs, PAGE_SIZES_LARGE, 'payroll-audit-logs', [techFilter, statusFilter, dateFrom, dateTo]);
+    const logsPager = usePaged(filteredLogs, PAGE_SIZES_LARGE, 'payroll-audit-logs', [techFilter, techQuery, statusFilter, dateFrom, dateTo]);
     // Everyone who has ever had a weekly log, A–Z — the dropdown lists.
     const loggingTechs = useMemo(() => {
         const ids = new Set(weeklyLogs.map(l => l.techId));
@@ -476,7 +496,7 @@ export default function PayrollAuditPage() {
                                         <Badge variant={statusVariant(log.status)} className="hidden sm:inline-flex text-[10px] h-5 w-fit">{log.status}</Badge>
                                         <span className="sm:hidden text-[12px] text-text-muted whitespace-nowrap">
                                             Week of {log.weekOf} · {log.items?.length || 0} {log.items?.length === 1 ? 'job' : 'jobs'}
-                                            {log.status !== 'Draft' && log.submittedAt ? ` · sent ${format(parseISO(log.submittedAt), 'MM/dd')}` : ''}
+                                            {(() => { const st = logStamp(log); return st.iso ? ` · ${st.label.toLowerCase()} ${fmtStamp(st.iso, 'MM/dd')}` : log.status === 'Approved' ? ' · approved' : ''; })()}
                                         </span>
                                         {log.mergeReviewRequired && <span className="text-[11px] font-semibold text-accent-gold flex items-center gap-1"><AlertTriangle size={11} /> Needs reapproval</span>}
                                     </div>
@@ -488,11 +508,19 @@ export default function PayrollAuditPage() {
                                     </div>
                                     <div
                                         className="hidden sm:block text-right text-[11px] text-text-muted leading-tight"
-                                        title={log.submittedAt ? `Submitted ${format(parseISO(log.submittedAt), 'MM/dd/yyyy h:mm a')}` : 'Not submitted yet'}
+                                        title={(() => {
+                                            const st = logStamp(log);
+                                            const parts = [];
+                                            if (log.submittedAt) parts.push(`Submitted ${fmtStamp(log.submittedAt, 'MM/dd/yyyy h:mm a')}`);
+                                            if (st.label === 'Approved') parts.push(st.iso ? `Approved ${fmtStamp(st.iso, 'MM/dd/yyyy h:mm a')}${(log as any).approvedByName ? ` by ${(log as any).approvedByName}` : ''}` : 'Approved (time not recorded)');
+                                            return parts.join('\n') || 'Not submitted yet';
+                                        })()}
                                     >
-                                        {log.status !== 'Draft' && log.submittedAt ? (
-                                            <><span className="block text-[10px]">Submitted</span>{format(parseISO(log.submittedAt), 'MM/dd/yy')}</>
-                                        ) : 'Not submitted'}
+                                        {(() => {
+                                            const st = logStamp(log);
+                                            if (!st.iso) return st.label;
+                                            return <><span className="block text-[10px]">{st.label}</span>{fmtStamp(st.iso, 'MM/dd/yy h:mm a')}</>;
+                                        })()}
                                     </div>
                                 </button>
                                 <Button
@@ -795,9 +823,20 @@ export default function PayrollAuditPage() {
                 <TabsContent value="weekly" className="m-0 space-y-4">
                     {/* Filters */}
                     <div className="flex flex-wrap gap-3 p-3 bg-bg-secondary/60 border border-border-sub rounded-xl">
-                        <div className="flex-1 min-w-[200px]">
+                        <div className="flex flex-1 min-w-[260px] gap-2">
+                            <div className="relative flex-1 min-w-0">
+                                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+                                <input
+                                    type="search"
+                                    value={techQuery}
+                                    onChange={e => setTechQuery(e.target.value)}
+                                    placeholder="Search tech name…"
+                                    aria-label="Search technician name"
+                                    className="h-9 w-full rounded-lg border border-border-main bg-bg-primary pl-8 pr-3 text-[13px] text-text-primary placeholder:text-text-muted"
+                                />
+                            </div>
                             <Select value={techFilter} onValueChange={setTechFilter}>
-                                <SelectTrigger className="h-9" aria-label="Technician"><SelectValue placeholder="All technicians" /></SelectTrigger>
+                                <SelectTrigger className="h-9 w-[44%] sm:w-48 shrink-0" aria-label="Technician"><SelectValue placeholder="All technicians" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All technicians</SelectItem>
                                     {loggingTechs.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
@@ -819,11 +858,12 @@ export default function PayrollAuditPage() {
                                 </button>
                             ))}
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-[12px] font-medium text-text-muted">Week of</span>
-                            <input type="date" className="h-9 min-w-0 px-3 rounded-lg border border-border-main bg-bg-primary text-[12px] font-bold text-text-primary" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Week of — from" aria-label="Week of, from" />
+                        {/* From / to stay on one row (no wrap), even on phones. */}
+                        <div className="flex w-full sm:w-auto flex-nowrap items-center gap-1.5">
+                            <span className="text-[11px] font-medium text-text-muted whitespace-nowrap">Week of</span>
+                            <input type="date" className="h-9 w-0 flex-1 sm:w-[132px] sm:flex-none min-w-0 px-2 rounded-lg border border-border-main bg-bg-primary text-[11px] font-bold text-text-primary" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Week of — from" aria-label="Week of, from" />
                             <span className="text-[11px] text-text-muted">to</span>
-                            <input type="date" className="h-9 min-w-0 px-3 rounded-lg border border-border-main bg-bg-primary text-[12px] font-bold text-text-primary" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Week of — to" aria-label="Week of, to" />
+                            <input type="date" className="h-9 w-0 flex-1 sm:w-[132px] sm:flex-none min-w-0 px-2 rounded-lg border border-border-main bg-bg-primary text-[11px] font-bold text-text-primary" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Week of — to" aria-label="Week of, to" />
                             {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[11px] text-brand-red font-bold hover:underline">Clear</button>}
                         </div>
                     </div>
@@ -923,7 +963,7 @@ export default function PayrollAuditPage() {
                                             <div className="min-w-0">
                                                 <p className="text-[13px] font-semibold text-text-primary">{tech?.name || log.techId}</p>
                                                 <p className="text-[11px] text-text-muted">
-                                                    {log.items?.length || 0} items · {log.status !== 'Draft' && log.submittedAt ? `submitted ${format(parseISO(log.submittedAt), 'MM/dd/yy')}` : 'not submitted yet'}
+                                                    {log.items?.length || 0} items · {(() => { const st = logStamp(log); return st.iso ? `${st.label.toLowerCase()} ${fmtStamp(st.iso, 'MM/dd/yy h:mm a')}` : st.label.toLowerCase(); })()}
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2">

@@ -32,6 +32,11 @@ export function canLeadProject(user: Who | null | undefined, project: Parameters
   return hasPermission(user, 'tech.projects.lead') && isNamedLead(project, user?.id);
 }
 
+/** On this project's team as its Project Manager — sees the project's economics and site notes. */
+export function isAssignedManager(project: Pick<Project, 'team'>, uid: string | undefined): boolean {
+  return !!uid && (project.team || []).some(m => m.techId === uid && m.role === 'Project Manager');
+}
+
 export function isOnProject(project: Pick<Project, 'team' | 'assignedTechnicianIds'> & { projectLeadId?: string | null }, uid: string | undefined): boolean {
   if (!uid) return false;
   return (project.assignedTechnicianIds || []).includes(uid)

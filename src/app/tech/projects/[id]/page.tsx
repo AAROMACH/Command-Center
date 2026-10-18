@@ -10,7 +10,7 @@ import { ProjectDetailClient } from './components/project-detail-client';
 import { ProjectDetailClient as ManagerProjectDetail } from '@/app/admin/projects/[id]/components/project-detail-client';
 import { useDirectory } from '@/hooks/use-directory';
 import { useAuth } from '@/contexts/auth-context';
-import { canLeadProject, canManageProjects, isOnProject } from '@/lib/project-access';
+import { canLeadProject, canManageProjects, isOnProject, isAssignedManager } from '@/lib/project-access';
 import type { Project, Technician, ProjectDailyLog, ProjectDocument } from '@/lib/types';
 
 /**
@@ -108,6 +108,7 @@ export default function TechProjectDetailPage() {
           technicians={technicians}
           documents={documents}
           canLead={canLeadProject(user, project)}
+          isManager={isAssignedManager(project, user?.id)}
       />
     </>
   );

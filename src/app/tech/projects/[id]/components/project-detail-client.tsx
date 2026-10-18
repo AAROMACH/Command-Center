@@ -78,6 +78,7 @@ import { formatClock } from '@/lib/time-on-site';
 import { NotificationService } from '@/lib/notification-service';
 import { MilestonesTab as LeadMilestonesTab } from '@/app/admin/projects/[id]/components/milestones-tab';
 import { DocumentsTab as LeadDocumentsTab } from '@/app/admin/projects/[id]/components/documents-tab';
+import { ProjectEconomicsCard, useServerProjectEconomics } from '@/app/admin/projects/[id]/components/project-economics-card';
 
 // --- UTILITIES ---
 
@@ -196,7 +197,8 @@ const PhaseBlock = ({
     );
 };
 
-const OverviewTab = ({ project, technicians }: { project: Project, technicians: Technician[] }) => {
+const OverviewTab = ({ project, technicians, dailyLogCount, isManager }: { project: Project, technicians: Technician[], dailyLogCount: number, isManager: boolean }) => {
+    const economics = useServerProjectEconomics(project, isManager, dailyLogCount);
     const [localProjectData, setLocalProjectData] = useState<Partial<Project>>({});
     const { toast } = useToast();
 
@@ -280,6 +282,26 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                         </div>
                     </div>
                 </section>
+
+                {isManager && (
+                    <section className="field-group">
+                        <h3 className="field-group-title"><AlertTriangle size={14}/> Site notes</h3>
+                        {(project.siteHazardNotes || []).length ? (
+                            <div className="note-chips">
+                                {(project.siteHazardNotes || []).map(note => (
+                                    <div key={note.id} className={`note-chip ${note.type === 'danger' ? 'danger' : 'info'}`}>
+                                        {note.type === 'danger' ? <AlertTriangle size={13}/> : <Info size={13}/>}
+                                        <span>{note.text}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-[12px] text-text-muted text-left">No site notes yet.</p>
+                        )}
+                    </section>
+                )}
+
+                {isManager && economics && <ProjectEconomicsCard project={project} projectEconomics={economics} />}
 
                 {isDirty && !isReadOnly && (
                     <div className="flex justify-end gap-3 pt-2">
@@ -711,10 +733,12 @@ const TimesheetsTab = ({
     );
 };
 
-export function ProjectDetailClient({ project, dailyLogs, technicians, documents, canLead = false }: {
+export function ProjectDetailClient({ project, dailyLogs, technicians, documents, canLead = false, isManager = false }: {
     project: Project, dailyLogs: ProjectDailyLog[], technicians: Technician[], documents: ProjectDocument[],
     /** Named lead (or PM): adds the Plan tab and document upload/delete. */
     canLead?: boolean,
+    /** Assigned as this project's Project Manager: economics + site notes. */
+    isManager?: boolean,
 }) {
     const nameOf = (id: string) => technicians.find(t => t.id === id)?.name || 'Crew member';
     const [activeTab, _setActiveTabRaw] = useState(() => { try { return localStorage.getItem('cc:project-detail:tab') || 'overview'; } catch { return 'overview'; } });
@@ -906,7 +930,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
                     { ...patch, completedAt: new Date().toISOString(), completedBy: currentUserId }) : undefined}
             />
             <div className="tab-content">
-                {activeTab === 'overview' && <OverviewTab project={project} technicians={technicians} />}
+                {activeTab === 'overview' && <OverviewTab project={project} technicians={technicians} dailyLogCount={dailyLogs.length} isManager={isManager} />}
                 {activeTab === 'milestones' && <MilestonesTab project={project} onTaskToggle={handleTaskToggle} documents={documents} isReadOnly={isReadOnly} nameOf={nameOf} />}
                 {/* Lead tools reuse the office editors: phases/tasks/assignees and document upload. */}
                 {activeTab === 'plan' && canLead && <LeadMilestonesTab project={project} technicians={technicians} />}

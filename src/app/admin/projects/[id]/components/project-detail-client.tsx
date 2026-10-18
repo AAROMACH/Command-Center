@@ -65,7 +65,7 @@ import { useRouter } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
 import { format, parseISO } from 'date-fns';
 import { isAdmin, isSuperAdmin } from '@/lib/permissions';
-import { canManageProjects, crewFields } from '@/lib/project-access';
+import { canManageProjects, crewFields, isAssignedManager } from '@/lib/project-access';
 import { NotificationService } from '@/lib/notification-service';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -221,7 +221,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
             </div>
 
             <div className="tab-content">
-                {activeTab === 'overview' && <OverviewTab project={project} allTechnicians={technicians} dailyLogs={timesheets} showMoney={!manager} />}
+                {activeTab === 'overview' && <OverviewTab project={project} allTechnicians={technicians} dailyLogs={timesheets} showMoney={!manager || isAssignedManager(project, currentUser?.id)} economicsFromServer={manager} />}
                 {activeTab === 'milestones' && <MilestonesTab project={project} technicians={technicians} />}
                 {activeTab === 'documents' && <DocumentsTab project={project} documents={documents} />}
                 {activeTab === 'timesheets' && <TimesheetsTab timesheets={timesheets} technicians={technicians} project={project} />}

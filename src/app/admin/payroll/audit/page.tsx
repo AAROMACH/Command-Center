@@ -5,6 +5,7 @@ import { statusTone, TONE_BADGE } from '@/lib/status-styles';
 import { useState, useMemo, useEffect } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { db, auth } from '@/lib/firebase';
+import { NotificationService } from '@/lib/notification-service';
 import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, where, runTransaction } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,11 +35,15 @@ import { effectiveJobPay, computeWeeklyLogSettlement } from '@/lib/payroll';
 import { downloadPaystub } from '@/lib/paystub';
 import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-context';
+import { PayrollTicketDecision } from '@/components/payroll-ticket-decision';
+import { PAYROLL_TICKET_CARDS } from '@/lib/disputes';
 import { PayrollReviewDialog } from '@/app/admin/financials/components/payroll-review-dialog';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { displayWorkOrderNumber } from '@/lib/work-order-identity';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
+import { EmptyState } from '@/components/empty-state';
 import { SearchField } from '@/components/search-field';
 
 // Within a group of duplicate weekly logs for the same tech+week, picks the
@@ -87,7 +92,7 @@ function duplicateGroupSignature(group: WeeklyLog[]): string {
         status: log.status,
         items: (log.items || []).map(item => [item.id, item.workOrderId, item.jobPay, item.confirmationStatus, item.isAdminReviewed]),
         reimbursements: (log.reimbursements || []).map(r => [r.id, r.amount, r.status]),
-        reports: (log.missingAssignmentReports || []).map(r => [r.id, r.pay, r.finalPay]),
+        reports: (log.missingAssignmentReports || []).map(r => [r.id, r.pay, r.finalPay, !!r.isAudited]),
         totalPayout: log.totalPayout,
     })));
 }
@@ -96,7 +101,12 @@ export default function PayrollAuditPage() {
     const router = useRouter();
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
-    const [searchQuery, setSearchQuery] = useState('');
+    // Weekly tab: one technician (or all), picked from an A–Z list.
+    const [techFilter, setTechFilter] = useState<string>('all');
+    // Paystub history: by technician, or everyone for one week.
+    const [historyView, setHistoryView] = useState<'tech' | 'week'>('tech');
+    const [historyTech, setHistoryTech] = useState<string>('');
+    const [historyWeek, setHistoryWeek] = useState<string>('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
@@ -110,7 +120,8 @@ export default function PayrollAuditPage() {
     // each log's own review dialog. See payroll-review-dialog.tsx's
     // "Post-Approval Disputes" tab for the per-log view of the same data.
     const [payrollDisputes, setPayrollDisputes] = useState<PayrollDispute[]>([]);
-    const [resolvingDisputeId, setResolvingDisputeId] = useState<string | null>(null);
+    const { hasPermission } = useAuth();
+    const canDecideTickets = hasPermission('admin.logs.approve');
     const [adjSearch, setAdjSearch] = useState('');
     // Weekly-log audit review (moved here from the Accounting page).
     const [reviewLog, setReviewLog] = useState<WeeklyLog | null>(null);
@@ -166,28 +177,6 @@ export default function PayrollAuditPage() {
         return () => { unsubT(); unsubL(); unsubAdj(); unsubWO(); unsubAsmt(); unsubDisputes(); };
     }, []);
 
-    const handleResolvePayrollDispute = async (dispute: PayrollDispute) => {
-        setResolvingDisputeId(dispute.id);
-        try {
-            const adminId = auth.currentUser?.uid || currentUser?.id || '';
-            const adminName = auth.currentUser?.displayName || currentUser?.name || 'Admin';
-            await updateDoc(doc(db, 'payrollDisputes', dispute.id), {
-                status: 'resolved',
-                resolvedAt: new Date().toISOString(),
-                resolvedBy: adminName,
-            });
-            await auditEvent(
-                'payrollDisputes', dispute.id, adminId, adminName, 'resolved_dispute',
-                `Resolved ${dispute.reason.replace(/_/g, ' ')} dispute from ${dispute.techName} for week of ${dispute.weekOf}.`
-            ).catch(() => {});
-            toast({ title: 'Dispute resolved' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Could Not Resolve', description: e.message });
-        } finally {
-            setResolvingDisputeId(null);
-        }
-    };
-
     const openReview = (log: WeeklyLog) => { setReviewLog(log); setReviewOpen(true); };
 
     // Clicking a job inside an expanded log opens the shared job side panel.
@@ -225,24 +214,21 @@ export default function PayrollAuditPage() {
     const filteredLogs = useMemo(() => {
         return weeklyLogs
             .filter(log => {
-                const tech = technicians.find(t => t.id === log.techId);
-                const techName = (tech?.name || '').toLowerCase();
-                if (searchQuery && !techName.includes(searchQuery.toLowerCase())) return false;
+                if (techFilter !== 'all' && log.techId !== techFilter) return false;
                 if (statusFilter !== 'all' && log.status !== statusFilter) return false;
-                // weekOf is 'MM-dd-yyyy' (the week's Monday) but the date
-                // inputs give 'yyyy-MM-dd' — compare real dates, and keep any
-                // week that overlaps the chosen range.
+                // Filter on the log's own "week of" date (the week's Monday,
+                // 'MM-dd-yyyy'), never when it was submitted. The date inputs
+                // give 'yyyy-MM-dd', so compare real dates.
                 const weekStart = weekOfTime(log.weekOf);
                 if (dateFrom || dateTo) {
                     if (weekStart === null) return false;
-                    const weekEnd = weekStart + 6 * DAY_MS;
-                    if (dateFrom && weekEnd < inputDateTime(dateFrom)) return false;
+                    if (dateFrom && weekStart < inputDateTime(dateFrom)) return false;
                     if (dateTo && weekStart > inputDateTime(dateTo)) return false;
                 }
                 return true;
             })
             .sort(byWeekDesc);
-    }, [weeklyLogs, technicians, searchQuery, statusFilter, dateFrom, dateTo]);
+    }, [weeklyLogs, technicians, techFilter, statusFilter, dateFrom, dateTo]);
 
     const totals = useMemo(() => ({
         approved: filteredLogs.filter(l => l.status === 'Approved').reduce((s, l) => s + settlementOf(l), 0),
@@ -415,8 +401,25 @@ export default function PayrollAuditPage() {
     const statusVariant = (s: string): any => TONE_BADGE[statusTone('log', s)];
 
     // Paged lists (see components/list-pager.tsx).
-    const logsPager = usePaged(filteredLogs, PAGE_SIZES_LARGE, 'payroll-audit-logs', [searchQuery, statusFilter, dateFrom, dateTo]);
-    const stubTechPager = usePaged(approvedLogsByTech, PAGE_SIZES_SMALL, 'payroll-stub-techs');
+    const logsPager = usePaged(filteredLogs, PAGE_SIZES_LARGE, 'payroll-audit-logs', [techFilter, statusFilter, dateFrom, dateTo]);
+    // Everyone who has ever had a weekly log, A–Z — the dropdown lists.
+    const loggingTechs = useMemo(() => {
+        const ids = new Set(weeklyLogs.map(l => l.techId));
+        return [...ids].map(id => ({ id, name: technicians.find(t => t.id === id)?.name || id }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }, [weeklyLogs, technicians]);
+    // Weeks that have any log, newest first.
+    const logWeeks = useMemo(() => [...new Set(weeklyLogs.map(l => l.weekOf).filter(Boolean))]
+        .sort((a, b) => (weekOfTime(b) ?? 0) - (weekOfTime(a) ?? 0)), [weeklyLogs]);
+    const historyTechEntry = approvedLogsByTech.find(([id]) => id === historyTech)?.[1];
+    const weekLogs = useMemo(() => weeklyLogs.filter(l => l.weekOf === historyWeek)
+        .sort((a, b) => (technicians.find(t => t.id === a.techId)?.name || '').localeCompare(technicians.find(t => t.id === b.techId)?.name || '')),
+        [weeklyLogs, historyWeek, technicians]);
+    const weekNoLog = useMemo(() => {
+        if (!historyWeek) return [];
+        const has = new Set(weekLogs.map(l => l.techId));
+        return loggingTechs.filter(t => !has.has(t.id));
+    }, [historyWeek, weekLogs, loggingTechs]);
     const [allStubsFor, setAllStubsFor] = useState<Set<string>>(new Set());
     // One search box for disputes and adjustments: tech, week, reason, notes, amount.
     const adjQuery = adjSearch.trim().toLowerCase();
@@ -450,44 +453,59 @@ export default function PayrollAuditPage() {
                     const isExpanded = expandedLogs.has(log.id);
                     return (
                         <div key={log.id} className="rounded-xl border border-border-sub bg-bg-secondary overflow-hidden">
-                            <div className="w-full flex items-center gap-3 p-3 hover:bg-bg-tertiary transition-colors text-left">
+                            <div className="w-full flex items-center gap-2 sm:gap-3 p-3 hover:bg-bg-tertiary transition-colors text-left">
+                                {/* Phones: name + amount on top, week · items · submitted underneath.
+                                    sm and up: four aligned columns. */}
                                 <button
                                     onClick={() => toggleExpand(log.id)}
-                                    className="flex-1 min-w-0 grid grid-cols-4 gap-3 items-center text-left"
+                                    className="flex-1 min-w-0 flex flex-col gap-1 sm:grid sm:grid-cols-[minmax(0,1fr)_8rem_7rem_7rem] sm:gap-4 sm:items-center text-left"
                                 >
-                                    <div>
-                                        <p className="text-[12px] font-bold text-text-primary">{tech?.name || log.techId}</p>
-                                        <p className="text-[11px] text-text-muted font-mono">Week of {log.weekOf}</p>
+                                    <div className="min-w-0 flex items-center justify-between gap-2 sm:block">
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2 text-[13px] font-semibold text-text-primary min-w-0">
+                                                <span className="truncate">{tech?.name || log.techId}</span>
+                                                <Badge variant={statusVariant(log.status)} className="sm:hidden text-[10px] h-5 shrink-0">{log.status}</Badge>
+                                            </div>
+                                            <p className="hidden sm:block text-[11px] text-text-muted font-mono whitespace-nowrap">Week of {log.weekOf}</p>
+                                        </div>
+                                        <p className={cn('sm:hidden shrink-0 text-[13px] font-semibold font-mono', log.status === 'Approved' ? 'text-text-green' : 'text-text-primary')}>
+                                            ${settlementOf(log).toFixed(2)}
+                                        </p>
                                     </div>
-                                    <div className="flex flex-col items-start gap-1">
-                                        <Badge variant={statusVariant(log.status)} className="text-[10px] h-4 w-fit">{log.status}</Badge>
-                                        {log.mergeReviewRequired && <span className="text-[10px] font-bold text-accent-gold flex items-center gap-1"><AlertTriangle size={10} /> Needs reapproval</span>}
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:flex-col sm:items-start sm:gap-1">
+                                        <Badge variant={statusVariant(log.status)} className="hidden sm:inline-flex text-[10px] h-5 w-fit">{log.status}</Badge>
+                                        <span className="sm:hidden text-[12px] text-text-muted whitespace-nowrap">
+                                            Week of {log.weekOf} · {log.items?.length || 0} {log.items?.length === 1 ? 'job' : 'jobs'}
+                                            {log.status !== 'Draft' && log.submittedAt ? ` · sent ${format(parseISO(log.submittedAt), 'MM/dd')}` : ''}
+                                        </span>
+                                        {log.mergeReviewRequired && <span className="text-[11px] font-semibold text-accent-gold flex items-center gap-1"><AlertTriangle size={11} /> Needs reapproval</span>}
                                     </div>
-                                    <div className="text-right">
+                                    <div className="hidden sm:block text-right">
                                         <p className={cn('text-[12px] font-bold font-mono', log.status === 'Approved' ? 'text-text-green' : 'text-text-primary')}>
                                             ${settlementOf(log).toFixed(2)}
                                         </p>
-                                        <p className="text-[10px] text-text-muted">{log.items?.length || 0} items</p>
+                                        <p className="text-[10px] text-text-muted">{log.items?.length || 0} {log.items?.length === 1 ? 'job' : 'jobs'}</p>
                                     </div>
                                     <div
-                                        className="text-right text-[11px] text-text-muted leading-tight"
+                                        className="hidden sm:block text-right text-[11px] text-text-muted leading-tight"
                                         title={log.submittedAt ? `Submitted ${format(parseISO(log.submittedAt), 'MM/dd/yyyy h:mm a')}` : 'Not submitted yet'}
                                     >
-                                        {log.submittedAt ? (
-                                            <><span className="block text-[10px] tracking-widest">Submitted</span>{format(parseISO(log.submittedAt), 'MM/dd/yy')}</>
+                                        {log.status !== 'Draft' && log.submittedAt ? (
+                                            <><span className="block text-[10px]">Submitted</span>{format(parseISO(log.submittedAt), 'MM/dd/yy')}</>
                                         ) : 'Not submitted'}
                                     </div>
                                 </button>
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-7 shrink-0 text-[10px] font-bold uppercase tracking-wider"
+                                    className="shrink-0 h-10 w-10 p-0 sm:h-8 sm:w-auto sm:px-3"
                                     onClick={() => openReview(log)}
+                                    aria-label="Audit log"
                                 >
-                                    <Receipt size={11} className="mr-1.5" /> Audit log
+                                    <Receipt size={14} className="sm:mr-1.5" /><span className="hidden sm:inline">Audit log</span>
                                 </Button>
-                                <button onClick={() => toggleExpand(log.id)} className="shrink-0 p-1 text-text-muted" aria-label="Expand">
-                                    {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                <button onClick={() => toggleExpand(log.id)} className="shrink-0 flex h-10 w-8 items-center justify-center text-text-muted" aria-label={isExpanded ? 'Collapse' : 'Expand'}>
+                                    {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                                 </button>
                             </div>
                             {isExpanded && log.items && log.items.length > 0 && (
@@ -760,14 +778,14 @@ export default function PayrollAuditPage() {
 
             {/* Tabs */}
             <Tabs defaultValue="weekly" className="w-full">
-                <TabsList className="border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 justify-start mb-4">
+                <TabsList className="border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-x-4 sm:gap-8 justify-start mb-4 w-full sm:w-auto">
                     {[
                         { value: 'weekly', label: 'Weekly', count: filteredLogs.length },
-                        { value: 'history', label: 'Paystub history', count: approvedLogsByTech.length },
+                        { value: 'history', label: 'Paystub history', short: 'Paystubs', count: approvedLogsByTech.length },
                         { value: 'adjustments', label: 'Adjustments', count: adjustments.length + payrollDisputes.filter(d => d.status === 'open').length },
                     ].map(t => (
                         <TabsTrigger key={t.value} value={t.value} className="tab-underline">
-                            {t.label}
+                            {'short' in t ? <><span className="sm:hidden">{t.short}</span><span className="hidden sm:inline">{t.label}</span></> : t.label}
                             {t.count > 0 && <span className="text-[10px] font-bold bg-bg-tertiary text-text-muted border border-border-sub px-1.5 py-0.5 rounded">{t.count}</span>}
                         </TabsTrigger>
                     ))}
@@ -777,16 +795,17 @@ export default function PayrollAuditPage() {
                 <TabsContent value="weekly" className="m-0 space-y-4">
                     {/* Filters */}
                     <div className="flex flex-wrap gap-3 p-3 bg-bg-secondary/60 border border-border-sub rounded-xl">
-                        <div className="relative flex-1 min-w-[180px]">
-                            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                            <input
-                                className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-main bg-bg-primary text-[12px] font-bold tracking-wide text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-red transition-colors"
-                                placeholder="Search by tech name..."
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                            />
+                        <div className="flex-1 min-w-[200px]">
+                            <Select value={techFilter} onValueChange={setTechFilter}>
+                                <SelectTrigger className="h-9" aria-label="Technician"><SelectValue placeholder="All technicians" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All technicians</SelectItem>
+                                    {loggingTechs.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
                         </div>
-                        <div className="flex items-center gap-2">
+                        {/* Even 3 + 2 grid on phones; one inline row from sm up. */}
+                        <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
                             {(['all', 'Draft', 'Submitted', 'Approved', 'Rejected'] as const).map(s => (
                                 <button
                                     key={s}
@@ -800,10 +819,11 @@ export default function PayrollAuditPage() {
                                 </button>
                             ))}
                         </div>
-                        <div className="flex items-center gap-2">
-                            <input type="date" className="h-9 px-3 rounded-lg border border-border-main bg-bg-primary text-[12px] font-bold text-text-primary" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="From" />
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[12px] font-medium text-text-muted">Week of</span>
+                            <input type="date" className="h-9 min-w-0 px-3 rounded-lg border border-border-main bg-bg-primary text-[12px] font-bold text-text-primary" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Week of — from" aria-label="Week of, from" />
                             <span className="text-[11px] text-text-muted">to</span>
-                            <input type="date" className="h-9 px-3 rounded-lg border border-border-main bg-bg-primary text-[12px] font-bold text-text-primary" value={dateTo} onChange={e => setDateTo(e.target.value)} title="To" />
+                            <input type="date" className="h-9 min-w-0 px-3 rounded-lg border border-border-main bg-bg-primary text-[12px] font-bold text-text-primary" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Week of — to" aria-label="Week of, to" />
                             {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[11px] text-brand-red font-bold hover:underline">Clear</button>}
                         </div>
                     </div>
@@ -814,47 +834,118 @@ export default function PayrollAuditPage() {
 
                 {/* ── Paystub History ── */}
                 <TabsContent value="history" className="m-0 space-y-3">
-                    {approvedLogsByTech.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-border-sub p-16 text-center">
-                            <Receipt size={28} className="text-text-muted mx-auto mb-3" />
-                            <p className="text-[11px] font-bold text-text-muted">No approved logs yet</p>
+                    <div className="flex flex-wrap items-center gap-3 p-3 bg-bg-secondary/60 border border-border-sub rounded-xl">
+                        <div className="tabs flex-nowrap" role="tablist" aria-label="History view">
+                            {([['tech', 'By technician'], ['week', 'By week']] as const).map(([v, label]) => (
+                                <button key={v} type="button" role="tab" aria-selected={historyView === v}
+                                    className={cn('tab', historyView === v && 'active')} onClick={() => setHistoryView(v)}>{label}</button>
+                            ))}
                         </div>
-                    ) : stubTechPager.items.map(([techId, { tech, logs }]) => (
-                        <div key={techId} className="rounded-xl border border-border-sub bg-bg-secondary overflow-hidden">
-                            <div className="flex items-center justify-between px-4 py-3 bg-bg-tertiary/30 border-b border-border-sub">
-                                <div>
-                                    <p className="text-[12px] font-bold text-text-primary">{tech?.name || techId}</p>
-                                    <p className="text-[11px] text-text-muted">{logs.length} approved logs · ${logs.reduce((s, l) => s + settlementOf(l), 0).toFixed(2)} total</p>
-                                </div>
-                                <Badge variant="active" className="text-[10px] h-4">{logs.length} stubs</Badge>
-                            </div>
-                            <div className="divide-y divide-border-sub">
-                                {(allStubsFor.has(techId) ? logs : logs.slice(0, 12)).map(log => (
-                                    <div key={log.id} className="flex items-center justify-between px-4 py-2.5">
+                        {historyView === 'tech' ? (
+                            <Select value={historyTech} onValueChange={setHistoryTech}>
+                                <SelectTrigger className="h-9 w-full sm:w-72" aria-label="Technician"><SelectValue placeholder="Choose a technician" /></SelectTrigger>
+                                <SelectContent>
+                                    {approvedLogsByTech.map(([id, { tech, logs }]) => (
+                                        <SelectItem key={id} value={id}>{tech?.name || id} ({logs.length})</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <Select value={historyWeek} onValueChange={setHistoryWeek}>
+                                <SelectTrigger className="h-9 w-full sm:w-72" aria-label="Week"><SelectValue placeholder="Choose a week" /></SelectTrigger>
+                                <SelectContent>
+                                    {logWeeks.map(w => <SelectItem key={w} value={w}>Week of {w}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        )}
+                    </div>
+
+                    {historyView === 'tech' ? (
+                        approvedLogsByTech.length === 0 ? (
+                            <EmptyState icon={Receipt} title="No approved logs yet" description="Paystubs appear here once a weekly log is approved." />
+                        ) : !historyTech || !historyTechEntry ? (
+                            <EmptyState icon={Receipt} title="Choose a technician" description="Pick a name above to see their paystubs." />
+                        ) : (() => {
+                            const { tech, logs } = historyTechEntry;
+                            const techId = historyTech;
+                            return (
+                                <div className="rounded-xl border border-border-sub bg-bg-secondary overflow-hidden">
+                                    <div className="flex items-center justify-between px-4 py-3 bg-bg-tertiary/30 border-b border-border-sub">
                                         <div>
-                                            <p className="text-[12px] font-bold text-text-primary font-mono">Week of {log.weekOf}</p>
-                                            <p className="text-[11px] text-text-muted">{log.items?.length || 0} items</p>
+                                            <p className="text-[13px] font-semibold text-text-primary">{tech?.name || techId}</p>
+                                            <p className="text-[12px] text-text-muted">{logs.length} approved logs · ${logs.reduce((s, l) => s + settlementOf(l), 0).toFixed(2)} total</p>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <p className="text-[12px] font-bold font-mono text-text-green">${settlementOf(log).toFixed(2)}</p>
-                                            <button className="text-[12px] text-text-muted hover:text-text-primary font-bold border border-border-sub rounded px-2 py-0.5 hover:border-border-main transition-colors" onClick={() => downloadPaystub(log, tech, techId, jobsById)}>
-                                                <Download size={9} className="inline mr-0.5" /> Stub
-                                            </button>
-                                        </div>
+                                        <Badge variant="active" className="text-[10px] h-5">{logs.length} stubs</Badge>
                                     </div>
-                                ))}
+                                    <div className="divide-y divide-border-sub">
+                                        {(allStubsFor.has(techId) ? logs : logs.slice(0, 12)).map(log => (
+                                            <div key={log.id} className="flex items-center justify-between px-4 py-2.5">
+                                                <div>
+                                                    <p className="text-[12px] font-semibold text-text-primary font-mono">Week of {log.weekOf}</p>
+                                                    <p className="text-[11px] text-text-muted">{log.items?.length || 0} items</p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-[12px] font-semibold font-mono text-text-green">${settlementOf(log).toFixed(2)}</p>
+                                                    <Button variant="outline" size="sm" onClick={() => openReview(log)}><Receipt size={12} className="mr-1.5" /> Audit log</Button>
+                                                    <Button variant="outline" size="sm" onClick={() => downloadPaystub(log, tech, techId, jobsById)}><Download size={12} className="mr-1.5" /> Stub</Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {logs.length > 12 && (
+                                        <button
+                                            className="w-full px-4 py-2 text-[12px] font-medium text-text-muted hover:text-text-primary border-t border-border-sub"
+                                            onClick={() => setAllStubsFor(prev => { const n = new Set(prev); n.has(techId) ? n.delete(techId) : n.add(techId); return n; })}
+                                        >
+                                            {allStubsFor.has(techId) ? 'Show latest 12' : `Show all ${logs.length} stubs`}
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })()
+                    ) : !historyWeek ? (
+                        <EmptyState icon={Receipt} title="Choose a week" description="Pick a week above to see who turned in a log." />
+                    ) : (
+                        <div className="space-y-3">
+                            {/* Who turned in a log this week, by status */}
+                            <div className="flex flex-wrap gap-2 text-[12px]">
+                                <span className="rounded-full border border-border-sub bg-bg-secondary px-3 py-1 font-medium text-text-primary">{weekLogs.length} {weekLogs.length === 1 ? 'log' : 'logs'}</span>
+                                {(['Submitted', 'Approved', 'Rejected', 'Draft'] as const).map(st => {
+                                    const n = weekLogs.filter(l => l.status === st).length;
+                                    return n ? <Badge key={st} variant={statusVariant(st)} className="h-6 px-2.5 text-[12px]">{n} {st.toLowerCase()}</Badge> : null;
+                                })}
                             </div>
-                            {logs.length > 12 && (
-                                <button
-                                    className="w-full px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-text-muted hover:text-text-primary border-t border-border-sub"
-                                    onClick={() => setAllStubsFor(prev => { const n = new Set(prev); n.has(techId) ? n.delete(techId) : n.add(techId); return n; })}
-                                >
-                                    {allStubsFor.has(techId) ? 'Show latest 12' : `Show all ${logs.length} stubs`}
-                                </button>
+                            <div className="rounded-xl border border-border-sub bg-bg-secondary overflow-hidden divide-y divide-border-sub">
+                                {weekLogs.map(log => {
+                                    const tech = technicians.find(t => t.id === log.techId);
+                                    return (
+                                        <div key={log.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
+                                            <div className="min-w-0">
+                                                <p className="text-[13px] font-semibold text-text-primary">{tech?.name || log.techId}</p>
+                                                <p className="text-[11px] text-text-muted">
+                                                    {log.items?.length || 0} items · {log.status !== 'Draft' && log.submittedAt ? `submitted ${format(parseISO(log.submittedAt), 'MM/dd/yy')}` : 'not submitted yet'}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant={statusVariant(log.status)} className="text-[10px] h-5">{log.status}</Badge>
+                                                <p className="text-[12px] font-semibold font-mono text-text-primary">${settlementOf(log).toFixed(2)}</p>
+                                                <Button variant="outline" size="sm" onClick={() => openReview(log)}><Receipt size={12} className="mr-1.5" /> Audit log</Button>
+                                                {log.status === 'Approved' && (
+                                                    <Button variant="outline" size="sm" onClick={() => downloadPaystub(log, tech, log.techId, jobsById)}><Download size={12} className="mr-1.5" /> Stub</Button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            {weekNoLog.length > 0 && (
+                                <div className="rounded-xl border border-dashed border-border-sub p-3">
+                                    <p className="text-[12px] font-semibold text-text-primary mb-1">No log this week ({weekNoLog.length})</p>
+                                    <p className="text-[12px] text-text-muted">{weekNoLog.map(t => t.name).join(', ')}</p>
+                                </div>
                             )}
                         </div>
-                    ))}
-                    <ListPager pager={stubTechPager} noun="techs" />
+                    )}
                 </TabsContent>
 
                 {/* ── Adjustments ── */}
@@ -878,9 +969,7 @@ export default function PayrollAuditPage() {
                             <div className="space-y-2">
                                 {disputePager.items.map(dispute => {
                                     const isOpenDispute = dispute.status === 'open';
-                                    const reasonLabel = dispute.reason === 'incorrect_pay' ? 'Incorrect pay'
-                                        : dispute.reason === 'missing_reimbursement' ? 'Missing reimbursement'
-                                        : 'Missing job';
+                                    const reasonLabel = PAYROLL_TICKET_CARDS[dispute.reason]?.title || 'Pay is wrong';
                                     const relatedJob = dispute.workOrderId ? jobsById.get(dispute.workOrderId) : undefined;
                                     const relatedLog = weeklyLogs.find(l => l.id === dispute.weeklyLogId);
                                     return (
@@ -900,8 +989,10 @@ export default function PayrollAuditPage() {
                                                 <p className="text-[12px] text-text-secondary leading-relaxed mt-1">{dispute.notes}</p>
                                                 <p className="text-[10px] text-text-muted font-mono mt-1">
                                                     {new Date(dispute.createdAt).toLocaleString()}
-                                                    {!isOpenDispute && dispute.resolvedBy && ` · Resolved by ${dispute.resolvedBy}`}
                                                 </p>
+                                                <div className="mt-2">
+                                                    <PayrollTicketDecision dispute={dispute} canDecide={canDecideTickets} fallbackName={currentUser?.name} />
+                                                </div>
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0">
                                                 {relatedLog && (
@@ -909,17 +1000,7 @@ export default function PayrollAuditPage() {
                                                         <Receipt size={12} className="mr-1.5" /> View Log
                                                     </Button>
                                                 )}
-                                                {isOpenDispute ? (
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="h-8 text-[10px] font-bold uppercase tracking-wider border-text-green text-text-green hover:bg-green-dim"
-                                                        disabled={resolvingDisputeId === dispute.id}
-                                                        onClick={() => handleResolvePayrollDispute(dispute)}
-                                                    >
-                                                        <CheckCircle size={13} className="mr-1.5" /> Mark Resolved
-                                                    </Button>
-                                                ) : (
+                                                {!isOpenDispute && (
                                                     <Badge variant="active" className="h-6 px-3 text-[10px] uppercase tracking-wider">Resolved</Badge>
                                                 )}
                                             </div>

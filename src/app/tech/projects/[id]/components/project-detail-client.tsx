@@ -4,7 +4,8 @@ import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
 import { statusLabel } from '@/lib/status-styles';
 import { useState, useMemo, useEffect } from 'react';
-import type { Project, ProjectDailyLog, Technician, ProjectDocument } from '@/lib/types';
+import type { Project, ProjectDailyLog, Technician, ProjectDocument, Task } from '@/lib/types';
+import { TaskCompletionDialog, TaskRequirementIcons, taskHasRequirements } from '@/components/task-completion-dialog';
 import Link from 'next/link';
 import {
   ChevronLeft,
@@ -77,6 +78,7 @@ import { formatClock } from '@/lib/time-on-site';
 import { NotificationService } from '@/lib/notification-service';
 import { MilestonesTab as LeadMilestonesTab } from '@/app/admin/projects/[id]/components/milestones-tab';
 import { DocumentsTab as LeadDocumentsTab } from '@/app/admin/projects/[id]/components/documents-tab';
+import { ProjectEconomicsCard, useServerProjectEconomics } from '@/app/admin/projects/[id]/components/project-economics-card';
 
 // --- UTILITIES ---
 
@@ -186,7 +188,7 @@ const PhaseBlock = ({
                             />
                             <span className={cn("task-name", task.isCompleted && "line-through text-text-muted")}>{task.name}</span>
                             {task.assignedTechId && <span className="text-[11px] font-medium text-brand-red border border-brand-red/30 bg-brand-red/10 rounded-full px-2 py-0.5 whitespace-nowrap">{nameOf(task.assignedTechId)}</span>}
-                            {task.requiresPhoto && <Camera size={12} className="text-text-muted" />}
+                            <TaskRequirementIcons task={task} />
                         </div>
                     ))}
                 </div>
@@ -195,7 +197,8 @@ const PhaseBlock = ({
     );
 };
 
-const OverviewTab = ({ project, technicians }: { project: Project, technicians: Technician[] }) => {
+const OverviewTab = ({ project, technicians, dailyLogCount, isManager }: { project: Project, technicians: Technician[], dailyLogCount: number, isManager: boolean }) => {
+    const economics = useServerProjectEconomics(project, isManager, dailyLogCount);
     const [localProjectData, setLocalProjectData] = useState<Partial<Project>>({});
     const { toast } = useToast();
 
@@ -280,6 +283,26 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
                     </div>
                 </section>
 
+                {isManager && (
+                    <section className="field-group">
+                        <h3 className="field-group-title"><AlertTriangle size={14}/> Site notes</h3>
+                        {(project.siteHazardNotes || []).length ? (
+                            <div className="note-chips">
+                                {(project.siteHazardNotes || []).map(note => (
+                                    <div key={note.id} className={`note-chip ${note.type === 'danger' ? 'danger' : 'info'}`}>
+                                        {note.type === 'danger' ? <AlertTriangle size={13}/> : <Info size={13}/>}
+                                        <span>{note.text}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-[12px] text-text-muted text-left">No site notes yet.</p>
+                        )}
+                    </section>
+                )}
+
+                {isManager && economics && <ProjectEconomicsCard project={project} projectEconomics={economics} />}
+
                 {isDirty && !isReadOnly && (
                     <div className="flex justify-end gap-3 pt-2">
                         <Button variant="outline" className="h-10 px-5" onClick={() => setLocalProjectData({
@@ -319,33 +342,62 @@ const OverviewTab = ({ project, technicians }: { project: Project, technicians: 
     );
 };
 
-const DocumentsTab = ({ documents }: { documents: ProjectDocument[] }) => {
+const DocumentRow = ({ doc, taskName }: { doc: ProjectDocument, taskName?: string }) => (
+    <div className="p-3 rounded-xl border border-border-main bg-bg-secondary flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0 text-left">
+            <div className="p-2 bg-bg-primary rounded border border-border-sub text-brand-red shrink-0">
+                <FileText size={16} />
+            </div>
+            <div className="min-w-0 text-left">
+                <p className="text-[13px] font-semibold text-text-primary truncate">{doc.name}</p>
+                <p className="text-[12px] text-text-muted truncate">
+                    {taskName && !doc.name.startsWith(taskName) ? `${taskName} · ` : ''}{doc.uploader ? `${doc.uploader} · ` : ''}{doc.uploadDate}
+                </p>
+            </div>
+        </div>
+        {doc.url ? (
+            <a href={doc.url} target="_blank" rel="noreferrer" aria-label={`Open ${doc.name}`}
+               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-bg-tertiary">
+                <Download size={16}/>
+            </a>
+        ) : null}
+    </div>
+);
+
+/** Crew view: documents grouped like the admin tab — before the job, then each phase. */
+const DocumentsTab = ({ project, documents }: { project: Project, documents: ProjectDocument[] }) => {
+    const phases = project.phases || [];
+    const phaseIds = new Set(phases.map(p => p.id));
+    const taskName = (phaseId?: string, taskId?: string) =>
+        taskId ? phases.find(p => p.id === phaseId)?.tasks?.find(t => t.id === taskId)?.name : undefined;
+    // Docs tagged with a phase that no longer exists fall back to the general group.
+    const general = documents.filter(d => !d.phaseId || !phaseIds.has(d.phaseId));
+    const groups = [
+        { id: 'general', title: 'Before the job', docs: general },
+        ...phases.map(p => ({ id: p.id, title: `Phase ${p.phaseNumber}: ${p.name.replace(/^Phase\s*\d+\s*:\s*/i, '')}`, docs: documents.filter(d => d.phaseId === p.id) })),
+    ];
+
+    if (documents.length === 0) {
+        return <EmptyState icon={FolderOpen} title="No documents yet" description="Documents added to this project show up here, by phase." />;
+    }
+
     return (
-        <div className="space-y-4 animate-in fade-in duration-300">
-             <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
-                <h3 className="section-label text-left">Project documents</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {documents.map(doc => (
-                    <div key={doc.id} className="p-4 rounded-xl border border-border-main bg-bg-secondary shadow-sm flex items-center justify-between group hover:border-text-muted transition-all">
-                        <div className="flex items-center gap-4 text-left">
-                            <div className="p-2.5 bg-bg-primary rounded border border-border-sub text-brand-red">
-                                <FileText size={18} />
-                            </div>
-                            <div className="text-left">
-                                <p className="text-[13px] font-semibold text-text-primary text-left">{doc.name}</p>
-                                <p className="text-[12px] text-text-muted mt-0.5 text-left">{doc.size} · Uploaded {doc.uploadDate}</p>
-                            </div>
-                        </div>
-                        <Button variant="ghost" size="icon" aria-label="Download" className="h-10 w-10 text-text-muted hover:text-text-primary">
-                            <Download size={16}/>
-                        </Button>
+        <div className="space-y-5 animate-in fade-in duration-300">
+            {groups.map(g => (
+                <section key={g.id} className="space-y-2">
+                    <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
+                        <h3 className="section-label text-left">{g.title}</h3>
+                        <span className="text-[12px] text-text-muted">{g.docs.length} {g.docs.length === 1 ? 'file' : 'files'}</span>
                     </div>
-                ))}
-                {documents.length === 0 && (
-                    <EmptyState className="col-span-full" icon={FolderOpen} title="No documents yet" description="Documents added to this project show up here." />
-                )}
-            </div>
+                    {g.docs.length ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {g.docs.map(d => <DocumentRow key={d.id} doc={d} taskName={taskName(d.phaseId, d.taskId)} />)}
+                        </div>
+                    ) : (
+                        <p className="px-1 text-[12px] text-text-muted">Nothing here yet.</p>
+                    )}
+                </section>
+            ))}
         </div>
     );
 };
@@ -681,10 +733,12 @@ const TimesheetsTab = ({
     );
 };
 
-export function ProjectDetailClient({ project, dailyLogs, technicians, documents, canLead = false }: {
+export function ProjectDetailClient({ project, dailyLogs, technicians, documents, canLead = false, isManager = false }: {
     project: Project, dailyLogs: ProjectDailyLog[], technicians: Technician[], documents: ProjectDocument[],
     /** Named lead (or PM): adds the Plan tab and document upload/delete. */
     canLead?: boolean,
+    /** Assigned as this project's Project Manager: economics + site notes. */
+    isManager?: boolean,
 }) {
     const nameOf = (id: string) => technicians.find(t => t.id === id)?.name || 'Crew member';
     const [activeTab, _setActiveTabRaw] = useState(() => { try { return localStorage.getItem('cc:project-detail:tab') || 'overview'; } catch { return 'overview'; } });
@@ -703,55 +757,41 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
     const progress = getProgress(project);
     const progressColor = progress === 100 ? 'green' : progress > 0 ? 'gold' : 'red';
     
-    const handleTaskToggle = async (phaseId: string, taskId: string) => {
-        if (isReadOnly) return;
+    // Task with requirements → completion form; otherwise toggle directly.
+    const [completing, setCompleting] = useState<{ phaseId: string; task: Task } | null>(null);
 
-        const targetPhase = (project.phases || []).find(ph => ph.id === phaseId);
-        const task = (targetPhase?.tasks || []).find(t => t.id === taskId);
-        if (task && !task.isCompleted) {
-            if (task.requiresPhoto && !task.photoUrl) {
-                toast({ variant: 'destructive', title: 'Photo required', description: 'Upload a photo to complete this task.' }); return;
-            }
-            if (task.requiresText && !task.textValue?.trim()) {
-                toast({ variant: 'destructive', title: 'Text required', description: 'Fill in the required text to complete this task.' }); return;
-            }
-            if (task.requiresNumeric && (task.numericValue === undefined || task.numericValue === null)) {
-                toast({ variant: 'destructive', title: 'Count required', description: 'Enter a valid count to complete this task.' }); return;
-            }
-            if (task.requiresFileUpload && !task.fileUrl) {
-                toast({ variant: 'destructive', title: 'Document required', description: 'Upload the required document to complete this task.' }); return;
-            }
-            if (task.requiresSignature && !task.signatureUrl) {
-                toast({ variant: 'destructive', title: 'Signature required', description: 'Collect signature before completing.' }); return;
+    const saveTask = async (phaseId: string, taskId: string, patch: Partial<Task>) => {
+        const task = (project.phases || []).find(ph => ph.id === phaseId)?.tasks?.find(t => t.id === taskId);
+        const updatedPhases = (project.phases || []).map(phase => phase.id !== phaseId ? phase : {
+            ...phase,
+            tasks: (phase.tasks || []).map(t => t.id === taskId ? { ...t, ...patch } : t),
+        });
+        await updateDoc(doc(db, 'projects', project.id), { phases: updatedPhases });
+        toast({ title: patch.isCompleted ? 'Task completed' : 'Task reopened', description: task?.name });
+        if (task && patch.isCompleted) {
+            const allDone = updatedPhases.every(ph => (ph.tasks || []).every(t => t.isCompleted)) && updatedPhases.some(ph => (ph.tasks || []).length);
+            NotificationService.notifyProjectManagers(project.id,
+                allDone ? 'Project tasks complete' : 'Task completed',
+                `${nameOf(currentUserId || '')} completed "${task.name}" on ${project.name}.${allDone ? '\nEvery task is done — ready to close out.' : ''}`,
+                !allDone);
+            // Admins hear only the milestone, not every checked-off task.
+            if (allDone) {
+                NotificationService.notifyAdmins('Project tasks complete',
+                    `Every task on ${project.name} is done (last: "${task.name}" by ${nameOf(currentUserId || '')}). Ready to close out.`,
+                    { id: project.id, type: 'project' }).catch(() => {});
             }
         }
+    };
 
-        const updatedPhases = (project.phases || []).map(phase => {
-            if (phase.id === phaseId) {
-                return {
-                    ...phase,
-                    tasks: (phase.tasks || []).map(task => 
-                        task.id === taskId ? { ...task, isCompleted: !task.isCompleted } : task
-                    )
-                };
-            }
-            return phase;
-        });
-
+    const handleTaskToggle = async (phaseId: string, taskId: string) => {
+        if (isReadOnly) return;
+        const task = (project.phases || []).find(ph => ph.id === phaseId)?.tasks?.find(t => t.id === taskId);
+        if (!task) return;
+        if (!task.isCompleted && taskHasRequirements(task)) { setCompleting({ phaseId, task }); return; }
         try {
-            const docRef = doc(db, 'projects', project.id);
-            await updateDoc(docRef, { phases: updatedPhases });
-            toast({
-                title: "Task updated",
-                description: "Task saved."
-            });
-            if (task && !task.isCompleted) {
-                const allDone = updatedPhases.every(ph => (ph.tasks || []).every(t => t.isCompleted)) && updatedPhases.some(ph => (ph.tasks || []).length);
-                NotificationService.notifyProjectManagers(project.id,
-                    allDone ? 'Project tasks complete' : 'Task completed',
-                    `${nameOf(currentUserId || '')} completed "${task.name}" on ${project.name}.${allDone ? '\nEvery task is done — ready to close out.' : ''}`,
-                    !allDone);
-            }
+            await saveTask(phaseId, taskId, task.isCompleted
+                ? { isCompleted: false, completedAt: '', completedBy: null }
+                : { isCompleted: true, completedAt: new Date().toISOString(), completedBy: currentUserId });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
@@ -840,7 +880,7 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             });
 
             toast({ title: 'Checked out', description: `Your hours were logged.` });
-            NotificationService.notifyProjectManagers(project.id, 'Crew checked out', `${nameOf(currentUserId || '')} checked out of ${project.name} after ${hoursWorked}h.`);
+            // No PM alert on check-out — the check-in alert and the daily log cover it.
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
@@ -878,20 +918,29 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
                 </div>
             </div>
 
-            <div className="detail-tabs overflow-x-auto sm:justify-center">
-                <button className={`detail-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Briefing</button>
-                <button className={`detail-tab ${activeTab === 'milestones' ? 'active' : ''}`} onClick={() => setActiveTab('milestones')}>Tasks</button>
+            <div className="detail-tabs">
+                <button className={`detail-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Overview</button>
+                <button className={`detail-tab ${activeTab === 'milestones' ? 'active' : ''}`} onClick={() => setActiveTab('milestones')}>Milestones</button>
                 {canLead && <button className={`detail-tab ${activeTab === 'plan' ? 'active' : ''}`} onClick={() => setActiveTab('plan')}>Plan</button>}
                 <button className={`detail-tab ${activeTab === 'documents' ? 'active' : ''}`} onClick={() => setActiveTab('documents')}>Documents</button>
                 <button className={`detail-tab ${activeTab === 'timesheets' ? 'active' : ''}`} onClick={() => setActiveTab('timesheets')}>Timesheets</button>
             </div>
 
+            <TaskCompletionDialog
+                task={completing?.task ?? null}
+                projectId={project.id}
+                phaseId={completing?.phaseId}
+                open={!!completing}
+                onOpenChange={o => { if (!o) setCompleting(null); }}
+                onComplete={patch => completing ? saveTask(completing.phaseId, completing.task.id,
+                    { ...patch, completedAt: new Date().toISOString(), completedBy: currentUserId }) : undefined}
+            />
             <div className="tab-content">
-                {activeTab === 'overview' && <OverviewTab project={project} technicians={technicians} />}
+                {activeTab === 'overview' && <OverviewTab project={project} technicians={technicians} dailyLogCount={dailyLogs.length} isManager={isManager} />}
                 {activeTab === 'milestones' && <MilestonesTab project={project} onTaskToggle={handleTaskToggle} documents={documents} isReadOnly={isReadOnly} nameOf={nameOf} />}
                 {/* Lead tools reuse the office editors: phases/tasks/assignees and document upload. */}
                 {activeTab === 'plan' && canLead && <LeadMilestonesTab project={project} technicians={technicians} />}
-                {activeTab === 'documents' && (canLead ? <LeadDocumentsTab project={project} documents={documents} /> : <DocumentsTab documents={documents} />)}
+                {activeTab === 'documents' && (canLead ? <LeadDocumentsTab project={project} documents={documents} /> : <DocumentsTab project={project} documents={documents} />)}
                 {activeTab === 'timesheets' && (
                     <TimesheetsTab 
                         dailyLogs={dailyLogs} 

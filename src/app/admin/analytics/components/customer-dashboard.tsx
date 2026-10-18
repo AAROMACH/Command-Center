@@ -458,7 +458,7 @@ export function HBars({ items, fmt, selected, onPick, color, empty }: {
                     <span className="truncate text-[11px] font-bold text-text-primary">{i.key}</span>
                     <span className="flex items-center gap-2 min-w-0">
                         <span className="h-4 rounded-sm shrink-0" style={{ width: `${Math.max(1, (70 * i.value) / max)}%`, background: color }} />
-                        <span className="text-[10px] tabular-nums text-text-secondary whitespace-nowrap truncate">
+                        <span className="min-w-0 text-[10px] tabular-nums text-text-secondary whitespace-nowrap truncate">
                             {fmt(i.value)}{i.extra ? <span className="text-text-muted"> · {i.extra}</span> : null}
                         </span>
                     </span>

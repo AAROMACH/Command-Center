@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { auth, db } from "@/lib/firebase";
+import { NotificationService } from '@/lib/notification-service';
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, setPersistence, browserLocalPersistence, browserSessionPersistence } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
@@ -96,6 +97,8 @@ export default function LoginPage() {
           updatedAt: new Date().toISOString(),
           createdVia: "google_sso",
         });
+        // Ask the ops admins to approve the new account (sent once).
+        NotificationService.requestAccess().catch(() => {});
       } else {
         // Fill in Google profile fields only when the account has none. This
         // used to overwrite them on every sign-in, undoing any name or photo

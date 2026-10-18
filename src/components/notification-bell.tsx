@@ -18,7 +18,11 @@ import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, where, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useAuth } from '@/contexts/auth-context';
 
-export function NotificationBell() {
+/**
+ * `compact`: the small icon used in the top bar on every page (no latest-alert
+ * preview next to it).
+ */
+export function NotificationBell({ compact = false }: { compact?: boolean } = {}) {
   const pathname = usePathname();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -29,14 +33,31 @@ export function NotificationBell() {
   const [personal, setPersonal] = useState<AdminMessage[]>([]);
   // Where each personal alert opens (its job / project / request / lead).
   const [links, setLinks] = useState<Record<string, string>>({});
+  // Recent tab: this portal's alerts from the last 30 days, read ones included.
+  const [recent, setRecent] = useState<{ id: string; title: string; body: string; timestamp: string; read: boolean; href: string | null }[]>([]);
+  const [view, setView] = useState<'unread' | 'recent'>('unread');
   const router = useRouter();
+
+  // The portal being viewed. Someone with several portals (a super admin who
+  // also works jobs) sees only that portal's alerts here.
+  const portal = portalOf(pathname);
 
   useEffect(() => {
     if (!user?.id) return;
     const q = query(collection(db, 'notifications'), where('userId', '==', user.id));
     return onSnapshot(q, (snap) => {
-      const unread = snap.docs.map(d => d.data()).filter(n => n.type === 'push' && !n.read);
-      const portal = pathname.startsWith('/tech') ? 'tech' : pathname.startsWith('/client') ? 'client' : pathname.startsWith('/sales') ? 'sales' : 'admin';
+      const mine = snap.docs.map(d => d.data())
+        .filter(n => n.type === 'push' && notificationPortals(n).includes(portal));
+      const cutoff = Date.now() - 30 * 86_400_000;
+      setRecent(mine
+        .filter(n => new Date(n.timestamp).getTime() >= cutoff)
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, 30)
+        .map(n => ({
+          id: String(n.id), title: String(n.title || '').replace(/^\[AAROMACH\]\s*/, ''), body: String(n.body || ''),
+          timestamp: n.timestamp, read: !!n.read, href: entityHref(portal, n.relatedEntityType, n.relatedEntityId),
+        })));
+      const unread = mine.filter(n => !n.read);
       setLinks(Object.fromEntries(unread
         .map(n => [`notif:${n.id}`, entityHref(portal, n.relatedEntityType, n.relatedEntityId)])
         .filter(([, href]) => !!href)));
@@ -45,21 +66,21 @@ export function NotificationBell() {
           id: `notif:${n.id}`,
           subject: String(n.title || '').replace(/^\[AAROMACH\]\s*/, ''),
           body: n.body,
-          type: /approved|won|new project/i.test(n.title) ? 'success' : /rejected|stale|overdue/i.test(n.body) ? 'warning' : 'info',
+          type: /approved|won|new project/i.test(n.title) ? 'success' : /rejected|stale|overdue|dispute/i.test(`${n.title} ${n.body}`) ? 'warning' : 'info',
           timestamp: n.timestamp,
           targetPortal: 'all',
           senderName: 'Command Center',
         } as AdminMessage)));
     }, () => setPersonal([]));
-  }, [user?.id, pathname]);
+  }, [user?.id, portal]);
   const [open, setOpen] = useState(false);
   // "View all" expands the popover list past the 3 most recent.
   const [showAll, setShowAll] = useState(false);
-  useEffect(() => { if (!open) setShowAll(false); }, [open]);
+  useEffect(() => { if (!open) { setShowAll(false); setView('unread'); } }, [open]);
 
   // Listen to Firestore broadcasts in real-time
   useEffect(() => {
-    const currentPortal = pathname.includes('/tech') ? 'tech' : pathname.includes('/client') ? 'client' : pathname.startsWith('/sales') ? 'sales' : 'admin';
+    const currentPortal = portal;
     const q = query(collection(db, 'broadcasts'));
     const unsub = onSnapshot(q, (snap) => {
         const now = new Date();
@@ -74,10 +95,10 @@ export function NotificationBell() {
         setFirestoreBroadcasts(docs);
     });
     return () => unsub();
-  }, [pathname]);
+  }, [portal]);
 
   const fetchMessages = useCallback(() => {
-    const currentPortal = pathname.includes('/tech') ? 'tech' : pathname.includes('/client') ? 'client' : pathname.startsWith('/sales') ? 'sales' : 'admin';
+    const currentPortal = portal;
     const now = new Date();
 
     // 1. Load Broadcast Ledger (Custom messages from same device/session)
@@ -122,7 +143,7 @@ export function NotificationBell() {
     const sorted = unique.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     setMessages(sorted);
-  }, [pathname, firestoreBroadcasts, personal, user?.acknowledgedBroadcastIds]);
+  }, [portal, firestoreBroadcasts, personal, user?.acknowledgedBroadcastIds]);
 
   useEffect(() => {
     fetchMessages();
@@ -181,7 +202,7 @@ export function NotificationBell() {
       {/* Always-visible preview of the most recent broadcast, so users see it on
           open without having to notice the blinking alert dot. Opens the full
           list on click. */}
-      {latest && (
+      {latest && !compact && (
         <button
           onClick={() => setOpen(true)}
           aria-label={`Latest alert: ${latest.subject}. Open all alerts.`}
@@ -213,6 +234,17 @@ export function NotificationBell() {
 
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
+        {compact ? (
+        <Button variant="ghost" size="icon" className="relative h-9 w-9 text-text-muted hover:text-text-primary"
+          aria-label={`Notifications${messages.length > 0 ? ` — ${messages.length} unread` : ''}`}>
+          <Bell size={18} aria-hidden="true" />
+          {messages.length > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 h-4 min-w-4 px-1 rounded-full bg-brand-red text-[10px] font-semibold leading-4 text-white text-center">
+              {messages.length > 9 ? '9+' : messages.length}
+            </span>
+          )}
+        </Button>
+        ) : (
         <Button
           variant="outline"
           aria-label={`Notifications${messages.length > 0 ? ` — ${messages.length} unread` : ''}`}
@@ -229,14 +261,41 @@ export function NotificationBell() {
             />
           )}
         </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent className="w-[22rem] max-w-[calc(100vw-2rem)] p-0 bg-bg-elevated border-border-main shadow-md overflow-hidden" align="end">
-        <div className="px-4 py-3 border-b border-border-sub flex items-center justify-between">
+        <div className="px-4 pt-3 pb-2 border-b border-border-sub space-y-2">
             <h3 className="text-[14px] font-semibold text-text-primary">Notifications</h3>
-            {messages.length > 0 && (
-                <Badge variant="outline" className="text-[11px] font-medium bg-bg-primary border-border-sub">{messages.length} unread</Badge>
-            )}
+            <div className="tabs flex-nowrap" role="tablist">
+                {([['unread', `Unread${messages.length ? ` (${messages.length})` : ''}`], ['recent', 'Recent']] as const).map(([v, label]) => (
+                    <button key={v} type="button" role="tab" aria-selected={view === v}
+                        className={cn('tab flex-1 text-center', view === v && 'active')} onClick={() => setView(v)}>{label}</button>
+                ))}
+            </div>
         </div>
+        {view === 'recent' ? (
+            <div className="max-h-[min(480px,65vh)] overflow-y-auto overscroll-contain divide-y divide-border-sub">
+                {recent.length === 0 ? (
+                    <p className="px-4 py-8 text-center text-[13px] text-text-muted">Nothing in the last 30 days.</p>
+                ) : recent.map(n => (
+                    <button key={n.id} type="button"
+                        onClick={() => {
+                            if (!n.read) updateDoc(doc(db, 'notifications', n.id), { read: true }).catch(() => {});
+                            if (n.href) { setOpen(false); router.push(n.href); }
+                        }}
+                        className={cn('w-full flex gap-3 px-4 py-2.5 text-left hover:bg-bg-tertiary/50', n.href ? 'cursor-pointer' : 'cursor-default')}>
+                        <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', n.read ? 'bg-transparent' : 'bg-brand-red')} />
+                        <span className="min-w-0 flex-1">
+                            <span className="flex items-baseline justify-between gap-2">
+                                <span className={cn('text-[13px] leading-tight line-clamp-1', n.read ? 'text-text-secondary' : 'font-semibold text-text-primary')}>{n.title}</span>
+                                <span className="shrink-0 text-[11px] text-text-muted">{stampLabel(n.timestamp)}</span>
+                            </span>
+                            <span className="block text-[12px] text-text-muted line-clamp-2">{n.body}</span>
+                        </span>
+                    </button>
+                ))}
+            </div>
+        ) : (<>
         <div className={cn('overflow-y-auto overscroll-contain', showAll ? 'max-h-[min(480px,65vh)]' : 'max-h-[360px]')}>
             {messages.length > 0 ? (
                 <div className="divide-y divide-border-sub">
@@ -314,6 +373,7 @@ export function NotificationBell() {
                 </button>
             </div>
         )}
+        </>)}
       </PopoverContent>
     </Popover>
     </div>
@@ -329,12 +389,41 @@ function stampLabel(ts: string): string {
   } catch { return ''; }
 }
 
+type Portal = 'admin' | 'tech' | 'client' | 'sales';
+const PORTALS: Portal[] = ['admin', 'tech', 'client', 'sales'];
+
+/** /admin → admin, /tech → tech, /client → client, /sales → sales. */
+function portalOf(pathname: string): Portal {
+  if (pathname.startsWith('/tech')) return 'tech';
+  if (pathname.startsWith('/client')) return 'client';
+  if (pathname.startsWith('/sales')) return 'sales';
+  return 'admin';
+}
+
+// Titles of alerts written before records carried a portal, by where they
+// belong. Anything not listed shows in every portal so no old alert is lost.
+const LEGACY_ADMIN = /status alert|job completed|payroll dispute|deal won|urgent intake|sold project|waiting on kickoff/i;
+const LEGACY_TECH = /new job assigned|added to a project|tasks? assigned to you|crew (checked|updated)|task completed|project tasks complete|document added|project (status changed|closed)/i;
+
+/** Which portals' bells show this notification record. */
+function notificationPortals(n: Record<string, any>): Portal[] {
+  if (PORTALS.includes(n.portal)) return [n.portal];
+  const title = String(n.title || '');
+  if (LEGACY_ADMIN.test(title)) return ['admin'];
+  if (LEGACY_TECH.test(title)) return ['tech'];
+  if (/new assignment staged/i.test(title)) return ['client'];
+  if (n.relatedEntityType === 'lead') return ['sales', 'admin'];
+  return PORTALS;
+}
+
 /** The page a notification's linked record opens in the viewer's portal. */
-function entityHref(portal: 'admin' | 'tech' | 'client' | 'sales', type?: string, id?: string): string {
+function entityHref(portal: Portal, type?: string, id?: string): string {
   if (!type || !id) return '';
   if (type === 'project') return portal === 'tech' ? `/tech/projects/${id}` : portal === 'client' ? '/client/projects' : portal === 'admin' ? `/admin/projects/${id}` : '';
   if (type === 'assignment') return portal === 'tech' ? `/tech/assignments/${id}` : portal === 'admin' ? `/admin/assignments/${id}` : '';
   if (type === 'request') return portal === 'admin' ? '/admin/requests' : portal === 'client' ? '/client/tickets' : '';
   if (type === 'lead') return portal === 'sales' ? '/sales/pipeline' : portal === 'admin' ? '/admin/crm' : '';
+  if (type === 'weeklyLog') return portal === 'tech' ? '/tech/logs' : portal === 'admin' ? '/admin/payroll/audit' : '';
+  if (type === 'user') return portal === 'admin' ? `/admin/directory/${id}` : '';
   return '';
 }

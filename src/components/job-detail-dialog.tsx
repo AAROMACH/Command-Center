@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { db, auth } from '@/lib/firebase';
+import { NotificationService } from '@/lib/notification-service';
 import {
   collection, query, where, getDocs, getDoc, onSnapshot,
   orderBy, limit, doc, updateDoc, arrayUnion, arrayRemove, deleteField,
@@ -251,6 +252,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
       setOptimisticTechId(null); // revert the optimistic display if the write failed
       throw e;
     }
+    NotificationService.notifyJobChange(mission, { ...mission, assignedTechnicianId: swapTechId, techId: swapTechId }).catch(() => {});
     // The job has left the previous tech's views; move its weekly-log entry too.
     try {
       const moved = await moveJobLogOnSwap({ job: mission, fromTechIds: [mission.techId, mission.assignedTechnicianId], toTechId: swapTechId });
@@ -537,7 +539,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
           </div>
 
           {/* Tab bar */}
-          <div className="flex gap-5 overflow-x-auto no-scrollbar border-b border-border-main mt-4">
+          <div className="flex flex-wrap gap-x-5 border-b border-border-main mt-4">
             {TABS.map(tab => (
               <button
                 key={tab}

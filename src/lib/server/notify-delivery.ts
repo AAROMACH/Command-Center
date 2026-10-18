@@ -7,7 +7,36 @@ import { resolveNotificationPrefs } from '@/lib/notification-prefs';
  * in-app record in `notifications` that the bell shows.
  */
 
-export type NotifyEntity = { id: string; type: 'assignment' | 'project' | 'request' | 'lead' };
+export type NotifyEntity = { id: string; type: 'assignment' | 'project' | 'request' | 'lead' | 'weeklyLog' | 'user' };
+
+/**
+ * The portal a notification belongs to. A person with several portals (a
+ * super admin who also works jobs) sees each alert only in the portal it is
+ * about — admin oversight in the Admin Portal, their own jobs in the Tech
+ * Portal — so the two never mix in one bell.
+ */
+export type NotifyPortal = 'admin' | 'tech' | 'client' | 'sales';
+export const NOTIFY_PORTALS: NotifyPortal[] = ['admin', 'tech', 'client', 'sales'];
+
+const rolesOf = (u: Record<string, any>): string[] => [
+  ...(Array.isArray(u.roles) ? u.roles : []),
+  ...(typeof u.role === 'string' && u.role ? [u.role] : []),
+];
+
+/**
+ * Best guess for a direct alert sent without an explicit portal: client
+ * accounts get client alerts, a deal's owner gets it in Sales (or the
+ * Admin CRM if they have no sales role), anyone who works in the field gets
+ * it in the Tech Portal, everyone else in the Admin Portal.
+ */
+export function portalForRecipient(data: Record<string, any>, entity?: NotifyEntity): NotifyPortal {
+  const roles = rolesOf(data);
+  if (roles.includes('client')) return 'client';
+  if (entity?.type === 'lead') return roles.includes('sales') ? 'sales' : 'admin';
+  if (roles.some(r => ['field_technician', 'project_lead', 'project_manager'].includes(r))) return 'tech';
+  if (roles.includes('sales')) return 'sales';
+  return 'admin';
+}
 
 const escapeHtml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -64,7 +93,7 @@ export async function sendEmail(to: string, subject: string, body: string): Prom
 export async function deliverNotification(
   fs: Firestore,
   recipients: { id: string; data: Record<string, any> }[],
-  msg: { title: string; body: string; entity?: NotifyEntity; sentBy: string; inAppOnly?: boolean },
+  msg: { title: string; body: string; entity?: NotifyEntity; sentBy: string; inAppOnly?: boolean; portal?: NotifyPortal },
 ): Promise<number> {
   const subject = `[AAROMACH] ${msg.title.toUpperCase()}`;
   const { entity } = msg;
@@ -101,6 +130,7 @@ export async function deliverNotification(
         timestamp: new Date().toISOString(),
         status,
         sentBy: msg.sentBy,
+        portal: msg.portal || portalForRecipient(data, entity),
         ...(entity ? { relatedEntityId: entity.id, relatedEntityType: entity.type } : {}),
       });
     }));
@@ -109,6 +139,7 @@ export async function deliverNotification(
 }
 
 const ADMIN_AUDIENCE = ['super_admin', 'dispatch_admin'];
+const PAYROLL_AUDIENCE = ['super_admin', 'payroll_admin'];
 
 /** Looks up recipients by id or by the ops-admin audience. */
 export async function usersById(fs: Firestore, ids: string[]) {
@@ -118,5 +149,11 @@ export async function usersById(fs: Firestore, ids: string[]) {
 
 export async function opsAdmins(fs: Firestore) {
   const snap = await fs.collection('users').where('roles', 'array-contains-any', ADMIN_AUDIENCE).get();
+  return snap.docs.map(d => ({ id: d.id, data: d.data() }));
+}
+
+/** Payroll audience (disputes, submitted logs, reimbursements). */
+export async function payrollAdmins(fs: Firestore) {
+  const snap = await fs.collection('users').where('roles', 'array-contains-any', PAYROLL_AUDIENCE).get();
   return snap.docs.map(d => ({ id: d.id, data: d.data() }));
 }

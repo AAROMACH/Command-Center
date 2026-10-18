@@ -83,7 +83,10 @@ export function ManageTeamDialog({ isOpen, setIsOpen, project, allTechnicians }:
             const before = new Set((project.team || []).map(m => m.techId));
             team.filter(m => !before.has(m.techId)).forEach(m => NotificationService.notify(m.techId,
                 'Added to a project', `You're on the crew for ${project.name}${project.location ? ` (${project.location})` : ''} as ${m.role}.`,
-                { id: project.id, type: 'project' }));
+                { id: project.id, type: 'project' }, { portal: 'tech' }));
+            const now = new Set(team.map(m => m.techId));
+            (project.team || []).filter(m => !now.has(m.techId)).forEach(m => NotificationService.notify(m.techId,
+                'Removed from a project', `You're no longer on the crew for ${project.name}.`, undefined, { portal: 'tech' }));
             toast({ title: 'Crew updated', description: 'Crew list saved.' });
             setIsOpen(false);
         } catch (e: any) {

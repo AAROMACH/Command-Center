@@ -149,7 +149,7 @@ function StageColumn({ stage, leads, loading, children }: {
   const total = leads.reduce((s, l) => s + (l.estimatedValue || 0), 0);
   const weighted = leads.reduce((s, l) => s + weightedValue(l), 0);
   return (
-    <div ref={setNodeRef} className={cn('w-[250px] flex-shrink-0 space-y-3 rounded-lg transition-colors', isOver && 'bg-brand-red/5 ring-1 ring-brand-red/30')}>
+    <div ref={setNodeRef} className={cn('w-full sm:w-[250px] flex-shrink-0 space-y-3 rounded-lg transition-colors', isOver && 'bg-brand-red/5 ring-1 ring-brand-red/30')}>
       <div className="px-3 py-2 rounded-lg border border-border-sub bg-bg-secondary">
         <div className="flex items-center justify-between">
           <span className={cn('text-[10px] font-bold uppercase tracking-wider truncate', TONE_TEXT[STAGE_TONE[stage.key]])}>{stage.label}</span>
@@ -668,8 +668,9 @@ export default function CRMPage() {
 
           {viewMode === 'kanban' && (
             <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-              <div className="overflow-x-auto pb-4">
-                <div className="flex gap-3 min-w-max">
+              {/* Stages stack on phones; a side-scrolling board from sm up. */}
+              <div className="pb-4 sm:overflow-x-auto">
+                <div className="flex flex-col gap-3 sm:flex-row sm:min-w-max">
                   {pipeline.map(({ stage, leads: colLeads }) => (
                     <StageColumn key={stage.key} stage={stage} leads={colLeads} loading={loading}>
                       {colLeads.map(lead => (

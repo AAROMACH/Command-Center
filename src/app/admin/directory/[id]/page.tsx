@@ -530,7 +530,7 @@ export default function DirectoryPersonPage() {
       {/* Tabs */}
       <Tabs defaultValue="overview" className="w-full">
         <div className="overflow-x-auto">
-          <TabsList className="border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-6 justify-start mb-1 min-w-max w-full">
+          <TabsList className="grid grid-cols-3 sm:flex border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-x-3 gap-y-1 sm:gap-6 justify-start mb-1 w-full sm:min-w-max">
             {activeTabs.map(t => (
               <TabsTrigger key={t.value} value={t.value} className={tabTriggerClass}>
                 {t.label}

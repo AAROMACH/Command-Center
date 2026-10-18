@@ -180,7 +180,7 @@ export default function ServicePlansPage() {
 
       <Tabs defaultValue="subscriptions" className="w-full">
         <div className="overflow-x-auto">
-          <TabsList className="tabs border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-6 justify-start mb-5 min-w-max">
+          <TabsList className="tabs grid grid-cols-2 sm:flex border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-x-3 gap-y-1 sm:gap-6 justify-start mb-5 w-full sm:w-auto sm:min-w-max">
             <TabsTrigger value="subscriptions" className="tab-trigger-plans">Subscriptions</TabsTrigger>
             <TabsTrigger value="plans" className="tab-trigger-plans">Plans</TabsTrigger>
             <TabsTrigger value="requests" className="tab-trigger-plans flex items-center gap-1.5">

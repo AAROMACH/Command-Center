@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { db, auth } from '@/lib/firebase';
+import { NotificationService } from '@/lib/notification-service';
 import {
   doc, getDoc, collection, query, where, onSnapshot,
   updateDoc, arrayUnion, arrayRemove, setDoc, deleteDoc, deleteField,
@@ -216,6 +217,7 @@ export default function AssignmentDetailPage() {
       });
       setAssignment(p => p ? { ...p, assignedTechnicianId: swapTechId, techId: swapTechId } : p);
       setSwapOpen(false); setSwapTechId('');
+      NotificationService.notifyJobChange(assignment, { ...assignment, assignedTechnicianId: swapTechId, techId: swapTechId }).catch(() => {});
       const moved = await moveJobLogOnSwap({ job: assignment, fromTechIds: [(assignment as any).techId, assignment.assignedTechnicianId], toTechId: swapTechId });
       const note = describeSwapLogMove(moved, prevTech?.name || 'the previous tech', nt?.name || 'the new tech');
       toast({ variant: note?.warn ? 'destructive' : undefined, title: 'Technician Swapped', description: `Now assigned to ${nt?.name}.${note ? ' ' + note.text : ''}` });
@@ -329,6 +331,7 @@ export default function AssignmentDetailPage() {
         }]);
         await setDoc(doc(db, 'workOrders', targetWo.id), sanitize(targetWo));
         await deleteDoc(doc(db, 'assignments', editedOrder.id));
+        NotificationService.notifyJobChange(assignment, finalUpdate).catch(() => {});
         toast({ title: 'Saved', description: 'Job returned to the Unassigned pool.' });
         router.push('/admin/assignments');
         return;
@@ -343,6 +346,7 @@ export default function AssignmentDetailPage() {
         });
         await setDoc(doc(db, 'assignments', assignmentId), assignmentData);
         await deleteDoc(doc(db, 'workOrders', editedOrder.id));
+        NotificationService.notifyJobChange(assignment, finalUpdate, assignmentId).catch(() => {});
         await syncWeeklyLogForAdminStatusEdit({ prevStatus: assignment.status, job: { ...(finalUpdate as WorkOrder), id: assignmentId }, techId: newTechId });
         toast({ title: 'Saved', description: 'Job updated.' });
         router.push(`/admin/assignments/${assignmentId}`);
@@ -350,6 +354,7 @@ export default function AssignmentDetailPage() {
       }
 
       await updateDoc(doc(db, sourceCollection, editedOrder.id), sanitize(finalUpdate));
+      if (sourceCollection === 'assignments') NotificationService.notifyJobChange(assignment, finalUpdate).catch(() => {});
       if (newTechId !== prevTechId) {
         const moved = await moveJobLogOnSwap({ job: finalUpdate as WorkOrder, fromTechIds: [prevTechId, assignment.assignedTechnicianId], toTechId: newTechId });
         const note = describeSwapLogMove(moved, allTechs.find(t => t.id === prevTechId)?.name || 'the previous tech', allTechs.find(t => t.id === newTechId)?.name || 'the new tech');

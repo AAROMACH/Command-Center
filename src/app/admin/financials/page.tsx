@@ -41,6 +41,7 @@ import { Input } from '@/components/ui/input';
 import { isSuperAdmin, isClient } from '@/lib/permissions';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { db } from "@/lib/firebase";
+import { NotificationService } from '@/lib/notification-service';
 import { collection, onSnapshot, query, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
@@ -326,6 +327,7 @@ export default function FinancialsPage() {
                                                     mileageRate: undefined as number | undefined,
                                                     receiptPhotoUrls: undefined as string[] | undefined,
                                                     notes: undefined as string | undefined,
+                                                    techId: undefined as string | undefined,
                                                 }));
 
                                             // New reimbursements
@@ -359,6 +361,7 @@ export default function FinancialsPage() {
                                                     mileageRate: r.mileageRate,
                                                     receiptPhotoUrls: r.receiptPhotoUrls,
                                                     notes: r.notes,
+                                                    techId: r.techId as string | undefined,
                                                 }));
 
                                             return [...legacyRows, ...newRows]
@@ -616,6 +619,8 @@ export default function FinancialsPage() {
                                                                                 await updateDoc(doc(db, 'expenses', row.id), { status: 'Rejected' });
                                                                             } else {
                                                                                 await updateDoc(doc(db, 'reimbursements', row.id), { status: 'rejected', reviewedAt: new Date().toISOString() });
+                                                                                if (row.techId) NotificationService.notify(row.techId, 'Reimbursement rejected',
+                                                                                    `Your $${row.amount.toFixed(2)} ${row.type} reimbursement (${row.details || row.date}) was not approved. Ask payroll if you have questions.`, undefined, { portal: 'tech' }).catch(() => {});
                                                                             }
                                                                             toast({ title: 'Reimbursement rejected' });
                                                                         } catch { toast({ variant: 'destructive', title: 'Error' }); }
@@ -628,6 +633,8 @@ export default function FinancialsPage() {
                                                                                 await updateDoc(doc(db, 'expenses', row.id), { status: 'Approved' });
                                                                             } else {
                                                                                 await updateDoc(doc(db, 'reimbursements', row.id), { status: 'approved', reviewedAt: new Date().toISOString() });
+                                                                                if (row.techId) NotificationService.notify(row.techId, 'Reimbursement approved',
+                                                                                    `Your $${row.amount.toFixed(2)} ${row.type} reimbursement (${row.details || row.date}) was approved.`, undefined, { portal: 'tech', inAppOnly: true }).catch(() => {});
                                                                             }
                                                                             toast({ title: 'Reimbursement approved' });
                                                                         } catch { toast({ variant: 'destructive', title: 'Error' }); }

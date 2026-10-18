@@ -22,38 +22,43 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ManageTeamDialog } from './manage-team-dialog';
+import { ProjectEconomicsCard, useServerProjectEconomics } from './project-economics-card';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, collection, onSnapshot, query, where } from 'firebase/firestore';
-import { money } from '@/lib/financial-summary';
+import { computeProjectEconomics } from '@/lib/project-economics';
 
 type OverviewTabProps = {
     project: Project;
     allTechnicians: Technician[];
     dailyLogs: ProjectDailyLog[];
-    /** Project Economics (labor cost from pay rates, invoices, profit). Off for a Project Manager. */
+    /** Project Economics (labor cost from pay rates, invoices, profit). */
     showMoney?: boolean;
+    /** Read the economics from the server instead of live listeners — for a
+     *  project manager assigned to this project, who can't read invoices,
+     *  expenses or pay rates directly. Totals only; no individual rates. */
+    economicsFromServer?: boolean;
 };
 
-export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = true }: OverviewTabProps) {
+export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = true, economicsFromServer = false }: OverviewTabProps) {
     // Project economics from the real expenses / invoices linked to this
     // project (was the demo lists in lib/data).
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     useEffect(() => {
-        if (!project?.id || !showMoney) return;
+        if (!project?.id || !showMoney || economicsFromServer) return;
         const unsubE = onSnapshot(query(collection(db, 'expenses'), where('projectId', '==', project.id)),
             snap => setExpenses(snap.docs.map(d => ({ ...d.data(), id: d.id } as Expense))), () => setExpenses([]));
         const unsubI = onSnapshot(query(collection(db, 'invoices'), where('projectId', '==', project.id)),
             snap => setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice))), () => setInvoices([]));
         return () => { unsubE(); unsubI(); };
-    }, [project?.id, showMoney]);
+    }, [project?.id, showMoney, economicsFromServer]);
+    const serverEconomics = useServerProjectEconomics(project, showMoney && economicsFromServer, dailyLogs.length);
     const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
     const [isAddingNote, setIsAddingNote] = useState(false);
     const [newNoteText, setNewNoteText] = useState("");
-    const [isEconomicDetailsOpen, setIsEconomicDetailsOpen] = useState(false);
     const [localProjectData, setLocalProjectData] = useState<Partial<Project>>({});
     const { toast } = useToast();
 
@@ -75,67 +80,10 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                localProjectData.siteAccessInstructions !== project.siteAccessInstructions;
     }, [localProjectData, project]);
 
-    const projectEconomics = useMemo(() => {
-        const projectExpenses = expenses.filter(e => e.projectId === project.id && e.status === 'Approved');
-        const projectInvoices = invoices.filter(i => i.projectId === project.id && i.status === 'paid');
-
-        const loggedHours = project.actualHours || 0;
-
-        let estimatedHours = project.estimatedHours || 0;
-        const taskEstSum = (project.phases || []).reduce((pAcc, phase) => 
-            pAcc + (phase.tasks || []).reduce((tAcc, task) => tAcc + (task.estimatedHours || 0), 0)
-        , 0);
-        if (taskEstSum > 0) estimatedHours = taskEstSum;
-
-        const laborCost = dailyLogs.reduce((acc, log) => {
-            const tech = allTechnicians.find(t => t.id === log.techId);
-            const rate = tech?.hourlyRate || 0;
-            return acc + ((log.hoursWorked || 0) * rate);
-        }, 0);
-
-        const rateMissing = dailyLogs.some(log => {
-             const tech = allTechnicians.find(t => t.id === log.techId);
-             return !tech?.hourlyRate;
-        });
-
-        const materialCost = projectExpenses
-            .filter(e => e.category === 'Materials')
-            .reduce((acc, e) => acc + money(e.amount), 0);
-
-        const otherExpenses = projectExpenses
-            .filter(e => e.category !== 'Materials')
-            .reduce((acc, e) => acc + money(e.amount), 0);
-
-        const actualCost = laborCost + materialCost + otherExpenses;
-        const revenue = projectInvoices.length > 0 
-            ? projectInvoices.reduce((acc, i) => acc + money(i.total), 0)
-            : (project.projectBudget || 0);
-            
-        const profit = revenue - actualCost;
-        const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
-        const remainingBudget = (project.projectBudget || 0) - actualCost;
-        
-        let budgetStatus: 'On Budget' | 'Near Limit' | 'Over Budget' | 'Not Enough Data' = 'On Budget';
-        if (!project.projectBudget) budgetStatus = 'Not Enough Data';
-        else if (remainingBudget < 0) budgetStatus = 'Over Budget';
-        else if (remainingBudget < (project.projectBudget * 0.1)) budgetStatus = 'Near Limit';
-
-        return {
-            loggedHours,
-            estimatedHours,
-            laborCost,
-            rateMissing,
-            materialCost,
-            otherExpenses,
-            actualCost,
-            remainingBudget,
-            profit,
-            isActualProfit: projectInvoices.length > 0,
-            margin,
-            budgetStatus,
-            revenue
-        };
-    }, [project, dailyLogs, allTechnicians, expenses, invoices]);
+    const liveEconomics = useMemo(() => computeProjectEconomics(
+        project, dailyLogs, id => allTechnicians.find(t => t.id === id)?.hourlyRate, expenses, invoices,
+    ), [project, dailyLogs, allTechnicians, expenses, invoices]);
+    const projectEconomics = economicsFromServer ? serverEconomics : liveEconomics;
 
     const getTechnician = (id: string) => allTechnicians.find(t => t.id === id);
 
@@ -292,177 +240,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                         </div>
                     </div>
 
-                     {showMoney && (
-                     <div className="field-group !pb-2">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="field-group-title !mb-0 font-bold"><DollarSign className="text-brand-red h-4 w-4"/> Project Economics</h3>
-                            <Badge 
-                                variant={
-                                    projectEconomics.budgetStatus === 'Over Budget' ? 'missed' : 
-                                    projectEconomics.budgetStatus === 'Near Limit' ? 'onhold' : 'active'
-                                }
-                                className="text-[10px] uppercase tracking-wider px-3 h-5"
-                            >
-                                {projectEconomics.budgetStatus}
-                            </Badge>
-                        </div>
-                        
-                        <div className="grid grid-cols-5 gap-px bg-border-sub border border-border-sub rounded-lg overflow-hidden mb-4">
-                            <div className="bg-bg-primary p-3 space-y-1">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Master Budget</p>
-                                <p className="text-xs font-mono font-bold text-text-primary">
-                                    {project.projectBudget ? formatCurrency(project.projectBudget) : 'TBD'}
-                                </p>
-                            </div>
-                            <div className="bg-bg-primary p-3 space-y-1">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Est. Hours</p>
-                                <p className="text-xs font-mono font-bold text-text-primary">
-                                    {projectEconomics.estimatedHours ? `${projectEconomics.estimatedHours}h` : 'TBD'}
-                                </p>
-                            </div>
-                            <div className="bg-bg-primary p-3 space-y-1">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Logged Hours</p>
-                                <p className={cn("text-xs font-mono font-bold", projectEconomics.loggedHours > 0 ? "text-accent-gold" : "text-text-muted")}>
-                                    {projectEconomics.loggedHours.toFixed(1)}h
-                                </p>
-                            </div>
-                            <div className="bg-bg-primary p-3 space-y-1">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Remaining</p>
-                                <p className={cn("text-xs font-mono font-bold", projectEconomics.remainingBudget < 0 ? "text-text-red" : "text-text-green")}>
-                                    {project.projectBudget ? formatCurrency(projectEconomics.remainingBudget) : 'TBD'}
-                                </p>
-                            </div>
-                            <div className="bg-bg-primary p-3 space-y-1">
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
-                                    {projectEconomics.isActualProfit ? 'Actual Profit' : 'Est. Profit'}
-                                </p>
-                                <p className="text-xs font-mono font-bold text-text-primary">
-                                    {project.projectBudget ? formatCurrency(projectEconomics.profit) : 'TBD'}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Burn rate bars */}
-                        {(projectEconomics.estimatedHours > 0 || project.projectBudget) && (
-                            <div className="space-y-3 mb-4 px-0.5">
-                                {projectEconomics.estimatedHours > 0 && (
-                                    <div className="space-y-1">
-                                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-text-muted">
-                                            <span>Hours Burn Rate</span>
-                                            <span className={cn(
-                                                projectEconomics.loggedHours > projectEconomics.estimatedHours ? 'text-text-red' :
-                                                projectEconomics.loggedHours / projectEconomics.estimatedHours > 0.8 ? 'text-accent-gold' : 'text-text-green'
-                                            )}>
-                                                {projectEconomics.loggedHours.toFixed(1)} / {projectEconomics.estimatedHours}h
-                                                {' '}({Math.min(Math.round((projectEconomics.loggedHours / projectEconomics.estimatedHours) * 100), 999)}%)
-                                            </span>
-                                        </div>
-                                        <div className="h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
-                                            <div
-                                                className={cn('h-full rounded-full transition-all',
-                                                    projectEconomics.loggedHours > projectEconomics.estimatedHours ? 'bg-text-red' :
-                                                    projectEconomics.loggedHours / projectEconomics.estimatedHours > 0.8 ? 'bg-accent-gold' : 'bg-text-green'
-                                                )}
-                                                style={{ width: `${Math.min((projectEconomics.loggedHours / projectEconomics.estimatedHours) * 100, 100)}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                                {project.projectBudget && projectEconomics.actualCost > 0 && (
-                                    <div className="space-y-1">
-                                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-text-muted">
-                                            <span>Budget Consumed</span>
-                                            <span className={cn(
-                                                projectEconomics.actualCost > project.projectBudget ? 'text-text-red' :
-                                                projectEconomics.actualCost / project.projectBudget > 0.8 ? 'text-accent-gold' : 'text-text-green'
-                                            )}>
-                                                {formatCurrency(projectEconomics.actualCost)} / {formatCurrency(project.projectBudget)}
-                                                {' '}({Math.min(Math.round((projectEconomics.actualCost / project.projectBudget) * 100), 999)}%)
-                                            </span>
-                                        </div>
-                                        <div className="h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
-                                            <div
-                                                className={cn('h-full rounded-full transition-all',
-                                                    projectEconomics.actualCost > project.projectBudget ? 'bg-text-red' :
-                                                    projectEconomics.actualCost / project.projectBudget > 0.8 ? 'bg-accent-gold' : 'bg-text-green'
-                                                )}
-                                                style={{ width: `${Math.min((projectEconomics.actualCost / project.projectBudget) * 100, 100)}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        <Collapsible open={isEconomicDetailsOpen} onOpenChange={setIsEconomicDetailsOpen}>
-                            <CollapsibleTrigger asChild>
-                                <Button variant="ghost" className="w-full h-8 flex items-center justify-center gap-2 hover:bg-bg-tertiary transition-colors group">
-                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider group-hover:text-text-primary">View Economic details</p>
-                                    {isEconomicDetailsOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                                </Button>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="pt-2 pb-4 space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-3">
-                                        <div className="flex items-center justify-between border-b border-border-sub/50 pb-1.5 px-1">
-                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Cost Breakdown</p>
-                                            <Activity size={12} className="text-brand-red opacity-50" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between items-center px-1">
-                                                <span className="text-[10px] font-bold text-text-secondary">Field Labor</span>
-                                                <span className={cn("text-[10px] font-mono font-bold", projectEconomics.rateMissing ? "text-text-red" : "text-text-primary")}>
-                                                    {projectEconomics.rateMissing ? 'Rate Missing' : formatCurrency(projectEconomics.laborCost)}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between items-center px-1">
-                                                <span className="text-[10px] font-bold text-text-secondary">Materials & Parts</span>
-                                                <span className="text-[10px] font-mono font-bold text-text-primary">
-                                                    {projectEconomics.materialCost > 0 ? formatCurrency(projectEconomics.materialCost) : '$0.00'}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between items-center px-1">
-                                                <span className="text-[10px] font-bold text-text-secondary">Incidentals</span>
-                                                <span className="text-[10px] font-mono font-bold text-text-primary">
-                                                    {projectEconomics.otherExpenses > 0 ? formatCurrency(projectEconomics.otherExpenses) : '$0.00'}
-                                                </span>
-                                            </div>
-                                            <div className="pt-1 border-t border-border-sub mt-1 flex justify-between items-center px-1">
-                                                <span className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Actual Cost</span>
-                                                <span className="text-xs font-mono font-bold text-text-red">{formatCurrency(projectEconomics.actualCost)}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <div className="flex items-center justify-between border-b border-border-sub/50 pb-1.5 px-1">
-                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Profit Analysis</p>
-                                            <TrendingUp size={12} className="text-text-green opacity-50" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between items-center px-1">
-                                                <span className="text-[10px] font-bold text-text-secondary">Projected Revenue</span>
-                                                <span className="text-[10px] font-mono font-bold text-text-primary">{formatCurrency(projectEconomics.revenue)}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center px-1">
-                                                <span className="text-[10px] font-bold text-text-secondary">Profit Margin</span>
-                                                <span className={cn("text-[10px] font-mono font-bold", projectEconomics.margin > 20 ? "text-text-green" : "text-accent-gold")}>
-                                                    {project.projectBudget ? `${projectEconomics.margin.toFixed(1)}%` : 'TBD'}
-                                                </span>
-                                            </div>
-                                            <div className="p-3 mt-2 rounded bg-bg-primary border border-border-sub flex items-start gap-2">
-                                                <Info size={12} className="text-text-muted shrink-0 mt-0.5" />
-                                                <p className="text-[11px] text-text-muted leading-relaxed text-left">
-                                                    Economics are aggregated from project-linked work orders, time logs, and finalized invoices.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </CollapsibleContent>
-                        </Collapsible>
-                    </div>
-                     )}
+                     {showMoney && projectEconomics && <ProjectEconomicsCard project={project} projectEconomics={projectEconomics} />}
                 </div>
 
                 <div className="lg:col-span-1 space-y-4">

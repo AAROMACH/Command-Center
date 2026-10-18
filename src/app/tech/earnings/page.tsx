@@ -39,6 +39,7 @@ import { cn } from '@/lib/utils';
 import { format, isSameDay, startOfDay, addDays } from 'date-fns';
 import { weekOfForScheduleDate } from '@/lib/weekly-log';
 import { db } from "@/lib/firebase";
+import { NotificationService } from '@/lib/notification-service';
 import { collection, onSnapshot, query, where, doc, addDoc, getDoc } from 'firebase/firestore';
 import { uploadFile } from '@/lib/upload';
 import { useToast } from '@/hooks/use-toast';
@@ -271,6 +272,8 @@ export default function TechEarningsPage() {
                 submittedAt: new Date().toISOString(),
                 createdAt: new Date().toISOString(),
             });
+            NotificationService.notifyPayrollAdmins('Reimbursement requested',
+                `${tech?.name || 'A technician'} submitted a $${amount.toFixed(2)} receipt${receiptForm.vendorName.trim() ? ` from ${receiptForm.vendorName.trim()}` : ''}: ${receiptForm.description.trim().slice(0, 120)}.`).catch(() => {});
             toast({ title: 'Receipt submitted', description: 'Your reimbursement request is pending review.' });
             setReceiptForm({ vendorName: '', purchaseDate: '', amount: '', description: '', relatedJobId: '', notes: '' });
             setReceiptPhotoUrl(null);
@@ -304,6 +307,8 @@ export default function TechEarningsPage() {
                 submittedAt: new Date().toISOString(),
                 createdAt: new Date().toISOString(),
             });
+            NotificationService.notifyPayrollAdmins('Mileage reimbursement requested',
+                `${tech?.name || 'A technician'} submitted ${distanceMiles} mi ($${(distanceMiles * mileageRate).toFixed(2)}) for ${mileageForm.dateDriven}.`).catch(() => {});
             toast({ title: 'Mileage submitted', description: `${distanceMiles} mi × $${mileageRate.toFixed(2)} = $${(distanceMiles * mileageRate).toFixed(2)}` });
             setMileageForm({ fromLocation: '', toLocation: '', distanceMiles: '', dateDriven: '', relatedJobId: '', notes: '' });
             setIsReimDialogOpen(false);

@@ -382,6 +382,11 @@ export type Task = {
   requiresFileUpload?: boolean;
   requiresOther?: boolean;
   otherRequirementLabel?: string;
+  /** Values the tech filled in when completing the task. */
+  dropdownValue?: string;
+  otherValue?: string;
+  completedBy?: string | null;
+  completedAt?: string;
   estimatedHours?: number;
   /** Crew member this task is assigned to (set by the PM or project lead). */
   assignedTechId?: string | null;
@@ -569,12 +574,27 @@ export type AssignmentTimeLog = {
   location: string; 
 };
 
+/** The four things a tech can flag about a job — one yes/no card each (lib/disputes.ts). */
+export type DisputeKind = 'missing' | 'duplicate' | 'not_mine' | 'pay_or_date';
+
+/** Payroll's answer to a flagged job's yes/no question. `note` is shown to the tech. */
+export type DisputeResolution = {
+  decision: 'yes' | 'no';
+  note?: string;
+  by: string;
+  at: string;
+};
+
 export type WeeklyLogItem = {
   id: string;
   workOrderId: string;
   confirmationStatus?: 'confirmed' | 'disputed' | null;
   disputeReason?: string;
   disputeNotes?: string;
+  /** Card type for a dispute. Older disputes derive it from disputeReason (disputeKindOf). */
+  disputeKind?: DisputeKind;
+  /** Payroll's decision on the dispute; cleared if the tech changes their answer. */
+  resolution?: DisputeResolution | null;
   outcomeCode?: 'worked_completed' | 'worked_revisit' | 'other' | null;
   isComplete: boolean;
   isAdminReviewed: boolean;
@@ -626,6 +646,10 @@ export type MissingAssignmentReport = {
   isAudited?: boolean;
   auditedAt?: string;
   auditedBy?: string;
+  /** Always 'missing' — kept so both flagged shapes read the same. */
+  disputeKind?: DisputeKind;
+  /** Payroll's decision. Only a 'yes' (isAudited) counts toward pay. */
+  resolution?: DisputeResolution | null;
 };
 
 export type FinancialRecord = {
@@ -688,6 +712,8 @@ export type PayrollDispute = {
   createdAt: string;
   resolvedAt?: string | null;
   resolvedBy?: string | null;
+  /** Payroll's yes/no answer; `note` (required on 'no') is shown to the tech. */
+  resolution?: DisputeResolution | null;
 };
 
 export type TimeOffRequest = {

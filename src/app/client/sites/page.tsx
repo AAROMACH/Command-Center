@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
+import { NotificationService } from '@/lib/notification-service';
 import { collection, onSnapshot, query, where, doc, setDoc } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
@@ -158,6 +159,9 @@ export default function ClientSitesPage() {
         try {
             const siteReqId = await createDocId(ID_PREFIXES.SITE_REQUEST);
             await setDoc(doc(db, 'siteRequests', siteReqId), { ...newRequest, id: siteReqId });
+            NotificationService.notifyAdmins('New site request',
+                `${newRequest.clientName} asked to add ${newRequest.siteName || 'a site'}${newRequest.location ? ` at ${newRequest.location}` : ''}.`,
+                undefined, { inAppOnly: true }).catch(() => {});
             toast({
                 title: "Site submitted",
                 description: "We'll review the new site and add it to your account.",

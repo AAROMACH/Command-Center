@@ -232,8 +232,8 @@ async function performHelperAction(ref: ReturnType<typeof doc>, live: Job, actio
         activeTrip = await createTrip(live, ctx, location, 'check_in');
       }
       await write({ status: 'in-progress', activeTripLogId: activeTrip, checkInAt: iso }, `Helper arrived at ${now}. Status: ON SITE. Location: [${location}].`);
-      NotificationService.notifyAdmins('Status Alert: HELPER ON SITE',
-        `Helper ${ctx.techName} checked in on ${live.id.toUpperCase()} at ${location}.`, { id: live.id, type: 'assignment' }).catch(() => {});
+      // No admin alert per check-in: "On site now" in the alert band and the
+      // dispatch board show it live.
       return { title: 'Checked In', description: 'You are on site. The lead tech\'s status is unchanged.' };
     }
 
@@ -255,8 +255,9 @@ async function performHelperAction(ref: ReturnType<typeof doc>, live: Job, actio
         console.error('helper filing failed — the log sync will retry', e);
         completion = 'prompted';
       }
-      NotificationService.notifyAdmins('Status Alert: HELPER COMPLETED',
-        `Helper ${ctx.techName} completed their part of ${live.id.toUpperCase()}.`, { id: live.id, type: 'assignment' }).catch(() => {});
+      // In-app only: the lead's "Job completed" is the alert that matters.
+      NotificationService.notifyAdmins('Helper finished',
+        `Helper ${ctx.techName} completed their part of ${live.id.toUpperCase()}.`, { id: live.id, type: 'assignment' }, { inAppOnly: true }).catch(() => {});
       return { title: 'Your Part Is Complete', description: 'Added to your weekly log as a helper entry.', completion };
     }
 
@@ -328,8 +329,8 @@ export async function performTechJobAction(job: Job, action: TechJobAction, ctx:
         ...(activeTrip ? { activeTripLogId: activeTrip } : {}),
         history: arrayUnion(historyEntry(`Arrival verified at ${now}. Status: ON SITE. Location: [${location}].`, user, 'note')),
       });
-      NotificationService.notifyAdmins('Status Alert: IN-PROGRESS',
-        `Technician ${user} checked in on ${live.id.toUpperCase()} at ${location}.`, { id: live.id, type: 'assignment' }).catch(() => {});
+      // No admin alert per check-in (it emailed/texted every arrival): the
+      // alert band's "On site now" and the dispatch board show it live.
       return { title: 'Checked In', description: 'Status updated to In Progress.' };
     }
 

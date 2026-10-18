@@ -198,7 +198,7 @@ async function syncLeadWithQuoteAnswer(leadId: string, quoteId: string, approved
       await deliverNotification(fs, await opsAdmins(fs), {
         title: 'New project from sales',
         body: `${ld.companyName} approved quote ${quoteId} ($${Math.round(total).toLocaleString()}).\nProject ${projectId} is on hold — assign a crew and set dates.`,
-        entity: { id: projectId, type: 'project' }, sentBy: 'system',
+        entity: { id: projectId, type: 'project' }, sentBy: 'system', portal: 'admin',
       }).catch(e => console.error('public-quote: ops alert failed', e));
     }
     if (ld.assignedTo) {

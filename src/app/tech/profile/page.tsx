@@ -8,6 +8,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import type { Technician, TimeOffRequest, ReliabilityEvent, PersonnelDocument } from '@/lib/types';
 import { usePenaltyEvents } from '@/hooks/use-penalty-events';
 import { auth, db } from '@/lib/firebase';
+import { NotificationService } from '@/lib/notification-service';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc, collection, addDoc, setDoc, getDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
@@ -306,6 +307,8 @@ export default function TechProfilePage() {
             status: 'pending',
         };
         await setDoc(doc(db, 'timeOffRequests', id), { ...newRequest });
+        NotificationService.notifyAdmins('Time-off request',
+            `${preferredName || name || 'A technician'} requested ${newRequest.type} time off, ${newRequest.startDate} to ${newRequest.endDate}.`).catch(() => {});
         // The live listener picks the new request up — no local prepend (it duplicated).
         toast({ title: 'Request submitted', description: 'Your time-off request is pending review.' });
         setIsTimeOffDialogOpen(false);
@@ -380,7 +383,7 @@ export default function TechProfilePage() {
                 {/* RIGHT: Tabs */}
                 <div className="lg:col-span-2">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="tabs flex-nowrap overflow-x-auto border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-5 sm:gap-8 justify-start mb-6">
+                        <TabsList className="tabs grid grid-cols-3 sm:flex w-full sm:w-auto border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-x-3 gap-y-1 sm:gap-8 justify-start mb-6">
                             <TabsTrigger value="identity" className="tab-trigger-plans">Identity</TabsTrigger>
                             {isFieldTech && (
                                 <TabsTrigger value="reliability" className="tab-trigger-plans">Reliability</TabsTrigger>

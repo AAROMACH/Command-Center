@@ -30,7 +30,7 @@ export function ProjectsTabs({ projects, technicians, dateRange, setDateRange, s
 
     return (
         <Tabs defaultValue="active" className="w-full">
-            <div className="flex items-center justify-between gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
+            <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 mb-6 bg-bg-secondary/50 p-4 rounded-lg border border-border-sub">
                 <TabsList className="tabs !mb-0">
                   <TabsTrigger value="active" className="tab">
                     Active Projects <span className="tab-count">({activeProjects.length})</span>

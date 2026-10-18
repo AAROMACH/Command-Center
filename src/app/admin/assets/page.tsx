@@ -572,7 +572,7 @@ export default function AssetsAndMaterialsPage() {
                 {/* ── Assets Tab ─────────────────────────────────────────── */}
                 <TabsContent value="assets" className="m-0">
                     {/* Category pills */}
-                    <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-4">
+                    <div className="flex flex-wrap items-center gap-2 mb-4">
                         {ASSET_CATS.map(cat => (
                             <button
                                 key={cat.value}
@@ -731,8 +731,19 @@ export default function AssetsAndMaterialsPage() {
 
                 {/* ── Materials Tab ──────────────────────────────────────── */}
                 <TabsContent value="materials" className="m-0">
-                    {/* Category pills */}
-                    <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-4">
+                    {/* Category: a picker on phones (ten long names would stack
+                        five rows deep), pills from sm up. */}
+                    <Select value={matCatFilter} onValueChange={setMatCatFilter}>
+                        <SelectTrigger className="mb-4 h-9 w-full bg-bg-secondary border-border-main sm:hidden" aria-label="Category">
+                            <SelectValue placeholder="Category" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-bg-elevated border-border-main">
+                            {['all', ...MAT_CATS].map(cat => (
+                                <SelectItem key={cat} value={cat}>{cat === 'all' ? `All categories (${materials.length})` : cat}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <div className="hidden sm:flex flex-wrap items-center gap-2 mb-4">
                         {['all', ...MAT_CATS].map(cat => (
                             <button
                                 key={cat}

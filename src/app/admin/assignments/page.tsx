@@ -35,6 +35,7 @@ import {
   Type,
   FileText,
   Trash2,
+  MoreHorizontal,
   Check,
   Download,
   Archive,
@@ -77,6 +78,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { cn, formatCityState, isAssignableTechnician, isInactiveTechnician, sortTechniciansForDeployment } from '@/lib/utils';
@@ -908,9 +910,7 @@ export default function AssignmentsHubPage() {
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
                                         <Badge variant="outline" className={cn("h-6 px-3 uppercase text-[10px] tracking-wider font-bold", audit.cls)}>{audit.label}</Badge>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted hover:text-text-red" onClick={() => requestArchive(wo)}>
-                                            <Trash2 size={13}/>
-                                        </Button>
+                                        <HistoryRowMenu onDelete={() => requestArchive(wo)} />
                                     </div>
                                 </div>
                             </div>
@@ -992,14 +992,7 @@ export default function AssignmentsHubPage() {
                                         <td className="py-4 text-right pr-6">
                                             <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
                                                 <Badge variant="outline" className={cn("h-7 px-3 uppercase text-[10px] tracking-wider font-bold", audit.cls)}>{audit.label}</Badge>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-7 w-7 text-text-muted hover:text-text-red"
-                                                    onClick={() => requestArchive(wo)}
-                                                >
-                                                    <Trash2 size={14}/>
-                                                </Button>
+                                                <HistoryRowMenu onDelete={() => requestArchive(wo)} />
                                             </div>
                                         </td>
                                     </tr>
@@ -1262,4 +1255,24 @@ export default function AssignmentsHubPage() {
       </AlertDialog>
     </div>
   );
+}
+
+/** Delete sits behind a "⋯" menu on history rows so it can't be hit by accident. */
+function HistoryRowMenu({ onDelete }: { onDelete: () => void }) {
+    return (
+        // Non-modal, and the confirm opens after the menu closes, so the two
+        // Radix layers never stack (that leaves pointer-events stuck on <body>).
+        <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-text-muted" aria-label="More actions">
+                    <MoreHorizontal size={14} />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuItem className="text-text-red focus:text-text-red" onSelect={() => setTimeout(onDelete, 0)}>
+                    <Trash2 size={13} className="mr-2" /> Delete job
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
 }

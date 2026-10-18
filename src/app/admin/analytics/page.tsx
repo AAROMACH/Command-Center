@@ -53,6 +53,9 @@ export default function FieldIntelligencePage() {
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
+    // Dispatch job imports (one record per import — see dispatch-page-client).
+    type ImportBatch = { id: string; importedAt?: string; importedByName?: string; importedBy?: string | null; count?: number; clients?: string[] };
+    const [importBatches, setImportBatches] = useState<ImportBatch[]>([]);
     const [archivedJobs, setArchivedJobs] = useState<WorkOrder[]>([]);
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
 
@@ -90,7 +93,10 @@ export default function FieldIntelligencePage() {
             });
             setArchivedJobs(jobs);
         });
-        return () => { unsubWO(); unsubAsmt(); unsubTech(); unsubLogs(); unsubInv(); unsubArchive(); };
+        const unsubImports = onSharedSnapshot('importBatches', (snap) => {
+            setImportBatches(snap.docs.map(d => ({ ...d.data(), id: d.id } as ImportBatch)));
+        });
+        return () => { unsubWO(); unsubAsmt(); unsubTech(); unsubLogs(); unsubInv(); unsubArchive(); unsubImports(); };
     }, []);
 
     const staffTechs = useMemo(
@@ -231,13 +237,23 @@ export default function FieldIntelligencePage() {
         weeklyLogs.forEach(log => {
             const tech = technicians.find(t => t.id === log.techId);
             if (log.submittedAt) events.push({ id: `log-sub-${log.id}`, timestamp: log.submittedAt, type: 'log', eventLabel: 'Weekly Log Submitted', entity: `Week of ${log.weekOf}`, techName: tech?.name, techId: log.techId, color: 'text-accent-gold' });
-            if (log.status === 'Approved') events.push({ id: `log-appr-${log.id}`, timestamp: log.submittedAt || log.weekOf, type: 'log', eventLabel: 'Weekly Log Approved', entity: `Week of ${log.weekOf}`, techName: tech?.name, techId: log.techId, color: 'text-text-green' });
+            // Approval at its real time (it used to borrow the submitted time).
+            // Logs approved before approvals were timestamped have no time to show.
+            const approvedAt = (log as { approvedAt?: string | null }).approvedAt;
+            const approvedBy = (log as { approvedByName?: string | null }).approvedByName;
+            if (log.status === 'Approved' && approvedAt) events.push({ id: `log-appr-${log.id}`, timestamp: approvedAt, type: 'payroll', eventLabel: 'Payroll Approved Log', entity: `Week of ${log.weekOf}${approvedBy ? ` — by ${approvedBy}` : ''}`, techName: tech?.name, techId: log.techId, color: 'text-text-green' });
+        });
+        importBatches.forEach(b => {
+            if (!b.importedAt) return;
+            const n = b.count || 0;
+            const clients = (b.clients || []).slice(0, 3).join(', ');
+            events.push({ id: `import-${b.id}`, timestamp: b.importedAt, type: 'dispatch', eventLabel: 'Dispatch Imported Jobs', entity: `${n} job${n === 1 ? '' : 's'}${clients ? ` · ${clients}${(b.clients || []).length > 3 ? '…' : ''}` : ''}${b.importedByName ? ` — by ${b.importedByName}` : ''}`, color: 'text-brand-blue' });
         });
         invoices.forEach(inv => {
             if (inv.issueDate) events.push({ id: `inv-${inv.id}`, timestamp: inv.issueDate, type: 'invoice', eventLabel: 'Invoice Issued', entity: `#${(inv as any).invoiceNumber || inv.id} — $${(inv.total || 0).toFixed(2)}`, clientName: inv.clientName, color: 'text-text-muted' });
         });
         return events.filter(e => !!e.timestamp).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-    }, [assignments, workOrders, weeklyLogs, invoices, technicians]);
+    }, [assignments, workOrders, weeklyLogs, invoices, technicians, importBatches]);
 
     const filteredTimelineEvents = useMemo(() => {
         const from = timelineDateRange?.from ? startOfDay(timelineDateRange.from).getTime() : null;
@@ -752,6 +768,8 @@ export default function FieldIntelligencePage() {
                                     <SelectItem value="assignment" className="text-[10px] font-bold">Assignments</SelectItem>
                                     <SelectItem value="work_order" className="text-[10px] font-bold">Work orders</SelectItem>
                                     <SelectItem value="log" className="text-[10px] font-bold">Weekly logs</SelectItem>
+                                    <SelectItem value="payroll" className="text-[10px] font-bold">Payroll approvals</SelectItem>
+                                    <SelectItem value="dispatch" className="text-[10px] font-bold">Dispatch imports</SelectItem>
                                     <SelectItem value="invoice" className="text-[10px] font-bold">Invoices</SelectItem>
                                 </SelectContent>
                             </Select>

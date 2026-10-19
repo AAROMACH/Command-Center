@@ -139,7 +139,7 @@ export default function FinancialsPage() {
             { key: 'revenue' as const, title: "REVENUE (MTD)", value: usd0(summary.month.revenue), trend: `${summary.month.jobs.length} COMPLETED JOB${summary.month.jobs.length !== 1 ? 'S' : ''} + PAID INVOICES`, trendType: "positive" as const, TrendIcon: ArrowUpRight },
             { key: 'tech' as const, title: "TECH PAY (MTD)", value: usd0(summary.month.techPortion), trend: "TECH PORTION · EXPENSE", trendType: "warning" as const, TrendIcon: Minus },
             { key: 'profit' as const, title: "AAROMACH PROFIT (MTD)", value: usd0(summary.month.profit), trend: `${summary.margin.toFixed(1)}% OF REVENUE · AFTER FN FEES`, trendType: summary.month.profit >= 0 ? "positive" as const : "negative" as const, TrendIcon: TrendingUp },
-            { key: 'pending' as const, title: "PENDING PAYOUTS", value: usd0(summary.pendingTotal), trend: `${summary.pending.length} SUBMITTED LOG${summary.pending.length !== 1 ? 'S' : ''} AWAITING APPROVAL`, trendType: "warning" as const, TrendIcon: Minus },
+            { key: 'pending' as const, title: "PENDING PAYOUTS", value: `≈ ${usd0(summary.pendingTotal)}`, trend: `${summary.pending.length} SUBMITTED LOG${summary.pending.length !== 1 ? 'S' : ''} AWAITING APPROVAL`, trendType: "warning" as const, TrendIcon: Minus },
             { key: 'ar' as const, title: "OUTSTANDING A/R", value: usd0(summary.receivableTotal), trend: `${summary.receivables.length} SENT / OVERDUE INVOICE${summary.receivables.length !== 1 ? 'S' : ''}`, trendType: "positive" as const, TrendIcon: Activity },
         ];
     }, [summary]);

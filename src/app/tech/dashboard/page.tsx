@@ -201,7 +201,7 @@ export default function TechDashboardPage() {
             {/* Stat cards */}
             <div className={cn("grid grid-cols-2 gap-3", seesPay && "md:grid-cols-3")}>
                 <StatCard label="Jobs this week" icon={Briefcase} value={weeklyJobCount} sub={`${allWorkOrders.length} assigned in total`} onClick={() => router.push('/tech/assignments')} />
-                {seesPay && <StatCard label="Expected pay" icon={DollarSign} tone="done" value={`$${expectedEarnings.toFixed(0)}`} sub="From open logs" onClick={() => router.push('/tech/earnings')} />}
+                {seesPay && <StatCard label="Expected pay" icon={DollarSign} tone="done" value={`≈ $${expectedEarnings.toFixed(0)}`} sub="From open logs" onClick={() => router.push('/tech/earnings')} />}
                 <StatCard label="Logs to submit" icon={TrendingUp} value={unsubmittedLogs.length} sub="Draft weekly logs" onClick={() => router.push('/tech/logs')} className={seesPay ? 'col-span-2 md:col-span-1' : undefined} />
             </div>
 

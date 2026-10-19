@@ -1,10 +1,13 @@
 import type { Firestore } from 'firebase-admin/firestore';
 import { resolveNotificationPrefs } from '@/lib/notification-prefs';
+import { entityHref } from '@/lib/notification-links';
+import { sendPush } from './push';
 
 /**
  * Server-side delivery shared by /api/notify, the CRM digest and the
  * public-quote route: email/SMS per the recipient's preferences, plus an
- * in-app record in `notifications` that the bell shows.
+ * in-app record in `notifications` that the bell shows. The 'push' channel is
+ * the bell record and, for non-routine alerts, a phone push to the Android app.
  */
 
 export type NotifyEntity = { id: string; type: 'assignment' | 'project' | 'request' | 'lead' | 'weeklyLog' | 'user' };
@@ -115,6 +118,11 @@ export async function deliverNotification(
       try {
         if (type === 'email') status = (await sendEmail(data.email, subject, msg.body)) === 'sent' ? 'sent' : 'pending';
         else if (type === 'sms') status = (await sendSms(data.phone, `${subject}\n\n${msg.body}`)) === 'sent' ? 'sent' : 'pending';
+        else if (type === 'push' && !msg.inAppOnly) {
+          const portal = msg.portal || portalForRecipient(data, entity);
+          const delivered = await sendPush(fs, id, { title: msg.title, body: msg.body, url: entity ? entityHref(portal, entity.type, entity.id) || undefined : undefined });
+          if (delivered > 0) status = 'sent';
+        }
       } catch (err) {
         console.error(`[notify] ${type} delivery to ${id} failed:`, err);
         status = 'failed';

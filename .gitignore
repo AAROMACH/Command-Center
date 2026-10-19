@@ -25,3 +25,7 @@ serviceAccountKey.json
 
 # TypeScript incremental build cache
 tsconfig.tsbuildinfo
+
+# Android signing keys — never commit
+*.jks
+*.keystore

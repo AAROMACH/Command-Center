@@ -27,6 +27,8 @@ import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/page-header';
 import { PricingTab } from './pricing-tab';
 import { usePricingSettings } from '@/hooks/use-billing';
+import { markupFor } from '@/lib/billing';
+import { materialPrice } from '@/lib/price-lines';
 import { canEditUserPay } from '@/lib/profile-permissions';
 import { useAuth } from '@/contexts/auth-context';
 import { StatCard, StatGrid } from '@/components/stat-card';
@@ -57,7 +59,6 @@ const ASSET_CAT_SUBS: Record<AssetCategory, string[]> = {
     safety: ['PPE', 'Harness', 'First Aid', 'Safety Gear'],
 };
 
-const MAT_CATS = ['Cable & Wire', 'Connectors & Jacks', 'Mounting Hardware', 'Networking Equipment', 'Power', 'Safety Equipment', 'Tools & Equipment', 'Cameras & Security', 'Miscellaneous'];
 
 const UNIT_TYPES = ['each', 'box', 'pack', 'foot', 'roll', 'hour', 'set', 'bag', 'bundle'];
 
@@ -115,7 +116,7 @@ const EMPTY_ASSET_FORM = {
 
 const EMPTY_MAT_FORM = {
     name: '', category: '', description: '', unitType: 'each' as Material['unitType'],
-    standardCost: '', billablePrice: '', markupPercentage: '',
+    standardCost: '', billablePrice: '', priceOverride: false as boolean,
     vendor: '', sku: '', taxable: false as boolean, status: 'active' as Material['status'], notes: '',
 };
 
@@ -140,6 +141,12 @@ export default function AssetsAndMaterialsPage() {
 
     // UI
     const { settings: pricing } = usePricingSettings();
+    const markupLabel = (m: Material) => {
+        const fixed = m.priceOverride ?? (m.billablePrice || 0) > 0;
+        return fixed ? (m.markupPercentage != null ? `${m.markupPercentage}% (own price)` : 'Own price') : `${markupFor(m.category, pricing)}%`;
+    };
+    // Filter pills: the price-book categories plus any older category still on a material.
+    const matCats = useMemo(() => [...new Set([...pricing.categories.map(c => c.name), ...materials.map(m => m.category).filter(Boolean)])], [pricing.categories, materials]);
     const { user: authUser } = useAuth();
     const [mainTab, setMainTab] = useState<'assets' | 'materials' | 'pricing'>('assets');
     const [viewMode, setViewMode] = useViewMode('assets');
@@ -245,7 +252,7 @@ export default function AssetsAndMaterialsPage() {
         return [...rows].sort((a, b) => {
             switch (matSort) {
                 case 'category': return (a.category || '').localeCompare(b.category || '') || byName(a, b);
-                case 'price': return (b.billablePrice || 0) - (a.billablePrice || 0) || byName(a, b);
+                case 'price': return materialPrice(b, pricing) - materialPrice(a, pricing) || byName(a, b);
                 case 'cost': return (b.standardCost || 0) - (a.standardCost || 0) || byName(a, b);
                 case 'date': return (matSortAsc ? when(a) - when(b) : when(b) - when(a)) || byName(a, b);
                 default: return byName(a, b);
@@ -465,7 +472,8 @@ export default function AssetsAndMaterialsPage() {
             name: m.name, category: m.category, description: m.description || '',
             unitType: m.unitType, standardCost: m.standardCost.toString(),
             billablePrice: m.billablePrice.toString(),
-            markupPercentage: m.markupPercentage?.toString() || '',
+            // Older materials were priced by hand.
+            priceOverride: m.priceOverride ?? (m.billablePrice || 0) > 0,
             vendor: m.vendor || '', sku: m.sku || '',
             taxable: m.taxable, status: m.status, notes: m.notes || '',
         });
@@ -480,10 +488,10 @@ export default function AssetsAndMaterialsPage() {
         setMatSaving(true);
         try {
             const cost = parseFloat(matForm.standardCost) || 0;
-            const price = parseFloat(matForm.billablePrice) || 0;
-            const markup = matForm.markupPercentage
-                ? parseFloat(matForm.markupPercentage)
-                : cost > 0 ? Math.round(((price - cost) / cost) * 100) : 0;
+            // Priced from the category markup unless the user set their own price.
+            const catMarkup = markupFor(matForm.category, pricing);
+            const price = matForm.priceOverride ? (parseFloat(matForm.billablePrice) || 0) : Math.round(cost * (1 + catMarkup / 100) * 100) / 100;
+            const markup = matForm.priceOverride ? (cost > 0 ? Math.round(((price - cost) / cost) * 1000) / 10 : 0) : catMarkup;
 
             const base = {
                 name: matForm.name.trim(),
@@ -492,6 +500,7 @@ export default function AssetsAndMaterialsPage() {
                 standardCost: cost,
                 billablePrice: price,
                 markupPercentage: markup,
+                priceOverride: matForm.priceOverride,
                 taxable: matForm.taxable,
                 status: matForm.status,
                 updatedAt: new Date().toISOString(),
@@ -574,7 +583,7 @@ export default function AssetsAndMaterialsPage() {
                         <span className="flex items-center gap-2"><ShoppingCart size={12} /> Materials ({materials.filter(m => m.status === 'active').length})</span>
                     </TabsTrigger>
                     <TabsTrigger value="pricing" className={tabTriggerCls}>
-                        <span className="flex items-center gap-2"><Percent size={12} /> Labor &amp; pricing</span>
+                        <span className="flex items-center gap-2"><Percent size={12} /> Rates &amp; markups</span>
                     </TabsTrigger>
                 </TabsList>
 
@@ -747,13 +756,13 @@ export default function AssetsAndMaterialsPage() {
                             <SelectValue placeholder="Category" />
                         </SelectTrigger>
                         <SelectContent className="bg-bg-elevated border-border-main">
-                            {['all', ...MAT_CATS].map(cat => (
+                            {['all', ...matCats].map(cat => (
                                 <SelectItem key={cat} value={cat}>{cat === 'all' ? `All categories (${materials.length})` : cat}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
                     <div className="hidden sm:flex flex-wrap items-center gap-2 mb-4">
-                        {['all', ...MAT_CATS].map(cat => (
+                        {['all', ...matCats].map(cat => (
                             <button
                                 key={cat}
                                 onClick={() => setMatCatFilter(cat)}
@@ -823,8 +832,8 @@ export default function AssetsAndMaterialsPage() {
                                     </div>
                                     <div className="flex items-center gap-3 pt-1 border-t border-border-sub">
                                         <div><p className="text-[10px] font-bold text-text-muted">Cost</p><p className="text-[11px] font-mono text-text-muted">${m.standardCost.toFixed(2)}</p></div>
-                                        <div><p className="text-[10px] font-bold text-text-muted">Billable</p><p className="text-[12px] font-mono font-bold text-text-primary">${m.billablePrice.toFixed(2)}</p></div>
-                                        {m.markupPercentage ? <div><p className="text-[10px] font-bold text-text-muted">Markup</p><p className="text-[11px] font-mono text-text-amber">{m.markupPercentage}%</p></div> : null}
+                                        <div><p className="text-[10px] font-bold text-text-muted">Billable</p><p className="text-[12px] font-mono font-bold text-text-primary">${materialPrice(m, pricing).toFixed(2)}</p></div>
+                                        <div><p className="text-[10px] font-bold text-text-muted">Markup</p><p className="text-[11px] font-mono text-text-amber">{markupLabel(m)}</p></div>
                                     </div>
                                 </div>
                             ))}
@@ -860,10 +869,8 @@ export default function AssetsAndMaterialsPage() {
                                                 <Badge variant="scheduled" className="text-[10px] h-4">{m.unitType}</Badge>
                                             </TableCell>
                                             <TableCell className="text-[12px] font-mono text-text-muted text-right">${m.standardCost.toFixed(2)}</TableCell>
-                                            <TableCell className="text-[12px] font-mono font-bold text-text-primary text-right">${m.billablePrice.toFixed(2)}</TableCell>
-                                            <TableCell className="text-[11px] font-mono text-text-amber text-right">
-                                                {m.markupPercentage ? `${m.markupPercentage}%` : '—'}
-                                            </TableCell>
+                                            <TableCell className="text-[12px] font-mono font-bold text-text-primary text-right">${materialPrice(m, pricing).toFixed(2)}</TableCell>
+                                            <TableCell className="text-[11px] font-mono text-text-amber text-right">{markupLabel(m)}</TableCell>
                                             <TableCell className="text-[11px] font-mono text-text-muted">{m.sku || '—'}</TableCell>
                                             <TableCell>
                                                 <ToneChip tone={m.status === 'active' ? 'done' : 'neutral'}>{statusLabel(m.status)}</ToneChip>
@@ -879,7 +886,7 @@ export default function AssetsAndMaterialsPage() {
 
                 {/* ── Labor & pricing: labor rates, markup, sales tax (adminConfig/pricing) ── */}
                 <TabsContent value="pricing" className="m-0">
-                    <PricingTab settings={pricing} canEdit={canEditUserPay(authUser)} />
+                    <PricingTab settings={pricing} canEdit={canEditUserPay(authUser)} materials={materials} />
                 </TabsContent>
             </Tabs>
 
@@ -1286,12 +1293,12 @@ export default function AssetsAndMaterialsPage() {
                                     </div>
                                     <div className="p-3 rounded-lg bg-brand-red/5 border border-brand-red/20 text-center">
                                         <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Billable</p>
-                                        <p className="text-[16px] font-bold font-mono text-brand-red mt-0.5">${selectedMaterial.billablePrice.toFixed(2)}</p>
+                                        <p className="text-[16px] font-bold font-mono text-brand-red mt-0.5">${materialPrice(selectedMaterial, pricing).toFixed(2)}</p>
                                         <p className="text-[10px] text-text-muted">per {selectedMaterial.unitType}</p>
                                     </div>
                                     <div className="p-3 rounded-lg bg-text-amber/5 border border-text-amber/20 text-center">
                                         <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Markup</p>
-                                        <p className="text-[16px] font-bold font-mono text-text-amber mt-0.5">{selectedMaterial.markupPercentage ?? '—'}%</p>
+                                        <p className="text-[16px] font-bold font-mono text-text-amber mt-0.5">{markupLabel(selectedMaterial)}</p>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
@@ -1344,8 +1351,8 @@ export default function AssetsAndMaterialsPage() {
                                         <SelectValue placeholder="Select category" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-bg-elevated border-border-main">
-                                        {MAT_CATS.map(c => (
-                                            <SelectItem key={c} value={c}>{statusLabel(c)}</SelectItem>
+                                        {[...new Set([...pricing.categories.map(c => c.name), ...(matForm.category ? [matForm.category] : [])])].map(c => (
+                                            <SelectItem key={c} value={c}>{c} · {markupFor(c, pricing)}% markup</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -1366,20 +1373,30 @@ export default function AssetsAndMaterialsPage() {
                             <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Description</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Brief description..." value={matForm.description} onChange={e => setMatForm(f => ({ ...f, description: e.target.value }))} />
                         </div>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Cost ($)</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Your cost ($)</Label>
                                 <Input type="number" step="0.01" className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="0.00" value={matForm.standardCost} onChange={e => setMatForm(f => ({ ...f, standardCost: e.target.value }))} />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Billable ($)</Label>
-                                <Input type="number" step="0.01" className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="0.00" value={matForm.billablePrice} onChange={e => setMatForm(f => ({ ...f, billablePrice: e.target.value }))} />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Markup %</Label>
-                                <Input type="number" className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Auto" value={matForm.markupPercentage} onChange={e => setMatForm(f => ({ ...f, markupPercentage: e.target.value }))} />
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Sell price ($)</Label>
+                                {matForm.priceOverride ? (
+                                    <Input type="number" step="0.01" className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="0.00" value={matForm.billablePrice} onChange={e => setMatForm(f => ({ ...f, billablePrice: e.target.value }))} />
+                                ) : (
+                                    <p className="h-9 flex items-center px-3 rounded-md border border-border-sub bg-bg-primary text-[12px] font-mono font-bold">
+                                        ${((parseFloat(matForm.standardCost) || 0) * (1 + markupFor(matForm.category, pricing) / 100)).toFixed(2)}
+                                    </p>
+                                )}
                             </div>
                         </div>
+                        <label className="flex items-center gap-2 cursor-pointer -mt-1">
+                            <input type="checkbox" className="accent-brand-red h-4 w-4" checked={matForm.priceOverride}
+                                onChange={e => setMatForm(f => ({ ...f, priceOverride: e.target.checked,
+                                    billablePrice: e.target.checked && !f.billablePrice ? ((parseFloat(f.standardCost) || 0) * (1 + markupFor(f.category, pricing) / 100)).toFixed(2) : f.billablePrice }))} />
+                            <span className="text-[11px] text-text-muted">
+                                {matForm.priceOverride ? 'Using my own price for this item' : `Priced from ${matForm.category || 'the category'} markup (${markupFor(matForm.category, pricing)}%) — check to set my own price`}
+                            </span>
+                        </label>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Vendor / Source</Label>

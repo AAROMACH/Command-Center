@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Aaromach</string>
+    <string name="title_activity_main">Aaromach</string>
+    <string name="package_name">com.aaromach.commandcenter</string>
+    <string name="custom_url_scheme">com.aaromach.commandcenter</string>
+</resources>

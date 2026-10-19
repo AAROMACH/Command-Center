@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { isClient } from '@/lib/permissions';
 import { useAllSubscriptions, usePricingSettings, useServicePlans } from '@/hooks/use-billing';
-import { formatMoney } from '@/lib/billing';
+import { describeFactor, formatMoney } from '@/lib/billing';
 import {
   describeDiscount, lineAmount, materialPrice, planDiscountFor, priceTotals,
   type PlanDiscount, type PriceBookItem, type PriceLine, type PriceSection, type PriceTotals,
@@ -160,9 +160,22 @@ export function PriceDocEditor({
     ...p, lines: [...p.lines, {
       id: genId(), name: from?.name || '', quantity: 1, unitPrice: from?.unitPrice || 0, section,
       taxable: section === 'material' ? (from ? from.taxable : true) : false, required: true,
+      ...(from ? { itemRef: from.id } : {}),
     }],
   }));
   const setLine = (id: string, patch: Partial<PriceLine>) => setV(p => ({ ...p, lines: p.lines.map(l => l.id === id ? { ...l, ...patch } : l) }));
+  // Labor multiplier picker: 'std', a price-book multiplier id, or 'saved'
+  // (one on an older doc that's no longer in the price book).
+  const multiplierKey = (l: PriceLine) => {
+    if (l.multiplier == null && !l.emergency) return 'std';
+    const m = settings.multipliers.find(x => x.factor === l.multiplier && x.label === l.multiplierLabel);
+    return m ? m.id : 'saved';
+  };
+  const multiplierPatch = (key: string): Partial<PriceLine> => {
+    if (key === 'saved') return {};
+    const m = settings.multipliers.find(x => x.id === key);
+    return m ? { multiplier: m.factor, multiplierLabel: m.label, emergency: false } : { multiplier: undefined, multiplierLabel: undefined, emergency: false };
+  };
   const removeLine = (id: string) => setV(p => ({ ...p, lines: p.lines.filter(l => l.id !== id) }));
 
   // ── Optional add-ons (quotes) ──
@@ -209,16 +222,16 @@ export function PriceDocEditor({
           <p className="text-[11px] text-text-muted px-1">No {isLabor ? 'labor' : 'materials'} yet.</p>
         ) : (
           <div className="space-y-1.5">
-            <div className="hidden sm:grid grid-cols-[1fr,64px,96px,72px,80px,28px] gap-2 px-2 text-[10px] font-bold uppercase tracking-wider text-text-muted">
+            <div className="hidden sm:grid grid-cols-[1fr,64px,96px,112px,80px,28px] gap-2 px-2 text-[10px] font-bold uppercase tracking-wider text-text-muted">
               <span>{isLabor ? 'Description' : 'Item'}</span>
               <span className="text-center">{isLabor ? 'Hrs' : 'Qty'}</span>
               <span className="text-center">{isLabor ? 'Rate' : 'Unit price'}</span>
-              <span className="text-center">{isLabor ? 'Emergency' : 'Taxable'}</span>
+              <span className="text-center">{isLabor ? 'Multiplier' : 'Taxable'}</span>
               <span className="text-right">Amount</span>
               <span />
             </div>
             {rows.map(l => (
-              <div key={l.id} className="grid grid-cols-[1fr,28px] sm:grid-cols-[1fr,64px,96px,72px,80px,28px] gap-2 items-center p-2 rounded-lg border border-border-sub bg-bg-secondary">
+              <div key={l.id} className="grid grid-cols-[1fr,28px] sm:grid-cols-[1fr,64px,96px,112px,80px,28px] gap-2 items-center p-2 rounded-lg border border-border-sub bg-bg-secondary">
                 <Input className="h-8 text-[12px] bg-bg-primary border-border-sub col-span-1" value={l.name}
                   onChange={e => setLine(l.id, { name: e.target.value })} placeholder={isLabor ? 'Installation labor' : 'CAT6 plenum cable'} />
                 <button type="button" onClick={() => removeLine(l.id)} className="sm:hidden text-text-muted hover:text-brand-red justify-self-center"><Trash2 size={13} /></button>
@@ -227,11 +240,21 @@ export function PriceDocEditor({
                     onChange={e => setLine(l.id, { quantity: parseFloat(e.target.value) || 0 })} />
                   <Input type="number" className="h-8 text-[12px] bg-bg-primary border-border-sub text-center font-mono" value={l.unitPrice}
                     onChange={e => setLine(l.id, { unitPrice: parseFloat(e.target.value) || 0 })} />
-                  <div className="flex items-center justify-center gap-1.5" title={isLabor ? 'Emergency / after-hours rate (1.5×)' : 'Charge sales tax on this item'}>
-                    <span className="sm:hidden text-[10px] text-text-muted">{isLabor ? '1.5×' : 'Tax'}</span>
-                    <Switch className="scale-75" checked={isLabor ? !!l.emergency : l.taxable}
-                      onCheckedChange={val => setLine(l.id, isLabor ? { emergency: val } : { taxable: val })} />
-                  </div>
+                  {isLabor ? (
+                    <Select value={multiplierKey(l)} onValueChange={k => setLine(l.id, multiplierPatch(k))}>
+                      <SelectTrigger className="h-8 text-[11px] bg-bg-primary border-border-sub" title="Rate multiplier"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-bg-elevated border-border-main">
+                        <SelectItem value="std" className="text-[12px]">Standard ×1</SelectItem>
+                        {settings.multipliers.map(m => <SelectItem key={m.id} value={m.id} className="text-[12px]">{m.label} {describeFactor(m.factor)}</SelectItem>)}
+                        {multiplierKey(l) === 'saved' && <SelectItem value="saved" className="text-[12px]">{l.multiplierLabel || (l.emergency ? 'Emergency' : 'Saved')} ×{l.multiplier ?? 1.5}</SelectItem>}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="flex items-center justify-center gap-1.5" title="Charge sales tax on this item">
+                      <span className="sm:hidden text-[10px] text-text-muted">Tax</span>
+                      <Switch className="scale-75" checked={l.taxable} onCheckedChange={val => setLine(l.id, { taxable: val })} />
+                    </div>
+                  )}
                 </div>
                 <span className="hidden sm:block text-right text-[12px] font-mono font-bold text-text-primary">{formatMoney(lineAmount(l))}</span>
                 <button type="button" onClick={() => removeLine(l.id)} className="hidden sm:block text-text-muted hover:text-brand-red justify-self-center"><Trash2 size={13} /></button>

@@ -8,6 +8,8 @@ import { MessagesMenu } from "@/components/messages-menu";
 import { NotificationBell } from "@/components/notification-bell";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import { useToast } from "@/hooks/use-toast";
+import { startNativePush } from "@/lib/native-push";
 import { getAvailablePortals } from "@/lib/permissions";
 import { canAccessPath } from "@/lib/route-permissions";
 import { Home, CalendarDays, FileText, Coins, Wrench, ClipboardList, Inbox, Receipt, Target, Users, FileSearch, Settings } from "lucide-react";
@@ -27,6 +29,18 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   // gate once a real user profile has loaded — while loading (or when no
   // Firestore profile exists) the middleware/session flow remains in charge.
   const denied = !loading && !!user && !canAccessPath(user, pathname);
+
+  // Android app: register this phone for push once someone is signed in.
+  const { toast } = useToast();
+  const uid = user?.id;
+  useEffect(() => {
+    if (!uid) return;
+    let cleanup: (() => void) | undefined;
+    startNativePush(url => router.push(url), (title, body) => toast({ title, description: body }))
+      .then(c => { cleanup = c; })
+      .catch(e => console.warn('[push] setup failed', e));
+    return () => cleanup?.();
+  }, [uid, router, toast]);
 
   useEffect(() => {
     if (!denied) return;

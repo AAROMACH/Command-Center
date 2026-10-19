@@ -10,6 +10,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { startNativePush } from "@/lib/native-push";
+import { refreshWebPush } from "@/lib/web-push";
 import { getAvailablePortals } from "@/lib/permissions";
 import { canAccessPath } from "@/lib/route-permissions";
 import { Home, CalendarDays, FileText, Coins, Wrench, ClipboardList, Inbox, Receipt, Target, Users, FileSearch, Settings } from "lucide-react";
@@ -39,6 +40,8 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     startNativePush(url => router.push(url), (title, body) => toast({ title, description: body }))
       .then(c => { cleanup = c; })
       .catch(e => console.warn('[push] setup failed', e));
+    // Website (iPhone Home Screen app, Chrome): keep this device's token fresh.
+    refreshWebPush().catch(() => {});
     return () => cleanup?.();
   }, [uid, router, toast]);
 

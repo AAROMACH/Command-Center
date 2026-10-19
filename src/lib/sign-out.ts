@@ -4,6 +4,7 @@ import { signOut } from 'firebase/auth';
 import { clearIndexedDbPersistence, terminate } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { unregisterNativePush } from './native-push';
+import { unregisterWebPush } from './web-push';
 
 /**
  * The one sign-out path. Besides ending the Firebase session it clears the
@@ -15,6 +16,7 @@ import { unregisterNativePush } from './native-push';
 export async function signOutAndClear(): Promise<void> {
   // Android app: stop this phone getting the signed-out user's alerts.
   try { await unregisterNativePush(); } catch { /* still sign out */ }
+  try { await unregisterWebPush(); } catch { /* still sign out */ }
   sessionStorage.removeItem('currentUserId');
   document.cookie = 'aaromach_session=; path=/; max-age=0; SameSite=Strict';
   document.cookie = 'aaromach_portals=; path=/; max-age=0; SameSite=Strict';

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { enableWebPush, webPushState, type WebPushState } from '@/lib/web-push';
 import { doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 
+const DEVICE_TEXT: Record<WebPushState, string> = {
+    unsupported: '',
+    'needs-install': 'On iPhone: tap Share → Add to Home Screen, open Aaromach from the new icon and sign in. Then come back here to turn notifications on.',
+    'not-configured': 'Not available yet — the Web Push key hasn\u2019t been added to the server.',
+    off: 'Get pop-up alerts on this phone or computer, even when the app is closed.',
+    blocked: 'Blocked for this site. Allow notifications for app.aaromach.com in your phone or browser settings, then reload.',
+    on: 'On — alerts will pop up on this device.',
+};
+
 /**
  * Per-event switches: which kinds of alert may email, text or buzz this
  * person's phone. Switched-off events still show in the bell. Only the
@@ -22,7 +32,23 @@ export function NotificationEventsCard() {
     const { toast } = useToast();
     const [testing, setTesting] = useState(false);
     const [results, setResults] = useState<{ channel: string; ok: boolean; detail: string }[] | null>(null);
+    const [device, setDevice] = useState<WebPushState>('unsupported');
+    const [enabling, setEnabling] = useState(false);
+    useEffect(() => { webPushState().then(setDevice).catch(() => {}); }, []);
     if (!user) return null;
+
+    const turnOnDevice = async () => {
+        setEnabling(true);
+        try {
+            const s = await enableWebPush();
+            setDevice(s);
+            toast(s === 'on' ? { title: 'Notifications on for this device' } : { variant: 'destructive', title: 'Notifications not turned on', description: DEVICE_TEXT[s] });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not turn on notifications', description: e.message });
+        } finally {
+            setEnabling(false);
+        }
+    };
 
     const sendTest = async () => {
         setTesting(true);
@@ -61,6 +87,20 @@ export function NotificationEventsCard() {
                 <CardDescription>Turn off what you don&apos;t need. Switched-off alerts still show in the bell — they just won&apos;t email, text or buzz your phone.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
+                {device !== 'unsupported' && (
+                    <div className="flex items-center justify-between gap-4 p-4 rounded-lg border border-brand-red/30 bg-brand-red/5">
+                        <div className="space-y-1 text-left">
+                            <h4 className="text-[13px] font-semibold text-text-primary">Phone notifications on this device</h4>
+                            <p className="text-[12px] text-text-muted">{DEVICE_TEXT[device]}</p>
+                        </div>
+                        {device === 'off' && (
+                            <Button size="sm" onClick={turnOnDevice} disabled={enabling} className="shrink-0">
+                                {enabling && <Loader2 size={13} className="mr-1.5 animate-spin" />}Turn on
+                            </Button>
+                        )}
+                        {device === 'on' && <CheckCircle2 size={18} className="text-text-green shrink-0" />}
+                    </div>
+                )}
                 {events.map(e => (
                     <div key={e.id} className="flex items-center justify-between gap-4 p-4 rounded-lg border border-border-sub bg-bg-primary">
                         <div className="space-y-1 text-left">

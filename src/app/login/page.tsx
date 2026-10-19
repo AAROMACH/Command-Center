@@ -9,7 +9,8 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { auth, db } from "@/lib/firebase";
 import { NotificationService } from '@/lib/notification-service';
-import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, setPersistence, browserLocalPersistence, browserSessionPersistence } from "firebase/auth";
+import { isNativeApp } from '@/lib/native-push';
+import { onAuthStateChanged, signInWithCredential, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, setPersistence, browserLocalPersistence, browserSessionPersistence } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { getPortalAccess, getAvailablePortals } from "@/lib/permissions";
@@ -67,13 +68,25 @@ export default function LoginPage() {
     }
   }
 
+  // Website: Google's popup. Android app: Google blocks its sign-in page in
+  // web views, so use Android's account picker and sign the web SDK in with
+  // the returned token — the same Firebase account either way.
+  async function googleSignIn() {
+    if (!isNativeApp()) return (await signInWithPopup(auth, googleProvider)).user;
+    const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
+    const res = await FirebaseAuthentication.signInWithGoogle();
+    const idToken = res.credential?.idToken;
+    if (!idToken) return null;
+    return (await signInWithCredential(auth, GoogleAuthProvider.credential(idToken))).user;
+  }
+
   async function onGoogleSignIn() {
     setIsGoogleLoading(true);
     routed.current = true;
     try {
       await applyPersistence();
-      const result = await signInWithPopup(auth, googleProvider);
-      const firebaseUser = result.user;
+      const firebaseUser = await googleSignIn();
+      if (!firebaseUser) { routed.current = false; return; } // closed the account picker
 
       const snap = await getDoc(doc(db, "users", firebaseUser.uid));
       if (!snap.exists()) {
@@ -123,7 +136,7 @@ export default function LoginPage() {
       routed.current = false;
       const code: string = err.code || "";
       console.error("[google-auth] full error:", err);
-      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request" || /cancel/i.test(String(err?.message || ""))) {
         // User dismissed — no toast needed
       } else if (code === "auth/operation-not-allowed") {
         toast({ variant: "destructive", title: "Google sign-in not enabled", description: "Enable Google as a sign-in provider in Firebase Console → Authentication → Sign-in methods." });

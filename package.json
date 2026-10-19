@@ -11,6 +11,7 @@
     "lint:ui": "node scripts/check-ui.mjs"
   },
   "dependencies": {
+    "@capacitor-firebase/authentication": "^7.5.0",
     "@capacitor/android": "^7.6.9",
     "@capacitor/core": "^7.6.9",
     "@capacitor/push-notifications": "^7.0.7",

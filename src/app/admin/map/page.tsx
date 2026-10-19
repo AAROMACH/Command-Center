@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
+import { mergeJobs } from '@/lib/jobs';
 import type { WorkOrder } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/page-header';
@@ -66,13 +67,22 @@ export default function AdminMapPage() {
   const [selectedDate, setSelectedDate] = useState<string>(toISODate(new Date()));
   const [mobileTab, setMobileTab] = useState<'map' | 'jobs'>('map');
 
+  // Both the unassigned pool and dispatched jobs — this used to read the pool
+  // only, so every job assigned to a tech was missing from the map.
+  const [pool, setPool] = useState<WorkOrder[]>([]);
+  const [dispatched, setDispatched] = useState<WorkOrder[]>([]);
   useEffect(() => {
-    const unsub = onSharedSnapshot('workOrders', (snap) => {
-      setAllWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
-      setLoading(false);
-    }, () => setLoading(false));
-    return () => unsub();
+    let left = 2;
+    const done = () => { if (--left <= 0) setLoading(false); };
+    const u1 = onSharedSnapshot('workOrders', (snap) => {
+      setPool(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder))); done();
+    }, done);
+    const u2 = onSharedSnapshot('assignments', (snap) => {
+      setDispatched(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder))); done();
+    }, done);
+    return () => { u1(); u2(); };
   }, []);
+  useEffect(() => { setAllWorkOrders(mergeJobs(pool, dispatched) as WorkOrder[]); }, [pool, dispatched]);
 
   const dateJobs = useMemo(() => {
     return allWorkOrders

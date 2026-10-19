@@ -1,4 +1,5 @@
 'use client';
+import dynamic from 'next/dynamic';
 
 import { useState, useMemo, useEffect } from 'react';
 import type { WorkOrder, Project } from '@/lib/types';
@@ -32,7 +33,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn, reverseGeocode } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
-const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const LocationMap = dynamic(() => import('@/components/location-map'), { ssr: false });
 
 type CheckInDialogProps = {
     isOpen: boolean;
@@ -263,7 +264,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
                         </ScrollArea>
                     </div>
 
-                    {selectedItem && MAPS_API_KEY && (
+                    {selectedItem && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300 text-left">
                              <div className={cn(
                                  "p-3 rounded-lg border flex items-center justify-between transition-colors",
@@ -291,15 +292,7 @@ export function CheckInDialog({ isOpen, setIsOpen, workOrders, projects }: Check
 
                              {/* Location Preview */}
                              <div className="relative aspect-video w-full bg-bg-primary rounded-lg overflow-hidden border border-border-sub">
-                                <iframe 
-                                    src={`https://www.google.com/maps/embed/v1/place?key=${MAPS_API_KEY}&q=${encodeURIComponent(selectedItem.location)}`} 
-                                    width="100%" 
-                                    height="100%" 
-                                    style={{ border: 0, filter: 'grayscale(0.8) invert(1)' }} 
-                                    allowFullScreen={true} 
-                                    loading="lazy"
-                                    className="absolute top-0 left-0"
-                                ></iframe>
+                                <div className="absolute inset-0"><LocationMap location={selectedItem.location} /></div>
                                 <div className="absolute top-2 left-2 z-10">
                                     <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2 py-1 rounded border border-white/10 text-[10px] font-semibold uppercase text-white tracking-wider">
                                         <Navigation size={10} className="text-brand-red" /> Job location

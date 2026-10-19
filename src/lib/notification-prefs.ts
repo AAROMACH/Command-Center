@@ -29,12 +29,23 @@ export const eventEnabled = (prefs: NotificationPreferences, event: string) => p
 
 export type OutsideChannel = 'phone' | 'email' | 'sms';
 
+/**
+ * What starts checked for someone who hasn't touched the grid: a tech's job
+ * assignments, changes and removals by phone and email. Everything else (and
+ * all text messages) starts off; people opt in.
+ */
+const DEFAULT_ON: Record<string, OutsideChannel[]> = {
+  job_assignments: ['phone', 'email'],
+};
+
 /** Whether this event goes out on this channel: the grid's checkbox if set,
- *  otherwise the older channel switch and per-event switch. */
+ *  otherwise the default above (an event switched off under the older
+ *  per-event switches stays off). */
 export function channelOn(prefs: NotificationPreferences, event: string, ch: OutsideChannel): boolean {
   const explicit = prefs.eventChannels?.[event]?.[ch];
   if (explicit !== undefined) return explicit;
-  return eventEnabled(prefs, event) && prefs[ch] !== false;
+  if (!eventEnabled(prefs, event)) return false;
+  return (DEFAULT_ON[event] || []).includes(ch);
 }
 
 /** The full object to save when one grid checkbox changes. */

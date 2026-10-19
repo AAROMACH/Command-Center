@@ -10,7 +10,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { getAvailablePortals } from "@/lib/permissions";
 import { canAccessPath } from "@/lib/route-permissions";
-import { Home, CalendarDays, FileText, Coins, Wrench, ClipboardList, Inbox, Receipt } from "lucide-react";
+import { Home, CalendarDays, FileText, Coins, Wrench, ClipboardList, Inbox, Receipt, Target, Users, FileSearch, Settings } from "lucide-react";
 
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -18,6 +18,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const isTechPortal = pathname.startsWith("/tech");
   const isAdminPortal = pathname.startsWith("/admin");
+  const isSalesPortal = pathname.startsWith("/sales");
 
   // Enforce one composite effective-access decision (portal lock + page
   // permission) for direct-URL/refresh access — the same result the nav and
@@ -61,6 +62,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
           {/* Tech mobile bottom nav */}
           {isTechPortal && <BottomNav items={TECH_NAV} />}
           {isAdminPortal && <BottomNav items={ADMIN_NAV} />}
+          {isSalesPortal && <BottomNav items={SALES_NAV} />}
         </div>
       </div>
     </SidebarProvider>
@@ -85,6 +87,15 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/admin/dashboard", label: "Home", Icon: Home },
   { href: "/admin/payroll/audit", label: "Payroll", Icon: Receipt, gate: "/admin/financials" },
   { href: "/admin/requests", label: "Requests", Icon: Inbox },
+];
+
+// Sales: My Day in the middle as the home screen.
+const SALES_NAV: NavItem[] = [
+  { href: "/sales/pipeline", label: "Pipeline", Icon: Target },
+  { href: "/sales/accounts", label: "Accounts", Icon: Users },
+  { href: "/sales/my-day", label: "My Day", Icon: Home },
+  { href: "/sales/quotes", label: "Quotes", Icon: FileSearch },
+  { href: "/sales/settings", label: "Settings", Icon: Settings },
 ];
 
 /** Phone-only bottom tabs; hides pages the user can't open (e.g. Earnings for project managers). */

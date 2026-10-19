@@ -73,6 +73,7 @@ export default function TechEarningsPage() {
     // the expanded per-job breakdown below. `workOrders` above only ever
     // holds unassigned-pool docs, which a tech's own jobs never sit in.
     const [assignments, setAssignments] = useState<WorkOrder[]>([]);
+    const [helperAssignments, setHelperAssignments] = useState<WorkOrder[]>([]);
     const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
     const [projectPayouts, setProjectPayouts] = useState<any[]>([]);
     const [reimbursements, setReimbursements] = useState<Reimbursement[]>([]);
@@ -153,7 +154,11 @@ export default function TechEarningsPage() {
             const unsubReim = onSnapshot(query(collection(db, 'reimbursements'), where('techId', '==', userId)), (snap) => {
                 setReimbursements(snap.docs.map(d => ({ ...d.data(), id: d.id } as Reimbursement)));
             });
-            return () => { unsubTech(); unsubLogs(); unsubExp(); unsubWO(); unsubAsmt(); unsubPayouts(); unsubReim(); unsubDisputes(); };
+            // Jobs they helped on, so helper lines resolve too.
+            const unsubHelp = onSnapshot(query(collection(db, 'assignments'), where('additionalTechnicianIds', 'array-contains', userId)), (snap) => {
+                setHelperAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+            }, () => {});
+            return () => { unsubTech(); unsubLogs(); unsubExp(); unsubWO(); unsubAsmt(); unsubHelp(); unsubPayouts(); unsubReim(); unsubDisputes(); };
         }
     }, []);
 
@@ -162,8 +167,8 @@ export default function TechEarningsPage() {
     // (unassigned-pool leftovers or the tech's live/completed assignments)
     // the doc currently lives in.
     const jobsById = useMemo(
-        () => new Map(mergeJobs(workOrders, assignments).map(j => [j.id, j])),
-        [workOrders, assignments],
+        () => new Map(mergeJobs(workOrders, [...assignments, ...helperAssignments]).map(j => [j.id, j])),
+        [workOrders, assignments, helperAssignments],
     );
 
     const settlementOf = (log: WeeklyLog) => computeWeeklyLogSettlement(log, jobsById);

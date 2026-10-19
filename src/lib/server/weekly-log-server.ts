@@ -172,6 +172,7 @@ export async function fileJob(opts: {
     id: await serverDocId(ID_PREFIXES.WEEKLY_LOG_ITEM),
     workOrderId: job.id,
     jobPay: isHelper ? 0 : Number(job.pay) || 0,
+    jobSource: job.source || undefined,
     outcomeCode: null,
     isComplete: true,
     isAdminReviewed: false,

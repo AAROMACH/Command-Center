@@ -10,7 +10,7 @@
  * InvoiceLineItem); the editor converts to and from PriceLine.
  */
 import type { Invoice, InvoiceLineItem, QuoteLineItem } from './types';
-import { roundCents, type PricingSettings, type ServicePlan, type Subscription, isLiveSubscription } from './billing';
+import { markupFor, roundCents, type PricingSettings, type ServicePlan, type Subscription, isLiveSubscription } from './billing';
 
 export type PriceSection = 'labor' | 'material';
 
@@ -22,8 +22,13 @@ export type PriceLine = {
   section: PriceSection;
   /** Materials only — labor is never taxed. */
   taxable: boolean;
-  /** Labor only: emergency / after-hours rate (1.5×). */
+  /** Labor only: rate multiplier from the price book (After hours ×2 …). */
+  multiplier?: number;
+  multiplierLabel?: string;
+  /** Older docs: emergency rate, = ×1.5. */
   emergency?: boolean;
+  /** Price-book source ('rate:<id>' | 'mat:<id>'), so lines map to QuickBooks items. */
+  itemRef?: string;
   /** Quotes: false = the client may leave it out. */
   required?: boolean;
   /** The quote category it came from, kept so a round trip doesn't change it. */
@@ -35,8 +40,22 @@ export type PlanDiscount = { planId: string; planName: string; laborPct: number;
 
 export const EMERGENCY_MULTIPLIER = 1.5;
 
+export const lineFactor = (l: PriceLine) =>
+  l.section !== 'labor' ? 1 : l.multiplier != null ? Number(l.multiplier) || 0 : l.emergency ? EMERGENCY_MULTIPLIER : 1;
+
 export const lineAmount = (l: PriceLine) =>
-  roundCents((Number(l.quantity) || 0) * (Number(l.unitPrice) || 0) * (l.section === 'labor' && l.emergency ? EMERGENCY_MULTIPLIER : 1));
+  roundCents((Number(l.quantity) || 0) * (Number(l.unitPrice) || 0) * lineFactor(l));
+
+/** Extra fields stored on quote/invoice lines (Firestore keeps unknown keys). */
+const lineExtras = (l: PriceLine) => ({
+  ...(l.section === 'labor' && l.multiplier != null && l.multiplier !== 1 ? { multiplier: l.multiplier, multiplierLabel: l.multiplierLabel || '' } : {}),
+  ...(l.section === 'labor' && l.multiplier == null && l.emergency ? { emergency: true } : {}),
+  ...(l.itemRef ? { itemRef: l.itemRef } : {}),
+});
+const readExtras = (i: Record<string, any>) => ({
+  ...(typeof i.multiplier === 'number' ? { multiplier: i.multiplier, multiplierLabel: i.multiplierLabel || '' } : {}),
+  ...(typeof i.itemRef === 'string' ? { itemRef: i.itemRef } : {}),
+});
 
 export type PriceTotals = {
   laborSubtotal: number;
@@ -88,10 +107,10 @@ export function describeDiscount(d: PlanDiscount): string {
 export type PriceBookItem = { id: string; name: string; unitPrice: number; section: PriceSection; taxable: boolean; group: string };
 
 /** Sell price for a material: its billable price, or cost + category markup. */
-export function materialPrice(m: { billablePrice?: number; standardCost?: number; category?: string }, settings: PricingSettings): number {
-  if ((m.billablePrice || 0) > 0) return roundCents(m.billablePrice!);
-  const markup = m.category && settings.materialMarkupPct[m.category] != null ? settings.materialMarkupPct[m.category] : settings.defaultMarkupPct;
-  return roundCents((m.standardCost || 0) * (1 + markup / 100));
+export function materialPrice(m: { billablePrice?: number; standardCost?: number; category?: string; priceOverride?: boolean }, settings: PricingSettings): number {
+  const fixed = m.priceOverride === true || (m.priceOverride === undefined && (m.billablePrice || 0) > 0);
+  if (fixed || !(m.standardCost || 0)) return roundCents(m.billablePrice || 0);
+  return roundCents((m.standardCost || 0) * (1 + markupFor(m.category, settings) / 100));
 }
 
 // ── Stored shapes ↔ PriceLine ─────────────────────────────────────────────────
@@ -104,7 +123,7 @@ export function fromQuoteLines(items: QuoteLineItem[] = []): PriceLine[] {
     return {
       id: i.id, name: i.name, quantity: i.quantity, unitPrice: i.unitPrice, section,
       taxable: section === 'material' && !!i.taxable, emergency: !!(i as any).emergency,
-      required: i.required !== false, sourceCategory: i.category,
+      required: i.required !== false, sourceCategory: i.category, ...readExtras(i as any),
     };
   });
 }
@@ -117,7 +136,7 @@ export function toQuoteLines(lines: PriceLine[]): QuoteLineItem[] {
       total: lineAmount(l), taxable: l.section === 'material' && l.taxable,
       category: keep ? l.sourceCategory! : (l.section === 'labor' ? 'labor' : 'materials'),
       required: l.required !== false,
-      ...(l.emergency && l.section === 'labor' ? { emergency: true } : {}),
+      ...lineExtras(l),
     } as QuoteLineItem;
   });
 }
@@ -126,14 +145,15 @@ export function fromInvoiceLines(items: InvoiceLineItem[] = []): PriceLine[] {
   return items.map(i => ({
     id: i.id, name: i.description, quantity: i.quantity, unitPrice: i.unitPrice, section: i.category,
     // Older invoices taxed every material line.
-    taxable: i.category === 'material' && i.taxable !== false, emergency: !!i.isEmergencyProtocol,
+    taxable: i.category === 'material' && i.taxable !== false, emergency: !!i.isEmergencyProtocol, ...readExtras(i as any),
   }));
 }
 
 export function toInvoiceLines(lines: PriceLine[]): InvoiceLineItem[] {
   return lines.map(l => ({
     id: l.id, description: l.name, quantity: Number(l.quantity) || 0, unitPrice: Number(l.unitPrice) || 0, category: l.section,
-    isEmergencyProtocol: l.section === 'labor' && !!l.emergency, taxable: l.section === 'material' && l.taxable,
+    isEmergencyProtocol: l.section === 'labor' && l.multiplier == null && !!l.emergency, taxable: l.section === 'material' && l.taxable,
+    ...lineExtras(l),
   }));
 }
 

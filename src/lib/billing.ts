@@ -114,10 +114,31 @@ export const MATERIAL_CATEGORIES = [
   'Other',
 ] as const;
 
-export type LaborRate = { id: string; label: string; rate: number; unit: 'hour' | 'flat'; minimum: string };
+export type LaborRate = {
+  id: string; label: string; rate: number; unit: 'hour' | 'flat'; minimum: string;
+  /** QuickBooks: item SKU and, once synced, the QBO Item id (Type = Service). */
+  sku?: string;
+  qbItemId?: string;
+};
+
+/** A material category with its markup. Every material in it is priced
+ *  cost × (1 + markupPct/100) unless the material sets its own price. */
+export type PriceCategory = {
+  id: string;
+  name: string;
+  markupPct: number;
+  /** QuickBooks income account for items in this category (e.g. "Sales of Product Income"). */
+  qbIncomeAccount?: string;
+};
+
+/** A labor rate multiplier picked per line, e.g. After hours ×2, Weekend ×1.5. */
+export type RateMultiplier = { id: string; label: string; factor: number };
 
 export type PricingSettings = {
   laborRates: LaborRate[];
+  /** Material categories and their markups (replaces materialMarkupPct). */
+  categories: PriceCategory[];
+  multipliers: RateMultiplier[];
   /** Markup % by material category; categories not listed use defaultMarkupPct. */
   materialMarkupPct: Record<string, number>;
   defaultMarkupPct: number;
@@ -127,8 +148,20 @@ export type PricingSettings = {
   updatedBy?: string;
 };
 
+export const DEFAULT_CATEGORIES: PriceCategory[] = [
+  { id: 'cat-cable', name: 'Cable', markupPct: 20 },
+  { id: 'cat-racks', name: 'Racks & Enclosures', markupPct: 20 },
+  { id: 'cat-network', name: 'Network Equipment', markupPct: 20 },
+  { id: 'cat-hardware', name: 'Hardware', markupPct: 20 },
+];
+export const DEFAULT_MULTIPLIERS: RateMultiplier[] = [
+  { id: 'mult-after-hours', label: 'After hours', factor: 2 },
+];
+
 export const DEFAULT_PRICING: PricingSettings = {
   laborRates: [],
+  categories: DEFAULT_CATEGORIES,
+  multipliers: DEFAULT_MULTIPLIERS,
   materialMarkupPct: {},
   defaultMarkupPct: 20,
   salesTaxPct: 6,
@@ -178,8 +211,16 @@ export function localDay(d = new Date()): string {
 }
 
 export function markupFor(category: string | undefined, settings: PricingSettings): number {
+  const cat = category && settings.categories.find(c => c.name.toLowerCase() === category.toLowerCase());
+  if (cat) return cat.markupPct;
   if (category && settings.materialMarkupPct[category] != null) return settings.materialMarkupPct[category];
   return settings.defaultMarkupPct;
+}
+
+/** "×2 (+100%)", "×0.9 (10% off)". */
+export function describeFactor(factor: number): string {
+  const pct = Math.round((factor - 1) * 1000) / 10;
+  return `×${factor}${pct === 0 ? '' : pct > 0 ? ` (+${pct}%)` : ` (${-pct}% off)`}`;
 }
 
 /** Sell price for a material from its cost and category markup. */

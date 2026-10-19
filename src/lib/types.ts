@@ -1189,8 +1189,14 @@ export type Material = {
   description?: string;
   unitType: 'each' | 'box' | 'pack' | 'foot' | 'roll' | 'hour' | 'set' | 'bag' | 'bundle';
   standardCost: number;
+  /** Sell price. Snapshot when priced from the category markup (see priceOverride). */
   billablePrice: number;
   markupPercentage?: number;
+  /** true = billablePrice is fixed by hand; false = cost × category markup
+   *  (follows markup changes). Unset on older materials = billablePrice as entered. */
+  priceOverride?: boolean;
+  /** QuickBooks Item id once synced (Type = NonInventory). */
+  qbItemId?: string;
   vendor?: string;
   sku?: string;
   taxable: boolean;

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
-import { DEFAULT_PRICING, type PricingSettings, type ServicePlan, type Subscription } from '@/lib/billing';
+import { DEFAULT_MULTIPLIERS, DEFAULT_PRICING, DEFAULT_CATEGORIES, type PriceCategory, type PricingSettings, type ServicePlan, type Subscription } from '@/lib/billing';
 
 /** Every service plan (any status), in display order. Small collection. */
 export function useServicePlans(): { plans: ServicePlan[]; loading: boolean } {
@@ -18,7 +18,15 @@ export function useServicePlans(): { plans: ServicePlan[]; loading: boolean } {
   return state;
 }
 
-/** Labor rates, material markups and sales tax — adminConfig/pricing. */
+/** Before categories were editable, markups were a map keyed by a fixed
+ *  category list. Carry any that were set over; otherwise start from the defaults. */
+function legacyCategories(data: Partial<PricingSettings>): PriceCategory[] {
+  const set = Object.entries(data.materialMarkupPct || {});
+  if (!set.length) return DEFAULT_CATEGORIES.map(c => ({ ...c, markupPct: data.defaultMarkupPct ?? c.markupPct }));
+  return set.map(([name, markupPct], i) => ({ id: `cat-legacy-${i}`, name, markupPct }));
+}
+
+/** Labor rates, multipliers, material categories/markups and sales tax — adminConfig/pricing. */
 export function usePricingSettings(): { settings: PricingSettings; loading: boolean; exists: boolean } {
   const [state, setState] = useState({ settings: DEFAULT_PRICING, loading: true, exists: false });
   useEffect(() => onSnapshot(doc(db, 'adminConfig', 'pricing'), snap => {
@@ -29,6 +37,8 @@ export function usePricingSettings(): { settings: PricingSettings; loading: bool
         ...data,
         laborRates: data.laborRates ?? [],
         materialMarkupPct: data.materialMarkupPct ?? {},
+        categories: data.categories ?? legacyCategories(data),
+        multipliers: data.multipliers ?? DEFAULT_MULTIPLIERS,
       },
       loading: false,
       exists: snap.exists(),

@@ -30,7 +30,7 @@ import { mergeJobs, jobTechId, jobDateTimeValue, JOB_STATUS_OPTIONS, isArchivedJ
 import { isSuperAdmin, isPayAdmin } from '@/lib/permissions';
 import { computeWeeklyLogSettlement } from '@/lib/payroll';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
-import { topClients, topCities } from '@/lib/intel-insights';
+import { topCities } from '@/lib/intel-insights';
 import dynamic from 'next/dynamic';
 
 // Leaflet touches window — load the density map in the browser only.
@@ -200,10 +200,25 @@ export default function FieldIntelligencePage() {
     );
 
     // Insights: top clients (with gross profit) and top cities — lib/intel-insights.ts.
-    const topClientRows = useMemo(
-        () => topClients(mergeJobs(workOrders, assignments), weeklyLogs, invoices, 10),
-        [workOrders, assignments, weeklyLogs, invoices],
-    );
+    // Quality tab: the last 6 months of completed work and how much of it
+    // needed a revisit or was cancelled — the trend the Customers tab doesn't show.
+    const monthlyQuality = useMemo(() => {
+        const jobs = mergeJobs(workOrders, assignments).filter(j => !isArchivedJob(j));
+        const now = new Date();
+        return Array.from({ length: 6 }, (_, i) => {
+            const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+            const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            const inMonth = jobs.filter(j => (j.scheduleDate || '').slice(0, 7) === ym);
+            const completed = inMonth.filter(j => j.status === 'completed').length;
+            const cancelled = inMonth.filter(j => j.status === 'cancelled').length;
+            const revisits = inMonth.filter(j => (j.revisitCount && j.revisitCount > 0)
+                || j.jobType?.toLowerCase().includes('revisit') || j.jobType?.toLowerCase().includes('follow-up')).length;
+            return {
+                label: d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }), total: inMonth.length, completed, cancelled, revisits,
+                revisitRate: inMonth.length ? Math.round((revisits / inMonth.length) * 100) : 0,
+            };
+        });
+    }, [workOrders, assignments]);
     const topCityRows = useMemo(() => topCities(mergeJobs(workOrders, assignments), 10), [workOrders, assignments]);
 
     const failurePatterns = useMemo(() => {
@@ -298,7 +313,7 @@ export default function FieldIntelligencePage() {
                 eyebrow="Reports"
                 icon={BarChart2}
                 title="Insights"
-                subtitle="Customer trends, technician performance, app activity and flags."
+                subtitle="Customers, technician performance, quality, app activity and flags."
             />
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -309,7 +324,7 @@ export default function FieldIntelligencePage() {
                             Techs
                         </TabsTrigger>
                         <TabsTrigger value="app_activity" className="tab">App activity</TabsTrigger>
-                        <TabsTrigger value="insights" className="tab">Trends</TabsTrigger>
+                        <TabsTrigger value="insights" className="tab">Quality</TabsTrigger>
                         <TabsTrigger value="flags" className="tab flex items-center gap-2">
                             Flags
                             {flagsTotal > 0 && (
@@ -557,6 +572,37 @@ export default function FieldIntelligencePage() {
                 <TabsContent value="insights" className="m-0">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
+                        {/* Last 6 months */}
+                        <div className="lg:col-span-2 space-y-2">
+                            <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2">Last 6 months</h3>
+                            <div className="rounded-lg border border-border-sub overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="text-[11px]">Month</TableHead>
+                                            <TableHead className="text-[11px] text-right">Jobs</TableHead>
+                                            <TableHead className="text-[11px] text-right">Completed</TableHead>
+                                            <TableHead className="text-[11px] text-right">Cancelled</TableHead>
+                                            <TableHead className="text-[11px] text-right">Revisits</TableHead>
+                                            <TableHead className="text-[11px] text-right">Revisit rate</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {monthlyQuality.map(m => (
+                                            <TableRow key={m.label}>
+                                                <TableCell className="text-[11px] font-bold">{m.label}</TableCell>
+                                                <TableCell className="text-[11px] font-mono text-right">{m.total}</TableCell>
+                                                <TableCell className="text-[11px] font-mono text-right">{m.completed}</TableCell>
+                                                <TableCell className="text-[11px] font-mono text-right">{m.cancelled}</TableCell>
+                                                <TableCell className="text-[11px] font-mono text-right">{m.revisits}</TableCell>
+                                                <TableCell className={cn('text-[11px] font-mono text-right', m.revisitRate > 20 ? 'text-text-red font-bold' : 'text-text-muted')}>{m.total ? `${m.revisitRate}%` : '—'}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+
                         {/* Tech Reliability Trends */}
                         <div className="lg:col-span-2 space-y-2">
                             <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2">Technician reliability</h3>
@@ -647,53 +693,6 @@ export default function FieldIntelligencePage() {
                                 </div>
                             ))}
                             <ListPager pager={underpaidPager} noun="jobs" />
-                        </div>
-
-                        {/* Top 10 Clients */}
-                        <div className="lg:col-span-2 space-y-2">
-                            <div className="border-b border-border-sub pb-2">
-                                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Top 10 clients</h3>
-                                <p className="text-[11px] text-text-muted mt-1 leading-relaxed">
-                                    Ranked by job volume. Same model as Financials: revenue = what each completed job pays into the app (its pay, or its paid invoice before tax) plus paid invoices not tied to a job;
-                                    labor = the tech portion; gross profit = the Aaromach portion (revenue − labor − the 15.85% Field Nation fee on FN jobs).
-                                </p>
-                            </div>
-                            {topClientRows.length === 0 ? (
-                                <p className="text-[10px] text-text-muted py-3">No client jobs yet</p>
-                            ) : (
-                                <div className="rounded-lg border border-border-sub overflow-hidden">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead className="text-[11px]">#</TableHead>
-                                                <TableHead className="text-[11px]">Client</TableHead>
-                                                <TableHead className="text-[11px] text-right">Jobs</TableHead>
-                                                <TableHead className="text-[11px] text-right">Completed</TableHead>
-                                                <TableHead className="text-[11px] text-right">Revenue</TableHead>
-                                                <TableHead className="text-[11px] text-right">Labor</TableHead>
-                                                <TableHead className="text-[11px] text-right">Gross profit</TableHead>
-                                                <TableHead className="text-[11px] text-right">Margin</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {topClientRows.map((r, i) => (
-                                                <TableRow key={r.client}>
-                                                    <TableCell className="text-[10px] text-text-muted">{i + 1}</TableCell>
-                                                    <TableCell className="text-[10px] font-bold">{r.client}</TableCell>
-                                                    <TableCell className="text-[10px] font-mono text-right">{r.jobs}</TableCell>
-                                                    <TableCell className="text-[10px] font-mono text-right">{r.completed}</TableCell>
-                                                    <TableCell className="text-[10px] font-mono text-right">${r.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</TableCell>
-                                                    <TableCell className="text-[10px] font-mono text-right">${r.labor.toLocaleString(undefined, { maximumFractionDigits: 0 })}</TableCell>
-                                                    <TableCell className={cn('text-[10px] font-mono font-bold text-right', r.grossProfit >= 0 ? 'text-text-green' : 'text-text-red')}>
-                                                        ${r.grossProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                                    </TableCell>
-                                                    <TableCell className="text-[10px] font-mono text-right">{r.margin == null ? '—' : `${r.margin.toFixed(1)}%`}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            )}
                         </div>
 
                         {/* Top 10 Cities */}

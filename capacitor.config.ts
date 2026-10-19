@@ -27,6 +27,10 @@ const config: CapacitorConfig = {
   backgroundColor: '#111111',
   plugins: {
     PushNotifications: { presentationOptions: ['badge', 'sound', 'alert'] },
+    // Google blocks its sign-in page inside the app's web view, so the app
+    // uses Android's account picker and hands the token to the web Firebase
+    // SDK (skipNativeAuth) — same account as signing in on the website.
+    FirebaseAuthentication: { skipNativeAuth: true, providers: ['google.com'] },
   },
 };
 

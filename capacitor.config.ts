@@ -17,6 +17,14 @@ const config: CapacitorConfig = {
   // Shown only if the live site can't be reached.
   webDir: 'mobile/www',
   server: serverUrl ? { url: serverUrl, cleartext: false } : undefined,
+  android: {
+    // Android 15+ draws apps under the status and gesture bars. Keep the app
+    // between them so the top bar (menu, alerts, bell) and the bottom nav
+    // aren't covered by the phone's notification shade.
+    adjustMarginsForEdgeToEdge: 'force',
+  },
+  // Fills the strips above/below the app (matches the dark UI).
+  backgroundColor: '#111111',
   plugins: {
     PushNotifications: { presentationOptions: ['badge', 'sound', 'alert'] },
   },

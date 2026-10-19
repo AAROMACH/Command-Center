@@ -49,6 +49,8 @@ export type NotificationPreferences = {
   email: boolean;
   sms: boolean;
   push: boolean;
+  /** Per-event switches (lib/notification-events); missing = on. */
+  events?: Record<string, boolean>;
 };
 
 export type Notification = {

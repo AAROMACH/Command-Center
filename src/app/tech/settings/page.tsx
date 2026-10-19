@@ -1,4 +1,5 @@
 "use client";
+import { NotificationEventsCard } from '@/components/notification-events-card';
 
 import { PageHeader } from '@/components/page-header';
 import { PageLoading } from '@/components/empty-state';
@@ -7,6 +8,7 @@ import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { resolveNotificationPrefs, withNotificationPref } from '@/lib/notification-prefs';
+import type { NotificationChannel } from '@/lib/notification-prefs';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -66,7 +68,7 @@ export default function TechSettingsPage() {
         }
     };
 
-    const handleTogglePreference = async (type: keyof NotificationPreferences) => {
+    const handleTogglePreference = async (type: NotificationChannel) => {
         if (!currentUser) return;
         const updatedPrefs = withNotificationPref(currentUser.notificationPreferences, type, !resolveNotificationPrefs(currentUser.notificationPreferences)[type]);
 
@@ -105,7 +107,7 @@ export default function TechSettingsPage() {
                             {[
                                 { id: 'email', label: 'Email', desc: 'Assignments, pay stubs and alerts sent to your email.' },
                                 { id: 'sms', label: 'Text message', desc: 'Job and schedule alerts texted to your phone.' },
-                                { id: 'push', label: 'In-App', desc: 'Alerts in the bell at the top of the app.' },
+                                { id: 'push', label: 'In-app & phone', desc: 'Alerts in the bell, and on your phone if you use the Android app.' },
                             ].map((item) => (
                                 <div key={item.id} className="flex items-center justify-between gap-3 p-4 rounded-lg bg-bg-secondary/50 border border-border-sub hover:border-text-muted transition-all">
                                     <div className="space-y-0.5 text-left">
@@ -113,13 +115,14 @@ export default function TechSettingsPage() {
                                         <p className="text-[12px] text-text-muted">{item.desc}</p>
                                     </div>
                                     <Switch 
-                                        checked={resolveNotificationPrefs(currentUser?.notificationPreferences)[item.id as keyof NotificationPreferences]} 
-                                        onCheckedChange={() => handleTogglePreference(item.id as keyof NotificationPreferences)}
+                                        checked={resolveNotificationPrefs(currentUser?.notificationPreferences)[item.id as NotificationChannel]} 
+                                        onCheckedChange={() => handleTogglePreference(item.id as NotificationChannel)}
                                     />
                                 </div>
                             ))}
                         </CardContent>
                     </Card>
+                    <NotificationEventsCard />
                 </section>
 
                 {/* EXPERIENCE */}

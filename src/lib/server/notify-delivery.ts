@@ -1,5 +1,6 @@
 import type { Firestore } from 'firebase-admin/firestore';
-import { resolveNotificationPrefs } from '@/lib/notification-prefs';
+import { eventEnabled, resolveNotificationPrefs } from '@/lib/notification-prefs';
+import { eventForTitle, type NotificationEvent } from '@/lib/notification-events';
 import { entityHref } from '@/lib/notification-links';
 import { sendPush } from './push';
 
@@ -96,19 +97,22 @@ export async function sendEmail(to: string, subject: string, body: string): Prom
 export async function deliverNotification(
   fs: Firestore,
   recipients: { id: string; data: Record<string, any> }[],
-  msg: { title: string; body: string; entity?: NotifyEntity; sentBy: string; inAppOnly?: boolean; portal?: NotifyPortal },
+  msg: { title: string; body: string; entity?: NotifyEntity; sentBy: string; inAppOnly?: boolean; portal?: NotifyPortal; event?: NotificationEvent },
 ): Promise<number> {
   const subject = `[AAROMACH] ${msg.title.toUpperCase()}`;
   const { entity } = msg;
   let sent = 0;
+  const event = msg.event || eventForTitle(msg.title);
 
   await Promise.all(recipients.filter(r => r.data.accountStatus !== 'inactive').map(async ({ id, data }) => {
     const prefs = resolveNotificationPrefs(data.notificationPreferences);
+    // An event they've switched off still goes in the bell — just quietly.
+    const quiet = msg.inAppOnly || !eventEnabled(prefs, event);
     const channels: ('email' | 'sms' | 'push')[] = [];
     // Routine activity (a task checked off, a check-in) is an in-app record
     // only — texting every update would bury the alerts that matter.
-    if (!msg.inAppOnly && prefs.email && data.email) channels.push('email');
-    if (!msg.inAppOnly && prefs.sms && data.phone) channels.push('sms');
+    if (!quiet && prefs.email && data.email) channels.push('email');
+    if (!quiet && prefs.sms && data.phone) channels.push('sms');
     if (prefs.push) channels.push('push');
     // Always leave an in-app record, even if they've opted out of every channel.
     if (channels.length === 0) channels.push('push');
@@ -118,7 +122,7 @@ export async function deliverNotification(
       try {
         if (type === 'email') status = (await sendEmail(data.email, subject, msg.body)) === 'sent' ? 'sent' : 'pending';
         else if (type === 'sms') status = (await sendSms(data.phone, `${subject}\n\n${msg.body}`)) === 'sent' ? 'sent' : 'pending';
-        else if (type === 'push' && !msg.inAppOnly) {
+        else if (type === 'push' && !quiet) {
           const portal = msg.portal || portalForRecipient(data, entity);
           const delivered = await sendPush(fs, id, { title: msg.title, body: msg.body, url: entity ? entityHref(portal, entity.type, entity.id) || undefined : undefined });
           if (delivered > 0) status = 'sent';
@@ -139,6 +143,7 @@ export async function deliverNotification(
         status,
         sentBy: msg.sentBy,
         portal: msg.portal || portalForRecipient(data, entity),
+        event,
         ...(entity ? { relatedEntityId: entity.id, relatedEntityType: entity.type } : {}),
       });
     }));

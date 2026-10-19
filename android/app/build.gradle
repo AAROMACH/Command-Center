@@ -20,6 +20,14 @@ android {
     // Release signing from env (GitHub Actions secrets) — the same key must
     // sign every version or phones refuse the update. Never commit the keystore.
     signingConfigs {
+        // Fixed test key (committed on purpose, not a secret) so each CI test
+        // build installs over the last one instead of needing an uninstall.
+        debug {
+            storeFile file('test-debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
         release {
             def ks = System.getenv("ANDROID_KEYSTORE_PATH")
             if (ks) {

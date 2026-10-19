@@ -15,7 +15,9 @@ export function resolveNotificationPrefs(raw: Partial<NotificationPreferences> |
   return {
     email: raw?.email ?? DEFAULT_NOTIFICATION_PREFS.email,
     sms: raw?.sms ?? DEFAULT_NOTIFICATION_PREFS.sms,
-    push: raw?.push ?? DEFAULT_NOTIFICATION_PREFS.push,
+    // The bell always gets every alert (so a swiped-away phone alert is still
+    // there) — no longer a switch.
+    push: true,
     phone: raw?.phone ?? true,
     ...(raw?.events ? { events: raw.events } : {}),
   };

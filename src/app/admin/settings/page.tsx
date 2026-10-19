@@ -140,7 +140,6 @@ export default function AdminSettingsPage() {
                             {[
                                 { id: 'email', label: 'Email', desc: 'Alerts sent to your email address.' },
                                 { id: 'sms', label: 'Text Message', desc: 'Alerts texted to your phone number.' },
-                                { id: 'push', label: 'In-app', desc: 'Alerts in the bell at the top of the app.' },
                                 { id: 'phone', label: 'Phone notifications', desc: 'Pop-up alerts on your phone from the Aaromach Android app.' },
                             ].map((item) => (
                                 <div key={item.id} className="flex items-center justify-between p-4 rounded-lg border border-border-sub bg-bg-primary">

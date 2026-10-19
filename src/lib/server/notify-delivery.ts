@@ -113,9 +113,9 @@ export async function deliverNotification(
     // only — texting every update would bury the alerts that matter.
     if (!quiet && prefs.email && data.email) channels.push('email');
     if (!quiet && prefs.sms && data.phone) channels.push('sms');
-    if (prefs.push) channels.push('push');
-    // Always leave an in-app record, even if they've opted out of every channel.
-    if (channels.length === 0) channels.push('push');
+    // The bell always gets it — every phone, email or text alert is also
+    // there to find later.
+    channels.push('push');
 
     // Phone notification (Android app) — its own switch, separate from the bell.
     if (!quiet && prefs.phone) {

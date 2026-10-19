@@ -21,7 +21,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useLiveUsers } from '@/hooks/use-live-users';
 import { canEditUserPay } from '@/lib/profile-permissions';
 import { isClient } from '@/lib/permissions';
-import { useAllSubscriptions, usePricingSettings, useServicePlans } from '@/hooks/use-billing';
+import { useAllSubscriptions, useServicePlans } from '@/hooks/use-billing';
 import {
   formatMoney, INTERVAL_LABELS, isLiveSubscription, monthlyValue, subscriptionAmount, SUBSCRIPTION_STATUS_LABELS,
   type ServicePlan, type Subscription,
@@ -30,11 +30,11 @@ import {
 import { cancelSubscription, declineRequest, markPeriodBilled, setPlanStatus } from '@/lib/billing-actions';
 import { PlanEditorDialog } from './components/plan-editor-dialog';
 import { SubscriptionDialog, type SubscriptionDialogMode } from './components/subscription-dialog';
-import { PricingTab } from './components/pricing-tab';
 
 /**
- * Service plans, client subscriptions, requests and the pricing settings
- * (labor rates, material markup by category, sales tax). All data is live
+ * Service plans, client subscriptions and requests. Prices (labor rates,
+ * markup, sales tax) live in Assets & Materials → Labor & pricing; a plan only
+ * sets the discounts its subscribers get on quotes and invoices. All data is live
  * from Firestore — see lib/billing.ts for the model and
  * docs/billing-roadmap.md for how it maps onto Stripe and QuickBooks.
  *
@@ -52,7 +52,6 @@ export default function ServicePlansPage() {
   const canManage = canEditUserPay(me);
 
   const { plans, loading: plansLoading } = useServicePlans();
-  const { settings: pricing } = usePricingSettings();
   const { subscriptions, loading: subsLoading } = useAllSubscriptions();
   const users = useLiveUsers();
   const clients = useMemo(() => users.filter(u => isClient(u))
@@ -125,7 +124,7 @@ export default function ServicePlansPage() {
           eyebrow="Billing"
           icon={BookOpen}
           title="Service plans"
-          subtitle="Plans, client subscriptions and the price book quotes and invoices use."
+          subtitle="Plans, client subscriptions and the discounts subscribers get."
           actions={canManage ? (<>
             <Button variant="outline" onClick={() => setSubDialog({ kind: 'create' })} disabled={plans.length === 0}
               className="h-10 px-4">
@@ -150,7 +149,7 @@ export default function ServicePlansPage() {
       {noData && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border border-accent-gold/40 bg-accent-gold/5">
           <p className="text-xs text-text-primary">
-            No plans yet. Set your labor rates, markups and sales tax on the <b>Pricing</b> tab, then create your first plan.
+            No plans yet. Create your first plan.
           </p>
           {canManage && (
             <Button onClick={openNewPlan} className="h-9 shrink-0 bg-brand-red hover:bg-brand-red/90 text-white">
@@ -186,7 +185,6 @@ export default function ServicePlansPage() {
             <TabsTrigger value="requests" className="tab-trigger-plans flex items-center gap-1.5">
               Requests {requests.length > 0 && <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">{requests.length}</Badge>}
             </TabsTrigger>
-            <TabsTrigger value="pricing" className="tab-trigger-plans">Pricing</TabsTrigger>
           </TabsList>
         </div>
 
@@ -304,7 +302,7 @@ export default function ServicePlansPage() {
                           {p.description && <p className="text-[12px] text-text-secondary">{p.description}</p>}
                           <div className="grid grid-cols-2 gap-1.5 text-[12px] text-text-secondary">
                             <span className="flex items-center gap-1"><Clock size={10} /> {p.benefits.responseHours}h response</span>
-                            <span className="flex items-center gap-1"><Percent size={10} /> {p.benefits.laborDiscountPct}% off labor</span>
+                            <span className="flex items-center gap-1"><Percent size={10} /> {p.benefits.laborDiscountPct}% off labor{p.benefits.materialsDiscountPct ? ` · ${p.benefits.materialsDiscountPct}% off materials` : ''}</span>
                             <span className="flex items-center gap-1"><CalendarClock size={10} />
                               {p.benefits.includedVisits ? `${p.benefits.includedVisits} visit${p.benefits.includedVisits === 1 ? '' : 's'}/${p.benefits.includedVisitsPer}` : 'No visits incl.'}
                             </span>
@@ -388,11 +386,6 @@ export default function ServicePlansPage() {
               </Card>
             );
           })}
-        </TabsContent>
-
-        {/* ── Pricing ── */}
-        <TabsContent value="pricing" className="m-0">
-          <PricingTab settings={pricing} canEdit={canManage} />
         </TabsContent>
       </Tabs>
 

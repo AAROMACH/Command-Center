@@ -10,7 +10,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { getAvailablePortals } from "@/lib/permissions";
 import { canAccessPath } from "@/lib/route-permissions";
-import { Home, CalendarDays, FileText, Coins, FolderKanban, Wrench, ClipboardList, Inbox, Receipt } from "lucide-react";
+import { Home, CalendarDays, FileText, Coins, Wrench, ClipboardList, Inbox, Receipt, Target, Users, FileSearch, Settings } from "lucide-react";
 
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -18,6 +18,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const isTechPortal = pathname.startsWith("/tech");
   const isAdminPortal = pathname.startsWith("/admin");
+  const isSalesPortal = pathname.startsWith("/sales");
 
   // Enforce one composite effective-access decision (portal lock + page
   // permission) for direct-URL/refresh access — the same result the nav and
@@ -61,6 +62,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
           {/* Tech mobile bottom nav */}
           {isTechPortal && <BottomNav items={TECH_NAV} />}
           {isAdminPortal && <BottomNav items={ADMIN_NAV} />}
+          {isSalesPortal && <BottomNav items={SALES_NAV} />}
         </div>
       </div>
     </SidebarProvider>
@@ -70,23 +72,30 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
 type NavItem = { href: string; label: string; Icon: typeof Home; /** Path whose permission decides visibility (defaults to href). */ gate?: string };
 
 const TECH_NAV: NavItem[] = [
-  { href: "/tech/dashboard", label: "Home", Icon: Home },
+  { href: "/tech/assignments", label: "Assignments", Icon: ClipboardList },
   { href: "/tech/calendar", label: "Schedule", Icon: CalendarDays },
+  { href: "/tech/dashboard", label: "Home", Icon: Home },
   { href: "/tech/logs", label: "Logs", Icon: FileText },
   { href: "/tech/earnings", label: "Earnings", Icon: Coins },
-  { href: "/tech/projects", label: "Projects", Icon: FolderKanban },
 ];
 
-// Most-used admin pages, in priority order. The first five the user can open
-// are shown, so a dispatch admin without payroll gets Schedule instead.
+// Phone bottom tabs, Home in the middle. Pages the user can't open are hidden
+// (a dispatch admin without payroll sees four).
 const ADMIN_NAV: NavItem[] = [
-  { href: "/admin/dashboard", label: "Home", Icon: Home },
-  { href: "/admin/dispatch", label: "Dispatch", Icon: Wrench },
   { href: "/admin/assignments", label: "Jobs", Icon: ClipboardList },
-  { href: "/admin/requests", label: "Requests", Icon: Inbox },
+  { href: "/admin/dispatch", label: "Dispatch", Icon: Wrench },
+  { href: "/admin/dashboard", label: "Home", Icon: Home },
   { href: "/admin/payroll/audit", label: "Payroll", Icon: Receipt, gate: "/admin/financials" },
-  { href: "/admin/calendar", label: "Schedule", Icon: CalendarDays },
-  { href: "/admin/projects", label: "Projects", Icon: FolderKanban },
+  { href: "/admin/requests", label: "Requests", Icon: Inbox },
+];
+
+// Sales: My Day in the middle as the home screen.
+const SALES_NAV: NavItem[] = [
+  { href: "/sales/pipeline", label: "Pipeline", Icon: Target },
+  { href: "/sales/accounts", label: "Accounts", Icon: Users },
+  { href: "/sales/my-day", label: "My Day", Icon: Home },
+  { href: "/sales/quotes", label: "Quotes", Icon: FileSearch },
+  { href: "/sales/settings", label: "Settings", Icon: Settings },
 ];
 
 /** Phone-only bottom tabs; hides pages the user can't open (e.g. Earnings for project managers). */
@@ -112,7 +121,7 @@ function BottomNav({ items }: { items: NavItem[] }) {
             }`}
           >
             <Icon size={18} strokeWidth={2} />
-            <span className="text-[11px] font-medium leading-none">{label}</span>
+            <span className="text-[11px] font-medium leading-none truncate max-w-full px-0.5">{label}</span>
           </a>
         ))}
       </div>

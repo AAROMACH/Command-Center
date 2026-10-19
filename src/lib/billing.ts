@@ -28,6 +28,8 @@ export type PlanBenefits = {
   responseHours: number;
   /** % off labor lines on quotes and invoices for subscribers. */
   laborDiscountPct: number;
+  /** % off material lines (before tax). Older plans don't have it (= 0). */
+  materialsDiscountPct?: number;
   /** Included site visits per period (0 = none). */
   includedVisits: number;
   includedVisitsPer: BillingInterval;
@@ -203,6 +205,7 @@ export function emptyPlan(sortOrder = 0): Omit<ServicePlan, 'id' | 'createdAt' |
     benefits: {
       responseHours: 48,
       laborDiscountPct: 0,
+      materialsDiscountPct: 0,
       includedVisits: 0,
       includedVisitsPer: 'year',
       siteLimit: null,

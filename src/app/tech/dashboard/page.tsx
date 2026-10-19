@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 
 import { ScheduleBox } from './components/schedule-box';
+import { ActiveProjectsCard } from './components/active-projects-card';
 import { PageHeader } from '@/components/page-header';
 import { PageLoading, EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
@@ -285,6 +286,8 @@ export default function TechDashboardPage() {
                     )}
 
                     <ScheduleBox workOrders={allWorkOrders} onStatusTransition={handleStatusTransition} />
+
+                    <ActiveProjectsCard techId={tech?.id || null} />
                 </div>
 
                 {/* Right column — quick actions, reliability, earnings, pending logs */}

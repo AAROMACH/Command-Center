@@ -8,8 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Download, FileText, Plus, X } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from '@/hooks/use-toast';
-import type { Invoice, Technician, WorkOrder } from '@/lib/types';
-import { InvoiceEditor } from './invoice-editor';
+import type { Invoice } from '@/lib/types';
+import { PriceDocEditor, type PriceDocResult } from '@/components/price-doc-editor';
+import { invoiceToEditor, saveInvoiceFromEditor } from '@/lib/invoice-actions';
 import { parseLocalDate } from '@/lib/jobs';
 import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
@@ -17,11 +18,6 @@ import { SortControl } from '@/components/list-toolbar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { downloadCsv } from '@/app/admin/reports/components/history-tabs';
 import { statusLabel } from '@/lib/status-styles';
-import { isClient } from '@/lib/permissions';
-import { db } from "@/lib/firebase";
-import { doc, setDoc } from 'firebase/firestore';
-import { createDocId } from '@/lib/generateId';
-import { ID_PREFIXES } from '@/lib/constants';
 
 const INVOICE_SORTS = [
     { value: 'date', label: 'Due date' },
@@ -36,32 +32,28 @@ const INVOICE_SORTS = [
  * Quotes & Invoices, so both places create and edit invoices the same way.
  * `search` comes from the host page's search box.
  */
-export function InvoicesPanel({ search = '', onResetSearch }: { search?: string; onResetSearch?: () => void }) {
+export function InvoicesPanel({ search = '', onResetSearch, hideNewButton = false }: {
+    search?: string;
+    onResetSearch?: () => void;
+    /** Quotes & Invoices has its own New → Invoice button. */
+    hideNewButton?: boolean;
+}) {
     const [invoices, setInvoices] = useState<Invoice[]>([]);
-    const [users, setUsers] = useState<Technician[]>([]);
-    const [projects, setProjects] = useState<any[]>([]);
-    const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
-    const [assignments, setAssignments] = useState<WorkOrder[]>([]);
     const [invStatusFilter, setInvStatusFilter] = useState('all');
     const [invSort, setInvSort] = useState('date');
     const [invSortAsc, setInvSortAsc] = useState(false);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const { toast } = useToast();
 
     useEffect(() => {
         const subs = [
             onSharedSnapshot('invoices', snap => setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)))),
-            onSharedSnapshot('users', snap => setUsers(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)))),
-            onSharedSnapshot('projects', snap => setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
-            onSharedSnapshot('workOrders', snap => setWorkOrders(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)))),
-            onSharedSnapshot('assignments', snap => setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)))),
         ];
         return () => subs.forEach(u => u());
     }, []);
 
-    const clientsList = useMemo(() => users.filter(isClient), [users]);
-    const allMissions = useMemo(() => [...workOrders, ...assignments], [workOrders, assignments]);
 
     // Status options come from the invoices that exist, with counts.
     const invoiceStatusOptions = useMemo(() => {
@@ -91,22 +83,16 @@ export function InvoicesPanel({ search = '', onResetSearch }: { search?: string;
         filteredInvoices.map(inv => [inv.invoiceNumber, inv.clientName, inv.issueDate, inv.dueDate, statusLabel(inv.status),
             (Number((inv as any).subtotal) || 0).toFixed(2), (Number((inv as any).taxAmount ?? (inv as any).tax) || 0).toFixed(2), (Number(inv.total) || 0).toFixed(2), inv.id]));
 
-    const handleSaveInvoice = async (savedInvoice: Invoice) => {
+    const handleSaveInvoice = async (r: PriceDocResult) => {
+        setSaving(true);
         try {
-            const cleanedData = JSON.parse(JSON.stringify(savedInvoice));
-            const { id, ...data } = cleanedData;
-            if (id) {
-                await setDoc(doc(db, 'invoices', id), cleanedData);
-                toast({ title: 'Invoice updated', description: `Invoice ${savedInvoice.invoiceNumber} was updated.` });
-            } else {
-                const newId = await createDocId(ID_PREFIXES.INVOICE);
-                await setDoc(doc(db, 'invoices', newId), { ...data, id: newId });
-                toast({ title: 'Invoice created', description: `Invoice ${savedInvoice.invoiceNumber} was created.` });
-            }
+            await saveInvoiceFromEditor(r, selectedInvoice);
+            toast({ title: selectedInvoice ? 'Invoice updated' : 'Invoice created', description: `Invoice ${r.invoiceNumber} was saved.` });
             setIsEditorOpen(false);
         } catch (e: any) {
-            console.error("Financial registry write error:", e);
-            toast({ variant: "destructive", title: "Save Failed", description: e.message });
+            toast({ variant: "destructive", title: "Save failed", description: e.message });
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -118,7 +104,7 @@ export function InvoicesPanel({ search = '', onResetSearch }: { search?: string;
                         <CardTitle className="text-base">Client invoices</CardTitle>
                         <CardDescription>Create and track every client invoice.</CardDescription>
                     </div>
-                    <Button onClick={() => { setSelectedInvoice(null); setIsEditorOpen(true); }} className="h-9 px-4"><Plus size={14} className="mr-2"/>New invoice</Button>
+                    {!hideNewButton && <Button onClick={() => { setSelectedInvoice(null); setIsEditorOpen(true); }} className="h-9 px-4"><Plus size={14} className="mr-2"/>New invoice</Button>}
                 </CardHeader>
                 <div className="flex flex-wrap items-center gap-2 px-6 pb-4">
                     <Select value={invStatusFilter} onValueChange={setInvStatusFilter}>
@@ -174,7 +160,17 @@ export function InvoicesPanel({ search = '', onResetSearch }: { search?: string;
                     <div className="px-4"><ListPager pager={invoicePager} noun="invoices" /></div>
                 </CardContent>
             </Card>
-            <InvoiceEditor isOpen={isEditorOpen} setIsOpen={setIsEditorOpen} invoice={selectedInvoice} clients={clientsList} projects={projects} workOrders={allMissions} onSave={handleSaveInvoice} />
+            <PriceDocEditor
+                open={isEditorOpen}
+                onClose={() => setIsEditorOpen(false)}
+                kind="invoice"
+                initial={selectedInvoice ? invoiceToEditor(selectedInvoice) : undefined}
+                initialDiscount={selectedInvoice ? (selectedInvoice.planDiscount ?? null) : undefined}
+                title={selectedInvoice ? `Edit invoice ${selectedInvoice.invoiceNumber}` : 'New invoice'}
+                saveLabel="Save invoice"
+                saving={saving}
+                onSave={handleSaveInvoice}
+            />
         </>
     );
 }

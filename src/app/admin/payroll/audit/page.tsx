@@ -122,24 +122,6 @@ export default function PayrollAuditPage() {
     // "Post-Approval Disputes" tab for the per-log view of the same data.
     const [payrollDisputes, setPayrollDisputes] = useState<PayrollDispute[]>([]);
     const { hasPermission } = useAuth();
-    const [backfilling, setBackfilling] = useState(false);
-    // One-time: copy each job's source onto log items filed before items
-    // recorded it (see /api/admin/backfill-job-source). Safe to re-run.
-    const runJobSourceBackfill = async () => {
-        if (backfilling) return;
-        setBackfilling(true);
-        try {
-            const token = await auth.currentUser?.getIdToken();
-            const res = await fetch('/api/admin/backfill-job-source', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
-            const out = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(out.error || `Failed (${res.status})`);
-            toast({ title: 'Older pay estimates fixed', description: `${out.itemsUpdated} entr${out.itemsUpdated === 1 ? 'y' : 'ies'} on ${out.logsUpdated} log${out.logsUpdated === 1 ? '' : 's'} updated${out.itemsUnresolved ? `; ${out.itemsUnresolved} couldn't be matched to a job` : ''}.` });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Could not run the fix', description: e?.message || 'Please try again.' });
-        } finally {
-            setBackfilling(false);
-        }
-    };
     const canDecideTickets = hasPermission('admin.logs.approve');
     const [adjSearch, setAdjSearch] = useState('');
     // Weekly-log audit review (moved here from the Accounting page).
@@ -272,7 +254,7 @@ export default function PayrollAuditPage() {
         approved: filteredLogs.filter(l => l.status === 'Approved').reduce((s, l) => s + settlementOf(l), 0),
         pending: filteredLogs.filter(l => l.status === 'Submitted').reduce((s, l) => s + settlementOf(l), 0),
         count: filteredLogs.length,
-    }), [filteredLogs]);
+    }), [filteredLogs, settlementByLogId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Multiple Drafts are a data-integrity issue; a Draft beside an Approved
     // log can also hold later work that needs a fresh payroll review.
@@ -621,17 +603,11 @@ export default function PayrollAuditPage() {
                 icon={Receipt}
                 title="Payroll audit"
                 subtitle="Every weekly log submission and approval, with disputes and adjustments."
-                actions={<>
-                    {isSuperAdmin(currentUser) && (
-                        <Button variant="outline" size="sm" className="h-9 border-border-main" onClick={runJobSourceBackfill} disabled={backfilling}
-                            title="One-time fix: marks older log entries as Field Nation or manual so techs see their net share, not the full job pay">
-                            {backfilling ? 'Fixing…' : 'Fix older pay estimates'}
-                        </Button>
-                    )}
+                actions={
                     <Button variant="outline" size="sm" className="h-9 border-border-main" onClick={handleExportCsv}>
                         <Download size={14} className="mr-1.5" /> Export CSV
                     </Button>
-                </>}
+                }
             />
 
             {/* Summary chips */}

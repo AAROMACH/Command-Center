@@ -247,6 +247,12 @@ export default function PublicQuotePage() {
                 <div className="flex justify-between text-[12px] text-text-muted">
                   <span>Subtotal</span><span className="tabular-nums">{fmtMoney(quote.subtotal)}</span>
                 </div>
+                {(quote.discountAmount ?? 0) > 0 && (
+                  <div className="flex justify-between text-[12px] text-text-green">
+                    <span>{(quote as { planDiscount?: { planName?: string } | null }).planDiscount?.planName ? `${(quote as { planDiscount?: { planName?: string } | null }).planDiscount!.planName} plan discount` : 'Discount'}</span>
+                    <span className="tabular-nums">−{fmtMoney(quote.discountAmount ?? 0)}</span>
+                  </div>
+                )}
                 {quote.taxAmount > 0 && (
                   <div className="flex justify-between text-[12px] text-text-muted">
                     <span>Tax</span><span className="tabular-nums">{fmtMoney(quote.taxAmount)}</span>

@@ -11,7 +11,11 @@ import { useCrmPaths } from '@/lib/crm-paths';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
 import { syncLeadOnQuoteCreated } from '@/lib/crm-actions';
-import type { Lead, SiteSurvey, Quote, QuoteLineItem, QuoteOptionalGroup, QuoteOptionItem, QuoteStatus, Technician } from '@/lib/types';
+import type { Lead, SiteSurvey, Quote, QuoteStatus } from '@/lib/types';
+import { PriceDocEditor, type PriceDocResult, type PriceDocValues } from '@/components/price-doc-editor';
+import { fromQuoteLines, toQuoteLines, type PlanDiscount } from '@/lib/price-lines';
+import { saveInvoiceFromEditor } from '@/lib/invoice-actions';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { isClient } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,16 +52,6 @@ function genToken() {
   return 'qtk_' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-function genId() {
-  return Math.random().toString(36).slice(2, 9);
-}
-
-function calcTotals(items: QuoteLineItem[]) {
-  const subtotal = items.reduce((s, i) => s + i.total, 0);
-  const taxAmount = items.filter(i => i.taxable).reduce((s, i) => s + i.total * 0.08, 0);
-  return { subtotal, taxAmount, total: subtotal + taxAmount };
-}
-
 // Quote status → shared status tone (lib/status-styles.ts).
 const QUOTE_TONE: Record<string, Tone> = {
   draft: 'scheduled', sent: 'progress', viewed: 'info', changes_requested: 'progress', approved: 'done',
@@ -87,42 +81,16 @@ function fmtMoney(n: number) {
   return `$${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 }
 
-// ── Preset Catalog ────────────────────────────────────────────────────────────
-
-type PresetItem = { id: string; name: string; unitPrice: number; category: QuoteLineItem['category']; taxable: boolean };
-const PRESET_CATALOG: { group: string; items: PresetItem[] }[] = [
-  { group: 'Labor & Services', items: [
-    { id: 'labor_fiber', name: 'Fiber Optic Labor ($150/hr)', unitPrice: 150, category: 'labor', taxable: false },
-    { id: 'labor_install', name: 'Installation Labor ($120/hr)', unitPrice: 120, category: 'labor', taxable: false },
-    { id: 'labor_diag', name: 'Troubleshooting ($100/hr)', unitPrice: 100, category: 'labor', taxable: false },
-    { id: 'labor_smart', name: 'Smart Hands ($85/hr)', unitPrice: 85, category: 'labor', taxable: false },
-    { id: 'service_call', name: 'Service Dispatch Fee', unitPrice: 75, category: 'service', taxable: false },
-  ]},
-  { group: 'Cabling & Wiring', items: [
-    { id: 'cat6_plenum', name: 'CAT6 Plenum Cable (1000ft)', unitPrice: 450, category: 'materials', taxable: true },
-    { id: 'cat6_riser', name: 'CAT6 Riser Cable (1000ft)', unitPrice: 280, category: 'materials', taxable: true },
-    { id: 'fiber_sm', name: 'Single-Mode Fiber (per ft)', unitPrice: 2, category: 'materials', taxable: true },
-    { id: 'keystones', name: 'Keystone Jacks (24-pack)', unitPrice: 120, category: 'materials', taxable: true },
-  ]},
-  { group: 'Hardware', items: [
-    { id: 'patch_panel_24', name: 'Patch Panel 24-Port', unitPrice: 180, category: 'equipment', taxable: true },
-    { id: 'rack_12u', name: '12U Wall Rack', unitPrice: 320, category: 'equipment', taxable: true },
-    { id: 'poe_switch', name: 'PoE Switch 8-Port', unitPrice: 240, category: 'equipment', taxable: true },
-  ]},
-];
-
-// ── New Quote Dialog ──────────────────────────────────────────────────────────
+// ── New Quote (shared quote/invoice editor) ───────────────────────────────────
 
 function NewQuoteDialog({
   open,
   onClose,
-  clients,
   onSaved,
   prefillLead,
 }: {
   open: boolean;
   onClose: () => void;
-  clients: Technician[];
   onSaved: () => void;
   /** Start the quote from a CRM lead — customer details and scope carry over. */
   prefillLead?: Lead | null;
@@ -130,141 +98,64 @@ function NewQuoteDialog({
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, u => setFirebaseUser(u));
-    return unsub;
-  }, []);
+  useEffect(() => onAuthStateChanged(auth, u => setFirebaseUser(u)), []);
   // The Sales Portal can't read client accounts, so it quotes external customers.
   const inSalesPortal = useCrmPaths().inSalesPortal;
-  const [customerType, setCustomerType] = useState<'in_app_client' | 'external_customer'>(inSalesPortal ? 'external_customer' : 'in_app_client');
-  const [clientId, setClientId] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [customerCompany, setCustomerCompany] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [scopeSummary, setScopeSummary] = useState('');
-  const [terms, setTerms] = useState('Payment due within 30 days of invoice.');
-  const [expirationDate, setExpirationDate] = useState('');
-  const [lineItems, setLineItems] = useState<QuoteLineItem[]>([{
-    id: genId(), name: '', description: '', quantity: 1, unitPrice: 0, total: 0,
-    taxable: false, category: 'labor', required: true,
-  }]);
-  const [optionalGroups, setOptionalGroups] = useState<QuoteOptionalGroup[]>([]);
-
-  const { subtotal, taxAmount, total } = useMemo(() => calcTotals(lineItems), [lineItems]);
+  const [initial, setInitial] = useState<Partial<PriceDocValues> | undefined>(undefined);
 
   useEffect(() => {
-    if (!open || !prefillLead) return;
-    setCustomerType('external_customer');
-    setCustomerName(prefillLead.contactName || prefillLead.companyName);
-    setCustomerCompany(prefillLead.companyName);
-    setCustomerEmail(prefillLead.contactEmail || '');
-    setCustomerPhone(prefillLead.contactPhone || '');
-    setTitle(prev => prev || [prefillLead.companyName, (prefillLead.serviceLines || []).join(' / ')].filter(Boolean).join(' — '));
-    setScopeSummary(prev => prev || [prefillLead.address, prefillLead.nextStep].filter(Boolean).join('\n'));
+    if (!open) return;
+    if (!prefillLead) { setInitial(undefined); return; }
+    const base: Partial<PriceDocValues> = {
+      customerType: 'external_customer',
+      customerName: prefillLead.contactName || prefillLead.companyName,
+      customerCompany: prefillLead.companyName,
+      customerEmail: prefillLead.contactEmail || '',
+      customerPhone: prefillLead.contactPhone || '',
+      title: [prefillLead.companyName, (prefillLead.serviceLines || []).join(' / ')].filter(Boolean).join(' — '),
+      scopeSummary: [prefillLead.address, prefillLead.nextStep].filter(Boolean).join('\n'),
+    };
+    setInitial(base);
     // Pull the site survey takeoff into the scope so pricing starts from real counts.
     getDocs(query(collection(db, 'siteSurveys'), where('leadId', '==', prefillLead.id)))
       .then(snap => {
         const text = snap.docs.map(d => surveySummary({ ...d.data(), id: d.id } as SiteSurvey)).join('\n\n');
-        if (text) setScopeSummary(prev => prev.includes('Cabling:') || prev.includes('Site:') ? prev : [prev, text].filter(Boolean).join('\n\n'));
+        if (text) setInitial({ ...base, scopeSummary: [base.scopeSummary, text].filter(Boolean).join('\n\n') });
       })
       .catch(() => {});
   }, [open, prefillLead?.id]);
 
-  const updateLineItem = (idx: number, field: keyof QuoteLineItem, value: any) => {
-    setLineItems(prev => prev.map((item, i) => {
-      if (i !== idx) return item;
-      const updated = { ...item, [field]: value };
-      if (field === 'quantity' || field === 'unitPrice') {
-        updated.total = Number(updated.quantity) * Number(updated.unitPrice);
-      }
-      return updated;
-    }));
-  };
-
-  const addLineItem = () => setLineItems(prev => [...prev, {
-    id: genId(), name: '', description: '', quantity: 1, unitPrice: 0, total: 0,
-    taxable: false, category: 'labor', required: true,
-  }]);
-
-  const removeLineItem = (idx: number) => setLineItems(prev => prev.filter((_, i) => i !== idx));
-
-  const handlePremadeItemSelect = (idx: number, itemId: string) => {
-    const preset = PRESET_CATALOG.flatMap(g => g.items).find(i => i.id === itemId);
-    if (!preset) return;
-    setLineItems(prev => prev.map((item, i) => i !== idx ? item : {
-      ...item,
-      name: preset.name,
-      unitPrice: preset.unitPrice,
-      total: item.quantity * preset.unitPrice,
-      category: preset.category,
-      taxable: preset.taxable,
-    }));
-  };
-
-  const addOptionalGroup = () => setOptionalGroups(prev => [...prev, {
-    id: genId(), title: '', description: '', requiredSelection: false,
-    options: [{ id: genId(), label: '', priceAdjustment: 0, selected: false }],
-  }]);
-
-  const updateGroup = (gIdx: number, field: keyof QuoteOptionalGroup, value: any) => {
-    setOptionalGroups(prev => prev.map((g, i) => i === gIdx ? { ...g, [field]: value } : g));
-  };
-
-  const addOption = (gIdx: number) => {
-    setOptionalGroups(prev => prev.map((g, i) =>
-      i === gIdx ? { ...g, options: [...g.options, { id: genId(), label: '', priceAdjustment: 0, selected: false }] } : g
-    ));
-  };
-
-  const updateOption = (gIdx: number, oIdx: number, field: keyof QuoteOptionItem, value: any) => {
-    setOptionalGroups(prev => prev.map((g, gi) =>
-      gi === gIdx ? { ...g, options: g.options.map((o, oi) => oi === oIdx ? { ...o, [field]: value } : o) } : g
-    ));
-  };
-
-  const removeOption = (gIdx: number, oIdx: number) => {
-    setOptionalGroups(prev => prev.map((g, gi) =>
-      gi === gIdx ? { ...g, options: g.options.filter((_, oi) => oi !== oIdx) } : g
-    ));
-  };
-
-  const handleSave = async () => {
+  const handleSave = async (r: PriceDocResult) => {
     if (!firebaseUser) { toast({ variant: 'destructive', title: 'Authentication required', description: 'Please refresh and try again.' }); return; }
-    if (!title) { toast({ variant: 'destructive', title: 'Title required' }); return; }
-    if (customerType === 'in_app_client' && !clientId) { toast({ variant: 'destructive', title: 'Select a client' }); return; }
-    if (customerType === 'external_customer' && !customerEmail) { toast({ variant: 'destructive', title: 'Customer email required' }); return; }
+    if (!r.title) { toast({ variant: 'destructive', title: 'Title required' }); return; }
+    if (r.customerType === 'external_customer' && !r.customerEmail) { toast({ variant: 'destructive', title: 'Customer email required' }); return; }
 
     setSaving(true);
     try {
       const quoteId = await createDocId(ID_PREFIXES.QUOTE);
-      const selectedClient = clients.find(c => c.id === clientId);
+      const c = r.client;
+      const inApp = r.customerType === 'in_app_client';
       const now = new Date().toISOString();
-      const quote: Omit<Quote, 'id'> = {
+      const quote: Omit<Quote, 'id'> & { planDiscount: PlanDiscount | null } = {
         quoteNumber: quoteId,
-        customerType,
-        clientId: customerType === 'in_app_client' ? clientId : null,
-        customerName: customerType === 'in_app_client'
-          ? (selectedClient?.clientCompany || selectedClient?.name || '')
-          : customerName,
-        customerCompany: customerType === 'in_app_client'
-          ? (selectedClient?.clientCompany || null)
-          : (customerCompany || null),
-        customerEmail: customerType === 'in_app_client' ? (selectedClient?.email || '') : customerEmail,
-        customerPhone: customerType === 'in_app_client' ? (selectedClient?.phone || null) : (customerPhone || null),
-        title,
-        description,
-        scopeSummary,
-        lineItems,
-        optionalChoices: optionalGroups,
-        subtotal,
-        taxAmount,
-        discountAmount: 0,
-        total,
-        terms,
-        expirationDate: expirationDate || null,
+        customerType: r.customerType,
+        clientId: inApp ? r.clientId : null,
+        customerName: inApp ? (c?.clientCompany || c?.name || '') : r.customerName,
+        customerCompany: inApp ? (c?.clientCompany || null) : (r.customerCompany || null),
+        customerEmail: inApp ? (c?.email || '') : r.customerEmail,
+        customerPhone: inApp ? (c?.phone || null) : (r.customerPhone || null),
+        title: r.title,
+        description: r.description,
+        scopeSummary: r.scopeSummary,
+        lineItems: toQuoteLines(r.lines),
+        optionalChoices: r.optionalGroups,
+        subtotal: r.totals.subtotal,
+        taxAmount: r.totals.taxAmount,
+        discountAmount: r.totals.discountAmount,
+        planDiscount: r.discount,
+        total: r.totals.total,
+        terms: r.terms,
+        expirationDate: r.expirationDate || null,
         publicToken: null,
         status: 'draft',
         sentAt: null,
@@ -289,7 +180,7 @@ function NewQuoteDialog({
       await setDoc(doc(db, 'quotes', quoteId), { id: quoteId, ...quote });
       if (prefillLead) {
         try {
-          await syncLeadOnQuoteCreated(prefillLead, quoteId, total, firebaseUser.uid);
+          await syncLeadOnQuoteCreated(prefillLead, quoteId, r.totals.total, firebaseUser.uid);
         } catch {
           toast({ variant: 'destructive', title: 'Quote saved, but the CRM lead was not updated' });
         }
@@ -308,218 +199,8 @@ function NewQuoteDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="bg-bg-elevated border-border-main max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-base font-semibold">New quote</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-5 py-2">
-          {/* Customer type */}
-          <div className="flex gap-2">
-            {(['in_app_client', 'external_customer'] as const).map(t => (
-              <button key={t} type="button" onClick={() => setCustomerType(t)}
-                className={cn('flex-1 py-2 text-[12px] font-medium rounded-md border transition-colors',
-                  customerType === t ? 'bg-brand-red/10 text-brand-red border-brand-red/30' : 'border-border-sub text-text-muted hover:border-border-main')}>
-                {t === 'in_app_client' ? 'App client' : 'Outside customer'}
-              </button>
-            ))}
-          </div>
-
-          {/* Customer info */}
-          {customerType === 'in_app_client' ? (
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client</Label>
-              <Select value={clientId} onValueChange={setClientId}>
-                <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main">
-                  <SelectValue placeholder="Select client..." />
-                </SelectTrigger>
-                <SelectContent className="bg-bg-elevated border-border-main">
-                  {clients.map(c => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.clientCompany || c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Name</Label>
-                <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Jane Smith" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Company</Label>
-                <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={customerCompany} onChange={e => setCustomerCompany(e.target.value)} placeholder="Acme Corp" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Email *</Label>
-                <Input type="email" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="jane@acme.com" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Phone</Label>
-                <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="555-000-0000" />
-              </div>
-            </div>
-          )}
-
-          {/* Quote info */}
-          <div className="space-y-3 border-t border-border-sub pt-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Quote Details</p>
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Title *</Label>
-              <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={title} onChange={e => setTitle(e.target.value)} placeholder="Security camera installation — 4 units" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Description</Label>
-              <textarea rows={2} className="w-full text-[12px] bg-bg-secondary border border-border-main rounded-md p-2 text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-brand-red/40"
-                value={description} onChange={e => setDescription(e.target.value)} placeholder="Brief overview of the project..." />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Scope Summary</Label>
-              <textarea rows={2} className="w-full text-[12px] bg-bg-secondary border border-border-main rounded-md p-2 text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-brand-red/40"
-                value={scopeSummary} onChange={e => setScopeSummary(e.target.value)} placeholder="What's included in this quote..." />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Expiration Date</Label>
-                <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={expirationDate} onChange={e => setExpirationDate(e.target.value)} />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Terms</Label>
-              <textarea rows={2} className="w-full text-[12px] bg-bg-secondary border border-border-main rounded-md p-2 text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-brand-red/40"
-                value={terms} onChange={e => setTerms(e.target.value)} />
-            </div>
-          </div>
-
-          {/* Line Items */}
-          <div className="space-y-2 border-t border-border-sub pt-4">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Line Items</p>
-              <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" onClick={addLineItem}>
-                <Plus size={10} className="mr-1" /> Add Item
-              </Button>
-            </div>
-            <div className="space-y-2">
-              {lineItems.map((item, idx) => (
-                <div key={item.id} className="rounded-lg border border-border-sub bg-bg-secondary p-3 space-y-2">
-                  <div className="space-y-1">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Preset</Label>
-                    <Select onValueChange={v => handlePremadeItemSelect(idx, v)}>
-                      <SelectTrigger className="h-7 text-[10px] bg-bg-tertiary border-border-sub">
-                        <SelectValue placeholder="Select preset or enter below..." />
-                      </SelectTrigger>
-                      <SelectContent className="bg-bg-elevated border-border-main">
-                        {PRESET_CATALOG.map(group => (
-                          <SelectGroup key={group.group}>
-                            <SelectLabel className="text-[10px] font-bold uppercase tracking-wider text-text-muted px-2 py-1">{group.group}</SelectLabel>
-                            {group.items.map(p => (
-                              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                            ))}
-                          </SelectGroup>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Item Name</Label>
-                      <Input className="h-7 text-[10px] bg-bg-tertiary border-border-sub" value={item.name}
-                        onChange={e => updateLineItem(idx, 'name', e.target.value)} placeholder="Labor — installation" />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Category</Label>
-                      <Select value={item.category} onValueChange={v => updateLineItem(idx, 'category', v)}>
-                        <SelectTrigger className="h-7 text-[10px] bg-bg-tertiary border-border-sub">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-bg-elevated border-border-main">
-                          {['labor', 'materials', 'travel', 'equipment', 'service', 'other'].map(c => (
-                            <SelectItem key={c} value={c} className="text-[10px] capitalize">{c}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 items-end">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Qty</Label>
-                      <Input type="number" className="h-7 text-[10px] bg-bg-tertiary border-border-sub" value={item.quantity}
-                        onChange={e => updateLineItem(idx, 'quantity', parseFloat(e.target.value) || 0)} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Unit Price</Label>
-                      <Input type="number" className="h-7 text-[10px] bg-bg-tertiary border-border-sub" value={item.unitPrice}
-                        onChange={e => updateLineItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)} />
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[12px] font-bold text-text-primary">{fmtMoney(item.total)}</span>
-                      <button type="button" onClick={() => removeLineItem(idx)} className="text-text-muted hover:text-brand-red transition-colors">
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer">
-                      <input type="checkbox" checked={item.taxable} onChange={e => updateLineItem(idx, 'taxable', e.target.checked)} className="accent-brand-red" />
-                      Taxable
-                    </label>
-                    <label className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer">
-                      <input type="checkbox" checked={item.required} onChange={e => updateLineItem(idx, 'required', e.target.checked)} className="accent-brand-red" />
-                      Required
-                    </label>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="text-right space-y-0.5 pt-2">
-              <p className="text-[10px] text-text-muted">Subtotal: <span className="text-text-primary font-bold">{fmtMoney(subtotal)}</span></p>
-              <p className="text-[10px] text-text-muted">Tax (8%): <span className="text-text-primary font-bold">{fmtMoney(taxAmount)}</span></p>
-              <p className="text-[12px] font-bold text-text-primary">Total: {fmtMoney(total)}</p>
-            </div>
-          </div>
-
-          {/* Optional Choices */}
-          <div className="space-y-2 border-t border-border-sub pt-4">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Optional Add-Ons</p>
-              <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" onClick={addOptionalGroup}>
-                <Plus size={10} className="mr-1" /> Add Group
-              </Button>
-            </div>
-            {optionalGroups.map((group, gIdx) => (
-              <div key={group.id} className="rounded-lg border border-border-sub bg-bg-secondary p-3 space-y-2">
-                <Input className="h-7 text-[10px] bg-bg-tertiary border-border-sub" value={group.title}
-                  onChange={e => updateGroup(gIdx, 'title', e.target.value)} placeholder="Group title (e.g. Camera Upgrade)" />
-                {group.options.map((opt, oIdx) => (
-                  <div key={opt.id} className="flex items-center gap-2">
-                    <Input className="h-7 text-[10px] bg-bg-tertiary border-border-sub flex-1" value={opt.label}
-                      onChange={e => updateOption(gIdx, oIdx, 'label', e.target.value)} placeholder="Option label" />
-                    <Input type="number" className="h-7 text-[10px] bg-bg-tertiary border-border-sub w-24"
-                      value={opt.priceAdjustment} onChange={e => updateOption(gIdx, oIdx, 'priceAdjustment', parseFloat(e.target.value) || 0)}
-                      placeholder="+$" />
-                    <button type="button" onClick={() => removeOption(gIdx, oIdx)} className="text-text-muted hover:text-brand-red"><Trash2 size={11} /></button>
-                  </div>
-                ))}
-                <Button size="sm" variant="ghost" className="h-6 text-[11px] font-bold text-text-muted" onClick={() => addOption(gIdx)}>
-                  <Plus size={9} className="mr-1" /> Add Option
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <DialogFooter className="gap-2 pt-2">
-          <Button variant="outline" size="sm" onClick={onClose} className="text-[10px] font-bold">Cancel</Button>
-          <Button size="sm" onClick={handleSave} disabled={saving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
-            {saving && <Loader2 size={11} className="animate-spin mr-1.5" />}
-            Save as draft
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <PriceDocEditor open={open} onClose={onClose} kind="quote" initial={initial} externalOnly={inSalesPortal}
+      title="New quote" saveLabel="Save as draft" saving={saving} onSave={handleSave} />
   );
 }
 
@@ -575,10 +256,13 @@ function QuoteDetailSheet({
   quote,
   onClose,
   onUpdated,
+  onCreateInvoice,
 }: {
   quote: Quote | null;
   onClose: () => void;
   onUpdated: () => void;
+  /** Admin only — opens the invoice editor filled in from this quote. */
+  onCreateInvoice?: (q: Quote) => void;
 }) {
   const { toast } = useToast();
   const paths = useCrmPaths();
@@ -616,13 +300,9 @@ function QuoteDetailSheet({
     }
   };
 
-  const handleConvert = async (target: 'work_order' | 'project' | 'invoice') => {
-    const field = target === 'work_order' ? 'convertedToWorkOrderId'
-      : target === 'project' ? 'convertedToProjectId'
-      : 'convertedToInvoiceId';
-    const status: QuoteStatus = target === 'work_order' ? 'converted_to_work_order'
-      : target === 'project' ? 'converted_to_project'
-      : 'converted_to_invoice';
+  const handleConvert = async (target: 'work_order' | 'project') => {
+    const field = target === 'work_order' ? 'convertedToWorkOrderId' : 'convertedToProjectId';
+    const status: QuoteStatus = target === 'work_order' ? 'converted_to_work_order' : 'converted_to_project';
     const refId = `${target.replace('_', '-')}-${Date.now()}`;
     await act({ status, [field]: refId });
     toast({ title: `Quote converted to ${target.replace('_', ' ')}`, description: `Ref: ${refId}` });
@@ -682,6 +362,12 @@ function QuoteDetailSheet({
                 <div className="flex justify-between text-[11px] text-text-muted">
                   <span>Subtotal</span><span>{fmtMoney(quote.subtotal)}</span>
                 </div>
+                {(quote.discountAmount ?? 0) > 0 && (
+                  <div className="flex justify-between text-[11px] text-text-green">
+                    <span>{(quote as Quote & { planDiscount?: PlanDiscount | null }).planDiscount?.planName ? `${(quote as Quote & { planDiscount?: PlanDiscount | null }).planDiscount!.planName} plan discount` : 'Discount'}</span>
+                    <span>−{fmtMoney(quote.discountAmount ?? 0)}</span>
+                  </div>
+                )}
                 {quote.taxAmount > 0 && (
                   <div className="flex justify-between text-[11px] text-text-muted">
                     <span>Tax</span><span>{fmtMoney(quote.taxAmount)}</span>
@@ -800,10 +486,10 @@ function QuoteDetailSheet({
                     onClick={() => handleConvert('project')} disabled={acting || !!quote.convertedToProjectId}>
                     <ArrowRight size={14} className="mr-1.5" />Convert to project
                   </Button>
-                  <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white col-span-2"
-                    onClick={() => handleConvert('invoice')} disabled={acting || !!quote.convertedToInvoiceId}>
+                  {onCreateInvoice && <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white col-span-2"
+                    onClick={() => onCreateInvoice(quote)} disabled={acting || !!quote.convertedToInvoiceId}>
                     <ArrowRight size={14} className="mr-1.5" />Create invoice
-                  </Button>
+                  </Button>}
                   <Button size="sm" variant="outline" className="h-8 col-span-2"
                     onClick={() => act({ status: 'archived' })} disabled={acting}>
                     <Archive size={14} className="mr-1.5" />Archive
@@ -829,9 +515,30 @@ function QuoteDetailSheet({
 export default function AdminQuotesPage() {
   const { toast } = useToast();
   const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [clients, setClients] = useState<Technician[]>([]);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [isNewOpen, setIsNewOpen] = useState(false);
+  const inSalesPortal = useCrmPaths().inSalesPortal;
+  // New → Invoice, or an approved quote being invoiced.
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [invoiceFromQuote, setInvoiceFromQuote] = useState<Quote | null>(null);
+  const [savingInvoice, setSavingInvoice] = useState(false);
+  const openInvoiceFromQuote = (q: Quote) => { setSelectedQuote(null); setInvoiceFromQuote(q); setInvoiceOpen(true); };
+  const saveInvoice = async (r: PriceDocResult) => {
+    setSavingInvoice(true);
+    try {
+      const q = invoiceFromQuote;
+      const id = await saveInvoiceFromEditor(r, null, q ? { quoteId: q.id } : {});
+      if (q) await updateDoc(doc(db, 'quotes', q.id), { status: 'converted_to_invoice', convertedToInvoiceId: id, updatedAt: new Date().toISOString() });
+      toast({ title: 'Invoice created', description: `Invoice ${r.invoiceNumber} saved${q ? ` from ${q.quoteNumber}` : ''}.` });
+      setInvoiceOpen(false);
+      setInvoiceFromQuote(null);
+      setTab('invoices');
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Could not save invoice', description: e.message });
+    } finally {
+      setSavingInvoice(false);
+    }
+  };
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useViewMode('quotes');
   const [prefillLead, setPrefillLead] = useState<Lead | null>(null);
@@ -857,15 +564,7 @@ export default function AdminQuotesPage() {
       setLoading(false);
     }, () => setLoading(false));
 
-    const u2 = onSharedSnapshot('users', snap => {
-      setClients(
-        snap.docs
-          .map(d => ({ ...d.data(), id: d.id } as Technician))
-          .filter(isClient)
-      );
-    }, () => setClients([]));
-
-    return () => { u1(); u2(); };
+    return () => { u1(); };
   }, []);
 
   // Search + sort apply to every tab; tab counts follow the search.
@@ -920,13 +619,25 @@ export default function AdminQuotesPage() {
       <PageHeader
         eyebrow="Sales"
         icon={FileSearch}
-        title="Quotes & Invoices"
-        subtitle="Create, send and track quotes, then bill clients with invoices."
+        title={inSalesPortal ? 'Quotes' : 'Quotes & Invoices'}
+        subtitle={inSalesPortal ? 'Create, send and track quotes until the client approves them.' : 'Create, send and track quotes, then bill clients with invoices.'}
         actions={<>
           <ViewToggle value={viewMode} onChange={setViewMode} />
-          <Button onClick={() => setIsNewOpen(true)} className="bg-brand-red hover:bg-brand-red/90 text-white h-9">
-            <Plus size={14} className="mr-1.5" />New quote
-          </Button>
+          {inSalesPortal ? (
+            <Button onClick={() => setIsNewOpen(true)} className="bg-brand-red hover:bg-brand-red/90 text-white h-9">
+              <Plus size={14} className="mr-1.5" />New quote
+            </Button>
+          ) : (
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button className="bg-brand-red hover:bg-brand-red/90 text-white h-9"><Plus size={14} className="mr-1.5" />New</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setTimeout(() => setIsNewOpen(true), 0)}><FileSearch size={13} className="mr-2" />Quote</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setTimeout(() => { setInvoiceFromQuote(null); setInvoiceOpen(true); }, 0)}><FileText size={13} className="mr-2" />Invoice</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </>}
       />
 
@@ -944,14 +655,14 @@ export default function AdminQuotesPage() {
           <TabsTrigger value="sent" className="tab">Sent<TabCount n={sent.length} /></TabsTrigger>
           <TabsTrigger value="approved" className="tab">Approved<TabCount n={approved.length} /></TabsTrigger>
           <TabsTrigger value="rejected" className="tab">Rejected / expired<TabCount n={rejected.length} /></TabsTrigger>
-          <TabsTrigger value="invoices" className="tab">Invoices</TabsTrigger>
+          {!inSalesPortal && <TabsTrigger value="invoices" className="tab">Invoices</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="draft" className="mt-0">{grid(draft, '0')}</TabsContent>
         <TabsContent value="sent" className="mt-0">{grid(sent, '1')}</TabsContent>
         <TabsContent value="approved" className="mt-0">{grid(approved, '2')}</TabsContent>
         <TabsContent value="rejected" className="mt-0">{grid(rejected, '3')}</TabsContent>
-        <TabsContent value="invoices" className="mt-0"><InvoicesPanel search={search} onResetSearch={() => setSearch('')} /></TabsContent>
+        <TabsContent value="invoices" className="mt-0"><InvoicesPanel search={search} onResetSearch={() => setSearch('')} hideNewButton /></TabsContent>
       </Tabs>
 
       <NewQuoteDialog
@@ -960,7 +671,6 @@ export default function AdminQuotesPage() {
           setIsNewOpen(false);
           if (prefillLead) { setPrefillLead(null); window.history.replaceState(null, '', window.location.pathname); }
         }}
-        clients={clients}
         onSaved={() => {}}
         prefillLead={prefillLead}
       />
@@ -969,6 +679,28 @@ export default function AdminQuotesPage() {
         quote={selectedQuote}
         onClose={() => setSelectedQuote(null)}
         onUpdated={() => setSelectedQuote(null)}
+        onCreateInvoice={inSalesPortal ? undefined : openInvoiceFromQuote}
+      />
+
+      <PriceDocEditor
+        open={invoiceOpen}
+        onClose={() => { setInvoiceOpen(false); setInvoiceFromQuote(null); }}
+        kind="invoice"
+        initial={invoiceFromQuote ? {
+          customerType: invoiceFromQuote.customerType,
+          clientId: invoiceFromQuote.clientId || '',
+          customerName: invoiceFromQuote.customerName,
+          customerCompany: invoiceFromQuote.customerCompany || '',
+          customerEmail: invoiceFromQuote.customerEmail,
+          customerPhone: invoiceFromQuote.customerPhone || '',
+          terms: invoiceFromQuote.terms,
+          lines: fromQuoteLines(invoiceFromQuote.lineItems),
+        } : undefined}
+        initialDiscount={invoiceFromQuote ? ((invoiceFromQuote as Quote & { planDiscount?: PlanDiscount | null }).planDiscount ?? null) : undefined}
+        title={invoiceFromQuote ? `Invoice from ${invoiceFromQuote.quoteNumber}` : 'New invoice'}
+        saveLabel="Save invoice"
+        saving={savingInvoice}
+        onSave={saveInvoice}
       />
     </div>
   );

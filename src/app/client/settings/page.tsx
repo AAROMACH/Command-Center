@@ -91,7 +91,8 @@ export default function ClientSettingsPage() {
                             {[
                                 { id: 'email', label: 'Email', desc: 'Project updates, quotes and invoices sent to your email.' },
                                 { id: 'sms', label: 'Text message', desc: 'Urgent site and technician-arrival alerts texted to you.' },
-                                { id: 'push', label: 'In-app & phone', desc: 'Alerts in the bell, and on your phone if you use the Android app.' },
+                                { id: 'push', label: 'In-app', desc: 'Alerts in the bell at the top of the app.' },
+                                { id: 'phone', label: 'Phone notifications', desc: 'Pop-up alerts on your phone from the Aaromach Android app.' },
                             ].map((item) => (
                                 <div key={item.id} className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary/50 border border-border-sub hover:border-text-muted transition-all">
                                     <div className="space-y-0.5 text-left">

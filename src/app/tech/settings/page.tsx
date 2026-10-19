@@ -107,7 +107,8 @@ export default function TechSettingsPage() {
                             {[
                                 { id: 'email', label: 'Email', desc: 'Assignments, pay stubs and alerts sent to your email.' },
                                 { id: 'sms', label: 'Text message', desc: 'Job and schedule alerts texted to your phone.' },
-                                { id: 'push', label: 'In-app & phone', desc: 'Alerts in the bell, and on your phone if you use the Android app.' },
+                                { id: 'push', label: 'In-app', desc: 'Alerts in the bell at the top of the app.' },
+                                { id: 'phone', label: 'Phone notifications', desc: 'Pop-up alerts on your phone from the Aaromach Android app.' },
                             ].map((item) => (
                                 <div key={item.id} className="flex items-center justify-between gap-3 p-4 rounded-lg bg-bg-secondary/50 border border-border-sub hover:border-text-muted transition-all">
                                     <div className="space-y-0.5 text-left">

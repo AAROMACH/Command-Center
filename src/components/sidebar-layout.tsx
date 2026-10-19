@@ -54,7 +54,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           {/* Top strip: trigger on desktop, minimal on mobile */}
-          <div className="flex items-center shrink-0 bg-sidebar border-b border-border-main z-40">
+          <div className="flex items-center shrink-0 bg-sidebar border-b border-border-main z-40 pt-[env(safe-area-inset-top)]">
             <div className="flex items-center gap-2 px-2 py-1.5 border-r border-border-sub">
               <SidebarTrigger className="text-text-muted hover:text-text-primary h-7 w-7" />
             </div>

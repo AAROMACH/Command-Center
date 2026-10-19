@@ -1,7 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { Button } from '@/components/ui/button';
+import { CheckCircle2, Loader2, Send, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { eventEnabled, resolveNotificationPrefs, withEventPref } from '@/lib/notification-prefs';
 import { eventsForRoles } from '@/lib/notification-events';
@@ -17,7 +20,25 @@ import { useToast } from '@/hooks/use-toast';
 export function NotificationEventsCard() {
     const { user } = useAuth();
     const { toast } = useToast();
+    const [testing, setTesting] = useState(false);
+    const [results, setResults] = useState<{ channel: string; ok: boolean; detail: string }[] | null>(null);
     if (!user) return null;
+
+    const sendTest = async () => {
+        setTesting(true);
+        setResults(null);
+        try {
+            const token = await auth.currentUser?.getIdToken();
+            const res = await fetch('/api/notify/test', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+            const out = await res.json();
+            if (!res.ok) throw new Error(out.error || `Failed (${res.status})`);
+            setResults(out.results);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Test failed', description: e.message });
+        } finally {
+            setTesting(false);
+        }
+    };
 
     const roles = [...(Array.isArray(user.roles) ? user.roles : []), ...(typeof (user as any).role === 'string' ? [(user as any).role] : [])] as string[];
     const events = eventsForRoles(roles);
@@ -49,6 +70,21 @@ export function NotificationEventsCard() {
                         <Switch checked={eventEnabled(prefs, e.id)} onCheckedChange={() => toggle(e.id, e.label)} aria-label={e.label} />
                     </div>
                 ))}
+                <div className="pt-2 space-y-2">
+                    <Button variant="outline" size="sm" onClick={sendTest} disabled={testing}>
+                        {testing ? <Loader2 size={13} className="mr-1.5 animate-spin" /> : <Send size={13} className="mr-1.5" />} Send me a test
+                    </Button>
+                    {results && (
+                        <ul className="rounded-lg border border-border-sub bg-bg-primary divide-y divide-border-sub">
+                            {results.map(r => (
+                                <li key={r.channel} className="flex items-start gap-2 px-3 py-2 text-[12px] text-left">
+                                    {r.ok ? <CheckCircle2 size={14} className="text-text-green shrink-0 mt-0.5" /> : <XCircle size={14} className="text-brand-red shrink-0 mt-0.5" />}
+                                    <span><span className="font-semibold text-text-primary">{r.channel}:</span> <span className="text-text-muted">{r.detail}</span></span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
             </CardContent>
         </Card>
     );

@@ -24,7 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('aaromach_theme');if(t==='light'){document.documentElement.classList.remove('dark');document.documentElement.classList.add('light');}}catch(e){}` }} />
         {/* sessionStorage is per-tab; restore the signed-in user id from the session cookie so pages opened in a new tab still resolve identity */}
         <script dangerouslySetInnerHTML={{ __html: `try{if(!sessionStorage.getItem('currentUserId')){var m=document.cookie.match(/(?:^|; )aaromach_session=([^;]+)/);if(m&&m[1]){sessionStorage.setItem('currentUserId',decodeURIComponent(m[1]));}}}catch(e){}` }} />

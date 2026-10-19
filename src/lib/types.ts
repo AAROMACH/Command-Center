@@ -49,6 +49,8 @@ export type NotificationPreferences = {
   email: boolean;
   sms: boolean;
   push: boolean;
+  /** Phone notifications from the Android app (FCM). Missing = on. */
+  phone?: boolean;
   /** Per-event switches (lib/notification-events); missing = on. */
   events?: Record<string, boolean>;
 };

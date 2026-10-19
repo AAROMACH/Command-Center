@@ -2,6 +2,7 @@ import { startOfMonth, endOfMonth, isWithinInterval, differenceInCalendarDays, s
 import type { Expense, Invoice, WeeklyLog, WorkOrder } from './types';
 import { computeWeeklyLogSettlement, effectiveJobPay, FIELD_NATION_FEE_RATE } from './payroll';
 import { parseLocalDate, isArchivedJob } from './jobs';
+import { invoiceNet } from './price-lines';
 
 /**
  * The Financials summary cards, computed in one place so the card values,
@@ -86,7 +87,7 @@ export function techPayByJob(weeklyLogs: WeeklyLog[], jobsById: Map<string, Work
 export function jobEconomics(job: WorkOrder, loggedTechPay: Map<string, number>, paidInvoice?: Invoice): JobLine {
     const imported = job.source === 'Imported';
     const pay = money(job.pay);
-    const revenue = paidInvoice ? money(paidInvoice.subtotal ?? paidInvoice.total) : pay;
+    const revenue = paidInvoice ? invoiceNet(paidInvoice) : pay;
     const techPortion = job.payrollExcluded ? 0
         : loggedTechPay.has(job.id) ? loggedTechPay.get(job.id)!
         : effectiveJobPay({ id: '', workOrderId: job.id, jobPay: pay, isComplete: true, isAdminReviewed: false, outcomeCode: null }, job);
@@ -149,7 +150,7 @@ export function monthBreakdown(month: Date, data: SummaryInput): MonthBreakdown 
 
     const sum = <T,>(rows: T[], f: (r: T) => number) => cents(rows.reduce((s, r) => s + f(r), 0));
     const jobRevenue = sum(jobs, j => j.revenue);
-    const invoiceRevenue = sum(revenueInvoices, i => money(i.subtotal ?? i.total));
+    const invoiceRevenue = sum(revenueInvoices, i => invoiceNet(i));
     const techPortion = sum(jobs, j => j.techPortion);
     const fnFees = sum(jobs, j => j.fnFee);
     const revenue = cents(jobRevenue + invoiceRevenue);

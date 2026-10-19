@@ -22,9 +22,13 @@ import {
     User, MapPin, Calendar, AlertTriangle, ChevronRight, Edit2, CheckCircle,
     DollarSign, Tag, RotateCcw, XCircle, Hammer, History, ArrowRightLeft,
     ShoppingCart, Boxes, ClipboardList,
-} from 'lucide-react';
+Percent, } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/page-header';
+import { PricingTab } from './pricing-tab';
+import { usePricingSettings } from '@/hooks/use-billing';
+import { canEditUserPay } from '@/lib/profile-permissions';
+import { useAuth } from '@/contexts/auth-context';
 import { StatCard, StatGrid } from '@/components/stat-card';
 import { EmptyState } from '@/components/empty-state';
 import { SearchField } from '@/components/search-field';
@@ -135,7 +139,9 @@ export default function AssetsAndMaterialsPage() {
     const [technicians, setTechnicians] = useState<Technician[]>([]);
 
     // UI
-    const [mainTab, setMainTab] = useState<'assets' | 'materials'>('assets');
+    const { settings: pricing } = usePricingSettings();
+    const { user: authUser } = useAuth();
+    const [mainTab, setMainTab] = useState<'assets' | 'materials' | 'pricing'>('assets');
     const [viewMode, setViewMode] = useViewMode('assets');
     const [assetCatFilter, setAssetCatFilter] = useState<AssetCategory | 'all'>('all');
     const [matCatFilter, setMatCatFilter] = useState('all');
@@ -541,7 +547,7 @@ export default function AssetsAndMaterialsPage() {
                         <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white" onClick={openAddAsset}>
                             <Plus size={14} className="mr-1.5" /> Add asset
                         </Button>
-                    ) : (
+                    ) : mainTab === 'materials' && (
                         <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white" onClick={openAddMaterial}>
                             <Plus size={14} className="mr-1.5" /> Add material
                         </Button>
@@ -559,13 +565,16 @@ export default function AssetsAndMaterialsPage() {
             </StatGrid>
 
             {/* Main tabs */}
-            <Tabs value={mainTab} onValueChange={v => { setMainTab(v as 'assets' | 'materials'); setSearch(''); }} className="w-full">
+            <Tabs value={mainTab} onValueChange={v => { setMainTab(v as 'assets' | 'materials' | 'pricing'); setSearch(''); }} className="w-full">
                 <TabsList className="border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 mb-5">
                     <TabsTrigger value="assets" className={tabTriggerCls}>
                         <span className="flex items-center gap-2"><Boxes size={12} /> Assets ({assets.length})</span>
                     </TabsTrigger>
                     <TabsTrigger value="materials" className={tabTriggerCls}>
                         <span className="flex items-center gap-2"><ShoppingCart size={12} /> Materials ({materials.filter(m => m.status === 'active').length})</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="pricing" className={tabTriggerCls}>
+                        <span className="flex items-center gap-2"><Percent size={12} /> Labor &amp; pricing</span>
                     </TabsTrigger>
                 </TabsList>
 
@@ -866,6 +875,11 @@ export default function AssetsAndMaterialsPage() {
                         </div>
                     )}
                     <ListPager pager={materialPager} noun="materials" />
+                </TabsContent>
+
+                {/* ── Labor & pricing: labor rates, markup, sales tax (adminConfig/pricing) ── */}
+                <TabsContent value="pricing" className="m-0">
+                    <PricingTab settings={pricing} canEdit={canEditUserPay(authUser)} />
                 </TabsContent>
             </Tabs>
 

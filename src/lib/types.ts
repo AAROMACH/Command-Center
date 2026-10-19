@@ -824,6 +824,8 @@ export type InvoiceLineItem = {
   unitPrice: number;
   category: 'labor' | 'material';
   isEmergencyProtocol?: boolean;
+  /** Materials only. Older invoices have no value and tax every material. */
+  taxable?: boolean;
 };
 
 export type Invoice = {
@@ -838,9 +840,17 @@ export type Invoice = {
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'void';
   lineItems: InvoiceLineItem[];
   notes?: string;
+  /** Before any plan discount. */
   subtotal: number;
   tax: number;
   total: number;
+  /** Service plan discount taken off this invoice (snapshot). */
+  discountAmount?: number;
+  planDiscount?: { planId: string; planName: string; laborPct: number; materialsPct: number } | null;
+  /** The quote this invoice was created from. */
+  quoteId?: string | null;
+  /** Outside customer (no client account). */
+  customerEmail?: string | null;
 };
 
 export type PlanTier = {

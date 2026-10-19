@@ -171,6 +171,7 @@ export function PlanBenefitList({ plan }: { plan: ServicePlan }) {
     <ul className="space-y-1 text-[12px] text-text-secondary">
       <li className="flex items-center gap-1.5"><Clock size={11} className="text-text-muted" /> {b.responseHours}-hour response</li>
       {b.laborDiscountPct > 0 && <li className="flex items-center gap-1.5"><Percent size={11} className="text-text-muted" /> {b.laborDiscountPct}% off labor</li>}
+      {(b.materialsDiscountPct || 0) > 0 && <li className="flex items-center gap-1.5"><Percent size={11} className="text-text-muted" /> {b.materialsDiscountPct}% off materials</li>}
       {b.includedVisits > 0 && (
         <li className="flex items-center gap-1.5"><CalendarClock size={11} className="text-text-muted" /> {b.includedVisits} site visit{b.includedVisits === 1 ? '' : 's'} per {b.includedVisitsPer}</li>
       )}

@@ -186,6 +186,12 @@ export function PlanEditorDialog({
                 <p className="text-[11px] text-text-muted">Off labor on this client&apos;s quotes and invoices.</p>
               </div>
               <div className="space-y-1">
+                <Label className={labelCls}>Materials Discount (%)</Label>
+                <Input type="number" min="0" max="100" className={`${inputCls} font-mono`} value={draft.benefits.materialsDiscountPct || ''}
+                  onChange={e => setBenefit('materialsDiscountPct', parseFloat(e.target.value) || 0)} placeholder="0" />
+                <p className="text-[11px] text-text-muted">Off materials (before tax) on this client&apos;s quotes and invoices.</p>
+              </div>
+              <div className="space-y-1">
                 <Label className={labelCls}>Included Site Visits</Label>
                 <div className="flex gap-2">
                   <Input type="number" min="0" className={`${inputCls} font-mono w-20`} value={draft.benefits.includedVisits || ''}

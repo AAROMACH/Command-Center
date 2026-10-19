@@ -787,7 +787,9 @@ service cloud.firestore {
 
     // Assets & materials (admin portal only)
     match /materials/{id} {
-      allow read, write: if isAdmin();
+      // Sales reads the price book to price quotes.
+      allow read: if isAdmin() || isSales();
+      allow write: if isAdmin();
     }
     match /assets/{id} {
       allow read, write: if isAdmin();

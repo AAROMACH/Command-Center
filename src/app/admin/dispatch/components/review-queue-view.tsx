@@ -141,12 +141,13 @@ export function ReviewQueueView({ jobs, technicians, onSendToDispatch, onArchive
                     <span>{wo.clientName || 'Unassigned Client'}</span>
                     <span>·</span>
                     <span>{formatCityState(wo.location)}</span>
-                    {techName && (<><span>·</span><span className="text-text-primary">Marked by {techName}</span></>)}
-                    {when && (<><span>·</span><span className="normal-case">Marked {format(new Date(when), 'MMM d, yyyy · h:mm a')}</span></>)}
                   </div>
-                  {lastNote && (
-                    <p className="text-[12px] text-text-secondary mt-1.5 truncate max-w-xl">{lastNote.details}</p>
-                  )}
+                  {/* Who sent it here and when — the line people read first, on phones too. */}
+                  <p className="text-[12px] text-text-secondary mt-2 leading-snug">
+                    <span className="font-semibold text-text-primary">{techName || 'A technician'}</span>
+                    {' marked this job '}{wo.techOutcome === 'did_not_do' ? 'Did Not Do' : 'Cancelled'}
+                    {when && <span className="text-text-muted"> · {format(new Date(when), 'MMM d, yyyy · h:mm a')}</span>}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                   <Button

@@ -278,7 +278,7 @@ export default function TechAssignmentsPage() {
                 techOutcomeAt: new Date().toISOString(),
                 history: [
                     ...(allWorkOrders.find(wo => wo.id === woId)?.history || []),
-                    { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `Tech marked job as ${label} at ${now}.`, user: techDisplayName(currentTech) }
+                    { type: 'status_change', date: format(new Date(), 'MM-dd-yyyy'), details: `${techDisplayName(currentTech) || 'Tech'} marked job as ${label} at ${now}.`, user: techDisplayName(currentTech) }
                 ]
             });
             toast({ title: `Marked as ${label}`, description: "Removed from your active jobs and sent to an admin to review." });

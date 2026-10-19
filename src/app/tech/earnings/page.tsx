@@ -73,6 +73,7 @@ export default function TechEarningsPage() {
     // the expanded per-job breakdown below. `workOrders` above only ever
     // holds unassigned-pool docs, which a tech's own jobs never sit in.
     const [assignments, setAssignments] = useState<WorkOrder[]>([]);
+    const [helperAssignments, setHelperAssignments] = useState<WorkOrder[]>([]);
     const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
     const [projectPayouts, setProjectPayouts] = useState<any[]>([]);
     const [reimbursements, setReimbursements] = useState<Reimbursement[]>([]);
@@ -153,7 +154,11 @@ export default function TechEarningsPage() {
             const unsubReim = onSnapshot(query(collection(db, 'reimbursements'), where('techId', '==', userId)), (snap) => {
                 setReimbursements(snap.docs.map(d => ({ ...d.data(), id: d.id } as Reimbursement)));
             });
-            return () => { unsubTech(); unsubLogs(); unsubExp(); unsubWO(); unsubAsmt(); unsubPayouts(); unsubReim(); unsubDisputes(); };
+            // Jobs they helped on, so helper lines resolve too.
+            const unsubHelp = onSnapshot(query(collection(db, 'assignments'), where('additionalTechnicianIds', 'array-contains', userId)), (snap) => {
+                setHelperAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+            }, () => {});
+            return () => { unsubTech(); unsubLogs(); unsubExp(); unsubWO(); unsubAsmt(); unsubHelp(); unsubPayouts(); unsubReim(); unsubDisputes(); };
         }
     }, []);
 
@@ -162,8 +167,8 @@ export default function TechEarningsPage() {
     // (unassigned-pool leftovers or the tech's live/completed assignments)
     // the doc currently lives in.
     const jobsById = useMemo(
-        () => new Map(mergeJobs(workOrders, assignments).map(j => [j.id, j])),
-        [workOrders, assignments],
+        () => new Map(mergeJobs(workOrders, [...assignments, ...helperAssignments]).map(j => [j.id, j])),
+        [workOrders, assignments, helperAssignments],
     );
 
     const settlementOf = (log: WeeklyLog) => computeWeeklyLogSettlement(log, jobsById);
@@ -412,7 +417,7 @@ export default function TechEarningsPage() {
 
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                 <StatCard label="Paid (approved)" icon={CheckCircle2} tone="done" value={`$${metrics.settled.toFixed(2)}`} sub={logFiltersActive ? 'Filtered logs' : 'All approved logs'} />
-                <StatCard label="Waiting on approval" icon={ArrowUpRight} tone="progress" value={`$${metrics.pending.toFixed(2)}`} sub="Submitted logs" />
+                <StatCard label="Waiting on approval" icon={ArrowUpRight} tone="progress" value={`≈ $${metrics.pending.toFixed(2)}`} sub="Estimated · submitted logs" />
                 <StatCard label="Reimbursements pending" icon={Receipt} value={`$${metrics.pendingReim.toFixed(2)}`} sub="Waiting on review" className="col-span-2 md:col-span-1" />
             </div>
 
@@ -554,7 +559,7 @@ export default function TechEarningsPage() {
                                                             )}
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="text-right font-mono font-semibold text-text-primary whitespace-nowrap">${settlementOf(log).toFixed(2)}</TableCell>
+                                                    <TableCell className="text-right font-mono font-semibold text-text-primary whitespace-nowrap" title={log.status === 'Approved' ? undefined : 'Estimated until payroll approves'}>{log.status === 'Approved' ? '' : '≈ '}${settlementOf(log).toFixed(2)}</TableCell>
                                                     <TableCell className="text-right pr-4">
                                                         {isApproved ? (
                                                             <button
@@ -589,7 +594,7 @@ export default function TechEarningsPage() {
                                                                                         {job?.scheduleTime && ` · ${job.scheduleTime}`}
                                                                                     </p>
                                                                                 </div>
-                                                                                <span className="shrink-0 text-sm font-mono font-bold text-text-green">${pay.toFixed(2)}</span>
+                                                                                <span className="shrink-0 text-sm font-mono font-bold text-text-green">{log.status === 'Approved' ? '' : '≈ '}${pay.toFixed(2)}</span>
                                                                             </div>
                                                                         );
                                                                     })}

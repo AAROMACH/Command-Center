@@ -62,6 +62,7 @@ import { differenceInMinutes, parseISO, format } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { db, auth } from '@/lib/firebase';
 import { NotificationService } from '@/lib/notification-service';
+import { LogApprovalHistory } from './log-approval-history';
 import { doc, setDoc, updateDoc, deleteDoc, arrayUnion, collection, query, where, onSnapshot, runTransaction } from 'firebase/firestore';
 import { isLockedLog, assignedTechOf, weekOfForScheduleDate } from '@/lib/weekly-log-core';
 import { isSuperAdmin } from '@/lib/permissions';
@@ -1461,6 +1462,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                 <p className="text-lg font-bold font-mono tabular-nums text-text-green leading-tight">${calculatedTotalPayout.toFixed(2)}</p>
                             </div>
                         </div>
+                        <LogApprovalHistory key={localLog.id} logId={localLog.id} submittedAt={localLog.submittedAt} />
                     </DialogHeader>
 
                     {!isLogApproved && !isLockedLog(localLog as any) && canOverrideDispute && (

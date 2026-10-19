@@ -29,7 +29,17 @@ export const netOfFieldNationFee = (amount: number): number =>
  * linked job can't be found (e.g. it was later archived/deleted).
  */
 export function effectiveJobPay(item: WeeklyLogItem, job: WorkOrder | undefined): number {
-  if (!job || job.source !== 'Imported') return payCents(item.jobPay || 0) / 100;
+  // A helper's line is whatever payroll typed in ($0 until priced) — never
+  // the lead's share of the job.
+  if (item.isHelper) return payCents(item.jobPay || 0) / 100;
+  // Job doc not readable here (a tech's earnings page can't see every job):
+  // the item remembers it was a Field Nation job, so still apply fee + split
+  // to the stored gross instead of showing the whole work-order pay.
+  if (!job) {
+    if (item.jobSource !== 'Imported') return payCents(item.jobPay || 0) / 100;
+    return payCents(Math.max(0, (item.jobPay || 0) * (1 - FIELD_NATION_FEE_RATE) * 0.5)) / 100;
+  }
+  if (job.source !== 'Imported') return payCents(item.jobPay || 0) / 100;
   const netLabor = (job.pay || 0) * (1 - FIELD_NATION_FEE_RATE);
   return payCents(Math.max(0, netLabor * 0.5)) / 100;
 }

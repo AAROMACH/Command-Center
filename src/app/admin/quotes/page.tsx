@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { ViewToggle, useViewMode } from '@/components/view-toggle';
 import { PageHeader } from '@/components/page-header';
+import { InvoicesPanel } from '@/app/admin/financials/components/invoices-panel';
 import { EmptyState, LoadingState } from '@/components/empty-state';
 import { SearchField } from '@/components/search-field';
 import { SortControl } from '@/components/list-toolbar';
@@ -919,8 +920,8 @@ export default function AdminQuotesPage() {
       <PageHeader
         eyebrow="Sales"
         icon={FileSearch}
-        title="Quotes"
-        subtitle="Create, send and track quotes until the client approves them."
+        title="Quotes & Invoices"
+        subtitle="Create, send and track quotes, then bill clients with invoices."
         actions={<>
           <ViewToggle value={viewMode} onChange={setViewMode} />
           <Button onClick={() => setIsNewOpen(true)} className="bg-brand-red hover:bg-brand-red/90 text-white h-9">
@@ -943,12 +944,14 @@ export default function AdminQuotesPage() {
           <TabsTrigger value="sent" className="tab">Sent<TabCount n={sent.length} /></TabsTrigger>
           <TabsTrigger value="approved" className="tab">Approved<TabCount n={approved.length} /></TabsTrigger>
           <TabsTrigger value="rejected" className="tab">Rejected / expired<TabCount n={rejected.length} /></TabsTrigger>
+          <TabsTrigger value="invoices" className="tab">Invoices</TabsTrigger>
         </TabsList>
 
         <TabsContent value="draft" className="mt-0">{grid(draft, '0')}</TabsContent>
         <TabsContent value="sent" className="mt-0">{grid(sent, '1')}</TabsContent>
         <TabsContent value="approved" className="mt-0">{grid(approved, '2')}</TabsContent>
         <TabsContent value="rejected" className="mt-0">{grid(rejected, '3')}</TabsContent>
+        <TabsContent value="invoices" className="mt-0"><InvoicesPanel search={search} onResetSearch={() => setSearch('')} /></TabsContent>
       </Tabs>
 
       <NewQuoteDialog

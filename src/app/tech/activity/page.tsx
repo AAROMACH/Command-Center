@@ -104,8 +104,8 @@ export default function TechActivityPage() {
   const helperCount = sel.filter(r => r.role === 'helper').length;
   const kpis = [
     { label: 'Approved pay', value: money(sum(approved)), sub: `${count(approved.length)} job${approved.length === 1 ? '' : 's'}`, tone: 'text-text-green' },
-    { label: 'Awaiting approval', value: money(sum(awaiting)), sub: `${count(awaiting.length)} on submitted / draft logs`, tone: 'text-accent-gold' },
-    { label: 'Not filed yet', value: count(notFiled.length), sub: notFiled.length ? `~${money(sum(notFiled))} once logged` : 'all completed jobs are on a log', tone: notFiled.length ? 'text-brand-red' : 'text-text-primary' },
+    { label: 'Awaiting approval', value: `≈ ${money(sum(awaiting))}`, sub: `${count(awaiting.length)} on submitted / draft logs`, tone: 'text-accent-gold' },
+    { label: 'Not filed yet', value: count(notFiled.length), sub: notFiled.length ? `≈ ${money(sum(notFiled))} once logged` : 'all completed jobs are on a log', tone: notFiled.length ? 'text-brand-red' : 'text-text-primary' },
     { label: 'Completed jobs', value: count(completed.length), sub: helperCount ? `${count(helperCount)} as helper` : `${count(sel.length - completed.length)} open`, tone: 'text-text-primary' },
     { label: 'Avg pay per job', value: paidCompleted.length ? money(sum(paidCompleted) / paidCompleted.length) : '—', sub: med != null ? `median ${money(med)}` : 'no logged jobs yet', tone: 'text-text-primary' },
     { label: 'Customers', value: count(new Set(sel.map(r => r.customer)).size), sub: f.customer ? 'focused' : 'in this view', tone: 'text-text-primary' },
@@ -313,7 +313,7 @@ export default function TechActivityPage() {
                     <td className="px-3 py-2 hidden lg:table-cell max-w-[160px] truncate">{r.type}</td>
                     <td className="px-3 py-2 hidden sm:table-cell whitespace-nowrap"><StatusBadge kind="job" value={r.status} /></td>
                     <td className={cn('px-3 py-2 text-right whitespace-nowrap font-semibold', r.estimated ? 'text-text-muted' : 'text-text-primary')}>
-                      {r.pay || !r.estimated ? `${r.estimated ? '~' : ''}${money(r.pay)}` : '—'}
+                      {r.pay || !r.estimated ? `${r.estimated || r.payStatus !== 'approved' ? '≈ ' : ''}${money(r.pay)}` : '—'}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <span className={cn('text-[12px] font-semibold', PAY_TONE[r.payStatus])}>{PAY_STATUS_LABELS[r.payStatus]}</span>

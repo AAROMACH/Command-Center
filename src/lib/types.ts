@@ -607,6 +607,9 @@ export type WeeklyLogItem = {
   // entry). Helper entries start at $0 for payroll to price separately.
   isHelper?: boolean;
   helperLeadTechId?: string;
+  /** The job's `source` when filed ('Imported' = Field Nation), so pay can
+   *  be settled even where the job doc can't be read. */
+  jobSource?: string;
   payoutAmount?: number;
   reimbursementAmount?: number;
   payNotes?: string;

@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Expense, Invoice, WeeklyLog, Technician, WorkOrder, Reimbursement } from '@/lib/types';
-import { InvoiceEditor } from './components/invoice-editor';
+import { InvoicesPanel } from './components/invoices-panel';
 import { RevenueChart } from './components/revenue-chart';
 import { MetricBreakdownSheet, type MetricKey } from './components/metric-breakdown-sheet';
 import { computeFinancialSummary, monthBreakdown } from '@/lib/financial-summary';
@@ -28,13 +28,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { downloadCsv } from '@/app/admin/reports/components/history-tabs';
 import { statusLabel } from '@/lib/status-styles';
 
-const INVOICE_SORTS = [
-    { value: 'date', label: 'Due date' },
-    { value: 'issued', label: 'Issue date' },
-    { value: 'total', label: 'Total' },
-    { value: 'client', label: 'Client' },
-    { value: 'number', label: 'Invoice #' },
-];
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -68,13 +61,8 @@ export default function FinancialsPage() {
     const [reimTypeFilter, setReimTypeFilter] = useState<'all' | 'receipt' | 'mileage'>('all');
     const [reimStatusFilter, setReimStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'paid'>('all');
     const [searchQuery, setSearchQuery] = useState("");
-    const [invStatusFilter, setInvStatusFilter] = useState('all');
-    const [invSort, setInvSort] = useState('date');
-    const [invSortAsc, setInvSortAsc] = useState(false);
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'summary');
 
-    const [isInvoiceEditorOpen, setIsInvoiceEditorOpen] = useState(false);
-    const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     
     const [isClosePeriodOpen, setIsClosePeriodOpen] = useState(false);
     const [confirmationText, setConfirmationText] = useState("");
@@ -151,7 +139,7 @@ export default function FinancialsPage() {
             { key: 'revenue' as const, title: "REVENUE (MTD)", value: usd0(summary.month.revenue), trend: `${summary.month.jobs.length} COMPLETED JOB${summary.month.jobs.length !== 1 ? 'S' : ''} + PAID INVOICES`, trendType: "positive" as const, TrendIcon: ArrowUpRight },
             { key: 'tech' as const, title: "TECH PAY (MTD)", value: usd0(summary.month.techPortion), trend: "TECH PORTION · EXPENSE", trendType: "warning" as const, TrendIcon: Minus },
             { key: 'profit' as const, title: "AAROMACH PROFIT (MTD)", value: usd0(summary.month.profit), trend: `${summary.margin.toFixed(1)}% OF REVENUE · AFTER FN FEES`, trendType: summary.month.profit >= 0 ? "positive" as const : "negative" as const, TrendIcon: TrendingUp },
-            { key: 'pending' as const, title: "PENDING PAYOUTS", value: usd0(summary.pendingTotal), trend: `${summary.pending.length} SUBMITTED LOG${summary.pending.length !== 1 ? 'S' : ''} AWAITING APPROVAL`, trendType: "warning" as const, TrendIcon: Minus },
+            { key: 'pending' as const, title: "PENDING PAYOUTS", value: `≈ ${usd0(summary.pendingTotal)}`, trend: `${summary.pending.length} SUBMITTED LOG${summary.pending.length !== 1 ? 'S' : ''} AWAITING APPROVAL`, trendType: "warning" as const, TrendIcon: Minus },
             { key: 'ar' as const, title: "OUTSTANDING A/R", value: usd0(summary.receivableTotal), trend: `${summary.receivables.length} SENT / OVERDUE INVOICE${summary.receivables.length !== 1 ? 'S' : ''}`, trendType: "positive" as const, TrendIcon: Activity },
         ];
     }, [summary]);
@@ -179,28 +167,7 @@ export default function FinancialsPage() {
     
     const getTechnicianName = (id: string) => technicians.find(t => t.id === id)?.name || 'Unknown';
     const getTechnician = (id: string) => technicians.find(t => t.id === id);
-    const clientsList = technicians.filter(isClient);
     
-    const handleSaveInvoice = async (savedInvoice: Invoice) => {
-        try {
-            const cleanedData = JSON.parse(JSON.stringify(savedInvoice));
-            const { id, ...data } = cleanedData;
-
-            if (id) {
-                await setDoc(doc(db, 'invoices', id), cleanedData);
-                toast({ title: 'Invoice updated', description: `Invoice ${savedInvoice.invoiceNumber} was updated.` });
-            } else {
-                const newId = await createDocId(ID_PREFIXES.INVOICE);
-                await setDoc(doc(db, 'invoices', newId), { ...data, id: newId });
-                toast({ title: 'Invoice created', description: `Invoice ${savedInvoice.invoiceNumber} was created.` });
-            }
-            setIsInvoiceEditorOpen(false);
-        } catch (e: any) {
-            console.error("Financial registry write error:", e);
-            toast({ variant: "destructive", title: "Save Failed", description: e.message });
-        }
-    };
-
     const handleExecuteExport = () => {
         if (exportConfig.types.length === 0) {
             toast({ variant: 'destructive', title: 'Export Configuration Error', description: 'Please select at least one data category.' });
@@ -273,33 +240,7 @@ export default function FinancialsPage() {
     };
 
 
-    // Status options come from the invoices that exist, with counts.
-    const invoiceStatusOptions = useMemo(() => {
-        const counts = new Map<string, number>();
-        invoices.forEach(inv => { const k = (inv.status || 'draft').toLowerCase(); counts.set(k, (counts.get(k) || 0) + 1); });
-        return [...counts.entries()].sort(([a], [b]) => a.localeCompare(b));
-    }, [invoices]);
-    const filteredInvoices = useMemo(() => {
-        const q = searchQuery.toLowerCase();
-        const rows = invoices
-            .filter(inv => invStatusFilter === 'all' || (inv.status || 'draft').toLowerCase() === invStatusFilter)
-            .filter(inv => !q || [inv.invoiceNumber, inv.clientName, (Number(inv.total) || 0).toFixed(2)].some(v => (v || '').toLowerCase().includes(q)));
-        const day = (v?: string | null) => (v ? parseLocalDate(v)?.getTime() ?? (new Date(v).getTime() || 0) : 0);
-        return [...rows].sort((a, b) => {
-            switch (invSort) {
-                case 'issued': return day(b.issueDate) - day(a.issueDate);
-                case 'total': return (Number(b.total) || 0) - (Number(a.total) || 0);
-                case 'client': return (a.clientName || '').localeCompare(b.clientName || '');
-                case 'number': return (b.invoiceNumber || '').localeCompare(a.invoiceNumber || '', undefined, { numeric: true });
-                default: return invSortAsc ? day(a.dueDate) - day(b.dueDate) : day(b.dueDate) - day(a.dueDate);
-            }
-        });
-    }, [invoices, searchQuery, invStatusFilter, invSort, invSortAsc]);
-    const invoicePager = usePaged(filteredInvoices, PAGE_SIZES_LARGE, 'financials-invoices', [searchQuery, invStatusFilter, invSort, invSortAsc]);
-    const exportInvoicesCsv = () => downloadCsv('invoices',
-        ['Invoice #', 'Client', 'Issue date', 'Due date', 'Status', 'Subtotal', 'Tax', 'Total', 'Invoice ID'],
-        filteredInvoices.map(inv => [inv.invoiceNumber, inv.clientName, inv.issueDate, inv.dueDate, statusLabel(inv.status),
-            (Number((inv as any).subtotal) || 0).toFixed(2), (Number((inv as any).taxAmount ?? (inv as any).tax) || 0).toFixed(2), (Number(inv.total) || 0).toFixed(2), inv.id]));
+
 
 
     const filteredExpenses = useMemo(() => {
@@ -467,68 +408,7 @@ export default function FinancialsPage() {
                     </TabsContent>
 
                     <TabsContent value="invoices" className="m-0">
-                         <Card>
-                            <CardHeader className="flex flex-row items-center justify-between">
-                                <div className="text-left">
-                                    <CardTitle className="text-base">Client invoices</CardTitle>
-                                    <CardDescription>Create and track every client invoice.</CardDescription>
-                                </div>
-                                <Button onClick={() => { setSelectedInvoice(null); setIsInvoiceEditorOpen(true); }} className="h-9 px-4"><Plus size={14} className="mr-2"/>New invoice</Button>
-                            </CardHeader>
-                            <div className="flex flex-wrap items-center gap-2 px-6 pb-4">
-                                <Select value={invStatusFilter} onValueChange={setInvStatusFilter}>
-                                    <SelectTrigger className="h-11 sm:h-9 w-[170px] bg-bg-secondary border-border-main" aria-label="Status">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All statuses ({invoices.length})</SelectItem>
-                                        {invoiceStatusOptions.map(([k, n]) => <SelectItem key={k} value={k}>{statusLabel(k)} ({n})</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                                <SortControl value={invSort} onChange={setInvSort} options={INVOICE_SORTS} dateAsc={invSortAsc} onToggleDirection={() => setInvSortAsc(v => !v)} />
-                                {invStatusFilter !== 'all' && (
-                                    <Button variant="ghost" size="sm" className="h-9 text-brand-red" onClick={() => setInvStatusFilter('all')}><X size={14} className="mr-1" />Reset</Button>
-                                )}
-                                <Button variant="outline" className="h-11 sm:h-9 ml-auto" onClick={exportInvoicesCsv} disabled={filteredInvoices.length === 0}>
-                                    <Download size={14} className="mr-1.5" />Export CSV ({filteredInvoices.length})
-                                </Button>
-                            </div>
-                            <CardContent className="table-wrap p-0">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="hover:bg-transparent border-border-sub">
-                                            <TableHead className="pl-6">Invoice #</TableHead>
-                                            <TableHead>Client</TableHead>
-                                            <TableHead>Due date</TableHead>
-                                            <TableHead>Total</TableHead>
-                                            <TableHead>Status</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {invoicePager.items.map((invoice) => (
-                                            <TableRow key={invoice.id} onClick={() => { setSelectedInvoice(invoice); setIsInvoiceEditorOpen(true); }} className="cursor-pointer border-border-sub hover:bg-bg-tertiary transition-colors text-left">
-                                                <TableCell className="font-mono font-bold text-brand-red text-xs pl-6">{invoice.invoiceNumber}</TableCell>
-                                                <TableCell className="text-sm font-semibold">{invoice.clientName}</TableCell>
-                                                <TableCell className="text-xs text-text-muted">{invoice.dueDate}</TableCell>
-                                                <TableCell className="font-mono text-sm font-bold text-text-primary tabular-nums">${(Number(invoice.total) || 0).toFixed(2)}</TableCell>
-                                                <TableCell>
-                                                    <StatusBadge kind="invoice" value={invoice.status} />
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                                {filteredInvoices.length === 0 && (
-                                    <div className="p-4">
-                                        {invoices.length === 0
-                                            ? <EmptyState compact icon={FileText} title="No invoices yet" description="Create an invoice to bill a client." />
-                                            : <EmptyState compact icon={FileText} title="No invoices match these filters"
-                                                action={<Button size="sm" variant="outline" onClick={() => { setSearchQuery(''); setInvStatusFilter('all'); }}>Reset filters</Button>} />}
-                                    </div>
-                                )}
-                                <div className="px-4"><ListPager pager={invoicePager} noun="invoices" /></div>
-                            </CardContent>
-                        </Card>
+                        <InvoicesPanel search={searchQuery} onResetSearch={() => setSearchQuery('')} />
                     </TabsContent>
 
                     <TabsContent value="reimbursements" className="m-0 space-y-4">
@@ -753,7 +633,6 @@ export default function FinancialsPage() {
                 </DialogContent>
             </Dialog>
 
-            <InvoiceEditor isOpen={isInvoiceEditorOpen} setIsOpen={setIsInvoiceEditorOpen} invoice={selectedInvoice} clients={clientsList} projects={projects} workOrders={allMissions} onSave={handleSaveInvoice} />
         </div>
     );
 }

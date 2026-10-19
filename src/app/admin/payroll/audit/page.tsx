@@ -254,7 +254,7 @@ export default function PayrollAuditPage() {
         approved: filteredLogs.filter(l => l.status === 'Approved').reduce((s, l) => s + settlementOf(l), 0),
         pending: filteredLogs.filter(l => l.status === 'Submitted').reduce((s, l) => s + settlementOf(l), 0),
         count: filteredLogs.length,
-    }), [filteredLogs]);
+    }), [filteredLogs, settlementByLogId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Multiple Drafts are a data-integrity issue; a Draft beside an Approved
     // log can also hold later work that needs a fresh payroll review.

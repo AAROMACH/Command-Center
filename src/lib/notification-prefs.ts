@@ -42,6 +42,8 @@ const DEFAULT_ON: Record<string, OutsideChannel[]> = {
  *  otherwise the default above (an event switched off under the older
  *  per-event switches stays off). */
 export function channelOn(prefs: NotificationPreferences, event: string, ch: OutsideChannel): boolean {
+  // Unsorted alerts ('other') stay in the bell — see lib/notification-events.
+  if (event === 'other') return false;
   const explicit = prefs.eventChannels?.[event]?.[ch];
   if (explicit !== undefined) return explicit;
   if (!eventEnabled(prefs, event)) return false;

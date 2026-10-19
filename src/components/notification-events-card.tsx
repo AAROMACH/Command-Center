@@ -1,37 +1,53 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { enableWebPush, webPushState, type WebPushState } from '@/lib/web-push';
 import { doc, updateDoc } from 'firebase/firestore';
+import {
+    Activity, Bell, BellRing, Briefcase, CheckCircle2, FolderKanban, Inbox, Loader2, Mail,
+    MessageSquare, Receipt, Send, Smartphone, TrendingUp, Wallet, XCircle, type LucideIcon,
+} from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
-import { Button } from '@/components/ui/button';
-import { CheckCircle2, Loader2, Send, XCircle } from 'lucide-react';
+import { enableWebPush, webPushState, type WebPushState } from '@/lib/web-push';
 import { useAuth } from '@/contexts/auth-context';
 import { channelOn, resolveNotificationPrefs, withEventChannel, type OutsideChannel } from '@/lib/notification-prefs';
-import { eventsForRoles } from '@/lib/notification-events';
+import { EVENT_GROUP_LABELS, eventsForRoles, type EventGroup, type NotificationEvent } from '@/lib/notification-events';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
-const CHANNELS: { id: OutsideChannel; label: string }[] = [
-    { id: 'phone', label: 'Phone' },
-    { id: 'email', label: 'Email' },
-    { id: 'sms', label: 'Text' },
+const CHANNELS: { id: OutsideChannel; label: string; Icon: LucideIcon }[] = [
+    { id: 'phone', label: 'Phone', Icon: Smartphone },
+    { id: 'email', label: 'Email', Icon: Mail },
+    { id: 'sms', label: 'Text', Icon: MessageSquare },
 ];
+
+const EVENT_ICONS: Partial<Record<NotificationEvent, LucideIcon>> = {
+    job_assignments: Briefcase,
+    my_pay: Wallet,
+    projects: FolderKanban,
+    job_activity: Activity,
+    requests: Inbox,
+    payroll_review: Receipt,
+    sales: TrendingUp,
+};
+
+const GROUP_ORDER: EventGroup[] = ['work', 'operations', 'sales'];
 
 const DEVICE_TEXT: Record<WebPushState, string> = {
     unsupported: '',
-    'needs-install': 'On iPhone: tap Share → Add to Home Screen, open Aaromach from the new icon and sign in. Then come back here to turn notifications on.',
-    'not-configured': 'Not available yet — the Web Push key hasn\u2019t been added to the server.',
-    off: 'Get pop-up alerts on this phone or computer, even when the app is closed.',
+    'needs-install': 'On iPhone: tap Share → Add to Home Screen, open Aaromach from the new icon and sign in, then come back here to turn notifications on.',
+    'not-configured': 'Not available yet — the Web Push key hasn’t been added to the server.',
+    off: 'Get pop-up alerts on this device, even when the app is closed.',
     blocked: 'Blocked for this site. Allow notifications for app.aaromach.com in your phone or browser settings, then reload.',
-    on: 'On — alerts will pop up on this device.',
+    on: 'On — alerts pop up on this device.',
 };
 
 /**
- * Per-event switches: which kinds of alert may email, text or buzz this
- * person's phone. Switched-off events still show in the bell. Only the
- * events that apply to their roles are listed.
+ * Settings → Notifications: for each kind of alert that applies to this
+ * person's roles, which channels it reaches them on (phone, email, text).
+ * Every alert also lands in the bell regardless. Includes this device's web
+ * push switch and a test that reports each channel.
  */
 export function NotificationEventsCard() {
     const { user } = useAuth();
@@ -42,6 +58,19 @@ export function NotificationEventsCard() {
     const [enabling, setEnabling] = useState(false);
     useEffect(() => { webPushState().then(setDevice).catch(() => {}); }, []);
     if (!user) return null;
+
+    const roles = [...(Array.isArray(user.roles) ? user.roles : []), ...(typeof (user as any).role === 'string' ? [(user as any).role] : [])] as string[];
+    const events = eventsForRoles(roles);
+    const prefs = resolveNotificationPrefs(user.notificationPreferences);
+
+    const toggle = async (id: string, ch: OutsideChannel) => {
+        const next = withEventChannel(user.notificationPreferences, id, ch, !channelOn(prefs, id, ch));
+        try {
+            await updateDoc(doc(db, 'users', user.id), { notificationPreferences: next });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
+        }
+    };
 
     const turnOnDevice = async () => {
         setEnabling(true);
@@ -72,31 +101,29 @@ export function NotificationEventsCard() {
         }
     };
 
-    const roles = [...(Array.isArray(user.roles) ? user.roles : []), ...(typeof (user as any).role === 'string' ? [(user as any).role] : [])] as string[];
-    const events = eventsForRoles(roles);
-    const prefs = resolveNotificationPrefs(user.notificationPreferences);
-
-    const toggle = async (id: string, ch: OutsideChannel) => {
-        const next = withEventChannel(user.notificationPreferences, id, ch, !channelOn(prefs, id, ch));
-        try {
-            await updateDoc(doc(db, 'users', user.id), { notificationPreferences: next });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
-        }
-    };
-
     return (
         <Card>
-            <CardHeader className="text-left">
-                <CardTitle>Notifications</CardTitle>
-                <CardDescription>Pick how each kind of alert reaches you. Everything always shows in the bell inside the app, so nothing is lost if you swipe a phone notification away.</CardDescription>
+            <CardHeader className="text-left space-y-1">
+                <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-brand-red/10 border border-brand-red/20 flex items-center justify-center shrink-0">
+                        <BellRing size={17} className="text-brand-red" />
+                    </div>
+                    <div>
+                        <CardTitle className="text-base">Notification preferences</CardTitle>
+                        <CardDescription className="text-[12px]">Choose how each kind of alert reaches you.</CardDescription>
+                    </div>
+                </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-5">
                 {device !== 'unsupported' && (
-                    <div className="flex items-center justify-between gap-4 p-4 rounded-lg border border-brand-red/30 bg-brand-red/5">
-                        <div className="space-y-1 text-left">
-                            <h4 className="text-[13px] font-semibold text-text-primary">Phone notifications on this device</h4>
-                            <p className="text-[12px] text-text-muted">{DEVICE_TEXT[device]}</p>
+                    <div className={cn('flex items-center justify-between gap-4 p-3.5 rounded-lg border',
+                        device === 'on' ? 'border-green-border/40 bg-green-dim/20' : 'border-border-sub bg-bg-primary')}>
+                        <div className="flex items-start gap-3 text-left">
+                            <Smartphone size={16} className={cn('mt-0.5 shrink-0', device === 'on' ? 'text-text-green' : 'text-text-muted')} />
+                            <div className="space-y-0.5">
+                                <p className="text-[13px] font-semibold text-text-primary">This device</p>
+                                <p className="text-[12px] text-text-muted leading-snug">{DEVICE_TEXT[device]}</p>
+                            </div>
                         </div>
                         {device === 'off' && (
                             <Button size="sm" onClick={turnOnDevice} disabled={enabling} className="shrink-0">
@@ -106,40 +133,66 @@ export function NotificationEventsCard() {
                         {device === 'on' && <CheckCircle2 size={18} className="text-text-green shrink-0" />}
                     </div>
                 )}
-                <div className="rounded-lg border border-border-sub overflow-hidden">
-                    <div className="grid grid-cols-[1fr,repeat(3,52px)] items-center gap-1 px-3 py-2 bg-bg-tertiary text-[10px] font-bold uppercase tracking-wider text-text-muted">
-                        <span className="text-left">Notification</span>
-                        {CHANNELS.map(c => <span key={c.id} className="text-center">{c.label}</span>)}
-                    </div>
-                    {events.map(e => (
-                        <div key={e.id} className="grid grid-cols-[1fr,repeat(3,52px)] items-center gap-1 px-3 py-3 border-t border-border-sub bg-bg-primary">
-                            <div className="space-y-0.5 text-left pr-2">
-                                <h4 className="text-[13px] font-semibold text-text-primary">{e.label}</h4>
-                                <p className="text-[11px] text-text-muted leading-snug">{e.desc}</p>
+
+                {GROUP_ORDER.map(group => {
+                    const rows = events.filter(e => e.group === group);
+                    if (!rows.length) return null;
+                    return (
+                        <section key={group} className="space-y-2">
+                            <h4 className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-left px-1">{EVENT_GROUP_LABELS[group]}</h4>
+                            <div className="rounded-xl border border-border-sub divide-y divide-border-sub overflow-hidden">
+                                {rows.map(e => {
+                                    const Icon = EVENT_ICONS[e.id] || Bell;
+                                    return (
+                                        <div key={e.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-bg-primary">
+                                            <div className="flex items-start gap-3 flex-1 min-w-0 text-left">
+                                                <div className="h-8 w-8 rounded-lg bg-bg-tertiary border border-border-sub flex items-center justify-center shrink-0">
+                                                    <Icon size={15} className="text-text-secondary" />
+                                                </div>
+                                                <div className="min-w-0 space-y-0.5">
+                                                    <p className="text-[13px] font-semibold text-text-primary">{e.label}</p>
+                                                    <p className="text-[12px] text-text-muted leading-snug">{e.desc}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-1.5 shrink-0 pl-11 sm:pl-0" role="group" aria-label={`${e.label} channels`}>
+                                                {CHANNELS.map(({ id, label, Icon: ChIcon }) => {
+                                                    const on = channelOn(prefs, e.id, id);
+                                                    return (
+                                                        <button key={id} type="button" aria-pressed={on} onClick={() => toggle(e.id, id)}
+                                                            className={cn('h-8 px-2.5 rounded-md border text-[11px] font-semibold inline-flex items-center gap-1.5 transition-colors',
+                                                                on ? 'bg-brand-red/10 border-brand-red/40 text-brand-red'
+                                                                    : 'bg-bg-secondary border-border-sub text-text-muted hover:text-text-primary hover:border-border-main')}>
+                                                            <ChIcon size={13} />{label}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
-                            {CHANNELS.map(c => (
-                                <div key={c.id} className="flex justify-center">
-                                    <Checkbox className="h-5 w-5" checked={channelOn(prefs, e.id, c.id)} onCheckedChange={() => toggle(e.id, c.id)} aria-label={`${e.label} by ${c.label}`} />
-                                </div>
-                            ))}
-                        </div>
-                    ))}
-                </div>
-                <div className="pt-2 space-y-2">
-                    <Button variant="outline" size="sm" onClick={sendTest} disabled={testing}>
+                        </section>
+                    );
+                })}
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                    <p className="text-[12px] text-text-muted flex items-center gap-1.5 text-left">
+                        <Bell size={13} className="shrink-0" /> Every alert also appears in the bell, even ones you switch off here.
+                    </p>
+                    <Button variant="outline" size="sm" onClick={sendTest} disabled={testing} className="shrink-0 self-start sm:self-auto">
                         {testing ? <Loader2 size={13} className="mr-1.5 animate-spin" /> : <Send size={13} className="mr-1.5" />} Send me a test
                     </Button>
-                    {results && (
-                        <ul className="rounded-lg border border-border-sub bg-bg-primary divide-y divide-border-sub">
-                            {results.map(r => (
-                                <li key={r.channel} className="flex items-start gap-2 px-3 py-2 text-[12px] text-left">
-                                    {r.ok ? <CheckCircle2 size={14} className="text-text-green shrink-0 mt-0.5" /> : <XCircle size={14} className="text-brand-red shrink-0 mt-0.5" />}
-                                    <span><span className="font-semibold text-text-primary">{r.channel}:</span> <span className="text-text-muted">{r.detail}</span></span>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
                 </div>
+                {results && (
+                    <ul className="rounded-lg border border-border-sub bg-bg-primary divide-y divide-border-sub">
+                        {results.map(r => (
+                            <li key={r.channel} className="flex items-start gap-2 px-3 py-2 text-[12px] text-left">
+                                {r.ok ? <CheckCircle2 size={14} className="text-text-green shrink-0 mt-0.5" /> : <XCircle size={14} className="text-brand-red shrink-0 mt-0.5" />}
+                                <span><span className="font-semibold text-text-primary">{r.channel}:</span> <span className="text-text-muted">{r.detail}</span></span>
+                            </li>
+                        ))}
+                    </ul>
+                )}
             </CardContent>
         </Card>
     );

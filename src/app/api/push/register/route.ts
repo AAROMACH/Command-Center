@@ -29,11 +29,18 @@ export async function POST(req: NextRequest) {
   const t = await tokenFrom(req);
   if (!t) return NextResponse.json({ error: 'Missing token' }, { status: 400 });
   const fs = getFirestore(adminApp);
-  // A phone that changes hands should only notify its current user.
-  const others = await fs.collectionGroup('pushTokens').where('token', '==', t.token).get();
-  await Promise.all(others.docs.filter(d => d.ref.parent.parent?.id !== uid).map(d => d.ref.delete()));
+  // Save first — the phone must be registered even if the clean-up below fails.
   await fs.collection('users').doc(uid).collection('pushTokens').doc(tokenDocId(t.token))
     .set({ token: t.token, platform: t.platform, updatedAt: new Date().toISOString() });
+  // A phone that changes hands should only notify its current user. Needs the
+  // collection-group index on pushTokens.token (firestore.indexes.json); until
+  // it's deployed this query fails, which must not block registration.
+  try {
+    const others = await fs.collectionGroup('pushTokens').where('token', '==', t.token).get();
+    await Promise.all(others.docs.filter(d => d.ref.parent.parent?.id !== uid).map(d => d.ref.delete()));
+  } catch (e) {
+    console.warn('[push/register] previous-owner cleanup skipped:', (e as Error).message);
+  }
   return NextResponse.json({ ok: true });
 }
 

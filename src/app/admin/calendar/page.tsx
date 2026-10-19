@@ -3,7 +3,7 @@ import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { WorkOrderId } from '@/components/work-order-id';
 import { PageHeader } from '@/components/page-header';
@@ -21,7 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   ChevronLeft, ChevronRight, Users, Filter, Clock, MapPin,
   X, Building2, DollarSign, Download, Calendar as CalendarIcon,
-  Phone, Mail, Check, AlertTriangle, Loader2, UserCheck, Maximize2, Minimize2,
+  Phone, Mail, Check, AlertTriangle, Loader2, UserCheck, UserPlus, Repeat, Maximize2, Minimize2,
 } from 'lucide-react';
 import {
   format, addMonths, subMonths, startOfMonth, endOfMonth,
@@ -134,6 +134,7 @@ export default function AdminCalendarPage() {
   const [dismissTarget, setDismissTarget] = useState<JobWithSrc | null>(null);
   const [dismissing, setDismissing]       = useState(false);
   const [showAssignPanel, setShowAssignPanel] = useState(false);
+  const [showHelperPanel, setShowHelperPanel] = useState(false);
   const [savingEdit, setSavingEdit]       = useState(false);
   const [activeId, setActiveId]           = useState<string | null>(null);
   // Day cell showing all of its jobs instead of the first 3 (yyyy-MM-dd).
@@ -208,6 +209,7 @@ export default function AdminCalendarPage() {
       notes:           drawerJob.notes || '',
     });
     setShowAssignPanel(false);
+    setShowHelperPanel(false);
   }, [drawerJob?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handlers
@@ -334,6 +336,25 @@ export default function AdminCalendarPage() {
     }
   };
 
+  // Helpers live on dispatched jobs (assignments) — same write as the job
+  // detail panel, so the helper sees it on their Assignments page.
+  const handleAddHelper = async (techId: string) => {
+    if (!drawerJob || drawerJob._src !== 'assignment') return;
+    const tech = adminTechs.find(t => t.id === techId);
+    if (!tech || isInactiveTechnician(tech)) return;
+    setShowHelperPanel(false);
+    try {
+      await updateDoc(doc(db, 'assignments', drawerJob.id), {
+        additionalTechnicianIds: arrayUnion(techId),
+        history: arrayUnion({ date: new Date().toISOString(), type: 'helper_added',
+          details: `${tech.name || techId} added as helper`, user: 'Admin' }),
+      });
+      toast({ title: 'Helper added', description: `${tech.name || 'Helper'} will see this job on their Assignments page.` });
+    } catch (e: any) {
+      toast({ title: 'Could not add helper', description: e?.message || 'Please try again.', variant: 'destructive' });
+    }
+  };
+
   const handleDismiss = async () => {
     if (!dismissTarget) return;
     setDismissing(true);
@@ -380,6 +401,39 @@ export default function AdminCalendarPage() {
   const drawerAssignedTech = drawerJob
     ? technicians.find(t => t.id === (jobTechId(drawerJob) || editForm.assignedTechnicianId))
     : null;
+  const drawerHelpers = drawerJob
+    ? (drawerJob.additionalTechnicianIds || []).map(id => technicians.find(t => t.id === id) || ({ id } as typeof technicians[number]))
+    : [];
+
+  // Tech list for Assign / Swap tech / Add helper. `taken` techs are shown
+  // marked; for helpers they can't be picked (already lead or helper).
+  const techPicker = (onPick: (id: string) => void, taken: (id: string) => boolean, className: string, blockTaken = false) => (
+    <div className={cn('bg-bg-elevated border border-border-main rounded-lg shadow-2xl z-[500] max-h-[180px] overflow-y-auto', className)}>
+      {sortTechniciansForDeployment(adminTechs).map(t => {
+        const isTaken = taken(t.id);
+        const disabled = isInactiveTechnician(t) || (blockTaken && isTaken);
+        return (
+          <button
+            key={t.id}
+            disabled={disabled}
+            title={isInactiveTechnician(t) ? 'Inactive technicians cannot be assigned' : undefined}
+            onClick={() => !disabled && onPick(t.id)}
+            className={cn(
+              'w-full text-left px-3 py-2 text-[11px] transition-colors flex items-center gap-2',
+              disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-bg-tertiary',
+              isTaken && !blockTaken && 'text-brand-red font-bold bg-brand-red/5',
+            )}
+          >
+            <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', isTaken ? 'bg-brand-red' : 'bg-text-green')} />
+            {t.name || t.id}{isInactiveTechnician(t) ? ' · Inactive' : isTaken && blockTaken ? ' · On job' : ''}
+          </button>
+        );
+      })}
+      {adminTechs.length === 0 && (
+        <div className="px-3 py-4 text-[10px] text-text-muted text-center uppercase tracking-wider">No technicians</div>
+      )}
+    </div>
+  );
   const activeDragJob = activeId ? allJobs.find(j => j.id === activeId) : null;
 
   return (
@@ -823,6 +877,30 @@ export default function AdminCalendarPage() {
                     ) : (
                       <p className="text-[11px] text-text-muted">No technician assigned</p>
                     )}
+                    {drawerAssignedTech && drawerHelpers.length > 0 && (
+                      <p className="mt-1.5 text-[10px] text-text-muted">
+                        Helpers: <span className="text-text-secondary font-bold">{drawerHelpers.map(h => h.name || h.id).join(', ')}</span>
+                      </p>
+                    )}
+                    {drawerAssignedTech && (
+                      <>
+                        <div className="mt-2 flex gap-2">
+                          <Button variant="outline" size="sm" className="h-7 flex-1 text-[10px] font-bold"
+                            onClick={() => { setShowAssignPanel(v => !v); setShowHelperPanel(false); }}>
+                            <Repeat size={11} className="mr-1" />Swap tech
+                          </Button>
+                          <Button variant="outline" size="sm" className="h-7 flex-1 text-[10px] font-bold"
+                            disabled={drawerJob._src !== 'assignment'}
+                            title={drawerJob._src !== 'assignment' ? 'Helpers can be added once the job is dispatched' : undefined}
+                            onClick={() => { setShowHelperPanel(v => !v); setShowAssignPanel(false); }}>
+                            <UserPlus size={11} className="mr-1" />Add helper
+                          </Button>
+                        </div>
+                        {showAssignPanel && techPicker(t => handleAssignTech(t), id => id === jobTechId(drawerJob), 'mt-2')}
+                        {showHelperPanel && techPicker(t => handleAddHelper(t),
+                          id => id === jobTechId(drawerJob) || (drawerJob.additionalTechnicianIds || []).includes(id), 'mt-2', true)}
+                      </>
+                    )}
                   </div>
 
                   {/* Save button */}
@@ -843,44 +921,20 @@ export default function AdminCalendarPage() {
 
               {/* Footer: action buttons */}
               <div className="p-3 border-t border-border-sub flex flex-col gap-2 shrink-0">
-                {/* Assign Tech */}
-                <div className="relative">
-                  <Button
-                    className="w-full h-9 text-[11px] font-bold bg-brand-red hover:bg-brand-red/90 text-white"
-                    onClick={() => setShowAssignPanel(v => !v)}
-                  >
-                    <UserCheck size={13} className="mr-1.5" />
-                    Assign Tech
-                  </Button>
-                  {showAssignPanel && (
-                    <div className="absolute bottom-full left-0 right-0 mb-1 bg-bg-elevated border border-border-main rounded-lg shadow-2xl z-[500] max-h-[180px] overflow-y-auto">
-                      {sortTechniciansForDeployment(adminTechs).map(t => {
-                        const currentId = jobTechId(drawerJob);
-                        const isCurrent = currentId === t.id;
-                        const inactive = isInactiveTechnician(t);
-                        return (
-                          <button
-                            key={t.id}
-                            disabled={inactive}
-                            title={inactive ? 'Inactive technicians cannot be assigned' : undefined}
-                            onClick={() => !inactive && handleAssignTech(t.id)}
-                            className={cn(
-                              'w-full text-left px-3 py-2 text-[11px] transition-colors flex items-center gap-2',
-                              inactive ? 'opacity-40 cursor-not-allowed' : 'hover:bg-bg-tertiary',
-                              isCurrent && !inactive && 'text-brand-red font-bold bg-brand-red/5',
-                            )}
-                          >
-                            <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', isCurrent ? 'bg-brand-red' : 'bg-text-green')} />
-                            {t.name || t.id}{inactive ? ' · Inactive' : ''}
-                          </button>
-                        );
-                      })}
-                      {adminTechs.length === 0 && (
-                        <div className="px-3 py-4 text-[10px] text-text-muted text-center uppercase tracking-wider">No technicians</div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                {/* Assign Tech — only when nobody is on the job yet; otherwise
+                    Swap tech / Add helper sit under Assignment. */}
+                {!drawerAssignedTech && (
+                  <div className="relative">
+                    <Button
+                      className="w-full h-9 text-[11px] font-bold bg-brand-red hover:bg-brand-red/90 text-white"
+                      onClick={() => setShowAssignPanel(v => !v)}
+                    >
+                      <UserCheck size={13} className="mr-1.5" />
+                      Assign Tech
+                    </Button>
+                    {showAssignPanel && techPicker(t => handleAssignTech(t), () => false, 'absolute bottom-full left-0 right-0 mb-1')}
+                  </div>
+                )}
                 {/* Dismiss Job */}
                 <Button
                   variant="outline"

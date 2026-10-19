@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { auth, db } from "@/lib/firebase";
 import { NotificationService } from '@/lib/notification-service';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, setPersistence, browserLocalPersistence, browserSessionPersistence } from "firebase/auth";
+import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, setPersistence, browserLocalPersistence, browserSessionPersistence } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { getPortalAccess, getAvailablePortals } from "@/lib/permissions";
@@ -38,6 +38,8 @@ export default function LoginPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  // Set once someone (the form or a restored session) has started routing.
+  const routed = useRef(false);
   const logo = PlaceHolderImages.find(img => img.id === 'app-logo');
 
   // Keep the auth session across browser restarts when "Remember Me" is on;
@@ -51,12 +53,14 @@ export default function LoginPage() {
 
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true);
+    routed.current = true;
     try {
       await applyPersistence();
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
       toast({ title: "Signed in", description: "Welcome back." });
       await handleRedirect(userCredential.user);
     } catch {
+      routed.current = false;
       toast({ variant: "destructive", title: "Could not sign in", description: "Check your email and password and try again." });
     } finally {
       setIsLoading(false);
@@ -65,6 +69,7 @@ export default function LoginPage() {
 
   async function onGoogleSignIn() {
     setIsGoogleLoading(true);
+    routed.current = true;
     try {
       await applyPersistence();
       const result = await signInWithPopup(auth, googleProvider);
@@ -115,6 +120,7 @@ export default function LoginPage() {
       toast({ title: "Signed in with Google", description: "Welcome back." });
       await handleRedirect(firebaseUser);
     } catch (err: any) {
+      routed.current = false;
       const code: string = err.code || "";
       console.error("[google-auth] full error:", err);
       if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
@@ -186,6 +192,28 @@ export default function LoginPage() {
       router.push("/pending-approval");
     }
   };
+
+  // Already signed in (a remembered session — e.g. reopening the Android
+  // app, which always starts here): go straight to the portal instead of
+  // showing the form. Sign-ins from the form route themselves.
+  const [restoring, setRestoring] = useState(true);
+  useEffect(() => onAuthStateChanged(auth, u => {
+    if (u && !routed.current) {
+      routed.current = true;
+      handleRedirect(u).catch(() => { routed.current = false; setRestoring(false); });
+    } else if (!u) {
+      setRestoring(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), []);
+
+  if (restoring) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-bg-primary">
+        <Loader2 className="h-6 w-6 animate-spin text-text-muted" aria-label="Signing you in" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-primary p-4">

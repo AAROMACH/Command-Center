@@ -4,3 +4,11 @@
 runConfig:
   region: us-east4
   maxInstances: 1
+env:
+  # Firebase Cloud Messaging Web Push certificate (public key) — web push on
+  # the iPhone Home Screen app and browsers (src/lib/web-push.ts).
+  - variable: NEXT_PUBLIC_FIREBASE_VAPID_KEY
+    value: BMtW548UDPTPgC_jJd682KaYJfU0by3Ej9O9fRMGm3mDOSbWbKoKtI2nT8EPn3-TpM_pb56rnkelabmAXz_CrjQ
+    availability:
+      - BUILD
+      - RUNTIME

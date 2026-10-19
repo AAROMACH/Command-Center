@@ -49,6 +49,13 @@ export type NotificationPreferences = {
   email: boolean;
   sms: boolean;
   push: boolean;
+  /** Phone notifications from the Android app (FCM). Missing = on. */
+  phone?: boolean;
+  /** Older per-event on/off switches; missing = on. Superseded by eventChannels. */
+  events?: Record<string, boolean>;
+  /** Per event, which outside channels it goes to (Settings grid). Missing =
+   *  fall back to the channel switch and events[event]. The bell always gets it. */
+  eventChannels?: Record<string, Partial<Record<'phone' | 'email' | 'sms', boolean>>>;
 };
 
 export type Notification = {

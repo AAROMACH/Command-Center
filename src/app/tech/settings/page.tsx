@@ -1,4 +1,5 @@
 "use client";
+import { NotificationEventsCard } from '@/components/notification-events-card';
 
 import { PageHeader } from '@/components/page-header';
 import { PageLoading } from '@/components/empty-state';
@@ -7,6 +8,7 @@ import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { resolveNotificationPrefs, withNotificationPref } from '@/lib/notification-prefs';
+import type { NotificationChannel } from '@/lib/notification-prefs';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -66,7 +68,7 @@ export default function TechSettingsPage() {
         }
     };
 
-    const handleTogglePreference = async (type: keyof NotificationPreferences) => {
+    const handleTogglePreference = async (type: NotificationChannel) => {
         if (!currentUser) return;
         const updatedPrefs = withNotificationPref(currentUser.notificationPreferences, type, !resolveNotificationPrefs(currentUser.notificationPreferences)[type]);
 
@@ -96,30 +98,7 @@ export default function TechSettingsPage() {
                         <Bell size={14} className="text-brand-red" />
                         <h2 className="section-label">{TERMINOLOGY.CONFIG.NOTIFICATIONS}</h2>
                     </div>
-                    <Card>
-                        <CardHeader className="text-left">
-                            <CardTitle className="text-base font-semibold">Alerts</CardTitle>
-                            <CardDescription className="text-[12px]">Choose how you hear about job updates and check-in reminders.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            {[
-                                { id: 'email', label: 'Email', desc: 'Assignments, pay stubs and alerts sent to your email.' },
-                                { id: 'sms', label: 'Text message', desc: 'Job and schedule alerts texted to your phone.' },
-                                { id: 'push', label: 'In-App', desc: 'Alerts in the bell at the top of the app.' },
-                            ].map((item) => (
-                                <div key={item.id} className="flex items-center justify-between gap-3 p-4 rounded-lg bg-bg-secondary/50 border border-border-sub hover:border-text-muted transition-all">
-                                    <div className="space-y-0.5 text-left">
-                                        <p className="text-[13px] font-semibold">{item.label}</p>
-                                        <p className="text-[12px] text-text-muted">{item.desc}</p>
-                                    </div>
-                                    <Switch 
-                                        checked={resolveNotificationPrefs(currentUser?.notificationPreferences)[item.id as keyof NotificationPreferences]} 
-                                        onCheckedChange={() => handleTogglePreference(item.id as keyof NotificationPreferences)}
-                                    />
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
+                    <NotificationEventsCard />
                 </section>
 
                 {/* EXPERIENCE */}

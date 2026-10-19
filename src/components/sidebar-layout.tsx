@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AlertBand } from "@/components/alert-band";
@@ -10,6 +10,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { startNativePush } from "@/lib/native-push";
+import { refreshWebPush } from "@/lib/web-push";
+import { PullToRefresh } from "@/components/pull-to-refresh";
 import { getAvailablePortals } from "@/lib/permissions";
 import { canAccessPath } from "@/lib/route-permissions";
 import { Home, CalendarDays, FileText, Coins, Wrench, ClipboardList, Inbox, Receipt, Target, Users, FileSearch, Settings } from "lucide-react";
@@ -18,6 +20,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading } = useAuth();
+  const mainRef = useRef<HTMLElement>(null);
   const isTechPortal = pathname.startsWith("/tech");
   const isAdminPortal = pathname.startsWith("/admin");
   const isSalesPortal = pathname.startsWith("/sales");
@@ -39,6 +42,8 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     startNativePush(url => router.push(url), (title, body) => toast({ title, description: body }))
       .then(c => { cleanup = c; })
       .catch(e => console.warn('[push] setup failed', e));
+    // Website (iPhone Home Screen app, Chrome): keep this device's token fresh.
+    refreshWebPush().catch(() => {});
     return () => cleanup?.();
   }, [uid, router, toast]);
 
@@ -54,7 +59,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           {/* Top strip: trigger on desktop, minimal on mobile */}
-          <div className="flex items-center shrink-0 bg-sidebar border-b border-border-main z-40">
+          <div className="flex items-center shrink-0 bg-sidebar border-b border-border-main z-40 pt-[env(safe-area-inset-top)]">
             <div className="flex items-center gap-2 px-2 py-1.5 border-r border-border-sub">
               <SidebarTrigger className="text-text-muted hover:text-text-primary h-7 w-7" />
             </div>
@@ -68,11 +73,14 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           {/* Page content */}
-          <main className="flex-1 min-w-0 overflow-y-auto bg-bg-primary">
-            <div className="page-content">
-              {denied ? null : children}
-            </div>
-          </main>
+          <div className="relative flex-1 min-h-0 flex flex-col">
+            <PullToRefresh scrollRef={mainRef} />
+            <main ref={mainRef} className="flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-y-contain bg-bg-primary">
+              <div className="page-content">
+                {denied ? null : children}
+              </div>
+            </main>
+          </div>
           {/* Tech mobile bottom nav */}
           {isTechPortal && <BottomNav items={TECH_NAV} />}
           {isAdminPortal && <BottomNav items={ADMIN_NAV} />}

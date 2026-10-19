@@ -1,8 +1,10 @@
 "use client";
+import { NotificationEventsCard } from '@/components/notification-events-card';
 import { PageHeader } from '@/components/page-header';
 
 import { onAuthStateChanged } from 'firebase/auth';
 import { resolveNotificationPrefs, withNotificationPref } from '@/lib/notification-prefs';
+import type { NotificationChannel } from '@/lib/notification-prefs';
 import { useState, useEffect } from 'react';
 import { auth, db } from "@/lib/firebase";
 import { doc, onSnapshot, updateDoc, setDoc, getDoc } from 'firebase/firestore';
@@ -62,7 +64,7 @@ export default function AdminSettingsPage() {
         }).catch(() => {});
     }, []);
 
-    const handleTogglePreference = async (type: keyof NotificationPreferences) => {
+    const handleTogglePreference = async (type: NotificationChannel) => {
         if (!currentUser) return;
         const updatedPrefs = withNotificationPref(currentUser.notificationPreferences, type, !resolveNotificationPrefs(currentUser.notificationPreferences)[type]);
 
@@ -129,30 +131,7 @@ export default function AdminSettingsPage() {
                         <Bell size={14} className="text-brand-red" />
                         <h3 className="text-[13px] font-semibold text-text-primary">{TERMINOLOGY.CONFIG.NOTIFICATIONS}</h3>
                     </div>
-                    <Card>
-                        <CardHeader className="text-left">
-                            <CardTitle>How you get notified</CardTitle>
-                            <CardDescription>Applies to your account only.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {[
-                                { id: 'email', label: 'Email', desc: 'Alerts sent to your email address.' },
-                                { id: 'sms', label: 'Text Message', desc: 'Alerts texted to your phone number.' },
-                                { id: 'push', label: 'In-App', desc: 'Alerts in the bell at the top of the app.' },
-                            ].map((item) => (
-                                <div key={item.id} className="flex items-center justify-between p-4 rounded-lg border border-border-sub bg-bg-primary">
-                                    <div className="space-y-1 text-left">
-                                        <h4 className="text-xs font-bold text-text-primary">{item.label}</h4>
-                                        <p className="text-[10px] text-text-muted">{item.desc}</p>
-                                    </div>
-                                    <Switch 
-                                        checked={resolveNotificationPrefs(currentUser?.notificationPreferences)[item.id as keyof NotificationPreferences]} 
-                                        onCheckedChange={() => handleTogglePreference(item.id as keyof NotificationPreferences)}
-                                    />
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
+                    <NotificationEventsCard />
                 </section>
 
                 {/* DISPLAY (personal — this account only) */}

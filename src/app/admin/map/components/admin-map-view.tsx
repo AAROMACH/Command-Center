@@ -53,6 +53,8 @@ function coordKey(lat: number, lng: number) {
 export default function AdminMapView({ jobs, selectedJob, onSelectJob, onResolveCoords }: AdminMapViewProps) {
   const mapRef = useRef<any>(null);
   const markersRef = useRef<Record<string, any>>({}); // keyed by coordKey
+  // The map is created asynchronously; jobs can arrive first. Markers wait for this.
+  const [mapReady, setMapReady] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const onSelectRef = useRef(onSelectJob);
   onSelectRef.current = onSelectJob;
@@ -132,9 +134,11 @@ export default function AdminMapView({ jobs, selectedJob, onSelectJob, onResolve
         maxZoom: 19,
       }).addTo(map);
       mapRef.current = map;
+      setMapReady(true);
     });
     return () => {
       if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; markersRef.current = {}; }
+      setMapReady(false);
     };
   }, []);
 
@@ -225,7 +229,7 @@ export default function AdminMapView({ jobs, selectedJob, onSelectJob, onResolve
       }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobs, geocodedCoords, selectedJob]);
+  }, [jobs, geocodedCoords, selectedJob, mapReady]);
 
   // Pan/zoom the selected job's pin into view.
   useEffect(() => {

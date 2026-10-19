@@ -2,16 +2,11 @@
 
 import { externalWorkOrderId } from '@/lib/work-order-identity';
 import { subscribeTechAssignments } from '@/lib/tech-assignments';
-import dynamic from 'next/dynamic';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
 import { SearchField } from '@/components/search-field';
 import { SortControl, FiltersPopover, FilterSection, CheckboxFilter, DateRangeButton, type SortOptionDef } from '@/components/list-toolbar';
 
-const MapView = dynamic(() => import('../map/components/map-view'), {
-    ssr: false,
-    loading: () => <div className="flex items-center justify-center h-full bg-bg-secondary text-text-muted text-[12px]">Loading map…</div>,
-});
 import type { WorkOrder, Technician } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,8 +28,6 @@ import {
   History,
   AlertCircle,
   Lock,
-  LayoutList,
-  Map as MapIcon,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Calendar } from "@/components/ui/calendar";
@@ -100,8 +93,6 @@ export default function TechAssignmentsPage() {
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'active');
 
     const [isTripDialogOpen, setIsTripDialogOpen] = useState(false);
-    const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
-    const [mapSelectedJob, setMapSelectedJob] = useState<WorkOrder | null>(null);
     const [newSinceLastVisit, setNewSinceLastVisit] = useState(0);
 
     const { toast } = useToast();
@@ -248,9 +239,6 @@ export default function TechAssignmentsPage() {
         return allWorkOrders.some(wo => wo.status === 'in-progress');
     }, [allWorkOrders]);
 
-    const mapJobs = useMemo(() =>
-        allWorkOrders.filter(wo => wo.status !== 'completed'),
-    [allWorkOrders]);
 
 
 
@@ -329,20 +317,6 @@ export default function TechAssignmentsPage() {
                 title="My jobs"
                 subtitle="Your scheduled jobs and the ones you've finished."
                 actions={<>
-                    <div className="tabs !mb-0 flex-nowrap" role="tablist" aria-label="View">
-                        <button type="button" role="tab" aria-selected={viewMode === 'list'}
-                            className={cn('tab inline-flex items-center gap-1.5', viewMode === 'list' && 'active')}
-                            onClick={() => setViewMode('list')}
-                        >
-                            <LayoutList size={14} /> List
-                        </button>
-                        <button type="button" role="tab" aria-selected={viewMode === 'map'}
-                            className={cn('tab inline-flex items-center gap-1.5', viewMode === 'map' && 'active')}
-                            onClick={() => setViewMode('map')}
-                        >
-                            <MapIcon size={14} /> Map
-                        </button>
-                    </div>
                     <Button
                         variant="outline"
                         className="h-10 sm:h-9 border-border-main text-text-secondary hover:text-text-primary shrink-0"
@@ -401,20 +375,7 @@ export default function TechAssignmentsPage() {
                 </div>
             )}
 
-            {viewMode === 'map' && (
-                <div className="rounded-xl overflow-hidden border border-border-main" style={{ height: '60vh' }}>
-                    <MapView
-                        jobs={mapJobs}
-                        selectedJob={mapSelectedJob}
-                        onSelectJob={(j) => {
-                            setMapSelectedJob(j);
-                            if (j) router.push('/tech/assignments/' + j.id);
-                        }}
-                    />
-                </div>
-            )}
-
-            {viewMode === 'list' && <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="tabs mb-4 h-auto flex-nowrap justify-start bg-transparent p-0">
                     <TabsTrigger value="active" className="tab data-[state=active]:bg-brand-red data-[state=active]:text-white">
                         Active <span className="tab-count">({activeAssignments.length})</span>
@@ -819,7 +780,7 @@ export default function TechAssignmentsPage() {
                     </div>
                     <ListPager pager={historyPager} noun="jobs" />
                 </TabsContent>
-            </Tabs>}
+            </Tabs>
 
             {weekDialog}
         </div>

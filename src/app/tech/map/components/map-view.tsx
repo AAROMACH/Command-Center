@@ -35,6 +35,9 @@ async function geocodeLocation(location: string): Promise<[number, number] | nul
 export default function MapView({ jobs, selectedJob, onSelectJob }: MapViewProps) {
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  // The map is created asynchronously; jobs can arrive first. Markers wait for this.
+  const [mapReady, setMapReady] = useState(false);
+  const boundsRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [geocodedCoords, setGeocodedCoords] = useState<Record<string, [number, number]>>({});
   const [geocoding, setGeocoding] = useState(false);
@@ -105,6 +108,7 @@ export default function MapView({ jobs, selectedJob, onSelectJob }: MapViewProps
       }).addTo(map);
 
       mapRef.current = map;
+      setMapReady(true);
     });
 
     return () => {
@@ -113,6 +117,7 @@ export default function MapView({ jobs, selectedJob, onSelectJob }: MapViewProps
         mapRef.current = null;
         markersRef.current = [];
       }
+      setMapReady(false);
     };
   }, []);
 
@@ -128,10 +133,28 @@ export default function MapView({ jobs, selectedJob, onSelectJob }: MapViewProps
 
       if (effectiveJobs.length > 0) {
         const bounds = leaflet.latLngBounds(effectiveJobs.map(j => [j.lat!, j.lng!] as [number, number]));
+        boundsRef.current = bounds;
         mapRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+      } else {
+        boundsRef.current = null;
       }
     });
-  }, [effectiveJobs]);
+  }, [effectiveJobs, mapReady]);
+
+  // Shown later (a hidden mobile tab, an expanding panel): Leaflet measured a
+  // zero-size box, so re-measure and re-fit the jobs whenever the box resizes.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !mapReady || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => {
+      const map = mapRef.current;
+      if (!map || !el.clientWidth || !el.clientHeight) return;
+      map.invalidateSize();
+      if (boundsRef.current && !selectedJob) map.fitBounds(boundsRef.current, { padding: [40, 40], maxZoom: 14 });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [mapReady, selectedJob]);
 
   // Pan to selected job
   useEffect(() => {

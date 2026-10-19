@@ -1,4 +1,5 @@
 'use client';
+import dynamic from 'next/dynamic';
 import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from '@/lib/types';
 import { isAdmin, isSales, isTech, isClient } from '@/lib/permissions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -84,7 +85,7 @@ declare global {
   }
 }
 
-const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const LocationMap = dynamic(() => import('@/components/location-map'), { ssr: false });
 
 const ALL_ROLES = [
     { value: 'super_admin', label: 'Super Admin' },
@@ -966,30 +967,13 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                     </TabsContent>
 
                     <TabsContent value="map" className="m-0">
-                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[650px] mt-4">
-                            <Card className="lg:col-span-2 bg-bg-secondary border-border-main overflow-hidden relative">
+                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:h-[650px] mt-4">
+                            <Card className="lg:col-span-2 h-[340px] lg:h-auto bg-bg-secondary border-border-main overflow-hidden relative">
                                 <div className="absolute inset-0 bg-bg-primary">
-                                     {MAPS_API_KEY ? (
-                                         <iframe
-                                            src={selectedMapAddress
-                                                ? `https://www.google.com/maps/embed/v1/place?key=${MAPS_API_KEY}&q=${encodeURIComponent(selectedMapAddress)}`
-                                                : `https://www.google.com/maps/embed/v1/search?key=${MAPS_API_KEY}&q=Michigan`
-                                            }
-                                            width="100%" 
-                                            height="100%" 
-                                            style={{ border: 0 }} 
-                                            allowFullScreen={true} 
-                                            loading="lazy"
-                                            referrerPolicy="no-referrer-when-downgrade"
-                                        ></iframe>
-                                     ) : (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-bg-tertiary">
-                                            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">MAPS_API_KEY Restricted</p>
-                                        </div>
-                                     )}
+                                     <LocationMap key={selectedMapAddress || 'all'} location={selectedMapAddress} zoom={13} interactive />
 
                                     {selectedMapEntity && (
-                                        <div className="absolute top-4 left-4 z-20 w-full max-w-[280px] animate-in fade-in slide-in-from-left-4 duration-500">
+                                        <div className="absolute top-3 left-3 right-3 sm:right-auto z-[500] sm:w-full sm:max-w-[280px] animate-in fade-in slide-in-from-left-4 duration-500">
                                             <Card className="bg-bg-elevated border-border-default shadow-2xl overflow-hidden">
                                                 <CardHeader className="p-3 bg-bg-tertiary/50 border-b border-border-sub relative">
                                                     <button 
@@ -1087,11 +1071,11 @@ export function DirectoryClient({ technicians: personnel, timeOffRequests, workO
                                 </div>
                             </Card>
                             
-                            <Card className="bg-bg-secondary border-border-main flex flex-col overflow-hidden">
+                            <Card className="h-[420px] lg:h-auto bg-bg-secondary border-border-main flex flex-col overflow-hidden">
                                 <div className="p-4 border-b border-border-sub bg-bg-tertiary/50 space-y-3">
                                     <h3 className="text-[13px] font-semibold text-text-primary flex items-center gap-2">
-                                        {mapViewMode === 'techs' ? <User size={14} className="text-brand-red"/> : <Building2 size={14} className="text-accent-gold"/>}x 
-                                        mapViewMode === 'techs' ? 'technician home bases' : 'client site locations'
+                                        {mapViewMode === 'techs' ? <User size={14} className="text-brand-red"/> : <Building2 size={14} className="text-accent-gold"/>}
+                                        {mapViewMode === 'techs' ? 'Technician home bases' : 'Client site locations'}
                                     </h3>
                                     <div className="search-wrap !mb-0 h-8">
                                         <Search className="h-3 w-3" />

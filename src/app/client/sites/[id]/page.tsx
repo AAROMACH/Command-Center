@@ -1,5 +1,5 @@
-
 'use client';
+import dynamic from 'next/dynamic';
 
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -64,7 +64,7 @@ declare global {
   }
 }
 
-const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const LocationMap = dynamic(() => import('@/components/location-map'), { ssr: false });
 
 export default function SiteDetailPage() {
     const params = useParams();
@@ -161,21 +161,7 @@ export default function SiteDetailPage() {
                 <div className="space-y-6">
                     <Card className="rounded-xl bg-bg-secondary border-border-main overflow-hidden shadow-sm">
                         <div className="relative aspect-video w-full bg-bg-primary border-b border-border-sub">
-                             {MAPS_API_KEY ? (
-                                <iframe 
-                                    src={`https://www.google.com/maps/embed/v1/place?key=${MAPS_API_KEY}&q=${encodeURIComponent(siteData.location)}`} 
-                                    width="100%" 
-                                    height="100%" 
-                                    style={{ border: 0 }} 
-                                    allowFullScreen={true} 
-                                    loading="lazy"
-                                    className="absolute top-0 left-0"
-                                ></iframe>
-                             ) : (
-                                <div className="absolute inset-0 flex items-center justify-center bg-bg-tertiary">
-                                    <p className="text-[12px] text-text-muted">Map unavailable</p>
-                                </div>
-                             )}
+                             <div className="absolute inset-0"><LocationMap location={siteData.location} /></div>
                         </div>
                         <CardContent className="p-5 space-y-4">
                             <div className="space-y-1 text-left">

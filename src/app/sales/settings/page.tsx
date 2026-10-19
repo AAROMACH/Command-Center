@@ -1,7 +1,7 @@
 'use client';
 
 import { Bell, Settings as SettingsIcon, Type } from 'lucide-react';
-import { NotificationPrefsCard } from '@/components/notification-prefs-card';
+import { NotificationEventsCard } from '@/components/notification-events-card';
 import { ThemeToggleSetting } from '@/components/theme-toggle-setting';
 import { FontPreferenceSetting } from '@/components/font-preference-setting';
 import { PageHeader } from '@/components/page-header';
@@ -16,7 +16,7 @@ export default function SalesSettingsPage() {
                     <Bell size={14} className="text-text-muted" />
                     <h3 className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Notifications</h3>
                 </div>
-                <NotificationPrefsCard />
+                <NotificationEventsCard />
             </section>
             <section className="space-y-4">
                 <div className="flex items-center gap-2 px-1">

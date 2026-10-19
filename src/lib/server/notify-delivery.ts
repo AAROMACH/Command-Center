@@ -1,13 +1,14 @@
 import type { Firestore } from 'firebase-admin/firestore';
-import { resolveNotificationPrefs } from '@/lib/notification-prefs';
+import { channelOn, resolveNotificationPrefs } from '@/lib/notification-prefs';
+import { eventForTitle, type NotificationEvent } from '@/lib/notification-events';
 import { entityHref } from '@/lib/notification-links';
 import { sendPush } from './push';
 
 /**
  * Server-side delivery shared by /api/notify, the CRM digest and the
  * public-quote route: email/SMS per the recipient's preferences, plus an
- * in-app record in `notifications` that the bell shows. The 'push' channel is
- * the bell record and, for non-routine alerts, a phone push to the Android app.
+ * in-app record in `notifications` that the bell shows ('push'), plus a phone
+ * notification to the Android app ('phone') for non-routine alerts.
  */
 
 export type NotifyEntity = { id: string; type: 'assignment' | 'project' | 'request' | 'lead' | 'weeklyLog' | 'user' };
@@ -96,33 +97,43 @@ export async function sendEmail(to: string, subject: string, body: string): Prom
 export async function deliverNotification(
   fs: Firestore,
   recipients: { id: string; data: Record<string, any> }[],
-  msg: { title: string; body: string; entity?: NotifyEntity; sentBy: string; inAppOnly?: boolean; portal?: NotifyPortal },
+  msg: { title: string; body: string; entity?: NotifyEntity; sentBy: string; inAppOnly?: boolean; portal?: NotifyPortal; event?: NotificationEvent },
 ): Promise<number> {
   const subject = `[AAROMACH] ${msg.title.toUpperCase()}`;
   const { entity } = msg;
   let sent = 0;
+  const event = msg.event || eventForTitle(msg.title);
 
   await Promise.all(recipients.filter(r => r.data.accountStatus !== 'inactive').map(async ({ id, data }) => {
     const prefs = resolveNotificationPrefs(data.notificationPreferences);
+    // Routine activity stays in the bell; otherwise each channel follows the
+    // person's Settings grid for this kind of alert.
+    const on = (ch: 'phone' | 'email' | 'sms') => !msg.inAppOnly && channelOn(prefs, event, ch);
     const channels: ('email' | 'sms' | 'push')[] = [];
     // Routine activity (a task checked off, a check-in) is an in-app record
     // only — texting every update would bury the alerts that matter.
-    if (!msg.inAppOnly && prefs.email && data.email) channels.push('email');
-    if (!msg.inAppOnly && prefs.sms && data.phone) channels.push('sms');
-    if (prefs.push) channels.push('push');
-    // Always leave an in-app record, even if they've opted out of every channel.
-    if (channels.length === 0) channels.push('push');
+    if (on('email') && data.email) channels.push('email');
+    if (on('sms') && data.phone) channels.push('sms');
+    // The bell always gets it — every phone, email or text alert is also
+    // there to find later.
+    channels.push('push');
+
+    // Phone notification (Android app) — its own switch, separate from the bell.
+    if (on('phone')) {
+      try {
+        const portal = msg.portal || portalForRecipient(data, entity);
+        if (await sendPush(fs, id, { title: msg.title, body: msg.body, url: entity ? entityHref(portal, entity.type, entity.id) || undefined : undefined }) > 0) sent++;
+      } catch (err) {
+        console.error(`[notify] phone push to ${id} failed:`, err);
+      }
+    }
 
     await Promise.all(channels.map(async type => {
       let status: 'sent' | 'failed' | 'pending' = 'pending';
       try {
         if (type === 'email') status = (await sendEmail(data.email, subject, msg.body)) === 'sent' ? 'sent' : 'pending';
         else if (type === 'sms') status = (await sendSms(data.phone, `${subject}\n\n${msg.body}`)) === 'sent' ? 'sent' : 'pending';
-        else if (type === 'push' && !msg.inAppOnly) {
-          const portal = msg.portal || portalForRecipient(data, entity);
-          const delivered = await sendPush(fs, id, { title: msg.title, body: msg.body, url: entity ? entityHref(portal, entity.type, entity.id) || undefined : undefined });
-          if (delivered > 0) status = 'sent';
-        }
+
       } catch (err) {
         console.error(`[notify] ${type} delivery to ${id} failed:`, err);
         status = 'failed';
@@ -139,6 +150,7 @@ export async function deliverNotification(
         status,
         sentBy: msg.sentBy,
         portal: msg.portal || portalForRecipient(data, entity),
+        event,
         ...(entity ? { relatedEntityId: entity.id, relatedEntityType: entity.type } : {}),
       });
     }));

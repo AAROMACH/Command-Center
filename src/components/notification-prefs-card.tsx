@@ -5,6 +5,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { resolveNotificationPrefs, withNotificationPref } from '@/lib/notification-prefs';
+import type { NotificationChannel } from '@/lib/notification-prefs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
@@ -27,7 +28,7 @@ export function NotificationPrefsCard() {
         return () => { unsubAuth(); unsubUser?.(); };
     }, []);
 
-    const toggle = async (type: keyof NotificationPreferences) => {
+    const toggle = async (type: NotificationChannel) => {
         if (!uid) return;
         const next = withNotificationPref(prefs, type, !resolveNotificationPrefs(prefs)[type]);
         try {
@@ -49,7 +50,7 @@ export function NotificationPrefsCard() {
                 {([
                     { id: 'email', label: 'Email', desc: 'Alerts sent to your email address.' },
                     { id: 'sms', label: 'Text message', desc: 'Alerts texted to your phone number.' },
-                    { id: 'push', label: 'In-app', desc: 'Alerts in the bell at the top of the app.' },
+                                { id: 'phone', label: 'Phone notifications', desc: 'Pop-up alerts on your phone from the Aaromach Android app.' },
                 ] as const).map(item => (
                     <div key={item.id} className="flex items-center justify-between p-4 rounded-lg border border-border-sub bg-bg-primary">
                         <div className="space-y-1 text-left">

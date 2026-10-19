@@ -13,6 +13,12 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- Shows above/below the app (status and gesture bar strips): match the dark UI,
+             with light status-bar icons. -->
+        <item name="android:windowBackground">@color/appBackground</item>
+        <item name="android:statusBarColor">@color/appBackground</item>
+        <item name="android:navigationBarColor">@color/appBackground</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 
 

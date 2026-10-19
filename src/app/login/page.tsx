@@ -210,6 +210,11 @@ export default function LoginPage() {
   // app, which always starts here): go straight to the portal instead of
   // showing the form. Sign-ins from the form route themselves.
   const [restoring, setRestoring] = useState(true);
+  // Never leave someone on a spinner: if auth hasn't answered in 4s, show the form.
+  useEffect(() => {
+    const t = setTimeout(() => { if (!routed.current) setRestoring(false); }, 4000);
+    return () => clearTimeout(t);
+  }, []);
   useEffect(() => onAuthStateChanged(auth, u => {
     if (u && !routed.current) {
       routed.current = true;

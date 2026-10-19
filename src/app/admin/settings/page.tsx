@@ -131,30 +131,6 @@ export default function AdminSettingsPage() {
                         <Bell size={14} className="text-brand-red" />
                         <h3 className="text-[13px] font-semibold text-text-primary">{TERMINOLOGY.CONFIG.NOTIFICATIONS}</h3>
                     </div>
-                    <Card>
-                        <CardHeader className="text-left">
-                            <CardTitle>How you get notified</CardTitle>
-                            <CardDescription>Applies to your account only.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {[
-                                { id: 'email', label: 'Email', desc: 'Alerts sent to your email address.' },
-                                { id: 'sms', label: 'Text Message', desc: 'Alerts texted to your phone number.' },
-                                { id: 'phone', label: 'Phone notifications', desc: 'Pop-up alerts on your phone from the Aaromach Android app.' },
-                            ].map((item) => (
-                                <div key={item.id} className="flex items-center justify-between p-4 rounded-lg border border-border-sub bg-bg-primary">
-                                    <div className="space-y-1 text-left">
-                                        <h4 className="text-xs font-bold text-text-primary">{item.label}</h4>
-                                        <p className="text-[10px] text-text-muted">{item.desc}</p>
-                                    </div>
-                                    <Switch 
-                                        checked={resolveNotificationPrefs(currentUser?.notificationPreferences)[item.id as NotificationChannel]} 
-                                        onCheckedChange={() => handleTogglePreference(item.id as NotificationChannel)}
-                                    />
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
                     <NotificationEventsCard />
                 </section>
 

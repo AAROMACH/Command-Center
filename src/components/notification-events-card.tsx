@@ -7,11 +7,17 @@ import { auth, db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, Loader2, Send, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { eventEnabled, resolveNotificationPrefs, withEventPref } from '@/lib/notification-prefs';
+import { channelOn, resolveNotificationPrefs, withEventChannel, type OutsideChannel } from '@/lib/notification-prefs';
 import { eventsForRoles } from '@/lib/notification-events';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+
+const CHANNELS: { id: OutsideChannel; label: string }[] = [
+    { id: 'phone', label: 'Phone' },
+    { id: 'email', label: 'Email' },
+    { id: 'sms', label: 'Text' },
+];
 
 const DEVICE_TEXT: Record<WebPushState, string> = {
     unsupported: '',
@@ -70,11 +76,10 @@ export function NotificationEventsCard() {
     const events = eventsForRoles(roles);
     const prefs = resolveNotificationPrefs(user.notificationPreferences);
 
-    const toggle = async (id: string, label: string) => {
-        const next = withEventPref(user.notificationPreferences, id, !eventEnabled(prefs, id));
+    const toggle = async (id: string, ch: OutsideChannel) => {
+        const next = withEventChannel(user.notificationPreferences, id, ch, !channelOn(prefs, id, ch));
         try {
             await updateDoc(doc(db, 'users', user.id), { notificationPreferences: next });
-            toast({ title: 'Notification settings saved', description: `${label}: ${next.events?.[id] ? 'on' : 'bell only'}.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save failed', description: e.message });
         }
@@ -83,8 +88,8 @@ export function NotificationEventsCard() {
     return (
         <Card>
             <CardHeader className="text-left">
-                <CardTitle>What you get notified about</CardTitle>
-                <CardDescription>Turn off what you don&apos;t need. Switched-off alerts still show in the bell — they just won&apos;t email, text or buzz your phone.</CardDescription>
+                <CardTitle>Notifications</CardTitle>
+                <CardDescription>Pick how each kind of alert reaches you. Everything always shows in the bell inside the app, so nothing is lost if you swipe a phone notification away.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
                 {device !== 'unsupported' && (
@@ -101,15 +106,25 @@ export function NotificationEventsCard() {
                         {device === 'on' && <CheckCircle2 size={18} className="text-text-green shrink-0" />}
                     </div>
                 )}
-                {events.map(e => (
-                    <div key={e.id} className="flex items-center justify-between gap-4 p-4 rounded-lg border border-border-sub bg-bg-primary">
-                        <div className="space-y-1 text-left">
-                            <h4 className="text-[13px] font-semibold text-text-primary">{e.label}</h4>
-                            <p className="text-[12px] text-text-muted">{e.desc}</p>
-                        </div>
-                        <Switch checked={eventEnabled(prefs, e.id)} onCheckedChange={() => toggle(e.id, e.label)} aria-label={e.label} />
+                <div className="rounded-lg border border-border-sub overflow-hidden">
+                    <div className="grid grid-cols-[1fr,repeat(3,52px)] items-center gap-1 px-3 py-2 bg-bg-tertiary text-[10px] font-bold uppercase tracking-wider text-text-muted">
+                        <span className="text-left">Notification</span>
+                        {CHANNELS.map(c => <span key={c.id} className="text-center">{c.label}</span>)}
                     </div>
-                ))}
+                    {events.map(e => (
+                        <div key={e.id} className="grid grid-cols-[1fr,repeat(3,52px)] items-center gap-1 px-3 py-3 border-t border-border-sub bg-bg-primary">
+                            <div className="space-y-0.5 text-left pr-2">
+                                <h4 className="text-[13px] font-semibold text-text-primary">{e.label}</h4>
+                                <p className="text-[11px] text-text-muted leading-snug">{e.desc}</p>
+                            </div>
+                            {CHANNELS.map(c => (
+                                <div key={c.id} className="flex justify-center">
+                                    <Checkbox className="h-5 w-5" checked={channelOn(prefs, e.id, c.id)} onCheckedChange={() => toggle(e.id, c.id)} aria-label={`${e.label} by ${c.label}`} />
+                                </div>
+                            ))}
+                        </div>
+                    ))}
+                </div>
                 <div className="pt-2 space-y-2">
                     <Button variant="outline" size="sm" onClick={sendTest} disabled={testing}>
                         {testing ? <Loader2 size={13} className="mr-1.5 animate-spin" /> : <Send size={13} className="mr-1.5" />} Send me a test

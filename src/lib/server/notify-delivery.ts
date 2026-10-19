@@ -1,5 +1,5 @@
 import type { Firestore } from 'firebase-admin/firestore';
-import { eventEnabled, resolveNotificationPrefs } from '@/lib/notification-prefs';
+import { channelOn, resolveNotificationPrefs } from '@/lib/notification-prefs';
 import { eventForTitle, type NotificationEvent } from '@/lib/notification-events';
 import { entityHref } from '@/lib/notification-links';
 import { sendPush } from './push';
@@ -106,19 +106,20 @@ export async function deliverNotification(
 
   await Promise.all(recipients.filter(r => r.data.accountStatus !== 'inactive').map(async ({ id, data }) => {
     const prefs = resolveNotificationPrefs(data.notificationPreferences);
-    // An event they've switched off still goes in the bell — just quietly.
-    const quiet = msg.inAppOnly || !eventEnabled(prefs, event);
+    // Routine activity stays in the bell; otherwise each channel follows the
+    // person's Settings grid for this kind of alert.
+    const on = (ch: 'phone' | 'email' | 'sms') => !msg.inAppOnly && channelOn(prefs, event, ch);
     const channels: ('email' | 'sms' | 'push')[] = [];
     // Routine activity (a task checked off, a check-in) is an in-app record
     // only — texting every update would bury the alerts that matter.
-    if (!quiet && prefs.email && data.email) channels.push('email');
-    if (!quiet && prefs.sms && data.phone) channels.push('sms');
+    if (on('email') && data.email) channels.push('email');
+    if (on('sms') && data.phone) channels.push('sms');
     // The bell always gets it — every phone, email or text alert is also
     // there to find later.
     channels.push('push');
 
     // Phone notification (Android app) — its own switch, separate from the bell.
-    if (!quiet && prefs.phone) {
+    if (on('phone')) {
       try {
         const portal = msg.portal || portalForRecipient(data, entity);
         if (await sendPush(fs, id, { title: msg.title, body: msg.body, url: entity ? entityHref(portal, entity.type, entity.id) || undefined : undefined }) > 0) sent++;

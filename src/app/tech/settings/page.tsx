@@ -98,30 +98,6 @@ export default function TechSettingsPage() {
                         <Bell size={14} className="text-brand-red" />
                         <h2 className="section-label">{TERMINOLOGY.CONFIG.NOTIFICATIONS}</h2>
                     </div>
-                    <Card>
-                        <CardHeader className="text-left">
-                            <CardTitle className="text-base font-semibold">Alerts</CardTitle>
-                            <CardDescription className="text-[12px]">Choose how you hear about job updates and check-in reminders.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            {[
-                                { id: 'email', label: 'Email', desc: 'Assignments, pay stubs and alerts sent to your email.' },
-                                { id: 'sms', label: 'Text message', desc: 'Job and schedule alerts texted to your phone.' },
-                                { id: 'phone', label: 'Phone notifications', desc: 'Pop-up alerts on your phone from the Aaromach Android app.' },
-                            ].map((item) => (
-                                <div key={item.id} className="flex items-center justify-between gap-3 p-4 rounded-lg bg-bg-secondary/50 border border-border-sub hover:border-text-muted transition-all">
-                                    <div className="space-y-0.5 text-left">
-                                        <p className="text-[13px] font-semibold">{item.label}</p>
-                                        <p className="text-[12px] text-text-muted">{item.desc}</p>
-                                    </div>
-                                    <Switch 
-                                        checked={resolveNotificationPrefs(currentUser?.notificationPreferences)[item.id as NotificationChannel]} 
-                                        onCheckedChange={() => handleTogglePreference(item.id as NotificationChannel)}
-                                    />
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
                     <NotificationEventsCard />
                 </section>
 

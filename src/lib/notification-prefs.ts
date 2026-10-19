@@ -20,11 +20,28 @@ export function resolveNotificationPrefs(raw: Partial<NotificationPreferences> |
     push: true,
     phone: raw?.phone ?? true,
     ...(raw?.events ? { events: raw.events } : {}),
+    ...(raw?.eventChannels ? { eventChannels: raw.eventChannels } : {}),
   };
 }
 
 /** Whether this event should reach the person outside the bell. */
 export const eventEnabled = (prefs: NotificationPreferences, event: string) => prefs.events?.[event] !== false;
+
+export type OutsideChannel = 'phone' | 'email' | 'sms';
+
+/** Whether this event goes out on this channel: the grid's checkbox if set,
+ *  otherwise the older channel switch and per-event switch. */
+export function channelOn(prefs: NotificationPreferences, event: string, ch: OutsideChannel): boolean {
+  const explicit = prefs.eventChannels?.[event]?.[ch];
+  if (explicit !== undefined) return explicit;
+  return eventEnabled(prefs, event) && prefs[ch] !== false;
+}
+
+/** The full object to save when one grid checkbox changes. */
+export function withEventChannel(raw: Partial<NotificationPreferences> | null | undefined, event: string, ch: OutsideChannel, value: boolean): NotificationPreferences {
+  const p = resolveNotificationPrefs(raw);
+  return { ...p, eventChannels: { ...(p.eventChannels || {}), [event]: { ...(p.eventChannels?.[event] || {}), [ch]: value } } };
+}
 
 /** The full object to save when one event switch changes. */
 export function withEventPref(raw: Partial<NotificationPreferences> | null | undefined, event: string, value: boolean): NotificationPreferences {

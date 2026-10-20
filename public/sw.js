@@ -21,7 +21,9 @@ self.addEventListener('push', event => {
   event.waitUntil(self.registration.showNotification(title, {
     body: n.body || data.body || '',
     icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
+    // Status-bar icon: Android uses only its shape, so it must be white on
+    // transparent (a full-colour icon shows as a white square).
+    badge: '/icons/badge-96.png',
     data: { url: data.url || '/' },
   }));
 });

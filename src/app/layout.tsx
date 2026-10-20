@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   // on iPhone, which only allows web push from a Home Screen app.
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, title: 'Aaromach', statusBarStyle: 'black-translucent' },
+  // Next 15.5 renders `capable` as the generic mobile-web-app-capable tag only;
+  // iPhone still keys full-screen Home Screen launch off the apple- one.
+  other: { 'apple-mobile-web-app-capable': 'yes' },
 };
 
 export default function RootLayout({

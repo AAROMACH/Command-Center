@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import {
     Activity, Bell, ChevronDown, BellRing, Briefcase, CheckCircle2, FolderKanban, Inbox, Loader2, Mail,
@@ -60,6 +60,14 @@ export function NotificationEventsCard() {
     // null until checked; the Android app (native push) skips this card.
     const [device, setDevice] = useState<WebPushState | null>(null);
     const [enabling, setEnabling] = useState(false);
+    // Fresh sign-in token, kept ready so the closed-app test sends instantly.
+    const tokenRef = useRef<string | null>(null);
+    useEffect(() => {
+        const load = () => auth.currentUser?.getIdToken().then(t => { tokenRef.current = t; }).catch(() => {});
+        load();
+        const id = setInterval(load, 30 * 60_000); // tokens last an hour
+        return () => clearInterval(id);
+    }, []);
     // Rows whose "Choose alerts" list is open.
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     useEffect(() => { if (!isNativeApp()) webPushState().then(setDevice).catch(() => setDevice('unsupported')); }, []);
@@ -101,11 +109,20 @@ export function NotificationEventsCard() {
     };
 
     // Fire and forget: the server waits 10s, then pushes to this person's
-    // phones, so they can close the app and see it arrive.
-    const sendClosedTest = async () => {
-        const token = await auth.currentUser?.getIdToken();
-        fetch('/api/notify/test', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ delaySeconds: 10 }), keepalive: true }).catch(() => {});
-        toast({ title: 'Close the app now', description: 'Leave the app or lock your phone — a test notification arrives in about 10 seconds.' });
+    // phones, so they can close the app and see it arrive. The request must
+    // leave BEFORE they switch away — Android freezes a backgrounded page, and
+    // a request still waiting on a token would only go out on return. So the
+    // token is fetched ahead of time and the "close now" hint waits a moment.
+    const sendClosedTest = () => {
+        const send = (token?: string) => fetch('/api/notify/test', {
+            method: 'POST', keepalive: true,
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ delaySeconds: 10 }),
+        }).catch(() => {});
+        if (tokenRef.current) send(tokenRef.current);
+        else auth.currentUser?.getIdToken().then(send);
+        toast({ title: 'Sending a test…', description: 'Wait for “Close the app now”.' });
+        setTimeout(() => toast({ title: 'Close the app now', description: 'Leave the app or lock your phone — the test arrives in about 10 seconds.' }), 1500);
     };
 
     const sendTest = async () => {

@@ -7,6 +7,7 @@ import {
     MessageSquare, Receipt, Send, Smartphone, TrendingUp, Wallet, XCircle, type LucideIcon,
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
+import { isNativeApp } from '@/lib/native-push';
 import { enableWebPush, webPushState, type WebPushState } from '@/lib/web-push';
 import { useAuth } from '@/contexts/auth-context';
 import { channelOn, resolveNotificationPrefs, withEventChannel, type OutsideChannel } from '@/lib/notification-prefs';
@@ -23,6 +24,7 @@ const CHANNELS: { id: OutsideChannel; label: string; Icon: LucideIcon }[] = [
 ];
 
 const EVENT_ICONS: Partial<Record<NotificationEvent, LucideIcon>> = {
+    messages: MessageSquare,
     job_assignments: Briefcase,
     my_pay: Wallet,
     projects: FolderKanban,
@@ -35,12 +37,12 @@ const EVENT_ICONS: Partial<Record<NotificationEvent, LucideIcon>> = {
 const GROUP_ORDER: EventGroup[] = ['work', 'operations', 'sales'];
 
 const DEVICE_TEXT: Record<WebPushState, string> = {
-    unsupported: '',
+    unsupported: 'This browser can’t get pop-up notifications. On iPhone: update to iOS 16.4 or newer (Settings → General → Software Update), then open Aaromach from its Home Screen icon.',
     'needs-install': 'On iPhone: tap Share → Add to Home Screen, open Aaromach from the new icon and sign in, then come back here to turn notifications on.',
     'not-configured': 'Not available yet — the Web Push key hasn’t been added to the server.',
     off: 'Get pop-up alerts on this device, even when the app is closed.',
     blocked: 'Blocked for this site. Allow notifications for app.aaromach.com in your phone or browser settings, then reload.',
-    on: 'On — alerts pop up on this device.',
+    on: 'On — alerts pop up on this device. If the test says no phone is registered, tap Reconnect.',
 };
 
 /**
@@ -54,9 +56,10 @@ export function NotificationEventsCard() {
     const { toast } = useToast();
     const [testing, setTesting] = useState(false);
     const [results, setResults] = useState<{ channel: string; ok: boolean; detail: string }[] | null>(null);
-    const [device, setDevice] = useState<WebPushState>('unsupported');
+    // null until checked; the Android app (native push) skips this card.
+    const [device, setDevice] = useState<WebPushState | null>(null);
     const [enabling, setEnabling] = useState(false);
-    useEffect(() => { webPushState().then(setDevice).catch(() => {}); }, []);
+    useEffect(() => { if (!isNativeApp()) webPushState().then(setDevice).catch(() => setDevice('unsupported')); }, []);
     if (!user) return null;
 
     const roles = [...(Array.isArray(user.roles) ? user.roles : []), ...(typeof (user as any).role === 'string' ? [(user as any).role] : [])] as string[];
@@ -115,7 +118,7 @@ export function NotificationEventsCard() {
                 </div>
             </CardHeader>
             <CardContent className="space-y-5">
-                {device !== 'unsupported' && (
+                {device && (
                     <div className={cn('flex items-center justify-between gap-4 p-3.5 rounded-lg border',
                         device === 'on' ? 'border-green-border/40 bg-green-dim/20' : 'border-border-sub bg-bg-primary')}>
                         <div className="flex items-start gap-3 text-left">
@@ -130,7 +133,13 @@ export function NotificationEventsCard() {
                                 {enabling && <Loader2 size={13} className="mr-1.5 animate-spin" />}Turn on
                             </Button>
                         )}
-                        {device === 'on' && <CheckCircle2 size={18} className="text-text-green shrink-0" />}
+                        {device === 'on' && (
+                            // Re-saves this device's token — fixes "no phone registered" when
+                            // notifications are allowed but the device never got linked.
+                            <Button size="sm" variant="outline" onClick={turnOnDevice} disabled={enabling} className="shrink-0">
+                                {enabling ? <Loader2 size={13} className="mr-1.5 animate-spin" /> : <CheckCircle2 size={13} className="mr-1.5 text-text-green" />}Reconnect
+                            </Button>
+                        )}
                     </div>
                 )}
 

@@ -1,4 +1,5 @@
 'use client';
+import { NotificationService } from '@/lib/notification-service';
 import { PageHeader } from '@/components/page-header';
 import { SearchField } from '@/components/search-field';
 import { EmptyState } from '@/components/empty-state';
@@ -247,7 +248,7 @@ export default function AdminMessagingPage() {
     if ((!dmBody.trim() && !dmImageUrl) || !selectedUserId || !currentUser) return;
     setSending(true);
     try {
-      await addDoc(collection(db, 'messages'), {
+      const msgRef = await addDoc(collection(db, 'messages'), {
         senderId: currentUser.id,
         receiverId: selectedUserId,
         body: dmBody.trim(),
@@ -255,6 +256,7 @@ export default function AdminMessagingPage() {
         read: false,
         ...(dmImageUrl && { imageUrls: [dmImageUrl] }),
       });
+      NotificationService.messageSent(msgRef.id);
       setDmBody('');
       setDmImageUrl(null);
     } catch (e: any) {
@@ -278,7 +280,7 @@ export default function AdminMessagingPage() {
     if ((!projectMessageBody.trim() && !projectImageUrl) || !selectedProjectId || !currentUser) return;
     setSending(true);
     try {
-      await addDoc(collection(db, 'messages'), {
+      const msgRef = await addDoc(collection(db, 'messages'), {
         senderId: currentUser.id,
         senderName: currentUser.name,
         senderRole: 'admin',
@@ -290,6 +292,7 @@ export default function AdminMessagingPage() {
         readBy: [currentUser.id],
         ...(projectImageUrl && { imageUrls: [projectImageUrl] }),
       });
+      NotificationService.messageSent(msgRef.id);
       setProjectMessageBody('');
       setProjectImageUrl(null);
     } catch (e: any) {

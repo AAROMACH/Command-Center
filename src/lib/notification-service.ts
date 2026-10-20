@@ -1,6 +1,6 @@
 import { auth } from './firebase';
 
-type Entity = { id: string; type: 'assignment' | 'project' | 'request' | 'lead' | 'weeklyLog' | 'user' };
+type Entity = { id: string; type: 'assignment' | 'project' | 'request' | 'lead' | 'weeklyLog' | 'user' | 'message' };
 /** Which portal's bell shows the alert — see /api/notify. */
 export type NotifyPortal = 'admin' | 'tech' | 'client' | 'sales';
 type Options = {
@@ -20,7 +20,7 @@ type Options = {
  * Nobody is notified about their own action — the server drops the caller
  * from every recipient list.
  */
-async function post(payload: { userId?: string; audience?: 'admins' | 'payroll_admins' | 'project_managers'; title?: string; body?: string; entity?: Entity; inAppOnly?: boolean; portal?: NotifyPortal; kind?: 'access_request' }) {
+async function post(payload: { userId?: string; audience?: 'admins' | 'payroll_admins' | 'project_managers'; title?: string; body?: string; entity?: Entity; inAppOnly?: boolean; portal?: NotifyPortal; kind?: 'access_request' | 'message'; messageId?: string }) {
   try {
     const idToken = await auth.currentUser?.getIdToken();
     if (!idToken) {
@@ -48,6 +48,12 @@ const jobLabel = (j: JobLike) => `${(j.id || '').toUpperCase()}${j.title ? ` (${
 const leadTech = (j: JobLike | null | undefined) => (j?.assignedTechnicianId || j?.techId || '') as string;
 
 export const NotificationService = {
+  /** A message was sent — the server reads it and tells the receiver (or the
+   *  project crew), so nobody can send a fake "new message" alert. */
+  async messageSent(messageId: string) {
+    return post({ kind: 'message', messageId });
+  },
+
   /** One person. Pass `portal` when the recipient may have several portals. */
   async notify(userId: string, title: string, body: string, entity?: Entity, opts: Options = {}) {
     return post({ userId, title, body, entity, ...opts });

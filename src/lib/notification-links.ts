@@ -12,6 +12,7 @@ export function entityHref(portal: LinkPortal, type?: string, id?: string): stri
   if (type === 'request') return portal === 'admin' ? '/admin/requests' : portal === 'client' ? '/client/tickets' : '';
   if (type === 'lead') return portal === 'sales' ? '/sales/pipeline' : portal === 'admin' ? '/admin/crm' : '';
   if (type === 'weeklyLog') return portal === 'tech' ? '/tech/logs' : portal === 'admin' ? '/admin/payroll/audit' : '';
+  if (type === 'message') return portal === 'sales' ? '' : `/${portal}/messaging`;
   if (type === 'user') return portal === 'admin' ? `/admin/directory/${id}` : '';
   return '';
 }

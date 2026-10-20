@@ -1,7 +1,7 @@
 "use client";
 
 import { EmptyState } from '@/components/empty-state';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import type { WorkOrder, Technician } from "@/lib/types";
 import { Ban, XCircle, Send, Archive as ArchiveIcon, ClipboardList } from "lucide-react";
@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { WorkOrderId } from '@/components/work-order-id';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
-import { formatCityState } from '@/lib/utils';
+import { cn, formatCityState } from '@/lib/utils';
 import { jobTechId } from '@/lib/jobs';
 import { format } from 'date-fns';
 
@@ -47,6 +47,38 @@ function outcomeRecordedBy(wo: WorkOrder, note: HistoryEntry | undefined, techni
   return nameOf(jobTechId(wo));
 }
 
+/** When the job landed in the queue: the stored outcome time, else the
+ *  history entry that recorded it (older jobs), else its last update. */
+function markedAt(wo: WorkOrder, note: HistoryEntry | undefined): string | undefined {
+  return wo.techOutcomeAt || note?.date || (wo as { updatedAt?: string }).updatedAt || undefined;
+}
+
+const lastOutcomeNote = (wo: WorkOrder) => [...(wo.history || [])].reverse()
+  .find(h => h.details?.toLowerCase().includes('cancelled') || h.details?.toLowerCase().includes('did not do')) as HistoryEntry | undefined;
+
+/**
+ * Jobs this admin has opened from the queue (per admin, this browser). A job
+ * is "Recently added" for them until they open it — or until any admin acts
+ * on it, which takes it out of the queue. Just viewing the tab doesn't clear
+ * it, and the backlog counts as new the first time they look.
+ */
+function useOpenedIds(queueIds: string[]) {
+  const key = (() => { try { const u = sessionStorage.getItem('currentUserId'); return u ? `cc:reviewOpened:${u}` : null; } catch { return null; } })();
+  const [opened, setOpened] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!key) return;
+    try { setOpened(new Set(JSON.parse(localStorage.getItem(key) || '[]'))); } catch { /* storage blocked */ }
+  }, [key]);
+  const markOpened = (id: string) => setOpened(prev => {
+    if (prev.has(id)) return prev;
+    // Keep only ids still in the queue, so the list doesn't grow forever.
+    const next = new Set([...prev, id].filter(x => queueIds.includes(x)));
+    try { if (key) localStorage.setItem(key, JSON.stringify([...next])); } catch { /* storage blocked */ }
+    return next;
+  });
+  return { opened, markOpened };
+}
+
 type ReviewQueueViewProps = {
   jobs: WorkOrder[];
   technicians: Technician[];
@@ -64,7 +96,15 @@ type ReviewQueueViewProps = {
 export function ReviewQueueView({ jobs, technicians, onSendToDispatch, onArchive, newIds }: ReviewQueueViewProps) {
   const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const pager = usePaged(jobs, PAGE_SIZES_SMALL, 'dispatch-review-queue');
+  // Newest first, with jobs this admin hasn't opened yet above the rest.
+  const { opened, markOpened } = useOpenedIds(jobs.map(j => j.id));
+  const sorted = useMemo(() => [...jobs].sort((a, b) => {
+    const na = opened.has(a.id) ? 1 : 0, nb = opened.has(b.id) ? 1 : 0;
+    if (na !== nb) return na - nb;
+    return (markedAt(b, lastOutcomeNote(b)) || '').localeCompare(markedAt(a, lastOutcomeNote(a)) || '');
+  }), [jobs, opened]);
+  const pager = usePaged(sorted, PAGE_SIZES_SMALL, 'dispatch-review-queue');
+  const openJob = (wo: WorkOrder) => { markOpened(wo.id); setSelectedJob(wo); setIsDetailOpen(true); };
 
   if (jobs.length === 0) {
     return (
@@ -76,18 +116,19 @@ export function ReviewQueueView({ jobs, technicians, onSendToDispatch, onArchive
     <>
       <div className="space-y-3">
         {pager.items.map(wo => {
-          const lastNote = [...(wo.history || [])].reverse()
-            .find(h => h.details?.toLowerCase().includes('cancelled') || h.details?.toLowerCase().includes('did not do'));
+          const lastNote = lastOutcomeNote(wo);
           const techName = outcomeRecordedBy(wo, lastNote, technicians);
+          const when = markedAt(wo, lastNote);
+          const isNew = !opened.has(wo.id);
 
           return (
-            <div key={wo.id} className="rounded-xl border border-brand-red/30 bg-bg-secondary p-4 shadow-sm">
+            <div key={wo.id} className={cn('rounded-xl border bg-bg-secondary p-4 shadow-sm', isNew ? 'border-brand-red/60' : 'border-brand-red/25')}>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="min-w-0 flex-1 cursor-pointer" onClick={() => { setSelectedJob(wo); setIsDetailOpen(true); }}>
+                <div className="min-w-0 flex-1 cursor-pointer" onClick={() => openJob(wo)}>
                   <div className="flex items-center gap-2 flex-wrap">
                     <WorkOrderId wo={wo} />
-                    {newIds?.has(wo.id) && (
-                      <Badge className="text-[10px] h-4 px-1.5 uppercase tracking-wider bg-brand-red text-white animate-pulse">New</Badge>
+                    {isNew && (
+                      <Badge className={cn('text-[10px] h-4 px-1.5 uppercase tracking-wider bg-brand-red text-white', newIds?.has(wo.id) && 'animate-pulse')}>Recently added</Badge>
                     )}
                     <Badge variant="outline" className="text-[10px] h-4 px-1.5 uppercase tracking-wider border-brand-red/40 text-brand-red bg-brand-red/5">
                       {wo.techOutcome === 'did_not_do'
@@ -100,12 +141,13 @@ export function ReviewQueueView({ jobs, technicians, onSendToDispatch, onArchive
                     <span>{wo.clientName || 'Unassigned Client'}</span>
                     <span>·</span>
                     <span>{formatCityState(wo.location)}</span>
-                    {techName && (<><span>·</span><span className="text-text-primary">Marked by {techName}</span></>)}
-                    {wo.techOutcomeAt && (<><span>·</span><span>{format(new Date(wo.techOutcomeAt), 'MM/dd h:mm a')}</span></>)}
                   </div>
-                  {lastNote && (
-                    <p className="text-[12px] text-text-secondary mt-1.5 truncate max-w-xl">{lastNote.details}</p>
-                  )}
+                  {/* Who sent it here and when — the line people read first, on phones too. */}
+                  <p className="text-[12px] text-text-secondary mt-2 leading-snug">
+                    <span className="font-semibold text-text-primary">{techName || 'A technician'}</span>
+                    {' marked this job '}{wo.techOutcome === 'did_not_do' ? 'Did Not Do' : 'Cancelled'}
+                    {when && <span className="text-text-muted"> · {format(new Date(when), 'MMM d, yyyy · h:mm a')}</span>}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                   <Button

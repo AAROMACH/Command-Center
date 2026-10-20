@@ -54,7 +54,7 @@ export default function FieldIntelligencePage() {
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     // Dispatch job imports (one record per import — see dispatch-page-client).
-    type ImportBatch = { id: string; importedAt?: string; importedByName?: string; importedBy?: string | null; count?: number; clients?: string[] };
+    type ImportBatch = { id: string; importedAt?: string; importedByName?: string; importedBy?: string | null; count?: number; clients?: string[]; jobIds?: string[] };
     const [importBatches, setImportBatches] = useState<ImportBatch[]>([]);
     const [archivedJobs, setArchivedJobs] = useState<WorkOrder[]>([]);
     const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
@@ -145,6 +145,8 @@ export default function FieldIntelligencePage() {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     // Techs tab: pay figures only for super admins and payroll/financial admins.
     const [managedJob, setManagedJob] = useState<WorkOrder | null>(null);
+    // Import batch opened from App Activity — shows every job it brought in.
+    const [openBatch, setOpenBatch] = useState<ImportBatch | null>(null);
     const jobsById = useMemo(() => new Map(missions.map(m => [m.id, m as WorkOrder])), [missions]);
     useEffect(() => { try { setCurrentUserId(sessionStorage.getItem('currentUserId')); } catch { /* private mode */ } }, []);
     const currentUser = technicians.find(t => t.id === currentUserId) || null;
@@ -238,7 +240,7 @@ export default function FieldIntelligencePage() {
             .sort((a, b) => b.count - a.count);
     }, [workOrders]);
 
-    type TimelineEvent = { id: string; timestamp: string; type: string; eventLabel: string; entity: string; techName?: string; techId?: string; clientName?: string; color: string; };
+    type TimelineEvent = { id: string; timestamp: string; type: string; eventLabel: string; entity: string; techName?: string; techId?: string; clientName?: string; color: string; batchId?: string; };
 
     const timelineEvents = useMemo((): TimelineEvent[] => {
         const events: TimelineEvent[] = [];
@@ -262,7 +264,7 @@ export default function FieldIntelligencePage() {
             if (!b.importedAt) return;
             const n = b.count || 0;
             const clients = (b.clients || []).slice(0, 3).join(', ');
-            events.push({ id: `import-${b.id}`, timestamp: b.importedAt, type: 'dispatch', eventLabel: 'Dispatch Imported Jobs', entity: `${n} job${n === 1 ? '' : 's'}${clients ? ` · ${clients}${(b.clients || []).length > 3 ? '…' : ''}` : ''}${b.importedByName ? ` — by ${b.importedByName}` : ''}`, color: 'text-brand-blue' });
+            events.push({ id: `import-${b.id}`, timestamp: b.importedAt, type: 'dispatch', eventLabel: 'Dispatch Imported Jobs', entity: `${n} job${n === 1 ? '' : 's'}${clients ? ` · ${clients}${(b.clients || []).length > 3 ? '…' : ''}` : ''}${b.importedByName ? ` — by ${b.importedByName}` : ''}`, color: 'text-brand-blue', batchId: b.id });
         });
         invoices.forEach(inv => {
             if (inv.issueDate) events.push({ id: `inv-${inv.id}`, timestamp: inv.issueDate, type: 'invoice', eventLabel: 'Invoice Issued', entity: `#${(inv as any).invoiceNumber || inv.id} — $${(inv.total || 0).toFixed(2)}`, clientName: inv.clientName, color: 'text-text-muted' });
@@ -796,7 +798,9 @@ export default function FieldIntelligencePage() {
                                     try { const d = new Date(event.timestamp); tsDisplay = isNaN(d.getTime()) ? event.timestamp : format(d, 'MMM d, h:mm a'); } catch { tsDisplay = event.timestamp; }
                                     const typeColors: Record<string, string> = { assignment: 'border-l-accent-gold', work_order: 'border-l-border-main', log: 'border-l-brand-red', invoice: 'border-l-text-green' };
                                     return (
-                                        <div key={event.id} className={cn('flex items-start gap-4 p-3 rounded-lg border border-border-sub border-l-4 bg-bg-secondary hover:bg-bg-tertiary transition-colors', typeColors[event.type] || 'border-l-border-sub')}>
+                                        <div key={event.id}
+                                            onClick={event.batchId ? () => setOpenBatch(importBatches.find(b => b.id === event.batchId) || null) : undefined}
+                                            className={cn('flex items-start gap-4 p-3 rounded-lg border border-border-sub border-l-4 bg-bg-secondary hover:bg-bg-tertiary transition-colors', event.batchId && 'cursor-pointer', typeColors[event.type] || 'border-l-border-sub')}>
                                             <div className="w-[120px] shrink-0 text-right">
                                                 <p className="text-[11px] font-mono text-text-muted leading-tight">{tsDisplay}</p>
                                             </div>
@@ -809,7 +813,10 @@ export default function FieldIntelligencePage() {
                                                     {event.clientName && <span className="text-[11px] text-text-muted">{event.clientName}</span>}
                                                 </div>
                                             </div>
-                                            <Badge variant="outline" className="text-[10px] shrink-0 h-4">{event.type.replace('_', ' ')}</Badge>
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                <Badge variant="outline" className="text-[10px] h-4">{event.type.replace('_', ' ')}</Badge>
+                                                {event.batchId && <ChevronRight size={14} className="text-text-muted" />}
+                                            </div>
                                         </div>
                                     );
                                 })}
@@ -847,6 +854,42 @@ export default function FieldIntelligencePage() {
             </Tabs>
 
             {/* Admin job controls from the Techs tab (force complete, swap tech, helpers, …). */}
+            <Dialog open={!!openBatch} onOpenChange={open => { if (!open) setOpenBatch(null); }}>
+                <DialogContent className="sm:max-w-2xl bg-bg-elevated border-border-default max-h-[85vh] flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle>Imported jobs</DialogTitle>
+                        <DialogDescription>
+                            {openBatch?.count || 0} job{openBatch?.count === 1 ? '' : 's'}
+                            {openBatch?.importedAt && ` · ${format(new Date(openBatch.importedAt), 'MMM d, yyyy · h:mm a')}`}
+                            {openBatch?.importedByName && ` · by ${openBatch.importedByName}`}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="overflow-y-auto -mx-1 px-1 space-y-1.5">
+                        {(openBatch?.jobIds || []).length === 0 && (
+                            <p className="text-[12px] text-text-muted py-6 text-center">This import was recorded before job lists were saved, so its jobs can't be listed.</p>
+                        )}
+                        {(openBatch?.jobIds || []).map(id => {
+                            const wo = missions.find(m => m.id === id) as WorkOrder | undefined;
+                            if (!wo) return (
+                                <div key={id} className="p-3 rounded-lg border border-border-sub bg-bg-secondary text-[12px] text-text-muted">Job {id} — deleted</div>
+                            );
+                            return (
+                                <button key={id} type="button" onClick={() => { setOpenBatch(null); setManagedJob(wo); }}
+                                    className="w-full text-left p-3 rounded-lg border border-border-sub bg-bg-secondary hover:bg-bg-tertiary flex items-center gap-3">
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-[12px] font-bold text-text-primary truncate">{wo.title || wo.description || id}</p>
+                                        <p className="text-[11px] text-text-muted truncate">
+                                            {[wo.clientName, wo.scheduleDate, technicians.find(t => t.id === jobTechId(wo))?.name || 'Unassigned'].filter(Boolean).join(' · ')}
+                                        </p>
+                                    </div>
+                                    <StatusBadge kind="job" value={wo.status} label={JOB_STATUS_OPTIONS.find(o => o.value === wo.status)?.label} />
+                                    <ChevronRight size={14} className="text-text-muted shrink-0" />
+                                </button>
+                            );
+                        })}
+                    </div>
+                </DialogContent>
+            </Dialog>
             <JobDetailDialog isOpen={!!managedJob} setIsOpen={open => { if (!open) setManagedJob(null); }} mission={managedJob ? (missions.find(m => m.id === managedJob.id) as WorkOrder) || managedJob : null} hidePay={!canSeePay} />
 
         </div>

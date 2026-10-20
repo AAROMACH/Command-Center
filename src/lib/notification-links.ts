@@ -12,7 +12,13 @@ export function entityHref(portal: LinkPortal, type?: string, id?: string): stri
   if (type === 'request') return portal === 'admin' ? '/admin/requests' : portal === 'client' ? '/client/tickets' : '';
   if (type === 'lead') return portal === 'sales' ? '/sales/pipeline' : portal === 'admin' ? '/admin/crm' : '';
   if (type === 'weeklyLog') return portal === 'tech' ? '/tech/logs' : portal === 'admin' ? '/admin/payroll/audit' : '';
-  if (type === 'message') return portal === 'sales' ? '' : `/${portal}/messaging`;
+  // id is "dm:<sender uid>" or "project:<project id>" — opens that conversation.
+  if (type === 'message') {
+    if (portal === 'sales') return '';
+    const [kind, ref] = id.split(':');
+    const q = ref && (kind === 'dm' || kind === 'project') ? `?${kind}=${encodeURIComponent(ref)}` : '';
+    return `/${portal}/messaging${q}`;
+  }
   if (type === 'user') return portal === 'admin' ? `/admin/directory/${id}` : '';
   return '';
 }

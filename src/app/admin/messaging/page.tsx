@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/empty-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
 import { collection, onSnapshot, doc, setDoc, updateDoc, addDoc, arrayUnion, query, where } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -26,7 +27,7 @@ import { format, parseISO, addHours } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-const TABS = ['Broadcast', 'Direct Messages', 'Project Comms'] as const;
+const TABS = ['Direct Messages', 'Project Comms', 'Broadcast'] as const;
 const TAB_LABELS: Record<string, string> = { 'Broadcast': 'Announcements', 'Direct Messages': 'Direct messages', 'Project Comms': 'Project chat' };
 type Tab = typeof TABS[number];
 
@@ -46,7 +47,7 @@ type DirectMessage = {
 };
 
 export default function AdminMessagingPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('Broadcast');
+  const [activeTab, setActiveTab] = useState<Tab>('Direct Messages');
   const [currentUser, setCurrentUser] = useState<Technician | null>(null);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [messages, setMessages] = useState<AdminMessage[]>([]);
@@ -55,6 +56,16 @@ export default function AdminMessagingPage() {
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [dmBody, setDmBody] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  // ?dm=<userId> / ?project=<id> (from the messages menu or a notification)
+  // opens that conversation.
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const dm = searchParams.get('dm'), project = searchParams.get('project');
+    if (dm) { setActiveTab('Direct Messages'); setSelectedUserId(dm); }
+    else if (project) { setActiveTab('Project Comms'); setSelectedProjectId(project); }
+  }, [searchParams]);
+  const dmEndRef = useRef<HTMLDivElement>(null);
+  const projEndRef = useRef<HTMLDivElement>(null);
   const [projectMessageBody, setProjectMessageBody] = useState('');
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [sending, setSending] = useState(false);
@@ -275,6 +286,10 @@ export default function AdminMessagingPage() {
   const projectMessages = directMessages
     .filter(m => m.projectId === selectedProjectId)
     .sort((a, b) => (a.timestamp || a.createdAt || '').localeCompare(b.timestamp || b.createdAt || ''));
+
+  // Keep the open conversation scrolled to the newest message (incl. your own).
+  useEffect(() => { dmEndRef.current?.scrollIntoView({ block: 'end' }); }, [threadMessages.length, selectedUserId, activeTab]);
+  useEffect(() => { projEndRef.current?.scrollIntoView({ block: 'end' }); }, [projectMessages.length, selectedProjectId, activeTab]);
 
   const handleSendProjectMessage = async () => {
     if ((!projectMessageBody.trim() && !projectImageUrl) || !selectedProjectId || !currentUser) return;
@@ -548,6 +563,7 @@ export default function AdminMessagingPage() {
                         );
                       })
                     )}
+                    <div ref={dmEndRef} />
                   </div>
                 </ScrollArea>
                 <div className="px-4 py-3 border-t border-border-sub shrink-0 space-y-2 bg-bg-primary">
@@ -711,6 +727,7 @@ export default function AdminMessagingPage() {
                         );
                       })
                     )}
+                    <div ref={projEndRef} />
                   </div>
                 </ScrollArea>
                 <div className="px-4 py-3 border-t border-border-sub shrink-0 space-y-2 bg-bg-primary">

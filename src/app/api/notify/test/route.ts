@@ -20,6 +20,16 @@ export async function POST(req: NextRequest) {
   catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
 
   const fs = getFirestore(adminApp);
+
+  // "Test with the app closed": phone only, sent after a short wait so the
+  // person has time to leave the app or lock the phone first.
+  const opts = await req.json().catch(() => ({} as { delaySeconds?: number }));
+  if (typeof opts.delaySeconds === 'number') {
+    await new Promise(r => setTimeout(r, Math.min(Math.max(opts.delaySeconds, 0), 20) * 1000));
+    const n = await sendPush(fs, uid, { title: 'Test notification', body: 'Phone notifications work with the app closed.', url: '/' });
+    return NextResponse.json({ delivered: n });
+  }
+
   const snap = await fs.collection('users').doc(uid).get();
   if (!snap.exists) return NextResponse.json({ error: 'No user profile' }, { status: 404 });
   const data = snap.data() || {};

@@ -28,7 +28,8 @@ export async function sendPush(
     tokens,
     notification: { title: msg.title, body: msg.body.slice(0, 500) },
     data: msg.url ? { url: msg.url } : {},
-    android: { priority: 'high', notification: { sound: 'default', channelId: 'alerts', icon: 'ic_stat_notify', color: '#CC2200' } },
+    // No small icon set: Samsung shows the colour launcher logo in the status bar.
+    android: { priority: 'high', notification: { sound: 'default', channelId: 'alerts' } },
     // Web push (iPhone Home Screen app, Chrome): deliver now even if the phone
     // is asleep, and keep trying for a day if it's offline.
     webpush: { headers: { Urgency: 'high', TTL: '86400' } },

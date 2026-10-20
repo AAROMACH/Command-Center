@@ -2,5 +2,4 @@
 <resources>
     <!-- Behind the status and gesture bars; matches the app's dark background. -->
     <color name="appBackground">#111111</color>
-    <color name="notification_accent">#CC2200</color>
 </resources>

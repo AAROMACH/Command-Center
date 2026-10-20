@@ -28,7 +28,7 @@ async function send(method: 'POST' | 'DELETE', token: string) {
  * phone for the signed-in user, and routes notification taps through `open`.
  * Returns a cleanup that removes the listeners.
  */
-export async function startNativePush(open: (url: string) => void, onForeground: (title: string, body: string) => void): Promise<() => void> {
+export async function startNativePush(open: (url: string) => void, onForeground: (title: string, body: string, url?: string) => void): Promise<() => void> {
   if (!isNativeApp()) return () => {};
   const handles = await Promise.all([
     PushNotifications.addListener('registration', t => {
@@ -37,7 +37,10 @@ export async function startNativePush(open: (url: string) => void, onForeground:
     }),
     PushNotifications.addListener('registrationError', e => console.warn('[push] registration error', e)),
     // App open: Android doesn't show the system banner, so show it in-app.
-    PushNotifications.addListener('pushNotificationReceived', n => onForeground(n.title || 'Aaromach', n.body || '')),
+    PushNotifications.addListener('pushNotificationReceived', n => {
+      const url = n.data?.url;
+      onForeground(n.title || 'Aaromach', n.body || '', typeof url === 'string' && url.startsWith('/') ? url : undefined);
+    }),
     PushNotifications.addListener('pushNotificationActionPerformed', a => {
       const url = a.notification.data?.url;
       if (typeof url === 'string' && url.startsWith('/')) open(url);

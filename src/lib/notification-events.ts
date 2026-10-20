@@ -9,6 +9,7 @@
 export type NotificationEvent =
   | 'messages'
   | 'job_assignments'
+  | 'dispatch_activity'
   | 'job_activity'
   | 'projects'
   | 'my_pay'
@@ -31,6 +32,7 @@ export const NOTIFICATION_EVENTS: { id: NotificationEvent; label: string; desc: 
   { id: 'job_assignments', group: 'work', label: 'Job assignments', desc: 'A job is assigned to you, rescheduled or taken off your schedule.', roles: TECH },
   { id: 'my_pay', group: 'work', label: 'Pay & time off', desc: 'Your weekly log is approved or returned, dispute and reimbursement decisions, time-off answers.', roles: TECH },
   { id: 'projects', group: 'work', label: 'Projects', desc: 'Crew changes, tasks, documents, check-ins and project status.', roles: [...TECH, ...SUPER, 'dispatch_admin', 'client'] },
+  { id: 'dispatch_activity', group: 'operations', label: 'Dispatch activity', desc: 'Another admin assigns, unassigns or reschedules a job — one alert per job. Your own changes never alert you.', roles: [...SUPER, 'dispatch_admin'] },
   { id: 'job_activity', group: 'operations', label: 'Job activity', desc: 'Jobs completed in the field and helpers finishing their part.', roles: [...SUPER, 'dispatch_admin'] },
   { id: 'requests', group: 'operations', label: 'New requests', desc: 'Client, site and service requests, account sign-ups and time-off requests.', roles: [...SUPER, 'dispatch_admin', 'client'] },
   { id: 'payroll_review', group: 'operations', label: 'Payroll review', desc: 'Weekly logs submitted, disputes, missing-job reports and reimbursement requests.', roles: [...SUPER, 'payroll_admin'] },
@@ -49,6 +51,9 @@ export const EVENT_GROUP_LABELS: Record<EventGroup, string> = {
  * list — more specific rules first.
  */
 export const ALERT_TYPES: { id: string; event: NotificationEvent; label: string; re: RegExp }[] = [
+  { id: 'disp_assigned', event: 'dispatch_activity', label: 'Jobs assigned to a tech', re: /^dispatch: job assigned/ },
+  { id: 'disp_unassigned', event: 'dispatch_activity', label: 'Jobs taken off a tech', re: /^dispatch: job unassigned/ },
+  { id: 'disp_resched', event: 'dispatch_activity', label: 'Jobs rescheduled', re: /^dispatch: job rescheduled/ },
   { id: 'msg_direct', event: 'messages', label: 'Direct messages', re: /^new message from/ },
   { id: 'msg_project', event: 'messages', label: 'Project chat messages', re: /^new message/ },
   { id: 'pay_log', event: 'my_pay', label: 'Weekly log approved, returned or reopened', re: /weekly log (approved|rejected|returned|reopened)|payroll decided/ },

@@ -666,13 +666,16 @@ export function DispatchPageClient() {
                             return;
                         }
                     }
-                    await Promise.all(moves.map(({ wo, asmtId }) => NotificationService.notify(
-                        wo.assignedTechnicianId!,
-                        "New job assigned",
-                        `Job ${wo.id.toUpperCase()} was assigned to you. Confirm the schedule in the Tech Portal.`,
-                        { id: asmtId, type: 'assignment' },
-                        { portal: 'tech' }
-                    )));
+                    await Promise.all(moves.flatMap(({ wo, asmtId }) => [
+                        NotificationService.notify(
+                            wo.assignedTechnicianId!,
+                            "New job assigned",
+                            `Job ${wo.id.toUpperCase()} was assigned to you. Confirm the schedule in the Tech Portal.`,
+                            { id: asmtId, type: 'assignment' },
+                            { portal: 'tech' }
+                        ),
+                        NotificationService.dispatchActivity('assigned', wo, wo.assignedTechnicianId!, { id: asmtId, type: 'assignment' }),
+                    ]));
                 }
 
                 // Unassigned jobs that were edited: changed fields only, batched.

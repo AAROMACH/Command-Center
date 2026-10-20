@@ -28,6 +28,7 @@ const EVENT_ICONS: Partial<Record<NotificationEvent, LucideIcon>> = {
     job_assignments: Briefcase,
     my_pay: Wallet,
     projects: FolderKanban,
+    dispatch_activity: Send,
     job_activity: Activity,
     requests: Inbox,
     payroll_review: Receipt,

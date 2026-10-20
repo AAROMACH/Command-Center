@@ -31,3 +31,19 @@ export function WorkOrderId({ wo, className = '' }: { wo: WorkOrder; className?:
     </span>
   );
 }
+
+/**
+ * Both numbers a job can have, stacked: our assignment number (red) and, for
+ * imported jobs, the Field Nation number with its link (cyan). Use where a
+ * row or card needs the assignment number even for imported jobs.
+ */
+export function JobNumbers({ wo, className = '' }: { wo: WorkOrder; className?: string }) {
+  const ext = isImported(wo) ? displayWorkOrderNumber(wo) : '';
+  const own = String(wo.id || '').toUpperCase();
+  return (
+    <span className={`inline-flex flex-col leading-tight ${className}`}>
+      <span className="cell-id font-mono font-bold text-brand-red !text-[10px]">{own}</span>
+      {ext && ext !== own && <span className="text-[11px]"><span className="font-mono font-bold text-brand-cyan mr-1">FN</span><WorkOrderId wo={wo} /></span>}
+    </span>
+  );
+}

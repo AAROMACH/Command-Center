@@ -1,4 +1,5 @@
 'use client';
+import { JobNumbers } from '@/components/work-order-id';
 
 import { fetchHelperJobsRetrying } from '@/lib/tech-assignments';
 import { useState, useEffect, useMemo } from 'react';
@@ -306,6 +307,7 @@ export default function TechActivityPage() {
                     <td className="px-3 py-2 whitespace-nowrap">{dayLabel(r.date)}</td>
                     <td className="px-3 py-2 max-w-[220px]">
                       <p className="font-semibold text-[13px] text-text-primary truncate">{r.title}</p>
+                      {jobsById.get(r.id) && <JobNumbers wo={jobsById.get(r.id)!} className="mt-0.5" />}
                       <p className="text-[11px] text-text-muted truncate md:hidden">{r.customer}</p>
                       {r.role === 'helper' && <span className="text-[11px] font-medium text-text-muted">Helper</span>}
                     </td>

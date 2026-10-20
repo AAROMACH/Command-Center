@@ -398,6 +398,7 @@ export default function TechAssignmentsPage() {
                                     <div className="min-w-0">
                                         <div className="flex items-center gap-1.5">
                                             <span className="cell-id">{displayWorkOrderNumber(wo)}</span>
+                                            {wo.source === 'Imported' && displayWorkOrderNumber(wo) !== (wo.id || '').toUpperCase() && <span className="font-mono text-[10px] text-text-muted" title="Assignment number">#{(wo.id || '').toUpperCase()}</span>}
                                             {wo.source === 'Imported' && (
                                                 <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" aria-label="Open in Field Nation" className="-m-2 p-2 text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
                                                     <ExternalLink size={12} />
@@ -520,6 +521,7 @@ export default function TechAssignmentsPage() {
                                             <div className="flex flex-col items-center justify-center">
                                               <div className="flex items-center gap-1.5">
                                                 <div className="cell-id">{displayWorkOrderNumber(wo)}</div>
+                                            {wo.source === 'Imported' && displayWorkOrderNumber(wo) !== (wo.id || '').toUpperCase() && <span className="font-mono text-[10px] text-text-muted" title="Assignment number">#{(wo.id || '').toUpperCase()}</span>}
                                                 {wo.source === 'Imported' && (
                                                   <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" aria-label="Open in Field Nation" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
                                                     <ExternalLink size={12} />
@@ -662,6 +664,7 @@ export default function TechAssignmentsPage() {
                                     <div className="min-w-0">
                                         <div className="flex items-center gap-1.5">
                                             <span className="cell-id">{displayWorkOrderNumber(wo)}</span>
+                                            {wo.source === 'Imported' && displayWorkOrderNumber(wo) !== (wo.id || '').toUpperCase() && <span className="font-mono text-[10px] text-text-muted" title="Assignment number">#{(wo.id || '').toUpperCase()}</span>}
                                             {wo.source === 'Imported' && (
                                                 <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" aria-label="Open in Field Nation" className="-m-2 p-2 text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
                                                     <ExternalLink size={12} />
@@ -727,6 +730,7 @@ export default function TechAssignmentsPage() {
                                                 <div className="flex flex-col items-center justify-center">
                                                   <div className="flex items-center gap-1.5">
                                                     <div className="cell-id">{displayWorkOrderNumber(wo)}</div>
+                                            {wo.source === 'Imported' && displayWorkOrderNumber(wo) !== (wo.id || '').toUpperCase() && <span className="font-mono text-[10px] text-text-muted" title="Assignment number">#{(wo.id || '').toUpperCase()}</span>}
                                                     {wo.source === 'Imported' && (
                                                       <a href={fieldNationUrl(wo)} target="_blank" rel="noopener noreferrer" aria-label="Open in Field Nation" className="text-text-muted hover:text-brand-red transition-colors" onClick={(e) => e.stopPropagation()}>
                                                         <ExternalLink size={12} />

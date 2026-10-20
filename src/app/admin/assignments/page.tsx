@@ -87,7 +87,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { exportAssignmentsCsv } from '@/app/admin/reports/components/history-tabs';
 import { isAdmin, isPayAdmin } from "@/lib/permissions";
 import { PAY_TYPE_LABELS } from '@/lib/constants';
-import { WorkOrderId } from '@/components/work-order-id';
+import { JobNumbers } from '@/components/work-order-id';
 import { jobTechId, isArchivedJob, isCompletedJob, jobDateTimeValue, archiveJobRecord, toUnassignedWorkOrder, JOB_STATUS_OPTIONS, compareJobStatus, jobMatchesSearch } from '@/lib/jobs';
 import { syncWeeklyLogForAdminStatusEdit, moveJobLogOnSwap, describeSwapLogMove } from '@/lib/weekly-log';
 
@@ -697,7 +697,7 @@ export default function AssignmentsHubPage() {
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-1.5">
-                                            <WorkOrderId wo={wo} />
+                                            <JobNumbers wo={wo} />
                                         </div>
                                         <p className="text-[13px] font-semibold text-text-primary mt-1 break-words">{wo.title || wo.description}</p>
                                         <p className="text-[12px] text-text-muted">{wo.clientName}</p>
@@ -785,7 +785,7 @@ export default function AssignmentsHubPage() {
                                         <td className="text-left pl-2 py-4">
                                             <div className="flex flex-col items-start gap-1.5 text-left">
                                                 <div className="flex items-center gap-1.5 text-left">
-                                                    <WorkOrderId wo={wo} />
+                                                    <JobNumbers wo={wo} />
                                                 </div>
                                                 <StatusBadge kind="job" value={wo.status} />
                                             </div>

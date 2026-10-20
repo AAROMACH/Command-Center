@@ -1,4 +1,5 @@
 'use client';
+import { JobNumbers } from '@/components/work-order-id';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -483,7 +484,7 @@ export default function FieldIntelligencePage() {
                                                             <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary cursor-pointer" onClick={() => setManagedJob(wo)}>
                                                                 <TableCell className="pl-4 py-3">
                                                                     <p className="text-xs font-bold text-text-primary">{wo.title || wo.description}</p>
-                                                                    <p className="text-[11px] text-text-muted font-mono">{wo.id.toUpperCase()}</p>
+                                                                    <JobNumbers wo={wo} className="mt-0.5" />
                                                                 </TableCell>
                                                                 <TableCell className="text-[10px] font-mono text-text-secondary">{formatDateDisplay(wo.scheduleDate)}</TableCell>
                                                                 <TableCell className="text-center">

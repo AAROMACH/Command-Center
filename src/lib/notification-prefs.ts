@@ -21,6 +21,7 @@ export function resolveNotificationPrefs(raw: Partial<NotificationPreferences> |
     phone: raw?.phone ?? true,
     ...(raw?.events ? { events: raw.events } : {}),
     ...(raw?.eventChannels ? { eventChannels: raw.eventChannels } : {}),
+    ...(raw?.mutedAlerts ? { mutedAlerts: raw.mutedAlerts } : {}),
   };
 }
 
@@ -55,6 +56,16 @@ export function channelOn(prefs: NotificationPreferences, event: string, ch: Out
 export function withEventChannel(raw: Partial<NotificationPreferences> | null | undefined, event: string, ch: OutsideChannel, value: boolean): NotificationPreferences {
   const p = resolveNotificationPrefs(raw);
   return { ...p, eventChannels: { ...(p.eventChannels || {}), [event]: { ...(p.eventChannels?.[event] || {}), [ch]: value } } };
+}
+
+/** Whether this specific alert is checked (Settings → Choose alerts). */
+export const alertOn = (prefs: NotificationPreferences, alertId: string | undefined) => !alertId || !prefs.mutedAlerts?.includes(alertId);
+
+/** The full object to save when one specific alert is checked or unchecked. */
+export function withAlertMuted(raw: Partial<NotificationPreferences> | null | undefined, alertId: string, muted: boolean): NotificationPreferences {
+  const p = resolveNotificationPrefs(raw);
+  const rest = (p.mutedAlerts || []).filter(id => id !== alertId);
+  return { ...p, mutedAlerts: muted ? [...rest, alertId] : rest };
 }
 
 /** The full object to save when one event switch changes. */

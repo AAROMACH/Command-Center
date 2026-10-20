@@ -43,21 +43,48 @@ export const EVENT_GROUP_LABELS: Record<EventGroup, string> = {
   sales: 'Sales',
 };
 
-// First match wins — more specific rules first.
-const RULES: [RegExp, NotificationEvent][] = [
-  [/^new message/, 'messages'],
-  [/weekly log (approved|rejected|returned|reopened)|dispute resolved|payroll decided|reimbursement (approved|rejected)|time off (approved|not approved)/, 'my_pay'],
-  [/weekly log submitted|disputed|dispute filed|missing job|reimbursement requested|mileage reimbursement|reopen requested/, 'payroll_review'],
-  [/new job assigned|job removed|job rescheduled|assignment staged/, 'job_assignments'],
-  [/job completed|helper finished|your part is complete/, 'job_activity'],
-  [/project|crew|task|document/, 'projects'],
-  [/request|access request|sign-?up/, 'requests'],
-  [/deal|quote|digest|lead|crm|sold project/, 'sales'],
+/**
+ * The specific alerts inside each row, which people can uncheck one by one
+ * (Settings → a row's "Choose alerts"). First match wins across the whole
+ * list — more specific rules first.
+ */
+export const ALERT_TYPES: { id: string; event: NotificationEvent; label: string; re: RegExp }[] = [
+  { id: 'msg_direct', event: 'messages', label: 'Direct messages', re: /^new message from/ },
+  { id: 'msg_project', event: 'messages', label: 'Project chat messages', re: /^new message/ },
+  { id: 'pay_log', event: 'my_pay', label: 'Weekly log approved, returned or reopened', re: /weekly log (approved|rejected|returned|reopened)|payroll decided/ },
+  { id: 'pay_dispute', event: 'my_pay', label: 'Dispute decisions', re: /dispute resolved/ },
+  { id: 'pay_reimb', event: 'my_pay', label: 'Reimbursement decisions', re: /reimbursement (approved|rejected)/ },
+  { id: 'pay_timeoff', event: 'my_pay', label: 'Time-off answers', re: /time off (approved|not approved)/ },
+  { id: 'pr_submitted', event: 'payroll_review', label: 'Weekly logs submitted', re: /weekly log submitted/ },
+  { id: 'pr_dispute', event: 'payroll_review', label: 'Disputes filed', re: /disputed|dispute filed/ },
+  { id: 'pr_missing', event: 'payroll_review', label: 'Missing-job reports', re: /missing job/ },
+  { id: 'pr_reimb', event: 'payroll_review', label: 'Reimbursement requests', re: /reimbursement requested|mileage reimbursement/ },
+  { id: 'pr_reopen', event: 'payroll_review', label: 'Reopen requests', re: /reopen requested/ },
+  { id: 'ja_new', event: 'job_assignments', label: 'New jobs assigned to you', re: /new job assigned|assignment staged/ },
+  { id: 'ja_removed', event: 'job_assignments', label: 'Jobs taken off your schedule', re: /job removed/ },
+  { id: 'ja_resched', event: 'job_assignments', label: 'Jobs rescheduled', re: /job rescheduled/ },
+  { id: 'act_done', event: 'job_activity', label: 'Jobs completed in the field', re: /job completed/ },
+  { id: 'act_helper', event: 'job_activity', label: 'Helpers finishing their part', re: /helper finished|your part is complete/ },
+  { id: 'proj_crew', event: 'projects', label: 'Crew changes', re: /crew/ },
+  { id: 'proj_task', event: 'projects', label: 'Tasks', re: /task/ },
+  { id: 'proj_doc', event: 'projects', label: 'Documents', re: /document/ },
+  { id: 'proj_other', event: 'projects', label: 'Check-ins and project status', re: /project/ },
+  { id: 'req_signup', event: 'requests', label: 'Account sign-ups', re: /access request|sign-?up/ },
+  { id: 'req_other', event: 'requests', label: 'Client, site, service and time-off requests', re: /request/ },
+  { id: 'sales_deal', event: 'sales', label: 'Deals won or lost', re: /deal/ },
+  { id: 'sales_quote', event: 'sales', label: 'Quotes approved or rejected', re: /quote/ },
+  { id: 'sales_digest', event: 'sales', label: 'Daily CRM digest', re: /digest/ },
+  { id: 'sales_lead', event: 'sales', label: 'Leads and sold projects', re: /lead|crm|sold project/ },
 ];
 
-export function eventForTitle(title: string): NotificationEvent {
+/** The specific alert a title belongs to, if any. */
+export function alertTypeForTitle(title: string) {
   const t = title.toLowerCase();
-  return RULES.find(([re]) => re.test(t))?.[1] ?? 'other';
+  return ALERT_TYPES.find(a => a.re.test(t));
+}
+
+export function eventForTitle(title: string): NotificationEvent {
+  return alertTypeForTitle(title)?.event ?? 'other';
 }
 
 /** The rows to show someone, from their roles. */

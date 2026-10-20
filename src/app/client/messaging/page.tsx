@@ -3,6 +3,7 @@ import { NotificationService } from '@/lib/notification-service';
 
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { conversationFromLink } from '@/lib/message-link';
 import { db, auth, storage } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, doc, arrayUnion, query, where, or } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -120,7 +121,9 @@ export default function ClientMessagingPage() {
   // ?dm=<userId> / ?project=<id> (from the messages menu or a notification)
   // opens that conversation once its contact or project has loaded.
   const searchParams = useSearchParams();
-  const linkDm = searchParams.get('dm'), linkProject = searchParams.get('project');
+  const [link, setLink] = useState<{ dm?: string; project?: string }>({});
+  useEffect(() => { conversationFromLink(searchParams, auth.currentUser?.uid).then(setLink); }, [searchParams]);
+  const linkDm = link.dm, linkProject = link.project;
   useEffect(() => {
     if (linkDm) {
       const c = allUsers.find(u => u.id === linkDm);

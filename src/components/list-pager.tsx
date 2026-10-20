@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useRef, useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -39,7 +39,16 @@ export function usePaged<T>(
   resetKeys: unknown[] = [],
 ): Pager<T> {
   const [size, setSizeState] = useState<number>(sizes[0]);
-  const [page, setPage] = useState(0);
+  // The page is remembered for this tab (sessionStorage), so Back from a job
+  // lands on the same page of the list.
+  const [page, setPageState] = useState(() => {
+    if (!storageKey || typeof window === 'undefined') return 0;
+    try { return Number(sessionStorage.getItem(`page:${storageKey}`)) || 0; } catch { return 0; }
+  });
+  const setPage = (p: number) => {
+    setPageState(p);
+    if (storageKey) { try { sessionStorage.setItem(`page:${storageKey}`, String(p)); } catch { /* ignore */ } }
+  };
 
   useEffect(() => {
     if (!storageKey) return;
@@ -56,8 +65,11 @@ export function usePaged<T>(
     if (storageKey) { try { localStorage.setItem(`pageSize:${storageKey}`, String(s)); } catch { /* ignore */ } }
   };
 
+  // Back to page 1 when the filters change — but not on the first render,
+  // which would undo the remembered page.
+  const firstRun = useRef(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { setPage(0); }, resetKeys);
+  useEffect(() => { if (firstRun.current) { firstRun.current = false; return; } setPage(0); }, resetKeys);
 
   const total = rows.length;
   const pageCount = Math.max(1, Math.ceil(total / size));

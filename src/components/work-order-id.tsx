@@ -34,7 +34,7 @@ export function WorkOrderId({ wo, className = '' }: { wo: WorkOrder; className?:
 
 /**
  * Both numbers a job can have, stacked: our assignment number (red) and, for
- * imported jobs, the Field Nation number with its link (cyan). Use where a
+ * imported jobs, the external WO number with its link (cyan). Use where a
  * row or card needs the assignment number even for imported jobs.
  */
 export function JobNumbers({ wo, className = '' }: { wo: WorkOrder; className?: string }) {
@@ -43,7 +43,7 @@ export function JobNumbers({ wo, className = '' }: { wo: WorkOrder; className?: 
   return (
     <span className={`inline-flex flex-col leading-tight ${className}`}>
       <span className="cell-id font-mono font-bold text-brand-red !text-[10px]">{own}</span>
-      {ext && ext !== own && <span className="text-[11px]"><span className="font-mono font-bold text-brand-cyan mr-1">FN</span><WorkOrderId wo={wo} /></span>}
+      {ext && ext !== own && <span className="text-[11px]"><span className="font-mono font-bold text-brand-cyan mr-1">WO</span><WorkOrderId wo={wo} /></span>}
     </span>
   );
 }

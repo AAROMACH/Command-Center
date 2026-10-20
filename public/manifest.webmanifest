@@ -2,6 +2,7 @@
   "name": "Aaromach Command Center",
   "short_name": "Aaromach",
   "description": "Jobs, schedule, logs and pay for the Aaromach team.",
+  "id": "/",
   "start_url": "/login",
   "scope": "/",
   "display": "standalone",

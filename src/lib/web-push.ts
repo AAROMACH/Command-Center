@@ -59,7 +59,7 @@ async function save(method: 'POST' | 'DELETE', token: string) {
 }
 
 async function registerToken(): Promise<boolean> {
-  const reg = await navigator.serviceWorker.register('/sw.js');
+  const reg = await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
   await navigator.serviceWorker.ready;
   const token = await getToken(getMessaging(app), { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
   if (!token) return false;

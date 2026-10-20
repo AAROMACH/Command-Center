@@ -45,6 +45,9 @@ export async function startNativePush(open: (url: string) => void, onForeground:
   ]);
   let perm = await PushNotifications.checkPermissions();
   if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') perm = await PushNotifications.requestPermissions();
+  // High-importance channel so alerts pop up as banners with sound while the
+  // app is closed (the server sends to channelId 'alerts'). Safe to repeat.
+  await PushNotifications.createChannel({ id: 'alerts', name: 'Alerts', description: 'Job, message and pay alerts', importance: 5, visibility: 1, sound: 'default', vibration: true }).catch(() => {});
   if (perm.receive === 'granted') await PushNotifications.register();
   return () => handles.forEach(h => h.remove());
 }

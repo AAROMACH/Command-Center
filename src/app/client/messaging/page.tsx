@@ -2,6 +2,7 @@
 import { NotificationService } from '@/lib/notification-service';
 
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { db, auth, storage } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, doc, arrayUnion, query, where, or } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -89,7 +90,7 @@ export default function ClientMessagingPage() {
   }, [firebaseUid, allProjects]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    bottomRef.current?.scrollIntoView({ block: 'end' });
   }, [messages, selectedThread]);
 
   // Mark thread read
@@ -115,6 +116,20 @@ export default function ClientMessagingPage() {
     const isSameCompany = u.clientCompany && u.clientCompany === currentUser.clientCompany;
     return isAdmin || isSameCompany;
   });
+
+  // ?dm=<userId> / ?project=<id> (from the messages menu or a notification)
+  // opens that conversation once its contact or project has loaded.
+  const searchParams = useSearchParams();
+  const linkDm = searchParams.get('dm'), linkProject = searchParams.get('project');
+  useEffect(() => {
+    if (linkDm) {
+      const c = allUsers.find(u => u.id === linkDm);
+      if (c) setSelectedThread({ type: 'dm', contactId: c.id, contactName: c.name, contactAvatar: c.avatarUrl });
+    } else if (linkProject) {
+      const p = allProjects.find(x => x.id === linkProject);
+      if (p) setSelectedThread({ type: 'project', projectId: p.id, projectName: p.name });
+    }
+  }, [linkDm, linkProject, allUsers, allProjects]);
 
   const companyProjects = allProjects.filter(p =>
     p.status !== 'completed' &&

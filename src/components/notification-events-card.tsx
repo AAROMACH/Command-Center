@@ -100,6 +100,14 @@ export function NotificationEventsCard() {
         }
     };
 
+    // Fire and forget: the server waits 10s, then pushes to this person's
+    // phones, so they can close the app and see it arrive.
+    const sendClosedTest = async () => {
+        const token = await auth.currentUser?.getIdToken();
+        fetch('/api/notify/test', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ delaySeconds: 10 }), keepalive: true }).catch(() => {});
+        toast({ title: 'Close the app now', description: 'Leave the app or lock your phone — a test notification arrives in about 10 seconds.' });
+    };
+
     const sendTest = async () => {
         setTesting(true);
         setResults(null);
@@ -228,9 +236,14 @@ export function NotificationEventsCard() {
                     <p className="text-[12px] text-text-muted flex items-center gap-1.5 text-left">
                         <Bell size={13} className="shrink-0" /> Every alert also appears in the bell, even ones you switch off here.
                     </p>
-                    <Button variant="outline" size="sm" onClick={sendTest} disabled={testing} className="shrink-0 self-start sm:self-auto">
-                        {testing ? <Loader2 size={13} className="mr-1.5 animate-spin" /> : <Send size={13} className="mr-1.5" />} Send me a test
-                    </Button>
+                    <div className="flex flex-wrap gap-2 shrink-0 self-start sm:self-auto">
+                        <Button variant="outline" size="sm" onClick={sendClosedTest}>
+                            <Smartphone size={13} className="mr-1.5" /> Test with app closed
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={sendTest} disabled={testing}>
+                            {testing ? <Loader2 size={13} className="mr-1.5 animate-spin" /> : <Send size={13} className="mr-1.5" />} Send me a test
+                        </Button>
+                    </div>
                 </div>
                 {results && (
                     <ul className="rounded-lg border border-border-sub bg-bg-primary divide-y divide-border-sub">

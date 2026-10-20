@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/empty-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, doc, updateDoc, arrayUnion, query, where } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -53,6 +54,14 @@ export default function TechMessagingPage() {
   const [sending, setSending] = useState(false);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  // ?dm=<userId> / ?project=<id> (from the messages menu or a notification)
+  // opens that conversation.
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const dm = searchParams.get('dm'), project = searchParams.get('project');
+    if (dm) { setActiveTab('Messages'); setSelectedContactId(dm); }
+    else if (project) { setActiveTab('Project Comms'); setSelectedProjectId(project); }
+  }, [searchParams]);
   const [projectBody, setProjectBody] = useState('');
 
   const [contactFilter, setContactFilter] = useState<'all' | 'admins' | 'techs' | 'clients'>('all');
@@ -111,12 +120,12 @@ export default function TechMessagingPage() {
   }, []);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, selectedContactId]);
+    bottomRef.current?.scrollIntoView({ block: 'end' });
+  }, [messages, selectedContactId, activeTab]);
 
   useEffect(() => {
-    projBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, selectedProjectId]);
+    projBottomRef.current?.scrollIntoView({ block: 'end' });
+  }, [messages, selectedProjectId, activeTab]);
 
   const myId = currentUser?.id || '';
 

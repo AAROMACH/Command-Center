@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
     await deliverNotification(fs, recipients, {
       title: m.projectId ? `New message · ${m.projectName || 'Project'}` : `New message from ${from}`,
       body: (m.projectId ? `${from}: ${text}` : text).slice(0, 500),
-      entity: { id: payload.messageId, type: 'message' }, sentBy: callerId, event: 'messages',
+      entity: { id: m.projectId ? `project:${m.projectId}` : `dm:${callerId}`, type: 'message' }, sentBy: callerId, event: 'messages',
     });
     return NextResponse.json({ status: 'sent', recipients: recipients.length });
   }

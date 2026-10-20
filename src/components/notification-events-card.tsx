@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { isNativeApp } from '@/lib/native-push';
-import { enableWebPush, webPushState, type WebPushState } from '@/lib/web-push';
+import { enableWebPush, webPushDiagnostics, webPushState, type WebPushState } from '@/lib/web-push';
 import { useAuth } from '@/contexts/auth-context';
 import { alertOn, channelOn, resolveNotificationPrefs, withAlertMuted, withEventChannel, type OutsideChannel } from '@/lib/notification-prefs';
 import { ALERT_TYPES, EVENT_GROUP_LABELS, eventsForRoles, type EventGroup, type NotificationEvent } from '@/lib/notification-events';
@@ -137,6 +137,7 @@ export function NotificationEventsCard() {
                             <div className="space-y-0.5">
                                 <p className="text-[13px] font-semibold text-text-primary">This device</p>
                                 <p className="text-[12px] text-text-muted leading-snug">{DEVICE_TEXT[device]}</p>
+                                {device !== 'on' && <p className="text-[10px] text-text-muted/70 font-mono pt-1">{webPushDiagnostics()}</p>}
                             </div>
                         </div>
                         {device === 'off' && (

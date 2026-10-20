@@ -7,6 +7,7 @@
  */
 
 export type NotificationEvent =
+  | 'messages'
   | 'job_assignments'
   | 'job_activity'
   | 'projects'
@@ -26,6 +27,7 @@ const SUPER = ['super_admin', 'admin'];
  * nobody gets a switch for something that never reaches them.
  */
 export const NOTIFICATION_EVENTS: { id: NotificationEvent; label: string; desc: string; group: EventGroup; roles: string[] }[] = [
+  { id: 'messages', group: 'work', label: 'Messages', desc: 'Someone messages you directly, or posts in a project chat you’re on.', roles: [...TECH, ...SUPER, 'dispatch_admin', 'payroll_admin', 'sales', 'client'] },
   { id: 'job_assignments', group: 'work', label: 'Job assignments', desc: 'A job is assigned to you, rescheduled or taken off your schedule.', roles: TECH },
   { id: 'my_pay', group: 'work', label: 'Pay & time off', desc: 'Your weekly log is approved or returned, dispute and reimbursement decisions, time-off answers.', roles: TECH },
   { id: 'projects', group: 'work', label: 'Projects', desc: 'Crew changes, tasks, documents, check-ins and project status.', roles: [...TECH, ...SUPER, 'dispatch_admin', 'client'] },
@@ -43,6 +45,7 @@ export const EVENT_GROUP_LABELS: Record<EventGroup, string> = {
 
 // First match wins — more specific rules first.
 const RULES: [RegExp, NotificationEvent][] = [
+  [/^new message/, 'messages'],
   [/weekly log (approved|rejected|returned|reopened)|dispute resolved|payroll decided|reimbursement (approved|rejected)|time off (approved|not approved)/, 'my_pay'],
   [/weekly log submitted|disputed|dispute filed|missing job|reimbursement requested|mileage reimbursement|reopen requested/, 'payroll_review'],
   [/new job assigned|job removed|job rescheduled|assignment staged/, 'job_assignments'],

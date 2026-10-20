@@ -39,7 +39,8 @@ type NotifyPayload = {
   /** Which portal's bell shows it (direct alerts only; audiences are fixed). */
   portal?: NotifyPortal;
   /** A server-composed alert. */
-  kind?: 'access_request';
+  kind?: 'access_request' | 'message';
+  messageId?: string;
 };
 
 const AUDIENCE_PORTAL: Record<Audience, NotifyPortal> = { admins: 'admin', payroll_admins: 'admin', project_managers: 'tech' };
@@ -120,6 +121,34 @@ export async function POST(req: NextRequest) {
       entity: { id: callerId, type: 'user' }, sentBy: callerId, portal: 'admin',
     });
     return NextResponse.json({ status: 'sent' });
+  }
+
+  // A message the caller just sent: the receiver (or the project's crew) is
+  // told, with the text read from the message itself.
+  if (payload.kind === 'message') {
+    if (typeof payload.messageId !== 'string') return NextResponse.json({ error: 'Need messageId' }, { status: 400 });
+    const m = (await fs.collection('messages').doc(payload.messageId).get()).data();
+    const fresh = m && Date.now() - new Date(m.timestamp || 0).getTime() < 10 * 60_000;
+    if (!m || m.senderId !== callerId || !fresh) return NextResponse.json({ status: 'skipped' });
+    const sender = (await fs.collection('users').doc(callerId).get()).data() || {};
+    const from = sender.name || m.senderName || 'Someone';
+    let ids: string[] = [];
+    if (typeof m.receiverId === 'string') ids = [m.receiverId];
+    else if (typeof m.projectId === 'string') {
+      const p = (await fs.collection('projects').doc(m.projectId).get()).data() || {};
+      const team: { techId?: string }[] = Array.isArray(p.team) ? p.team : [];
+      ids = [...team.map(t => t.techId || ''), ...(p.assignedTechnicianIds || []), p.projectLeadId || ''];
+    }
+    ids = [...new Set(ids.filter(id => id && id !== callerId))].slice(0, 50);
+    const snaps = await Promise.all(ids.map(id => fs.collection('users').doc(id).get()));
+    const recipients = snaps.filter(s => s.exists).map(s => ({ id: s.id, data: s.data() || {} }));
+    const text = String(m.body || '').trim() || (m.imageUrls?.length ? 'Sent a photo' : '');
+    await deliverNotification(fs, recipients, {
+      title: m.projectId ? `New message · ${m.projectName || 'Project'}` : `New message from ${from}`,
+      body: (m.projectId ? `${from}: ${text}` : text).slice(0, 500),
+      entity: { id: payload.messageId, type: 'message' }, sentBy: callerId, event: 'messages',
+    });
+    return NextResponse.json({ status: 'sent', recipients: recipients.length });
   }
 
   const title = typeof payload.title === 'string' ? payload.title.trim().slice(0, 200) : '';

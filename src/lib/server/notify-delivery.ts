@@ -11,7 +11,7 @@ import { sendPush } from './push';
  * notification to the Android app ('phone') for non-routine alerts.
  */
 
-export type NotifyEntity = { id: string; type: 'assignment' | 'project' | 'request' | 'lead' | 'weeklyLog' | 'user' };
+export type NotifyEntity = { id: string; type: 'assignment' | 'project' | 'request' | 'lead' | 'weeklyLog' | 'user' | 'message' };
 
 /**
  * The portal a notification belongs to. A person with several portals (a

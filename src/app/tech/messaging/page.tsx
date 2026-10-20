@@ -1,4 +1,5 @@
 'use client';
+import { NotificationService } from '@/lib/notification-service';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/empty-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
@@ -255,7 +256,7 @@ export default function TechMessagingPage() {
     if ((!body.trim() && !dmImageUrl) || !myId || !selectedContactId) return;
     setSending(true);
     try {
-      await addDoc(collection(db, 'messages'), {
+      const msgRef = await addDoc(collection(db, 'messages'), {
         senderId: myId,
         receiverId: selectedContactId,
         body: body.trim(),
@@ -263,6 +264,7 @@ export default function TechMessagingPage() {
         read: false,
         ...(dmImageUrl && { imageUrls: [dmImageUrl] }),
       });
+      NotificationService.messageSent(msgRef.id);
       setBody('');
       setDmImageUrl(null);
     } finally {
@@ -274,7 +276,7 @@ export default function TechMessagingPage() {
     if ((!projectBody.trim() && !projectImageUrl) || !selectedProjectId || !myId) return;
     setSending(true);
     try {
-      await addDoc(collection(db, 'messages'), {
+      const msgRef = await addDoc(collection(db, 'messages'), {
         senderId: myId,
         senderName: currentUser?.name || '',
         senderRole: 'tech',
@@ -286,6 +288,7 @@ export default function TechMessagingPage() {
         readBy: [myId],
         ...(projectImageUrl && { imageUrls: [projectImageUrl] }),
       });
+      NotificationService.messageSent(msgRef.id);
       setProjectBody('');
       setProjectImageUrl(null);
     } finally {

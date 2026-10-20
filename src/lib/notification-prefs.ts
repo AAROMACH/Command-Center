@@ -31,11 +31,12 @@ export type OutsideChannel = 'phone' | 'email' | 'sms';
 
 /**
  * What starts checked for someone who hasn't touched the grid: a tech's job
- * assignments, changes and removals by phone and email. Everything else (and
- * all text messages) starts off; people opt in.
+ * assignments, changes and removals by phone and email, and new messages by phone.
+ * Everything else (and all text messages) starts off; people opt in.
  */
 const DEFAULT_ON: Record<string, OutsideChannel[]> = {
   job_assignments: ['phone', 'email'],
+  messages: ['phone'],
 };
 
 /** Whether this event goes out on this channel: the grid's checkbox if set,

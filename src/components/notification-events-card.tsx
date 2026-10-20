@@ -23,6 +23,7 @@ const CHANNELS: { id: OutsideChannel; label: string; Icon: LucideIcon }[] = [
 ];
 
 const EVENT_ICONS: Partial<Record<NotificationEvent, LucideIcon>> = {
+    messages: MessageSquare,
     job_assignments: Briefcase,
     my_pay: Wallet,
     projects: FolderKanban,

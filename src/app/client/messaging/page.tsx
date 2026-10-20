@@ -1,4 +1,5 @@
 'use client';
+import { NotificationService } from '@/lib/notification-service';
 
 import { useState, useEffect, useRef } from 'react';
 import { db, auth, storage } from '@/lib/firebase';
@@ -179,7 +180,8 @@ export default function ClientMessagingPage() {
         payload.projectId = selectedThread.projectId;
         payload.projectName = selectedThread.projectName;
       }
-      await addDoc(collection(db, 'messages'), payload);
+      const msgRef = await addDoc(collection(db, 'messages'), payload);
+      NotificationService.messageSent(msgRef.id);
       setBody('');
       setPendingImageUrl(null);
     } finally {

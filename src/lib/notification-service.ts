@@ -1,4 +1,5 @@
-import { auth } from './firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from './firebase';
 
 type Entity = { id: string; type: 'assignment' | 'project' | 'request' | 'lead' | 'weeklyLog' | 'user' | 'message' };
 /** Which portal's bell shows the alert — see /api/notify. */
@@ -46,6 +47,10 @@ type JobLike = {
 };
 const jobLabel = (j: JobLike) => `${(j.id || '').toUpperCase()}${j.title ? ` (${j.title})` : ''}`;
 const leadTech = (j: JobLike | null | undefined) => (j?.assignedTechnicianId || j?.techId || '') as string;
+const nameOf = async (uid?: string | null) => {
+  if (!uid) return '';
+  try { return ((await getDoc(doc(db, 'users', uid))).data()?.name as string) || ''; } catch { return ''; }
+};
 
 export const NotificationService = {
   /** A message was sent — the server reads it and tells the receiver (or the
@@ -96,6 +101,22 @@ export const NotificationService = {
       d.weeklyLogId ? { id: d.weeklyLogId, type: 'weeklyLog' } : undefined, { portal: 'tech' });
   },
 
+  /**
+   * Tells the OTHER ops admins (super + dispatch; the server leaves out
+   * whoever did it) about a dispatch change — one alert per job, so three
+   * assignments are three alerts.
+   */
+  async dispatchActivity(kind: 'assigned' | 'unassigned' | 'rescheduled', job: JobLike, techId: string, entity?: Entity) {
+    const [actor, tech] = await Promise.all([nameOf(auth.currentUser?.uid), nameOf(techId)]);
+    const by = actor || 'An admin';
+    const t = tech || 'a technician';
+    const when = [job.scheduleDate, job.scheduleTime].filter(Boolean).join(' at ');
+    const body = kind === 'assigned' ? `${by} assigned job ${jobLabel(job)} to ${t}${when ? ` for ${when}` : ''}.`
+      : kind === 'unassigned' ? `${by} took job ${jobLabel(job)} off ${t}'s schedule.`
+      : `${by} moved ${t}'s job ${jobLabel(job)} to ${when || 'a new time'}.`;
+    return this.notifyAdmins(`Dispatch: job ${kind}`, body, entity);
+  },
+
   /** A new sign-up asks the ops admins for approval (sent once per account). */
   async requestAccess() {
     return post({ kind: 'access_request' });
@@ -115,15 +136,19 @@ export const NotificationService = {
     if (after && after !== before) {
       sends.push(this.notify(after, 'New job assigned',
         `Job ${jobLabel(next)} was assigned to you${when ? ` for ${when}` : ''}. Confirm the schedule in the Tech Portal.`, entity, { portal: 'tech' }));
+      sends.push(this.dispatchActivity('assigned', next, after, entity));
     }
     if (before && before !== after) {
       sends.push(this.notify(before, 'Job removed from your schedule',
         `Job ${jobLabel(next)} is no longer assigned to you.`, undefined, { portal: 'tech' }));
+      // A reassignment is one change: the "assigned" alert already names the new tech.
+      if (!after) sends.push(this.dispatchActivity('unassigned', next, before, entity));
     }
     if (after && after === before && prev
         && ((prev.scheduleDate || '') !== (next.scheduleDate || '') || (prev.scheduleTime || '') !== (next.scheduleTime || ''))) {
       sends.push(this.notify(after, 'Job rescheduled',
         `Job ${jobLabel(next)} moved to ${when || 'a new time'}.`, entity, { portal: 'tech' }));
+      sends.push(this.dispatchActivity('rescheduled', next, after, entity));
     }
     await Promise.all(sends);
   },

@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   });
   await run('Phone notifications', true, null, async () => {
     const devices = (await fs.collection('users').doc(uid).collection('pushTokens').get()).size;
-    if (!devices) throw new Error('No phone registered. Open the Android app, sign in and allow notifications.');
+    if (!devices) throw new Error('No phone registered for your account. iPhone: open Aaromach from its Home Screen icon (not Safari), then Settings → Notifications → This device → Turn on. Android: open the Aaromach app, sign in and allow notifications.');
     const n = await sendPush(fs, uid, { title, body, url: '/' });
     if (!n) throw new Error(`${devices} phone${devices === 1 ? '' : 's'} registered, but none accepted the notification.`);
     return `Delivered to ${n} phone${n === 1 ? '' : 's'}.`;

@@ -41,7 +41,7 @@ const DEVICE_TEXT: Record<WebPushState, string> = {
     'not-configured': 'Not available yet — the Web Push key hasn’t been added to the server.',
     off: 'Get pop-up alerts on this device, even when the app is closed.',
     blocked: 'Blocked for this site. Allow notifications for app.aaromach.com in your phone or browser settings, then reload.',
-    on: 'On — alerts pop up on this device.',
+    on: 'On — alerts pop up on this device. If the test says no phone is registered, tap Reconnect.',
 };
 
 /**
@@ -131,7 +131,13 @@ export function NotificationEventsCard() {
                                 {enabling && <Loader2 size={13} className="mr-1.5 animate-spin" />}Turn on
                             </Button>
                         )}
-                        {device === 'on' && <CheckCircle2 size={18} className="text-text-green shrink-0" />}
+                        {device === 'on' && (
+                            // Re-saves this device's token — fixes "no phone registered" when
+                            // notifications are allowed but the device never got linked.
+                            <Button size="sm" variant="outline" onClick={turnOnDevice} disabled={enabling} className="shrink-0">
+                                {enabling ? <Loader2 size={13} className="mr-1.5 animate-spin" /> : <CheckCircle2 size={13} className="mr-1.5 text-text-green" />}Reconnect
+                            </Button>
+                        )}
                     </div>
                 )}
 

@@ -56,6 +56,9 @@ export type NotificationPreferences = {
   /** Per event, which outside channels it goes to (Settings grid). Missing =
    *  fall back to the channel switch and events[event]. The bell always gets it. */
   eventChannels?: Record<string, Partial<Record<'phone' | 'email' | 'sms', boolean>>>;
+  /** Specific alerts (lib/notification-events ALERT_TYPES ids) switched off:
+   *  they stay in the bell but never go to phone, email or text. */
+  mutedAlerts?: string[];
 };
 
 export type Notification = {

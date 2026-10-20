@@ -3,15 +3,15 @@
 import { useEffect, useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import {
-    Activity, Bell, BellRing, Briefcase, CheckCircle2, FolderKanban, Inbox, Loader2, Mail,
+    Activity, Bell, ChevronDown, BellRing, Briefcase, CheckCircle2, FolderKanban, Inbox, Loader2, Mail,
     MessageSquare, Receipt, Send, Smartphone, TrendingUp, Wallet, XCircle, type LucideIcon,
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { isNativeApp } from '@/lib/native-push';
 import { enableWebPush, webPushState, type WebPushState } from '@/lib/web-push';
 import { useAuth } from '@/contexts/auth-context';
-import { channelOn, resolveNotificationPrefs, withEventChannel, type OutsideChannel } from '@/lib/notification-prefs';
-import { EVENT_GROUP_LABELS, eventsForRoles, type EventGroup, type NotificationEvent } from '@/lib/notification-events';
+import { alertOn, channelOn, resolveNotificationPrefs, withAlertMuted, withEventChannel, type OutsideChannel } from '@/lib/notification-prefs';
+import { ALERT_TYPES, EVENT_GROUP_LABELS, eventsForRoles, type EventGroup, type NotificationEvent } from '@/lib/notification-events';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -59,6 +59,8 @@ export function NotificationEventsCard() {
     // null until checked; the Android app (native push) skips this card.
     const [device, setDevice] = useState<WebPushState | null>(null);
     const [enabling, setEnabling] = useState(false);
+    // Rows whose "Choose alerts" list is open.
+    const [expanded, setExpanded] = useState<Set<string>>(new Set());
     useEffect(() => { if (!isNativeApp()) webPushState().then(setDevice).catch(() => setDevice('unsupported')); }, []);
     if (!user) return null;
 
@@ -68,6 +70,15 @@ export function NotificationEventsCard() {
 
     const toggle = async (id: string, ch: OutsideChannel) => {
         const next = withEventChannel(user.notificationPreferences, id, ch, !channelOn(prefs, id, ch));
+        try {
+            await updateDoc(doc(db, 'users', user.id), { notificationPreferences: next });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
+        }
+    };
+
+    const toggleAlert = async (alertId: string) => {
+        const next = withAlertMuted(user.notificationPreferences, alertId, alertOn(prefs, alertId));
         try {
             await updateDoc(doc(db, 'users', user.id), { notificationPreferences: next });
         } catch (e: any) {
@@ -152,8 +163,12 @@ export function NotificationEventsCard() {
                             <div className="rounded-xl border border-border-sub divide-y divide-border-sub overflow-hidden">
                                 {rows.map(e => {
                                     const Icon = EVENT_ICONS[e.id] || Bell;
+                                    const alerts = ALERT_TYPES.filter(a => a.event === e.id);
+                                    const onCount = alerts.filter(a => alertOn(prefs, a.id)).length;
+                                    const open = expanded.has(e.id);
                                     return (
-                                        <div key={e.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-bg-primary">
+                                        <div key={e.id} className="bg-bg-primary">
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4">
                                             <div className="flex items-start gap-3 flex-1 min-w-0 text-left">
                                                 <div className="h-8 w-8 rounded-lg bg-bg-tertiary border border-border-sub flex items-center justify-center shrink-0">
                                                     <Icon size={15} className="text-text-secondary" />
@@ -176,6 +191,29 @@ export function NotificationEventsCard() {
                                                     );
                                                 })}
                                             </div>
+                                        </div>
+                                        {alerts.length > 1 && (
+                                            <div className="px-4 pb-3 -mt-1 pl-[60px] sm:pl-[60px] text-left">
+                                                <button type="button" aria-expanded={open}
+                                                    onClick={() => setExpanded(prev => { const n = new Set(prev); if (n.has(e.id)) n.delete(e.id); else n.add(e.id); return n; })}
+                                                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-text-secondary hover:text-text-primary">
+                                                    Choose alerts · {onCount} of {alerts.length} on
+                                                    <ChevronDown size={13} className={cn('transition-transform', open && 'rotate-180')} />
+                                                </button>
+                                                {open && (
+                                                    <div className="mt-2 space-y-1.5">
+                                                        {alerts.map(a => (
+                                                            <label key={a.id} className="flex items-center gap-2 text-[12px] text-text-primary cursor-pointer">
+                                                                <input type="checkbox" className="h-4 w-4 accent-[var(--brand-red)]"
+                                                                    checked={alertOn(prefs, a.id)} onChange={() => toggleAlert(a.id)} />
+                                                                {a.label}
+                                                            </label>
+                                                        ))}
+                                                        <p className="text-[11px] text-text-muted pt-0.5">Unchecked alerts still show in the bell, but won’t go to your phone, email or text.</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                         </div>
                                     );
                                 })}

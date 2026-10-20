@@ -1,6 +1,6 @@
 import type { Firestore } from 'firebase-admin/firestore';
-import { channelOn, resolveNotificationPrefs } from '@/lib/notification-prefs';
-import { eventForTitle, type NotificationEvent } from '@/lib/notification-events';
+import { alertOn, channelOn, resolveNotificationPrefs } from '@/lib/notification-prefs';
+import { alertTypeForTitle, eventForTitle, type NotificationEvent } from '@/lib/notification-events';
 import { entityHref } from '@/lib/notification-links';
 import { sendPush } from './push';
 
@@ -103,12 +103,13 @@ export async function deliverNotification(
   const { entity } = msg;
   let sent = 0;
   const event = msg.event || eventForTitle(msg.title);
+  const alertId = alertTypeForTitle(msg.title)?.id;
 
   await Promise.all(recipients.filter(r => r.data.accountStatus !== 'inactive').map(async ({ id, data }) => {
     const prefs = resolveNotificationPrefs(data.notificationPreferences);
     // Routine activity stays in the bell; otherwise each channel follows the
     // person's Settings grid for this kind of alert.
-    const on = (ch: 'phone' | 'email' | 'sms') => !msg.inAppOnly && channelOn(prefs, event, ch);
+    const on = (ch: 'phone' | 'email' | 'sms') => !msg.inAppOnly && alertOn(prefs, alertId) && channelOn(prefs, event, ch);
     const channels: ('email' | 'sms' | 'push')[] = [];
     // Routine activity (a task checked off, a check-in) is an in-app record
     // only — texting every update would bury the alerts that matter.

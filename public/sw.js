@@ -21,7 +21,9 @@ self.addEventListener('push', event => {
   event.waitUntil(self.registration.showNotification(title, {
     body: n.body || data.body || '',
     icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
+    // Status-bar icon: Android uses only its shape, so it must be white on
+    // transparent (a full-colour icon shows as a white square).
+    badge: '/icons/badge-96.png',
     data: { url: data.url || '/' },
   }));
 });
@@ -34,7 +36,10 @@ self.addEventListener('notificationclick', event => {
     for (const w of wins) {
       if (new URL(w.url).origin === self.location.origin) {
         await w.focus();
-        return w.navigate(url);
+        // navigate() rejects for a window this worker doesn't control yet
+        // (opened before it installed) — fall back to opening the link.
+        try { if (await w.navigate(url)) return; } catch (e) { /* fall through */ }
+        break;
       }
     }
     return self.clients.openWindow(url);

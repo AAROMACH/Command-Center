@@ -9,6 +9,7 @@ import { NotificationBell } from "@/components/notification-bell";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { startNativePush } from "@/lib/native-push";
 import { refreshWebPush } from "@/lib/web-push";
 import { PullToRefresh } from "@/components/pull-to-refresh";
@@ -39,7 +40,11 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!uid) return;
     let cleanup: (() => void) | undefined;
-    startNativePush(url => router.push(url), (title, body) => toast({ title, description: body }))
+    startNativePush(url => router.push(url), (title, body, url) => toast({
+      title, description: body,
+      // Tappable, like the system banner — e.g. a message opens that DM.
+      ...(url ? { action: <ToastAction altText="Open" onClick={() => router.push(url)}>Open</ToastAction> } : {}),
+    }))
       .then(c => { cleanup = c; })
       .catch(e => console.warn('[push] setup failed', e));
     // Website (iPhone Home Screen app, Chrome): keep this device's token fresh.

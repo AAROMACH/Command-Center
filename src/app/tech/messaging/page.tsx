@@ -59,7 +59,7 @@ export default function TechMessagingPage() {
   const searchParams = useSearchParams();
   useEffect(() => {
     const dm = searchParams.get('dm'), project = searchParams.get('project');
-    if (dm) { setActiveTab('Messages'); setSelectedContactId(dm); }
+    if (dm) { setActiveTab('Messages'); setSelectedContactId(dm); setDmMobilePane('thread'); }
     else if (project) { setActiveTab('Project Comms'); setSelectedProjectId(project); }
   }, [searchParams]);
   const [projectBody, setProjectBody] = useState('');

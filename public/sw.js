@@ -36,7 +36,10 @@ self.addEventListener('notificationclick', event => {
     for (const w of wins) {
       if (new URL(w.url).origin === self.location.origin) {
         await w.focus();
-        return w.navigate(url);
+        // navigate() rejects for a window this worker doesn't control yet
+        // (opened before it installed) — fall back to opening the link.
+        try { if (await w.navigate(url)) return; } catch (e) { /* fall through */ }
+        break;
       }
     }
     return self.clients.openWindow(url);

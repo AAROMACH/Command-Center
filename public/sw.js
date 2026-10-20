@@ -2,10 +2,15 @@
  * Service worker for web push (Home Screen app on iPhone, Chrome on Android
  * and desktop). Firebase Cloud Messaging delivers the push; this shows it and
  * opens the right page when tapped. Kept free of the Firebase SDK so it needs
- * no config. Registered by src/lib/web-push.ts.
+ * no config. Registered on every page load (components/register-sw.tsx), which
+ * with the fetch handler below is what lets Chrome on Android offer Install.
  */
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
+
+// Network only — no offline cache (the app needs live data). Chrome counts a
+// fetch handler toward installability.
+self.addEventListener('fetch', () => {});
 
 self.addEventListener('push', event => {
   let payload = {};

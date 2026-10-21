@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -209,7 +210,7 @@ export default function CRMPage() {
   const [presetCompany, setPresetCompany] = useState<CrmCompany | null>(null);
   const [pendingLeadId, setPendingLeadId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useSessionState('admin/crm:searchQuery', '');
   const pathname = usePathname();
   // /sales/my-day is the same screen opened on the My Day tab.
   const [crmTab, setCrmTab] = useState(() => (pathname?.endsWith('/my-day') ? 'myday' : 'pipeline'));
@@ -226,8 +227,8 @@ export default function CRMPage() {
   const [viewMode, _setViewModeRaw] = useState<'kanban' | 'list'>(() => { try { return (localStorage.getItem('cc:crm:view') as 'kanban' | 'list') || 'kanban'; } catch { return 'kanban'; } });
   const setViewMode = (v: 'kanban' | 'list') => { _setViewModeRaw(v); try { localStorage.setItem('cc:crm:view', v); } catch {} };
   const [listSort, setListSort] = useState<{ col: 'company' | 'stage' | 'value' | 'updated' | 'close'; dir: 'asc' | 'desc' }>({ col: 'updated', dir: 'desc' });
-  const [ownerFilter, setOwnerFilter] = useState<'all' | 'mine' | 'unassigned'>('all');
-  const [sourceFilter, setSourceFilter] = useState('all');
+  const [ownerFilter, setOwnerFilter] = useSessionState<'all' | 'mine' | 'unassigned'>('admin/crm:ownerFilter', 'all');
+  const [sourceFilter, setSourceFilter] = useSessionState('admin/crm:sourceFilter', 'all');
   const [serviceFilter, setServiceFilter] = useState('all');
   const [staleOnly, setStaleOnly] = useState(false);
   const [convertLead, setConvertLead] = useState<Lead | null>(null);

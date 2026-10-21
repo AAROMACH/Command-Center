@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -129,14 +130,14 @@ export default function RequestsPage() {
   const [acting, setActing] = useState(false);
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<TabId>('inbox');
+  const [activeTab, setActiveTab] = useSessionState<TabId>('admin/requests:activeTab', 'inbox');
   const [viewMode, setViewMode] = useViewMode('requests');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sourceFilter, setSourceFilter] = useState<'all' | RequestSource>('all');
-  const [categoryFilter, setCategoryFilter] = useState<'all' | RequestCategory>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | RequestStatus>('all');
+  const [searchQuery, setSearchQuery] = useSessionState('admin/requests:searchQuery', '');
+  const [sourceFilter, setSourceFilter] = useSessionState<'all' | RequestSource>('admin/requests:sourceFilter', 'all');
+  const [categoryFilter, setCategoryFilter] = useSessionState<'all' | RequestCategory>('admin/requests:categoryFilter', 'all');
+  const [statusFilter, setStatusFilter] = useSessionState<'all' | RequestStatus>('admin/requests:statusFilter', 'all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | RequestPriority>('all');
-  const [sortBy, setSortBy] = useState<SortId>('newest');
+  const [sortBy, setSortBy] = useSessionState<SortId>('admin/requests:sortBy', 'newest');
   const [checked, setChecked] = useState<Set<string>>(new Set());
 
   useEffect(() => {

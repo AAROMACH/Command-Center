@@ -7,6 +7,7 @@ import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { conversationFromLink } from '@/lib/message-link';
 import { db, auth } from '@/lib/firebase';
 import { collection, onSnapshot, doc, setDoc, updateDoc, addDoc, arrayUnion, query, where } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -60,9 +61,10 @@ export default function AdminMessagingPage() {
   // opens that conversation.
   const searchParams = useSearchParams();
   useEffect(() => {
-    const dm = searchParams.get('dm'), project = searchParams.get('project');
-    if (dm) { setActiveTab('Direct Messages'); setSelectedUserId(dm); }
-    else if (project) { setActiveTab('Project Comms'); setSelectedProjectId(project); }
+    conversationFromLink(searchParams, auth.currentUser?.uid).then(({ dm, project }) => {
+      if (dm) { setActiveTab('Direct Messages'); setSelectedUserId(dm); }
+      else if (project) { setActiveTab('Project Comms'); setSelectedProjectId(project); }
+    });
   }, [searchParams]);
   const dmEndRef = useRef<HTMLDivElement>(null);
   const projEndRef = useRef<HTMLDivElement>(null);

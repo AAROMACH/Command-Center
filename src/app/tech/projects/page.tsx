@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
@@ -23,8 +24,8 @@ export default function TechProjectsPage() {
     const [allProjects, setAllProjects] = useState<Project[]>([]);
     // Crew names/avatars (techs can't read `users`; this used to be empty).
     const technicians = useDirectory();
-    const [searchQuery, setSearchQuery] = useState("");
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [searchQuery, setSearchQuery] = useSessionState('tech/projects:searchQuery', "");
+    const [viewMode, setViewMode] = useSessionState<'grid' | 'list'>('tech/projects:viewMode', 'grid');
     // A Project Manager sees every project (and can start one); everyone
     // else sees the projects they're on.
     const { user } = useAuth();

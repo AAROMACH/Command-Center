@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 
 import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_SMALL, PAGE_SIZES_LARGE } from '@/components/list-pager';
@@ -132,10 +133,11 @@ export default function TechWeeklyLogPage() {
     const [mounted, setMounted] = useState(false);
     const [mileageUnit, setMileageUnit] = useState<'mi' | 'km'>('mi');
     
-    const [searchQuery, setSearchQuery] = useState("");
-    const [sortBy, setSortBy] = useState<string>('newest');
-    const [statusFilter, setStatusFilter] = useState<string>('all');
-    const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+    const [searchQuery, setSearchQuery] = useSessionState('tech/logs:searchQuery', "");
+    const [sortBy, setSortBy] = useSessionState<string>('tech/logs:sortBy', 'newest');
+    const [statusFilter, setStatusFilter] = useSessionState<string>('tech/logs:statusFilter', 'all');
+    const [dateRange, setDateRange] = useSessionState<DateRange | undefined>('tech/logs:dateRange', undefined,
+    r => r ? { from: r.from ? new Date(r.from) : undefined, to: r.to ? new Date(r.to) : undefined } : undefined);
     const [isReportMissingOpen, setIsReportMissingOpen] = useState(false);
     // Post-approval dispute: a tech's log has left Draft (Submitted / Approved
     // / Rejected) and the rich in-place dispute editor is no longer available,

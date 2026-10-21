@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { statusTone, TONE_BADGE } from '@/lib/status-styles';
 
@@ -102,13 +103,13 @@ export default function PayrollAuditPage() {
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
     // Weekly tab: one technician (or all), picked from an A–Z list.
-    const [techFilter, setTechFilter] = useState<string>('all');
+    const [techFilter, setTechFilter] = useSessionState<string>('admin/payroll/audit:techFilter', 'all');
     const [techQuery, setTechQuery] = useState('');
     // Paystub history: by technician, or everyone for one week.
     const [historyView, setHistoryView] = useState<'tech' | 'week'>('tech');
     const [historyTech, setHistoryTech] = useState<string>('');
     const [historyWeek, setHistoryWeek] = useState<string>('');
-    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [statusFilter, setStatusFilter] = useSessionState<string>('admin/payroll/audit:statusFilter', 'all');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
     const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());

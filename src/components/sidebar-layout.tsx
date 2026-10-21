@@ -34,6 +34,40 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   // Firestore profile exists) the middleware/session flow remains in charge.
   const denied = !loading && !!user && !canAccessPath(user, pathname);
 
+  // Every page keeps its scroll position: saved per page as you scroll, put
+  // back when you return (Back, or the nav). Lists load after the page shows,
+  // so keep trying for a moment until there's enough page to scroll to.
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    const key = `scroll:${pathname}`;
+    let target = 0;
+    try { target = Number(sessionStorage.getItem(key)) || 0; } catch { /* storage blocked */ }
+    let tries = 0, timer: ReturnType<typeof setTimeout> | undefined;
+    const restore = () => {
+      main.scrollTop = target; // 0 for a page not visited yet: start at the top
+      if (!target) return;
+      if (Math.abs(main.scrollTop - target) > 2 && tries++ < 30) timer = setTimeout(restore, 100);
+    };
+    restore();
+    const save = () => { tries = 99; try { sessionStorage.setItem(key, String(main.scrollTop)); } catch { /* ignore */ } };
+    // Only start saving once the user scrolls, so the restore's own jumps
+    // and a not-yet-loaded short page don't overwrite the saved spot.
+    const onUserScroll = () => { main.addEventListener('scroll', save, { passive: true }); };
+    main.addEventListener('touchstart', onUserScroll, { once: true, passive: true });
+    main.addEventListener('wheel', onUserScroll, { once: true, passive: true });
+    main.addEventListener('keydown', onUserScroll, { once: true });
+    main.addEventListener('pointerdown', onUserScroll, { once: true });
+    return () => {
+      clearTimeout(timer);
+      main.removeEventListener('scroll', save);
+      main.removeEventListener('touchstart', onUserScroll);
+      main.removeEventListener('wheel', onUserScroll);
+      main.removeEventListener('keydown', onUserScroll);
+      main.removeEventListener('pointerdown', onUserScroll);
+    };
+  }, [pathname]);
+
   // Android app: register this phone for push once someone is signed in.
   const { toast } = useToast();
   const uid = user?.id;

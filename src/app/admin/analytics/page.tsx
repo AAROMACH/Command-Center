@@ -1,4 +1,6 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
+import { JobNumbers } from '@/components/work-order-id';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -57,12 +59,13 @@ export default function FieldIntelligencePage() {
     type ImportBatch = { id: string; importedAt?: string; importedByName?: string; importedBy?: string | null; count?: number; clients?: string[]; jobIds?: string[] };
     const [importBatches, setImportBatches] = useState<ImportBatch[]>([]);
     const [archivedJobs, setArchivedJobs] = useState<WorkOrder[]>([]);
-    const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
+    const [selectedTechId, setSelectedTechId] = useSessionState<string | null>('admin/analytics:selectedTechId', null);
 
     // App Activity tab state
-    const [timelineTechFilter, setTimelineTechFilter] = useState('all');
-    const [timelineTypeFilter, setTimelineTypeFilter] = useState('all');
-    const [timelineDateRange, setTimelineDateRange] = useState<DateRange | undefined>(undefined);
+    const [timelineTechFilter, setTimelineTechFilter] = useSessionState('admin/analytics:timelineTechFilter', 'all');
+    const [timelineTypeFilter, setTimelineTypeFilter] = useSessionState('admin/analytics:timelineTypeFilter', 'all');
+    const [timelineDateRange, setTimelineDateRange] = useSessionState<DateRange | undefined>('admin/analytics:timelineDateRange', undefined,
+    r => r ? { from: r.from ? new Date(r.from) : undefined, to: r.to ? new Date(r.to) : undefined } : undefined);
     const [timelinePageSize, setTimelinePageSize] = useState<25 | 50 | 100>(25);
     const [timelinePage, setTimelinePage] = useState(0);
 
@@ -483,7 +486,7 @@ export default function FieldIntelligencePage() {
                                                             <TableRow key={wo.id} className="border-border-sub hover:bg-bg-tertiary cursor-pointer" onClick={() => setManagedJob(wo)}>
                                                                 <TableCell className="pl-4 py-3">
                                                                     <p className="text-xs font-bold text-text-primary">{wo.title || wo.description}</p>
-                                                                    <p className="text-[11px] text-text-muted font-mono">{wo.id.toUpperCase()}</p>
+                                                                    <JobNumbers wo={wo} className="mt-0.5" />
                                                                 </TableCell>
                                                                 <TableCell className="text-[10px] font-mono text-text-secondary">{formatDateDisplay(wo.scheduleDate)}</TableCell>
                                                                 <TableCell className="text-center">

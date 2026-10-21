@@ -1,5 +1,6 @@
 
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -102,10 +103,11 @@ export function DispatchPageClient() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
   
-  const [searchQuery, setSearchQuery] = useState("");
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [searchQuery, setSearchQuery] = useSessionState('admin/dispatch/dispatch-page-client:searchQuery', "");
+  const [dateRange, setDateRange] = useSessionState<DateRange | undefined>('admin/dispatch/dispatch-page-client:dateRange', undefined,
+    r => r ? { from: r.from ? new Date(r.from) : undefined, to: r.to ? new Date(r.to) : undefined } : undefined);
   // Default to date sort so the newest assignments/jobs surface first.
-  const [sortBy, setSortBy] = useState<SortOption>('date');
+  const [sortBy, setSortBy] = useSessionState<SortOption>('admin/dispatch/dispatch-page-client:sortBy', 'date');
   // Direction for the 'date' sort mode — shared across every Dispatch tab
   // (Dispatch Hub, Service Requests, Assignments) since they all read from
   // this same toolbar. false = latest first, true = soonest first.
@@ -506,7 +508,7 @@ export function DispatchPageClient() {
   // "New item just landed" indicators (bouncing "!") per list — cleared when
   // the admin opens that tab. Same keys as the sidebar's Dispatch Hub badge.
   const [loaded, setLoaded] = useState({ wo: false, asmt: false, req: false });
-  const [dispatchSubtab, setDispatchSubtab] = useState('unassigned');
+  const [dispatchSubtab, setDispatchSubtab] = useSessionState('admin/dispatch/dispatch-page-client:dispatchSubtab', 'unassigned');
   const onDispatch = activeMasterTab === 'dispatch';
   const newUnassigned = useNewArrivals(ARRIVAL_KEYS.unassigned, useMemo(() => unassignedArrivalIds(allWorkOrders), [allWorkOrders]),
     { ready: loaded.wo, viewing: onDispatch && dispatchSubtab === 'unassigned' });

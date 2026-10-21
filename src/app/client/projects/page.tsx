@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
@@ -39,7 +40,7 @@ export default function ClientProjectsPage() {
     const technicians = useDirectory();
     const [mounted, setMounted] = useState(false);
     const [viewMode, setViewMode] = useViewMode('client-projects');
-    const [searchQuery, setSearchQuery] = useState("");
+    const [searchQuery, setSearchQuery] = useSessionState('client/projects:searchQuery', "");
 
     useEffect(() => {
         setMounted(true);

@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 import dynamic from 'next/dynamic';
 import type { Technician, TimeOffRequest, WorkOrder, SiteRequest } from '@/lib/types';
 import { isAdmin, isSales, isTech, isClient } from '@/lib/permissions';
@@ -112,9 +113,9 @@ type SortOption = 'name' | 'contacts' | 'role';
 
 export function DirectoryClient({ technicians: personnel, timeOffRequests, workOrders, assignments, siteRequests, pendingUsers }: DirectoryClientProps) {
     const searchParams = useSearchParams();
-    const [searchQuery, setSearchQuery] = useState("");
-    const [viewMode, setViewMode] = useState<ViewMode>('rows');
-    const [sortBy, setSortBy] = useState<SortOption>('name');
+    const [searchQuery, setSearchQuery] = useSessionState('admin/directory/directory-client:searchQuery', "");
+    const [viewMode, setViewMode] = useSessionState<ViewMode>('admin/directory/directory-client:viewMode', 'rows');
+    const [sortBy, setSortBy] = useSessionState<SortOption>('admin/directory/directory-client:sortBy', 'name');
     const [showInactive, setShowInactive] = useState(false);
     const [activeTab, _setActiveTabRaw] = useState(() => { const sp = searchParams.get('tab'); if (sp) return sp; try { return localStorage.getItem('cc:directory:tab') || 'technicians'; } catch { return 'technicians'; } });
     const setActiveTab = (v: string) => { _setActiveTabRaw(v); try { localStorage.setItem('cc:directory:tab', v); } catch {} };

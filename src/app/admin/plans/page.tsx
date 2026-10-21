@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 import { PageHeader } from '@/components/page-header';
 
 import { useMemo, useState } from 'react';
@@ -69,7 +70,7 @@ export default function ServicePlansPage() {
   const [declineTarget, setDeclineTarget] = useState<Subscription | null>(null);
   const [declineReason, setDeclineReason] = useState('');
   const [subFilter, setSubFilter] = useState<'live' | 'due' | 'canceled'>('live');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useSessionState('admin/plans:search', '');
 
   const today = localDay();
   const live = subscriptions.filter(isLiveSubscription);

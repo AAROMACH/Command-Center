@@ -974,7 +974,7 @@ export const WorkOrdersTable = React.memo(({
             <DialogFooter className="bg-bg-tertiary/30 p-4 sm:p-6 border-t border-border-default mt-4 shrink-0 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
                 <Button variant="destructive-outline" onClick={handleDeleteOrder} className="h-11 w-full sm:w-auto px-8 uppercase font-bold text-[10px] tracking-wider border-brand-red text-text-red hover:bg-brand-red-dim">
                     <Trash2 size={16} className="mr-2" />
-                    Delete
+                    Archive
                 </Button>
                 <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
                     <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="h-11 w-full sm:w-auto px-8 uppercase font-bold text-[10px] tracking-wider">Cancel</Button>

@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
@@ -47,8 +48,8 @@ export default function ClientFinancialsPage() {
     // new tab showed nothing).
     const { user: currentUser } = useAuth();
     const [mounted, setMounted] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [statusFilter, setStatusFilter] = useState<string[]>([]);
+    const [searchQuery, setSearchQuery] = useSessionState('client/financials:searchQuery', "");
+    const [statusFilter, setStatusFilter] = useSessionState<string[]>('client/financials:statusFilter', []);
     const { toast } = useToast();
     const router = useRouter();
     const { plan: currentPlan, current: currentSub } = useClientPlan(currentUser);

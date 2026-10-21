@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -152,8 +153,8 @@ export default function AssetsAndMaterialsPage() {
     const [viewMode, setViewMode] = useViewMode('assets');
     const [assetCatFilter, setAssetCatFilter] = useState<AssetCategory | 'all'>('all');
     const [matCatFilter, setMatCatFilter] = useState('all');
-    const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
+    const [search, setSearch] = useSessionState('admin/assets:search', '');
+    const [statusFilter, setStatusFilter] = useSessionState('admin/assets:statusFilter', 'all');
     const [conditionFilter, setConditionFilter] = useState('all');
     const [matStatusFilter, setMatStatusFilter] = useState('all');
     const [assetSort, setAssetSort] = useState('name');

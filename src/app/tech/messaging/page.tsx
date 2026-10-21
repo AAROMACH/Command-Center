@@ -6,6 +6,7 @@ import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { conversationFromLink } from '@/lib/message-link';
 import { db, auth } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, doc, updateDoc, arrayUnion, query, where } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -58,9 +59,10 @@ export default function TechMessagingPage() {
   // opens that conversation.
   const searchParams = useSearchParams();
   useEffect(() => {
-    const dm = searchParams.get('dm'), project = searchParams.get('project');
-    if (dm) { setActiveTab('Messages'); setSelectedContactId(dm); setDmMobilePane('thread'); }
-    else if (project) { setActiveTab('Project Comms'); setSelectedProjectId(project); }
+    conversationFromLink(searchParams, auth.currentUser?.uid).then(({ dm, project }) => {
+      if (dm) { setActiveTab('Messages'); setSelectedContactId(dm); setDmMobilePane('thread'); }
+      else if (project) { setActiveTab('Project Comms'); setSelectedProjectId(project); }
+    });
   }, [searchParams]);
   const [projectBody, setProjectBody] = useState('');
 

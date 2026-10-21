@@ -16,7 +16,9 @@ export function entityHref(portal: LinkPortal, type?: string, id?: string): stri
   if (type === 'message') {
     if (portal === 'sales') return '';
     const [kind, ref] = id.split(':');
-    const q = ref && (kind === 'dm' || kind === 'project') ? `?${kind}=${encodeURIComponent(ref)}` : '';
+    // Older alerts saved the bare message id: ?msg= makes the page look it up.
+    const q = ref && (kind === 'dm' || kind === 'project') ? `?${kind}=${encodeURIComponent(ref)}`
+      : !ref && kind ? `?msg=${encodeURIComponent(kind)}` : '';
     return `/${portal}/messaging${q}`;
   }
   if (type === 'user') return portal === 'admin' ? `/admin/directory/${id}` : '';

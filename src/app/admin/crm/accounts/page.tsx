@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 import { PageHeader } from '@/components/page-header';
 import { SearchField } from '@/components/search-field';
 import { TONE_BADGE, type Tone } from '@/lib/status-styles';
@@ -52,8 +53,8 @@ export default function AccountsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<'name' | 'pipeline' | 'won' | 'recent'>('pipeline');
+  const [search, setSearch] = useSessionState('admin/crm/accounts:search', '');
+  const [sort, setSort] = useSessionState<'name' | 'pipeline' | 'won' | 'recent'>('admin/crm/accounts:sort', 'pipeline');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [companyForm, setCompanyForm] = useState<CompanyForm | null>(null);
   const [contactForm, setContactForm] = useState<ContactForm | null>(null);

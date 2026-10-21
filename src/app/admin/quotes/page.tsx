@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -542,10 +543,10 @@ export default function AdminQuotesPage() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useViewMode('quotes');
   const [prefillLead, setPrefillLead] = useState<Lead | null>(null);
-  const [tab, setTab] = useState('draft');
-  const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState('date');
-  const [sortAsc, setSortAsc] = useState(false);
+  const [tab, setTab] = useSessionState('admin/quotes:tab', 'draft');
+  const [search, setSearch] = useSessionState('admin/quotes:search', '');
+  const [sortBy, setSortBy] = useSessionState('admin/quotes:sortBy', 'date');
+  const [sortAsc, setSortAsc] = useSessionState('admin/quotes:sortAsc', false);
 
   // /admin/quotes?leadId=… (from the CRM drawer) opens New Quote prefilled.
   useEffect(() => {

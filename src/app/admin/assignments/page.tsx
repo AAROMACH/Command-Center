@@ -1,5 +1,6 @@
 
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect, useDeferredValue } from 'react';
@@ -85,9 +86,9 @@ import { cn, formatCityState, isAssignableTechnician, isInactiveTechnician, sort
 import { DateRange } from "react-day-picker";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { exportAssignmentsCsv } from '@/app/admin/reports/components/history-tabs';
-import { isAdmin, isPayAdmin } from "@/lib/permissions";
+import { isAdmin, isPayAdmin, isSuperAdmin } from "@/lib/permissions";
 import { PAY_TYPE_LABELS } from '@/lib/constants';
-import { WorkOrderId } from '@/components/work-order-id';
+import { JobNumbers } from '@/components/work-order-id';
 import { jobTechId, isArchivedJob, isCompletedJob, jobDateTimeValue, archiveJobRecord, toUnassignedWorkOrder, JOB_STATUS_OPTIONS, compareJobStatus, jobMatchesSearch } from '@/lib/jobs';
 import { syncWeeklyLogForAdminStatusEdit, moveJobLogOnSwap, describeSwapLogMove } from '@/lib/weekly-log';
 
@@ -111,30 +112,34 @@ export default function AssignmentsHubPage() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [weeklyLogs, setWeeklyLogs] = useState<WeeklyLog[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useSessionState("assignments:search", "");
   // Filtering lags a keystroke behind so the search box never waits on it.
   const deferredSearch = useDeferredValue(searchQuery);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = useSessionState<DateRange | undefined>("assignments:dates", undefined,
+    r => r ? { from: r.from ? new Date(r.from) : undefined, to: r.to ? new Date(r.to) : undefined } : undefined);
   const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   
-  const [sortBy, setSortBy] = useState<SortOption>('date');
+  const [sortBy, setSortBy] = useSessionState<SortOption>('assignments:sort', 'date');
   // Date sort direction: false = latest first (default), true = earliest first.
-  const [dateAsc, setDateAsc] = useState(false);
-  const [activePriorities, setActivePriorities] = useState<string[]>([]);
-  const [activeSources, setActiveSources] = useState<string[]>([]);
-  const [activeStatuses, setActiveStatuses] = useState<string[]>([]);
+  const [dateAsc, setDateAsc] = useSessionState('assignments:dateAsc', false);
+  const [activePriorities, setActivePriorities] = useSessionState<string[]>('assignments:priorities', []);
+  const [activeSources, setActiveSources] = useSessionState<string[]>('assignments:sources', []);
+  const [activeStatuses, setActiveStatuses] = useSessionState<string[]>('assignments:statuses', []);
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
 
   const [currentUser, setCurrentUser] = useState<Technician | null>(null);
   const [orderToArchive, setOrderToArchive] = useState<WorkOrder | null>(null);
+  // Permanent delete: History tab only, super admins only.
+  const [orderToDelete, setOrderToDelete] = useState<WorkOrder | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
 
   // Tab + bulk selection. Selection is cleared whenever the visible set can
   // change (search, filters, dates, tab) so hidden rows are never acted on.
-  const [tab, setTab] = useState<'schedule' | 'archive'>('schedule');
+  const [tab, setTab] = useSessionState<'schedule' | 'archive'>('assignments:tab', 'schedule');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false);
   const [bulkArchiving, setBulkArchiving] = useState(false);
@@ -506,6 +511,28 @@ export default function AssignmentsHubPage() {
     }
   };
 
+  const superAdmin = isSuperAdmin(currentUser as any);
+
+  // Removes the job for good: its archived copy and any live record. There is
+  // no restore — that's why only super admins see it, and only on History.
+  const confirmDelete = async () => {
+    const order = orderToDelete;
+    if (!order || !superAdmin) return;
+    setIsDeleting(true);
+    try {
+      await Promise.all([
+        deleteDoc(doc(db, 'activityArchive', order.id)),
+        deleteDoc(doc(db, 'assignments', order.id)),
+      ]);
+      toast({ title: "Deleted", description: `Job ${(order.id || '').toUpperCase()} was permanently deleted.` });
+      setOrderToDelete(null);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Delete failed", description: e?.message || "Could not delete the job." });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const confirmArchive = async () => {
     const order = orderToArchive;
     if (!order) return;
@@ -697,7 +724,7 @@ export default function AssignmentsHubPage() {
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-1.5">
-                                            <WorkOrderId wo={wo} />
+                                            <JobNumbers wo={wo} />
                                         </div>
                                         <p className="text-[13px] font-semibold text-text-primary mt-1 break-words">{wo.title || wo.description}</p>
                                         <p className="text-[12px] text-text-muted">{wo.clientName}</p>
@@ -785,7 +812,7 @@ export default function AssignmentsHubPage() {
                                         <td className="text-left pl-2 py-4">
                                             <div className="flex flex-col items-start gap-1.5 text-left">
                                                 <div className="flex items-center gap-1.5 text-left">
-                                                    <WorkOrderId wo={wo} />
+                                                    <JobNumbers wo={wo} />
                                                 </div>
                                                 <StatusBadge kind="job" value={wo.status} />
                                             </div>
@@ -871,7 +898,6 @@ export default function AssignmentsHubPage() {
                         const techId = jobTechId(wo);
                         const tech = technicians.find(t => t.id === techId);
                         const audit = getAuditStatus(wo);
-                        const ext = externalWorkOrderId(wo);
                         return (
                             <div
                                 key={wo.id}
@@ -884,10 +910,7 @@ export default function AssignmentsHubPage() {
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-col leading-tight">
-                                            <span className="cell-id font-mono font-bold text-brand-red !text-[10px]">{(wo.id || '').toUpperCase()}</span>
-                                            {isImported(wo) && ext && (
-                                                <span className="font-mono font-bold text-brand-cyan text-[11px]">FN #{ext}</span>
-                                            )}
+                                            <JobNumbers wo={wo} />
                                         </div>
                                         <p className="text-[13px] font-semibold text-text-primary mt-1 break-words">{wo.title || wo.description}</p>
                                         <p className="text-[12px] text-text-muted">{wo.clientName}</p>
@@ -910,7 +933,7 @@ export default function AssignmentsHubPage() {
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
                                         <Badge variant="outline" className={cn("h-6 px-3 uppercase text-[10px] tracking-wider font-bold", audit.cls)}>{audit.label}</Badge>
-                                        <HistoryRowMenu onDelete={() => requestArchive(wo)} />
+                                        {superAdmin && <HistoryRowMenu onDelete={() => setOrderToDelete(wo)} />}
                                     </div>
                                 </div>
                             </div>
@@ -954,7 +977,6 @@ export default function AssignmentsHubPage() {
                                 const techId = jobTechId(wo);
                                 const tech = technicians.find(t => t.id === techId);
                                 const audit = getAuditStatus(wo);
-                                const ext = externalWorkOrderId(wo);
                                 return (
                                     <tr key={wo.id} className={cn("cursor-pointer group hover:bg-bg-tertiary transition-colors text-left", selectedIds.has(wo.id) && "bg-brand-red/5")} onClick={() => handleCardClick(wo)}>
                                         <td className="w-10 pl-4 py-4" onClick={e => e.stopPropagation()}>
@@ -965,10 +987,7 @@ export default function AssignmentsHubPage() {
                                             <div className="flex flex-col items-start gap-1.5">
                                                 <StatusBadge kind="job" value={isArchivedJob(wo) ? 'archived' : wo.status} />
                                                 <div className="flex flex-col items-start leading-tight">
-                                                    <span className="cell-id font-mono font-bold text-brand-red !text-[10px]">{(wo.id || '').toUpperCase()}</span>
-                                                    {isImported(wo) && ext && (
-                                                        <span className="font-mono font-bold text-brand-cyan text-[11px]">FN #{ext}</span>
-                                                    )}
+                                                    <JobNumbers wo={wo} />
                                                 </div>
                                             </div>
                                         </td>
@@ -992,7 +1011,7 @@ export default function AssignmentsHubPage() {
                                         <td className="py-4 text-right pr-6">
                                             <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
                                                 <Badge variant="outline" className={cn("h-7 px-3 uppercase text-[10px] tracking-wider font-bold", audit.cls)}>{audit.label}</Badge>
-                                                <HistoryRowMenu onDelete={() => requestArchive(wo)} />
+                                                {superAdmin && <HistoryRowMenu onDelete={() => setOrderToDelete(wo)} />}
                                             </div>
                                         </td>
                                     </tr>
@@ -1209,6 +1228,28 @@ export default function AssignmentsHubPage() {
         </Dialog>
       </Tabs>
 
+      <AlertDialog open={!!orderToDelete} onOpenChange={(open) => { if (!open && !isDeleting) setOrderToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permanently delete this job?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Job {(orderToDelete?.id || '').toUpperCase()}{orderToDelete?.title ? ` (${orderToDelete.title})` : ''} will be deleted for good,
+              including its notes and history. This can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); confirmDelete(); }}
+              disabled={isDeleting}
+              className="bg-brand-red hover:bg-brand-red-hover text-white"
+            >
+              {isDeleting ? 'Deleting…' : 'Delete permanently'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={!!orderToArchive} onOpenChange={(open) => { if (!open && !isArchiving) setOrderToArchive(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1270,7 +1311,7 @@ function HistoryRowMenu({ onDelete }: { onDelete: () => void }) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 <DropdownMenuItem className="text-text-red focus:text-text-red" onSelect={() => setTimeout(onDelete, 0)}>
-                    <Trash2 size={13} className="mr-2" /> Delete job
+                    <Trash2 size={13} className="mr-2" /> Delete permanently
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

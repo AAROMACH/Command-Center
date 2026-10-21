@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 
 import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
@@ -29,10 +30,10 @@ const invLabel = (n?: string) => (n || '').toUpperCase().startsWith('INV') ? (n 
 
 export default function ClientBillingPage() {
     const [mounted, setMounted] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [sortBy, setSortBy] = useState<'date' | 'amount' | 'due'>('date');
+    const [searchQuery, setSearchQuery] = useSessionState('client/billing:searchQuery', "");
+    const [sortBy, setSortBy] = useSessionState<'date' | 'amount' | 'due'>('client/billing:sortBy', 'date');
     const [dateAsc, setDateAsc] = useState(false);
-    const [statusFilter, setStatusFilter] = useState<string[]>([]);
+    const [statusFilter, setStatusFilter] = useSessionState<string[]>('client/billing:statusFilter', []);
     const router = useRouter();
 
     useEffect(() => {

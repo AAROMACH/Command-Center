@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 
 import { useState, useEffect, useMemo } from 'react';
 import { db, auth } from "@/lib/firebase";
@@ -60,8 +61,8 @@ export default function ClientQuotesPage() {
     const [declineReason, setDeclineReason] = useState('');
     const [optionalChoices, setOptionalChoices] = useState<QuoteOptionalGroup[]>([]);
     const [saving, setSaving] = useState(false);
-    const [search, setSearch] = useState('');
-    const [sortBy, setSortBy] = useState<QuoteSort>('date');
+    const [search, setSearch] = useSessionState('client/quotes:search', '');
+    const [sortBy, setSortBy] = useSessionState<QuoteSort>('client/quotes:sortBy', 'date');
     const [dateAsc, setDateAsc] = useState(false);
     const { toast } = useToast();
 

@@ -1,6 +1,6 @@
 
 'use client';
-import { useSessionState, useScrollRestore } from '@/hooks/use-session-state';
+import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect, useDeferredValue } from 'react';
@@ -318,8 +318,6 @@ export default function AssignmentsHubPage() {
 
   // History = archived, completed or cancelled — so every job lands in
   // exactly one tab (the Cancelled filter works, CSV count matches).
-  // Back from a job lands where you were in the list.
-  useScrollRestore('assignments', workOrders.length > 0);
   const archivedWorkOrders = useMemo(() =>
     filteredWorkOrders.filter(wo => isArchivedJob(wo) || isCompletedJob(wo) || wo.status === 'cancelled'),
   [filteredWorkOrders]);

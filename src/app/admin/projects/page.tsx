@@ -1,5 +1,6 @@
 
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { db } from "@/lib/firebase";
@@ -41,13 +42,14 @@ type SortOption = 'name' | 'date' | 'progress' | 'client';
 export default function ProjectsPage() {
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useSessionState('admin/projects:searchQuery', "");
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = useSessionState<DateRange | undefined>('admin/projects:dateRange', undefined,
+    r => r ? { from: r.from ? new Date(r.from) : undefined, to: r.to ? new Date(r.to) : undefined } : undefined);
   const [activeStatuses, setActiveStatuses] = useState<string[]>([]);
   const [activeClients, setActiveClients] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState<SortOption>('date');
+  const [sortBy, setSortBy] = useSessionState<SortOption>('admin/projects:sortBy', 'date');
   const [viewMode, _setViewModeRaw] = useState<'list' | 'grid'>(() => { try { return (localStorage.getItem('cc:projects:view') as 'list' | 'grid') || 'list'; } catch { return 'list'; } });
   const setViewMode = (v: 'list' | 'grid') => { _setViewModeRaw(v); try { localStorage.setItem('cc:projects:view', v); } catch {} };
 

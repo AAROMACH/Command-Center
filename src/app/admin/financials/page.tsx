@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -60,7 +61,7 @@ export default function FinancialsPage() {
 
     const [reimTypeFilter, setReimTypeFilter] = useState<'all' | 'receipt' | 'mileage'>('all');
     const [reimStatusFilter, setReimStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'paid'>('all');
-    const [searchQuery, setSearchQuery] = useState("");
+    const [searchQuery, setSearchQuery] = useSessionState('admin/financials:searchQuery', "");
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'summary');
 
     

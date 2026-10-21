@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 
 import { externalWorkOrderId } from '@/lib/work-order-identity';
 import { subscribeTechAssignments } from '@/lib/tech-assignments';
@@ -81,13 +82,14 @@ export default function TechAssignmentsPage() {
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [allWorkOrders, setAllWorkOrders] = useState<WorkOrder[]>([]);
     const [mounted, setMounted] = useState(false);
-    const [sortBy, setSortBy] = useState<string>('date');
+    const [sortBy, setSortBy] = useSessionState<string>('tech/assignments:sortBy', 'date');
     const [dateAsc, setDateAsc] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
+    const [searchQuery, setSearchQuery] = useSessionState('tech/assignments:searchQuery', "");
     // Filtering (and re-rendering every card) lags a keystroke behind so the
     // search box itself never waits on it — see components/search-field.tsx.
     const deferredSearch = useDeferredValue(searchQuery);
-    const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+    const [dateRange, setDateRange] = useSessionState<DateRange | undefined>('tech/assignments:dateRange', undefined,
+    r => r ? { from: r.from ? new Date(r.from) : undefined, to: r.to ? new Date(r.to) : undefined } : undefined);
     const [activePriorities, setActivePriorities] = useState<string[]>([]);
     const activeFilterCount = activePriorities.length; // date has its own button
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'active');

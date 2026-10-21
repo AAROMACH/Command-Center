@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 import { PageHeader } from '@/components/page-header';
 import { StatCard, StatGrid } from '@/components/stat-card';
 import { EmptyState, LoadingState } from '@/components/empty-state';
@@ -49,9 +50,9 @@ export default function AdminClientsPage() {
     const [quotes, setQuotes] = useState<Quote[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState('');
-    const [sortBy, setSortBy] = useState<'name' | 'status' | 'jobs'>('name');
-    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [search, setSearch] = useSessionState('admin/sites:search', '');
+    const [sortBy, setSortBy] = useSessionState<'name' | 'status' | 'jobs'>('admin/sites:sortBy', 'name');
+    const [statusFilter, setStatusFilter] = useSessionState<string>('admin/sites:statusFilter', 'all');
     const [viewMode, _setViewModeRaw] = useState<'grid' | 'list'>(() => { try { return (localStorage.getItem('cc:sites:view') as 'grid' | 'list') || 'grid'; } catch { return 'grid'; } });
     const setViewMode = (v: 'grid' | 'list') => { _setViewModeRaw(v); try { localStorage.setItem('cc:sites:view', v); } catch {} };
     const [isNewOpen, setIsNewOpen] = useState(false);

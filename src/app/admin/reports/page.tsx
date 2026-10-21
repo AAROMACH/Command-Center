@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -165,10 +166,10 @@ export default function ActivityAuditPage() {
     const allPenalties = usePenaltyEvents();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [searchQuery, setSearchQuery] = useState("");
+    const [searchQuery, setSearchQuery] = useSessionState('admin/reports:searchQuery', "");
     const [activeTab, _setActiveTabRaw] = useState(() => { const sp = searchParams.get('tab'); if (sp) return sp; try { const stored = localStorage.getItem('cc:reports:tab'); return stored && stored !== 'timeline' ? stored : 'assignments_history'; } catch { return 'assignments_history'; } });
     const setActiveTab = (v: string) => { _setActiveTabRaw(v); try { localStorage.setItem('cc:reports:tab', v); } catch {} };
-    const [selectedTechId, setSelectedTechId] = useState<string | null>(null);
+    const [selectedTechId, setSelectedTechId] = useSessionState<string | null>('admin/reports:selectedTechId', null);
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     
     // Registry states
@@ -181,8 +182,8 @@ export default function ActivityAuditPage() {
     const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
 
     // Timeline filter state
-    const [timelineTechFilter, setTimelineTechFilter] = useState<string>('all');
-    const [timelineTypeFilter, setTimelineTypeFilter] = useState<string>('all');
+    const [timelineTechFilter, setTimelineTechFilter] = useSessionState<string>('admin/reports:timelineTechFilter', 'all');
+    const [timelineTypeFilter, setTimelineTypeFilter] = useSessionState<string>('admin/reports:timelineTypeFilter', 'all');
     const [timelineClientFilter, setTimelineClientFilter] = useState('');
 
     // Audit Detail States

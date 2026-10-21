@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 
 import { useState, useEffect, useMemo } from 'react';
 import { db } from "@/lib/firebase";
@@ -48,7 +49,7 @@ export default function ClientSitesPage() {
     const [firestoreSites, setFirestoreSites] = useState<Site[]>([]);
     const [mounted, setMounted] = useState(false);
     const [viewMode, setViewMode] = useViewMode('client-sites');
-    const [searchQuery, setSearchQuery] = useState("");
+    const [searchQuery, setSearchQuery] = useSessionState('client/sites:searchQuery', "");
     const [isAddSiteOpen, setIsAddSiteOpen] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [duplicateError, setDuplicateError] = useState<string | null>(null);

@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -37,8 +38,8 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<Technician[]>([]);
   const [siteRequests, setSiteRequests] = useState<SiteRequest[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('company');
+  const [searchQuery, setSearchQuery] = useSessionState('admin/crm/clients:searchQuery', '');
+  const [sortBy, setSortBy] = useSessionState('admin/crm/clients:sortBy', 'company');
   const [viewMode, setViewMode] = useViewMode('crm-clients');
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [newClientForm, setNewClientForm] = useState({ name: '', company: '', email: '', phone: '' });

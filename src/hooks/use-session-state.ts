@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * useState that survives leaving the page and coming back (same tab): a list's
@@ -22,27 +22,4 @@ export function useSessionState<T>(key: string, initial: T, revive?: (raw: any) 
     try { sessionStorage.setItem(`ss:${key}`, JSON.stringify(value)); } catch { /* storage blocked */ }
   }, [key, value]);
   return [value, setValue] as const;
-}
-
-/**
- * Remembers how far down the app's scroll area (<main>) a page was and puts it
- * back on return, once `ready` (the list has loaded — before then there's
- * nothing to scroll to).
- */
-export function useScrollRestore(key: string, ready: boolean) {
-  const restored = useRef(false);
-  useEffect(() => {
-    const main = document.querySelector('main');
-    if (!main) return;
-    const save = () => { try { sessionStorage.setItem(`scroll:${key}`, String(main.scrollTop)); } catch { /* ignore */ } };
-    main.addEventListener('scroll', save, { passive: true });
-    return () => main.removeEventListener('scroll', save);
-  }, [key]);
-  useEffect(() => {
-    if (!ready || restored.current) return;
-    restored.current = true;
-    const main = document.querySelector('main');
-    const y = Number((() => { try { return sessionStorage.getItem(`scroll:${key}`); } catch { return 0; } })() || 0);
-    if (main && y > 0) requestAnimationFrame(() => { main.scrollTop = y; });
-  }, [key, ready]);
 }

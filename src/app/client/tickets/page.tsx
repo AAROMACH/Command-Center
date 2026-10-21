@@ -1,4 +1,5 @@
 'use client';
+import { useSessionState } from '@/hooks/use-session-state';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { db } from "@/lib/firebase";
@@ -78,8 +79,8 @@ export default function ClientTicketsPage() {
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     const [allRequests, setAllRequests] = useState<ServiceRequest[]>([]);
     const [mounted, setMounted] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [sortBy, setSortBy] = useState<SortOption>('newest');
+    const [searchQuery, setSearchQuery] = useSessionState('client/tickets:searchQuery', "");
+    const [sortBy, setSortBy] = useSessionState<SortOption>('client/tickets:sortBy', 'newest');
     const [isNewTicketOpen, setIsNewTicketOpen] = useState(false);
     
     // Saved sites picker

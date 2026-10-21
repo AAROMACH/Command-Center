@@ -427,6 +427,9 @@ service cloud.firestore {
       // who is on it, its status, client or budget (those are the PM's).
       allow update: if isAdmin()
           || isProjectManager()
+          // The project's own Project Manager (team role) runs it fully from
+          // the Tech Portal, like a PM — this project only.
+          || (isTech() && resource.data.get('team', []).hasAny([{'techId': request.auth.uid, 'role': 'Project Manager'}]))
           || (isTech() && onProjectDoc(resource.data)
               && !request.resource.data.diff(resource.data).affectedKeys().hasAny(projectControlKeys()));
       allow delete: if isSuperAdmin();

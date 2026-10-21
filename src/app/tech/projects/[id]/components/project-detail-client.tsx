@@ -5,7 +5,8 @@ import { StatusBadge } from '@/components/status-badge';
 import { statusLabel } from '@/lib/status-styles';
 import { useState, useMemo, useEffect } from 'react';
 import type { Project, ProjectDailyLog, Technician, ProjectDocument, Task } from '@/lib/types';
-import { TaskCompletionDialog, TaskRequirementIcons, taskHasRequirements } from '@/components/task-completion-dialog';
+import { DocumentViewer, isImageDoc } from '@/components/document-viewer';
+import { TaskAnswers, TaskCompletionDialog, TaskRequirementIcons, taskHasRequirements } from '@/components/task-completion-dialog';
 import Link from 'next/link';
 import {
   ChevronLeft,
@@ -186,9 +187,14 @@ const PhaseBlock = ({
                                 onCheckedChange={() => !isReadOnly && onTaskToggle(phase.id, task.id)}
                                 disabled={isReadOnly}
                             />
-                            <span className={cn("task-name", task.isCompleted && "line-through text-text-muted")}>{task.name}</span>
-                            {task.assignedTechId && <span className="text-[11px] font-medium text-brand-red border border-brand-red/30 bg-brand-red/10 rounded-full px-2 py-0.5 whitespace-nowrap">{nameOf(task.assignedTechId)}</span>}
-                            <TaskRequirementIcons task={task} />
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={cn("task-name", task.isCompleted && "line-through text-text-muted")}>{task.name}</span>
+                                    {task.assignedTechId && <span className="text-[11px] font-medium text-brand-red border border-brand-red/30 bg-brand-red/10 rounded-full px-2 py-0.5 whitespace-nowrap">{nameOf(task.assignedTechId)}</span>}
+                                    <TaskRequirementIcons task={task} />
+                                </div>
+                                <TaskAnswers task={task} nameOf={nameOf} />
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -342,21 +348,27 @@ const OverviewTab = ({ project, technicians, dailyLogCount, isManager }: { proje
     );
 };
 
-const DocumentRow = ({ doc, taskName }: { doc: ProjectDocument, taskName?: string }) => (
-    <div className="p-3 rounded-xl border border-border-main bg-bg-secondary flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0 text-left">
-            <div className="p-2 bg-bg-primary rounded border border-border-sub text-brand-red shrink-0">
-                <FileText size={16} />
-            </div>
+const DocumentRow = ({ doc, taskName, onView }: { doc: ProjectDocument, taskName?: string, onView: (d: ProjectDocument) => void }) => (
+    <div className="p-2.5 rounded-xl border border-border-main bg-bg-secondary flex items-center justify-between gap-3">
+        <button type="button" onClick={() => doc.url && onView(doc)} className="flex items-center gap-3 min-w-0 flex-1 text-left">
+            {doc.url && isImageDoc(doc) ? (
+                // Photos show a thumbnail so you can see them before tapping.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={doc.url} alt="" loading="lazy" className="h-12 w-12 shrink-0 rounded-md border border-border-sub object-cover" />
+            ) : (
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center bg-bg-primary rounded-md border border-border-sub text-brand-red">
+                    <FileText size={18} />
+                </div>
+            )}
             <div className="min-w-0 text-left">
                 <p className="text-[13px] font-semibold text-text-primary truncate">{doc.name}</p>
                 <p className="text-[12px] text-text-muted truncate">
                     {taskName && !doc.name.startsWith(taskName) ? `${taskName} · ` : ''}{doc.uploader ? `${doc.uploader} · ` : ''}{doc.uploadDate}
                 </p>
             </div>
-        </div>
+        </button>
         {doc.url ? (
-            <a href={doc.url} target="_blank" rel="noreferrer" aria-label={`Open ${doc.name}`}
+            <a href={doc.url} download={doc.originalName || doc.name} target="_blank" rel="noreferrer" aria-label={`Download ${doc.name}`}
                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-bg-tertiary">
                 <Download size={16}/>
             </a>
@@ -364,7 +376,8 @@ const DocumentRow = ({ doc, taskName }: { doc: ProjectDocument, taskName?: strin
     </div>
 );
 
-/** Crew view: documents grouped like the admin tab — before the job, then each phase. */
+/** Crew view: documents grouped like the admin tab — before the job, then each
+ *  phase — each group collapsible. Tapping a file opens it in the app. */
 const DocumentsTab = ({ project, documents }: { project: Project, documents: ProjectDocument[] }) => {
     const phases = project.phases || [];
     const phaseIds = new Set(phases.map(p => p.id));
@@ -376,28 +389,43 @@ const DocumentsTab = ({ project, documents }: { project: Project, documents: Pro
         { id: 'general', title: 'Before the job', docs: general },
         ...phases.map(p => ({ id: p.id, title: `Phase ${p.phaseNumber}: ${p.name.replace(/^Phase\s*\d+\s*:\s*/i, '')}`, docs: documents.filter(d => d.phaseId === p.id) })),
     ];
+    const [closed, setClosed] = useState<Set<string>>(new Set());
+    const [viewing, setViewing] = useState<ProjectDocument | null>(null);
 
     if (documents.length === 0) {
         return <EmptyState icon={FolderOpen} title="No documents yet" description="Documents added to this project show up here, by phase." />;
     }
 
     return (
-        <div className="space-y-5 animate-in fade-in duration-300">
-            {groups.map(g => (
-                <section key={g.id} className="space-y-2">
-                    <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
-                        <h3 className="section-label text-left">{g.title}</h3>
-                        <span className="text-[12px] text-text-muted">{g.docs.length} {g.docs.length === 1 ? 'file' : 'files'}</span>
-                    </div>
-                    {g.docs.length ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            {g.docs.map(d => <DocumentRow key={d.id} doc={d} taskName={taskName(d.phaseId, d.taskId)} />)}
-                        </div>
-                    ) : (
-                        <p className="px-1 text-[12px] text-text-muted">Nothing here yet.</p>
-                    )}
-                </section>
-            ))}
+        <div className="space-y-3 animate-in fade-in duration-300">
+            {groups.map(g => {
+                const open = !closed.has(g.id);
+                return (
+                    <section key={g.id} className="rounded-xl border border-border-sub bg-bg-secondary/40">
+                        <button type="button" aria-expanded={open}
+                            onClick={() => setClosed(prev => { const n = new Set(prev); if (n.has(g.id)) n.delete(g.id); else n.add(g.id); return n; })}
+                            className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left">
+                            <h3 className="section-label text-left">{g.title}</h3>
+                            <span className="flex items-center gap-2 text-[12px] text-text-muted">
+                                {g.docs.length} {g.docs.length === 1 ? 'file' : 'files'}
+                                <ChevronDown size={14} className={cn('transition-transform', open && 'rotate-180')} />
+                            </span>
+                        </button>
+                        {open && (
+                            <div className="px-2 pb-2">
+                                {g.docs.length ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                        {g.docs.map(d => <DocumentRow key={d.id} doc={d} taskName={taskName(d.phaseId, d.taskId)} onView={setViewing} />)}
+                                    </div>
+                                ) : (
+                                    <p className="px-1 pb-1 text-[12px] text-text-muted">Nothing here yet.</p>
+                                )}
+                            </div>
+                        )}
+                    </section>
+                );
+            })}
+            <DocumentViewer doc={viewing} onOpenChange={o => { if (!o) setViewing(null); }} />
         </div>
     );
 };
@@ -538,10 +566,10 @@ const TimesheetsTab = ({
                 "rounded-xl border shadow-sm overflow-hidden transition-all duration-500",
                 activeSession ? "bg-bg-secondary border-brand-red ring-1 ring-brand-red/20" : "bg-bg-secondary border-border-main"
             )}>
-                <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-bg-tertiary/30 border-b border-border-sub">
-                    <div className="flex items-center gap-4">
+                <div className={cn("p-3 flex flex-wrap items-center justify-between gap-3 bg-bg-tertiary/30", activeSession && "border-b border-border-sub")}>
+                    <div className="flex items-center gap-3">
                         <div className={cn(
-                            "p-2 rounded-lg border shadow-inner",
+                            "p-1.5 rounded-lg border shadow-inner",
                             activeSession ? "bg-brand-red text-white border-brand-red" : "bg-bg-primary text-text-muted border-border-sub"
                         )}>
                             {activeSession ? <Activity size={20} className="animate-pulse" /> : <Timer size={20} />}
@@ -551,26 +579,23 @@ const TimesheetsTab = ({
                                 {activeSession ? "You're checked in" : "On-site time"}
                             </p>
                             <p className="text-[12px] text-text-muted mt-0.5 text-left">
-                                {activeSession ? `Session ${activeSession.id?.split('-').pop()?.toUpperCase() || ''}` : "Check in when you arrive on site"}
+                                {activeSession ? `Since ${displayTime(activeSession.checkInTime)}` : "Check in when you arrive on site"}
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between sm:justify-end gap-6">
+                    <div className="flex items-center justify-end gap-3 ml-auto">
                         {activeSession && (
-                            <div className="flex flex-col items-end">
-                                <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Time on site</p>
-                                <p className="text-3xl font-mono font-bold text-text-primary tabular-nums tracking-tighter">{elapsedTime}</p>
-                            </div>
+                            <p className="text-xl font-mono font-bold text-text-primary tabular-nums" aria-label="Time on site">{elapsedTime}</p>
                         )}
                         {isReadOnly ? (
                             <Badge variant="outline" className="h-6 px-3 text-[10px] uppercase tracking-wider">Project closed</Badge>
                         ) : !activeSession ? (
-                            <Button onClick={onCheckIn} className="bg-brand-red hover:bg-brand-red-hover h-11 px-8 shadow-sm">
+                            <Button onClick={onCheckIn} className="bg-brand-red hover:bg-brand-red-hover h-10 px-5 shadow-sm">
                                 <Play size={16} className="mr-2 fill-current" /> Check in
                             </Button>
                         ) : (
-                            <Button variant="destructive" onClick={() => onCheckOut(activeSession.id)} className="h-11 px-8 shadow-sm">
+                            <Button variant="destructive" onClick={() => onCheckOut(activeSession.id)} className="h-10 px-5 shadow-sm">
                                 <LogOut size={16} className="mr-2" /> Check out
                             </Button>
                         )}
@@ -578,56 +603,24 @@ const TimesheetsTab = ({
                 </div>
 
                 {activeSession && (
-                    <div className="p-4 sm:p-6 bg-bg-secondary space-y-4 animate-in slide-in-from-top-4 duration-500">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                             <div className="space-y-2 text-left">
-                                <div className="flex items-center justify-between px-1">
-                                    <Label className="text-[10px] font-semibold uppercase text-text-muted tracking-wider flex items-center gap-2">
-                                        <FileText size={14} className="text-brand-red"/> Field notes
-                                    </Label>
-                                    <div className="flex items-center gap-2">
-                                         {isSavingNotes && <Loader2 size={10} className="animate-spin text-accent-gold"/>}
-                                         <p className="text-[11px] text-text-muted">Saves automatically</p>
-                                    </div>
-                                </div>
-                                <div className="relative group/live-note">
-                                    <Textarea 
-                                        value={liveNotes}
-                                        onChange={e => setLiveNotes(e.target.value)}
-                                        onBlur={() => handleSaveLiveNotes(activeSession.id, liveNotes)}
-                                        placeholder="Site conditions, work done, anything that slowed you down…"
-                                        className="min-h-[24px] bg-transparent border-none shadow-none focus-visible:ring-0 text-[13px] leading-relaxed resize-none p-0 text-left"
-                                    />
-                                    <Pencil size={10} className="absolute top-0 right-0 text-text-muted opacity-30 group-hover/live-note:opacity-100 transition-opacity pointer-events-none" />
-                                </div>
-                             </div>
-                             <div className="space-y-4">
-                                <div className="p-4 rounded-xl bg-bg-primary border border-border-sub shadow-inner space-y-4">
-                                    <div className="flex items-center justify-between border-b border-border-sub/50 pb-2">
-                                        <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">This session</p>
-                                        <ShieldCheck size={14} className="text-text-green" />
-                                    </div>
-                                    <div className="grid grid-cols-1 gap-4">
-                                        <div className="space-y-1 text-left">
-                                            <p className="text-[12px] font-medium text-text-muted text-left">Check-in location</p>
-                                            <ProximityDisplay lat={activeSession.checkInLat} lng={activeSession.checkInLng} project={project} label="Check-In" size="large" />
-                                        </div>
-                                        <div className="space-y-1 text-left">
-                                            <p className="text-[12px] font-medium text-text-muted text-left">Checked in at</p>
-                                            <div className="flex items-center gap-2 text-text-primary">
-                                                <Clock size={16} className="text-brand-red" />
-                                                <p className="text-2xl font-mono font-bold tracking-tight">{displayTime(activeSession.checkInTime)}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="p-4 rounded-xl border border-dashed border-border-main bg-bg-tertiary/20 text-center">
-                                     <p className="text-[12px] text-text-muted leading-relaxed text-left">
-                                         Your notes save as you type and the office sees them right away. Finish your tasks before you check out.
-                                     </p>
-                                </div>
-                             </div>
+                    // Compact: where you checked in, then your notes — no empty panels.
+                    <div className="p-3 space-y-2 text-left">
+                        <ProximityDisplay lat={activeSession.checkInLat} lng={activeSession.checkInLng} project={project} label="Check-In" />
+                        <div className="flex items-center justify-between">
+                            <Label className="text-[11px] font-semibold text-text-muted flex items-center gap-1.5">
+                                <FileText size={12} className="text-brand-red"/> Field notes
+                            </Label>
+                            <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                                {isSavingNotes && <Loader2 size={10} className="animate-spin text-accent-gold"/>} Saves automatically
+                            </span>
                         </div>
+                        <Textarea
+                            value={liveNotes}
+                            onChange={e => setLiveNotes(e.target.value)}
+                            onBlur={() => handleSaveLiveNotes(activeSession.id, liveNotes)}
+                            placeholder="Site conditions, work done, anything that slowed you down…"
+                            className="min-h-[60px] bg-bg-primary text-[13px] leading-relaxed resize-none text-left"
+                        />
                     </div>
                 )}
             </div>

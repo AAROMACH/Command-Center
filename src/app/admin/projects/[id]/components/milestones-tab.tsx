@@ -24,7 +24,9 @@ import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { NotificationService } from '@/lib/notification-service';
-import { TaskCompletionDialog, TaskRequirementIcons, taskHasRequirements } from '@/components/task-completion-dialog';
+import { TaskAnswers, TaskCompletionDialog, TaskRequirementIcons, taskHasRequirements } from '@/components/task-completion-dialog';
+import { auth } from '@/lib/firebase';
+import { OptionListInput } from '@/components/option-list-input';
 
 type MilestonesTabProps = {
     project: Project;
@@ -133,6 +135,7 @@ const PhaseBlock = ({
                                     {task.isCompleted && <TaskRequirementIcons task={task} />}
                                     {task.requiresOther && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Plus size={10}/> {task.otherRequirementLabel || 'Req.'}</div>}
                                 </div>
+                                <TaskAnswers task={task} nameOf={nameOf} />
                             </div>
                             {isEditing && !isReadOnly && (
                                 <div className="task-actions opacity-0 group-hover/task:opacity-100 transition-opacity">
@@ -181,7 +184,7 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
         if (!completing) return;
         setEditablePhases(phases => phases.map(ph => ph.id !== completing.phaseId ? ph : {
             ...ph,
-            tasks: (ph.tasks || []).map(t => t.id === completing.task.id ? { ...t, ...patch, completedAt: new Date().toISOString() } : t),
+            tasks: (ph.tasks || []).map(t => t.id === completing.task.id ? { ...t, ...patch, completedAt: new Date().toISOString(), completedBy: auth.currentUser?.uid || null } : t),
         }));
         toast({ title: 'Task completed', description: 'Save changes to keep it.' });
     };
@@ -199,7 +202,10 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                 return {
                     ...phase,
                     tasks: (phase.tasks || []).map(task => 
-                        task.id === taskId ? { ...task, isCompleted: !task.isCompleted } : task
+                        task.id === taskId
+                            // Record when (and by whom) it was checked off; clear both when unchecked.
+                            ? { ...task, isCompleted: !task.isCompleted, completedAt: task.isCompleted ? '' : new Date().toISOString(), completedBy: task.isCompleted ? null : (auth.currentUser?.uid || null) }
+                            : task
                     )
                 };
             }
@@ -463,13 +469,12 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                                                     onCheckedChange={(val) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, requiresDropdown: val }})}
                                                 />
                                             </div>
-                                            <div className={cn("pt-1.5 transition-all overflow-hidden", editingTaskData.task.requiresDropdown ? "max-h-20 opacity-100" : "max-h-0 opacity-0")}>
-                                                <Label className="text-[10px] font-bold text-text-muted mb-1 block text-left">Options (Comma separated)</Label>
-                                                <Input 
-                                                    placeholder="e.g. Pass, Fail, N/A"
-                                                    value={editingTaskData.task.dropdownOptions?.join(', ') || ''}
-                                                    onChange={(e) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, dropdownOptions: e.target.value.split(',').map(s => s.trim()) }})}
-                                                    className="h-7 text-[10px] bg-bg-primary"
+                                            <div className={cn("pt-1.5 transition-all overflow-hidden", editingTaskData.task.requiresDropdown ? "max-h-96 opacity-100" : "max-h-0 opacity-0")}>
+                                                <Label className="text-[10px] font-bold text-text-muted mb-1 block text-left">Options</Label>
+                                                <OptionListInput
+                                                    value={editingTaskData.task.dropdownOptions || []}
+                                                    onChange={(opts) => setEditingTaskData({ ...editingTaskData, task: { ...editingTaskData.task, dropdownOptions: opts }})}
+                                                    placeholder="e.g. Pass — press Enter to add"
                                                 />
                                             </div>
                                         </div>

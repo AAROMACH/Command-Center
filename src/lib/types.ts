@@ -405,6 +405,12 @@ export type Task = {
   numericValue?: number;
   fileUrl?: string;
   signatureUrl?: string;
+  /** Every photo / document added when completing (photoUrl / fileUrl hold
+   *  the first, for older screens). Each keeps the name the tech gave it. */
+  photos?: { url: string; name: string }[];
+  files?: { url: string; name: string }[];
+  /** The name typed when the tech typed their signature instead of drawing it. */
+  signatureName?: string;
 };
 
 export type ProjectDailyLog = {

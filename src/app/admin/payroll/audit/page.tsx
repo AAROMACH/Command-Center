@@ -31,7 +31,7 @@ import { ArrowLeft, Receipt, Search, ChevronDown, ChevronRight, DollarSign, Chec
 import { cn } from '@/lib/utils';
 import { format, parseISO, isWithinInterval } from 'date-fns';
 import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder, PayrollDispute, FinancialRecord } from '@/lib/types';
-import { isClient, isSuperAdmin } from '@/lib/permissions';
+import { getSubroles, isClient, isSuperAdmin } from '@/lib/permissions';
 import { mergeJobs, parseLocalDate } from '@/lib/jobs';
 import { effectiveJobPay, computeWeeklyLogSettlement } from '@/lib/payroll';
 import { downloadPaystub } from '@/lib/paystub';
@@ -1101,7 +1101,8 @@ export default function PayrollAuditPage() {
 
                 {/* ── Project timesheets: project hours by week, paid on that week's log ── */}
                 <TabsContent value="projects" className="m-0">
-                    <ProjectTimesheets technicians={technicians} approverName={currentUser?.name || 'Payroll'} />
+                    <ProjectTimesheets technicians={technicians} approverName={currentUser?.name || 'Payroll'}
+                        canEditRate={isSuperAdmin(currentUser) || getSubroles(currentUser).includes('payroll_admin')} />
                 </TabsContent>
             </Tabs>
 

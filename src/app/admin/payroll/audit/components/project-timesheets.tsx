@@ -30,7 +30,11 @@ const weekLabel = (weekOf: string) => {
  * (hours × the tech's hourly rate) onto that week's weekly log. Sessions
  * already on a payout show as paid and aren't counted again.
  */
-export function ProjectTimesheets({ technicians, approverName }: { technicians: Technician[]; approverName: string }) {
+export function ProjectTimesheets({ technicians, approverName, canEditRate }: {
+  technicians: Technician[]; approverName: string;
+  /** Payroll / super admins may change the rate for a week before approving it. */
+  canEditRate: boolean;
+}) {
   const { toast } = useToast();
   const [logs, setLogs] = useState<ProjectDailyLog[]>([]);
   const [payouts, setPayouts] = useState<ProjectPayout[]>([]);
@@ -38,6 +42,8 @@ export function ProjectTimesheets({ technicians, approverName }: { technicians: 
   const [week, setWeek] = useState('');
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
+  // Rate overrides for this screen, per tech + week; default is the tech's hourly rate.
+  const [rateEdits, setRateEdits] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const a = onSharedSnapshot('projectDailyLogs', s => setLogs(s.docs.map(d => ({ ...(d.data() as ProjectDailyLog), id: d.id }))));
@@ -59,19 +65,21 @@ export function ProjectTimesheets({ technicians, approverName }: { technicians: 
     inWeek.forEach(l => byTech.set(l.techId, [...(byTech.get(l.techId) || []), l]));
     return Array.from(byTech.entries()).map(([techId, list]) => {
       const tech = technicians.find(t => t.id === techId);
-      const rate = tech?.hourlyRate || 0;
+      const defaultRate = tech?.hourlyRate || 0;
+      const edit = rateEdits[`${techId}|${week}`];
+      const rate = edit != null && edit !== '' && !isNaN(Number(edit)) ? Number(edit) : defaultRate;
       const sorted = [...list].sort((a, b) => `${a.date}${a.checkInTime}`.localeCompare(`${b.date}${b.checkInTime}`));
       const hours = list.reduce((s, l) => s + (l.hoursWorked || 0), 0);
       const unpaid = list.filter(l => !paidIds.has(l.id));
       const unpaidHours = unpaid.reduce((s, l) => s + (l.hoursWorked || 0), 0);
-      return { techId, name: tech?.name || 'Unknown tech', rate, logs: sorted, hours, unpaid, unpaidHours };
+      return { techId, name: tech?.name || 'Unknown tech', rate, defaultRate, logs: sorted, hours, unpaid, unpaidHours };
     }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [closed, week, technicians, paidIds]);
+  }, [closed, week, technicians, paidIds, rateEdits]);
 
   const projectName = (id: string) => projects.find(p => p.id === id)?.name || id;
 
   const approve = async (row: typeof rows[number]) => {
-    if (!row.rate) { toast({ variant: 'destructive', title: 'No hourly rate', description: `Set ${row.name}'s hourly rate in the Directory first.` }); return; }
+    if (!row.rate) { toast({ variant: 'destructive', title: 'No hourly rate', description: canEditRate ? `Enter a rate for ${row.name}, or set it in the Directory.` : `Set ${row.name}'s hourly rate in the Directory first.` }); return; }
     setBusy(row.techId);
     try {
       // One payout per project, so each project's labor cost stays on that project.
@@ -82,7 +90,8 @@ export function ProjectTimesheets({ technicians, approverName }: { technicians: 
         const amount = +(hours * row.rate).toFixed(2);
         const id = await makeProjectPayoutId();
         const now = new Date().toISOString();
-        const notes = `${projectName(projectId)} · week of ${week}: ${hours}h × $${row.rate}/hr`;
+        const adjusted = row.rate !== row.defaultRate;
+        const notes = `${projectName(projectId)} · week of ${week}: ${hours}h × $${row.rate}/hr${adjusted ? ` (adjusted from $${row.defaultRate}/hr by ${approverName})` : ''}`;
         await addDoc(collection(db, 'projectPayouts'), {
           id, projectId, technicianId: row.techId, technicianName: row.name,
           role: 'crew', payType: 'hourly', payoutSource: 'timesheet',
@@ -128,7 +137,22 @@ export function ProjectTimesheets({ technicians, approverName }: { technicians: 
               </button>
               <div className="flex items-center gap-4 text-[12px] tabular-nums">
                 <span><span className="text-text-muted">Hours </span><span className="font-semibold text-text-primary">{row.hours.toFixed(2)}</span></span>
-                <span><span className="text-text-muted">Rate </span><span className="font-semibold text-text-primary">{row.rate ? `$${row.rate}/hr` : '—'}</span></span>
+                {canEditRate && !allPaid ? (
+                  <label className="flex items-center gap-1">
+                    <span className="text-text-muted">Rate $</span>
+                    <input type="number" inputMode="decimal" min={0} step="0.01" aria-label={`${row.name} hourly rate`}
+                      value={rateEdits[`${row.techId}|${week}`] ?? String(row.defaultRate || '')}
+                      onChange={e => setRateEdits(prev => ({ ...prev, [`${row.techId}|${week}`]: e.target.value }))}
+                      className={cn('h-8 w-20 rounded-md border bg-bg-primary px-2 text-right font-semibold text-text-primary', row.rate !== row.defaultRate ? 'border-accent-gold' : 'border-border-sub')} />
+                    <span className="text-text-muted">/hr</span>
+                    {row.rate !== row.defaultRate && (
+                      <button type="button" className="ml-1 text-[11px] text-text-muted underline" title={`Default $${row.defaultRate}/hr`}
+                        onClick={() => setRateEdits(prev => { const n = { ...prev }; delete n[`${row.techId}|${week}`]; return n; })}>Reset</button>
+                    )}
+                  </label>
+                ) : (
+                  <span><span className="text-text-muted">Rate </span><span className="font-semibold text-text-primary">{row.rate ? `$${row.rate}/hr` : '—'}</span></span>
+                )}
                 <span><span className="text-text-muted">Pay </span><span className="font-semibold text-text-primary">{money(row.hours * row.rate)}</span></span>
               </div>
               {allPaid ? (

@@ -1,4 +1,5 @@
 'use client';
+import { buildDailyRoute } from '@/lib/daily-route';
 import { useSessionState } from '@/hooks/use-session-state';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -583,7 +584,7 @@ export default function TechWeeklyLogPage() {
                     subtitle="Every trip you've recorded — for reimbursement and year-end mileage."
                     actions={<ViewTabs />}
                 />
-                <TripLogsView tripLogs={tripLogs} workOrders={workOrders} mileageUnit={mileageUnit} />
+                <TripLogsView tripLogs={tripLogs} workOrders={workOrders} mileageUnit={mileageUnit} techId={currentTechId} techName={currentUser?.name || ''} />
             </div>
         );
     }
@@ -1648,6 +1649,9 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
 // ── Tech Mileage / Trip Logs ────────────────────────────────────────────────
 function tripStatusLabel(t: TripLog): { label: string; cls: string } {
     const miles = t.miles || t.calculatedMiles || t.manualMiles || 0;
+    if (t.source === 'daily_route') return t.routeEstimated
+        ? { label: 'Estimated', cls: 'text-accent-gold border-accent-gold/30 bg-accent-gold/10' }
+        : { label: 'Recorded', cls: 'text-text-green border-green-border/30 bg-green-dim/10' };
     if (t.source && t.source !== 'manual' && !t.endTime) return { label: 'Missing checkout', cls: 'text-accent-gold border-accent-gold/30 bg-accent-gold/10' };
     if (!miles) return { label: 'Missing mileage', cls: 'text-accent-gold border-accent-gold/30 bg-accent-gold/10' };
     if (!t.startLocation || !t.endLocation) return { label: 'Needs review', cls: 'text-accent-gold border-accent-gold/30 bg-accent-gold/10' };
@@ -1658,24 +1662,64 @@ const TRIP_SOURCE_LABEL: Record<string, string> = {
     manual: 'Manual',
     start_trip: 'Start trip',
     check_in_flow: 'Check-in',
+    check_in: 'Check-in',
+    daily_route: 'Daily route',
 };
 
-function TripLogsView({ tripLogs, workOrders, mileageUnit }: { tripLogs: TripLog[]; workOrders: WorkOrder[]; mileageUnit: 'mi' | 'km' }) {
-    const sorted = [...tripLogs].sort((a, b) => (b.date || b.createdAt || '').localeCompare(a.date || a.createdAt || ''));
-    const totalMiles = sorted.reduce((acc, t) => acc + (t.miles || t.calculatedMiles || t.manualMiles || 0), 0);
+function TripLogsView({ tripLogs, workOrders, mileageUnit, techId, techName }: { tripLogs: TripLog[]; workOrders: WorkOrder[]; mileageUnit: 'mi' | 'km'; techId: string | null; techName: string }) {
+    const { toast } = useToast();
+    // Newest day first; a day's route legs in driving order.
+    const sorted = [...tripLogs].filter(t => !t.voided).sort((a, b) =>
+        (b.date || '').localeCompare(a.date || '')
+        || (a.source === 'daily_route' && b.source === 'daily_route' ? (a.legIndex ?? 0) - (b.legIndex ?? 0) : (b.createdAt || '').localeCompare(a.createdAt || '')));
+    // Days with an automatic route count the route's road miles; that day's
+    // GPS Start Trip records stay listed but aren't added again.
+    const routeDays = new Set(sorted.filter(t => t.source === 'daily_route').map(t => t.date));
+    const counts = (t: TripLog) => !routeDays.has(t.date) || t.source === 'daily_route';
+    const totalMiles = sorted.filter(counts).reduce((acc, t) => acc + (t.miles || t.calculatedMiles || t.manualMiles || 0), 0);
+    const [rebuildDate, setRebuildDate] = useState(() => new Date().toISOString().slice(0, 10));
+    const [rebuilding, setRebuilding] = useState(false);
+    const rebuild = async () => {
+        if (!techId) return;
+        setRebuilding(true);
+        try {
+            const r = await buildDailyRoute(techId, techName, rebuildDate);
+            toast(r.legs
+                ? { title: 'Route updated', description: `${r.legs} leg${r.legs === 1 ? '' : 's'}, ${r.miles} mi${r.estimated ? ' (straight-line estimate — road routing was unavailable)' : ''}.${r.missingHome ? ' Add your home address in Profile to include the drive from and back home.' : ''}` }
+                : { title: 'No stops that day', description: r.missingHome ? 'No job or project check-ins found, and no home address on your profile.' : 'No job or project check-ins found for that day.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not build the route', description: e?.message || 'Try again.' });
+        } finally {
+            setRebuilding(false);
+        }
+    };
+    const rebuildBar = (
+        <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-bg-secondary border border-border-main">
+            <p className="text-[12px] text-text-muted flex-1 min-w-[220px]">Your daily route (home → each job → home) is logged automatically when you check out. Rebuild a day if it changed.</p>
+            <input type="date" value={rebuildDate} onChange={e => setRebuildDate(e.target.value)} aria-label="Day"
+                className="h-9 rounded-md border border-border-sub bg-bg-primary px-2 text-[13px] text-text-primary" />
+            <Button size="sm" variant="outline" onClick={rebuild} disabled={rebuilding || !techId}>
+                {rebuilding && <Loader2 size={13} className="mr-1.5 animate-spin" />} Rebuild route
+            </Button>
+        </div>
+    );
 
     if (sorted.length === 0) {
         return (
-            <EmptyState icon={Car} title="No trips recorded yet" description="Trips you add from a job show up here for year-end mileage." />
+            <div className="space-y-4 max-w-5xl">
+                {rebuildBar}
+                <EmptyState icon={Car} title="No trips recorded yet" description="Your daily route and trips from jobs show up here for year-end mileage." />
+            </div>
         );
     }
 
     return (
         <div className="space-y-4 max-w-5xl">
+            {rebuildBar}
             <div className="flex items-center gap-4 p-3 rounded-xl bg-bg-secondary border border-border-main shadow-sm w-max">
                 <div>
                     <p className="stat-label">Total trips</p>
-                    <p className="text-lg font-mono font-bold text-text-primary leading-none">{sorted.length}</p>
+                    <p className="text-lg font-mono font-bold text-text-primary leading-none">{sorted.filter(counts).length}</p>
                 </div>
                 <div className="border-l border-border-sub pl-4">
                     <p className="stat-label">Total {mileageUnit === 'km' ? 'kilometers' : 'miles'}</p>
@@ -1707,7 +1751,8 @@ function TripLogsView({ tripLogs, workOrders, mileageUnit }: { tripLogs: TripLog
                                     <td className="px-3 py-2.5 text-[12px] text-text-primary max-w-[200px] truncate">{t.jobTitle || job?.title || job?.description || t.purpose || '—'}</td>
                                     <td className="px-3 py-2.5 text-[12px] text-text-muted max-w-[220px] truncate">{[t.startLocation, t.endLocation].filter(Boolean).join(' → ') || '—'}</td>
                                     <td className="px-3 py-2.5 text-[12px] text-text-muted whitespace-nowrap">{[t.startTime, t.endTime].filter(Boolean).join(' – ') || '—'}</td>
-                                    <td className="px-3 py-2.5 text-[12px] font-mono font-semibold text-text-primary whitespace-nowrap">{miles ? formatDistance(miles, mileageUnit) : '—'}</td>
+                                    <td className={cn('px-3 py-2.5 text-[12px] font-mono font-semibold whitespace-nowrap', counts(t) ? 'text-text-primary' : 'text-text-muted line-through')}
+                                        title={counts(t) ? undefined : "Covered by this day's route — not added to the total"}>{miles ? formatDistance(miles, mileageUnit) : '—'}</td>
                                     <td className="px-3 py-2.5 text-[12px] text-text-muted whitespace-nowrap">{TRIP_SOURCE_LABEL[t.source || 'manual'] || 'Manual'}</td>
                                     <td className="px-3 py-2.5 whitespace-nowrap">
                                         <span className={cn('inline-block text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border', st.cls)}>{st.label}</span>

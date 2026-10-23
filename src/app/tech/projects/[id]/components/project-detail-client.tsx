@@ -5,6 +5,7 @@ import { StatusBadge } from '@/components/status-badge';
 import { statusLabel } from '@/lib/status-styles';
 import { useState, useMemo, useEffect } from 'react';
 import type { Project, ProjectDailyLog, Technician, ProjectDocument, Task } from '@/lib/types';
+import { buildDailyRoute } from '@/lib/daily-route';
 import { DocumentViewer, isImageDoc } from '@/components/document-viewer';
 import { TaskAnswers, TaskCompletionDialog, TaskRequirementIcons, taskHasRequirements } from '@/components/task-completion-dialog';
 import Link from 'next/link';
@@ -873,6 +874,8 @@ export function ProjectDetailClient({ project, dailyLogs, technicians, documents
             });
 
             toast({ title: 'Checked out', description: `Your hours were logged.` });
+            // Update today's mileage route (home → stops → home) in the background.
+            if (currentUserId) buildDailyRoute(currentUserId, nameOf(currentUserId), format(new Date(), 'yyyy-MM-dd')).catch(() => {});
             // No PM alert on check-out — the check-in alert and the daily log cover it.
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save failed', description: e.message });

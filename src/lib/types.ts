@@ -910,7 +910,11 @@ export type TripLog = {
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
   // Extended trip tracking (optional; older records omit these)
-  source?: 'manual' | 'start_trip' | 'check_in_flow';
+  source?: 'manual' | 'start_trip' | 'check_in_flow' | 'check_in' | 'daily_route';
+  /** Daily route legs (lib/daily-route): order in the day, and voided when a rebuild drops it. */
+  legIndex?: number;
+  voided?: boolean;
+  routeEstimated?: boolean;
   startTime?: string;
   endTime?: string;
   startLat?: number | null;

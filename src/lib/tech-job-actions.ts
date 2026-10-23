@@ -1,3 +1,4 @@
+import { buildDailyRoute } from './daily-route';
 import { format } from 'date-fns';
 import {
   addDoc, arrayUnion, collection, doc, getDoc, getDocs, query, updateDoc, where,
@@ -271,6 +272,16 @@ async function performHelperAction(ref: ReturnType<typeof doc>, live: Job, actio
 
 /** Run one workflow action on a job. Throws TechActionError with a readable message. */
 export async function performTechJobAction(job: Job, action: TechJobAction, ctx: TechActionContext): Promise<TechActionResult> {
+  const result = await runTechJobAction(job, action, ctx);
+  // Leaving a site: rebuild today's mileage route (home → stops → home) in the
+  // background — the last check-out of the day leaves the whole day logged.
+  if (action === 'checkOut' || action === 'complete') {
+    buildDailyRoute(ctx.techId, ctx.techName, format(new Date(), 'yyyy-MM-dd')).catch(e => console.warn('[route] build failed', e));
+  }
+  return result;
+}
+
+async function runTechJobAction(job: Job, action: TechJobAction, ctx: TechActionContext): Promise<TechActionResult> {
   const { ref, data: live } = await liveJob(job);
   if (isHelperOn(live, ctx.techId)) return performHelperAction(ref, live, action, ctx);
   const allowed: Record<TechJobAction, boolean> = {

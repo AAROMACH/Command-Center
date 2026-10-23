@@ -1,4 +1,5 @@
 'use client';
+import { projectLead } from '@/components/project-views';
 import { useSessionState } from '@/hooks/use-session-state';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -181,8 +182,7 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians
         <div className="space-y-6">
             {projects.map(project => {
                 const progress = getProjectProgress(project);
-                const leadMember = project.team?.find(m => m.role === 'Project Lead');
-                const leadTech = leadMember ? technicians.find(t => t.id === leadMember.techId) : null;
+                const leadTech = projectLead(project, technicians);
 
                 return (
                     <Card key={project.id} className="rounded-xl bg-bg-secondary border-border-main overflow-hidden shadow-sm text-left">
@@ -260,8 +260,6 @@ function ProjectsList({ projects, getProjectProgress, formatDateStr, technicians
                                             </Avatar>
                                             <span className="text-[13px] font-medium text-text-primary text-left">{leadTech.name}</span>
                                         </div>
-                                    ) : leadMember ? (
-                                        <Badge variant="outline" className="text-[10px] uppercase tracking-wider bg-bg-tertiary">Assigned</Badge>
                                     ) : (
                                         <Badge variant="outline" className="text-[10px] uppercase tracking-wider bg-bg-tertiary">Not assigned yet</Badge>
                                     )}

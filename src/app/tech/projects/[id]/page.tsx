@@ -69,7 +69,9 @@ export default function TechProjectDetailPage() {
     return notFound();
   }
 
-  const isPM = canManageProjects(user);
+  // PMs (the role), and whoever is this project's Project Manager on its team,
+  // get the Manage view — edit project, team, phases — right here.
+  const isPM = canManageProjects(user) || isAssignedManager(project, user?.id);
   const onCrew = isOnProject(project, user?.id);
   const switcher = isPM && onCrew && (
     <div className="flex justify-end mb-3">

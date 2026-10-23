@@ -24,13 +24,14 @@ import {
     AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ProjectTimesheets } from './components/project-timesheets';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft, Receipt, Search, ChevronDown, ChevronRight, DollarSign, CheckCircle, Clock, X, Download, Plus, SlidersHorizontal, MergeIcon, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isWithinInterval } from 'date-fns';
 import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder, PayrollDispute, FinancialRecord } from '@/lib/types';
-import { isClient, isSuperAdmin } from '@/lib/permissions';
+import { getSubroles, isClient, isSuperAdmin } from '@/lib/permissions';
 import { mergeJobs, parseLocalDate } from '@/lib/jobs';
 import { effectiveJobPay, computeWeeklyLogSettlement } from '@/lib/payroll';
 import { downloadPaystub } from '@/lib/paystub';
@@ -812,6 +813,7 @@ export default function PayrollAuditPage() {
                         { value: 'weekly', label: 'Weekly', count: filteredLogs.length },
                         { value: 'history', label: 'Paystub history', short: 'Paystubs', count: approvedLogsByTech.length },
                         { value: 'adjustments', label: 'Adjustments', count: adjustments.length + payrollDisputes.filter(d => d.status === 'open').length },
+                        { value: 'projects', label: 'Project timesheets', short: 'Projects', count: 0 },
                     ].map(t => (
                         <TabsTrigger key={t.value} value={t.value} className="tab-underline">
                             {'short' in t ? <><span className="sm:hidden">{t.short}</span><span className="hidden sm:inline">{t.label}</span></> : t.label}
@@ -1097,6 +1099,11 @@ export default function PayrollAuditPage() {
                     <ListPager pager={adjPager} noun="adjustments" />
                 </TabsContent>
 
+                {/* ── Project timesheets: project hours by week, paid on that week's log ── */}
+                <TabsContent value="projects" className="m-0">
+                    <ProjectTimesheets technicians={technicians} approverName={currentUser?.name || 'Payroll'}
+                        canEditRate={isSuperAdmin(currentUser) || getSubroles(currentUser).includes('payroll_admin')} />
+                </TabsContent>
             </Tabs>
 
             {/* Add Adjustment Dialog */}

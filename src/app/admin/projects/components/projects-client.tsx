@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn, formatCityState } from '@/lib/utils';
 import { useMemo, useState, useEffect } from 'react';
+import { ProjectCard, ProjectTable } from '@/components/project-views';
 
 type SortOption = 'name' | 'date' | 'progress' | 'client';
 
@@ -132,7 +133,7 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {gridPager.items.map(project => (
-                    <ProjectCard key={project.id} project={project} technicians={technicians} />
+                    <ProjectCard key={project.id} project={project} technicians={technicians} href={`/admin/projects/${project.id}`} admin />
                 ))}
                 <div className="col-span-full"><ListPager pager={gridPager} noun="projects" /></div>
             </div>
@@ -167,7 +168,7 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {group.projects.map(project => (
-                                <ProjectCard key={project.id} project={project} technicians={technicians} />
+                                <ProjectCard key={project.id} project={project} technicians={technicians} href={`/admin/projects/${project.id}`} admin />
                             ))}
                         </div>
                     </div>
@@ -178,95 +179,8 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
 
     return (
         <div className="table-wrap">
-            <table className="tbl">
-                <thead>
-                    <tr className="bg-bg-tertiary">
-                        <th className="text-center w-[160px] pl-0">Status & ID</th>
-                        <th className="text-left pl-0">Project Identification</th>
-                        <th className="text-center">Project Lead</th>
-                        <th className="text-left pl-0">Location</th>
-                        <th className="text-left pl-0">Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {paginatedProjects.map((project) => {
-                        const progress = getProgress(project);
-                        const progressColor = progress === 100 ? 'green' : progress > 5 ? 'gold' : 'red';
-                        const completedTasks = getCompletedTasksCount(project);
-                        const totalTasks = getTotalTasksCount(project);
-                        const team = project.team || [];
-                        const leadMember = team.find(m => m.role === 'Project Lead');
-                        const lead = leadMember ? technicians.find(t => t.id === leadMember.techId) : null;
-
-                        return (
-                            <React.Fragment key={project.id}>
-                                <tr onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer group !border-b-0">
-                                    <td className="pl-0 pt-4 pb-2">
-                                        <div className="flex flex-col items-center justify-center gap-1.5">
-                                            <div className="cell-id !text-[10px] font-mono font-bold !mt-0 !text-center">{(project.id || '').toUpperCase()}</div>
-                                            <Badge variant={project.status} className="capitalize text-[10px] h-4 px-1.5 tracking-wider">{project.status}</Badge>
-                                        </div>
-                                    </td>
-                                    <td className="text-left pl-0 pt-4 pb-2">
-                                        <div className="flex flex-col min-w-0">
-                                          <div className="text-xs font-bold text-text-primary tracking-wide leading-tight group-hover:text-brand-red transition-colors">{project.name}</div>
-                                          <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider mt-1">{project.client}</div>
-                                        </div>
-                                    </td>
-                                    <td className="pt-4 pb-2">
-                                        <div className="flex flex-col items-center justify-center">
-                                            {lead ? (
-                                                <div className="flex items-center gap-3">
-                                                    <Avatar className="h-8 w-8 border border-border-sub shadow-sm">
-                                                        <AvatarImage src={lead.avatarUrl} />
-                                                        <AvatarFallback className="text-[10px]">{lead.name ? lead.name.charAt(0) : 'U'}</AvatarFallback>
-                                                    </Avatar>
-                                                    <span className="text-[10px] font-bold text-text-primary">{lead.name}</span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider">Unallocated</span>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="pt-4 pb-2 pl-0">
-                                        <div className="flex items-center justify-start gap-2 text-[10px] text-text-secondary font-bold">
-                                            <MapPin size={11} className="text-brand-red shrink-0" />
-                                            <span className="whitespace-normal text-left">{formatCityState(project.location)}</span>
-                                        </div>
-                                    </td>
-                                    <td className="pt-4 pb-2 pl-0">
-                                        <div className="flex flex-col items-start justify-center gap-1.5">
-                                            <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono font-bold">
-                                                <Calendar size={13} className="text-text-muted shrink-0" />
-                                                <span>{formatDateDisplay(project.startDate)}</span>
-                                            </div>
-                                            {project.startTime && (
-                                                <div className="flex items-center gap-2 text-[10px] text-text-secondary font-mono">
-                                                    <Clock size={13} className="text-text-muted shrink-0" />
-                                                    <span>{project.startTime}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr onClick={() => router.push(`/admin/projects/${project.id}`)} className="cursor-pointer group">
-                                    <td colSpan={5} className="pl-0 pt-0 pb-3">
-                                        <div className="flex items-center gap-3 pl-0 pr-4">
-                                            <div className="progress-wrap flex-1 !mb-0">
-                                                <div className="progress-track !h-[5px]">
-                                                    <div className={cn("progress-fill flashy", progressColor)} style={{ width: `${progress}%` }} />
-                                                </div>
-                                                <div className={cn("progress-pct font-mono font-bold ml-2 shrink-0", `text-${progressColor}`)}>{Math.round(progress)}%</div>
-                                            </div>
-                                            <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider shrink-0">{completedTasks}/{totalTasks} targets</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </React.Fragment>
-                        );
-                    })}
-                </tbody>
-            </table>
+            {/* Same table as the tech portal, plus admin details (components/project-views). */}
+            <ProjectTable projects={paginatedProjects} technicians={technicians} hrefFor={p => `/admin/projects/${p.id}`} admin />
 
             {projects.length > 0 && (
               <div className="bg-bg-tertiary/50 px-4 py-3 flex items-center justify-between border-t border-border-sub">
@@ -302,83 +216,5 @@ export function ProjectsClient({ projects, technicians, sortBy, statusLabel = 'A
               </div>
             )}
         </div>
-    );
-}
-
-function ProjectCard({ project, technicians }: { project: Project; technicians: Technician[] }) {
-    const router = useRouter();
-    const progress = getProgress(project);
-    const progressColor = progress === 100 ? 'green' : progress > 5 ? 'gold' : 'red';
-    
-    const team = project.team || [];
-    const leadMember = team.find(m => m.role === 'Project Lead');
-    const lead = leadMember ? technicians.find(t => t.id === leadMember.techId) : null;
-
-    const formatDateDisplay = (dateStr: string) => {
-        if (!dateStr) return 'TBD';
-        try {
-          const parts = dateStr.split(/[-/]/);
-          let d;
-          if (parts[0].length === 4) { d = new Date(dateStr); } 
-          else { 
-            const [m, day, y] = parts;
-            d = new Date(`${y}-${m}-${day}T12:00:00`);
-          }
-          return format(d, 'MM-dd-yyyy');
-        } catch (e) {
-          return dateStr;
-        }
-    };
-
-    return (
-        <Card 
-            className="bg-bg-secondary border-border-main hover:border-text-muted transition-all cursor-pointer shadow-sm group"
-            onClick={() => router.push(`/admin/projects/${project.id}`)}
-        >
-            <CardContent className="p-4 space-y-4">
-                <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-3">
-                        <div className="flex flex-col items-center">
-                            <span className="font-mono text-[10px] text-brand-red font-bold">{(project.id || '').toUpperCase()}</span>
-                            <Badge variant={project.status} className="h-4 uppercase text-[10px] tracking-wider mt-1">
-                                {project.status}
-                            </Badge>
-                        </div>
-                        <div className="flex flex-col min-w-0 text-left">
-                            <p className="text-xs font-bold text-text-primary tracking-wide leading-tight group-hover:text-brand-red transition-colors whitespace-normal">{project.name}</p>
-                            <p className="text-[10px] text-text-muted uppercase font-bold tracking-tight mt-0.5">{project.client}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="space-y-3">
-                    <div className="progress-wrap w-full">
-                        <div className="progress-track !h-[4px]"><div className={cn("progress-fill flashy", progressColor)} style={{ width: `${progress}%` }}></div></div>
-                        <div className={cn("progress-pct font-mono font-bold ml-2", `text-${progressColor}`)}>{Math.round(progress)}%</div>
-                    </div>
-                    
-                    <div className="pt-2 border-t border-border-sub space-y-2 flex flex-col items-start text-left">
-                        <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight">
-                            <Calendar size={12} className="text-brand-red" />
-                            Start: {formatDateDisplay(project.startDate)}
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] text-text-secondary uppercase font-bold tracking-tight text-left">
-                            <MapPin size={12} className="text-brand-red shrink-0" />
-                            <span className="whitespace-normal">{formatCityState(project.location)}</span>
-                        </div>
-                        
-                        {lead && (
-                            <div className="flex items-center gap-2 pt-1">
-                                <Avatar className="h-5 w-5 border border-border-sub">
-                                    <AvatarImage src={lead.avatarUrl} />
-                                    <AvatarFallback className="text-[10px]">{lead.name ? lead.name.charAt(0) : 'U'}</AvatarFallback>
-                                </Avatar>
-                                <span className="text-[11px] font-bold text-text-primary">Lead: {lead.name}</span>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
     );
 }

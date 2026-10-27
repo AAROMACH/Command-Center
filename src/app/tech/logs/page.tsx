@@ -370,6 +370,30 @@ export default function TechWeeklyLogPage() {
         }
     };
 
+    // "Removed as helper": confirm it (the entry leaves the log) or say you
+    // worked it (goes to payroll as a dispute; unpaid until they decide).
+    const [helperBusy, setHelperBusy] = useState<string | null>(null);
+    const handleHelperRemoval = async (itemId: string, answer: 'removed' | 'worked') => {
+        if (!activeLog || isLocked) return;
+        let notes = '';
+        if (answer === 'worked') {
+            const n = window.prompt('Tell payroll what you did on this job (optional):');
+            if (n === null) return;
+            notes = n;
+        }
+        setHelperBusy(itemId);
+        try {
+            await weeklyLogAction('answerHelperRemoval', { logId: activeLog.id, itemId, answer, notes });
+            toast(answer === 'removed'
+                ? { title: 'Removed from your log', description: 'Thanks for confirming.' }
+                : { title: 'Sent to payroll', description: "They'll decide whether it's paid. You'll get a notification." });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not save', description: e.message });
+        } finally {
+            setHelperBusy(null);
+        }
+    };
+
     const handleDispute = async (itemId: string, kind: DisputeKind, notes?: string) => {
         if (!activeLog || isLocked) return;
         const reason = TECH_DISPUTE_OPTIONS.find(o => o.kind === kind)?.label || DISPUTE_CARDS[kind].title;
@@ -906,6 +930,8 @@ export default function TechWeeklyLogPage() {
                 )}
                 <div className="space-y-3 text-left">
                     {[...(activeLog.items || [])]
+                        // Removed-as-helper entries get their own section at the bottom.
+                        .filter(i => !i.helperRemoved)
                         .sort((a, b) => {
                             const ja = allJobs.find(w => w.id === a.workOrderId);
                             const jb = allJobs.find(w => w.id === b.workOrderId);
@@ -980,6 +1006,48 @@ export default function TechWeeklyLogPage() {
                             </CardContent>
                         </Card>
                     ))}
+                    {(activeLog.items || []).some(i => i.helperRemoved) && (
+                        <section className="space-y-2 pt-2">
+                            <div className="flex items-center gap-2 px-1 border-b border-border-sub pb-2">
+                                <h3 className="section-label text-left">Removed as helper</h3>
+                                <span className="text-[12px] text-text-muted">Not paid unless payroll confirms you worked it</span>
+                            </div>
+                            {(activeLog.items || []).filter(i => i.helperRemoved).map(item => {
+                                const job = allJobs.find(w => w.id === item.workOrderId);
+                                const woLabel = job ? displayWorkOrderNumber(job) : String(item.workOrderId || '').toUpperCase();
+                                const disputed = item.confirmationStatus === 'disputed';
+                                let when = '';
+                                try { when = format(new Date(item.helperRemoved!.at), 'MMM d, h:mm a'); } catch { /* bad date */ }
+                                return (
+                                    <div key={item.id} className="p-3 rounded-xl border border-dashed border-accent-gold/40 bg-accent-gold/5 text-left space-y-2">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="font-mono text-[12px] font-semibold text-brand-red">{woLabel}</span>
+                                            <span className="text-[13px] font-semibold text-text-primary">{job?.title || job?.description || 'Helper job'}</span>
+                                        </div>
+                                        <p className="text-[12px] text-text-muted">
+                                            {item.helperRemoved!.by || 'An admin'} removed you as a helper{when ? ` on ${when}` : ''}.
+                                        </p>
+                                        {item.resolution ? (
+                                            <p className="text-[12px] font-semibold text-text-primary">{decisionText('removed_helper', item.resolution)}</p>
+                                        ) : disputed ? (
+                                            <p className="text-[12px] text-text-secondary">{isLocked && !item.disputeNotes && item.disputeReason?.startsWith('Removed as helper') ? 'Payroll will decide whether this is paid.' : 'You said you worked this job — waiting for payroll to decide.'}</p>
+                                        ) : isLocked ? (
+                                            <p className="text-[12px] text-text-muted">This log is submitted — payroll will review it.</p>
+                                        ) : (
+                                            <div className="flex flex-wrap gap-2">
+                                                <Button size="sm" variant="outline" disabled={helperBusy === item.id} onClick={() => handleHelperRemoval(item.id, 'removed')}>
+                                                    Yes, I was removed
+                                                </Button>
+                                                <Button size="sm" disabled={helperBusy === item.id} onClick={() => handleHelperRemoval(item.id, 'worked')}>
+                                                    {helperBusy === item.id && <Loader2 size={13} className="mr-1.5 animate-spin" />} I worked this job
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </section>
+                    )}
                     {/* Flagged jobs payroll took off this log (duplicate copy removed,
                         or sent back to Dispatch) — the line is gone, so show the answer. */}
                     {((activeLog as WeeklyLog & { history?: any[] }).history || [])

@@ -1,4 +1,5 @@
 'use client';
+import { flagRemovedHelperEntries } from '@/lib/helper-progress';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { helperProgressOf } from '@/lib/helper-progress';
@@ -243,7 +244,7 @@ export default function AssignmentDetailPage() {
   const handleRemoveHelper = async (id: string) => {
     if (!assignment) return;
     const ht = allTechs.find(t => t.id === id);
-    if (!confirm(`Remove ${ht?.name || 'this helper'} from the job? Their weekly log entry stays — remove it in Payroll if needed.`)) return;
+    if (!confirm(`Remove ${ht?.name || 'this helper'} from the job? Their weekly log entry moves to a "Removed as helper" section and won't be paid unless they show they worked it.`)) return;
     try {
       await updateDoc(doc(db, 'assignments', assignment.id), {
         additionalTechnicianIds: arrayRemove(id),
@@ -253,7 +254,11 @@ export default function AssignmentDetailPage() {
           details: `${ht?.name || id} removed from team`, user: 'Admin' }),
       });
       setAssignment(p => p ? { ...p, additionalTechnicianIds: (p.additionalTechnicianIds || []).filter(x => x !== id) } : p);
-      toast({ title: 'Helper Removed' });
+      const { flagged, approved } = await flagRemovedHelperEntries(assignment.id, id, currentUser?.name || 'Admin');
+      toast({ title: 'Helper Removed', description: [
+        flagged ? `Their log entry is marked "Removed as helper" for them to confirm.` : '',
+        approved ? `${approved} entry is on an already-approved week — adjust it in Payroll.` : '',
+      ].filter(Boolean).join(' ') || undefined });
     } catch (e: any) { toast({ variant: 'destructive', title: 'Failed', description: e.message }); }
   };
 

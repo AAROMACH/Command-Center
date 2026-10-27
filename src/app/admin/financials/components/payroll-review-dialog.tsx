@@ -817,7 +817,9 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         const resolution = makeResolution(decision, note);
         setDecisionBusy(true);
         try {
-            const removes = decision === 'yes' && (kind === 'duplicate' || kind === 'not_mine');
+            const removes = (decision === 'yes' && (kind === 'duplicate' || kind === 'not_mine'))
+                // Removed helper who didn't work it: the entry leaves the log.
+                || (decision === 'no' && kind === 'removed_helper');
             if (removes) {
                 // Only THIS line leaves the log. For a duplicate the job record
                 // is never touched — the other copy stays and is paid.
@@ -830,7 +832,8 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                 // Keep it and pay (tech was wrong), or fixed (tech was right):
                 // either way the job is confirmed and counts toward pay.
                 const items = (baseItems || localLog.items || []).map(i => i.id === item.id
-                    ? { ...i, confirmationStatus: 'confirmed' as const, isAdminReviewed: true, resolution }
+                    // helperRemoved clears too: a removed helper payroll says worked it is paid.
+                    ? { ...i, confirmationStatus: 'confirmed' as const, isAdminReviewed: true, resolution, helperRemoved: null }
                     : i);
                 await updateDoc(doc(db, 'weeklyLogs', localLog.id), { items: sanitize(items) });
                 setLocalLog({ ...localLog, items });

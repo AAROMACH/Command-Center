@@ -283,6 +283,24 @@ export const disputeItem = (techId: string, logId: string, itemId: string, reaso
   });
 
 /**
+ * The tech answers a "Removed as helper" entry: 'removed' takes it off their
+ * log; 'worked' sends it to payroll as a removed_helper dispute (still unpaid
+ * until payroll says yes).
+ */
+export const answerHelperRemoval = (techId: string, logId: string, itemId: string, answer: unknown, notes: unknown) =>
+  withOwnLog(logId, techId, { draftOnly: true }, log => {
+    const item = findItem(log, itemId);
+    if (!item.helperRemoved) throw new WeeklyLogError('This job was not removed.');
+    if (answer === 'removed') return { items: (log.items || []).filter(i => i.id !== itemId) };
+    if (answer !== 'worked') throw new WeeklyLogError('Invalid answer.');
+    return {
+      items: (log.items || []).map(i => i.id === itemId
+        ? { ...i, confirmationStatus: 'disputed', disputeKind: 'removed_helper', disputeReason: 'I worked this job as a helper', disputeNotes: str(notes, 2000) || null, resolution: null }
+        : i),
+    };
+  });
+
+/**
  * A tech adds a reimbursement to a job on their Draft. Always 'pending' —
  * payroll approves or rejects it — and attached to a job actually on the log.
  */

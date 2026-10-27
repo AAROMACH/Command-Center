@@ -591,7 +591,7 @@ export type AssignmentTimeLog = {
 };
 
 /** The four things a tech can flag about a job — one yes/no card each (lib/disputes.ts). */
-export type DisputeKind = 'missing' | 'duplicate' | 'not_mine' | 'pay_or_date';
+export type DisputeKind = 'missing' | 'duplicate' | 'not_mine' | 'pay_or_date' | 'removed_helper';
 
 /** Payroll's answer to a flagged job's yes/no question. `note` is shown to the tech. */
 export type DisputeResolution = {
@@ -623,6 +623,11 @@ export type WeeklyLogItem = {
   // entry). Helper entries start at $0 for payroll to price separately.
   isHelper?: boolean;
   helperLeadTechId?: string;
+  /** Set when an admin took this tech off the job as a helper. The entry
+   *  isn't paid and sits in its own section of the log until the tech confirms
+   *  (it's removed) or says they worked it (a 'removed_helper' dispute payroll
+   *  decides; Yes clears this and pays it). */
+  helperRemoved?: { at: string; by: string } | null;
   /** The job's `source` when filed ('Imported' = Field Nation), so pay can
    *  be settled even where the job doc can't be read. */
   jobSource?: string;

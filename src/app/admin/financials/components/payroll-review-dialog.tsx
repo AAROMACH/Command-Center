@@ -504,7 +504,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                 `${by} marked ${technician?.name ?? localLog.techId}'s week of ${localLog.weekOf} as ${paid ? 'PAID' : 'not paid'}.`).catch(() => {});
             if (paid && localLog.techId) NotificationService.notify(localLog.techId, 'Weekly log paid',
                 `Your week of ${shortWeek(localLog.weekOf)} has been paid.`, { id: localLog.id, type: 'weeklyLog' }, { portal: 'tech' }).catch(() => {});
-            toast({ title: paid ? 'Marked as paid' : 'Paid mark removed' });
+            toast({ title: paid ? 'Paid out' : 'Pay out undone' });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Could not update', description: e.message });
         } finally {
@@ -515,7 +515,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     const handleReopenToSubmitted = async () => {
         if (!localLog || reopening) return;
         if ((localLog as any).paid) {
-            toast({ variant: 'destructive', title: 'This log is paid', description: 'Undo "Paid" first, then reopen it.' });
+            toast({ variant: 'destructive', title: 'This log is paid out', description: 'Undo the pay out first, then unapprove it.' });
             return;
         }
         if (!canOverrideDispute) {
@@ -1821,21 +1821,30 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                     <DialogFooter className="px-4 sm:px-8 py-3 sm:py-4 border-t border-border-sub bg-bg-secondary flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 shrink-0">
                         {localLog && (localLog.status === 'Approved' || (localLog as any).status === 'Paid') ? (
-                            // Approved = math checked, pay final. Paid = actually paid out.
+                            // Approved = math checked, pay final. Pay out = money has gone out.
                             <div className="w-full flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                                 <p className="text-[12px] text-text-muted flex-1">
                                     {localLog.paid
-                                        ? <>Paid{localLog.paidAt ? ` ${format(new Date(localLog.paidAt), 'MMM d, yyyy')}` : ''}{localLog.paidByName ? ` by ${localLog.paidByName}` : ''}.</>
-                                        : 'Approved — the math is checked. Mark it paid once the money has gone out.'}
+                                        ? <>Paid out{localLog.paidAt ? ` ${format(new Date(localLog.paidAt), 'MMM d, yyyy')}` : ''}{localLog.paidByName ? ` by ${localLog.paidByName}` : ''}.</>
+                                        : 'Approved — pay it out once the money has gone out.'}
                                 </p>
-                                {canApproveLog && (localLog.paid ? (
-                                    <Button variant="ghost" className="h-10 px-4 text-text-muted" disabled={paying} onClick={() => setPaid(false)}>Undo paid</Button>
+                                <Button variant="outline" className="h-10 px-6 order-last sm:order-none" onClick={() => setIsOpen(false)}>Close</Button>
+                                {localLog.paid ? (
+                                    canApproveLog && <Button variant="ghost" className="h-10 px-4 text-text-muted" disabled={paying} onClick={() => setPaid(false)}>Undo pay out</Button>
                                 ) : (
-                                    <Button className="h-10 px-6 bg-brand-red hover:bg-brand-red-hover" disabled={paying} onClick={() => setPaid(true)}>
-                                        {paying ? <Loader2 size={16} className="mr-2 animate-spin" /> : <DollarSign size={16} className="mr-2" />} Mark as paid
-                                    </Button>
-                                ))}
-                                <Button variant="outline" className="h-10 px-6" onClick={() => setIsOpen(false)}>Close</Button>
+                                    <>
+                                        {canOverrideDispute && (
+                                            <Button variant="outline" className="h-10 px-6" disabled={reopening} onClick={() => { if (confirm('Unapprove this log? It goes back to Submitted so the pay can be edited. Entered figures are kept.')) handleReopenToSubmitted(); }}>
+                                                {reopening ? <Loader2 size={16} className="mr-2 animate-spin" /> : <X size={16} className="mr-2" />} Unapprove
+                                            </Button>
+                                        )}
+                                        {canApproveLog && (
+                                            <Button className="h-10 px-6 sm:px-8 bg-text-green hover:bg-text-green/90 text-white" disabled={paying} onClick={() => setPaid(true)}>
+                                                {paying ? <Loader2 size={16} className="mr-2 animate-spin" /> : <DollarSign size={16} className="mr-2" />} Pay out
+                                            </Button>
+                                        )}
+                                    </>
+                                )}
                             </div>
                         ) : (canApproveLog || canReturnLog) ? (
                             <>
@@ -1860,6 +1869,12 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         {undecidedCount > 0
                                             ? `Decide the ${undecidedCount} flagged job${undecidedCount === 1 ? '' : 's'} first`
                                             : isManifestFullyAudited ? 'Approve log' : `Verify ${totalJobsCount - auditCompleteCount} more to approve`}
+                                    </Button>
+                                )}
+                                {canApproveLog && (
+                                    // Turns green once the log is approved.
+                                    <Button disabled title="Approve the log first" className="w-full sm:w-auto order-1 sm:order-5 h-10 px-6 bg-bg-tertiary text-text-muted border border-border-sub cursor-not-allowed">
+                                        <DollarSign size={16} className="mr-2"/> Pay out
                                     </Button>
                                 )}
                             </>

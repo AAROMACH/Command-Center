@@ -1,4 +1,5 @@
 'use client';
+import { logDisplayStatus } from '@/lib/weekly-log-core';
 import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
@@ -1417,7 +1418,7 @@ export default function ActivityAuditPage() {
                                                                         <TableRow key={log.id} className="border-border-sub hover:bg-bg-tertiary transition-colors text-left">
                                                                             <TableCell className="font-bold text-xs text-left pl-6 text-left">Week of {log.weekOf}</TableCell>
                                                                             <TableCell className="text-left text-left">
-                                                                                <StatusBadge kind="log" value={log.status} />
+                                                                                <StatusBadge kind="log" value={logDisplayStatus(log)} />
                                                                             </TableCell>
                                                                             <TableCell className="text-right pr-6 font-mono font-bold text-text-primary">${log.amount.toFixed(2)}</TableCell>
                                                                         </TableRow>

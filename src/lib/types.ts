@@ -701,6 +701,10 @@ export type WeeklyLog = {
   techId: string;
   weekOf: string;
   status: 'Draft' | 'Submitted' | 'Approved' | 'Rejected';
+  /** Paid out (after approval). Shown as "Paid" (logDisplayStatus); reopening needs it cleared first. */
+  paid?: boolean;
+  paidAt?: string | null;
+  paidByName?: string | null;
   items: WeeklyLogItem[];
   reimbursements: FinancialRecord[];
   missingAssignmentReports?: MissingAssignmentReport[];

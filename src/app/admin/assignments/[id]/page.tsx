@@ -1,4 +1,5 @@
 'use client';
+import { logDisplayStatus } from '@/lib/weekly-log-core';
 import { flagRemovedHelperEntries } from '@/lib/helper-progress';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
@@ -788,7 +789,7 @@ export default function AssignmentDetailPage() {
                   ${jobPayIn(log).toFixed(2)}
                 </p>
                 <p className="text-[10px] text-text-muted">This job&apos;s pay</p>
-                <StatusBadge kind="log" value={log.status} className="mt-1" />
+                <StatusBadge kind="log" value={logDisplayStatus(log)} className="mt-1" />
               </div>
             ))}
           </div>

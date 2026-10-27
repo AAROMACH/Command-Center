@@ -1,5 +1,6 @@
 
 'use client';
+import { logDisplayStatus } from '@/lib/weekly-log-core';
 
 import { useState, useEffect, useMemo } from 'react';
 import {
@@ -816,7 +817,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
                             <p className="text-[12px] text-text-muted mb-1">Pay for this job</p>
                             <p className="text-2xl font-mono font-bold text-text-green">{hidePay ? 'Restricted' : adminData.jobItem ? `$${effectiveJobPay(adminData.jobItem, mission).toFixed(2)}` : '—'}</p>
                           </div>
-                          <StatusBadge kind="log" value={adminData.weeklyLog.status} label={`Log ${statusLabelText(adminData.weeklyLog.status).toLowerCase()}`} />
+                          <StatusBadge kind="log" value={logDisplayStatus(adminData.weeklyLog)} label={`Log ${statusLabelText(logDisplayStatus(adminData.weeklyLog)).toLowerCase()}`} />
                         </div>
                         <div className="p-4">
                           <p className="text-[12px] text-text-muted">Weekly log: <span className="font-medium text-text-primary">week of {adminData.weeklyLog.weekOf}</span></p>

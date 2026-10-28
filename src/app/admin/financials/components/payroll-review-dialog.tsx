@@ -1682,7 +1682,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                                             return (
                                                 <div key={item.id} className={cn(
-                                                    "p-3 sm:p-4 rounded-xl border border-l-4 transition-all flex flex-col gap-3 group shadow-sm",
+                                                    "p-3 sm:p-4 rounded-xl border border-l-4 transition-all flex flex-col gap-3 group shadow-sm min-w-0 max-w-full overflow-hidden",
                                                     isAudited ? "bg-bg-primary border-green-border/40 border-l-[color:var(--text-green)]" : "bg-bg-secondary border-border-sub border-l-[color:var(--accent-gold)] hover:border-text-muted"
                                                 )}>
                                                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:min-h-[3rem] sm:items-center cursor-pointer" onClick={() => wo && handleOpenJobDetail(wo)}>
@@ -1765,15 +1765,16 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                 </div>
 
                                                 {jobReimbursements.length > 0 && (
-                                                    <div className="flex flex-col gap-1.5 pl-2 sm:pl-[52px]" onClick={e => e.stopPropagation()}>
+                                                    <div className="flex flex-col gap-1.5 pl-2 sm:pl-[52px] min-w-0" onClick={e => e.stopPropagation()}>
                                                         {jobReimbursements.map(r => (
                                                             <div key={r.id} className={cn(
-                                                                "flex items-center justify-between gap-3 p-2 rounded-md border text-left",
+                                                                "flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 p-2 rounded-md border text-left min-w-0",
                                                                 r.status === 'pending' ? "bg-accent-gold/5 border-accent-gold/30" : r.status === 'approved' ? "bg-text-green/5 border-text-green/20" : "bg-brand-red/5 border-brand-red/20"
                                                             )}>
-                                                                <div className="min-w-0 flex items-center gap-2">
-                                                                    <Receipt size={11} className="shrink-0 text-text-muted" />
-                                                                    <p className="text-[12px] font-medium text-text-primary truncate">{r.description}</p>
+                                                                <div className="min-w-0 flex-1 flex items-start gap-2">
+                                                                    <Receipt size={11} className="shrink-0 text-text-muted mt-0.5" />
+                                                                    {/* Wraps instead of one long line — long descriptions used to push the card off screen on phones. */}
+                                                                    <p className="min-w-0 text-[12px] font-medium text-text-primary break-words [overflow-wrap:anywhere]">{r.description}</p>
                                                                     <span className="text-[12px] font-mono font-semibold text-accent-gold shrink-0">${r.amount.toFixed(2)}</span>
                                                                 </div>
                                                                 {r.status === 'pending' ? (

@@ -14,7 +14,11 @@ const ScrollArea = React.forwardRef<
     className={cn("relative overflow-hidden", className)}
     {...props}
   >
-    <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit]">
+    {/* Radix wraps content in a display:table box that grows past the
+        viewport when anything inside can't shrink (a long name, a wide row)
+        — on phones that pushed cards off screen with no way to scroll to
+        them. Block keeps content to the viewport's width. */}
+    <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit] [&>div]:!block [&>div]:!min-w-0">
       {children}
     </ScrollAreaPrimitive.Viewport>
     <ScrollBar />

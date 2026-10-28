@@ -9,6 +9,7 @@ import {
   FileText,
   Image as ImageIcon,
   Download,
+  Eye,
   Trash2,
   Milestone,
   Plus,
@@ -27,6 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { NotificationService } from '@/lib/notification-service';
 import { uploadFile } from '@/lib/upload';
+import { DocumentViewer } from '@/components/document-viewer';
 import { collection, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
@@ -153,9 +155,11 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
         }
     };
 
+    // Opens the file in the in-app viewer (it has its own Download button),
+    // so documents can be read without saving them to the device.
+    const [viewing, setViewing] = useState<ProjectDocument | null>(null);
     const initiateDownload = (doc: ProjectDocument) => {
-        setPendingDownload(doc);
-        setIsConfirmDownloadOpen(true);
+        setViewing(doc);
     };
 
     const executeDownload = () => {
@@ -219,7 +223,7 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-0.5">
-                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-text-muted hover:text-text-primary" onClick={() => initiateDownload(doc)}><Download size={12} /></Button>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-text-muted hover:text-text-primary" aria-label="View" onClick={() => initiateDownload(doc)}><Eye size={12} /></Button>
                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-text-muted hover:text-text-red" onClick={() => handleDeleteDoc(doc.id)}><Trash2 size={12} /></Button>
                                 </div>
                             </div>
@@ -250,6 +254,8 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
                     ))}
                  </div>
             </div>
+
+            <DocumentViewer doc={viewing} onOpenChange={o => { if (!o) setViewing(null); }} />
 
             {/* ASSET NAMING TERMINAL */}
             <Dialog open={isNamingOpen} onOpenChange={setIsNamingOpen}>
@@ -373,7 +379,7 @@ function MilestoneDocuments({
                                                 {taskPhotos.map(photo => {
                                                     const hasAlias = photo.originalName && photo.originalName !== photo.name;
                                                     return (
-                                                        <div key={photo.id} className="group relative aspect-video rounded border border-border-sub bg-bg-primary overflow-hidden">
+                                                        <div key={photo.id} onClick={() => onDownload(photo)} className="group relative aspect-video cursor-pointer rounded border border-border-sub bg-bg-primary overflow-hidden">
                                                             <Image src={photo.url || ''} alt={photo.name} fill className="object-cover transition-transform group-hover:scale-110" />
                                                             <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-1">
                                                                 <p className="text-[10px] text-white font-bold truncate">{photo.name}</p>
@@ -382,8 +388,8 @@ function MilestoneDocuments({
                                                                 )}
                                                                 <p className="text-[10px] text-text-muted flex items-center gap-0.5 mt-0.5"><User size={6}/> {photo.uploader}</p>
                                                                 <div className="flex gap-1 mt-0.5">
-                                                                    <button className="p-0.5 rounded bg-white/10 hover:bg-white/20 text-white" onClick={() => onDownload(photo)}><Download size={6}/></button>
-                                                                    <button className="p-0.5 rounded bg-brand-red/20 hover:bg-brand-red/40 text-brand-red" onClick={() => onDelete(photo.id)}><Trash2 size={6}/></button>
+                                                                    <button className="p-0.5 rounded bg-white/10 hover:bg-white/20 text-white" aria-label="View" onClick={() => onDownload(photo)}><Eye size={10}/></button>
+                                                                    <button className="p-0.5 rounded bg-brand-red/20 hover:bg-brand-red/40 text-brand-red" onClick={(e) => { e.stopPropagation(); onDelete(photo.id); }}><Trash2 size={6}/></button>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -440,7 +446,7 @@ function MilestoneDocuments({
                                         </div>
                                     </div>
                                     <div className="flex gap-0.5">
-                                        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onDownload(doc)}><Download size={8} /></Button>
+                                        <Button variant="ghost" size="icon" className="h-5 w-5" aria-label="View" onClick={() => onDownload(doc)}><Eye size={10} /></Button>
                                         <Button variant="ghost" size="icon" className="h-5 w-5 text-text-red" onClick={() => onDelete(doc.id)}><Trash2 size={8} /></Button>
                                     </div>
                                 </div>

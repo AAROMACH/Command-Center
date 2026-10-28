@@ -174,6 +174,8 @@ export function findMismatchedLogEntries(jobs: WorkOrder[], logs: WeeklyLog[]): 
       if (!assigned || assigned === log.techId) continue;
       const helpers = job.additionalTechnicianIds || [];
       if (item.isHelper && helpers.includes(log.techId)) continue;
+      // Already flagged "Removed as helper" — the tech / payroll are handling it.
+      if (item.helperRemoved) continue;
       out.push({
         log, itemId: item.id, job,
         kind: item.isHelper ? 'stale_helper' : 'not_assigned',

@@ -74,6 +74,15 @@ function reportingWeekOfAt(now: Date) {
 }
 
 /** Approved/Paid/archived — settled pay nobody but payroll may touch. */
+/**
+ * The status to SHOW for a log. Approved = the math is checked and pay is
+ * final; Paid = payroll has actually paid it out (an Approved log with
+ * `paid: true`). Logic that asks "is it approved / settled" keeps using
+ * `status` — a paid log is still Approved underneath.
+ */
+export const logDisplayStatus = (log: { status?: string; paid?: boolean } | null | undefined): string =>
+  log?.status === 'Approved' && log.paid ? 'Paid' : (log?.status || '');
+
 export const isLockedLog = (log: Pick<WeeklyLog, 'status'> & { paid?: boolean; archived?: boolean }) => {
   const status = log.status as string;
   return status === 'Approved' || status === 'Paid' || log.paid === true || log.archived === true;

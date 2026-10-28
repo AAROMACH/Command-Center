@@ -1,4 +1,5 @@
 'use client';
+import { logDisplayStatus } from '@/lib/weekly-log-core';
 
 import { viewForTech, isHelperOn } from '@/lib/helper-progress';
 import { isLockedLog } from '@/lib/weekly-log-core';
@@ -603,7 +604,7 @@ export default function TechAssignmentDetailPage() {
                   ${jobPayIn(log).toFixed(2)}
                 </p>
                 <p className="text-[12px] text-text-muted">This job&apos;s pay</p>
-                <StatusBadge kind="log" value={log.status} className="mt-1" />
+                <StatusBadge kind="log" value={logDisplayStatus(log)} className="mt-1" />
               </div>
             ))}
           </div>

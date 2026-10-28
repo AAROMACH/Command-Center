@@ -21,7 +21,7 @@ export const TECH_DISPUTE_OPTIONS: { kind: Exclude<DisputeKind, 'missing'>; labe
  * Anything unrecognised is "Pay or date is wrong" (the tech's note shows).
  */
 export function disputeKindOf(item: Pick<WeeklyLogItem, 'disputeKind' | 'disputeReason'>): Exclude<DisputeKind, 'missing'> {
-  if (item.disputeKind && item.disputeKind !== 'missing') return item.disputeKind;
+  if (item.disputeKind && item.disputeKind !== 'missing') return item.disputeKind as Exclude<DisputeKind, 'missing'>;
   const r = (item.disputeReason || '').trim().toLowerCase();
   if (r === 'duplicate entry' || r === 'this is a duplicate') return 'duplicate';
   if (r === 'i did not do this job' || r === 'another tech did this job' || r === "i didn't do this job") return 'not_mine';
@@ -91,6 +91,16 @@ export const DISPUTE_CARDS: Record<DisputeKind, DisputeCard> = {
     yesConfirm: c => `Take ${c.wo} off ${c.tech}'s week of ${c.week} and send it back to Dispatch to reassign? ${c.tech} won't be paid for it.`,
     noConfirm: c => `Keep ${c.wo} on ${c.tech}'s week of ${c.week} and pay it? ${c.tech} will see your reason.`,
     outcome: (d, note) => d === 'yes' ? withNote('Payroll: sent back to Dispatch', note) : withNote('Payroll: kept and paid', note),
+  },
+  removed_helper: {
+    title: 'Removed as helper — says they worked it',
+    claim: 'I was taken off this job as a helper, but I worked it.',
+    question: c => `Did ${c.tech} work this job as a helper?`,
+    yesLabel: 'Yes: keep it and pay',
+    noLabel: 'No: take it off',
+    yesConfirm: c => `Keep ${c.wo} on ${c.tech}'s week of ${c.week} as a helper job and pay it?`,
+    noConfirm: c => `Take ${c.wo} off ${c.tech}'s week of ${c.week}? ${c.tech} won't be paid for it and will see your reason.`,
+    outcome: (d, note) => d === 'yes' ? withNote('Payroll: you worked it — kept and paid', note) : withNote('Payroll: removed from your log', note),
   },
   pay_or_date: {
     title: 'Pay or date is wrong',

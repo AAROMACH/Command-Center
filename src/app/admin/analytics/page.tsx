@@ -1,4 +1,5 @@
 'use client';
+import { logDisplayStatus } from '@/lib/weekly-log-core';
 import { useSessionState } from '@/hooks/use-session-state';
 import { JobNumbers } from '@/components/work-order-id';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
@@ -519,7 +520,7 @@ export default function FieldIntelligencePage() {
                                                                 <p className="text-[11px] text-text-muted">{log.items?.length || 0} job{(log.items?.length || 0) !== 1 ? 's' : ''}</p>
                                                             )}
                                                         </div>
-                                                        <StatusBadge kind="log" value={log.status} />
+                                                        <StatusBadge kind="log" value={logDisplayStatus(log)} />
                                                     </div>
                                                 ))}
                                                 {techStats.myLogs.length === 0 && (

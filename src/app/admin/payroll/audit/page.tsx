@@ -1,4 +1,5 @@
 'use client';
+import { logDisplayStatus } from '@/lib/weekly-log-core';
 import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { statusTone, TONE_BADGE } from '@/lib/status-styles';
@@ -24,13 +25,14 @@ import {
     AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ProjectTimesheets } from './components/project-timesheets';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft, Receipt, Search, ChevronDown, ChevronRight, DollarSign, CheckCircle, Clock, X, Download, Plus, SlidersHorizontal, MergeIcon, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isWithinInterval } from 'date-fns';
 import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder, PayrollDispute, FinancialRecord } from '@/lib/types';
-import { isClient, isSuperAdmin } from '@/lib/permissions';
+import { getSubroles, isClient, isSuperAdmin } from '@/lib/permissions';
 import { mergeJobs, parseLocalDate } from '@/lib/jobs';
 import { effectiveJobPay, computeWeeklyLogSettlement } from '@/lib/payroll';
 import { downloadPaystub } from '@/lib/paystub';
@@ -218,6 +220,7 @@ export default function PayrollAuditPage() {
     // timestamped just read "Approved".
     const logStamp = (log: WeeklyLog): { label: string; iso: string | null } => {
         const approvedAt = (log as { approvedAt?: string | null }).approvedAt;
+        if (log.status === 'Approved' && log.paid) return { label: 'Paid', iso: log.paidAt || null };
         if (log.status === 'Approved') return { label: 'Approved', iso: approvedAt || null };
         if (log.status !== 'Draft' && log.submittedAt) return { label: 'Submitted', iso: log.submittedAt };
         return { label: 'Not submitted', iso: null };
@@ -236,7 +239,7 @@ export default function PayrollAuditPage() {
                     const hay = `${t?.name || ''} ${t?.preferredName || ''}`.toLowerCase();
                     if (!hay.includes(techQuery.trim().toLowerCase())) return false;
                 }
-                if (statusFilter !== 'all' && log.status !== statusFilter) return false;
+                if (statusFilter !== 'all' && logDisplayStatus(log) !== statusFilter) return false;
                 // Filter on the log's own "week of" date (the week's Monday,
                 // 'MM-dd-yyyy'), never when it was submitted. The date inputs
                 // give 'yyyy-MM-dd', so compare real dates.
@@ -485,7 +488,7 @@ export default function PayrollAuditPage() {
                                         <div className="min-w-0">
                                             <div className="flex items-center gap-2 text-[13px] font-semibold text-text-primary min-w-0">
                                                 <span className="truncate">{tech?.name || log.techId}</span>
-                                                <Badge variant={statusVariant(log.status)} className="sm:hidden text-[10px] h-5 shrink-0">{log.status}</Badge>
+                                                <Badge variant={statusVariant(logDisplayStatus(log))} className="sm:hidden text-[10px] h-5 shrink-0">{logDisplayStatus(log)}</Badge>
                                             </div>
                                             <p className="hidden sm:block text-[11px] text-text-muted font-mono whitespace-nowrap">Week of {log.weekOf}</p>
                                         </div>
@@ -494,7 +497,7 @@ export default function PayrollAuditPage() {
                                         </p>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:flex-col sm:items-start sm:gap-1">
-                                        <Badge variant={statusVariant(log.status)} className="hidden sm:inline-flex text-[10px] h-5 w-fit">{log.status}</Badge>
+                                        <Badge variant={statusVariant(logDisplayStatus(log))} className="hidden sm:inline-flex text-[10px] h-5 w-fit">{logDisplayStatus(log)}</Badge>
                                         <span className="sm:hidden text-[12px] text-text-muted whitespace-nowrap">
                                             Week of {log.weekOf} · {log.items?.length || 0} {log.items?.length === 1 ? 'job' : 'jobs'}
                                             {(() => { const st = logStamp(log); return st.iso ? ` · ${st.label.toLowerCase()} ${fmtStamp(st.iso, 'MM/dd')}` : log.status === 'Approved' ? ' · approved' : ''; })()}
@@ -699,7 +702,7 @@ export default function PayrollAuditPage() {
                                             <div key={log.id} className="flex items-center justify-between gap-3 px-4 py-2">
                                                 <div className="flex items-center gap-2 min-w-0">
                                                     <span className="text-[12px] font-mono font-bold text-text-primary">{log.id}</span>
-                                                    <Badge variant="outline" className="h-4 px-1.5 text-[10px] uppercase tracking-wider shrink-0">{log.status}</Badge>
+                                                    <Badge variant="outline" className="h-4 px-1.5 text-[10px] uppercase tracking-wider shrink-0">{logDisplayStatus(log)}</Badge>
                                                     <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider shrink-0">{log.items?.length || 0} item{(log.items?.length || 0) === 1 ? '' : 's'}</span>
                                                 </div>
                                                 {isPrimary ? (
@@ -812,6 +815,7 @@ export default function PayrollAuditPage() {
                         { value: 'weekly', label: 'Weekly', count: filteredLogs.length },
                         { value: 'history', label: 'Paystub history', short: 'Paystubs', count: approvedLogsByTech.length },
                         { value: 'adjustments', label: 'Adjustments', count: adjustments.length + payrollDisputes.filter(d => d.status === 'open').length },
+                        { value: 'projects', label: 'Project timesheets', short: 'Projects', count: 0 },
                     ].map(t => (
                         <TabsTrigger key={t.value} value={t.value} className="tab-underline">
                             {'short' in t ? <><span className="sm:hidden">{t.short}</span><span className="hidden sm:inline">{t.label}</span></> : t.label}
@@ -846,7 +850,7 @@ export default function PayrollAuditPage() {
                         </div>
                         {/* Even 3 + 2 grid on phones; one inline row from sm up. */}
                         <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
-                            {(['all', 'Draft', 'Submitted', 'Approved', 'Rejected'] as const).map(s => (
+                            {(['all', 'Draft', 'Submitted', 'Approved', 'Paid', 'Rejected'] as const).map(s => (
                                 <button
                                     key={s}
                                     onClick={() => setStatusFilter(s)}
@@ -951,8 +955,8 @@ export default function PayrollAuditPage() {
                             {/* Who turned in a log this week, by status */}
                             <div className="flex flex-wrap gap-2 text-[12px]">
                                 <span className="rounded-full border border-border-sub bg-bg-secondary px-3 py-1 font-medium text-text-primary">{weekLogs.length} {weekLogs.length === 1 ? 'log' : 'logs'}</span>
-                                {(['Submitted', 'Approved', 'Rejected', 'Draft'] as const).map(st => {
-                                    const n = weekLogs.filter(l => l.status === st).length;
+                                {(['Submitted', 'Approved', 'Paid', 'Rejected', 'Draft'] as const).map(st => {
+                                    const n = weekLogs.filter(l => logDisplayStatus(l) === st).length;
                                     return n ? <Badge key={st} variant={statusVariant(st)} className="h-6 px-2.5 text-[12px]">{n} {st.toLowerCase()}</Badge> : null;
                                 })}
                             </div>
@@ -968,7 +972,7 @@ export default function PayrollAuditPage() {
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <Badge variant={statusVariant(log.status)} className="text-[10px] h-5">{log.status}</Badge>
+                                                <Badge variant={statusVariant(logDisplayStatus(log))} className="text-[10px] h-5">{logDisplayStatus(log)}</Badge>
                                                 <p className="text-[12px] font-semibold font-mono text-text-primary">${settlementOf(log).toFixed(2)}</p>
                                                 <Button variant="outline" size="sm" onClick={() => openReview(log)}><Receipt size={12} className="mr-1.5" /> Audit log</Button>
                                                 {log.status === 'Approved' && (
@@ -1097,6 +1101,11 @@ export default function PayrollAuditPage() {
                     <ListPager pager={adjPager} noun="adjustments" />
                 </TabsContent>
 
+                {/* ── Project timesheets: project hours by week, paid on that week's log ── */}
+                <TabsContent value="projects" className="m-0">
+                    <ProjectTimesheets technicians={technicians} approverName={currentUser?.name || 'Payroll'}
+                        canEditRate={isSuperAdmin(currentUser) || getSubroles(currentUser).includes('payroll_admin')} />
+                </TabsContent>
             </Tabs>
 
             {/* Add Adjustment Dialog */}

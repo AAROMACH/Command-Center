@@ -6,7 +6,7 @@ import { hasPermission, isAdmin, isTech, type RoleLike } from '@/lib/permissions
 import type { WeeklyLogItem } from '@/lib/types';
 import {
   WeeklyLogError, addMissingReport, addReimbursement, confirmItem, createDraft, deleteReimbursement,
-  disputeItem, fileJob, jobsOnOwnLogs, moveItem, removeJobFromDrafts, requestUnsubmit, submitLog, unsubmitLog,
+  disputeItem, answerHelperRemoval, fileJob, jobsOnOwnLogs, moveItem, removeJobFromDrafts, requestUnsubmit, submitLog, unsubmitLog,
   type CarriedFigures,
 } from '@/lib/server/weekly-log-server';
 import { deliverNotification, payrollAdmins } from '@/lib/server/notify-delivery';
@@ -112,6 +112,19 @@ export async function POST(req: NextRequest) {
           return {
             title: 'Job disputed on weekly log',
             body: `${callerName} disputed ${item?.workOrderId ? `job ${String(item.workOrderId).toUpperCase()}` : 'a job'} on their log for ${log.weekOf || 'this week'}. Reason: ${String(body.reason || '').replace(/_/g, ' ')}.`,
+            inAppOnly: true,
+          };
+        });
+        return NextResponse.json({ ok: true });
+      }
+
+      case 'answerHelperRemoval': {
+        await answerHelperRemoval(uid, String(body.logId), String(body.itemId), body.answer, body.notes);
+        if (body.answer === 'worked') await tellPayroll(uid, String(body.logId), log => {
+          const item = (log.items || []).find((i: WeeklyLogItem) => i.id === body.itemId);
+          return {
+            title: 'Job disputed on weekly log',
+            body: `${callerName} says they worked ${item?.workOrderId ? `job ${String(item.workOrderId).toUpperCase()}` : 'a job'} as a helper after being removed (week of ${log.weekOf || 'this week'}).`,
             inAppOnly: true,
           };
         });

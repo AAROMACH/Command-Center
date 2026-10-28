@@ -405,6 +405,12 @@ export type Task = {
   numericValue?: number;
   fileUrl?: string;
   signatureUrl?: string;
+  /** Every photo / document added when completing (photoUrl / fileUrl hold
+   *  the first, for older screens). Each keeps the name the tech gave it. */
+  photos?: { url: string; name: string }[];
+  files?: { url: string; name: string }[];
+  /** The name typed when the tech typed their signature instead of drawing it. */
+  signatureName?: string;
 };
 
 export type ProjectDailyLog = {
@@ -585,7 +591,7 @@ export type AssignmentTimeLog = {
 };
 
 /** The four things a tech can flag about a job — one yes/no card each (lib/disputes.ts). */
-export type DisputeKind = 'missing' | 'duplicate' | 'not_mine' | 'pay_or_date';
+export type DisputeKind = 'missing' | 'duplicate' | 'not_mine' | 'pay_or_date' | 'removed_helper';
 
 /** Payroll's answer to a flagged job's yes/no question. `note` is shown to the tech. */
 export type DisputeResolution = {
@@ -617,6 +623,11 @@ export type WeeklyLogItem = {
   // entry). Helper entries start at $0 for payroll to price separately.
   isHelper?: boolean;
   helperLeadTechId?: string;
+  /** Set when an admin took this tech off the job as a helper. The entry
+   *  isn't paid and sits in its own section of the log until the tech confirms
+   *  (it's removed) or says they worked it (a 'removed_helper' dispute payroll
+   *  decides; Yes clears this and pays it). */
+  helperRemoved?: { at: string; by: string } | null;
   /** The job's `source` when filed ('Imported' = Field Nation), so pay can
    *  be settled even where the job doc can't be read. */
   jobSource?: string;
@@ -690,6 +701,10 @@ export type WeeklyLog = {
   techId: string;
   weekOf: string;
   status: 'Draft' | 'Submitted' | 'Approved' | 'Rejected';
+  /** Paid out (after approval). Shown as "Paid" (logDisplayStatus); reopening needs it cleared first. */
+  paid?: boolean;
+  paidAt?: string | null;
+  paidByName?: string | null;
   items: WeeklyLogItem[];
   reimbursements: FinancialRecord[];
   missingAssignmentReports?: MissingAssignmentReport[];
@@ -904,7 +919,11 @@ export type TripLog = {
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
   // Extended trip tracking (optional; older records omit these)
-  source?: 'manual' | 'start_trip' | 'check_in_flow';
+  source?: 'manual' | 'start_trip' | 'check_in_flow' | 'check_in' | 'daily_route';
+  /** Daily route legs (lib/daily-route): order in the day, and voided when a rebuild drops it. */
+  legIndex?: number;
+  voided?: boolean;
+  routeEstimated?: boolean;
   startTime?: string;
   endTime?: string;
   startLat?: number | null;

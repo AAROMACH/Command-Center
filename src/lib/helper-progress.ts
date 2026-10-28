@@ -67,3 +67,36 @@ export function viewForTech<T extends Partial<WorkOrder>>(job: T, techId: string
 export function helperCompleted(job: JobLike, techId: string): boolean {
   return helperProgressOf(job, techId).status === 'completed' || job?.status === 'completed';
 }
+
+/**
+ * After an admin removes a helper: their helper entry for this job is flagged
+ * "Removed as helper" on every log that isn't approved yet — not paid, shown
+ * in its own section for the tech to confirm or dispute. Returns how many
+ * entries sit on already-approved logs (left as paid; payroll handles those).
+ */
+export async function flagRemovedHelperEntries(jobId: string, helperId: string, by: string): Promise<{ flagged: number; approved: number }> {
+  const { collection, doc, getDocs, query, updateDoc, where } = await import('firebase/firestore');
+  const { db } = await import('./firebase');
+  const logs = await getDocs(query(collection(db, 'weeklyLogs'), where('techId', '==', helperId)));
+  let flagged = 0, approved = 0;
+  for (const d of logs.docs) {
+    const log = d.data() as { status?: string; items?: { workOrderId: string; isHelper?: boolean; helperRemoved?: unknown }[] };
+    const hits = (log.items || []).filter(i => i.workOrderId === jobId && i.isHelper && !i.helperRemoved);
+    if (!hits.length) continue;
+    if (log.status === 'Approved') { approved += hits.length; continue; }
+    const at = new Date().toISOString();
+    // A Draft: the tech answers it. Already submitted: the tech can't edit it,
+    // so it goes straight to payroll as a removed_helper card to decide.
+    const submitted = log.status !== 'Draft';
+    await updateDoc(doc(db, 'weeklyLogs', d.id), {
+      items: (log.items || []).map(i => i.workOrderId === jobId && i.isHelper && !i.helperRemoved
+        ? { ...i, helperRemoved: { at, by }, resolution: null,
+            ...(submitted
+              ? { confirmationStatus: 'disputed', disputeKind: 'removed_helper', disputeReason: 'Removed as helper after the log was submitted', disputeNotes: null }
+              : { confirmationStatus: null }) }
+        : i),
+    });
+    flagged += hits.length;
+  }
+  return { flagged, approved };
+}

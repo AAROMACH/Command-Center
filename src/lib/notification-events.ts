@@ -56,7 +56,7 @@ export const ALERT_TYPES: { id: string; event: NotificationEvent; label: string;
   { id: 'disp_resched', event: 'dispatch_activity', label: 'Jobs rescheduled', re: /^dispatch: job rescheduled/ },
   { id: 'msg_direct', event: 'messages', label: 'Direct messages', re: /^new message from/ },
   { id: 'msg_project', event: 'messages', label: 'Project chat messages', re: /^new message/ },
-  { id: 'pay_log', event: 'my_pay', label: 'Weekly log approved, returned or reopened', re: /weekly log (approved|rejected|returned|reopened)|payroll decided/ },
+  { id: 'pay_log', event: 'my_pay', label: 'Weekly log approved, paid, returned or reopened', re: /weekly log (approved|rejected|returned|reopened|paid)|payroll decided/ },
   { id: 'pay_dispute', event: 'my_pay', label: 'Dispute decisions', re: /dispute resolved/ },
   { id: 'pay_reimb', event: 'my_pay', label: 'Reimbursement decisions', re: /reimbursement (approved|rejected)/ },
   { id: 'pay_timeoff', event: 'my_pay', label: 'Time-off answers', re: /time off (approved|not approved)/ },

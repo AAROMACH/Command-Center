@@ -1,5 +1,6 @@
 
 'use client';
+import { logDisplayStatus } from '@/lib/weekly-log-core';
 
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
@@ -547,11 +548,11 @@ export default function TechEarningsPage() {
                                                             {isExpanded ? <ChevronDown size={14} className="text-text-muted" /> : <ChevronRight size={14} className="text-text-muted" />}
                                                             Week of {log.weekOf}
                                                         </span>
-                                                        <div className="mt-1 pl-5 flex flex-wrap gap-1 sm:hidden"><StatusBadge kind="log" value={log.status} />{hasOpenDispute && <Badge variant="destructive" className="text-[10px] uppercase tracking-wide">Dispute under review</Badge>}</div>
+                                                        <div className="mt-1 pl-5 flex flex-wrap gap-1 sm:hidden"><StatusBadge kind="log" value={logDisplayStatus(log)} />{hasOpenDispute && <Badge variant="destructive" className="text-[10px] uppercase tracking-wide">Dispute under review</Badge>}</div>
                                                     </TableCell>
                                                     <TableCell className="hidden sm:table-cell">
                                                         <div className="flex items-center gap-1.5 flex-wrap">
-                                                            <StatusBadge kind="log" value={log.status} />
+                                                            <StatusBadge kind="log" value={logDisplayStatus(log)} />
                                                             {hasOpenDispute && (
                                                                 <Badge variant="destructive" className="text-[10px] uppercase tracking-wide">
                                                                     Dispute under review

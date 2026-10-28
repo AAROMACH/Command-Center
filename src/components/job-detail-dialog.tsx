@@ -1,5 +1,6 @@
 
 'use client';
+import { logDisplayStatus } from '@/lib/weekly-log-core';
 
 import { useState, useEffect, useMemo } from 'react';
 import {
@@ -43,6 +44,7 @@ import { displayWorkOrderNumber, isImported } from '@/lib/work-order-identity';
 import { fileCompletedJob, moveJobLogOnSwap, describeSwapLogMove } from '@/lib/weekly-log';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
+import { flagRemovedHelperEntries } from '@/lib/helper-progress';
 import { onSiteSessions, formatClock } from '@/lib/time-on-site';
 import { effectiveJobPay } from '@/lib/payroll';
 import { parseLocalDate } from '@/lib/jobs';
@@ -290,10 +292,23 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
     setHelperOpen(false); setHelperTechId('');
   };
 
+  // Flags the removed helper's log entry ("Removed as helper") and says what happened.
+  const flagHelperLog = async (jobId: string, helperId: string, name?: string) => {
+    try {
+      const { flagged, approved } = await flagRemovedHelperEntries(jobId, helperId, auth.currentUser?.displayName || 'Admin');
+      if (flagged || approved) toast({ title: 'Helper removed', description: [
+        flagged ? `${name || 'Their'} log entry is marked "Removed as helper" for them to confirm.` : '',
+        approved ? `${approved} entry is on an already-approved week — adjust it in Payroll.` : '',
+      ].filter(Boolean).join(' ') });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Helper removed, but their log entry was not updated', description: e?.message });
+    }
+  };
+
   const handleRemoveHelper = async (helperId: string) => {
     if (!mission) return;
     const ht = technicians.find(t => t.id === helperId);
-    if (!confirm(`Remove ${ht?.name || 'this helper'} from the job? Their weekly log entry stays — remove it in Payroll if needed.`)) return;
+    if (!confirm(`Remove ${ht?.name || 'this helper'} from the job? Their weekly log entry moves to a "Removed as helper" section and won't be paid unless they show they worked it.`)) return;
     await updateDoc(doc(db, 'assignments', mission.id), {
       additionalTechnicianIds: arrayRemove(helperId),
       // Re-adding them later starts their own workflow fresh.
@@ -303,6 +318,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
     });
     setOptimisticHelperIds(ids => ids.filter(x => x !== helperId));
     setRemovedHelperIds(ids => [...ids, helperId]);
+    await flagHelperLog(mission.id, helperId, ht?.name);
   };
 
   if (!mission) return null;
@@ -801,7 +817,7 @@ export function JobDetailDialog({ isOpen, setIsOpen, mission, onEdit, hidePay = 
                             <p className="text-[12px] text-text-muted mb-1">Pay for this job</p>
                             <p className="text-2xl font-mono font-bold text-text-green">{hidePay ? 'Restricted' : adminData.jobItem ? `$${effectiveJobPay(adminData.jobItem, mission).toFixed(2)}` : '—'}</p>
                           </div>
-                          <StatusBadge kind="log" value={adminData.weeklyLog.status} label={`Log ${statusLabelText(adminData.weeklyLog.status).toLowerCase()}`} />
+                          <StatusBadge kind="log" value={logDisplayStatus(adminData.weeklyLog)} label={`Log ${statusLabelText(logDisplayStatus(adminData.weeklyLog)).toLowerCase()}`} />
                         </div>
                         <div className="p-4">
                           <p className="text-[12px] text-text-muted">Weekly log: <span className="font-medium text-text-primary">week of {adminData.weeklyLog.weekOf}</span></p>

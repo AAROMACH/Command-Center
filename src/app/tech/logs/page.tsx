@@ -1,4 +1,6 @@
 'use client';
+import { logDisplayStatus } from '@/lib/weekly-log-core';
+import { buildDailyRoute } from '@/lib/daily-route';
 import { useSessionState } from '@/hooks/use-session-state';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -369,6 +371,30 @@ export default function TechWeeklyLogPage() {
         }
     };
 
+    // "Removed as helper": confirm it (the entry leaves the log) or say you
+    // worked it (goes to payroll as a dispute; unpaid until they decide).
+    const [helperBusy, setHelperBusy] = useState<string | null>(null);
+    const handleHelperRemoval = async (itemId: string, answer: 'removed' | 'worked') => {
+        if (!activeLog || isLocked) return;
+        let notes = '';
+        if (answer === 'worked') {
+            const n = window.prompt('Tell payroll what you did on this job (optional):');
+            if (n === null) return;
+            notes = n;
+        }
+        setHelperBusy(itemId);
+        try {
+            await weeklyLogAction('answerHelperRemoval', { logId: activeLog.id, itemId, answer, notes });
+            toast(answer === 'removed'
+                ? { title: 'Removed from your log', description: 'Thanks for confirming.' }
+                : { title: 'Sent to payroll', description: "They'll decide whether it's paid. You'll get a notification." });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not save', description: e.message });
+        } finally {
+            setHelperBusy(null);
+        }
+    };
+
     const handleDispute = async (itemId: string, kind: DisputeKind, notes?: string) => {
         if (!activeLog || isLocked) return;
         const reason = TECH_DISPUTE_OPTIONS.find(o => o.kind === kind)?.label || DISPUTE_CARDS[kind].title;
@@ -583,7 +609,7 @@ export default function TechWeeklyLogPage() {
                     subtitle="Every trip you've recorded — for reimbursement and year-end mileage."
                     actions={<ViewTabs />}
                 />
-                <TripLogsView tripLogs={tripLogs} workOrders={workOrders} mileageUnit={mileageUnit} />
+                <TripLogsView tripLogs={tripLogs} workOrders={workOrders} mileageUnit={mileageUnit} techId={currentTechId} techName={currentUser?.name || ''} />
             </div>
         );
     }
@@ -684,7 +710,7 @@ export default function TechWeeklyLogPage() {
                                         </div>
                                     </div>
                                     <div className="flex shrink-0 items-center gap-2 sm:gap-4">
-                                        <StatusBadge kind="log" value={log.status} />
+                                        <StatusBadge kind="log" value={logDisplayStatus(log)} />
                                         <ChevronRight size={18} className="text-text-muted group-hover:text-text-primary transition-all" />
                                     </div>
                                 </CardContent>
@@ -763,7 +789,7 @@ export default function TechWeeklyLogPage() {
                     <div className="text-left">
                         <div className="flex items-center gap-3 text-left">
                             <h1 className="text-lg sm:text-xl font-semibold text-text-primary text-left">Week of {activeLog.weekOf}</h1>
-                            <StatusBadge kind="log" value={activeLog.status} />
+                            <StatusBadge kind="log" value={logDisplayStatus(activeLog)} />
                         </div>
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-left">
                             <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-green uppercase tracking-wider text-left">
@@ -905,6 +931,8 @@ export default function TechWeeklyLogPage() {
                 )}
                 <div className="space-y-3 text-left">
                     {[...(activeLog.items || [])]
+                        // Removed-as-helper entries get their own section at the bottom.
+                        .filter(i => !i.helperRemoved)
                         .sort((a, b) => {
                             const ja = allJobs.find(w => w.id === a.workOrderId);
                             const jb = allJobs.find(w => w.id === b.workOrderId);
@@ -979,6 +1007,48 @@ export default function TechWeeklyLogPage() {
                             </CardContent>
                         </Card>
                     ))}
+                    {(activeLog.items || []).some(i => i.helperRemoved) && (
+                        <section className="space-y-2 pt-2">
+                            <div className="flex items-center gap-2 px-1 border-b border-border-sub pb-2">
+                                <h3 className="section-label text-left">Removed as helper</h3>
+                                <span className="text-[12px] text-text-muted">Not paid unless payroll confirms you worked it</span>
+                            </div>
+                            {(activeLog.items || []).filter(i => i.helperRemoved).map(item => {
+                                const job = allJobs.find(w => w.id === item.workOrderId);
+                                const woLabel = job ? displayWorkOrderNumber(job) : String(item.workOrderId || '').toUpperCase();
+                                const disputed = item.confirmationStatus === 'disputed';
+                                let when = '';
+                                try { when = format(new Date(item.helperRemoved!.at), 'MMM d, h:mm a'); } catch { /* bad date */ }
+                                return (
+                                    <div key={item.id} className="p-3 rounded-xl border border-dashed border-accent-gold/40 bg-accent-gold/5 text-left space-y-2">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="font-mono text-[12px] font-semibold text-brand-red">{woLabel}</span>
+                                            <span className="text-[13px] font-semibold text-text-primary">{job?.title || job?.description || 'Helper job'}</span>
+                                        </div>
+                                        <p className="text-[12px] text-text-muted">
+                                            {item.helperRemoved!.by || 'An admin'} removed you as a helper{when ? ` on ${when}` : ''}.
+                                        </p>
+                                        {item.resolution ? (
+                                            <p className="text-[12px] font-semibold text-text-primary">{decisionText('removed_helper', item.resolution)}</p>
+                                        ) : disputed ? (
+                                            <p className="text-[12px] text-text-secondary">{isLocked && !item.disputeNotes && item.disputeReason?.startsWith('Removed as helper') ? 'Payroll will decide whether this is paid.' : 'You said you worked this job — waiting for payroll to decide.'}</p>
+                                        ) : isLocked ? (
+                                            <p className="text-[12px] text-text-muted">This log is submitted — payroll will review it.</p>
+                                        ) : (
+                                            <div className="flex flex-wrap gap-2">
+                                                <Button size="sm" variant="outline" disabled={helperBusy === item.id} onClick={() => handleHelperRemoval(item.id, 'removed')}>
+                                                    Yes, I was removed
+                                                </Button>
+                                                <Button size="sm" disabled={helperBusy === item.id} onClick={() => handleHelperRemoval(item.id, 'worked')}>
+                                                    {helperBusy === item.id && <Loader2 size={13} className="mr-1.5 animate-spin" />} I worked this job
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </section>
+                    )}
                     {/* Flagged jobs payroll took off this log (duplicate copy removed,
                         or sent back to Dispatch) — the line is gone, so show the answer. */}
                     {((activeLog as WeeklyLog & { history?: any[] }).history || [])
@@ -1648,6 +1718,9 @@ function ReportMissingJobDialog({ isOpen, setIsOpen, onSave }: { isOpen: boolean
 // ── Tech Mileage / Trip Logs ────────────────────────────────────────────────
 function tripStatusLabel(t: TripLog): { label: string; cls: string } {
     const miles = t.miles || t.calculatedMiles || t.manualMiles || 0;
+    if (t.source === 'daily_route') return t.routeEstimated
+        ? { label: 'Estimated', cls: 'text-accent-gold border-accent-gold/30 bg-accent-gold/10' }
+        : { label: 'Recorded', cls: 'text-text-green border-green-border/30 bg-green-dim/10' };
     if (t.source && t.source !== 'manual' && !t.endTime) return { label: 'Missing checkout', cls: 'text-accent-gold border-accent-gold/30 bg-accent-gold/10' };
     if (!miles) return { label: 'Missing mileage', cls: 'text-accent-gold border-accent-gold/30 bg-accent-gold/10' };
     if (!t.startLocation || !t.endLocation) return { label: 'Needs review', cls: 'text-accent-gold border-accent-gold/30 bg-accent-gold/10' };
@@ -1658,24 +1731,64 @@ const TRIP_SOURCE_LABEL: Record<string, string> = {
     manual: 'Manual',
     start_trip: 'Start trip',
     check_in_flow: 'Check-in',
+    check_in: 'Check-in',
+    daily_route: 'Daily route',
 };
 
-function TripLogsView({ tripLogs, workOrders, mileageUnit }: { tripLogs: TripLog[]; workOrders: WorkOrder[]; mileageUnit: 'mi' | 'km' }) {
-    const sorted = [...tripLogs].sort((a, b) => (b.date || b.createdAt || '').localeCompare(a.date || a.createdAt || ''));
-    const totalMiles = sorted.reduce((acc, t) => acc + (t.miles || t.calculatedMiles || t.manualMiles || 0), 0);
+function TripLogsView({ tripLogs, workOrders, mileageUnit, techId, techName }: { tripLogs: TripLog[]; workOrders: WorkOrder[]; mileageUnit: 'mi' | 'km'; techId: string | null; techName: string }) {
+    const { toast } = useToast();
+    // Newest day first; a day's route legs in driving order.
+    const sorted = [...tripLogs].filter(t => !t.voided).sort((a, b) =>
+        (b.date || '').localeCompare(a.date || '')
+        || (a.source === 'daily_route' && b.source === 'daily_route' ? (a.legIndex ?? 0) - (b.legIndex ?? 0) : (b.createdAt || '').localeCompare(a.createdAt || '')));
+    // Days with an automatic route count the route's road miles; that day's
+    // GPS Start Trip records stay listed but aren't added again.
+    const routeDays = new Set(sorted.filter(t => t.source === 'daily_route').map(t => t.date));
+    const counts = (t: TripLog) => !routeDays.has(t.date) || t.source === 'daily_route';
+    const totalMiles = sorted.filter(counts).reduce((acc, t) => acc + (t.miles || t.calculatedMiles || t.manualMiles || 0), 0);
+    const [rebuildDate, setRebuildDate] = useState(() => new Date().toISOString().slice(0, 10));
+    const [rebuilding, setRebuilding] = useState(false);
+    const rebuild = async () => {
+        if (!techId) return;
+        setRebuilding(true);
+        try {
+            const r = await buildDailyRoute(techId, techName, rebuildDate);
+            toast(r.legs
+                ? { title: 'Route updated', description: `${r.legs} leg${r.legs === 1 ? '' : 's'}, ${r.miles} mi${r.estimated ? ' (straight-line estimate — road routing was unavailable)' : ''}.${r.missingHome ? ' Add your home address in Profile to include the drive from and back home.' : ''}` }
+                : { title: 'No stops that day', description: r.missingHome ? 'No job or project check-ins found, and no home address on your profile.' : 'No job or project check-ins found for that day.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not build the route', description: e?.message || 'Try again.' });
+        } finally {
+            setRebuilding(false);
+        }
+    };
+    const rebuildBar = (
+        <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-bg-secondary border border-border-main">
+            <p className="text-[12px] text-text-muted flex-1 min-w-[220px]">Your daily route (home → each job → home) is logged automatically when you check out. Rebuild a day if it changed.</p>
+            <input type="date" value={rebuildDate} onChange={e => setRebuildDate(e.target.value)} aria-label="Day"
+                className="h-9 rounded-md border border-border-sub bg-bg-primary px-2 text-[13px] text-text-primary" />
+            <Button size="sm" variant="outline" onClick={rebuild} disabled={rebuilding || !techId}>
+                {rebuilding && <Loader2 size={13} className="mr-1.5 animate-spin" />} Rebuild route
+            </Button>
+        </div>
+    );
 
     if (sorted.length === 0) {
         return (
-            <EmptyState icon={Car} title="No trips recorded yet" description="Trips you add from a job show up here for year-end mileage." />
+            <div className="space-y-4 max-w-5xl">
+                {rebuildBar}
+                <EmptyState icon={Car} title="No trips recorded yet" description="Your daily route and trips from jobs show up here for year-end mileage." />
+            </div>
         );
     }
 
     return (
         <div className="space-y-4 max-w-5xl">
+            {rebuildBar}
             <div className="flex items-center gap-4 p-3 rounded-xl bg-bg-secondary border border-border-main shadow-sm w-max">
                 <div>
                     <p className="stat-label">Total trips</p>
-                    <p className="text-lg font-mono font-bold text-text-primary leading-none">{sorted.length}</p>
+                    <p className="text-lg font-mono font-bold text-text-primary leading-none">{sorted.filter(counts).length}</p>
                 </div>
                 <div className="border-l border-border-sub pl-4">
                     <p className="stat-label">Total {mileageUnit === 'km' ? 'kilometers' : 'miles'}</p>
@@ -1707,7 +1820,8 @@ function TripLogsView({ tripLogs, workOrders, mileageUnit }: { tripLogs: TripLog
                                     <td className="px-3 py-2.5 text-[12px] text-text-primary max-w-[200px] truncate">{t.jobTitle || job?.title || job?.description || t.purpose || '—'}</td>
                                     <td className="px-3 py-2.5 text-[12px] text-text-muted max-w-[220px] truncate">{[t.startLocation, t.endLocation].filter(Boolean).join(' → ') || '—'}</td>
                                     <td className="px-3 py-2.5 text-[12px] text-text-muted whitespace-nowrap">{[t.startTime, t.endTime].filter(Boolean).join(' – ') || '—'}</td>
-                                    <td className="px-3 py-2.5 text-[12px] font-mono font-semibold text-text-primary whitespace-nowrap">{miles ? formatDistance(miles, mileageUnit) : '—'}</td>
+                                    <td className={cn('px-3 py-2.5 text-[12px] font-mono font-semibold whitespace-nowrap', counts(t) ? 'text-text-primary' : 'text-text-muted line-through')}
+                                        title={counts(t) ? undefined : "Covered by this day's route — not added to the total"}>{miles ? formatDistance(miles, mileageUnit) : '—'}</td>
                                     <td className="px-3 py-2.5 text-[12px] text-text-muted whitespace-nowrap">{TRIP_SOURCE_LABEL[t.source || 'manual'] || 'Manual'}</td>
                                     <td className="px-3 py-2.5 whitespace-nowrap">
                                         <span className={cn('inline-block text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border', st.cls)}>{st.label}</span>

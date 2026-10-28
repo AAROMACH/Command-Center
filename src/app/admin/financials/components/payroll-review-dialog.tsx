@@ -1,4 +1,5 @@
 'use client';
+import { logDisplayStatus } from '@/lib/weekly-log-core';
 
 import { useState, useEffect, useMemo, useCallback, useRef, type ReactNode } from 'react';
 import type { WeeklyLog, Technician, WorkOrder, WeeklyLogItem, FinancialRecord, PayrollDispute, TripLog, MissingAssignmentReport, DisputeKind, DisputeResolution } from '@/lib/types';
@@ -487,8 +488,36 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         }
     };
 
+    // Approved → Paid: payroll has paid this week out. Undo is allowed (a
+    // payment that bounced, or marked by mistake); reopening a paid log
+    // requires undoing Paid first.
+    const [paying, setPaying] = useState(false);
+    const setPaid = async (paid: boolean) => {
+        if (!localLog || paying || localLog.status !== 'Approved') return;
+        setPaying(true);
+        try {
+            const by = authUser?.name || auth.currentUser?.displayName || 'Admin';
+            const patch = paid ? { paid: true, paidAt: new Date().toISOString(), paidByName: by } : { paid: false, paidAt: null, paidByName: null };
+            await updateDoc(doc(db, 'weeklyLogs', localLog.id), patch);
+            setLocalLog({ ...localLog, ...patch } as WeeklyLog);
+            await auditEvent('weeklyLogs', localLog.id, auth.currentUser?.uid ?? '', by, paid ? 'payroll_paid' : 'payroll_unpaid',
+                `${by} marked ${technician?.name ?? localLog.techId}'s week of ${localLog.weekOf} as ${paid ? 'PAID' : 'not paid'}.`).catch(() => {});
+            if (paid && localLog.techId) NotificationService.notify(localLog.techId, 'Weekly log paid',
+                `Your week of ${shortWeek(localLog.weekOf)} has been paid.`, { id: localLog.id, type: 'weeklyLog' }, { portal: 'tech' }).catch(() => {});
+            toast({ title: paid ? 'Paid out' : 'Pay out undone' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not update', description: e.message });
+        } finally {
+            setPaying(false);
+        }
+    };
+
     const handleReopenToSubmitted = async () => {
         if (!localLog || reopening) return;
+        if ((localLog as any).paid) {
+            toast({ variant: 'destructive', title: 'This log is paid out', description: 'Undo the pay out first, then unapprove it.' });
+            return;
+        }
         if (!canOverrideDispute) {
             toast({ variant: 'destructive', title: 'Not permitted', description: 'You do not have permission to reopen approved weekly logs.' });
             return;
@@ -817,7 +846,9 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         const resolution = makeResolution(decision, note);
         setDecisionBusy(true);
         try {
-            const removes = decision === 'yes' && (kind === 'duplicate' || kind === 'not_mine');
+            const removes = (decision === 'yes' && (kind === 'duplicate' || kind === 'not_mine'))
+                // Removed helper who didn't work it: the entry leaves the log.
+                || (decision === 'no' && kind === 'removed_helper');
             if (removes) {
                 // Only THIS line leaves the log. For a duplicate the job record
                 // is never touched — the other copy stays and is paid.
@@ -830,7 +861,8 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                 // Keep it and pay (tech was wrong), or fixed (tech was right):
                 // either way the job is confirmed and counts toward pay.
                 const items = (baseItems || localLog.items || []).map(i => i.id === item.id
-                    ? { ...i, confirmationStatus: 'confirmed' as const, isAdminReviewed: true, resolution }
+                    // helperRemoved clears too: a removed helper payroll says worked it is paid.
+                    ? { ...i, confirmationStatus: 'confirmed' as const, isAdminReviewed: true, resolution, helperRemoved: null }
                     : i);
                 await updateDoc(doc(db, 'weeklyLogs', localLog.id), { items: sanitize(items) });
                 setLocalLog({ ...localLog, items });
@@ -1436,7 +1468,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                     </DialogDescription>
                                 </div>
                             </div>
-                            <StatusBadge kind="log" value={localLog.status} className="h-7 px-3 shrink-0 self-start sm:self-center" />
+                            <StatusBadge kind="log" value={logDisplayStatus(localLog)} className="h-7 px-3 shrink-0 self-start sm:self-center" />
                         </div>
                         {/* Summary strip */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
@@ -1789,7 +1821,31 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
 
                     <DialogFooter className="px-4 sm:px-8 py-3 sm:py-4 border-t border-border-sub bg-bg-secondary flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 shrink-0">
                         {localLog && (localLog.status === 'Approved' || (localLog as any).status === 'Paid') ? (
-                            <Button variant="outline" className="w-full h-10" onClick={() => setIsOpen(false)}>Close</Button>
+                            // Approved = math checked, pay final. Pay out = money has gone out.
+                            <div className="w-full flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                                <p className="text-[12px] text-text-muted flex-1">
+                                    {localLog.paid
+                                        ? <>Paid out{localLog.paidAt ? ` ${format(new Date(localLog.paidAt), 'MMM d, yyyy')}` : ''}{localLog.paidByName ? ` by ${localLog.paidByName}` : ''}.</>
+                                        : 'Approved — pay it out once the money has gone out.'}
+                                </p>
+                                <Button variant="outline" className="h-10 px-6 order-last sm:order-none" onClick={() => setIsOpen(false)}>Close</Button>
+                                {localLog.paid ? (
+                                    canApproveLog && <Button variant="ghost" className="h-10 px-4 text-text-muted" disabled={paying} onClick={() => setPaid(false)}>Undo pay out</Button>
+                                ) : (
+                                    <>
+                                        {canOverrideDispute && (
+                                            <Button variant="outline" className="h-10 px-6" disabled={reopening} onClick={() => { if (confirm('Unapprove this log? It goes back to Submitted so the pay can be edited. Entered figures are kept.')) handleReopenToSubmitted(); }}>
+                                                {reopening ? <Loader2 size={16} className="mr-2 animate-spin" /> : <X size={16} className="mr-2" />} Unapprove
+                                            </Button>
+                                        )}
+                                        {canApproveLog && (
+                                            <Button className="h-10 px-6 sm:px-8 bg-text-green hover:bg-text-green/90 text-white" disabled={paying} onClick={() => setPaid(true)}>
+                                                {paying ? <Loader2 size={16} className="mr-2 animate-spin" /> : <DollarSign size={16} className="mr-2" />} Pay out
+                                            </Button>
+                                        )}
+                                    </>
+                                )}
+                            </div>
                         ) : (canApproveLog || canReturnLog) ? (
                             <>
                                 {canReturnLog && localLog?.status === 'Submitted' && (
@@ -1813,6 +1869,12 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         {undecidedCount > 0
                                             ? `Decide the ${undecidedCount} flagged job${undecidedCount === 1 ? '' : 's'} first`
                                             : isManifestFullyAudited ? 'Approve log' : `Verify ${totalJobsCount - auditCompleteCount} more to approve`}
+                                    </Button>
+                                )}
+                                {canApproveLog && (
+                                    // Turns green once the log is approved.
+                                    <Button disabled title="Approve the log first" className="w-full sm:w-auto order-1 sm:order-5 h-10 px-6 bg-bg-tertiary text-text-muted border border-border-sub cursor-not-allowed">
+                                        <DollarSign size={16} className="mr-2"/> Pay out
                                     </Button>
                                 )}
                             </>

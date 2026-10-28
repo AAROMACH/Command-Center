@@ -1,4 +1,5 @@
 'use client';
+import { logDisplayStatus } from '@/lib/weekly-log-core';
 
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
@@ -489,7 +490,7 @@ export function WeeklyLogHistoryTab({ logs, technicians }: { logs: WeeklyLog[]; 
                                     {r.items}{r.disputed > 0 && <span className="ml-1 text-brand-red">({r.disputed} disputed)</span>}
                                 </TableCell>
                                 <TableCell className="py-3 text-[10px] font-mono text-text-muted hidden md:table-cell">{show(r.submitted)}</TableCell>
-                                <TableCell className="py-3 text-right pr-6"><StatusBadge kind="log" value={r.l.status} /></TableCell>
+                                <TableCell className="py-3 text-right pr-6"><StatusBadge kind="log" value={logDisplayStatus(r.l)} /></TableCell>
                             </TableRow>
                         ))}
                         {filtered.length === 0 && (

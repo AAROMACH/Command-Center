@@ -61,6 +61,8 @@ export function computeWeeklyLogSettlement(
 ): number {
   const itemPayCents = (log.items || [])
     .filter(i => i.confirmationStatus !== 'disputed')
+    // Removed as a helper: not paid unless payroll decides they worked it.
+    .filter(i => !i.helperRemoved)
     .reduce((s, i) => s + payCents(effectiveJobPay(i, jobsById.get(i.workOrderId))), 0);
   const reimbursementPayCents = (log.reimbursements || [])
     .filter(r => r.status !== 'pending' && r.status !== 'rejected')

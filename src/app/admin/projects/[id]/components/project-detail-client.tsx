@@ -1,4 +1,5 @@
 'use client';
+import { projectLead } from '@/components/project-views';
 
 import { useState, useMemo, useEffect } from 'react';
 import type { Project, Technician, ProjectDocument, ProjectDailyLog } from '@/lib/types';
@@ -199,6 +200,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                             <div className="pdh-meta-item"><MapPin size={12}/>{project.location}</div>
                             <div className="pdh-meta-item"><Calendar size={12}/>Started {formatDateDisplay(project.startDate)}</div>
                             <div className="pdh-meta-item"><Clock size={12}/>Est. {project.estimatedDuration}</div>
+                            <div className="pdh-meta-item"><User size={12}/>Lead: {projectLead(project, technicians)?.name || 'unassigned'}</div>
                             <div className="pdh-meta-item"><Users size={12}/>{(project.team || []).length} Technician(s)</div>
                         </div>
                     </div>

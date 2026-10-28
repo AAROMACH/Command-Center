@@ -64,7 +64,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { db, auth } from '@/lib/firebase';
 import { NotificationService } from '@/lib/notification-service';
 import { LogApprovalHistory } from './log-approval-history';
-import { doc, setDoc, updateDoc, deleteDoc, arrayUnion, collection, query, where, onSnapshot, runTransaction } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, arrayUnion, collection, query, where, onSnapshot, runTransaction } from 'firebase/firestore';
 import { isLockedLog, assignedTechOf, weekOfForScheduleDate } from '@/lib/weekly-log-core';
 import { isSuperAdmin } from '@/lib/permissions';
 import { toUnassignedWorkOrder } from '@/lib/jobs';
@@ -168,10 +168,13 @@ function ImportedJobAudit({
     /** Always show the save button with this label (a dispute's "Add it and pay"). */
     commitLabel?: string;
 }) {
-    // Local Buffer State
-    const [localPay, setLocalPay] = useState(wo.pay);
-    const [localReimb, setLocalReimb] = useState(wo.auditReimbursement || approvedReimbTotal || 0);
-    const [localOverhead, setLocalOverhead] = useState(wo.auditOverhead || 0);
+    // Local Buffer State. Older imported jobs can have pay missing or saved as
+    // text — read everything as a number so every field is editable.
+    const num = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+    const savedPay = num(wo.pay), savedReimb = num(wo.auditReimbursement), savedOverhead = num(wo.auditOverhead);
+    const [localPay, setLocalPay] = useState(savedPay);
+    const [localReimb, setLocalReimb] = useState(savedReimb || approvedReimbTotal || 0);
+    const [localOverhead, setLocalOverhead] = useState(savedOverhead);
     const prevApprovedTotal = useRef(approvedReimbTotal);
 
     // Auto-fill the Reimb. field from newly-approved reimbursements — only
@@ -184,7 +187,7 @@ function ImportedJobAudit({
         }
     }, [approvedReimbTotal]);
 
-    const isDirty = localPay !== wo.pay || localReimb !== (wo.auditReimbursement || 0) || localOverhead !== (wo.auditOverhead || 0);
+    const isDirty = localPay !== savedPay || localReimb !== savedReimb || localOverhead !== savedOverhead;
 
     // Dynamic Financial Projections (Local).
     // The Field Nation fee is taken off labor AND reimbursement; the tech nets
@@ -212,9 +215,9 @@ function ImportedJobAudit({
     };
 
     const handleReset = () => {
-        setLocalPay(wo.pay);
-        setLocalReimb(wo.auditReimbursement || 0);
-        setLocalOverhead(wo.auditOverhead || 0);
+        setLocalPay(savedPay);
+        setLocalReimb(savedReimb);
+        setLocalOverhead(savedOverhead);
     };
 
     return (
@@ -373,11 +376,40 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         return () => unsub();
     }, [isOpen, initialLog?.id]);
 
-    const findWorkOrder = useCallback((id: string): WorkOrder | undefined => {
-        return missions.find(wo => wo.id === id);
-    }, [missions]);
+    // Jobs on this log that aren't in the live lists — usually finished jobs
+    // since archived to History. Fetched by id so older weeks still show the
+    // job's title and the full pay calculator (they used to fall back to a
+    // bare "Loading job details…" row with no calculator).
+    const [extraJobs, setExtraJobs] = useState<WorkOrder[]>([]);
+    const [extraLoading, setExtraLoading] = useState(false);
+    const allJobs = useMemo(() => [...missions, ...extraJobs], [missions, extraJobs]);
+    useEffect(() => {
+        if (!isOpen || !initialLog) return;
+        const ids = Array.from(new Set((initialLog.items || []).map(i => i.workOrderId).filter(Boolean)));
+        const missing = ids.filter(id => !missions.some(m => m.id === id || m.workOrderId === id));
+        if (!missing.length) { setExtraJobs([]); return; }
+        let cancelled = false;
+        setExtraLoading(true);
+        (async () => {
+            const found: WorkOrder[] = [];
+            for (const id of missing) {
+                for (const col of ['assignments', 'activityArchive', 'workOrders']) {
+                    try {
+                        const snap = await getDoc(doc(db, col, id));
+                        if (snap.exists()) { found.push({ ...(snap.data() as WorkOrder), id: snap.id }); break; }
+                    } catch { /* not readable here; try the next place */ }
+                }
+            }
+            if (!cancelled) { setExtraJobs(found); setExtraLoading(false); }
+        })();
+        return () => { cancelled = true; };
+    }, [isOpen, initialLog, missions]);
 
-    const jobsById = useMemo(() => new Map(missions.map(m => [m.id, m])), [missions]);
+    const findWorkOrder = useCallback((id: string): WorkOrder | undefined => {
+        return allJobs.find(wo => wo.id === id) || allJobs.find(wo => wo.workOrderId === id);
+    }, [allJobs]);
+
+    const jobsById = useMemo(() => new Map(allJobs.map(m => [m.id, m])), [allJobs]);
 
     const getHelperNames = useCallback((wo: WorkOrder | undefined): string[] => {
         if (!wo?.additionalTechnicianIds?.length) return [];
@@ -603,9 +635,15 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     }, [technician]);
 
     const handleUpdateWorkOrder = useCallback(async (woId: string, updates: Partial<WorkOrder>) => {
+        // The log may file the job under its original work-order id.
+        const job = allJobs.find(j => j.id === woId);
+        const onThisJob = (id: string) => id === woId || (!!job?.workOrderId && id === job.workOrderId);
+        // Archived jobs aren't live-updated: patch the local copy so the
+        // calculator's fields keep what was typed.
+        if (extraJobs.some(j => j.id === woId)) setExtraJobs(prev => prev.map(j => j.id === woId ? { ...j, ...updates } : j));
         if (updates.finalPay !== undefined && localLog) {
             const updatedItems = (localLog.items || []).map(item =>
-                item.workOrderId === woId ? { ...item, jobPay: updates.finalPay! } : item
+                onThisJob(item.workOrderId) ? { ...item, jobPay: updates.finalPay! } : item
             );
 
             try {
@@ -624,12 +662,15 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             const asmtRef = doc(db, 'assignments', woId);
             const woRef = doc(db, 'workOrders', woId);
             await updateDoc(asmtRef, updates).catch(async () => {
-                await updateDoc(woRef, updates);
+                await updateDoc(woRef, updates).catch(async () => {
+                    // Finished jobs archived to History.
+                    await updateDoc(doc(db, 'activityArchive', woId), updates);
+                });
             });
         } catch (e: any) {
             console.error("Weekly log update error", e);
         }
-    }, [localLog, toast, isLogApproved, logReopenedPayEdit]);
+    }, [localLog, toast, isLogApproved, logReopenedPayEdit, allJobs, extraJobs]);
 
     // A manually-added missing job has no assignment/workOrder doc, so the pay
     // calc writes its results straight back onto the report inside the log.
@@ -1508,7 +1549,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         <p className="text-[12px] text-text-muted">No jobs on this log.</p>
                                     )}
                                     {(localLog.items || []).map(item => {
-                                        const m = missions.find(x => x.id === item.workOrderId);
+                                        const m = findWorkOrder(item.workOrderId);
                                         return (
                                             <div key={item.id} className="flex flex-wrap items-center gap-2 text-[12px]">
                                                 <span className="font-mono font-bold text-text-primary">{item.workOrderId.toUpperCase()}</span>
@@ -1633,7 +1674,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                             const wo = findWorkOrder(item.workOrderId);
                                             const isImported = wo?.source === 'Imported';
                                             const isAudited = item.isAdminReviewed;
-                                            const displayTitle = wo?.title || 'Loading job details…';
+                                            const displayTitle = wo?.title || wo?.description || (extraLoading ? 'Loading job details…' : 'Job record not found — pay shown from the log');
                                             const helperNames = getHelperNames(wo);
                                             const jobReimbursements = getJobReimbursements(wo?.id);
                                             const hasPendingReimb = jobReimbursements.some(r => r.status === 'pending');

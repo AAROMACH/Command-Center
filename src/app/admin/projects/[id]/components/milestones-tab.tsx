@@ -1,6 +1,6 @@
 
 'use client';
-import type { Project, Phase, Task, Technician } from '@/lib/types';
+import type { Project, Phase, Task, Technician, ProjectDocument } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +32,8 @@ type MilestonesTabProps = {
     project: Project;
     /** People lookup for the crew picker / assignee names (directory or users). */
     technicians?: Technician[];
+    /** Project documents, so each task shows every photo / file filed against it. */
+    documents?: ProjectDocument[];
 };
 
 const PhaseBlock = ({ 
@@ -45,8 +47,10 @@ const PhaseBlock = ({
     onEditPhaseName,
     isReadOnly,
     nameOf,
+    documents = [],
 }: { 
     phase: Phase, 
+    documents?: ProjectDocument[],
     onTaskToggle: (phaseId: string, taskId: string) => void, 
     isEditing: boolean,
     onAddTask: (phaseId: string, name: string) => void,
@@ -134,7 +138,7 @@ const PhaseBlock = ({
                                     {task.requiresFileUpload && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Upload size={10}/> File</div>}
                                     {task.requiresOther && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Plus size={10}/> {task.otherRequirementLabel || 'Req.'}</div>}
                                 </div>
-                                <TaskAnswers task={task} nameOf={nameOf} />
+                                <TaskAnswers task={task} nameOf={nameOf} documents={documents} />
                             </div>
                             {isEditing && !isReadOnly && (
                                 <div className="task-actions opacity-0 group-hover/task:opacity-100 transition-opacity">
@@ -163,7 +167,7 @@ const PhaseBlock = ({
     )
 }
 
-export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps) {
+export function MilestonesTab({ project, technicians = [], documents = [] }: MilestonesTabProps) {
     const nameOf = (id: string) => technicians.find(t => t.id === id)?.name || 'Crew member';
     const crew = (project.team || []).map(m => ({ id: m.techId, name: nameOf(m.techId), role: m.role }));
     const [editablePhases, setEditablePhases] = useState<Phase[]>(project.phases || []);
@@ -351,6 +355,7 @@ export function MilestonesTab({ project, technicians = [] }: MilestonesTabProps)
                         onDeletePhase={handleDeletePhase}
                         onEditPhaseName={handleEditPhaseName}
                         isReadOnly={isReadOnly}
+                        documents={documents}
                         nameOf={nameOf}
                     />
                 ))}

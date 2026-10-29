@@ -51,10 +51,27 @@ export function TaskRequirementIcons({ task }: { task: Partial<Task> }) {
  * What was filled in when the task was completed, shown under the task: when
  * and by whom, the answers, photo thumbnails, documents and the signature.
  */
-export function TaskAnswers({ task, nameOf }: { task: Partial<Task>; nameOf?: (id: string) => string }) {
+export function TaskAnswers({ task, nameOf, documents = [] }: {
+  task: Partial<Task>; nameOf?: (id: string) => string;
+  /** The project's documents: anything filed against this task (Documents tab
+   *  uploads, older completions) shows here too, not just what's on the task. */
+  documents?: ProjectDocument[];
+}) {
+  const [showAll, setShowAll] = useState(false);
   if (!task.isCompleted) return null;
-  const photos = task.photos?.length ? task.photos : task.photoUrl ? [{ url: task.photoUrl, name: 'Photo' }] : [];
-  const files = task.files?.length ? task.files : task.fileUrl ? [{ url: task.fileUrl, name: 'Document' }] : [];
+  const linked = documents.filter(d => d.taskId && d.taskId === task.id && d.url);
+  const isImg = (d: ProjectDocument) => d.type === 'img' || /\.(jpe?g|png|webp|gif|heic)$/i.test(d.originalName || d.url || '');
+  const merge = (own: { url: string; name: string }[], extra: ProjectDocument[]) => {
+    const seen = new Set(own.map(p => p.url));
+    return [...own, ...extra.filter(d => !seen.has(d.url!)).map(d => ({ url: d.url!, name: d.name }))];
+  };
+  const photos = merge(task.photos?.length ? task.photos : task.photoUrl ? [{ url: task.photoUrl, name: 'Photo' }] : [],
+    linked.filter(d => isImg(d) && d.url !== task.signatureUrl));
+  const files = merge(task.files?.length ? task.files : task.fileUrl ? [{ url: task.fileUrl, name: 'Document' }] : [],
+    linked.filter(d => !isImg(d)));
+  // A few thumbnails, then "+N more" — keeps long task lists light.
+  const SHOWN = 3;
+  const visiblePhotos = showAll ? photos : photos.slice(0, SHOWN);
   const answers: [string, string][] = [];
   if (task.requiresText && task.textValue) answers.push(['Notes', task.textValue]);
   if (task.requiresNumeric && task.numericValue != null) answers.push(['Count', String(task.numericValue)]);
@@ -75,13 +92,19 @@ export function TaskAnswers({ task, nameOf }: { task: Partial<Task>; nameOf?: (i
         <p key={k} className="text-[12px] text-text-secondary break-words"><span className="font-semibold text-text-primary">{k}:</span> {v}</p>
       ))}
       {photos.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {photos.map(p => (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {visiblePhotos.map(p => (
             <a key={p.url} href={p.url} target="_blank" rel="noreferrer" title={p.name} className="block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.url} alt={p.name} className="h-14 w-14 rounded-md border border-border-sub object-cover" />
+              <img src={p.url} alt={p.name} loading="lazy" className="h-14 w-14 rounded-md border border-border-sub object-cover" />
             </a>
           ))}
+          {photos.length > SHOWN && (
+            <button type="button" onClick={() => setShowAll(v => !v)}
+              className="flex h-14 min-w-14 items-center justify-center rounded-md border border-border-sub bg-bg-tertiary px-2 text-[12px] font-semibold text-text-secondary hover:text-text-primary">
+              {showAll ? 'Show less' : `+${photos.length - SHOWN} more`}
+            </button>
+          )}
         </div>
       )}
       {files.map(f => (

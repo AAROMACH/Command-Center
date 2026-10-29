@@ -153,12 +153,13 @@ const ProximityDisplay = ({ lat, lng, project, label, size = 'default' }: { lat?
 const PhaseBlock = ({ 
     phase, 
     onTaskToggle, 
+    documents,
     isReadOnly,
     nameOf,
 }: { 
     phase: any, 
     onTaskToggle: (pid: string, tid: string) => void, 
-    documents: any[], 
+    documents: ProjectDocument[], 
     isReadOnly: boolean,
     nameOf: (id: string) => string,
 }) => {
@@ -194,7 +195,7 @@ const PhaseBlock = ({
                                     {task.assignedTechId && <span className="text-[11px] font-medium text-brand-red border border-brand-red/30 bg-brand-red/10 rounded-full px-2 py-0.5 whitespace-nowrap">{nameOf(task.assignedTechId)}</span>}
                                     <TaskRequirementIcons task={task} />
                                 </div>
-                                <TaskAnswers task={task} nameOf={nameOf} />
+                                <TaskAnswers task={task} nameOf={nameOf} documents={documents} />
                             </div>
                         </div>
                     ))}
@@ -431,7 +432,7 @@ const DocumentsTab = ({ project, documents }: { project: Project, documents: Pro
     );
 };
 
-const MilestonesTab = ({ project, onTaskToggle, isReadOnly, nameOf }: { project: Project, onTaskToggle: (pid: string, tid: string) => void, documents: ProjectDocument[], isReadOnly: boolean, nameOf: (id: string) => string }) => {
+const MilestonesTab = ({ project, onTaskToggle, documents, isReadOnly, nameOf }: { project: Project, onTaskToggle: (pid: string, tid: string) => void, documents: ProjectDocument[], isReadOnly: boolean, nameOf: (id: string) => string }) => {
     return (
         <div className="space-y-4 animate-in fade-in duration-300">
              <div className="flex items-center justify-between px-1 border-b border-border-sub pb-2">
@@ -444,7 +445,7 @@ const MilestonesTab = ({ project, onTaskToggle, isReadOnly, nameOf }: { project:
                         key={phase.id} 
                         phase={phase} 
                         onTaskToggle={onTaskToggle} 
-                        documents={[]} 
+                        documents={documents} 
                         isReadOnly={isReadOnly} 
                         nameOf={nameOf}
                     />

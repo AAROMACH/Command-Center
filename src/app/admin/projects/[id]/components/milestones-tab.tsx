@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { NotificationService } from '@/lib/notification-service';
-import { TaskAnswers, TaskCompletionDialog, TaskRequirementIcons, taskHasRequirements } from '@/components/task-completion-dialog';
+import { TaskAnswers, TaskCompletionDialog, taskHasRequirements } from '@/components/task-completion-dialog';
 import { auth } from '@/lib/firebase';
 import { OptionListInput } from '@/components/option-list-input';
 
@@ -132,7 +132,6 @@ const PhaseBlock = ({
                                     {task.requiresDropdown && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><ListTodo size={10}/> List</div>}
                                     {task.requiresSignature && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Signature size={10}/> Sign</div>}
                                     {task.requiresFileUpload && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Upload size={10}/> File</div>}
-                                    {task.isCompleted && <TaskRequirementIcons task={task} />}
                                     {task.requiresOther && <div className="inline-flex items-center gap-1 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border-sub"><Plus size={10}/> {task.otherRequirementLabel || 'Req.'}</div>}
                                 </div>
                                 <TaskAnswers task={task} nameOf={nameOf} />

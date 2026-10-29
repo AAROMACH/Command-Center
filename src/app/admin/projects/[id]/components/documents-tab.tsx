@@ -147,6 +147,9 @@ export function DocumentsTab({ project, documents }: DocumentsTabProps) {
     };
 
     const handleDeleteDoc = async (id: string) => {
+        // Every delete button lands here — always confirm first.
+        const name = documents.find(d => d.id === id)?.name || 'this file';
+        if (!confirm(`Delete "${name}"? This can't be undone.`)) return;
         try {
             await deleteDoc(doc(db, 'projectDocuments', id));
             toast({ variant: "destructive", title: "File deleted", description: "Document deleted." });

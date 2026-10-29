@@ -1,5 +1,5 @@
 'use client';
-import type { Project, Technician, ProjectDailyLog, Expense, Invoice } from '@/lib/types';
+import type { Quote, Project, Technician, ProjectDailyLog, Expense, Invoice } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -55,6 +55,13 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
             snap => setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice))), () => setInvoices([]));
         return () => { unsubE(); unsubI(); };
     }, [project?.id, showMoney, economicsFromServer]);
+    // The linked quote — its labor and materials are the project's estimate.
+    const [quote, setQuote] = useState<Quote | null>(null);
+    useEffect(() => {
+        if (!project?.sourceQuoteId || !showMoney || economicsFromServer) { setQuote(null); return; }
+        return onSnapshot(doc(db, 'quotes', project.sourceQuoteId),
+            snap => setQuote(snap.exists() ? ({ ...snap.data(), id: snap.id } as Quote) : null), () => setQuote(null));
+    }, [project?.sourceQuoteId, showMoney, economicsFromServer]);
     const serverEconomics = useServerProjectEconomics(project, showMoney && economicsFromServer, dailyLogs.length);
     const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
     const [isAddingNote, setIsAddingNote] = useState(false);
@@ -82,7 +89,8 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
 
     const liveEconomics = useMemo(() => computeProjectEconomics(
         project, dailyLogs, id => allTechnicians.find(t => t.id === id)?.hourlyRate, expenses, invoices,
-    ), [project, dailyLogs, allTechnicians, expenses, invoices]);
+        { nameOf: id => allTechnicians.find(t => t.id === id)?.name, quote },
+    ), [project, dailyLogs, allTechnicians, expenses, invoices, quote]);
     const projectEconomics = economicsFromServer ? serverEconomics : liveEconomics;
 
     const getTechnician = (id: string) => allTechnicians.find(t => t.id === id);

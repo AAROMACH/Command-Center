@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Copy, Loader2, Send } from 'lucide-react';
+import { Copy, Loader2, Pencil, Send } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import type { Invoice } from '@/lib/types';
+import { PriceDocEditor, type PriceDocResult } from '@/components/price-doc-editor';
+import { invoiceToEditor, saveInvoiceFromEditor } from '@/lib/invoice-actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -14,13 +16,31 @@ import { useToast } from '@/hooks/use-toast';
  * link to the invoice and marks it Sent (/api/invoices/send). Used on the
  * project page, Quotes & Invoices and Financials.
  */
-export function SendInvoiceButton({ invoice, size = 'sm', className }: { invoice: Pick<Invoice, 'id' | 'invoiceNumber' | 'status' | 'total'>; size?: 'sm' | 'default'; className?: string }) {
+const money = (n: number) => `$${(Number(n) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+
+/** Preview and send: shows exactly what the client gets, with Edit for any
+ *  last-minute change (remove items, add a discount / adjustment). */
+export function SendInvoiceButton({ invoice, size = 'sm', className }: { invoice: Invoice; size?: 'sm' | 'default'; className?: string }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [to, setTo] = useState('');
   const [loading, setLoading] = useState(false);
   const [link, setLink] = useState('');
   const token = () => auth.currentUser?.getIdToken();
+  const [editing, setEditing] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const saveEdit = async (r: PriceDocResult) => {
+    setSavingEdit(true);
+    try {
+      await saveInvoiceFromEditor(r, invoice);
+      toast({ title: 'Invoice updated', description: 'Check the preview, then send.' });
+      setEditing(false);
+      setOpen(true);
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Save failed', description: e.message });
+    } finally { setSavingEdit(false); }
+  };
+  const lineAmt = (l: Invoice['lineItems'][number]) => (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0) * (l.category === 'labor' && (l as any).multiplier ? (l as any).multiplier : 1);
 
   const start = async () => {
     setOpen(true); setLink(''); setLoading(true);
@@ -59,8 +79,24 @@ export function SendInvoiceButton({ invoice, size = 'sm', className }: { invoice
         <DialogContent className="sm:max-w-md" onClick={e => e.stopPropagation()}>
           <DialogHeader className="text-left">
             <DialogTitle>Send invoice {invoice.invoiceNumber}</DialogTitle>
-            <DialogDescription>The client gets an email with a link to view the full invoice. It's marked Sent.</DialogDescription>
+            <DialogDescription>Check it over — this is what the client sees. Edit to remove items or add a discount, then send.</DialogDescription>
           </DialogHeader>
+          <div className="rounded-lg border border-border-sub bg-bg-primary p-3 space-y-1.5 max-h-[40svh] overflow-y-auto text-[12px]">
+            {(invoice.lineItems || []).map(l => (
+              <div key={l.id} className="flex justify-between gap-3">
+                <span className="min-w-0 break-words">{l.quantity} × {l.description}</span>
+                <span className={`font-mono shrink-0 ${lineAmt(l) < 0 ? 'text-text-green' : ''}`}>{money(lineAmt(l))}</span>
+              </div>
+            ))}
+            {!(invoice.lineItems || []).length && <p className="text-text-muted">No items on this invoice.</p>}
+            <div className="border-t border-border-sub pt-1.5 space-y-0.5 font-mono">
+              <div className="flex justify-between"><span className="font-sans text-text-muted">Subtotal</span><span>{money(invoice.subtotal)}</span></div>
+              {(invoice.discountAmount || 0) > 0 && <div className="flex justify-between"><span className="font-sans text-text-muted">Plan discount</span><span>−{money(invoice.discountAmount || 0)}</span></div>}
+              {invoice.tax > 0 && <div className="flex justify-between"><span className="font-sans text-text-muted">Tax</span><span>{money(invoice.tax)}</span></div>}
+              <div className="flex justify-between text-[13px] font-bold"><span className="font-sans">Total</span><span>{money(invoice.total)}</span></div>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" className="self-start" onClick={() => { setOpen(false); setEditing(true); }}><Pencil size={13} className="mr-1.5" /> Edit invoice</Button>
           <label className="space-y-1.5 text-[12px] text-text-muted">
             Send to
             <Input type="email" value={to} onChange={e => setTo(e.target.value)} placeholder="client@example.com" disabled={loading} />
@@ -77,6 +113,19 @@ export function SendInvoiceButton({ invoice, size = 'sm', className }: { invoice
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <PriceDocEditor
+        open={editing}
+        // One dialog at a time (stacked Radix dialogs can freeze the page):
+        // the send preview comes back when the editor closes.
+        onClose={() => { setEditing(false); setOpen(true); }}
+        kind="invoice"
+        initial={invoiceToEditor(invoice)}
+        initialDiscount={invoice.planDiscount ?? null}
+        title={`Edit invoice ${invoice.invoiceNumber}`}
+        saveLabel="Save changes"
+        saving={savingEdit}
+        onSave={saveEdit}
+      />
     </span>
   );
 }

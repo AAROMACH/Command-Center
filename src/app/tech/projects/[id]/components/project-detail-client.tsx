@@ -1,4 +1,5 @@
 'use client';
+import { UnlockableField } from '@/components/unlockable-field';
 
 import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
@@ -208,6 +209,10 @@ const PhaseBlock = ({
 const OverviewTab = ({ project, technicians, dailyLogCount, isManager }: { project: Project, technicians: Technician[], dailyLogCount: number, isManager: boolean }) => {
     const economics = useServerProjectEconomics(project, isManager, dailyLogCount);
     const [localProjectData, setLocalProjectData] = useState<Partial<Project>>({});
+    // Site notes stay locked until someone double-clicks a box or taps its
+    // pencil, so a stray click and Backspace can't wipe them.
+    const [unlocked, setUnlocked] = useState<Set<string>>(new Set());
+    const unlock = (k: string) => setUnlocked(prev => new Set(prev).add(k));
     const { toast } = useToast();
 
     useEffect(() => {
@@ -233,6 +238,7 @@ const OverviewTab = ({ project, technicians, dailyLogCount, isManager }: { proje
         try {
             const docRef = doc(db, 'projects', project.id);
             await updateDoc(docRef, { ...localProjectData });
+            setUnlocked(new Set());
             toast({ title: "Saved", description: "Briefing saved." });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save failed', description: e.message });
@@ -247,12 +253,15 @@ const OverviewTab = ({ project, technicians, dailyLogCount, isManager }: { proje
                     <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-4 text-left">
                         <div className="space-y-1 text-left">
                             <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-left">What we're doing</p>
-                            <Textarea 
-                                disabled={isReadOnly}
-                                className="field-textarea h-24" 
-                                value={localProjectData.scope || ''}
-                                onChange={e => setLocalProjectData({...localProjectData, scope: e.target.value})}
-                            />
+                            <UnlockableField locked={!unlocked.has('scope')} onUnlock={() => unlock('scope')} canEdit={!isReadOnly}>
+                                <Textarea 
+                                    disabled={isReadOnly}
+                                    readOnly={!unlocked.has('scope')}
+                                    className="field-textarea h-24" 
+                                    value={localProjectData.scope || ''}
+                                    onChange={e => setLocalProjectData({...localProjectData, scope: e.target.value})}
+                                />
+                            </UnlockableField>
                         </div>
                     </div>
                 </section>
@@ -263,29 +272,38 @@ const OverviewTab = ({ project, technicians, dailyLogCount, isManager }: { proje
                         <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3 text-left">
                             <div className="space-y-1 text-left">
                                 <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-left">Access instructions</p>
-                                <Textarea 
-                                    disabled={isReadOnly}
-                                    className="field-textarea h-20" 
-                                    value={localProjectData.siteAccessInstructions || ''}
-                                    onChange={e => setLocalProjectData({...localProjectData, siteAccessInstructions: e.target.value})}
-                                />
+                                <UnlockableField locked={!unlocked.has('siteAccessInstructions')} onUnlock={() => unlock('siteAccessInstructions')} canEdit={!isReadOnly}>
+                                    <Textarea 
+                                        disabled={isReadOnly}
+                                        readOnly={!unlocked.has('siteAccessInstructions')}
+                                        className="field-textarea h-20" 
+                                        value={localProjectData.siteAccessInstructions || ''}
+                                        onChange={e => setLocalProjectData({...localProjectData, siteAccessInstructions: e.target.value})}
+                                    />
+                                </UnlockableField>
                             </div>
                         </div>
                         <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3 text-left">
                             <div className="space-y-2 text-left">
                                 <Label className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-left">On-site contact</Label>
-                                <Input 
-                                    disabled={isReadOnly}
-                                    className="h-10 text-[13px]"
-                                    value={localProjectData.onsiteContactName || ''}
-                                    onChange={e => setLocalProjectData({...localProjectData, onsiteContactName: e.target.value})}
-                                />
-                                <Input 
-                                    disabled={isReadOnly}
-                                    className="h-10 text-[13px]"
-                                    value={localProjectData.onsiteContactPhone || ''}
-                                    onChange={e => setLocalProjectData({...localProjectData, onsiteContactPhone: e.target.value})}
-                                />
+                                <UnlockableField locked={!unlocked.has('onsiteContactName')} onUnlock={() => unlock('onsiteContactName')} canEdit={!isReadOnly}>
+                                    <Input 
+                                        disabled={isReadOnly}
+                                        readOnly={!unlocked.has('onsiteContactName')}
+                                        className="h-10 text-[13px]"
+                                        value={localProjectData.onsiteContactName || ''}
+                                        onChange={e => setLocalProjectData({...localProjectData, onsiteContactName: e.target.value})}
+                                    />
+                                </UnlockableField>
+                                <UnlockableField locked={!unlocked.has('onsiteContactPhone')} onUnlock={() => unlock('onsiteContactPhone')} canEdit={!isReadOnly}>
+                                    <Input 
+                                        disabled={isReadOnly}
+                                        readOnly={!unlocked.has('onsiteContactPhone')}
+                                        className="h-10 text-[13px]"
+                                        value={localProjectData.onsiteContactPhone || ''}
+                                        onChange={e => setLocalProjectData({...localProjectData, onsiteContactPhone: e.target.value})}
+                                    />
+                                </UnlockableField>
                             </div>
                         </div>
                     </div>
@@ -313,12 +331,12 @@ const OverviewTab = ({ project, technicians, dailyLogCount, isManager }: { proje
 
                 {isDirty && !isReadOnly && (
                     <div className="flex justify-end gap-3 pt-2">
-                        <Button variant="outline" className="h-10 px-5" onClick={() => setLocalProjectData({
+                        <Button variant="outline" className="h-10 px-5" onClick={() => { setUnlocked(new Set()); setLocalProjectData({
                             scope: project.scope,
                             onsiteContactName: project.onsiteContactName,
                             onsiteContactPhone: project.onsiteContactPhone,
                             siteAccessInstructions: project.siteAccessInstructions
-                        })}>Discard changes</Button>
+                        }); }}>Discard changes</Button>
                         <Button className="h-10 px-6 bg-brand-red" onClick={handleSaveChanges}>Save changes</Button>
                     </div>
                 )}

@@ -1,4 +1,5 @@
 'use client';
+import { SendInvoiceButton } from '@/components/send-invoice-button';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -143,7 +144,10 @@ export function InvoicesPanel({ search = '', onResetSearch, hideNewButton = fals
                                     <TableCell className="text-xs text-text-muted">{invoice.dueDate}</TableCell>
                                     <TableCell className="font-mono text-sm font-bold text-text-primary tabular-nums">${(Number(invoice.total) || 0).toFixed(2)}</TableCell>
                                     <TableCell>
-                                        <StatusBadge kind="invoice" value={invoice.status} />
+                                        <div className="flex items-center gap-2">
+                                            <StatusBadge kind="invoice" value={invoice.status} />
+                                            {invoice.status !== 'paid' && <SendInvoiceButton invoice={invoice} className="h-7 px-2 text-[12px]" />}
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))}

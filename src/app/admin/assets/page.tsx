@@ -5,7 +5,8 @@ import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, doc, writeBatch } from 'firebase/firestore';
+import { STANDARD_MATERIALS } from '@/lib/standard-materials';
 import type { Asset, AssetCategory, Material, AssetAssignment, Technician } from '@/lib/types';
 import { isClient } from '@/lib/permissions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -22,7 +23,7 @@ import {
     Package, Plus, Car, Wrench, Laptop, Archive, Shield,
     User, MapPin, Calendar, AlertTriangle, ChevronRight, Edit2, CheckCircle,
     DollarSign, Tag, RotateCcw, XCircle, Hammer, History, ArrowRightLeft,
-    ShoppingCart, Boxes, ClipboardList,
+    ShoppingCart, Boxes, ClipboardList, Loader2,
 Percent, } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/page-header';
@@ -461,6 +462,39 @@ export default function AssetsAndMaterialsPage() {
 
     // ── Material CRUD ──────────────────────────────────────────────────────
 
+    // One-time starter list (lib/standard-materials): names, categories and
+    // units at $0 cost, priced from each category's markup once a cost is set.
+    // Skips names already in the price book, so it's safe to click again.
+    const [seeding, setSeeding] = useState(false);
+    const loadStandardMaterials = async () => {
+        const have = new Set(materials.map(m => (m.name || '').trim().toLowerCase()));
+        const toAdd = STANDARD_MATERIALS.filter(m => !have.has(m.name.toLowerCase()));
+        if (!toAdd.length) { toast({ title: 'Already loaded', description: 'Every standard material is already in your price book.' }); return; }
+        if (!confirm(`Add ${toAdd.length} standard low-voltage materials with $0 cost? You fill in the prices. Names already in your price book are skipped.`)) return;
+        setSeeding(true);
+        try {
+            const now = new Date().toISOString();
+            for (let i = 0; i < toAdd.length; i += 400) {
+                const batch = writeBatch(db);
+                toAdd.slice(i, i + 400).forEach(m => {
+                    batch.set(doc(collection(db, 'materials')), {
+                        name: m.name, category: m.category, unitType: m.unitType,
+                        ...(m.description ? { description: m.description } : {}),
+                        standardCost: 0, billablePrice: 0,
+                        markupPercentage: markupFor(m.category, pricing), priceOverride: false,
+                        taxable: true, status: 'active', notes: 'Standard list — add cost', createdAt: now, updatedAt: now,
+                    });
+                });
+                await batch.commit();
+            }
+            toast({ title: 'Standard materials added', description: `${toAdd.length} materials added. Sort by cost to find the ones still at $0.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not add materials', description: e.message });
+        } finally {
+            setSeeding(false);
+        }
+    };
+
     const openAddMaterial = () => {
         setEditingMat(false);
         setMatForm({ ...EMPTY_MAT_FORM });
@@ -558,9 +592,14 @@ export default function AssetsAndMaterialsPage() {
                             <Plus size={14} className="mr-1.5" /> Add asset
                         </Button>
                     ) : mainTab === 'materials' && (
-                        <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white" onClick={openAddMaterial}>
-                            <Plus size={14} className="mr-1.5" /> Add material
-                        </Button>
+                        <>
+                            <Button size="sm" variant="outline" className="h-9" onClick={loadStandardMaterials} disabled={seeding}>
+                                {seeding ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : <ShoppingCart size={14} className="mr-1.5" />} Load standard materials
+                            </Button>
+                            <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white" onClick={openAddMaterial}>
+                                <Plus size={14} className="mr-1.5" /> Add material
+                            </Button>
+                        </>
                     )}
                 </>}
             />

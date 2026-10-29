@@ -3,6 +3,17 @@ import { db } from './firebase';
 import { createDocId } from './generateId';
 import { ID_PREFIXES } from './constants';
 
+/** Throws if the tech's week is already approved — call BEFORE creating payout
+ *  records, so a refused week never leaves payouts that aren't on any log. */
+export async function assertWeekOpen(techId: string, weekOf: string): Promise<void> {
+  const logs = (await getDocs(query(collection(db, 'weeklyLogs'), where('techId', '==', techId))))
+    .docs.map(d => d.data() as any).filter(l => l.weekOf === weekOf && !l.ignoredDuplicate);
+  const open = logs.some(l => l.status === 'Draft' || l.status === 'Submitted');
+  if (!open && logs.some(l => l.status === 'Approved')) {
+    throw new Error(`The week of ${weekOf} is already approved for this tech. Reopen it in Payroll audit first.`);
+  }
+}
+
 /**
  * Puts a project payout on a tech's weekly log for `weekOf` (MM-dd-yyyy, the
  * Monday) — the week the hours were worked — creating a Draft log for that

@@ -5,7 +5,7 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, getDocs, setDoc } from 'firebase/firestore';
 import { makeProjectPayoutId } from '@/lib/doc-ids';
 import { createDocId } from '@/lib/generateId';
-import { addPayoutToWeeklyLog } from '@/lib/project-payout';
+import { addPayoutToWeeklyLog, assertWeekOpen } from '@/lib/project-payout';
 import { weekOfForScheduleDate } from '@/lib/weekly-log-core';
 
 const currentWeekOf = () => weekOfForScheduleDate(undefined);
@@ -132,6 +132,7 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
     }
     setGenerating(summary.tech.id);
     try {
+      await assertWeekOpen(summary.tech.id, currentWeekOf()); // never leave a payout that isn't on a log
       const id = await makeProjectPayoutId();
       const now = new Date().toISOString();
       const amount = parseFloat(summary.suggested.toFixed(2));
@@ -154,8 +155,8 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
       });
       await pushPayoutToWeeklyLog(summary.tech.id, id, { projectId, amount, notes });
       toast({ title: 'Timesheet payout record created' });
-    } catch {
-      toast({ title: 'Failed to create payout record', variant: 'destructive' });
+    } catch (e: any) {
+      toast({ title: 'Failed to create payout record', description: e?.message, variant: 'destructive' });
     } finally {
       setGenerating(null);
     }
@@ -168,6 +169,7 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
     }
     setSaving(true);
     try {
+      await assertWeekOpen(form.technicianId, currentWeekOf()); // never leave a payout that isn't on a log
       const id = await makeProjectPayoutId();
       const tech = technicians.find(t => t.id === form.technicianId);
       const now = new Date().toISOString();
@@ -189,8 +191,8 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
       toast({ title: 'Payout record added' });
       setForm(EMPTY_FORM);
       setIsAddOpen(false);
-    } catch {
-      toast({ title: 'Failed to add payout', variant: 'destructive' });
+    } catch (e: any) {
+      toast({ title: 'Failed to add payout', description: e?.message, variant: 'destructive' });
     } finally {
       setSaving(false);
     }

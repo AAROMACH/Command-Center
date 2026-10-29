@@ -366,6 +366,11 @@ export type Project = {
   /** Set when the project came from a won CRM deal. */
   sourceLeadId?: string;
   sourceQuoteId?: string | null;
+  /** Materials & parts added from the project page. Each is also a billed line
+   *  on the linked quote (lineId); its cost counts in project costs. */
+  addedParts?: ProjectPart[];
+  /** Draft invoice created when the project was completed. */
+  invoiceId?: string | null;
   soldBy?: string;
   handoffAt?: string;
   sourceSurveyIds?: string[];
@@ -411,6 +416,22 @@ export type Task = {
   files?: { url: string; name: string }[];
   /** The name typed when the tech typed their signature instead of drawing it. */
   signatureName?: string;
+};
+
+export type ProjectPart = {
+  id: string;
+  materialId?: string;
+  name: string;
+  quantity: number;
+  /** Our cost per unit (price book standard cost). */
+  unitCost: number;
+  /** Sell price per unit (price book), billed to the client on the quote. */
+  unitPrice: number;
+  taxable: boolean;
+  /** The quote line this part became, so it can be removed again. */
+  quoteLineId?: string | null;
+  addedBy: string;
+  addedAt: string;
 };
 
 export type ProjectDailyLog = {
@@ -628,6 +649,8 @@ export type WeeklyLogItem = {
    *  (it's removed) or says they worked it (a 'removed_helper' dispute payroll
    *  decides; Yes clears this and pays it). */
   helperRemoved?: { at: string; by: string } | null;
+  /** Helper pay set from the lead's log in payroll review (already verified there). */
+  approvedFromLeadLog?: { leadLogId: string; leadTechId: string; by: string; at: string } | null;
   /** The job's `source` when filed ('Imported' = Field Nation), so pay can
    *  be settled even where the job doc can't be read. */
   jobSource?: string;

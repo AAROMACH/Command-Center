@@ -216,6 +216,14 @@ export function PriceDocEditor({
             <Button size="sm" variant="outline" className="h-8 text-[11px]" onClick={() => addLine(s)}>
               <Plus size={12} className="mr-1" /> Custom
             </Button>
+            {isLabor && kind === 'invoice' && (
+              // A last-minute credit: enter a negative price (e.g. -50). Untaxed.
+              <Button size="sm" variant="outline" className="h-8 text-[11px]" onClick={() => setV(p => ({
+                ...p, lines: [...p.lines, { id: genId(), name: 'Discount / adjustment', quantity: 1, unitPrice: 0, section: 'labor', taxable: false, required: true }],
+              }))}>
+                <Plus size={12} className="mr-1" /> Discount / adjustment
+              </Button>
+            )}
           </div>
         </div>
         {rows.length === 0 ? (

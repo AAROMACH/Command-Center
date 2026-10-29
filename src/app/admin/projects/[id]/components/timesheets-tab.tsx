@@ -1,4 +1,6 @@
 'use client';
+import { isTech } from '@/lib/permissions';
+import { isInactiveTechnician } from '@/lib/utils';
 
 import type { Project, ProjectDailyLog, Technician } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -489,6 +491,12 @@ function EditLogDialog({
         }
     };
 
+    // Only field staff log project time: technicians and project managers
+    // (tech-portal roles), active only — no admins, clients or sales. Whoever
+    // an existing entry belongs to stays listed so it still shows.
+    const crewChoices = technicians.filter(t =>
+        (isTech(t as any) && !isInactiveTechnician(t)) || t.id === formData.techId);
+
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogContent className="sm:max-w-[550px] bg-bg-elevated border-border-default shadow-2xl p-0 overflow-hidden flex flex-col">
@@ -534,7 +542,7 @@ function EditLogDialog({
                                 <Select value={formData.techId} onValueChange={(val) => setFormData({...formData, techId: val})}>
                                     <SelectTrigger className="h-10 bg-bg-primary text-xs font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        {technicians.map(t => <SelectItem key={t.id} value={t.id} className="text-xs font-bold">{t.name}</SelectItem>)}
+                                        {crewChoices.map(t => <SelectItem key={t.id} value={t.id} className="text-xs font-bold">{t.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>

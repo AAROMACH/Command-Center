@@ -1,5 +1,7 @@
 'use client';
-import type { Project, Technician, ProjectDailyLog, Expense, Invoice } from '@/lib/types';
+import { UnlockableField } from '@/components/unlockable-field';
+import { ProjectBillingPanel } from './project-billing-panel';
+import type { Quote, Project, Technician, ProjectDailyLog, Expense, Invoice } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -55,11 +57,22 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
             snap => setInvoices(snap.docs.map(d => ({ ...d.data(), id: d.id } as Invoice))), () => setInvoices([]));
         return () => { unsubE(); unsubI(); };
     }, [project?.id, showMoney, economicsFromServer]);
+    // The linked quote — its labor and materials are the project's estimate.
+    const [quote, setQuote] = useState<Quote | null>(null);
+    useEffect(() => {
+        if (!project?.sourceQuoteId || !showMoney || economicsFromServer) { setQuote(null); return; }
+        return onSnapshot(doc(db, 'quotes', project.sourceQuoteId),
+            snap => setQuote(snap.exists() ? ({ ...snap.data(), id: snap.id } as Quote) : null), () => setQuote(null));
+    }, [project?.sourceQuoteId, showMoney, economicsFromServer]);
     const serverEconomics = useServerProjectEconomics(project, showMoney && economicsFromServer, dailyLogs.length);
     const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
     const [isAddingNote, setIsAddingNote] = useState(false);
     const [newNoteText, setNewNoteText] = useState("");
     const [localProjectData, setLocalProjectData] = useState<Partial<Project>>({});
+    // Site notes stay locked until someone double-clicks a box or taps its
+    // pencil, so a stray click and Backspace can't wipe them.
+    const [unlocked, setUnlocked] = useState<Set<string>>(new Set());
+    const unlock = (k: string) => setUnlocked(prev => new Set(prev).add(k));
     const { toast } = useToast();
 
     const isReadOnly = project.status === 'completed';
@@ -82,7 +95,8 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
 
     const liveEconomics = useMemo(() => computeProjectEconomics(
         project, dailyLogs, id => allTechnicians.find(t => t.id === id)?.hourlyRate, expenses, invoices,
-    ), [project, dailyLogs, allTechnicians, expenses, invoices]);
+        { nameOf: id => allTechnicians.find(t => t.id === id)?.name, quote },
+    ), [project, dailyLogs, allTechnicians, expenses, invoices, quote]);
     const projectEconomics = economicsFromServer ? serverEconomics : liveEconomics;
 
     const getTechnician = (id: string) => allTechnicians.find(t => t.id === id);
@@ -132,6 +146,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
             await updateDoc(docRef, {
                 ...localProjectData
             });
+            setUnlocked(new Set());
             toast({
                 title: "Project Updated",
                 description: "Changes saved.",
@@ -148,6 +163,7 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
             onsiteContactPhone: project.onsiteContactPhone,
             siteAccessInstructions: project.siteAccessInstructions
         });
+        setUnlocked(new Set());
         toast({ title: "Changes discarded", description: "The project details were not changed." });
     }
     
@@ -160,34 +176,43 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                         
                         <div className="field-row">
                             <label className="field-label">Scope of work</label>
-                            <Textarea 
-                                disabled={isReadOnly}
-                                className="field-textarea" 
-                                value={localProjectData.scope || ''}
-                                onChange={e => setLocalProjectData({...localProjectData, scope: e.target.value})}
-                            ></Textarea>
+                            <UnlockableField locked={!unlocked.has('scope')} onUnlock={() => unlock('scope')} canEdit={!isReadOnly}>
+                                <Textarea 
+                                    disabled={isReadOnly}
+                                    readOnly={!unlocked.has('scope')}
+                                    className="field-textarea" 
+                                    value={localProjectData.scope || ''}
+                                    onChange={e => setLocalProjectData({...localProjectData, scope: e.target.value})}
+                                ></Textarea>
+                            </UnlockableField>
                         </div>
                         
                         <div className="grid grid-cols-2 gap-4 mb-2">
                             <div className="field-row">
                                 <label className="field-label">Onsite Contact Name</label>
-                                <Input 
-                                    disabled={isReadOnly}
-                                    className="field-input" 
-                                    placeholder="Full Name" 
-                                    value={localProjectData.onsiteContactName || ''}
-                                    onChange={e => setLocalProjectData({...localProjectData, onsiteContactName: e.target.value})}
-                                />
+                                <UnlockableField locked={!unlocked.has('onsiteContactName')} onUnlock={() => unlock('onsiteContactName')} canEdit={!isReadOnly}>
+                                    <Input 
+                                        disabled={isReadOnly}
+                                        readOnly={!unlocked.has('onsiteContactName')}
+                                        className="field-input" 
+                                        placeholder="Full Name" 
+                                        value={localProjectData.onsiteContactName || ''}
+                                        onChange={e => setLocalProjectData({...localProjectData, onsiteContactName: e.target.value})}
+                                    />
+                                </UnlockableField>
                             </div>
                             <div className="field-row">
                                 <label className="field-label">Onsite Contact Phone</label>
-                                <Input 
-                                    disabled={isReadOnly}
-                                    className="field-input" 
-                                    placeholder="Phone Number" 
-                                    value={localProjectData.onsiteContactPhone || ''}
-                                    onChange={e => setLocalProjectData({...localProjectData, onsiteContactPhone: e.target.value})}
-                                />
+                                <UnlockableField locked={!unlocked.has('onsiteContactPhone')} onUnlock={() => unlock('onsiteContactPhone')} canEdit={!isReadOnly}>
+                                    <Input 
+                                        disabled={isReadOnly}
+                                        readOnly={!unlocked.has('onsiteContactPhone')}
+                                        className="field-input" 
+                                        placeholder="Phone Number" 
+                                        value={localProjectData.onsiteContactPhone || ''}
+                                        onChange={e => setLocalProjectData({...localProjectData, onsiteContactPhone: e.target.value})}
+                                    />
+                                </UnlockableField>
                             </div>
                         </div>
                         
@@ -230,17 +255,22 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                                     <button className="note-chip-add" onClick={() => setIsAddingNote(true)}><Plus size={13}/> Add Note</button>
                                 )}
                             </div>
-                            <Textarea 
-                                disabled={isReadOnly}
-                                className="field-textarea mt-2" 
-                                placeholder="Parking, entry codes, badge requirements..." 
-                                value={localProjectData.siteAccessInstructions || ''}
-                                onChange={e => setLocalProjectData({...localProjectData, siteAccessInstructions: e.target.value})}
-                            ></Textarea>
+                            <UnlockableField locked={!unlocked.has('siteAccessInstructions')} onUnlock={() => unlock('siteAccessInstructions')} canEdit={!isReadOnly}>
+                                <Textarea 
+                                    disabled={isReadOnly}
+                                    readOnly={!unlocked.has('siteAccessInstructions')}
+                                    className="field-textarea mt-2" 
+                                    placeholder="Parking, entry codes, badge requirements..." 
+                                    value={localProjectData.siteAccessInstructions || ''}
+                                    onChange={e => setLocalProjectData({...localProjectData, siteAccessInstructions: e.target.value})}
+                                ></Textarea>
+                            </UnlockableField>
                         </div>
                     </div>
 
                      {showMoney && projectEconomics && <ProjectEconomicsCard project={project} projectEconomics={projectEconomics} />}
+                     {/* Office only: quote link, parts added on site, the invoice. */}
+                     {showMoney && !economicsFromServer && <ProjectBillingPanel project={project} />}
                 </div>
 
                 <div className="lg:col-span-1 space-y-4">

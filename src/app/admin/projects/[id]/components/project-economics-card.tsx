@@ -3,13 +3,60 @@ import { useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
 import { DollarSign, Info, TrendingUp, ChevronDown, ChevronUp, Activity } from 'lucide-react';
 import type { Project } from '@/lib/types';
-import type { ProjectEconomics } from '@/lib/project-economics';
+import type { ProjectEconomics, CostItem } from '@/lib/project-economics';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+
+/**
+ * A cost row that opens a small panel showing where the number comes from:
+ * on hover (mouse) or tap (phone).
+ */
+function BreakdownRow({ label, value, valueClass, title, children }: {
+    label: string; value: string; valueClass?: string; title: string; children: React.ReactNode;
+}) {
+    const [open, setOpen] = useState(false);
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <button type="button" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}
+                    className="w-full flex justify-between items-center px-1 py-0.5 rounded hover:bg-bg-tertiary text-left">
+                    <span className="text-[10px] font-bold text-text-secondary underline decoration-dotted underline-offset-2">{label}</span>
+                    <span className={cn('text-[10px] font-mono font-bold', valueClass || 'text-text-primary')}>{value}</span>
+                </button>
+            </PopoverTrigger>
+            <PopoverContent side="right" align="start" className="w-80 max-w-[calc(100vw-2rem)] p-3 bg-bg-elevated border-border-main text-left"
+                onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)} onOpenAutoFocus={e => e.preventDefault()}>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">{title}</p>
+                {children}
+            </PopoverContent>
+        </Popover>
+    );
+}
+
+function ItemList({ items, empty }: { items: CostItem[]; empty: string }) {
+    if (!items.length) return <p className="text-[12px] text-text-muted">{empty}</p>;
+    return (
+        <div className="space-y-1.5 max-h-64 overflow-y-auto">
+            {items.map((i, idx) => (
+                <div key={idx} className="flex justify-between gap-3 text-[12px]">
+                    <div className="min-w-0">
+                        <p className="text-text-primary break-words">{i.label}</p>
+                        {(i.detail || i.date) && <p className="text-[11px] text-text-muted">{[i.detail, i.date].filter(Boolean).join(' · ')}</p>}
+                    </div>
+                    <span className="font-mono font-semibold text-text-primary shrink-0">{formatCurrency(i.amount)}</span>
+                </div>
+            ))}
+            <div className="flex justify-between border-t border-border-sub pt-1.5 text-[12px] font-semibold">
+                <span>Total</span><span className="font-mono">{formatCurrency(items.reduce((s, i) => s + i.amount, 0))}</span>
+            </div>
+        </div>
+    );
+}
 
 /** Budget, burn rate and profit for a project — admin Overview, and the project's assigned PM. */
 export function ProjectEconomicsCard({ project, projectEconomics }: { project: Project; projectEconomics: ProjectEconomics }) {
@@ -131,24 +178,49 @@ export function ProjectEconomicsCard({ project, projectEconomics }: { project: P
                                             <Activity size={12} className="text-brand-red opacity-50" />
                                         </div>
                                         <div className="space-y-2">
-                                            <div className="flex justify-between items-center px-1">
-                                                <span className="text-[10px] font-bold text-text-secondary">Field Labor</span>
-                                                <span className={cn("text-[10px] font-mono font-bold", projectEconomics.rateMissing ? "text-text-red" : "text-text-primary")}>
-                                                    {projectEconomics.rateMissing ? 'Rate Missing' : formatCurrency(projectEconomics.laborCost)}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between items-center px-1">
-                                                <span className="text-[10px] font-bold text-text-secondary">Materials & Parts</span>
-                                                <span className="text-[10px] font-mono font-bold text-text-primary">
-                                                    {projectEconomics.materialCost > 0 ? formatCurrency(projectEconomics.materialCost) : '$0.00'}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between items-center px-1">
-                                                <span className="text-[10px] font-bold text-text-secondary">Incidentals</span>
-                                                <span className="text-[10px] font-mono font-bold text-text-primary">
-                                                    {projectEconomics.otherExpenses > 0 ? formatCurrency(projectEconomics.otherExpenses) : '$0.00'}
-                                                </span>
-                                            </div>
+                                            <BreakdownRow label="Field Labor" title="Field labor — hours × hourly rate"
+                                                value={projectEconomics.rateMissing && !projectEconomics.laborCost && !projectEconomics.ratesHidden ? 'Rate Missing' : formatCurrency(projectEconomics.laborCost)}
+                                                valueClass={projectEconomics.rateMissing ? 'text-text-red' : undefined}>
+                                                {projectEconomics.laborByTech.length ? (
+                                                    <div className="space-y-1.5">
+                                                        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 text-[10px] font-bold uppercase tracking-wider text-text-muted">
+                                                            <span>Tech</span><span className="text-right">Hours</span><span className="text-right">Rate</span><span className="text-right">Cost</span>
+                                                        </div>
+                                                        {projectEconomics.laborByTech.map(l => (
+                                                            <div key={l.techId} className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 text-[12px] font-mono">
+                                                                <span className="font-sans text-text-primary truncate">{l.name}</span>
+                                                                <span className="text-right">{l.hours.toFixed(2)}h</span>
+                                                                <span className={cn('text-right', l.rate == null && 'text-text-muted')}>{l.rate != null ? `$${l.rate}/h` : projectEconomics.ratesHidden ? '—' : 'not set'}</span>
+                                                                <span className="text-right">{l.cost != null ? formatCurrency(l.cost) : '—'}</span>
+                                                            </div>
+                                                        ))}
+                                                        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 border-t border-border-sub pt-1.5 text-[12px] font-mono font-semibold">
+                                                            <span className="font-sans">Total</span>
+                                                            <span className="text-right">{projectEconomics.laborByTech.reduce((s, l) => s + l.hours, 0).toFixed(2)}h</span>
+                                                            <span />
+                                                            <span className="text-right">{formatCurrency(projectEconomics.laborCost)}</span>
+                                                        </div>
+                                                        {projectEconomics.estimate && (
+                                                            <p className="text-[11px] text-text-muted pt-1">Quoted: {projectEconomics.estimate.laborHours}h · {formatCurrency(projectEconomics.estimate.laborAmount)} billed</p>
+                                                        )}
+                                                        {!projectEconomics.ratesHidden && projectEconomics.rateMissing && (
+                                                            <p className="text-[11px] text-text-red">Techs without a rate aren't counted — set it in the Directory.</p>
+                                                        )}
+                                                    </div>
+                                                ) : <p className="text-[12px] text-text-muted">No hours logged on this project yet.</p>}
+                                            </BreakdownRow>
+                                            <BreakdownRow label="Materials & Parts" title="Materials & parts — our cost" value={formatCurrency(projectEconomics.materialCost)}>
+                                                <ItemList items={projectEconomics.materialItems} empty="No materials or parts yet." />
+                                                {projectEconomics.estimate && projectEconomics.estimate.materials.length > 0 && (
+                                                    <div className="mt-3 border-t border-border-sub pt-2">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5">On quote #{projectEconomics.estimate.quoteNumber} (billed)</p>
+                                                        <ItemList empty="" items={projectEconomics.estimate.materials.map(m => ({ label: m.name, amount: m.total, detail: `${m.quantity} × $${m.unitPrice.toFixed(2)}` }))} />
+                                                    </div>
+                                                )}
+                                            </BreakdownRow>
+                                            <BreakdownRow label="Incidentals" title="Incidentals — travel, meals, tools, other" value={formatCurrency(projectEconomics.otherExpenses)}>
+                                                <ItemList items={projectEconomics.incidentalItems} empty="No incidentals recorded." />
+                                            </BreakdownRow>
                                             <div className="pt-1 border-t border-border-sub mt-1 flex justify-between items-center px-1">
                                                 <span className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Actual Cost</span>
                                                 <span className="text-xs font-mono font-bold text-text-red">{formatCurrency(projectEconomics.actualCost)}</span>

@@ -3,8 +3,8 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
 import { isAdmin } from '@/lib/permissions';
-import { computeProjectEconomics } from '@/lib/project-economics';
-import type { Project, ProjectDailyLog, Expense, Invoice } from '@/lib/types';
+import { computeProjectEconomics, withoutPayRates } from '@/lib/project-economics';
+import type { Project, ProjectDailyLog, Expense, Invoice, Quote } from '@/lib/types';
 
 /**
  * Project Economics for the project manager assigned to this project (team
@@ -41,15 +41,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const logs = logsSnap.docs.map(d => d.data() as ProjectDailyLog);
   const techIds = [...new Set(logs.map(l => l.techId).filter(Boolean))];
   const rates = new Map<string, number | undefined>();
+  const names = new Map<string, string>();
   if (techIds.length) {
     const users = await db.getAll(...techIds.map(t => db.doc(`users/${t}`)));
-    users.forEach(u => rates.set(u.id, u.data()?.hourlyRate));
+    users.forEach(u => { rates.set(u.id, u.data()?.hourlyRate); names.set(u.id, u.data()?.name || u.id); });
   }
+  const quoteSnap = project.sourceQuoteId ? await db.doc(`quotes/${project.sourceQuoteId}`).get() : null;
+  const quote = quoteSnap?.exists ? ({ ...quoteSnap.data(), id: quoteSnap.id } as Quote) : null;
 
   const economics = computeProjectEconomics(
     project, logs, techId => rates.get(techId),
     expSnap.docs.map(d => d.data() as Expense),
     invSnap.docs.map(d => d.data() as Invoice),
+    { nameOf: t => names.get(t), quote },
   );
-  return NextResponse.json({ economics });
+  // A PM sees hours per tech but never individual pay rates.
+  return NextResponse.json({ economics: isAdmin(userSnap.data() as any) ? economics : withoutPayRates(economics) });
 }

@@ -147,6 +147,101 @@ function CounterpartPayBadge({
 }
 
 /**
+ * "Helper added" on a lead's job: every helper's entry for this job, with their
+ * pay editable right here. Saving writes the pay onto the HELPER's own weekly
+ * log, marks it verified and tags it "Approved from lead's log", so payroll
+ * doesn't price it again or pay the wrong total. A helper week that's already
+ * approved / paid is shown locked.
+ */
+function HelperPayEditor({ workOrderId, leadLog, allWeeklyLogs, allTechnicians, canEdit }: {
+    workOrderId: string;
+    leadLog: WeeklyLog;
+    allWeeklyLogs: WeeklyLog[];
+    allTechnicians: Technician[];
+    canEdit: boolean;
+}) {
+    const { toast } = useToast();
+    const helpers = useMemo(() => allWeeklyLogs.flatMap(log => (log.items || [])
+        .filter(i => i.workOrderId === workOrderId && i.isHelper && !i.helperRemoved)
+        .map(item => ({ log, item, name: allTechnicians.find(t => t.id === log.techId)?.name || log.techId }))),
+    [allWeeklyLogs, allTechnicians, workOrderId]);
+    const [drafts, setDrafts] = useState<Record<string, string>>({});
+    const [saving, setSaving] = useState<string | null>(null);
+
+    const save = async (logId: string, itemId: string, name: string) => {
+        const amount = Math.round((Number(drafts[itemId]) || 0) * 100) / 100;
+        if (amount < 0) return;
+        setSaving(itemId);
+        try {
+            const ref = doc(db, 'weeklyLogs', logId);
+            const fresh = (await getDoc(ref)).data() as WeeklyLog | undefined;
+            if (!fresh) throw new Error("The helper's log no longer exists.");
+            if (isLockedLog(fresh as any)) throw new Error(`${name}'s week is already approved or paid — reopen it to change the pay.`);
+            const by = auth.currentUser?.displayName || 'Payroll';
+            const items = (fresh.items || []).map(i => i.id === itemId ? {
+                ...i, jobPay: amount, payoutAmount: amount, isAdminReviewed: true, confirmationStatus: 'confirmed' as const,
+                approvedFromLeadLog: { leadLogId: leadLog.id, leadTechId: leadLog.techId, by, at: new Date().toISOString() },
+            } : i);
+            await updateDoc(ref, { items: sanitize(items) });
+            toast({ title: 'Helper pay saved', description: `$${amount.toFixed(2)} on ${name}'s log, marked approved from this log.` });
+            setDrafts(prev => { const n = { ...prev }; delete n[itemId]; return n; });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not save helper pay', description: e.message });
+        } finally {
+            setSaving(null);
+        }
+    };
+
+    if (!helpers.length) return null;
+    return (
+        <Popover>
+            <PopoverTrigger asChild onClick={e => e.stopPropagation()}>
+                <button type="button">
+                    <Badge variant="outline" className="text-[10px] font-semibold uppercase tracking-wide px-1.5 cursor-pointer hover:brightness-110 transition-all bg-brand-blue/10 border-brand-blue/30 text-brand-blue">
+                        Helper added{helpers.length > 1 ? ` (${helpers.length})` : ''}
+                    </Badge>
+                </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 max-w-[calc(100vw-2rem)] p-3 bg-bg-elevated border-border-main shadow-md text-left space-y-3" onClick={e => e.stopPropagation()}>
+                <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Helper pay</p>
+                {helpers.map(({ log, item, name }) => {
+                    const locked = isLockedLog(log as any);
+                    const tagged = !!item.approvedFromLeadLog;
+                    const value = drafts[item.id] ?? String(item.jobPay ?? '');
+                    return (
+                        <div key={item.id} className="space-y-1.5 border-t border-border-sub pt-2 first:border-0 first:pt-0">
+                            <div className="flex items-center justify-between gap-2">
+                                <p className="text-[13px] font-semibold text-text-primary truncate">{name}</p>
+                                <span className="text-[11px] text-text-muted shrink-0">Week of {log.weekOf}</span>
+                            </div>
+                            {canEdit && !locked ? (
+                                <div className="flex items-center gap-1.5">
+                                    <div className="relative flex-1">
+                                        <DollarSign size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                                        <Input type="number" inputMode="decimal" min={0} step="0.01" value={value} placeholder="0"
+                                            onChange={e => setDrafts(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                            className="h-9 pl-6 font-mono text-[13px]" aria-label={`${name} helper pay`} />
+                                    </div>
+                                    <Button size="sm" className="h-9" disabled={saving === item.id || drafts[item.id] === undefined}
+                                        onClick={() => save(log.id, item.id, name)}>
+                                        {saving === item.id ? <Loader2 size={13} className="animate-spin" /> : 'Save'}
+                                    </Button>
+                                </div>
+                            ) : (
+                                <p className="text-lg font-mono font-bold text-text-green">${(item.jobPay || 0).toFixed(2)}</p>
+                            )}
+                            <p className="text-[11px] text-text-muted">
+                                {locked ? `${logDisplayStatus(log)} — locked` : tagged ? 'Approved from this lead’s log' : 'Not priced yet'}
+                            </p>
+                        </div>
+                    );
+                })}
+            </PopoverContent>
+        </Popover>
+    );
+}
+
+/**
  * @fileOverview Internal Audit Sub-Component for individual mission settlement.
  * Implements a local buffer protocol to ensure notifications only trigger on finalized save.
  *
@@ -1712,8 +1807,14 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 {item.isHelper && (
                                                                     <CounterpartPayBadge workOrderId={item.workOrderId} wantHelper={false} allWeeklyLogs={allWeeklyLogs} allTechnicians={allTechnicians} />
                                                                 )}
+                                                                {item.isHelper && item.approvedFromLeadLog && (
+                                                                    <Badge variant="outline" className="text-[10px] font-semibold uppercase tracking-wide px-1.5 bg-text-green/10 border-text-green/30 text-text-green"
+                                                                        title={`Priced by ${item.approvedFromLeadLog.by} from the lead's log`}>
+                                                                        Approved from lead’s log
+                                                                    </Badge>
+                                                                )}
                                                                 {helperNames.length > 0 && (
-                                                                    <CounterpartPayBadge workOrderId={item.workOrderId} wantHelper={true} allWeeklyLogs={allWeeklyLogs} allTechnicians={allTechnicians} />
+                                                                    <HelperPayEditor workOrderId={item.workOrderId} leadLog={localLog!} allWeeklyLogs={allWeeklyLogs} allTechnicians={allTechnicians} canEdit={canApproveLog} />
                                                                 )}
                                                                 {hasPendingReimb && (
                                                                     <Badge variant="pending" className="text-[10px] font-semibold uppercase tracking-wide px-1.5">

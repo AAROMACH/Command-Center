@@ -628,6 +628,8 @@ export type WeeklyLogItem = {
    *  (it's removed) or says they worked it (a 'removed_helper' dispute payroll
    *  decides; Yes clears this and pays it). */
   helperRemoved?: { at: string; by: string } | null;
+  /** Helper pay set from the lead's log in payroll review (already verified there). */
+  approvedFromLeadLog?: { leadLogId: string; leadTechId: string; by: string; at: string } | null;
   /** The job's `source` when filed ('Imported' = Field Nation), so pay can
    *  be settled even where the job doc can't be read. */
   jobSource?: string;

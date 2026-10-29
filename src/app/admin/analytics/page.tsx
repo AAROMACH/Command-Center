@@ -263,6 +263,8 @@ export default function FieldIntelligencePage() {
             const approvedAt = (log as { approvedAt?: string | null }).approvedAt;
             const approvedBy = (log as { approvedByName?: string | null }).approvedByName;
             if (log.status === 'Approved' && approvedAt) events.push({ id: `log-appr-${log.id}`, timestamp: approvedAt, type: 'payroll', eventLabel: 'Payroll Approved Log', entity: `Week of ${log.weekOf}${approvedBy ? ` — by ${approvedBy}` : ''}`, techName: tech?.name, techId: log.techId, color: 'text-text-green' });
+            // Paid out (the step after approval).
+            if (log.status === 'Approved' && log.paid && log.paidAt) events.push({ id: `log-paid-${log.id}`, timestamp: log.paidAt, type: 'payroll_paid', eventLabel: 'Payroll Paid Out', entity: `Week of ${log.weekOf}${log.paidByName ? ` — by ${log.paidByName}` : ''}`, techName: tech?.name, techId: log.techId, color: 'text-text-green' });
         });
         importBatches.forEach(b => {
             if (!b.importedAt) return;
@@ -774,6 +776,7 @@ export default function FieldIntelligencePage() {
                                     <SelectItem value="work_order" className="text-[10px] font-bold">Work orders</SelectItem>
                                     <SelectItem value="log" className="text-[10px] font-bold">Weekly logs</SelectItem>
                                     <SelectItem value="payroll" className="text-[10px] font-bold">Payroll approvals</SelectItem>
+                                    <SelectItem value="payroll_paid" className="text-[10px] font-bold">Payroll paid</SelectItem>
                                     <SelectItem value="dispatch" className="text-[10px] font-bold">Dispatch imports</SelectItem>
                                     <SelectItem value="invoice" className="text-[10px] font-bold">Invoices</SelectItem>
                                 </SelectContent>
@@ -800,7 +803,7 @@ export default function FieldIntelligencePage() {
                                 {timelinePageEvents.map(event => {
                                     let tsDisplay = '';
                                     try { const d = new Date(event.timestamp); tsDisplay = isNaN(d.getTime()) ? event.timestamp : format(d, 'MMM d, h:mm a'); } catch { tsDisplay = event.timestamp; }
-                                    const typeColors: Record<string, string> = { assignment: 'border-l-accent-gold', work_order: 'border-l-border-main', log: 'border-l-brand-red', invoice: 'border-l-text-green' };
+                                    const typeColors: Record<string, string> = { assignment: 'border-l-accent-gold', work_order: 'border-l-border-main', log: 'border-l-brand-red', invoice: 'border-l-text-green', payroll: 'border-l-text-green', payroll_paid: 'border-l-text-green', dispatch: 'border-l-brand-blue' };
                                     return (
                                         <div key={event.id}
                                             onClick={event.batchId ? () => setOpenBatch(importBatches.find(b => b.id === event.batchId) || null) : undefined}

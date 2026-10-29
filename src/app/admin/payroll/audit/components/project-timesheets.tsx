@@ -7,7 +7,7 @@ import { CheckCircle2, ChevronDown, Clock, Loader2 } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { makeProjectPayoutId } from '@/lib/doc-ids';
-import { addPayoutToWeeklyLog } from '@/lib/project-payout';
+import { addPayoutToWeeklyLog, assertWeekOpen } from '@/lib/project-payout';
 import { weekOfForScheduleDate } from '@/lib/weekly-log-core';
 import type { Project, ProjectDailyLog, ProjectPayout, Technician } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -82,6 +82,8 @@ export function ProjectTimesheets({ technicians, approverName, canEditRate }: {
     if (!row.rate) { toast({ variant: 'destructive', title: 'No hourly rate', description: canEditRate ? `Enter a rate for ${row.name}, or set it in the Directory.` : `Set ${row.name}'s hourly rate in the Directory first.` }); return; }
     setBusy(row.techId);
     try {
+      // Refuse an approved week up front — nothing is written in that case.
+      await assertWeekOpen(row.techId, week);
       // One payout per project, so each project's labor cost stays on that project.
       const byProject = new Map<string, ProjectDailyLog[]>();
       row.unpaid.forEach(l => byProject.set(l.projectId, [...(byProject.get(l.projectId) || []), l]));

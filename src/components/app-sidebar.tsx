@@ -96,7 +96,7 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { href: "/admin/crm",    label: "CRM",           icon: Target,     permission: "admin.crm.view" },
       { href: "/admin/crm/accounts", label: "Accounts", icon: Users,   permission: "admin.crm.view" },
-      { href: "/admin/sites",  label: "Client Sites",  icon: Building2,  permission: "admin.clients.view" },
+      { href: "/admin/sites",  label: "Clients",  icon: Building2,  permission: "admin.clients.view" },
       { href: "/admin/quotes", label: "Quotes & Invoices",      icon: FileSearch, permission: "admin.crm.view" },
       { href: "/admin/plans",  label: "Service Plans", icon: BookOpen,   permission: "admin.reports.view" },
     ],

@@ -1,4 +1,5 @@
 'use client';
+import { ProjectBillingPanel } from './project-billing-panel';
 import type { Quote, Project, Technician, ProjectDailyLog, Expense, Invoice } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -249,6 +250,8 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                     </div>
 
                      {showMoney && projectEconomics && <ProjectEconomicsCard project={project} projectEconomics={projectEconomics} />}
+                     {/* Office only: quote link, parts added on site, the invoice. */}
+                     {showMoney && !economicsFromServer && <ProjectBillingPanel project={project} />}
                 </div>
 
                 <div className="lg:col-span-1 space-y-4">

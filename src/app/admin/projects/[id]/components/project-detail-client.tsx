@@ -1,4 +1,6 @@
 'use client';
+import { createProjectInvoice } from '@/lib/project-billing';
+import { usePricingSettings } from '@/hooks/use-billing';
 import { projectLead } from '@/components/project-views';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -83,6 +85,7 @@ type ProjectDetailClientProps = {
 
 export function ProjectDetailClient({ project, technicians, documents, timesheets, mode = 'admin' }: ProjectDetailClientProps) {
     const manager = mode === 'manager';
+    const { settings: pricing } = usePricingSettings();
     const basePath = manager ? '/tech/projects' : '/admin/projects';
     const [activeTab, setActiveTab] = useState('overview');
     const [isEditOpen, setIsEditOpen] = useState(false);
@@ -136,6 +139,19 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
         }
     };
 
+    // Completing a project drafts its invoice (from the linked quote plus parts
+    // added on site), ready to send from the Overview. Admins only — PMs can't
+    // write invoices; the office creates it from the Overview instead.
+    const draftInvoiceOnClose = async () => {
+        if (manager) return;
+        try {
+            const id = await createProjectInvoice({ ...project, status: 'completed' } as Project, pricing);
+            if (id) toast({ title: 'Invoice drafted', description: 'Open the project Overview to review and send it.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Invoice not drafted', description: e.message });
+        }
+    };
+
     const handleSaveEdit = async () => {
         try {
             const docRef = doc(db, 'projects', project.id);
@@ -146,6 +162,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                 NotificationService.notifyProjectManagers(project.id, 'Project status changed',
                     `${project.name} is now ${editedProject.status} (was ${project.status}).`, false);
             }
+            if (editedProject.status === 'completed' && project.status !== 'completed') await draftInvoiceOnClose();
             setIsEditOpen(false);
             toast({
                 title: "Project updated",
@@ -161,6 +178,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
             const docRef = doc(db, 'projects', project.id);
             await updateDoc(docRef, { status: 'completed' });
             NotificationService.notifyProjectManagers(project.id, 'Project closed', `${project.name} was marked completed.`, false);
+            await draftInvoiceOnClose();
             setIsEditOpen(false);
             toast({
                 variant: "destructive",

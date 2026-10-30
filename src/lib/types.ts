@@ -1251,6 +1251,10 @@ export type Material = {
   qbItemId?: string;
   vendor?: string;
   sku?: string;
+  /** Thumbnail shown in the price book (Storage: materialImages/{id}/…). */
+  imageUrl?: string;
+  /** Storage path of imageUrl, so a replaced or removed image can be deleted. */
+  imagePath?: string;
   taxable: boolean;
   status: 'active' | 'inactive';
   notes?: string;
@@ -1270,6 +1274,10 @@ export type AssetAssignment = {
   returnedAt?: string;
   checkoutCondition: string;
   returnCondition?: string;
+  /** Who checked it back in. */
+  returnedByName?: string;
+  /** Notes written at return; `notes` holds the check-out notes. */
+  returnNotes?: string;
   status: 'active' | 'returned';
   notes?: string;
   relatedJobId?: string;

@@ -114,6 +114,17 @@ service firebase.storage {
       allow delete: if isSignedIn() && (isAdmin() || isSales());
     }
 
+    // Price book thumbnails: admins manage them (as with materials in
+    // firestore.rules); sales and techs see them where materials are listed.
+    match /materialImages/{materialId}/{fileName} {
+      allow read: if isSignedIn() && (isAdmin() || isSales() || isTech());
+      allow create, update: if isSignedIn()
+                    && isAdmin()
+                    && request.resource.size < 5 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+      allow delete: if isSignedIn() && isAdmin();
+    }
+
     // Message image attachments: each user writes only to their own folder
     match /messageImages/{userId}/{fileName} {
       allow read: if request.auth != null;

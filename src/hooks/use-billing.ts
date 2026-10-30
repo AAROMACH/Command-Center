@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
-import { DEFAULT_MULTIPLIERS, DEFAULT_PRICING, DEFAULT_CATEGORIES, type PriceCategory, type PricingSettings, type ServicePlan, type Subscription } from '@/lib/billing';
+import { DEFAULT_MULTIPLIERS, DEFAULT_PRICING, DEFAULT_CATEGORIES, canonicalCategories, type PriceCategory, type PricingSettings, type ServicePlan, type Subscription } from '@/lib/billing';
 
 /** Every service plan (any status), in display order. Small collection. */
 export function useServicePlans(): { plans: ServicePlan[]; loading: boolean } {
@@ -37,7 +37,7 @@ export function usePricingSettings(): { settings: PricingSettings; loading: bool
         ...data,
         laborRates: data.laborRates ?? [],
         materialMarkupPct: data.materialMarkupPct ?? {},
-        categories: data.categories ?? legacyCategories(data),
+        categories: canonicalCategories(data.categories ?? legacyCategories(data)),
         multipliers: data.multipliers ?? DEFAULT_MULTIPLIERS,
       },
       loading: false,

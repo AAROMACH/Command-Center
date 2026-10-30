@@ -4,9 +4,13 @@ import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
-import { db } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, updateDoc, doc, writeBatch } from 'firebase/firestore';
+import { db, storage } from '@/lib/firebase';
+import { collection, onSnapshot, addDoc, updateDoc, setDoc, deleteField, doc, writeBatch } from 'firebase/firestore';
+import { ref as storageRef, deleteObject } from 'firebase/storage';
+import { uploadFile } from '@/lib/upload';
 import { STANDARD_MATERIALS } from '@/lib/standard-materials';
+import { RECOMMENDED_MARKUPS, STANDARD_MATERIAL_COSTS } from '@/lib/standard-material-prices';
+import { savePricing } from '@/lib/billing-actions';
 import type { Asset, AssetCategory, Material, AssetAssignment, Technician } from '@/lib/types';
 import { isClient } from '@/lib/permissions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -23,13 +27,13 @@ import {
     Package, Plus, Car, Wrench, Laptop, Archive, Shield,
     User, MapPin, Calendar, AlertTriangle, ChevronRight, Edit2, CheckCircle,
     DollarSign, Tag, RotateCcw, XCircle, Hammer, History, ArrowRightLeft,
-    ShoppingCart, Boxes, ClipboardList, Loader2,
+    ShoppingCart, Boxes, ClipboardList, Loader2, ImagePlus, X,
 Percent, } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/page-header';
 import { PricingTab } from './pricing-tab';
 import { usePricingSettings } from '@/hooks/use-billing';
-import { markupFor } from '@/lib/billing';
+import { canonicalCategory, localDay, markupFor, roundCents, type PricingSettings } from '@/lib/billing';
 import { materialPrice } from '@/lib/price-lines';
 import { canEditUserPay } from '@/lib/profile-permissions';
 import { useAuth } from '@/contexts/auth-context';
@@ -40,7 +44,7 @@ import { SortControl } from '@/components/list-toolbar';
 import { TONE_BADGE, statusLabel, type Tone } from '@/lib/status-styles';
 import { ViewToggle, useViewMode } from '@/components/view-toggle';
 import { useToast } from '@/hooks/use-toast';
-import { format, parseISO, differenceInDays } from 'date-fns';
+import { format, parseISO, differenceInDays, formatDistanceStrict } from 'date-fns';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -120,7 +124,25 @@ const EMPTY_MAT_FORM = {
     name: '', category: '', description: '', unitType: 'each' as Material['unitType'],
     standardCost: '', billablePrice: '', priceOverride: false as boolean,
     vendor: '', sku: '', taxable: false as boolean, status: 'active' as Material['status'], notes: '',
+    imageUrl: '', imagePath: '',
 };
+
+const MAX_MAT_IMAGE = 5 * 1024 * 1024; // matches storage.rules (materialImages)
+const SUGGESTED_COST_NOTE = 'Suggested contractor cost — check against your supplier invoice';
+
+/** Square material thumbnail: the uploaded image, or a neutral placeholder. */
+function MaterialThumb({ url, name, size = 40, className }: { url?: string; name: string; size?: number; className?: string }) {
+    return (
+        <div
+            className={cn('shrink-0 overflow-hidden rounded-md border border-border-sub bg-bg-primary flex items-center justify-center', className)}
+            style={{ width: size, height: size }}
+        >
+            {url
+                ? <img src={url} alt={name} className="h-full w-full object-cover" loading="lazy" />
+                : <Package size={Math.round(size * 0.42)} className="text-text-muted/50" aria-hidden="true" />}
+        </div>
+    );
+}
 
 const EMPTY_ASSIGN_FORM = {
     assignedToUserId: '', expectedReturnAt: '', checkoutCondition: 'good', notes: '',
@@ -150,7 +172,8 @@ export default function AssetsAndMaterialsPage() {
     // Filter pills: the price-book categories plus any older category still on a material.
     const matCats = useMemo(() => [...new Set([...pricing.categories.map(c => c.name), ...materials.map(m => m.category).filter(Boolean)])], [pricing.categories, materials]);
     const { user: authUser } = useAuth();
-    const [mainTab, setMainTab] = useState<'assets' | 'materials' | 'pricing'>('assets');
+    const [mainTab, setMainTab] = useState<'assets' | 'log' | 'materials' | 'pricing'>('assets');
+    const [logFilter, setLogFilter] = useState<'all' | 'out' | 'overdue' | 'returned'>('all');
     const [viewMode, setViewMode] = useViewMode('assets');
     const [assetCatFilter, setAssetCatFilter] = useState<AssetCategory | 'all'>('all');
     const [matCatFilter, setMatCatFilter] = useState('all');
@@ -170,12 +193,21 @@ export default function AssetsAndMaterialsPage() {
     // Dialogs
     const [assetFormOpen, setAssetFormOpen] = useState(false);
     const [editingAsset, setEditingAsset] = useState(false);
+    // Kept apart from selectedAsset, which is cleared when the edit form opens.
+    const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
     const [assetForm, setAssetForm] = useState({ ...EMPTY_ASSET_FORM });
     const [assetSaving, setAssetSaving] = useState(false);
 
     const [matFormOpen, setMatFormOpen] = useState(false);
     const [editingMat, setEditingMat] = useState(false);
     const [matForm, setMatForm] = useState({ ...EMPTY_MAT_FORM });
+    // The material being edited. Kept apart from selectedMaterial, which is
+    // cleared when the detail dialog closes to open the edit form.
+    const [editingMatId, setEditingMatId] = useState<string | null>(null);
+    // A newly picked image, uploaded on save; matForm.imageUrl is the saved one.
+    const [matImageFile, setMatImageFile] = useState<File | null>(null);
+    const [matImagePreview, setMatImagePreview] = useState('');
+    useEffect(() => () => { if (matImagePreview) URL.revokeObjectURL(matImagePreview); }, [matImagePreview]);
     const [matSaving, setMatSaving] = useState(false);
 
     const [assignOpen, setAssignOpen] = useState(false);
@@ -191,7 +223,8 @@ export default function AssetsAndMaterialsPage() {
             setAssets(snap.docs.map(d => ({ ...d.data(), id: d.id } as Asset)));
         });
         const unsubM = onSharedSnapshot('materials', snap => {
-            setMaterials(snap.docs.map(d => ({ ...d.data(), id: d.id } as Material)));
+            // Older materials may carry a renamed category ("Cable" → "Cable & Wire").
+            setMaterials(snap.docs.map(d => { const m = { ...d.data(), id: d.id } as Material; return { ...m, category: canonicalCategory(m.category || '') }; }));
         });
         const unsubAsgn = onSharedSnapshot('assetAssignments', snap => {
             setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as AssetAssignment)));
@@ -277,12 +310,14 @@ export default function AssetsAndMaterialsPage() {
 
     const openAddAsset = () => {
         setEditingAsset(false);
+        setEditingAssetId(null);
         setAssetForm({ ...EMPTY_ASSET_FORM });
         setAssetFormOpen(true);
     };
 
     const openEditAsset = (asset: Asset) => {
         setEditingAsset(true);
+        setEditingAssetId(asset.id);
         setAssetForm({
             name: asset.name,
             category: asset.category,
@@ -307,6 +342,41 @@ export default function AssetsAndMaterialsPage() {
         setAssetFormOpen(true);
     };
 
+    // ── Check-out records ──────────────────────────────────────────────────
+    // Every check-out and return goes through these two, whether it starts
+    // from Assign / Return or from changing "Assign To" on the edit form, so
+    // the log always shows who had a tool and when.
+    const actorName = authUser?.name || 'Admin';
+    const activeAssignmentFor = (assetId: string) => assignments.find(a => a.assetId === assetId && a.status === 'active');
+
+    const recordReturn = async (assetId: string, now: string, returnCondition: string, returnNotes?: string) => {
+        const active = activeAssignmentFor(assetId);
+        if (!active) return;
+        await updateDoc(doc(db, 'assetAssignments', active.id), {
+            status: 'returned', returnedAt: now, returnCondition, returnedByName: actorName,
+            ...(returnNotes && { returnNotes }),
+        });
+    };
+
+    const recordCheckout = async (asset: { id: string; name: string }, userId: string, now: string,
+        opts: { checkoutCondition: string; expectedReturnAt?: string; notes?: string }) => {
+        const tech = technicians.find(t => t.id === userId);
+        await addDoc(collection(db, 'assetAssignments'), {
+            assetId: asset.id,
+            assetName: asset.name,
+            assignedToUserId: userId,
+            assignedToName: tech?.name || '',
+            assignedByName: actorName,
+            checkedOutAt: now,
+            checkoutCondition: opts.checkoutCondition,
+            status: 'active',
+            ...(opts.expectedReturnAt && { expectedReturnAt: opts.expectedReturnAt }),
+            ...(opts.notes && { notes: opts.notes }),
+            createdAt: now,
+        });
+        return tech;
+    };
+
     const handleSaveAsset = async () => {
         if (!assetForm.name.trim() || !assetForm.category || !assetForm.condition) {
             toast({ variant: 'destructive', title: 'Required fields missing', description: 'Name, category, and condition are required.' });
@@ -315,12 +385,18 @@ export default function AssetsAndMaterialsPage() {
         setAssetSaving(true);
         try {
             const tech = technicians.find(t => t.id === assetForm.assignedUserId);
+            const now = new Date().toISOString();
+            const original = editingAsset && editingAssetId ? assets.find(a => a.id === editingAssetId) : undefined;
+            const newUser = assetForm.assignedUserId || '';
+            const oldUser = original?.assignedUserId || '';
+            const holderChanged = newUser !== oldUser;
+            const wasOut = (s?: string) => s === 'assigned' || s === 'checked_out';
             const base = {
                 name: assetForm.name.trim(),
                 category: assetForm.category as AssetCategory,
                 condition: assetForm.condition as Asset['condition'],
-                status: (assetForm.assignedUserId ? 'assigned' : assetForm.status) as Asset['status'],
-                updatedAt: new Date().toISOString(),
+                status: (newUser ? 'assigned' : wasOut(assetForm.status) ? 'available' : assetForm.status) as Asset['status'],
+                updatedAt: now,
                 ...(assetForm.brand && { brand: assetForm.brand }),
                 ...(assetForm.model && { model: assetForm.model }),
                 ...(assetForm.subCategory && { subCategory: assetForm.subCategory }),
@@ -339,16 +415,28 @@ export default function AssetsAndMaterialsPage() {
                 ...(assetForm.notes && { notes: assetForm.notes }),
             };
 
-            if (editingAsset && selectedAsset) {
-                await updateDoc(doc(db, 'assets', selectedAsset.id), base);
-                setSelectedAsset(prev => prev ? { ...prev, ...base } as Asset : null);
+            // New assets get their id up front so a check-out can point at it.
+            const assetRef = original ? doc(db, 'assets', original.id) : doc(collection(db, 'assets'));
+            const holder = holderChanged
+                ? newUser
+                    ? { checkedOutAt: now, ...(original ? { expectedReturnAt: deleteField() } : {}) }
+                    : original ? { assignedUserId: deleteField(), assignedUserName: deleteField(), checkedOutAt: deleteField(), expectedReturnAt: deleteField(), lastReturnedAt: now } : {}
+                : {};
+
+            if (original) {
+                await updateDoc(assetRef, { ...base, ...holder });
                 toast({ title: 'Asset updated' });
             } else {
-                await addDoc(collection(db, 'assets'), { ...base, createdAt: new Date().toISOString() });
+                await setDoc(assetRef, { ...base, ...holder, createdAt: now });
                 toast({ title: 'Asset added', description: `${assetForm.name} has been recorded.` });
+            }
+            if (holderChanged) {
+                if (oldUser) await recordReturn(assetRef.id, now, assetForm.condition);
+                if (newUser) await recordCheckout({ id: assetRef.id, name: base.name }, newUser, now, { checkoutCondition: assetForm.condition });
             }
             setAssetFormOpen(false);
             setEditingAsset(false);
+            setEditingAssetId(null);
             setAssetForm({ ...EMPTY_ASSET_FORM });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Failed to save asset', description: e.message });
@@ -363,30 +451,13 @@ export default function AssetsAndMaterialsPage() {
         if (!assignForm.assignedToUserId || !selectedAsset) return;
         setAssignSaving(true);
         try {
-            const tech = technicians.find(t => t.id === assignForm.assignedToUserId);
             const now = new Date().toISOString();
-
-            // Close any active assignment for this asset
-            const activeAssignment = assignments.find(a => a.assetId === selectedAsset.id && a.status === 'active');
-            if (activeAssignment) {
-                await updateDoc(doc(db, 'assetAssignments', activeAssignment.id), {
-                    status: 'returned', returnedAt: now, returnCondition: selectedAsset.condition,
-                });
-            }
-
-            // Create new assignment
-            await addDoc(collection(db, 'assetAssignments'), {
-                assetId: selectedAsset.id,
-                assetName: selectedAsset.name,
-                assignedToUserId: assignForm.assignedToUserId,
-                assignedToName: tech?.name || '',
-                assignedByName: 'Admin',
-                checkedOutAt: now,
+            // Hand-off: close whoever had it before opening the new check-out.
+            await recordReturn(selectedAsset.id, now, selectedAsset.condition);
+            const tech = await recordCheckout(selectedAsset, assignForm.assignedToUserId, now, {
                 checkoutCondition: assignForm.checkoutCondition,
-                status: 'active',
-                ...(assignForm.expectedReturnAt && { expectedReturnAt: assignForm.expectedReturnAt }),
-                ...(assignForm.notes && { notes: assignForm.notes }),
-                createdAt: now,
+                expectedReturnAt: assignForm.expectedReturnAt,
+                notes: assignForm.notes,
             });
 
             // Update asset
@@ -416,14 +487,7 @@ export default function AssetsAndMaterialsPage() {
         setReturnSaving(true);
         try {
             const now = new Date().toISOString();
-            const activeAssignment = assignments.find(a => a.assetId === selectedAsset.id && a.status === 'active');
-            if (activeAssignment) {
-                await updateDoc(doc(db, 'assetAssignments', activeAssignment.id), {
-                    status: 'returned', returnedAt: now,
-                    returnCondition: returnForm.returnCondition,
-                    ...(returnForm.notes && { notes: returnForm.notes }),
-                });
-            }
+            await recordReturn(selectedAsset.id, now, returnForm.returnCondition, returnForm.notes);
             const update = {
                 status: 'available' as Asset['status'],
                 assignedUserId: null,
@@ -470,24 +534,26 @@ export default function AssetsAndMaterialsPage() {
         const have = new Set(materials.map(m => (m.name || '').trim().toLowerCase()));
         const toAdd = STANDARD_MATERIALS.filter(m => !have.has(m.name.toLowerCase()));
         if (!toAdd.length) { toast({ title: 'Already loaded', description: 'Every standard material is already in your price book.' }); return; }
-        if (!confirm(`Add ${toAdd.length} standard low-voltage materials with $0 cost? You fill in the prices. Names already in your price book are skipped.`)) return;
+        if (!confirm(`Add ${toAdd.length} standard low-voltage materials with suggested contractor costs? Sell prices follow each category's markup. Names already in your price book are skipped.`)) return;
         setSeeding(true);
         try {
             const now = new Date().toISOString();
             for (let i = 0; i < toAdd.length; i += 400) {
                 const batch = writeBatch(db);
                 toAdd.slice(i, i + 400).forEach(m => {
+                    const cost = STANDARD_MATERIAL_COSTS[m.name] ?? 0;
+                    const markup = markupFor(m.category, pricing);
                     batch.set(doc(collection(db, 'materials')), {
                         name: m.name, category: m.category, unitType: m.unitType,
                         ...(m.description ? { description: m.description } : {}),
-                        standardCost: 0, billablePrice: 0,
-                        markupPercentage: markupFor(m.category, pricing), priceOverride: false,
-                        taxable: true, status: 'active', notes: 'Standard list — add cost', createdAt: now, updatedAt: now,
+                        standardCost: cost, billablePrice: roundCents(cost * (1 + markup / 100)),
+                        markupPercentage: markup, priceOverride: false,
+                        taxable: true, status: 'active', notes: cost ? SUGGESTED_COST_NOTE : 'Standard list — add cost', createdAt: now, updatedAt: now,
                     });
                 });
                 await batch.commit();
             }
-            toast({ title: 'Standard materials added', description: `${toAdd.length} materials added. Sort by cost to find the ones still at $0.` });
+            toast({ title: 'Standard materials added', description: `${toAdd.length} materials added with suggested costs. Check them against your supplier invoices.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Could not add materials', description: e.message });
         } finally {
@@ -495,9 +561,99 @@ export default function AssetsAndMaterialsPage() {
         }
     };
 
+    const resetMatImage = () => { setMatImageFile(null); setMatImagePreview(''); };
+
+    const closeMatForm = () => {
+        setMatFormOpen(false);
+        setEditingMat(false);
+        setEditingMatId(null);
+        setMatForm({ ...EMPTY_MAT_FORM });
+        resetMatImage();
+    };
+
+    const pickMatImage = (file: File | undefined) => {
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            toast({ variant: 'destructive', title: 'Not an image', description: 'Choose a JPG, PNG, WebP or GIF.' });
+            return;
+        }
+        if (file.size > MAX_MAT_IMAGE) {
+            toast({ variant: 'destructive', title: 'Image too large', description: 'Images must be under 5 MB.' });
+            return;
+        }
+        setMatImageFile(file);
+        setMatImagePreview(URL.createObjectURL(file));
+    };
+
+    // Fills suggested costs on standard items still at $0 (never touches a
+    // price set by hand) and brings the price book's category markups up to
+    // the recommended ones where they're still at the untouched 20% default.
+    const [fillingPrices, setFillingPrices] = useState(false);
+    const fillSuggestedPrices = async () => {
+        const toPrice = materials.filter(m =>
+            !(m.standardCost > 0) && !(m.priceOverride === true || (m.priceOverride === undefined && (m.billablePrice || 0) > 0))
+            && STANDARD_MATERIAL_COSTS[m.name] != null);
+        const canSetMarkups = canEditUserPay(authUser);
+        const nextCategories = [...pricing.categories];
+        const markupChanges: string[] = [];
+        for (const [name, pct] of Object.entries(RECOMMENDED_MARKUPS)) {
+            const i = nextCategories.findIndex(c => c.name.toLowerCase() === name.toLowerCase());
+            if (i === -1) { nextCategories.push({ id: `cat-${Date.now().toString(36)}-${markupChanges.length}`, name, markupPct: pct }); markupChanges.push(`${name} ${pct}%`); }
+            else if (nextCategories[i].markupPct === 20 && pct !== 20) { nextCategories[i] = { ...nextCategories[i], markupPct: pct }; markupChanges.push(`${name} 20% → ${pct}%`); }
+        }
+        const doMarkups = canSetMarkups && markupChanges.length > 0;
+        if (!toPrice.length && !doMarkups) {
+            toast({ title: 'Nothing to fill', description: 'Every standard material already has a cost, and the category markups are set.' });
+            return;
+        }
+        const lines = [
+            toPrice.length ? `Fill suggested costs on ${toPrice.length} standard materials still at $0.` : '',
+            doMarkups ? `Set category markups: ${markupChanges.join(', ')}.` : '',
+            'Anything you priced by hand is left alone.',
+        ].filter(Boolean).join('\n\n');
+        if (!confirm(lines)) return;
+        setFillingPrices(true);
+        try {
+            let settings: PricingSettings = pricing;
+            if (doMarkups) {
+                settings = { ...pricing, categories: nextCategories };
+                await savePricing(settings);
+            }
+            const now = new Date().toISOString();
+            for (let i = 0; i < toPrice.length; i += 400) {
+                const batch = writeBatch(db);
+                toPrice.slice(i, i + 400).forEach(m => {
+                    const cost = STANDARD_MATERIAL_COSTS[m.name];
+                    const markup = markupFor(m.category, settings);
+                    batch.update(doc(db, 'materials', m.id), {
+                        standardCost: cost, billablePrice: roundCents(cost * (1 + markup / 100)),
+                        markupPercentage: markup, priceOverride: false,
+                        ...(m.notes === 'Standard list — add cost' || !m.notes ? { notes: SUGGESTED_COST_NOTE } : {}),
+                        updatedAt: now,
+                    });
+                });
+                await batch.commit();
+            }
+            toast({
+                title: 'Suggested prices filled',
+                description: [
+                    toPrice.length ? `${toPrice.length} materials priced` : '',
+                    doMarkups ? 'category markups updated' : '',
+                    !canSetMarkups && markupChanges.length ? 'markups need a billing admin to change' : '',
+                ].filter(Boolean).join(' · '),
+            });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not fill prices', description: e.message });
+        } finally {
+            setFillingPrices(false);
+        }
+    };
+
     const openAddMaterial = () => {
         setEditingMat(false);
+        setEditingMatId(null);
         setMatForm({ ...EMPTY_MAT_FORM });
+        resetMatImage();
         setMatFormOpen(true);
     };
 
@@ -511,7 +667,10 @@ export default function AssetsAndMaterialsPage() {
             priceOverride: m.priceOverride ?? (m.billablePrice || 0) > 0,
             vendor: m.vendor || '', sku: m.sku || '',
             taxable: m.taxable, status: m.status, notes: m.notes || '',
+            imageUrl: m.imageUrl || '', imagePath: m.imagePath || '',
         });
+        setEditingMatId(m.id);
+        resetMatImage();
         setMatFormOpen(true);
     };
 
@@ -545,17 +704,35 @@ export default function AssetsAndMaterialsPage() {
                 ...(matForm.notes && { notes: matForm.notes }),
             };
 
-            if (editingMat && selectedMaterial) {
-                await updateDoc(doc(db, 'materials', selectedMaterial.id), base);
-                setSelectedMaterial(prev => prev ? { ...prev, ...base } as Material : null);
+            // New materials get their id up front so the image can be stored under it.
+            const matRef = editingMat && editingMatId ? doc(db, 'materials', editingMatId) : doc(collection(db, 'materials'));
+            const original = editingMat ? materials.find(m => m.id === matRef.id) : undefined;
+
+            let image: { imageUrl: string; imagePath: string } | null = matForm.imageUrl
+                ? { imageUrl: matForm.imageUrl, imagePath: matForm.imagePath }
+                : null;
+            if (matImageFile) {
+                const safeName = matImageFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                const up = await uploadFile(`materialImages/${matRef.id}/${Date.now()}-${safeName}`, matImageFile, { contentType: matImageFile.type });
+                image = { imageUrl: up.url, imagePath: up.storagePath };
+            }
+
+            if (editingMat && editingMatId) {
+                await updateDoc(matRef, {
+                    ...base,
+                    ...(image ?? { imageUrl: deleteField(), imagePath: deleteField() }),
+                });
                 toast({ title: 'Material updated' });
             } else {
-                await addDoc(collection(db, 'materials'), { ...base, createdAt: new Date().toISOString() });
+                await setDoc(matRef, { ...base, ...(image ?? {}), createdAt: new Date().toISOString() });
                 toast({ title: 'Material added', description: `${matForm.name} added to price list.` });
             }
-            setMatFormOpen(false);
-            setEditingMat(false);
-            setMatForm({ ...EMPTY_MAT_FORM });
+
+            // The old file is no longer referenced once the material is saved.
+            if (original?.imagePath && original.imagePath !== image?.imagePath) {
+                try { await deleteObject(storageRef(storage, original.imagePath)); } catch { /* already gone */ }
+            }
+            closeMatForm();
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Failed to save material', description: e.message });
         } finally {
@@ -572,6 +749,33 @@ export default function AssetsAndMaterialsPage() {
 
     const assetHistory = (assetId: string) =>
         assignments.filter(a => a.assetId === assetId).sort((a, b) => b.checkedOutAt.localeCompare(a.checkedOutAt));
+
+    const stamp = (iso?: string) => { try { return iso ? format(parseISO(iso), 'MMM d, yyyy h:mm a') : ''; } catch { return iso || ''; } };
+    const outFor = (a: AssetAssignment) => { try { return formatDistanceStrict(parseISO(a.checkedOutAt), a.returnedAt ? parseISO(a.returnedAt) : new Date()); } catch { return ''; } };
+    // expectedReturnAt is a calendar day (yyyy-MM-dd); overdue once that day has passed.
+    const isOverdue = (a: AssetAssignment) => a.status === 'active' && !!a.expectedReturnAt && a.expectedReturnAt < localDay();
+
+    const logRows = useMemo(() => {
+        const rows = assignments.filter(a =>
+            logFilter === 'all' ? true
+            : logFilter === 'out' ? a.status === 'active'
+            : logFilter === 'overdue' ? isOverdue(a)
+            : a.status === 'returned');
+        const q = search.trim().toLowerCase();
+        const matched = q ? rows.filter(a => [a.assetName, a.assignedToName, a.assignedByName, a.returnedByName].some(v => (v || '').toLowerCase().includes(q))) : rows;
+        // Still out first (overdue at the top), then everything by most recent check-out.
+        return [...matched].sort((a, b) =>
+            Number(isOverdue(b)) - Number(isOverdue(a))
+            || Number(b.status === 'active') - Number(a.status === 'active')
+            || b.checkedOutAt.localeCompare(a.checkedOutAt));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [assignments, logFilter, search]);
+    const logPager = usePaged(logRows, PAGE_SIZES_LARGE, 'asset-log', [logFilter, search]);
+    const logCounts = useMemo(() => ({
+        out: assignments.filter(a => a.status === 'active').length,
+        overdue: assignments.filter(isOverdue).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }), [assignments]);
 
     const tabTriggerCls = "tab-underline";
 
@@ -593,6 +797,9 @@ export default function AssetsAndMaterialsPage() {
                         </Button>
                     ) : mainTab === 'materials' && (
                         <>
+                            <Button size="sm" variant="outline" className="h-9" onClick={fillSuggestedPrices} disabled={fillingPrices}>
+                                {fillingPrices ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : <DollarSign size={14} className="mr-1.5" />} Fill suggested prices
+                            </Button>
                             <Button size="sm" variant="outline" className="h-9" onClick={loadStandardMaterials} disabled={seeding}>
                                 {seeding ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : <ShoppingCart size={14} className="mr-1.5" />} Load standard materials
                             </Button>
@@ -614,10 +821,13 @@ export default function AssetsAndMaterialsPage() {
             </StatGrid>
 
             {/* Main tabs */}
-            <Tabs value={mainTab} onValueChange={v => { setMainTab(v as 'assets' | 'materials' | 'pricing'); setSearch(''); }} className="w-full">
+            <Tabs value={mainTab} onValueChange={v => { setMainTab(v as 'assets' | 'log' | 'materials' | 'pricing'); setSearch(''); }} className="w-full">
                 <TabsList className="border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 mb-5">
                     <TabsTrigger value="assets" className={tabTriggerCls}>
                         <span className="flex items-center gap-2"><Boxes size={12} /> Assets ({assets.length})</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="log" className={tabTriggerCls}>
+                        <span className="flex items-center gap-2"><History size={12} /> Check-out log{logCounts.out > 0 && ` (${logCounts.out} out)`}</span>
                     </TabsTrigger>
                     <TabsTrigger value="materials" className={tabTriggerCls}>
                         <span className="flex items-center gap-2"><ShoppingCart size={12} /> Materials ({materials.filter(m => m.status === 'active').length})</span>
@@ -788,6 +998,90 @@ export default function AssetsAndMaterialsPage() {
                 </TabsContent>
 
                 {/* ── Materials Tab ──────────────────────────────────────── */}
+                {/* ── Check-out log: every check-out and return across all assets ── */}
+                <TabsContent value="log" className="m-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-4">
+                        {([
+                            ['all', `All (${assignments.length})`],
+                            ['out', `Checked out (${logCounts.out})`],
+                            ['overdue', `Overdue (${logCounts.overdue})`],
+                            ['returned', 'Returned'],
+                        ] as const).map(([value, label]) => (
+                            <button
+                                key={value}
+                                onClick={() => setLogFilter(value)}
+                                className={cn('text-[12px] font-medium px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap',
+                                    logFilter === value
+                                        ? 'bg-brand-red text-white border-brand-red'
+                                        : 'bg-bg-primary text-text-muted border-border-sub hover:border-border-main'
+                                )}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex flex-wrap gap-2 mb-5">
+                        <SearchField className="flex-1 min-w-[200px]" placeholder="Search asset or person…" value={search} onChange={setSearch} />
+                    </div>
+
+                    {logRows.length === 0 ? (
+                        <EmptyState
+                            icon={History}
+                            title={assignments.length ? 'No check-outs match these filters' : 'No check-outs yet'}
+                            description={assignments.length ? undefined : 'Open an asset and use Assign / check out. Every check-out and return is recorded here.'}
+                        />
+                    ) : (
+                        <div className="rounded-xl border border-border-sub overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="border-border-sub bg-bg-secondary/50">
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Asset</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Checked out to</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Out</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Returned</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Time out</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Condition</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Status</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {logPager.items.map(a => {
+                                        const asset = assets.find(x => x.id === a.assetId);
+                                        return (
+                                            <TableRow
+                                                key={a.id}
+                                                className={cn('border-border-sub transition-colors', asset && 'hover:bg-bg-secondary cursor-pointer')}
+                                                onClick={() => { if (asset) setSelectedAsset(asset); }}
+                                            >
+                                                <TableCell className="text-[12px] font-bold text-text-primary">{a.assetName}</TableCell>
+                                                <TableCell className="text-[12px] text-text-primary">{a.assignedToName || '—'}</TableCell>
+                                                <TableCell className="text-[11px] text-text-muted whitespace-nowrap">
+                                                    {stamp(a.checkedOutAt)}
+                                                    {a.assignedByName && <span className="block">by {a.assignedByName}</span>}
+                                                </TableCell>
+                                                <TableCell className="text-[11px] text-text-muted whitespace-nowrap">
+                                                    {a.returnedAt ? <>{stamp(a.returnedAt)}{a.returnedByName && <span className="block">by {a.returnedByName}</span>}</>
+                                                        : a.expectedReturnAt ? <>Due {a.expectedReturnAt}</> : '—'}
+                                                </TableCell>
+                                                <TableCell className="text-[11px] text-text-muted whitespace-nowrap">{outFor(a)}</TableCell>
+                                                <TableCell className="text-[11px] text-text-muted whitespace-nowrap">
+                                                    {statusLabel(a.checkoutCondition)}{a.returnCondition && ` → ${statusLabel(a.returnCondition)}`}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <ToneChip tone={isOverdue(a) ? 'problem' : a.status === 'active' ? 'info' : 'neutral'}>
+                                                        {isOverdue(a) ? 'Overdue' : a.status === 'active' ? 'Checked out' : 'Returned'}
+                                                    </ToneChip>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                    <ListPager pager={logPager} noun="check-outs" />
+                </TabsContent>
+
                 <TabsContent value="materials" className="m-0">
                     {/* Category: a picker on phones (ten long names would stack
                         five rows deep), pills from sm up. */}
@@ -859,9 +1153,12 @@ export default function AssetsAndMaterialsPage() {
                                 <div key={m.id} onClick={() => setSelectedMaterial(m)}
                                     className="rounded-xl border border-border-sub bg-bg-secondary hover:border-brand-red hover:bg-bg-tertiary transition-all cursor-pointer p-4 space-y-2.5">
                                     <div className="flex items-start justify-between gap-2">
-                                        <div className="min-w-0">
-                                            <p className="text-[12px] font-bold text-text-primary truncate">{m.name}</p>
-                                            {m.vendor && <p className="text-[11px] text-text-muted truncate">{m.vendor}</p>}
+                                        <div className="flex min-w-0 items-start gap-3">
+                                            <MaterialThumb url={m.imageUrl} name={m.name} size={48} />
+                                            <div className="min-w-0">
+                                                <p className="text-[12px] font-bold text-text-primary truncate">{m.name}</p>
+                                                {m.vendor && <p className="text-[11px] text-text-muted truncate">{m.vendor}</p>}
+                                            </div>
                                         </div>
                                         <ToneChip tone={m.status === 'active' ? 'done' : 'neutral'}>{statusLabel(m.status)}</ToneChip>
                                     </div>
@@ -901,8 +1198,13 @@ export default function AssetsAndMaterialsPage() {
                                             onClick={() => setSelectedMaterial(m)}
                                         >
                                             <TableCell>
-                                                <p className="text-[12px] font-bold text-text-primary">{m.name}</p>
-                                                {m.vendor && <p className="text-[11px] text-text-muted">{m.vendor}</p>}
+                                                <div className="flex items-center gap-2.5">
+                                                    <MaterialThumb url={m.imageUrl} name={m.name} size={32} />
+                                                    <div className="min-w-0">
+                                                        <p className="text-[12px] font-bold text-text-primary">{m.name}</p>
+                                                        {m.vendor && <p className="text-[11px] text-text-muted">{m.vendor}</p>}
+                                                    </div>
+                                                </div>
                                             </TableCell>
                                             <TableCell className="text-[11px] text-text-muted">{m.category}</TableCell>
                                             <TableCell>
@@ -1041,22 +1343,29 @@ export default function AssetsAndMaterialsPage() {
                                     {history.length > 0 && (
                                         <div>
                                             <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2 mb-2">
-                                                <History size={10} /> Assignment history
+                                                <History size={10} /> Check-out history
                                             </p>
                                             <div className="space-y-1.5">
                                                 {history.map(h => (
                                                     <div key={h.id} className="flex items-center justify-between p-2.5 rounded-lg bg-bg-secondary border border-border-sub">
                                                         <div className="min-w-0">
-                                                            <p className="text-[12px] font-bold text-text-primary">{h.assignedToName}</p>
+                                                            <p className="text-[12px] font-bold text-text-primary">{h.assignedToName || 'Unknown'}</p>
                                                             <p className="text-[11px] text-text-muted">
-                                                                {format(parseISO(h.checkedOutAt), 'MMM d, yyyy')}
-                                                                {h.returnedAt && ` → ${format(parseISO(h.returnedAt), 'MMM d, yyyy')}`}
+                                                                Out {stamp(h.checkedOutAt)}{h.assignedByName && ` · by ${h.assignedByName}`}
                                                             </p>
-                                                            {h.notes && <p className="text-[11px] text-text-muted">{h.notes}</p>}
+                                                            <p className="text-[11px] text-text-muted">
+                                                                {h.returnedAt
+                                                                    ? <>Back {stamp(h.returnedAt)}{h.returnedByName && ` · by ${h.returnedByName}`} · {outFor(h)}</>
+                                                                    : <>Still out · {outFor(h)}{h.expectedReturnAt && ` · due ${h.expectedReturnAt}`}</>}
+                                                            </p>
+                                                            {h.notes && <p className="text-[11px] text-text-muted">Out: {h.notes}</p>}
+                                                            {h.returnNotes && <p className="text-[11px] text-text-muted">Back: {h.returnNotes}</p>}
                                                         </div>
                                                         <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
-                                                            <ToneChip tone={h.status === 'active' ? 'info' : 'neutral'}>{h.status === 'active' ? 'Checked out' : statusLabel(h.status)}</ToneChip>
-                                                            <span className="text-[11px] text-text-muted">{statusLabel(h.checkoutCondition)}</span>
+                                                            <ToneChip tone={isOverdue(h) ? 'problem' : h.status === 'active' ? 'info' : 'neutral'}>{isOverdue(h) ? 'Overdue' : h.status === 'active' ? 'Checked out' : statusLabel(h.status)}</ToneChip>
+                                                            <span className="text-[11px] text-text-muted">
+                                                                {statusLabel(h.checkoutCondition)}{h.returnCondition && ` → ${statusLabel(h.returnCondition)}`}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -1161,7 +1470,7 @@ export default function AssetsAndMaterialsPage() {
             </Dialog>
 
             {/* ── Add / Edit Asset Dialog ───────────────────────────────────── */}
-            <Dialog open={assetFormOpen} onOpenChange={open => { if (!open) { setAssetFormOpen(false); setEditingAsset(false); setAssetForm({ ...EMPTY_ASSET_FORM }); } }}>
+            <Dialog open={assetFormOpen} onOpenChange={open => { if (!open) { setAssetFormOpen(false); setEditingAsset(false); setEditingAssetId(null); setAssetForm({ ...EMPTY_ASSET_FORM }); } }}>
                 <DialogContent className="bg-bg-elevated border-border-main max-w-lg max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="text-base font-semibold">{editingAsset ? 'Edit asset' : 'Add asset'}</DialogTitle>
@@ -1299,7 +1608,7 @@ export default function AssetsAndMaterialsPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" size="sm" onClick={() => { setAssetFormOpen(false); setEditingAsset(false); setAssetForm({ ...EMPTY_ASSET_FORM }); }} className="text-[10px] font-bold">Cancel</Button>
+                        <Button variant="outline" size="sm" onClick={() => { setAssetFormOpen(false); setEditingAsset(false); setEditingAssetId(null); setAssetForm({ ...EMPTY_ASSET_FORM }); }} className="text-[10px] font-bold">Cancel</Button>
                         <Button size="sm" onClick={handleSaveAsset} disabled={assetSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
                             {assetSaving ? 'Saving...' : editingAsset ? 'Save changes' : 'Add asset'}
                         </Button>
@@ -1314,9 +1623,12 @@ export default function AssetsAndMaterialsPage() {
                         <>
                             <DialogHeader>
                                 <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <DialogTitle className="text-base font-semibold">{selectedMaterial.name}</DialogTitle>
-                                        <p className="text-[11px] text-text-muted mt-0.5">{selectedMaterial.category}</p>
+                                    <div className="flex min-w-0 items-start gap-3">
+                                        <MaterialThumb url={selectedMaterial.imageUrl} name={selectedMaterial.name} size={64} />
+                                        <div className="min-w-0">
+                                            <DialogTitle className="text-base font-semibold">{selectedMaterial.name}</DialogTitle>
+                                            <p className="text-[11px] text-text-muted mt-0.5">{selectedMaterial.category}</p>
+                                        </div>
                                     </div>
                                     <ToneChip tone={selectedMaterial.status === 'active' ? 'done' : 'neutral'}>{statusLabel(selectedMaterial.status)}</ToneChip>
                                 </div>
@@ -1373,12 +1685,37 @@ export default function AssetsAndMaterialsPage() {
             </Dialog>
 
             {/* ── Add / Edit Material Dialog ────────────────────────────────── */}
-            <Dialog open={matFormOpen} onOpenChange={open => { if (!open) { setMatFormOpen(false); setEditingMat(false); setMatForm({ ...EMPTY_MAT_FORM }); } }}>
+            <Dialog open={matFormOpen} onOpenChange={open => { if (!open) closeMatForm(); }}>
                 <DialogContent className="bg-bg-elevated border-border-main max-w-lg max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="text-base font-semibold">{editingMat ? 'Edit material' : 'Add material'}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Image</Label>
+                            <div className="flex items-center gap-3">
+                                <MaterialThumb url={matImagePreview || matForm.imageUrl} name={matForm.name || 'Material'} size={64} />
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <label className="inline-flex h-8 cursor-pointer items-center rounded-md border border-border-main bg-bg-secondary px-3 text-[10px] font-bold text-text-primary hover:border-brand-red">
+                                        <ImagePlus size={13} className="mr-1.5" />
+                                        {matImagePreview || matForm.imageUrl ? 'Replace image' : 'Upload image'}
+                                        <input
+                                            type="file"
+                                            accept="image/png,image/jpeg,image/webp,image/gif"
+                                            className="sr-only"
+                                            onChange={e => { pickMatImage(e.target.files?.[0]); e.target.value = ''; }}
+                                        />
+                                    </label>
+                                    {(matImagePreview || matForm.imageUrl) && (
+                                        <Button type="button" variant="ghost" size="sm" className="h-8 text-[10px] font-bold text-text-muted"
+                                            onClick={() => { resetMatImage(); setMatForm(f => ({ ...f, imageUrl: '', imagePath: '' })); }}>
+                                            <X size={13} className="mr-1" /> Remove
+                                        </Button>
+                                    )}
+                                    <p className="w-full text-[10px] text-text-muted">JPG, PNG, WebP or GIF, up to 5 MB. Shown as the thumbnail in the price book.</p>
+                                </div>
+                            </div>
+                        </div>
                         <div className="space-y-1.5">
                             <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Material Name *</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="e.g. Cat6 Cable" value={matForm.name} onChange={e => setMatForm(f => ({ ...f, name: e.target.value }))} />
@@ -1476,7 +1813,7 @@ export default function AssetsAndMaterialsPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" size="sm" onClick={() => { setMatFormOpen(false); setEditingMat(false); setMatForm({ ...EMPTY_MAT_FORM }); }} className="text-[10px] font-bold">Cancel</Button>
+                        <Button variant="outline" size="sm" onClick={closeMatForm} className="text-[10px] font-bold">Cancel</Button>
                         <Button size="sm" onClick={handleSaveMaterial} disabled={matSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold">
                             {matSaving ? 'Saving...' : editingMat ? 'Save changes' : 'Add material'}
                         </Button>

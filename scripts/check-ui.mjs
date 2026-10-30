@@ -14,7 +14,8 @@ import { join, relative } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const SRC = join(ROOT, 'src');
-const SKIP = [/\/components\/ui\//, /\/lib\/status-styles\.ts$/, /\/lib\/ui-classes\.ts$/];
+// The standard parts lists name real products ("Terminal block"), not UI copy.
+const SKIP = [/\/components\/ui\//, /\/lib\/status-styles\.ts$/, /\/lib\/ui-classes\.ts$/, /\/lib\/standard-material(s|-prices)\.ts$/];
 
 const PALETTE = '(red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|neutral|stone)';
 const RULES = [

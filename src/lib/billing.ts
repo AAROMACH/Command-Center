@@ -148,12 +148,44 @@ export type PricingSettings = {
   updatedBy?: string;
 };
 
+/** Matches the categories used by the standard materials list (lib/standard-materials),
+ *  with the markups in lib/standard-material-prices (RECOMMENDED_MARKUPS). */
 export const DEFAULT_CATEGORIES: PriceCategory[] = [
-  { id: 'cat-cable', name: 'Cable', markupPct: 20 },
-  { id: 'cat-racks', name: 'Racks & Enclosures', markupPct: 20 },
-  { id: 'cat-network', name: 'Network Equipment', markupPct: 20 },
-  { id: 'cat-hardware', name: 'Hardware', markupPct: 20 },
+  { id: 'cat-cable', name: 'Cable & Wire', markupPct: 35 },
+  { id: 'cat-fiber', name: 'Fiber', markupPct: 35 },
+  { id: 'cat-connectivity', name: 'Connectivity', markupPct: 50 },
+  { id: 'cat-racks', name: 'Racks & Enclosures', markupPct: 30 },
+  { id: 'cat-network', name: 'Network Equipment', markupPct: 25 },
+  { id: 'cat-security', name: 'Cameras & Security', markupPct: 30 },
+  { id: 'cat-av', name: 'Audio/Visual', markupPct: 30 },
+  { id: 'cat-automation', name: 'Automation & Controls', markupPct: 30 },
+  { id: 'cat-hardware', name: 'Hardware & Supplies', markupPct: 50 },
 ];
+
+/** Category names renamed when the standard materials list arrived. A saved
+ *  price book or older material may still use the old name. */
+const CATEGORY_ALIASES: Record<string, string> = {
+  cable: 'Cable & Wire',
+  hardware: 'Hardware & Supplies',
+};
+
+export function canonicalCategory(name: string): string {
+  return CATEGORY_ALIASES[name.trim().toLowerCase()] ?? name;
+}
+
+/** Renames old category names and drops the duplicate when both the old and
+ *  new name are saved (the entry already using the new name wins). */
+export function canonicalCategories(categories: PriceCategory[]): PriceCategory[] {
+  const byName = new Map<string, { category: PriceCategory; renamed: boolean }>();
+  for (const c of categories) {
+    const name = canonicalCategory(c.name);
+    const key = name.toLowerCase();
+    const renamed = name !== c.name;
+    const existing = byName.get(key);
+    if (!existing || (existing.renamed && !renamed)) byName.set(key, { category: { ...c, name }, renamed });
+  }
+  return [...byName.values()].map(v => v.category);
+}
 export const DEFAULT_MULTIPLIERS: RateMultiplier[] = [
   { id: 'mult-after-hours', label: 'After hours', factor: 2 },
 ];
@@ -211,7 +243,8 @@ export function localDay(d = new Date()): string {
 }
 
 export function markupFor(category: string | undefined, settings: PricingSettings): number {
-  const cat = category && settings.categories.find(c => c.name.toLowerCase() === category.toLowerCase());
+  const name = category && canonicalCategory(category);
+  const cat = name && settings.categories.find(c => c.name.toLowerCase() === name.toLowerCase());
   if (cat) return cat.markupPct;
   if (category && settings.materialMarkupPct[category] != null) return settings.materialMarkupPct[category];
   return settings.defaultMarkupPct;

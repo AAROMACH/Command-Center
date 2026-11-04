@@ -66,8 +66,8 @@ function buildPaystubData(
     };
   });
 
-  // Same lines the settlement total counts (log records + job-level Reimb.).
-  const reimbursements: PaystubReimbLine[] = weeklyLogReimbursementLines(log, jobsById)
+  // Same lines the settlement total counts.
+  const reimbursements: PaystubReimbLine[] = weeklyLogReimbursementLines(log)
     .map(r => ({ description: r.description, amount: r.net }));
 
   return {

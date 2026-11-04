@@ -1284,9 +1284,7 @@ export default function TechWeeklyLogPage() {
 function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId, onDisputeJob, hasOpenPayrollDispute }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, kind: DisputeKind, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null, onDisputeJob?: (item: WeeklyLogItem) => void, hasOpenPayrollDispute?: boolean }) {
     const job = workOrders.find(wo => wo.id === item.workOrderId);
     const itemReimbursements = reimbursements.filter(r => r.workOrderId === item.workOrderId);
-    // Payroll's Reimb. amount on an Imported job replaces its records (lib/payroll).
-    const jobAuditReimb = job?.source === 'Imported' && !item.isHelper ? Number(job.auditReimbursement) || 0 : 0;
-    const settledReimbursement = jobAuditReimb > 0 ? netOfFieldNationFee(jobAuditReimb) : itemReimbursements
+    const settledReimbursement = itemReimbursements
         .filter(r => r.status !== 'pending' && r.status !== 'rejected')
         .reduce((acc, r) => acc + netOfFieldNationFee(r.amount), 0);
     const requestedReimbursement = itemReimbursements
@@ -1405,7 +1403,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                             <p className="text-sm font-mono font-bold text-text-green text-right">${(isDisputed ? 0 : effectiveJobPay(item, shown)).toFixed(2)}</p>
                         </div>
 
-                        {(itemReimbursements.length > 0 || jobAuditReimb > 0) && (
+                        {itemReimbursements.length > 0 && (
                             <div className="text-right px-4 border-l border-border-sub/30 min-w-[100px]">
                                 <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-right">Reimbursement</p>
                                 <p className="text-sm font-mono font-bold text-accent-gold text-right">${settledReimbursement.toFixed(2)}</p>

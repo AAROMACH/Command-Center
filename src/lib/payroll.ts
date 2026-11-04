@@ -59,9 +59,8 @@ export type ReimbursementPayLine = {
   gross: number;
   /** What the tech is paid (gross less the FN fee). */
   net: number;
-  /** 'log' = a reimbursement record on the log; 'job' = the Reimb. amount set
-   *  on an Imported job in the pay calculator; 'report' = a missing-job report. */
-  source: 'log' | 'job' | 'report';
+  /** 'log' = an approved reimbursement on the log; 'report' = a missing-job report's audited reimbursement. */
+  source: 'log' | 'report';
 };
 
 const countedItems = (log: SettlementLog) => (log.items || [])
@@ -70,34 +69,14 @@ const countedItems = (log: SettlementLog) => (log.items || [])
   .filter(i => !i.helperRemoved);
 
 /**
- * Every reimbursement paid on a log. The pay calculator's Reimb. field on an
- * Imported job is filled from that job's approved records and can be edited
- * (e.g. an expense Field Nation paid that was never filed as a record). When
- * it's set, it is that job's reimbursement and its records aren't counted
- * again; otherwise the approved records are.
+ * Every reimbursement paid on a log: approved reimbursements (pending and
+ * rejected ones aren't paid) and audited missing-job reports. The pay
+ * calculator's Reimb. box mirrors the approved ones, so it isn't counted again.
  */
-export function weeklyLogReimbursementLines(log: SettlementLog, jobsById: Map<string, WorkOrder> = new Map()): ReimbursementPayLine[] {
-  const lines: ReimbursementPayLine[] = [];
-  const jobAudited = new Set<string>();
-  countedItems(log).forEach(i => {
-    if (i.isHelper || jobAudited.has(i.workOrderId)) return;
-    const job = jobsById.get(i.workOrderId);
-    const amount = job?.source === 'Imported' ? Number(job.auditReimbursement) || 0 : 0;
-    if (amount <= 0) return;
-    jobAudited.add(i.workOrderId);
-    lines.push({
-      id: `job-${i.workOrderId}`, workOrderId: i.workOrderId, source: 'job',
-      description: `Job reimbursement · ${job?.title || i.workOrderId.toUpperCase()}`,
-      gross: amount, net: netOfFieldNationFee(amount),
-    });
-  });
-  (log.reimbursements || [])
+export function weeklyLogReimbursementLines(log: SettlementLog): ReimbursementPayLine[] {
+  const lines: ReimbursementPayLine[] = (log.reimbursements || [])
     .filter(r => r.status !== 'pending' && r.status !== 'rejected')
-    .forEach(r => {
-      const jobId = r.workOrderId || r.assignmentId;
-      if (jobId && jobAudited.has(jobId)) return;
-      lines.push({ id: r.id, workOrderId: jobId, source: 'log', description: r.description || 'Reimbursement', gross: Number(r.amount) || 0, net: netOfFieldNationFee(r.amount) });
-    });
+    .map(r => ({ id: r.id, workOrderId: r.workOrderId || r.assignmentId, source: 'log' as const, description: r.description || 'Reimbursement', gross: Number(r.amount) || 0, net: netOfFieldNationFee(r.amount) }));
   (log.missingAssignmentReports || [])
     .filter(r => r.isAudited && r.jobType === 'Imported' && (r.auditReimbursement || 0) > 0)
     .forEach(r => lines.push({
@@ -124,7 +103,7 @@ export type WeeklyLogPay = {
  * job isn't necessarily getting paid until the dispute is resolved) and
  * missing-job reports payroll hasn't approved yet. `jobsById` is optional —
  * omit it and every item falls back to its stored jobPay (no Imported-job
- * pay recalculation, no job-level reimbursements).
+ * pay recalculation).
  */
 export function computeWeeklyLogPay(log: SettlementLog, jobsById: Map<string, WorkOrder> = new Map()): WeeklyLogPay {
   const itemPayCents = countedItems(log)
@@ -133,7 +112,7 @@ export function computeWeeklyLogPay(log: SettlementLog, jobsById: Map<string, Wo
   // (isAudited) — never just because the tech added it.
   const reportPayCents = (log.missingAssignmentReports || []).filter(r => r.isAudited).reduce((s, r) =>
     s + payCents(r.jobType === 'Imported' ? (r.finalPay || 0) : (r.pay || 0)), 0);
-  const reimbCents = weeklyLogReimbursementLines(log, jobsById).reduce((s, l) => s + payCents(l.net), 0);
+  const reimbCents = weeklyLogReimbursementLines(log).reduce((s, l) => s + payCents(l.net), 0);
   const pendingCents = (log.reimbursements || []).filter(r => r.status === 'pending').reduce((s, r) => s + payCents(Number(r.amount) || 0), 0);
   const jobCents = itemPayCents + reportPayCents;
   return { jobPay: jobCents / 100, reimbursementPay: reimbCents / 100, total: (jobCents + reimbCents) / 100, pendingReimbursement: pendingCents / 100 };

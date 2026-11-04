@@ -70,7 +70,6 @@ const adminNavGroups: NavGroup[] = [
     label: "Overview",
     items: [
       { href: "/admin/dashboard",        label: "Dashboard",        icon: LayoutDashboard, permission: "admin.dashboard.view" },
-      { href: "/admin/requests",         label: "Requests",         icon: Inbox,           permission: "admin.requests.view" },
       { href: "/admin/reports",          label: "History",          icon: Activity,        permission: "admin.reports.view" },
       { href: "/admin/analytics",        label: "Insights",         icon: BarChart2,     permission: "admin.reports.view" },
       { href: "/admin/company-planning", label: "Company Planning", icon: Flag,            permission: "admin.reports.view" },
@@ -79,6 +78,7 @@ const adminNavGroups: NavGroup[] = [
   {
     label: "Operations",
     items: [
+      { href: "/admin/requests",     label: "Requests",     icon: Inbox,       permission: "admin.requests.view" },
       { href: "/admin/dispatch",     label: "Dispatch",     icon: Wrench,      permission: "admin.dispatch.view" },
       { href: "/admin/calendar",     label: "Schedule",     icon: CalendarDays, permission: "admin.schedule.view" },
       { href: "/admin/assignments",  label: "Assignments",  icon: ClipboardList, permission: "admin.assignments.view" },
@@ -105,8 +105,9 @@ const adminNavGroups: NavGroup[] = [
   {
     label: "Financials & Assets",
     items: [
-      { href: "/admin/financials", label: "Financials", icon: Banknote, permission: "admin.financials.view" },
-      { href: "/admin/assets",     label: "Assets",     icon: Package,  permission: "admin.assignments.view" },
+      { href: "/admin/financials",    label: "Financials",          icon: Banknote, permission: "admin.financials.view" },
+      { href: "/admin/payroll/audit", label: "Payroll",             icon: Receipt,  permission: "admin.financials.view" },
+      { href: "/admin/assets",        label: "Assets & Materials",  icon: Package,  permission: "admin.assignments.view" },
     ],
   },
 ];
@@ -139,7 +140,7 @@ const techNavGroups: NavGroup[] = [
       { href: "/tech/assignments", label: "Assignments", icon: ClipboardList, permission: "tech.assignments.view" },
       { href: "/tech/projects",    label: "Projects",    icon: FolderKanban,  permission: "tech.projects.view" },
       { href: "/tech/logs",        label: "Logs",        icon: FileText,      permission: "tech.logs.view" },
-      { href: "/tech/site-walks",  label: "Site walks",  icon: ClipboardCheck, permission: "tech.assignments.view" },
+      { href: "/tech/site-walks",  label: "Site Walks",  icon: ClipboardCheck, permission: "tech.assignments.view" },
     ],
   },
   {

@@ -500,8 +500,8 @@ export default function CRMPage() {
       <PageHeader
         eyebrow="Sales"
         icon={Target}
-        title="CRM pipeline"
-        subtitle="Leads and deals from first contact to close."
+        title={crmTab === 'myday' ? 'My Day' : 'CRM pipeline'}
+        subtitle={crmTab === 'myday' ? 'Follow-ups, tasks and deals that need a touch today.' : 'Leads and deals from first contact to close.'}
         actions={<>
           <Button variant="outline" size="sm" className="h-9 border-border-main" onClick={exportCsv}>
             <Download size={14} className="mr-1.5" /> Export CSV

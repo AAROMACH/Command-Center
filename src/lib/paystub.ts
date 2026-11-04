@@ -1,8 +1,9 @@
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import type { WeeklyLog, WorkOrder, Technician } from './types';
-import { effectiveJobPay, computeWeeklyLogSettlement, netOfFieldNationFee } from './payroll';
+import { effectiveJobPay, computeWeeklyLogSettlement, weeklyLogReimbursementLines } from './payroll';
 import { displayWorkOrderNumber } from './work-order-identity';
+import { adjustmentForText } from './pay-adjustments';
 
 type PaystubJobLine = {
   label: string;
@@ -28,6 +29,8 @@ type PaystubData = {
   status: string;
   jobs: PaystubJobLine[];
   reimbursements: PaystubReimbLine[];
+  /** Pay corrections (+/−), each naming the job and week it's for. */
+  adjustments: PaystubReimbLine[];
   totalPaid: number;
 };
 
@@ -66,9 +69,9 @@ function buildPaystubData(
     };
   });
 
-  const reimbursements: PaystubReimbLine[] = (log.reimbursements || [])
-    .filter(r => r.status !== 'pending' && r.status !== 'rejected')
-    .map(r => ({ description: r.description || 'Reimbursement', amount: netOfFieldNationFee(r.amount) }));
+  // Same lines the settlement total counts.
+  const reimbursements: PaystubReimbLine[] = weeklyLogReimbursementLines(log)
+    .map(r => ({ description: r.description, amount: r.net }));
 
   return {
     companyName: 'AAROMACH LLC',
@@ -80,6 +83,10 @@ function buildPaystubData(
     status: log.status,
     jobs,
     reimbursements,
+    adjustments: (log.payAdjustments || []).map(a => ({
+      description: [adjustmentForText(a), a.paidAmount != null && a.correctAmount != null ? `(paid $${a.paidAmount.toFixed(2)}, should be $${a.correctAmount.toFixed(2)})` : ''].filter(Boolean).join(' '),
+      amount: a.amount,
+    })),
     totalPaid: computeWeeklyLogSettlement(log, jobsById),
   };
 }
@@ -240,6 +247,30 @@ export async function downloadPaystub(
       doc.text(r.description, marginX, y);
       doc.text(`$${r.amount.toFixed(2)}`, pageWidth - marginX, y, { align: 'right' });
       y += 16;
+    });
+  }
+
+  // Pay adjustments
+  if (data.adjustments.length > 0) {
+    newPageIfNeeded(30 + data.adjustments.length * 16);
+    y += 6;
+    doc.setDrawColor(220);
+    doc.line(marginX, y, pageWidth - marginX, y);
+    y += 22;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(20);
+    doc.text('PAY ADJUSTMENTS', marginX, y);
+    y += 18;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    data.adjustments.forEach(a => {
+      newPageIfNeeded(16);
+      doc.setTextColor(60);
+      const text = doc.splitTextToSize(a.description, pageWidth - marginX * 2 - 80) as string[];
+      doc.text(text, marginX, y);
+      doc.text(`${a.amount < 0 ? '-' : '+'}$${Math.abs(a.amount).toFixed(2)}`, pageWidth - marginX, y, { align: 'right' });
+      y += 12 * text.length + 4;
     });
   }
 

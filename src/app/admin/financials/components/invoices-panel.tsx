@@ -11,7 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from '@/hooks/use-toast';
 import type { Invoice } from '@/lib/types';
 import { PriceDocEditor, type PriceDocResult } from '@/components/price-doc-editor';
-import { invoiceToEditor, saveInvoiceFromEditor } from '@/lib/invoice-actions';
+import { deleteInvoice, invoiceToEditor, saveInvoiceFromEditor } from '@/lib/invoice-actions';
+import { useAuth } from '@/contexts/auth-context';
+import { isSuperAdmin } from '@/lib/permissions';
 import { parseLocalDate } from '@/lib/jobs';
 import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
@@ -46,7 +48,11 @@ export function InvoicesPanel({ search = '', onResetSearch, hideNewButton = fals
     const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [saving, setSaving] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+    const [deleting, setDeleting] = useState(false);
     const { toast } = useToast();
+    // Firestore rules: only a super admin can delete an invoice.
+    const { user } = useAuth();
+    const canDelete = isSuperAdmin(user);
 
     useEffect(() => {
         const subs = [
@@ -97,6 +103,23 @@ export function InvoicesPanel({ search = '', onResetSearch, hideNewButton = fals
         }
     };
 
+    const handleDeleteInvoice = async () => {
+        const inv = selectedInvoice;
+        if (!inv) return;
+        if (!confirm(`Delete invoice ${inv.invoiceNumber}${inv.status === 'paid' ? ' (marked PAID)' : ''}? This can't be undone.${inv.projectId ? ' The project can be invoiced again.' : ''}${inv.quoteId ? ' Its quote goes back to Approved.' : ''}`)) return;
+        setDeleting(true);
+        try {
+            await deleteInvoice(inv);
+            toast({ title: 'Invoice deleted', description: `Invoice ${inv.invoiceNumber} was deleted.` });
+            setIsEditorOpen(false);
+            setSelectedInvoice(null);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Delete failed', description: e?.code === 'permission-denied' ? 'Only a super admin can delete invoices.' : e.message });
+        } finally {
+            setDeleting(false);
+        }
+    };
+
     return (
         <>
             <Card>
@@ -139,7 +162,7 @@ export function InvoicesPanel({ search = '', onResetSearch, hideNewButton = fals
                         <TableBody>
                             {invoicePager.items.map((invoice) => (
                                 <TableRow key={invoice.id} onClick={() => { setSelectedInvoice(invoice); setIsEditorOpen(true); }} className="cursor-pointer border-border-sub hover:bg-bg-tertiary transition-colors text-left">
-                                    <TableCell className="font-mono font-bold text-brand-red text-xs pl-6">{invoice.invoiceNumber}</TableCell>
+                                    <TableCell className="font-mono font-bold text-text-green text-xs pl-6 border-l-4 border-l-text-green">{invoice.invoiceNumber}</TableCell>
                                     <TableCell className="text-sm font-semibold">{invoice.clientName}</TableCell>
                                     <TableCell className="text-xs text-text-muted">{invoice.dueDate}</TableCell>
                                     <TableCell className="font-mono text-sm font-bold text-text-primary tabular-nums">${(Number(invoice.total) || 0).toFixed(2)}</TableCell>
@@ -171,9 +194,12 @@ export function InvoicesPanel({ search = '', onResetSearch, hideNewButton = fals
                 initial={selectedInvoice ? invoiceToEditor(selectedInvoice) : undefined}
                 initialDiscount={selectedInvoice ? (selectedInvoice.planDiscount ?? null) : undefined}
                 title={selectedInvoice ? `Edit invoice ${selectedInvoice.invoiceNumber}` : 'New invoice'}
+                headerExtra={selectedInvoice ? <StatusBadge kind="invoice" value={selectedInvoice.status} /> : undefined}
                 saveLabel="Save invoice"
                 saving={saving}
                 onSave={handleSaveInvoice}
+                onDelete={selectedInvoice && canDelete ? handleDeleteInvoice : undefined}
+                deleting={deleting}
             />
         </>
     );

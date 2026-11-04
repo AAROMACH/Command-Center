@@ -731,6 +731,9 @@ export type WeeklyLog = {
   items: WeeklyLogItem[];
   reimbursements: FinancialRecord[];
   missingAssignmentReports?: MissingAssignmentReport[];
+  /** Pay corrections paid on this log (+ owed / − overpaid), usually for a job
+   *  on an earlier approved week. Counted in the log's pay (lib/payroll). */
+  payAdjustments?: PayAdjustment[];
   totalPayout?: number;
   /** Set when an approved log receives a duplicate-log merge; cleared on reapproval. */
   mergeReviewRequired?: boolean;
@@ -749,6 +752,36 @@ export type WeeklyLog = {
  * edit to the (now locked) log, since payroll records shouldn't be mutable by
  * the tech once submitted.
  */
+/**
+ * A pay correction. Payroll enters what the tech was paid and what they
+ * should have been paid; the difference is paid on the tech's next open log.
+ * Kept in payrollAdjustments/{id} and copied onto that log's payAdjustments.
+ */
+export type PayAdjustment = {
+  id: string;
+  techId: string;
+  /** Signed: + owed to the tech, − overpaid (deducted). */
+  amount: number;
+  /** Payroll's note — the tech sees it. */
+  reason: string;
+  paidAmount?: number | null;
+  correctAmount?: number | null;
+  /** The tech's dispute text, when it came from a dispute. */
+  techNote?: string | null;
+  disputeId?: string | null;
+  /** The job and week being corrected. */
+  workOrderId?: string | null;
+  jobLabel?: string | null;
+  sourceLogId?: string | null;
+  sourceWeekOf?: string | null;
+  /** Where it's paid. queued = no open log yet; goes on the next one created. */
+  status: 'applied' | 'queued';
+  appliedLogId?: string | null;
+  appliedWeekOf?: string | null;
+  by: string;
+  at: string;
+};
+
 export type PayrollDispute = {
   id: string;
   techId: string;
@@ -765,6 +798,8 @@ export type PayrollDispute = {
   resolvedBy?: string | null;
   /** Payroll's yes/no answer; `note` (required on 'no') is shown to the tech. */
   resolution?: DisputeResolution | null;
+  /** On Yes: the correction payroll made (paid vs should have been paid). */
+  adjustment?: Pick<PayAdjustment, 'id' | 'amount' | 'paidAmount' | 'correctAmount' | 'status' | 'appliedLogId' | 'appliedWeekOf'> | null;
 };
 
 export type TimeOffRequest = {

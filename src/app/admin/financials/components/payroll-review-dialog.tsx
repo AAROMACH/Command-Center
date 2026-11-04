@@ -46,7 +46,7 @@ import {
     Receipt,
 } from 'lucide-react';
 import { cn, formatCityState, sanitize } from '@/lib/utils';
-import { FIELD_NATION_FEE_RATE, netOfFieldNationFee, computeWeeklyLogSettlement, effectiveJobPay } from '@/lib/payroll';
+import { FIELD_NATION_FEE_RATE, netOfFieldNationFee, computeWeeklyLogPay, effectiveJobPay } from '@/lib/payroll';
 import { DISPUTE_CARDS, PAYROLL_TICKET_CARDS, disputeKindOf, firstName, isLegacyOtherReason, shortWeek, type CardContext } from '@/lib/disputes';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
@@ -73,6 +73,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { PayrollTicketDecision } from '@/components/payroll-ticket-decision';
+import { adjustmentForText } from '@/lib/pay-adjustments';
 import { money } from '@/lib/financial-summary';
 
 type PayrollReviewDialogProps = {
@@ -542,10 +543,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     // Shared with the Payroll Audit Weekly tab, CSV export, and
     // Paystub History via computeWeeklyLogSettlement() so this dialog's "Net
     // Tech Settlement" can never drift from what those screens show.
-    const calculatedTotalPayout = useMemo(
-        () => computeWeeklyLogSettlement(localLog || {}, jobsById),
+    const logPay = useMemo(
+        () => computeWeeklyLogPay(localLog || {}, jobsById),
         [localLog, jobsById],
     );
+    const calculatedTotalPayout = logPay.total;
     
     const reviewReimbursement = async (reimbId: string, decision: 'approved' | 'rejected') => {
         if (!localLog) return;
@@ -1628,8 +1630,27 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             <div className="rounded-xl border border-green-border/40 bg-green-dim/40 px-3 py-2.5">
                                 <p className="text-[10px] font-semibold uppercase tracking-wider text-text-green">Total pay</p>
                                 <p className="text-lg font-bold font-mono tabular-nums text-text-green leading-tight">${calculatedTotalPayout.toFixed(2)}</p>
+                                <p className="text-[10px] text-text-muted font-mono tabular-nums leading-tight mt-0.5" title="Work pay + reimbursements (net of the Field Nation fee)">
+                                    Work ${logPay.jobPay.toFixed(2)} · Reimb. ${logPay.reimbursementPay.toFixed(2)}{logPay.adjustmentPay !== 0 ? ` · Adj. ${logPay.adjustmentPay > 0 ? '+' : '−'}$${Math.abs(logPay.adjustmentPay).toFixed(2)}` : ''}
+                                </p>
                             </div>
                         </div>
+                        {(localLog.payAdjustments || []).length > 0 && (
+                            <div className="rounded-xl border border-accent-gold/40 bg-accent-gold/5 px-3 py-2 space-y-1.5 text-left">
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-gold">Pay adjustments paid on this log</p>
+                                {(localLog.payAdjustments || []).map(a => (
+                                    <div key={a.id} className="flex items-start justify-between gap-3 text-[12px]">
+                                        <div className="min-w-0">
+                                            <p className="font-semibold text-text-primary break-words">{adjustmentForText(a)}</p>
+                                            <p className="text-text-muted break-words">
+                                                {a.paidAmount != null && a.correctAmount != null ? `Paid $${a.paidAmount.toFixed(2)} → should be $${a.correctAmount.toFixed(2)}. ` : ''}{a.reason}
+                                            </p>
+                                        </div>
+                                        <span className={cn('font-mono font-bold shrink-0', a.amount >= 0 ? 'text-text-green' : 'text-text-red')}>{a.amount >= 0 ? '+' : '−'}${Math.abs(a.amount).toFixed(2)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                         <LogApprovalHistory key={localLog.id} logId={localLog.id} submittedAt={localLog.submittedAt} />
                     </DialogHeader>
 
@@ -1946,7 +1967,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                 {new Date(dispute.createdAt).toLocaleString()}
                                                             </p>
                                                             <div className="mt-2">
-                                                                <PayrollTicketDecision dispute={dispute} canDecide={canApproveLog} fallbackName={authUser?.name} />
+                                                                <PayrollTicketDecision dispute={dispute} canDecide={canApproveLog} fallbackName={authUser?.name} sourceLog={localLog as WeeklyLog} jobsById={jobsById} />
                                                             </div>
                                                         </div>
                                                         {!isOpenDispute && (

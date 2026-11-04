@@ -23,7 +23,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { DocKindHeader, DOC_BRAND } from '@/components/price-book-picker';
+import { canEditQuote, quoteDiscount, quoteToEditor, saveQuoteEdits } from '@/lib/quote-actions';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -210,7 +211,7 @@ function NewQuoteDialog({
 function QuoteCard({ quote, onClick }: { quote: Quote; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick}
-      className="w-full rounded-xl border border-border-sub bg-bg-secondary p-4 space-y-3 text-left hover:border-border-main transition-colors">
+      className="w-full rounded-xl border border-border-sub border-l-4 border-l-brand-blue bg-bg-secondary p-4 space-y-3 text-left hover:border-border-main hover:border-l-brand-blue transition-colors">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[12px] font-bold text-text-primary truncate">{quote.title}</p>
@@ -235,7 +236,7 @@ function QuoteCard({ quote, onClick }: { quote: Quote; onClick: () => void }) {
 function QuoteRow({ quote, onClick }: { quote: Quote; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border-sub bg-bg-secondary hover:border-border-main transition-colors text-left">
+      className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border-sub border-l-4 border-l-brand-blue bg-bg-secondary hover:border-border-main hover:border-l-brand-blue transition-colors text-left">
       <div className="flex-1 min-w-0">
         <p className="text-[12px] font-bold text-text-primary truncate">{quote.title}</p>
         <p className="text-[12px] text-text-muted truncate">
@@ -251,19 +252,21 @@ function QuoteRow({ quote, onClick }: { quote: Quote; onClick: () => void }) {
   );
 }
 
-// ── Quote Detail Sheet ────────────────────────────────────────────────────────
+// ── Quote Detail (pop-up, same as invoices) ───────────────────────────────────
 
-function QuoteDetailSheet({
+function QuoteDetailDialog({
   quote,
   onClose,
   onUpdated,
   onCreateInvoice,
+  onEdit,
 }: {
   quote: Quote | null;
   onClose: () => void;
   onUpdated: () => void;
   /** Admin only — opens the invoice editor filled in from this quote. */
   onCreateInvoice?: (q: Quote) => void;
+  onEdit: (q: Quote) => void;
 }) {
   const { toast } = useToast();
   const paths = useCrmPaths();
@@ -310,16 +313,25 @@ function QuoteDetailSheet({
   };
 
   return (
-    <Sheet open={!!quote} onOpenChange={v => !v && onClose()}>
-      <SheetContent className="w-full sm:max-w-lg bg-bg-secondary border-border-main overflow-y-auto">
-        <SheetHeader className="pb-4 border-b border-border-sub">
-          <SheetTitle className="text-base font-semibold">{quote.title}</SheetTitle>
-          <div className="flex items-center gap-2 flex-wrap">
+    <Dialog open={!!quote} onOpenChange={v => !v && onClose()}>
+      <DialogContent className={cn('bg-bg-elevated border-2 sm:max-w-2xl max-h-[92vh] overflow-y-auto pt-7', DOC_BRAND.quote.frame)}>
+        <DialogHeader className="pb-4 border-b border-border-sub text-left space-y-2">
+          <DocKindHeader kind="quote">
             <span className="text-[11px] font-mono text-text-muted">{quote.quoteNumber}</span>
             <QuoteStatusBadge status={quote.status} />
-            <span className="text-[12px] font-bold text-text-primary">{fmtMoney(quote.total)}</span>
+          </DocKindHeader>
+          <div className="flex items-start justify-between gap-3 pr-6">
+            <DialogTitle className="text-base font-semibold">{quote.title}</DialogTitle>
+            <span className="text-base font-mono font-bold text-text-primary shrink-0">{fmtMoney(quote.total)}</span>
           </div>
-        </SheetHeader>
+          {canEditQuote(quote) ? (
+            <Button size="sm" variant="outline" className="h-8 w-fit border-brand-blue/40 text-brand-blue hover:bg-brand-blue/5" onClick={() => onEdit(quote)}>
+              <Edit3 size={13} className="mr-1.5" />Edit quote
+            </Button>
+          ) : quote.status === 'converted_to_invoice' ? (
+            <p className="text-[11px] text-text-muted">Already invoiced — change the invoice instead.</p>
+          ) : null}
+        </DialogHeader>
 
         <div className="py-4 space-y-5">
           {/* Customer */}
@@ -506,8 +518,8 @@ function QuoteDetailSheet({
             </div>
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -516,7 +528,30 @@ function QuoteDetailSheet({
 export default function AdminQuotesPage() {
   const { toast } = useToast();
   const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+  // By id, so the open quote follows live edits.
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
+  const selectedQuote = quotes.find(q => q.id === selectedQuoteId) || null;
+  const setSelectedQuote = (q: Quote | null) => setSelectedQuoteId(q?.id ?? null);
+  // Editing an existing quote.
+  const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
+  const [savingQuote, setSavingQuote] = useState(false);
+  const saveQuote = async (r: PriceDocResult) => {
+    const q = editingQuote;
+    if (!q) return;
+    if (!r.title) { toast({ variant: 'destructive', title: 'Title required' }); return; }
+    if (r.customerType === 'external_customer' && !r.customerEmail) { toast({ variant: 'destructive', title: 'Customer email required' }); return; }
+    setSavingQuote(true);
+    try {
+      await saveQuoteEdits(q, r);
+      toast({ title: 'Quote updated', description: q.status === 'draft' ? `${q.quoteNumber} saved.` : `${q.quoteNumber} saved — the client sees the new version next time they open it.` });
+      setEditingQuote(null);
+    } catch (e: any) {
+      const desc = e?.code === 'permission-denied' ? 'Your account can’t edit this quote (approved quotes are admin-only).' : e.message;
+      toast({ variant: 'destructive', title: 'Could not save quote', description: desc });
+    } finally {
+      setSavingQuote(false);
+    }
+  };
   const [isNewOpen, setIsNewOpen] = useState(false);
   const inSalesPortal = useCrmPaths().inSalesPortal;
   // New → Invoice, or an approved quote being invoiced.
@@ -676,11 +711,26 @@ export default function AdminQuotesPage() {
         prefillLead={prefillLead}
       />
 
-      <QuoteDetailSheet
+      <QuoteDetailDialog
         quote={selectedQuote}
         onClose={() => setSelectedQuote(null)}
         onUpdated={() => setSelectedQuote(null)}
         onCreateInvoice={inSalesPortal ? undefined : openInvoiceFromQuote}
+        onEdit={setEditingQuote}
+      />
+
+      <PriceDocEditor
+        open={!!editingQuote}
+        onClose={() => setEditingQuote(null)}
+        kind="quote"
+        initial={editingQuote ? quoteToEditor(editingQuote) : undefined}
+        initialDiscount={editingQuote ? quoteDiscount(editingQuote) : undefined}
+        externalOnly={inSalesPortal}
+        title={editingQuote ? `Edit quote ${editingQuote.quoteNumber}` : 'Edit quote'}
+        headerExtra={editingQuote ? <QuoteStatusBadge status={editingQuote.status} /> : undefined}
+        saveLabel="Save changes"
+        saving={savingQuote}
+        onSave={saveQuote}
       />
 
       <PriceDocEditor

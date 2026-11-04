@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DOC_BRAND, DocKindHeader, PriceBookPicker } from '@/components/price-book-picker';
 import { Switch } from '@/components/ui/switch';
 import { Hammer, Package, Plus, Trash2, Loader2, BadgePercent, Undo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -84,6 +85,7 @@ const areaCls = 'w-full text-[12px] bg-bg-secondary border border-border-main ro
 
 export function PriceDocEditor({
   open, onClose, kind, initial, initialDiscount, title, saveLabel, saving, onSave, externalOnly = false,
+  onDelete, deleting = false, deleteLabel, headerExtra,
 }: {
   open: boolean;
   onClose: () => void;
@@ -99,6 +101,12 @@ export function PriceDocEditor({
   onSave: (result: PriceDocResult) => void;
   /** Sales Portal: can't read client accounts or plans — outside customers only. */
   externalOnly?: boolean;
+  /** Editing an existing doc: shows a Delete button (the caller confirms and deletes). */
+  onDelete?: () => void;
+  deleting?: boolean;
+  deleteLabel?: string;
+  /** Extra chips beside the QUOTE / INVOICE label (status, linked project…). */
+  headerExtra?: ReactNode;
 }) {
   const [v, setV] = useState<PriceDocValues>(() => ({ ...emptyPriceDoc(kind), ...initial }));
   // 'auto' = the client's plan discount; 'removed' = taken off for this doc;
@@ -188,7 +196,6 @@ export function PriceDocEditor({
   const section = (s: PriceSection) => {
     const rows = v.lines.filter(l => l.section === s);
     const items = priceBook.filter(i => i.section === s);
-    const groupNames = [...new Set(items.map(i => i.group))];
     const isLabor = s === 'labor';
     return (
       <div className="space-y-2">
@@ -198,21 +205,7 @@ export function PriceDocEditor({
             {isLabor ? 'Labor (not taxed)' : `Materials (${settings.salesTaxPct}% tax on taxable items)`}
           </h3>
           <div className="flex items-center gap-2">
-            <Select value="" onValueChange={id => { const it = items.find(i => i.id === id); if (it) addLine(s, it); }}>
-              <SelectTrigger className="h-8 w-[190px] text-[11px] bg-bg-secondary border-border-main" disabled={items.length === 0}>
-                <SelectValue placeholder={items.length ? 'Add from price book…' : 'Price book is empty'} />
-              </SelectTrigger>
-              <SelectContent className="bg-bg-elevated border-border-main max-h-[320px]">
-                {groupNames.map(g => (
-                  <SelectGroup key={g}>
-                    <SelectLabel className="text-[10px] font-bold uppercase tracking-wider text-text-muted px-2 py-1">{g}</SelectLabel>
-                    {items.filter(i => i.group === g).map(i => (
-                      <SelectItem key={i.id} value={i.id} className="text-[12px]">{i.name} · {formatMoney(i.unitPrice)}</SelectItem>
-                    ))}
-                  </SelectGroup>
-                ))}
-              </SelectContent>
-            </Select>
+            <PriceBookPicker items={items} section={s} onPick={it => addLine(s, it)} />
             <Button size="sm" variant="outline" className="h-8 text-[11px]" onClick={() => addLine(s)}>
               <Plus size={12} className="mr-1" /> Custom
             </Button>
@@ -285,8 +278,9 @@ export function PriceDocEditor({
 
   return (
     <Dialog open={open} onOpenChange={o => !o && onClose()}>
-      <DialogContent className="bg-bg-elevated border-border-main max-w-3xl max-h-[92vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className={cn('bg-bg-elevated border-2 max-w-3xl max-h-[92vh] overflow-y-auto pt-7', DOC_BRAND[kind].frame)}>
+        <DialogHeader className="text-left space-y-2">
+          <DocKindHeader kind={kind}>{headerExtra}</DocKindHeader>
           <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
           <DialogDescription className="text-[12px] text-text-muted">
             Prices come from Assets &amp; Materials. A client on a service plan gets its discount automatically.
@@ -466,7 +460,13 @@ export function PriceDocEditor({
               </SelectContent>
             </Select>
           ) : <span />}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {onDelete && (
+              <Button variant="outline" size="sm" disabled={saving || deleting} onClick={onDelete}
+                className="border-brand-red/30 text-brand-red hover:bg-brand-red/5 sm:mr-auto">
+                {deleting ? <Loader2 size={12} className="animate-spin mr-1.5" /> : <Trash2 size={12} className="mr-1.5" />}{deleteLabel || `Delete ${kind}`}
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
             <Button size="sm" disabled={saving || !canSave} className="bg-brand-red hover:bg-brand-red/90 text-white"
               onClick={() => onSave({ ...v, discount, totals, client })}>

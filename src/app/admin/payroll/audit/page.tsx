@@ -34,12 +34,13 @@ import { format, parseISO, isWithinInterval } from 'date-fns';
 import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder, PayrollDispute, FinancialRecord } from '@/lib/types';
 import { getSubroles, isClient, isSuperAdmin } from '@/lib/permissions';
 import { mergeJobs, parseLocalDate } from '@/lib/jobs';
-import { effectiveJobPay, computeWeeklyLogSettlement } from '@/lib/payroll';
+import { effectiveJobPay, computeWeeklyLogSettlement, computeWeeklyLogPay, type WeeklyLogPay } from '@/lib/payroll';
 import { downloadPaystub } from '@/lib/paystub';
 import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { PayrollTicketDecision } from '@/components/payroll-ticket-decision';
+import { adjustmentForText, createPayAdjustment, jobLabelFor } from '@/lib/pay-adjustments';
 import { PAYROLL_TICKET_CARDS } from '@/lib/disputes';
 import { PayrollReviewDialog } from '@/app/admin/financials/components/payroll-review-dialog';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
@@ -117,7 +118,7 @@ export default function PayrollAuditPage() {
     const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
     const [adjustments, setAdjustments] = useState<any[]>([]);
     const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
-    const [adjustForm, setAdjustForm] = useState({ techId: '', amount: '', reason: '', date: '' });
+    const [adjustForm, setAdjustForm] = useState({ techId: '', jobKey: '', amount: '', reason: '' });
     const [adjustSaving, setAdjustSaving] = useState(false);
     // Post-approval disputes techs file against a log/job after it's left
     // Draft — surfaced under Adjustments so they're visible without opening
@@ -138,12 +139,14 @@ export default function PayrollAuditPage() {
     // CSV, summary chips, Paystub History) reads the exact same number as
     // the review dialog's "Net Tech Settlement" — computed once per log
     // instead of re-deriving it inline at each call site.
-    const settlementByLogId = useMemo(() => {
-        const map = new Map<string, number>();
-        weeklyLogs.forEach(log => map.set(log.id, computeWeeklyLogSettlement(log, jobsById)));
+    const payByLogId = useMemo(() => {
+        const map = new Map<string, WeeklyLogPay>();
+        weeklyLogs.forEach(log => map.set(log.id, computeWeeklyLogPay(log, jobsById)));
         return map;
     }, [weeklyLogs, jobsById]);
-    const settlementOf = (log: WeeklyLog) => settlementByLogId.get(log.id) ?? computeWeeklyLogSettlement(log, jobsById);
+    // Work pay + reimbursements, split for display.
+    const payOf = (log: WeeklyLog) => payByLogId.get(log.id) ?? computeWeeklyLogPay(log, jobsById);
+    const settlementOf = (log: WeeklyLog) => payOf(log).total;
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [mergingKey, setMergingKey] = useState<string | null>(null);
     const [deletingLogId, setDeletingLogId] = useState<string | null>(null);
@@ -258,7 +261,7 @@ export default function PayrollAuditPage() {
         approved: filteredLogs.filter(l => l.status === 'Approved').reduce((s, l) => s + settlementOf(l), 0),
         pending: filteredLogs.filter(l => l.status === 'Submitted').reduce((s, l) => s + settlementOf(l), 0),
         count: filteredLogs.length,
-    }), [filteredLogs, settlementByLogId]); // eslint-disable-line react-hooks/exhaustive-deps
+    }), [filteredLogs, payByLogId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Multiple Drafts are a data-integrity issue; a Draft beside an Approved
     // log can also hold later work that needs a fresh payroll review.
@@ -326,7 +329,12 @@ export default function PayrollAuditPage() {
                 const seenReimbIds = new Set<string>();
                 const missingAssignmentReports: NonNullable<WeeklyLog['missingAssignmentReports']> = [];
                 const seenReportIds = new Set<string>();
+                const payAdjustments: NonNullable<WeeklyLog['payAdjustments']> = [];
+                const seenAdjIds = new Set<string>();
                 [kept, ...rest].forEach(log => {
+                    (log.payAdjustments || []).forEach(a => {
+                        if (!seenAdjIds.has(a.id)) { payAdjustments.push({ ...a, appliedLogId: kept.id, appliedWeekOf: kept.weekOf }); seenAdjIds.add(a.id); }
+                    });
                     (log.items || []).forEach(item => {
                         if (!seenWoIds.has(item.workOrderId)) { items.push(item); seenWoIds.add(item.workOrderId); }
                     });
@@ -337,9 +345,9 @@ export default function PayrollAuditPage() {
                         if (!seenReportIds.has(r.id)) { missingAssignmentReports.push(r); seenReportIds.add(r.id); }
                     });
                 });
-                const totalPayout = computeWeeklyLogSettlement({ items, reimbursements, missingAssignmentReports }, jobsById);
+                const totalPayout = computeWeeklyLogSettlement({ items, reimbursements, missingAssignmentReports, payAdjustments }, jobsById);
                 tx.update(doc(db, 'weeklyLogs', kept.id), {
-                    items, reimbursements, missingAssignmentReports, totalPayout,
+                    items, reimbursements, missingAssignmentReports, payAdjustments, totalPayout,
                     ...(kept.status === 'Approved' ? {
                         status: 'Submitted', submittedAt: new Date().toISOString(),
                         submittedBy: adminName, mergeReviewRequired: true,
@@ -400,13 +408,16 @@ export default function PayrollAuditPage() {
     };
 
     const handleExportCsv = () => {
-        const rows = [['Week Of', 'Tech', 'Status', 'Total Payout', 'Items']];
+        const rows = [['Week Of', 'Tech', 'Status', 'Work Pay', 'Reimbursements', 'Adjustments', 'Total Payout', 'Items']];
         filteredLogs.forEach(log => {
             const tech = technicians.find(t => t.id === log.techId);
             rows.push([
                 log.weekOf,
                 tech?.name || log.techId,
                 log.status,
+                payOf(log).jobPay.toFixed(2),
+                payOf(log).reimbursementPay.toFixed(2),
+                payOf(log).adjustmentPay.toFixed(2),
                 String(settlementOf(log)),
                 String(log.items?.length || 0),
             ]);
@@ -455,11 +466,21 @@ export default function PayrollAuditPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [payrollDisputes, adjQuery, technicians]);
     const disputePager = usePaged(sortedDisputes, PAGE_SIZES_SMALL, 'payroll-disputes', [adjQuery]);
+    // New adjustments carry `at`; older record-only ones a `date`.
+    const adjTime = (a: any) => (a.at ? new Date(a.at).getTime() : parseLocalDate(a.date)?.getTime() ?? 0) || 0;
+    // Jobs on the chosen tech's approved/paid logs — what a manual adjustment can be for.
+    const adjustJobChoices = useMemo(() => weeklyLogs
+        .filter(l => l.techId === adjustForm.techId && l.status === 'Approved')
+        .sort((a, b) => (b.weekOf.split('-').reverse().join('')).localeCompare(a.weekOf.split('-').reverse().join('')))
+        .slice(0, 12)
+        .flatMap(l => (l.items || []).map(i => ({ key: `${l.id}|${i.workOrderId}`, log: l, workOrderId: i.workOrderId,
+            label: `Week of ${l.weekOf} · ${jobLabelFor(jobsById.get(i.workOrderId), i.workOrderId)}` }))),
+        [weeklyLogs, adjustForm.techId, jobsById]);
     // Copy before sorting — sorting the state array in render mutated it.
     const sortedAdjustments = useMemo(() => [...adjustments]
-        .filter(a => !adjQuery || [techNameOf(a.techId), a.techId, a.reason, a.addedBy, a.date, String(a.amount ?? '')]
+        .filter(a => !adjQuery || [techNameOf(a.techId), a.techId, a.reason, a.addedBy, a.by, a.date, a.jobLabel, a.sourceWeekOf, a.appliedWeekOf, String(a.amount ?? '')]
             .some(v => (v || '').toLowerCase().includes(adjQuery)))
-        .sort((a, b) => (parseLocalDate(b.date)?.getTime() ?? 0) - (parseLocalDate(a.date)?.getTime() ?? 0)),
+        .sort((a, b) => adjTime(b) - adjTime(a)),
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [adjustments, adjQuery, technicians]);
     const adjPager = usePaged(sortedAdjustments, PAGE_SIZES_LARGE, 'payroll-adjustments', [adjQuery]);
@@ -507,6 +528,10 @@ export default function PayrollAuditPage() {
                                     <div className="hidden sm:block text-right">
                                         <p className={cn('text-[12px] font-bold font-mono', log.status === 'Approved' ? 'text-text-green' : 'text-text-primary')}>
                                             ${settlementOf(log).toFixed(2)}
+                                        </p>
+                                        <p className="text-[10px] text-text-muted font-mono whitespace-nowrap leading-tight" title="Work pay + reimbursements (net of the Field Nation fee)">
+                                            Work ${payOf(log).jobPay.toFixed(2)}<br />Reimb. ${payOf(log).reimbursementPay.toFixed(2)}
+                                            {payOf(log).adjustmentPay !== 0 && <><br />Adj. {payOf(log).adjustmentPay > 0 ? '+' : '−'}${Math.abs(payOf(log).adjustmentPay).toFixed(2)}</>}
                                         </p>
                                         <p className="text-[10px] text-text-muted">{log.items?.length || 0} {log.items?.length === 1 ? 'job' : 'jobs'}</p>
                                     </div>
@@ -1036,7 +1061,7 @@ export default function PayrollAuditPage() {
                                                     {new Date(dispute.createdAt).toLocaleString()}
                                                 </p>
                                                 <div className="mt-2">
-                                                    <PayrollTicketDecision dispute={dispute} canDecide={canDecideTickets} fallbackName={currentUser?.name} />
+                                                    <PayrollTicketDecision dispute={dispute} canDecide={canDecideTickets} fallbackName={currentUser?.name} sourceLog={relatedLog} jobsById={jobsById} />
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0">
@@ -1070,6 +1095,8 @@ export default function PayrollAuditPage() {
                                     <TableHead className="text-text-muted">Tech</TableHead>
                                     <TableHead className="text-text-muted">Date</TableHead>
                                     <TableHead className="text-text-muted">Amount</TableHead>
+                                    <TableHead className="text-text-muted">For</TableHead>
+                                    <TableHead className="text-text-muted">Paid on</TableHead>
                                     <TableHead className="text-text-muted">Reason</TableHead>
                                     <TableHead className="text-text-muted">Added by</TableHead>
                                 </TableRow>
@@ -1081,18 +1108,27 @@ export default function PayrollAuditPage() {
                                     return (
                                         <TableRow key={adj.id} className="border-border-sub hover:bg-bg-secondary">
                                             <TableCell className="font-bold text-[12px] text-text-primary">{tech?.name || adj.techId}</TableCell>
-                                            <TableCell className="text-[12px] text-text-muted">{parseLocalDate(adj.date)?.toLocaleDateString() ?? '—'}</TableCell>
-                                            <TableCell className={cn('text-[11px] font-bold font-mono', amount >= 0 ? 'text-text-green' : 'text-text-red')}>
+                                            <TableCell className="text-[12px] text-text-muted">{adjTime(adj) ? new Date(adjTime(adj)).toLocaleDateString() : '—'}</TableCell>
+                                            <TableCell className={cn('text-[11px] font-bold font-mono whitespace-nowrap', amount >= 0 ? 'text-text-green' : 'text-text-red')}>
                                                 {amount >= 0 ? '+' : ''}${amount.toFixed(2)}
+                                                {adj.paidAmount != null && adj.correctAmount != null && (
+                                                    <span className="block text-[10px] font-normal text-text-muted">${Number(adj.paidAmount).toFixed(2)} → ${Number(adj.correctAmount).toFixed(2)}</span>
+                                                )}
                                             </TableCell>
-                                            <TableCell className="text-[12px] text-text-muted max-w-[200px] truncate">{adj.reason || '—'}</TableCell>
-                                            <TableCell className="text-[12px] text-text-muted">{adj.addedBy || '—'}</TableCell>
+                                            <TableCell className="text-[12px] text-text-muted max-w-[220px]">{adj.status ? adjustmentForText(adj).replace(/^For /, '') : '—'}</TableCell>
+                                            <TableCell className="text-[12px] whitespace-nowrap">
+                                                {adj.status === 'applied' ? <span className="text-text-primary">Week of {adj.appliedWeekOf}</span>
+                                                    : adj.status === 'queued' ? <span className="text-accent-gold">Next log (none open)</span>
+                                                    : <span className="text-text-muted" title="Added before adjustments were paid through logs">Record only</span>}
+                                            </TableCell>
+                                            <TableCell className="text-[12px] text-text-muted max-w-[200px] truncate" title={adj.reason || ''}>{adj.reason || '—'}</TableCell>
+                                            <TableCell className="text-[12px] text-text-muted">{adj.by || adj.addedBy || '—'}</TableCell>
                                         </TableRow>
                                     );
                                 })}
                                 {sortedAdjustments.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-12 text-[13px] text-text-muted">{adjustments.length ? 'No adjustments match this search' : 'No adjustments yet'}</TableCell>
+                                        <TableCell colSpan={7} className="text-center py-12 text-[13px] text-text-muted">{adjustments.length ? 'No adjustments match this search' : 'No adjustments yet'}</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
@@ -1119,10 +1155,20 @@ export default function PayrollAuditPage() {
                     <div className="space-y-3 py-2">
                         <div className="space-y-1">
                             <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Technician</Label>
-                            <Select value={adjustForm.techId} onValueChange={v => setAdjustForm(p => ({ ...p, techId: v }))}>
+                            <Select value={adjustForm.techId} onValueChange={v => setAdjustForm(p => ({ ...p, techId: v, jobKey: '' }))}>
                                 <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue placeholder="Select tech..." /></SelectTrigger>
                                 <SelectContent className="bg-bg-elevated border-border-main">
                                     {staffTechs.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">For job (optional)</Label>
+                            <Select value={adjustForm.jobKey || 'none'} onValueChange={v => setAdjustForm(p => ({ ...p, jobKey: v === 'none' ? '' : v }))} disabled={!adjustForm.techId}>
+                                <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue placeholder="Pick a job from an approved week…" /></SelectTrigger>
+                                <SelectContent className="bg-bg-elevated border-border-main max-h-[300px]">
+                                    <SelectItem value="none">Not for a specific job</SelectItem>
+                                    {adjustJobChoices.map(j => <SelectItem key={j.key} value={j.key} className="text-[12px]">{j.label}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -1134,26 +1180,32 @@ export default function PayrollAuditPage() {
                             <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Reason</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Reason for adjustment" value={adjustForm.reason} onChange={e => setAdjustForm(p => ({ ...p, reason: e.target.value }))} />
                         </div>
-                        <div className="space-y-1">
-                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Date</Label>
-                            <Input type="date" className="h-9 text-[11px] bg-bg-secondary border-border-main" value={adjustForm.date} onChange={e => setAdjustForm(p => ({ ...p, date: e.target.value }))} />
-                        </div>
+                        <p className="text-[11px] text-text-muted leading-relaxed">Paid on the tech&apos;s next open log, labeled with the job it&apos;s for. If they have no open log, it goes on the next one.</p>
                     </div>
                     <DialogFooter className="gap-2">
                         <Button variant="outline" size="sm" onClick={() => setAdjustDialogOpen(false)} className="text-[10px] font-bold">Cancel</Button>
-                        <Button size="sm" disabled={!adjustForm.techId || !adjustForm.amount || adjustSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold" onClick={async () => {
+                        <Button size="sm" disabled={!adjustForm.techId || !parseFloat(adjustForm.amount) || !adjustForm.reason.trim() || adjustSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold" onClick={async () => {
                             setAdjustSaving(true);
-                            const currentUserId = sessionStorage.getItem('currentUserId') || '';
-                            const addedByTech = technicians.find(t => t.id === currentUserId);
-                            await addDoc(collection(db, 'payrollAdjustments'), {
-                                ...adjustForm,
-                                amount: parseFloat(adjustForm.amount),
-                                addedBy: addedByTech?.name || 'Admin',
-                                createdAt: new Date().toISOString(),
-                            });
-                            setAdjustForm({ techId: '', amount: '', reason: '', date: '' });
-                            setAdjustDialogOpen(false);
-                            setAdjustSaving(false);
+                            try {
+                                const job = adjustJobChoices.find(j => j.key === adjustForm.jobKey);
+                                const adj = await createPayAdjustment({
+                                    techId: adjustForm.techId,
+                                    amount: parseFloat(adjustForm.amount),
+                                    reason: adjustForm.reason,
+                                    by: currentUser?.name || 'Payroll',
+                                    workOrderId: job?.workOrderId ?? null,
+                                    jobLabel: job ? jobLabelFor(jobsById.get(job.workOrderId), job.workOrderId) : null,
+                                    sourceLogId: job?.log.id ?? null,
+                                    sourceWeekOf: job?.log.weekOf ?? null,
+                                });
+                                toast({ title: 'Adjustment added', description: adj.status === 'applied' ? `Paid on ${techNameOf(adj.techId)}'s week of ${adj.appliedWeekOf}.` : `${techNameOf(adj.techId)} has no open log — it goes on the next one.` });
+                                setAdjustForm({ techId: '', jobKey: '', amount: '', reason: '' });
+                                setAdjustDialogOpen(false);
+                            } catch (e: any) {
+                                toast({ variant: 'destructive', title: 'Could not add adjustment', description: e?.code === 'permission-denied' ? 'Only payroll admins can make pay adjustments.' : e.message });
+                            } finally {
+                                setAdjustSaving(false);
+                            }
                         }}>
                             {adjustSaving ? 'Saving...' : 'Add adjustment'}
                         </Button>

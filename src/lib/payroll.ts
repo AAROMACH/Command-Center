@@ -1,4 +1,4 @@
-import type { WeeklyLogItem, FinancialRecord, MissingAssignmentReport, WorkOrder } from './types';
+import type { WeeklyLogItem, FinancialRecord, MissingAssignmentReport, PayAdjustment, WorkOrder } from './types';
 
 // ── Field Nation platform fee ───────────────────────────────────────────────
 //
@@ -44,34 +44,88 @@ export function effectiveJobPay(item: WeeklyLogItem, job: WorkOrder | undefined)
   return payCents(Math.max(0, netLabor * 0.5)) / 100;
 }
 
+type SettlementLog = {
+  items?: WeeklyLogItem[];
+  reimbursements?: FinancialRecord[];
+  missingAssignmentReports?: MissingAssignmentReport[];
+  payAdjustments?: PayAdjustment[];
+};
+
+/** One reimbursement the tech is paid on a log, net of the Field Nation fee. */
+export type ReimbursementPayLine = {
+  id: string;
+  workOrderId?: string;
+  description: string;
+  /** What was spent / entered. */
+  gross: number;
+  /** What the tech is paid (gross less the FN fee). */
+  net: number;
+  /** 'log' = an approved reimbursement on the log; 'report' = a missing-job report's audited reimbursement. */
+  source: 'log' | 'report';
+};
+
+const countedItems = (log: SettlementLog) => (log.items || [])
+  .filter(i => i.confirmationStatus !== 'disputed')
+  // Removed as a helper: not paid unless payroll decides they worked it.
+  .filter(i => !i.helperRemoved);
+
 /**
- * A weekly log's true settlement total: tech payout after the FN fee/split,
- * excluding disputed items (a disputed job isn't necessarily getting paid
- * until the dispute is resolved, so it shouldn't move the total either
- * way) and missing-job reports payroll hasn't approved yet. `jobsById` is optional — omit it and every item falls back to its
- * stored jobPay (no Imported-job pay recalculation).
+ * Every reimbursement paid on a log: approved reimbursements (pending and
+ * rejected ones aren't paid) and audited missing-job reports. The pay
+ * calculator's Reimb. box mirrors the approved ones, so it isn't counted again.
  */
-export function computeWeeklyLogSettlement(
-  log: {
-    items?: WeeklyLogItem[];
-    reimbursements?: FinancialRecord[];
-    missingAssignmentReports?: MissingAssignmentReport[];
-  },
-  jobsById: Map<string, WorkOrder> = new Map(),
-): number {
-  const itemPayCents = (log.items || [])
-    .filter(i => i.confirmationStatus !== 'disputed')
-    // Removed as a helper: not paid unless payroll decides they worked it.
-    .filter(i => !i.helperRemoved)
-    .reduce((s, i) => s + payCents(effectiveJobPay(i, jobsById.get(i.workOrderId))), 0);
-  const reimbursementPayCents = (log.reimbursements || [])
+export function weeklyLogReimbursementLines(log: SettlementLog): ReimbursementPayLine[] {
+  const lines: ReimbursementPayLine[] = (log.reimbursements || [])
     .filter(r => r.status !== 'pending' && r.status !== 'rejected')
-    .reduce((s, r) => s + payCents(netOfFieldNationFee(r.amount)), 0);
+    .map(r => ({ id: r.id, workOrderId: r.workOrderId || r.assignmentId, source: 'log' as const, description: r.description || 'Reimbursement', gross: Number(r.amount) || 0, net: netOfFieldNationFee(r.amount) }));
+  (log.missingAssignmentReports || [])
+    .filter(r => r.isAudited && r.jobType === 'Imported' && (r.auditReimbursement || 0) > 0)
+    .forEach(r => lines.push({
+      id: `report-${r.id}`, source: 'report', description: `Reimbursement · ${r.externalWorkOrderId || r.clientName || 'reported job'}`,
+      gross: r.auditReimbursement || 0, net: netOfFieldNationFee(r.auditReimbursement || 0),
+    }));
+  return lines;
+}
+
+export type WeeklyLogPay = {
+  /** Pay for the work: jobs (after the FN fee/split) and approved missing-job reports. */
+  jobPay: number;
+  /** Approved reimbursements, net of the FN fee. */
+  reimbursementPay: number;
+  /** Pay corrections paid on this log (+ owed / − overpaid). */
+  adjustmentPay: number;
+  /** jobPay + reimbursementPay + adjustmentPay — what the tech nets for the week. */
+  total: number;
+  /** Reimbursements the tech requested that payroll hasn't reviewed (gross, not in total). */
+  pendingReimbursement: number;
+};
+
+/**
+ * A weekly log's settlement, split into work pay and reimbursements:
+ * tech payout after the FN fee/split, excluding disputed items (a disputed
+ * job isn't necessarily getting paid until the dispute is resolved) and
+ * missing-job reports payroll hasn't approved yet. `jobsById` is optional —
+ * omit it and every item falls back to its stored jobPay (no Imported-job
+ * pay recalculation).
+ */
+export function computeWeeklyLogPay(log: SettlementLog, jobsById: Map<string, WorkOrder> = new Map()): WeeklyLogPay {
+  const itemPayCents = countedItems(log)
+    .reduce((s, i) => s + payCents(effectiveJobPay(i, jobsById.get(i.workOrderId))), 0);
   // A job the tech reported missing is only paid once payroll says Yes
   // (isAudited) — never just because the tech added it.
   const reportPayCents = (log.missingAssignmentReports || []).filter(r => r.isAudited).reduce((s, r) =>
-    s + (r.jobType === 'Imported'
-      ? payCents(r.finalPay || 0) + payCents(netOfFieldNationFee(r.auditReimbursement || 0))
-      : payCents(r.pay || 0)), 0);
-  return (itemPayCents + reimbursementPayCents + reportPayCents) / 100;
+    s + payCents(r.jobType === 'Imported' ? (r.finalPay || 0) : (r.pay || 0)), 0);
+  const reimbCents = weeklyLogReimbursementLines(log).reduce((s, l) => s + payCents(l.net), 0);
+  const pendingCents = (log.reimbursements || []).filter(r => r.status === 'pending').reduce((s, r) => s + payCents(Number(r.amount) || 0), 0);
+  const adjCents = (log.payAdjustments || []).reduce((s, a) => s + payCents(Number(a.amount) || 0), 0);
+  const jobCents = itemPayCents + reportPayCents;
+  return {
+    jobPay: jobCents / 100, reimbursementPay: reimbCents / 100, adjustmentPay: adjCents / 100,
+    total: (jobCents + reimbCents + adjCents) / 100, pendingReimbursement: pendingCents / 100,
+  };
+}
+
+/** A weekly log's true settlement total (work pay + reimbursements + adjustments). See computeWeeklyLogPay. */
+export function computeWeeklyLogSettlement(log: SettlementLog, jobsById: Map<string, WorkOrder> = new Map()): number {
+  return computeWeeklyLogPay(log, jobsById).total;
 }

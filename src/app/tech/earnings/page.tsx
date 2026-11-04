@@ -51,7 +51,7 @@ import { StatusBadge } from '@/components/status-badge';
 import { StatCard } from '@/components/stat-card';
 import { SearchField } from '@/components/search-field';
 import { DateRangeButton } from '@/components/list-toolbar';
-import { effectiveJobPay, computeWeeklyLogSettlement, netOfFieldNationFee } from '@/lib/payroll';
+import { effectiveJobPay, computeWeeklyLogSettlement, computeWeeklyLogPay } from '@/lib/payroll';
 import { downloadPaystub } from '@/lib/paystub';
 import { displayWorkOrderNumber, externalWorkOrderId } from '@/lib/work-order-identity';
 import { money } from '@/lib/financial-summary';
@@ -529,8 +529,9 @@ export default function TechEarningsPage() {
                                         const isExpanded = expandedLogs.has(log.id);
                                         const verifiedItems = (log.items || []).filter(i => i.confirmationStatus !== 'disputed');
                                         const nonRejectedReimbs = (log.reimbursements || []).filter(r => r.status !== 'rejected');
+                                        const logPay = computeWeeklyLogPay(log, jobsById);
                                         const reimbTotal = isApproved
-                                            ? nonRejectedReimbs.filter(r => r.status !== 'pending').reduce((s, r) => s + netOfFieldNationFee(r.amount), 0)
+                                            ? logPay.reimbursementPay
                                             : nonRejectedReimbs.reduce((s, r) => s + (r.amount || 0), 0);
                                         const hasOpenDispute = myPayrollDisputes.some(d => d.status === 'open' && d.weeklyLogId === log.id);
                                         return (
@@ -560,7 +561,10 @@ export default function TechEarningsPage() {
                                                             )}
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="text-right font-mono font-semibold text-text-primary whitespace-nowrap" title={log.status === 'Approved' ? undefined : 'Estimated until payroll approves'}>{log.status === 'Approved' ? '' : '≈ '}${settlementOf(log).toFixed(2)}</TableCell>
+                                                    <TableCell className="text-right font-mono font-semibold text-text-primary whitespace-nowrap" title={log.status === 'Approved' ? undefined : 'Estimated until payroll approves'}>
+                                                        {log.status === 'Approved' ? '' : '≈ '}${logPay.total.toFixed(2)}
+                                                        <span className="block text-[10px] font-normal text-text-muted">Work ${logPay.jobPay.toFixed(2)} · Reimb. ${logPay.reimbursementPay.toFixed(2)}{logPay.adjustmentPay !== 0 ? ` · Adj. ${logPay.adjustmentPay > 0 ? '+' : '−'}$${Math.abs(logPay.adjustmentPay).toFixed(2)}` : ''}</span>
+                                                    </TableCell>
                                                     <TableCell className="text-right pr-4">
                                                         {isApproved ? (
                                                             <button

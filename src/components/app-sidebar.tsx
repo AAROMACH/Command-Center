@@ -187,7 +187,7 @@ const clientNavGroups: NavGroup[] = [
   {
     label: "Billing",
     items: [
-      { href: "/client/financials", label: "Financials", icon: FileText, permission: "client.financials.view" },
+      { href: "/client/financials", label: "Billing", icon: FileText, permission: "client.financials.view" },
     ],
   },
 ];

@@ -331,22 +331,21 @@ export default function ClientProfilePage() {
                                     <CardDescription>How you pay your invoices.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
-                                    <div className="flex items-center justify-between p-4 rounded-lg bg-bg-primary border border-border-sub">
-                                        <div className="flex items-center gap-4 text-left">
-                                            <div className="p-2 bg-bg-secondary rounded border border-border-sub text-text-green">
-                                                <CreditCard size={18} />
-                                            </div>
-                                            <div className="text-left">
-                                                <p className="text-[13px] font-semibold text-text-primary text-left">Visa ending in 4242</p>
-                                                <p className="text-[12px] text-text-muted text-left">Expires 12/2026</p>
-                                            </div>
+                                    {/* No card is stored in the app — this used to show a hard-coded
+                                        test card ("Visa ending in 4242") to every client. */}
+                                    <div className="flex items-start gap-4 p-4 rounded-lg bg-bg-primary border border-border-sub text-left">
+                                        <div className="p-2 bg-bg-secondary rounded border border-border-sub text-text-muted">
+                                            <CreditCard size={18} />
                                         </div>
-                                        <Badge variant="active" className="text-[10px] h-5">Primary</Badge>
+                                        <div className="text-left space-y-0.5">
+                                            <p className="text-[13px] font-semibold text-text-primary">{billingTerms || 'Net 30'} terms</p>
+                                            <p className="text-[12px] text-text-muted">Pay by ACH, EFT or certified check. Payment instructions are on each invoice.</p>
+                                        </div>
                                     </div>
                                     <Button
                                         variant="outline"
                                         className="w-full"
-                                        onClick={() => router.push('/client/billing')}
+                                        onClick={() => router.push('/client/financials')}
                                     >
                                         Go to billing
                                         <ChevronRight size={14} className="ml-2" />

@@ -57,7 +57,20 @@ export function useRequestLinks(req: ServiceRequest | null, company?: string | n
     const listen = (key: 'one' | 'many', c: QueryConstraint) => onSnapshot(query(collection(db, 'invoices'), ...scoped(c)),
       s => { found[key] = s.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)); pick(); }, () => { found[key] = []; pick(); });
     const subs = [listen('one', where(invField, '==', invValue))];
-    if (invField === 'workOrderId') subs.push(listen('many', where('workOrderIds', 'array-contains', invValue)));
+    if (invField === 'workOrderId') {
+      if (company) {
+        // Client: their invoices by company (a plain lookup — combining
+        // "contains this job" with the company filter would need a custom
+        // Firestore index), then the ones that include this job.
+        subs.push(onSnapshot(query(collection(db, 'invoices'), where('clientName', '==', company)), s => {
+          found.many = s.docs.map(d => ({ ...d.data(), id: d.id } as Invoice))
+            .filter(i => (i.workOrderIds || []).includes(invValue));
+          pick();
+        }, () => { found.many = []; pick(); }));
+      } else {
+        subs.push(listen('many', where('workOrderIds', 'array-contains', invValue)));
+      }
+    }
     return () => subs.forEach(u => u());
   }, [invField, invValue, company]); // eslint-disable-line react-hooks/exhaustive-deps
 

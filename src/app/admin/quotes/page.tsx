@@ -29,6 +29,7 @@ import { canEditQuote, quoteDiscount, quoteToEditor, saveQuoteEdits } from '@/li
 import { createProjectFromQuote } from '@/lib/project-billing';
 import { SiteWalkReview } from '@/components/site-walk/site-walk-review';
 import { SiteWalkList, useSiteWalks } from '@/components/site-walk/site-walk-list';
+import { deleteSiteWalk } from '@/lib/site-walk-actions';
 import type { SiteWalk } from '@/lib/estimating';
 import { useAuth } from '@/contexts/auth-context';
 import { useDirectory } from '@/hooks/use-directory';
@@ -728,7 +729,13 @@ export default function AdminQuotesPage() {
         </TabsList>
 
         <TabsContent value="walks" className="mt-0">
-          <SiteWalkList walks={walks} loading={walksLoading} onOpen={openWalk} techs={walkTechs} search={search} />
+          <SiteWalkList walks={walks} loading={walksLoading} onOpen={openWalk} techs={walkTechs} search={search}
+            canDelete={w => !inSalesPortal || w.createdBy === authUser?.id}
+            onDelete={async w => {
+              if (!confirm(`Delete the site walk${w.customerCompany ? ` for ${w.customerCompany}` : ''}? This can't be undone.`)) return;
+              try { await deleteSiteWalk(w.id); toast({ title: 'Site walk deleted' }); }
+              catch (e: any) { toast({ variant: 'destructive', title: 'Could not delete', description: e.message }); }
+            }} />
         </TabsContent>
         <TabsContent value="draft" className="mt-0">{grid(draft, '0')}</TabsContent>
         <TabsContent value="sent" className="mt-0">{grid(sent, '1')}</TabsContent>

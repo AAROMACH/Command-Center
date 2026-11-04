@@ -808,7 +808,8 @@ service cloud.firestore {
               && request.resource.data.createdBy == resource.data.createdBy
               && request.resource.data.get('assignedTechId', null) == resource.data.get('assignedTechId', null)
               && request.resource.data.get('quoteId', null) == null);
-      allow delete: if isAdmin() || (isTech() && resource.data.createdBy == request.auth.uid && resource.data.status == 'draft');
+      allow delete: if isAdmin()
+          || ((isTech() || isSales()) && resource.data.createdBy == request.auth.uid && resource.data.status == 'draft');
     }
 
     // Assets & materials (admin portal only)

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, getDoc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
+import { deleteDoc, doc, getDoc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { createDocId } from './generateId';
 import { ID_PREFIXES } from './constants';
@@ -25,7 +25,11 @@ export function useEstimatingSettings(): EstimatingSettings & { loading: boolean
     const d = snap.exists() ? (snap.data() as Partial<EstimatingSettings>) : {};
     setState({
       assumptions: { ...DEFAULT_ASSUMPTIONS, ...(d.assumptions || {}) },
-      services: d.services?.length ? d.services : DEFAULT_SERVICES,
+      // A saved catalog plus any built-in codes added since it was saved
+      // (e.g. FIB-01), so new site walk add-ons always have a price.
+      services: d.services?.length
+        ? [...d.services, ...DEFAULT_SERVICES.filter(x => !d.services!.some(y => y.code === x.code))]
+        : DEFAULT_SERVICES,
       loading: false, exists: snap.exists(),
     });
   }, () => setState(s => ({ ...s, loading: false }))), []);
@@ -150,4 +154,10 @@ export async function approveSiteWalk(w: SiteWalk, settings: EstimatingSettings,
   const to = w.assignedTechId || w.createdBy;
   if (to && to !== by.id) NotificationService.notify(to, 'Site walk approved', `Your site walk for ${w.customerCompany || w.siteName} was approved and quoted.`, undefined, { portal: 'tech' }).catch(() => {});
   return quoteId;
+}
+
+/** Delete a draft walk (techs: their own drafts; office: any draft). */
+export async function deleteSiteWalk(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'siteWalks', id));
+  try { localStorage.removeItem(`sitewalk:${id}`); } catch { /* private mode */ }
 }

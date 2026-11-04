@@ -9,6 +9,8 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { SearchField } from '@/components/search-field';
 import { SiteWalkList, useSiteWalks } from '@/components/site-walk/site-walk-list';
+import { deleteSiteWalk } from '@/lib/site-walk-actions';
+import { useToast } from '@/hooks/use-toast';
 
 /** Tech Portal: walk a site (or scope it remotely) and send it to the office for a quote. */
 export default function TechSiteWalksPage() {
@@ -16,6 +18,7 @@ export default function TechSiteWalksPage() {
     const { user, hasPermission } = useAuth();
     const { walks, loading } = useSiteWalks({ techId: user?.id || null });
     const [search, setSearch] = useState('');
+    const { toast } = useToast();
     return (
         <div className="space-y-5">
             <PageHeader eyebrow="Sales" icon={ClipboardCheck} title="Site walks"
@@ -26,7 +29,13 @@ export default function TechSiteWalksPage() {
                     </Button>
                 )} />
             <SearchField value={search} onChange={setSearch} placeholder="Search customer, site, walk #…" className="max-w-md" />
-            <SiteWalkList walks={walks} loading={loading} onOpen={w => router.push(`/tech/site-walks/${w.id}`)} search={search} />
+            <SiteWalkList walks={walks} loading={loading} onOpen={w => router.push(`/tech/site-walks/${w.id}`)} search={search}
+                canDelete={w => w.createdBy === user?.id}
+                onDelete={async w => {
+                    if (!confirm(`Delete the site walk${w.customerCompany ? ` for ${w.customerCompany}` : ''}? This can't be undone.`)) return;
+                    try { await deleteSiteWalk(w.id); toast({ title: 'Site walk deleted' }); }
+                    catch (e: any) { toast({ variant: 'destructive', title: 'Could not delete', description: e.message }); }
+                }} />
         </div>
     );
 }

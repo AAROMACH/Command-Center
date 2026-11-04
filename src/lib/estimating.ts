@@ -91,6 +91,8 @@ const ROWS: Row[] = [
   ['SVC-013', 'Copper', 'Network rack cleanup', 'project', 400, 850, 1800, 100, 4, 35, 'Survey first; varies by cable volume', 'Advertised'],
   ['SVC-014', 'Fiber', 'Indoor fiber run with termination', 'run', 300, 650, 1200, 140, 5, 50, 'Distance, strands, pathway, optics and testing excluded unless specified', 'Advertised'],
   ['SVC-015', 'Fiber', 'Fiber fusion splice', 'splice', 35, 65, 120, 0, 1, 0, 'Mobilization and test equipment may dominate small jobs', 'Confirm method'],
+  // Not in the v3 workbook — placeholder prices for the office to set.
+  ['FIB-01', 'Fiber', 'Fusion splicer / fiber equipment mobilization', 'trip', 150, 250, 450, 0, 1, 75, 'Bringing out the fusion splicer and fiber test gear for a visit (placeholder price — set in Service catalog)', 'Operational'],
   ['SVC-016', 'Fiber', 'Third-party fiber certification coordination', 'link', 100, 200, 400, 0, 1, 0, 'Third-party OTDR/loss certification only; external fees extra', 'Third-party only'],
   ['SVC-017', 'Network', 'Router / firewall setup', 'device', 200, 350, 650, 45, 2.5, 25, 'Hardware, subscriptions and advanced security policies separate', 'Advertised'],
   ['SVC-018', 'Network', 'Managed switch install / configure', 'device', 200, 350, 650, 65, 2.5, 20, 'VLAN, PoE and network complexity affect scope', 'Advertised'],
@@ -266,7 +268,9 @@ export type WalkLine = {
   qty: number;
   notes?: string;
   /** Where it came from: the drop calculator, site conditions, or added by hand. */
-  source: 'drops' | 'conditions' | 'manual';
+  source: 'drops' | 'conditions' | 'manual' | 'addon';
+  /** Review only: unchecked by the walker — shown grayed, not sent. */
+  excluded?: boolean;
   /** Admin review only: 1 = catalog target, 1.10 = +10%, 0.95 = −5%. */
   priceFactor?: number;
 };
@@ -313,6 +317,10 @@ export type SiteWalk = {
   extras?: Partial<WalkExtras>;
   /** Where the walker left off (reopening resumes here). */
   lastStep?: string;
+  /** Add-on services picked on Review: catalog code → quantity. */
+  addOns?: Record<string, number>;
+  /** Lines unchecked on Review (kept visible, grayed, not sent). */
+  excludedLines?: string[];
   assignedTechId?: string | null;
   assignedTechName?: string | null;
   createdBy: string;
@@ -368,17 +376,27 @@ export function conditionLines(c: SiteConditions, siteState: string, a: Estimati
 }
 
 /** Every line on the walk right now: derived + hand-added (skipped suggestions removed). */
-export function buildWalkLines(w: Pick<SiteWalk, 'drops' | 'conditions' | 'siteState' | 'manualLines' | 'skippedSuggestions' | 'needsDrops' | 'areas' | 'devices' | 'extras'>, a: EstimatingAssumptions): WalkLine[] {
-  const skipped = new Set(w.skippedSuggestions || []);
+type LineSource = Pick<SiteWalk, 'drops' | 'conditions' | 'siteState' | 'manualLines' | 'skippedSuggestions' | 'needsDrops' | 'areas' | 'devices' | 'extras' | 'addOns' | 'excludedLines'>;
+
+/** Every line the walk produces, with `excluded` set on the ones unchecked on Review. */
+export function walkCandidateLines(w: LineSource, a: EstimatingAssumptions): WalkLine[] {
+  // Unchecked lines; "skippedSuggestions" is the older name for the same thing.
+  const off = new Set([...(w.excludedLines || []), ...(w.skippedSuggestions || [])]);
   // Older walks have no needsDrops answer: their drops still count.
   const drops = w.needsDrops === false ? [] : (w.drops || []);
   return [
     ...dropLines(drops, a),
-    ...conditionLines(w.conditions, w.siteState, a).filter(l => !skipped.has(l.id)),
+    ...conditionLines(w.conditions, w.siteState, a),
     ...deviceLines(w),
     ...extraLines(w),
+    ...addOnLines(w),
     ...(w.manualLines || []).filter(l => (Number(l.qty) || 0) > 0),
-  ];
+  ].map(l => (off.has(l.id) ? { ...l, excluded: true } : l));
+}
+
+/** The lines that go to the office: everything still checked. */
+export function buildWalkLines(w: LineSource, a: EstimatingAssumptions): WalkLine[] {
+  return walkCandidateLines(w, a).filter(l => !l.excluded).map(({ excluded: _e, ...l }) => l);
 }
 
 export type PricedLine = WalkLine & { service: CatalogService | null; sell: number; extended: number; cost: number; gp: number; gmPct: number | null };
@@ -524,3 +542,51 @@ export function extraLines(w: Pick<SiteWalk, 'areas' | 'extras'>): WalkLine[] {
   }
   return out;
 }
+
+
+// ── Add-on services (Review step) ────────────────────────────────────────────
+// The ten extras that most often get forgotten on a walk, straight from the
+// service catalog. `areas` = the job types they usually go with (shown first);
+// `qty` = a sensible starting quantity from what the walk already knows.
+export const ADD_ONS: { code: string; label: string; hint: string; areas: WalkArea[]; qty?: (w: Pick<SiteWalk, 'drops' | 'needsDrops'>) => number }[] = [
+  { code: 'TST-01', label: 'Test & label every link', hint: 'Continuity / wiremap and labels on each drop', areas: ['cabling'],
+    qty: w => (w.needsDrops === false ? 0 : (w.drops || []).filter(d => d.cable !== 'Fiber').reduce((n, d) => n + (Number(d.qty) || 0), 0)) },
+  { code: 'SVC-015', label: 'Fiber fusion splices', hint: 'Per splice', areas: ['fiber'] },
+  { code: 'FIB-01', label: 'Bring out the fusion splicer', hint: 'Splicer + fiber test gear, per visit', areas: ['fiber'] },
+  { code: 'SVC-011', label: 'Third-party copper certification', hint: 'Per link — certified by an outside tester', areas: ['cabling'] },
+  { code: 'SVC-016', label: 'Third-party fiber certification', hint: 'Per link — OTDR / loss testing by an outside tester', areas: ['fiber'] },
+  { code: 'DOC-04', label: 'As-built label map / port schedule', hint: 'Closeout documentation', areas: ['cabling', 'fiber', 'network'] },
+  { code: 'SVC-007', label: 'After-hours technician time', hint: 'Hours, when work must happen after hours', areas: [] },
+  { code: 'ADM-01', label: 'Project coordination', hint: 'Scheduling, vendors, documents — larger jobs', areas: [] },
+  { code: 'LOG-01', label: 'Shipping / procurement', hint: 'Per order we buy and receive', areas: ['network', 'wifi', 'cameras', 'av', 'devices'] },
+  { code: 'DSP-01', label: 'Small-job dispatch', hint: 'Covers the trip on a small job', areas: ['support'] },
+];
+
+export function addOnLines(w: Pick<SiteWalk, 'addOns'>): WalkLine[] {
+  return Object.entries(w.addOns || {}).filter(([, q]) => (Number(q) || 0) > 0)
+    .map(([code, q]) => ({ id: `addon-${code}`, code, qty: Number(q), source: 'addon' as const }));
+}
+
+// ── Photo checklist (Checks step) ────────────────────────────────────────────
+// The same photos on every walk of a kind, so the office can price from them.
+export const PHOTO_CHECKLIST: Record<WalkArea | 'general', string[]> = {
+  general: ['Building entrance / access', 'Where work happens (wide shot)'],
+  cabling: ['MDF / IDF closet and rack', 'Ceiling space above the drop areas', 'Wall / desk where drops land'],
+  fiber: ['Both ends of each fiber run', 'Existing fiber enclosure'],
+  network: ['ISP modem / demarc', 'Existing switches and firewall'],
+  wifi: ['WiFiman / speed test screenshot', 'Each planned AP spot'],
+  cameras: ['View from each camera spot', 'NVR location'],
+  av: ['Each display wall', 'Where the AV source sits'],
+  devices: ['Each POS / register counter'],
+  support: ['The failing equipment', 'Any error screens'],
+};
+
+/** One line under each step's title: what the tech does there. */
+export const STEP_GUIDE: Record<WalkStep, string> = {
+  job: 'Who it is for, where, and what kind of job. Pick every job type that applies — it decides the next questions.',
+  site: 'Look at the building. Answer the drops question first, then the conditions that make the job harder or longer.',
+  drops: 'Walk each route from the closet to the outlet. One row per group of identical drops.',
+  devices: 'Count each kind of device, write where each one goes, and who supplies the hardware.',
+  checks: 'Run the tests, take the listed photos, and answer the questions so the office can price without calling you.',
+  review: 'Check every line. Uncheck anything the customer doesn\'t want, and add any extra services.',
+};

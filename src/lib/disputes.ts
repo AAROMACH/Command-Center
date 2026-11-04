@@ -128,22 +128,22 @@ export const PAYROLL_TICKET_CARDS: Record<PayrollDispute['reason'], {
   incorrect_pay: {
     title: 'Pay is wrong',
     question: 'Is the pay wrong?',
-    yesLabel: 'Yes: I fixed the pay',
-    noLabel: 'No: pay stays as is',
+    yesLabel: 'Fix the pay',
+    noLabel: 'Decline — pay stays as is',
     outcome: (d, note) => d === 'yes' ? withNote('Payroll fixed your pay', note) : withNote('Payroll kept your pay as is', note),
   },
   missing_reimbursement: {
     title: 'Missing reimbursement',
     question: 'Is the reimbursement owed?',
-    yesLabel: 'Yes: I added it',
-    noLabel: 'No: not owed',
+    yesLabel: 'Add the reimbursement',
+    noLabel: 'Decline — not owed',
     outcome: (d, note) => d === 'yes' ? withNote('Payroll added your reimbursement', note) : withNote('Payroll declined the reimbursement', note),
   },
   missing_job: {
     title: 'Missing from my log',
     question: 'Did they do this job?',
-    yesLabel: 'Yes: I added and paid it',
-    noLabel: "No: don't pay it",
+    yesLabel: 'Add and pay the job',
+    noLabel: "Decline — don't pay it",
     outcome: (d, note) => d === 'yes' ? withNote('Payroll added and paid the job', note) : withNote('Payroll declined the missing job', note),
   },
 };

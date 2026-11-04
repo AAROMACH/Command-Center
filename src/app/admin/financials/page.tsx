@@ -317,7 +317,7 @@ export default function FinancialsPage() {
             <PageHeader
                 eyebrow="Finance"
                 icon={Banknote}
-                title="Accounting"
+                title="Financials"
                 subtitle="Client revenue, technician pay and reimbursements in one place."
                 actions={<>
                     <SearchField className="w-full md:w-[260px]" placeholder="Search invoices and reimbursements…" value={searchQuery} onChange={setSearchQuery} />

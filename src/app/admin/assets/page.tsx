@@ -8,7 +8,7 @@ import { db, storage } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, setDoc, deleteField, doc, writeBatch } from 'firebase/firestore';
 import { ref as storageRef, deleteObject } from 'firebase/storage';
 import { uploadFile } from '@/lib/upload';
-import { STANDARD_MATERIALS } from '@/lib/standard-materials';
+import { STANDARD_MATERIALS, isRetiredStandard } from '@/lib/standard-materials';
 import { RECOMMENDED_MARKUPS, STANDARD_MATERIAL_COSTS } from '@/lib/standard-material-prices';
 import { savePricing } from '@/lib/billing-actions';
 import type { Asset, AssetCategory, Material, AssetAssignment, Technician } from '@/lib/types';
@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -28,10 +28,11 @@ import {
     User, MapPin, Calendar, AlertTriangle, ChevronRight, Edit2, CheckCircle,
     DollarSign, Tag, RotateCcw, XCircle, Hammer, History, ArrowRightLeft,
     ShoppingCart, Boxes, ClipboardList, Loader2, ImagePlus, X,
-Percent, } from 'lucide-react';
+Percent, ClipboardCheck, Scissors, } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/page-header';
 import { PricingTab } from './pricing-tab';
+import { ServiceCatalogTab } from './service-catalog-tab';
 import { usePricingSettings } from '@/hooks/use-billing';
 import { canonicalCategory, localDay, markupFor, roundCents, type PricingSettings } from '@/lib/billing';
 import { materialPrice } from '@/lib/price-lines';
@@ -172,7 +173,7 @@ export default function AssetsAndMaterialsPage() {
     // Filter pills: the price-book categories plus any older category still on a material.
     const matCats = useMemo(() => [...new Set([...pricing.categories.map(c => c.name), ...materials.map(m => m.category).filter(Boolean)])], [pricing.categories, materials]);
     const { user: authUser } = useAuth();
-    const [mainTab, setMainTab] = useState<'assets' | 'log' | 'materials' | 'pricing'>('assets');
+    const [mainTab, setMainTab] = useState<'assets' | 'log' | 'materials' | 'pricing' | 'catalog'>('assets');
     const [logFilter, setLogFilter] = useState<'all' | 'out' | 'overdue' | 'returned'>('all');
     const [viewMode, setViewMode] = useViewMode('assets');
     const [assetCatFilter, setAssetCatFilter] = useState<AssetCategory | 'all'>('all');
@@ -529,6 +530,33 @@ export default function AssetsAndMaterialsPage() {
     // One-time starter list (lib/standard-materials): names, categories and
     // units at $0 cost, priced from each category's markup once a cost is set.
     // Skips names already in the price book, so it's safe to click again.
+    // Trim: standard items we've retired as too obscure (lib/standard-materials
+    // RETIRED_STANDARD_NAMES) that are still active here. Marked Inactive, not
+    // deleted — hidden from pickers, kept on old quotes, reversible.
+    const trimCandidates = useMemo(() => materials.filter(m => m.status !== 'inactive' && isRetiredStandard(m.name))
+        .sort((a, b) => (a.category || '').localeCompare(b.category || '') || a.name.localeCompare(b.name)), [materials]);
+    const [trimOpen, setTrimOpen] = useState(false);
+    const [trimPick, setTrimPick] = useState<Set<string>>(new Set());
+    const [trimming, setTrimming] = useState(false);
+    const openTrim = () => { setTrimPick(new Set(trimCandidates.map(m => m.id))); setTrimOpen(true); };
+    const doTrim = async () => {
+        const ids = [...trimPick];
+        if (!ids.length) return;
+        setTrimming(true);
+        try {
+            const now = new Date().toISOString();
+            for (let i = 0; i < ids.length; i += 400) {
+                const batch = writeBatch(db);
+                ids.slice(i, i + 400).forEach(id => batch.update(doc(db, 'materials', id), { status: 'inactive', updatedAt: now }));
+                await batch.commit();
+            }
+            toast({ title: 'Price book trimmed', description: `${ids.length} materials marked inactive. Filter by Inactive to bring any back.` });
+            setTrimOpen(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not trim', description: e.message });
+        } finally { setTrimming(false); }
+    };
+
     const [seeding, setSeeding] = useState(false);
     const loadStandardMaterials = async () => {
         const have = new Set(materials.map(m => (m.name || '').trim().toLowerCase()));
@@ -800,6 +828,11 @@ export default function AssetsAndMaterialsPage() {
                             <Button size="sm" variant="outline" className="h-9" onClick={fillSuggestedPrices} disabled={fillingPrices}>
                                 {fillingPrices ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : <DollarSign size={14} className="mr-1.5" />} Fill suggested prices
                             </Button>
+                            {trimCandidates.length > 0 && (
+                                <Button size="sm" variant="outline" className="h-9" onClick={openTrim}>
+                                    <Scissors size={14} className="mr-1.5" /> Trim price book ({trimCandidates.length})
+                                </Button>
+                            )}
                             <Button size="sm" variant="outline" className="h-9" onClick={loadStandardMaterials} disabled={seeding}>
                                 {seeding ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : <ShoppingCart size={14} className="mr-1.5" />} Load standard materials
                             </Button>
@@ -821,7 +854,7 @@ export default function AssetsAndMaterialsPage() {
             </StatGrid>
 
             {/* Main tabs */}
-            <Tabs value={mainTab} onValueChange={v => { setMainTab(v as 'assets' | 'log' | 'materials' | 'pricing'); setSearch(''); }} className="w-full">
+            <Tabs value={mainTab} onValueChange={v => { setMainTab(v as 'assets' | 'log' | 'materials' | 'pricing' | 'catalog'); setSearch(''); }} className="w-full">
                 <TabsList className="border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 mb-5">
                     <TabsTrigger value="assets" className={tabTriggerCls}>
                         <span className="flex items-center gap-2"><Boxes size={12} /> Assets ({assets.length})</span>
@@ -834,6 +867,9 @@ export default function AssetsAndMaterialsPage() {
                     </TabsTrigger>
                     <TabsTrigger value="pricing" className={tabTriggerCls}>
                         <span className="flex items-center gap-2"><Percent size={12} /> Rates &amp; markups</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="catalog" className={tabTriggerCls}>
+                        <span className="flex items-center gap-2"><ClipboardCheck size={12} /> Service catalog</span>
                     </TabsTrigger>
                 </TabsList>
 
@@ -1227,6 +1263,46 @@ export default function AssetsAndMaterialsPage() {
                 </TabsContent>
 
                 {/* ── Labor & pricing: labor rates, markup, sales tax (adminConfig/pricing) ── */}
+                <TabsContent value="catalog" className="m-0">
+                    <ServiceCatalogTab />
+                </TabsContent>
+
+                <Dialog open={trimOpen} onOpenChange={setTrimOpen}>
+                    <DialogContent className="bg-bg-elevated border-border-main sm:max-w-xl max-h-[88vh] flex flex-col">
+                        <DialogHeader className="text-left">
+                            <DialogTitle>Trim price book</DialogTitle>
+                            <DialogDescription>
+                                Standard items we don&apos;t really sell or install. Checked ones are marked Inactive — hidden from quotes, invoices and project parts, still on old quotes, and you can turn any back on from the Inactive filter.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex items-center gap-3 text-[12px]">
+                            <button type="button" className="text-brand-red hover:underline" onClick={() => setTrimPick(new Set(trimCandidates.map(m => m.id)))}>Select all</button>
+                            <button type="button" className="text-text-muted hover:underline" onClick={() => setTrimPick(new Set())}>Clear</button>
+                            <span className="ml-auto text-text-muted">{trimPick.size} of {trimCandidates.length} selected</span>
+                        </div>
+                        <div className="flex-1 overflow-y-auto space-y-0.5 -mx-1 px-1">
+                            {trimCandidates.map((m, i) => (
+                                <div key={m.id}>
+                                    {(i === 0 || trimCandidates[i - 1].category !== m.category) && (
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted pt-2 pb-1">{m.category}</p>
+                                    )}
+                                    <label className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-bg-tertiary cursor-pointer text-[13px]">
+                                        <input type="checkbox" className="accent-brand-red h-4 w-4" checked={trimPick.has(m.id)}
+                                            onChange={e => setTrimPick(p => { const n = new Set(p); if (e.target.checked) n.add(m.id); else n.delete(m.id); return n; })} />
+                                        <span className="flex-1 min-w-0">{m.name}</span>
+                                    </label>
+                                </div>
+                            ))}
+                        </div>
+                        <DialogFooter className="gap-2">
+                            <Button variant="outline" onClick={() => setTrimOpen(false)}>Cancel</Button>
+                            <Button className="bg-brand-red hover:bg-brand-red/90 text-white" disabled={!trimPick.size || trimming} onClick={doTrim}>
+                                {trimming && <Loader2 size={14} className="mr-1.5 animate-spin" />} Mark {trimPick.size} inactive
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
                 <TabsContent value="pricing" className="m-0">
                     <PricingTab settings={pricing} canEdit={canEditUserPay(authUser)} materials={materials} />
                 </TabsContent>

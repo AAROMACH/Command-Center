@@ -445,7 +445,7 @@ export default function AdminCalendarPage() {
       <PageHeader
         eyebrow="Schedule"
         icon={CalendarIcon}
-        title="Calendar"
+        title="Schedule"
         subtitle="Jobs by day. Drag a job onto a technician or another day to reschedule."
       />
 

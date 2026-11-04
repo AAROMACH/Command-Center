@@ -85,7 +85,7 @@ export function UserNav() {
   const showProfile = !pathname.startsWith('/sales');
 
   const plansPath = pathname.startsWith('/admin') ? '/admin/plans' : 
-                    pathname.startsWith('/client') ? '/client/billing' : null;
+                    pathname.startsWith('/client') ? '/client/financials#plan' : null;
 
   return (
     <DropdownMenu>

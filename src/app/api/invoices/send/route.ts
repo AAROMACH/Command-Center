@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { discountLineLabel } from '@/lib/price-lines';
 import { randomBytes } from 'crypto';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -64,6 +65,13 @@ export async function POST(req: NextRequest) {
     `Hello${inv.clientName ? ` ${inv.clientName}` : ''},`,
     '',
     `Here is invoice ${inv.invoiceNumber} for ${money(inv.total)}${inv.dueDate ? `, due ${inv.dueDate}` : ''}.`,
+    ...(Number(inv.discountAmount) > 0 ? [
+      '',
+      `Subtotal: ${money(Number(inv.subtotal) || 0)}`,
+      `${discountLineLabel(inv.planDiscount)}: -${money(Number(inv.discountAmount))}`,
+      ...(Number(inv.tax) > 0 ? [`Tax: ${money(Number(inv.tax))}`] : []),
+      `Total: ${money(inv.total)}`,
+    ] : []),
     '',
     `View the full invoice: ${link}`,
     '',

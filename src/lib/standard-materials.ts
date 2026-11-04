@@ -11,7 +11,7 @@ type Std = { name: string; category: string; unitType: Material['unitType']; des
 const C = (category: string, unitType: Material['unitType'], names: string[], description?: string): Std[] =>
   names.map(name => ({ name, category, unitType, ...(description ? { description } : {}) }));
 
-export const STANDARD_MATERIALS: Std[] = [
+const FULL_LIST: Std[] = [
   // ── Cable & Wire ──
   ...C('Cable & Wire', 'foot', [
     'Cat5e CMR cable', 'Cat5e CMP (plenum) cable', 'Cat6 CMR cable', 'Cat6 CMP (plenum) cable',
@@ -122,3 +122,52 @@ export const STANDARD_MATERIALS: Std[] = [
   ]),
   ...C('Hardware & Supplies', 'roll', ['Velcro roll (75 ft)', 'Caution tape (roll)']),
 ];
+
+/**
+ * Trimmed from the starter list as too obscure for what we actually sell and
+ * install (intrusion alarms, fire-alarm cable, residential media panels,
+ * niche camera types, tools that aren't billable materials, near-duplicates).
+ * Assets & Materials → "Trim price book" marks any of these still in the live
+ * price book Inactive — hidden from pickers, kept on old quotes, reversible.
+ */
+export const RETIRED_STANDARD_NAMES: string[] = [
+  // Cable & Wire
+  'Cat6 shielded (STP) cable', 'RG59 siamese (video + power) cable', '18/4 alarm / control cable', '22/4 alarm cable',
+  '22/2 shielded cable', '16/4 speaker wire', 'HDMI-rated in-wall cable', 'Plenum access control composite cable',
+  'Fire alarm cable (FPLP) 18/2', 'Cat6 patch cable 1 ft', 'Cat6 patch cable 14 ft', 'Cat6 patch cable 25 ft',
+  'Cat6A patch cable 3 ft', 'HDMI cable 25 ft',
+  // Fiber
+  'Armored fiber 12-strand', 'Multimode fiber 6-strand (OM3)', 'Fiber pull string / mule tape', 'SC-LC single-mode patch cord 3 m',
+  'SC fiber connector (field-installable)', 'Rack-mount fiber enclosure 2U', 'Fiber adapter panel 6-port LC duplex',
+  // Connectivity
+  'Cat6 shielded keystone jack', 'RJ45 Cat6A plug', 'RJ45 Cat6 shielded plug', 'RJ45 boot', 'BNC connector (compression) RG59',
+  'HDMI keystone insert', 'Weatherproof outdoor RJ45 coupler', '66 punch-down block', 'Surface-mount box 2-port',
+  'Biscuit jack (surface mount)', 'Wall plate 6-port', 'Low-voltage mounting bracket (double gang)',
+  // Racks & Enclosures
+  'Swing-out wall rack 12U', 'Rack shelf 2U (cantilever)', 'Blank panel 2U', 'Rack UPS 3000VA', 'Rack fan / ventilation kit',
+  'Ladder rack wall angle kit', 'Structured media enclosure 14"', 'Structured media enclosure 28"', 'NEMA 4X outdoor enclosure',
+  // Network Equipment
+  'PoE injector (802.3bt)', 'PoE extender', 'Point-to-point wireless bridge kit', 'Network video recorder (NVR) 32-channel',
+  'Network surge protector (Ethernet)', 'Wireless access point mounting bracket',
+  // Cameras & Security
+  'IP fisheye / panoramic camera', 'License plate recognition (LPR) camera', 'IP bullet camera 8MP (4K)', 'Camera pendant mount',
+  'Camera corner mount adapter', 'Keypad reader', 'Key fobs (pack of 25)', 'Intrusion alarm panel', 'Motion detector (PIR)',
+  'Door / window contact', 'Glass break detector', 'Alarm keypad', 'Alarm siren / strobe',
+  // Audio/Visual
+  'Pendant speaker', 'Outdoor speaker', 'Mixer amplifier', 'Wall-mount TV bracket (tilt)', 'Ceiling projector mount',
+  'HDMI matrix switch 4x4', 'Wireless presentation system', 'Recessed TV / AV box',
+  // Automation & Controls
+  'HMI touch panel 10"', 'Terminal block end stop', 'Contactor', 'Proximity sensor (inductive)', 'Photoelectric sensor',
+  'Limit switch', 'Pushbutton (22 mm)', 'Pilot light (22 mm)', 'Selector switch (22 mm)', 'Ferrules (pack of 500)',
+  // Hardware & Supplies
+  'Wood screws (pack of 100)', 'Zip tie mounts (pack of 100)', 'Cable staples (pack of 100)', 'Velcro cable wraps (roll)',
+  'Bridle ring', 'Cable support bag / sling', 'Old-work box (single gang)', 'Surface raceway fittings', 'EMT conduit 1" (10 ft)',
+  'Conduit bushing', 'Grommet / bushing', 'Silicone sealant (tube)', 'Electrical tape (roll)', 'Heat shrink tubing assortment',
+  'Wire nuts / connectors (pack)', 'Fish tape', 'Cable lubricant', 'Caution tape (roll)', 'Firestop putty pad',
+];
+
+const RETIRED = new Set(RETIRED_STANDARD_NAMES.map(n => n.toLowerCase()));
+export const isRetiredStandard = (name: string | undefined) => RETIRED.has((name || '').trim().toLowerCase());
+
+/** The starter list "Load standard materials" adds. */
+export const STANDARD_MATERIALS: Std[] = FULL_LIST.filter(m => !RETIRED.has(m.name.toLowerCase()));

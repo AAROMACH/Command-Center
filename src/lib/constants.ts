@@ -184,6 +184,7 @@ export const ID_PREFIXES = {
   ROUTE:             'route',
   SITE:              'site',
   SITE_REQUEST:      'sreq',
+  SITE_WALK:         'swk',
   SUBSCRIPTION:      'sub',
   SERVICE_REQUEST:   'svc',
   CLIENT_INTAKE:     'cint',

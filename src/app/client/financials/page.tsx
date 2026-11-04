@@ -3,7 +3,7 @@ import { useSessionState } from '@/hooks/use-session-state';
 
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
-import { useClientPlan } from '@/components/client-plan-card';
+import { ClientPlanCard, useClientPlan } from '@/components/client-plan-card';
 import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { db } from "@/lib/firebase";
@@ -26,6 +26,8 @@ import {
     Briefcase,
     Wrench,
     ChevronRight,
+    Mail,
+    Clock,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -131,8 +133,8 @@ export default function ClientFinancialsPage() {
             <PageHeader
                 eyebrow="Client portal"
                 icon={Banknote}
-                title="Financials"
-                subtitle="Balances, payments and every invoice on your account."
+                title="Billing"
+                subtitle="Your balance, invoices, service plan and billing details."
             />
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -141,7 +143,7 @@ export default function ClientFinancialsPage() {
                 <StatCard
                     label="Service plan"
                     icon={Coins}
-                    onClick={() => router.push('/client/billing')}
+                    onClick={() => document.getElementById('plan')?.scrollIntoView({ behavior: 'smooth' })}
                     value={currentSub ? <span className="capitalize">{currentPlan?.name || 'Service plan'}</span> : 'No plan'}
                     sub={<span className="flex items-center gap-1">{currentPlan ? `${currentPlan.benefits.responseHours}-hour response` : `${currentUser?.billingDetails?.terms || 'Net 30'} terms`}<ChevronRight size={12} /></span>}
                 />
@@ -237,6 +239,48 @@ export default function ClientFinancialsPage() {
                     <div className="px-4"><ListPager pager={invoicePager} noun="invoices" /></div>
                 </CardContent>
             </Card>
+
+            {/* Service plan + billing details (was a separate Billing page). */}
+            <div id="plan" className="grid grid-cols-1 gap-6 lg:grid-cols-2 scroll-mt-4">
+                <ClientPlanCard client={currentUser} />
+                <Card className="rounded-xl border-border-main bg-bg-secondary shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                            <FileText size={16} className="text-text-muted" />
+                            Billing details
+                        </CardTitle>
+                        <CardDescription>Who receives invoices and how.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-5">
+                        <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-4">
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Billing contact</p>
+                                <p className="text-[13px] font-semibold text-text-primary">{currentUser?.billingDetails?.contactName || 'Not set'}</p>
+                                <div className="flex items-center gap-2 text-[12px] text-text-muted">
+                                    <Mail size={12} />
+                                    <span>{currentUser?.billingDetails?.email || 'No email on file'}</span>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-sub/50">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Payment terms</p>
+                                    <div className="flex items-center gap-1.5 text-[13px] font-medium text-text-primary">
+                                        <Clock size={12} className="text-text-muted" />
+                                        {currentUser?.billingDetails?.terms || 'Net 30'}
+                                    </div>
+                                </div>
+                                <div className="space-y-1 text-right">
+                                    <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Delivery</p>
+                                    <p className="text-[13px] font-medium text-text-primary">{currentUser?.billingDetails?.deliveryMethod || 'Portal'}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <Button variant="outline" className="w-full" onClick={() => router.push('/client/profile')}>
+                            Edit billing details
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }

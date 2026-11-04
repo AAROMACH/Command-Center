@@ -5,12 +5,12 @@ import { doc, getDoc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { createDocId } from './generateId';
 import { ID_PREFIXES } from './constants';
-import { toQuoteLines, type PriceLine } from './price-lines';
+import { priceTotals, toQuoteLines, type PlanDiscount, type PriceLine } from './price-lines';
 import { syncLeadOnQuoteCreated } from './crm-actions';
 import { NotificationService } from './notification-service';
 import {
-  DEFAULT_ASSUMPTIONS, DEFAULT_SERVICES, buildWalkLines, emptyConditions, priceLine, quoteTermsText, walkScopeText, walkTotals,
-  type CatalogService, type EstimatingSettings, type SiteWalk,
+  DEFAULT_ASSUMPTIONS, DEFAULT_SERVICES, buildWalkLines, emptyConditions, marginStatus, priceLine, quoteTermsText, walkScopeText, walkTotals,
+  type CatalogService, type EstimatingSettings, type PricedLine, type SiteWalk,
 } from './estimating';
 import type { Lead, Quote } from './types';
 
@@ -72,6 +72,29 @@ export async function returnSiteWalk(w: SiteWalk, note: string, by: string): Pro
   if (to) NotificationService.notify(to, 'Site walk sent back', `${by} sent back the site walk for ${w.customerCompany || w.siteName}: ${note}`, undefined, { portal: 'tech' }).catch(() => {});
 }
 
+/** Quote lines for priced walk lines: one per catalog service, untaxed. */
+export const walkQuoteLines = (priced: PricedLine[]): PriceLine[] => priced.filter(l => l.service && l.qty > 0).map(l => ({
+  id: l.id.replace(/[^a-z0-9-]/gi, '') || Math.random().toString(36).slice(2, 10),
+  name: l.service!.name, quantity: l.qty, unitPrice: l.sell, section: 'labor', taxable: false,
+  itemRef: `svc:${l.code}`, required: true, sourceCategory: 'service',
+}));
+
+/**
+ * Totals with a client's service-plan discount. Catalog services are bundled
+ * prices, so they sit in the quote's Labor section and take the plan's labor
+ * discount — the same thing the quote editor shows when the quote is opened.
+ * Margin is on what the client actually pays (after the discount).
+ */
+export function walkTotalsWithPlan(priced: PricedLine[], discount: PlanDiscount | null, a: EstimatingSettings['assumptions']) {
+  const base = walkTotals(priced, a);
+  const discountAmount = discount ? priceTotals(walkQuoteLines(priced), discount, 0).discountAmount : 0;
+  const net = Math.round((base.subtotal - discountAmount) * 100) / 100;
+  const gp = Math.round((net - base.cost) * 100) / 100;
+  const gmPct = net > 0 ? Math.round((gp / net) * 1000) / 10 : null;
+  const tax = Math.round(net * (a.taxPct || 0)) / 100;
+  return { ...base, discountAmount, net, gp, gmPct, tax, total: Math.round((net + tax) * 100) / 100, status: marginStatus(gmPct, a) };
+}
+
 /**
  * Approve: the walk's priced lines become a draft quote (catalog target ×
  * price adjustment), with the walk's scope and the standard terms. Returns
@@ -79,17 +102,14 @@ export async function returnSiteWalk(w: SiteWalk, note: string, by: string): Pro
  */
 export async function approveSiteWalk(w: SiteWalk, settings: EstimatingSettings, customer: {
   customerType: 'in_app_client' | 'external_customer'; clientId: string | null; name: string; company: string | null; email: string; phone: string | null;
-}, by: { id: string; name: string }): Promise<string> {
+}, by: { id: string; name: string }, discount: PlanDiscount | null = null): Promise<string> {
   const a = settings.assumptions;
   const catalog = new Map(settings.services.map(s => [s.code, s]));
   const priced = w.lines.map(l => priceLine(l, catalog, a)).filter(l => l.service && l.qty > 0);
   if (!priced.length) throw new Error('Nothing to quote — add at least one line.');
-  const t = walkTotals(priced, a);
-  const lines: PriceLine[] = priced.map(l => ({
-    id: l.id.replace(/[^a-z0-9-]/gi, '') || Math.random().toString(36).slice(2, 10),
-    name: l.service!.name, quantity: l.qty, unitPrice: l.sell, section: 'labor', taxable: false,
-    itemRef: `svc:${l.code}`, required: true, sourceCategory: 'service',
-  }));
+  const planDiscount = customer.customerType === 'in_app_client' ? discount : null;
+  const t = walkTotalsWithPlan(priced, planDiscount, a);
+  const lines = walkQuoteLines(priced);
   const quoteId = await createDocId(ID_PREFIXES.QUOTE);
   const now = new Date();
   const expires = new Date(now.getTime() + a.quoteValidityDays * 86400000).toISOString().slice(0, 10);
@@ -106,7 +126,7 @@ export async function approveSiteWalk(w: SiteWalk, settings: EstimatingSettings,
     scopeSummary: walkScopeText(w, a),
     lineItems: toQuoteLines(lines),
     optionalChoices: [],
-    subtotal: t.subtotal, taxAmount: t.tax, discountAmount: 0, planDiscount: null, total: t.total,
+    subtotal: t.subtotal, taxAmount: t.tax, discountAmount: t.discountAmount, planDiscount, total: t.total,
     terms: quoteTermsText(a),
     expirationDate: expires,
     publicToken: null, status: 'draft', sentAt: null, viewedAt: null, approvedAt: null, rejectedAt: null,

@@ -9,15 +9,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ClientPicker } from '@/components/client-picker';
+import { useAllSubscriptions, useServicePlans } from '@/hooks/use-billing';
+import { describeDiscount, planDiscountFor } from '@/lib/price-lines';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { isClient, isSuperAdmin } from '@/lib/permissions';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
-import { MARGIN_LABEL, genLineId, priceLine, walkTotals, type SiteWalk, type WalkLine } from '@/lib/estimating';
-import { approveSiteWalk, returnSiteWalk, useEstimatingSettings } from '@/lib/site-walk-actions';
+import { MARGIN_LABEL, genLineId, priceLine, type SiteWalk, type WalkLine } from '@/lib/estimating';
+import { approveSiteWalk, returnSiteWalk, useEstimatingSettings, walkTotalsWithPlan } from '@/lib/site-walk-actions';
 import type { Technician } from '@/lib/types';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0);
@@ -64,8 +66,11 @@ export function SiteWalkReview({ walk, onClose, onQuoteCreated }: {
   useEffect(() => onSharedSnapshot('users', s => setClients(s.docs.map(d => ({ ...d.data(), id: d.id } as Technician)).filter(isClient)
     .sort((x, y) => (x.clientCompany || x.name || '').localeCompare(y.clientCompany || y.name || ''))), () => setClients([])), []);
 
+  const { subscriptions } = useAllSubscriptions();
+  const { plans } = useServicePlans();
+  const discount = customerType === 'in_app_client' && clientId ? planDiscountFor(clientId, subscriptions, plans) : null;
   const priced = useMemo(() => lines.map(l => priceLine(l, settings.catalog, a)), [lines, settings.catalog, a]);
-  const totals = useMemo(() => walkTotals(priced, a), [priced, a]);
+  const totals = useMemo(() => walkTotalsWithPlan(priced, discount, a), [priced, discount, a]);
   const addChoices = useMemo(() => {
     const words = addSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
     if (!words.length) return [];
@@ -99,7 +104,7 @@ export function SiteWalkReview({ walk, onClose, onQuoteCreated }: {
         customerType, clientId: client!.id, name: client!.clientCompany || client!.name || '', company: client!.clientCompany || null, email: client!.email || '', phone: client!.phone || null,
       } : {
         customerType, clientId: null, name: walk.contactName || walk.customerCompany, company: walk.customerCompany || null, email: email.trim(), phone: walk.contactPhone || null,
-      }, by);
+      }, by, discount);
       toast({ title: 'Approved — draft quote created', description: `${quoteId} is in Drafts, ready to review and send.` });
       onQuoteCreated?.(quoteId);
       onClose();
@@ -240,10 +245,7 @@ export function SiteWalkReview({ walk, onClose, onQuoteCreated }: {
               ))}
             </div>
             {customerType === 'in_app_client' ? (
-              <Select value={clientId} onValueChange={setClientId} disabled={!editable}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="Select client…" /></SelectTrigger>
-                <SelectContent>{clients.map(cl => <SelectItem key={cl.id} value={cl.id}>{cl.clientCompany || cl.name}</SelectItem>)}</SelectContent>
-              </Select>
+              <ClientPicker clients={clients} value={clientId} onChange={setClientId} subscriptions={subscriptions} plans={plans} disabled={!editable} />
             ) : (
               <div className="space-y-1">
                 <Label className="text-[11px] text-text-muted">{walk.contactName || walk.customerCompany} — email</Label>
@@ -253,6 +255,9 @@ export function SiteWalkReview({ walk, onClose, onQuoteCreated }: {
           </div>
           <div className="rounded-lg border border-border-sub bg-bg-secondary p-3 space-y-1.5 text-[13px]">
             <div className="flex justify-between"><span className="text-text-muted">Customer subtotal</span><span className="font-mono">{fmt(totals.subtotal)}</span></div>
+            {discount && totals.discountAmount > 0 && (
+              <div className="flex justify-between text-text-green"><span>{discount.planName} plan ({describeDiscount(discount)})</span><span className="font-mono">−{fmt(totals.discountAmount)}</span></div>
+            )}
             {totals.tax > 0 && <div className="flex justify-between"><span className="text-text-muted">Tax ({a.taxPct}%)</span><span className="font-mono">{fmt(totals.tax)}</span></div>}
             <div className="flex justify-between"><span className="text-text-muted">Direct cost</span><span className="font-mono">{fmt(totals.cost)}</span></div>
             <div className="flex justify-between"><span className="text-text-muted">Gross profit</span><span className="font-mono">{fmt(totals.gp)}</span></div>

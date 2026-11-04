@@ -7,13 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DOC_BRAND, DocKindHeader, PriceBookPicker } from '@/components/price-book-picker';
+import { ClientPicker } from '@/components/client-picker';
 import { Switch } from '@/components/ui/switch';
 import { Hammer, Package, Plus, Trash2, Loader2, BadgePercent, Undo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { isClient } from '@/lib/permissions';
 import { useAllSubscriptions, usePricingSettings, useServicePlans } from '@/hooks/use-billing';
-import { describeFactor, formatMoney } from '@/lib/billing';
+import { describeFactor, formatMoney, isLiveSubscription } from '@/lib/billing';
 import {
   describeDiscount, lineAmount, materialPrice, planDiscountFor, priceTotals,
   type PlanDiscount, type PriceBookItem, type PriceLine, type PriceSection, type PriceTotals,
@@ -158,6 +159,9 @@ export function PriceDocEditor({
   // ── Discount ──
   const client = clients.find(c => c.id === v.clientId);
   const planDiscount = v.customerType === 'in_app_client' ? planDiscountFor(v.clientId, subscriptions, plans) : null;
+  // A live plan with 0% discounts changes no prices — say so instead of nothing.
+  const liveSub = v.customerType === 'in_app_client' && v.clientId ? subscriptions.find(x => x.clientId === v.clientId && isLiveSubscription(x)) : undefined;
+  const livePlanName = liveSub ? plans.find(p => p.id === liveSub.planId)?.name : undefined;
   const discount: PlanDiscount | null = discountMode === 'auto' ? planDiscount : discountMode === 'removed' ? null : discountMode;
   const totals = useMemo(() => priceTotals(v.lines, discount, settings.salesTaxPct), [v.lines, discount, settings.salesTaxPct]);
 
@@ -303,15 +307,12 @@ export function PriceDocEditor({
           {v.customerType === 'in_app_client' ? (
             <div className="space-y-1.5">
               <Label className={labelCls}>Client *</Label>
-              <Select value={v.clientId} onValueChange={pickClient}>
-                <SelectTrigger className={inputCls}><SelectValue placeholder="Select client…" /></SelectTrigger>
-                <SelectContent className="bg-bg-elevated border-border-main">
-                  {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.clientCompany || c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {planDiscount && (
-                <p className="text-[11px] text-text-green flex items-center gap-1.5"><BadgePercent size={12} /> On the {planDiscount.planName} plan — {describeDiscount(planDiscount)}</p>
-              )}
+              <ClientPicker clients={clients} value={v.clientId} onChange={pickClient} subscriptions={subscriptions} plans={plans} />
+              {planDiscount ? (
+                <p className="text-[11px] text-text-green flex items-center gap-1.5"><BadgePercent size={12} /> On the {planDiscount.planName} plan — {describeDiscount(planDiscount)}, applied below</p>
+              ) : livePlanName ? (
+                <p className="text-[11px] text-text-muted flex items-center gap-1.5"><BadgePercent size={12} /> On the {livePlanName} plan, which has no labor or materials discount set (Service Plans).</p>
+              ) : null}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

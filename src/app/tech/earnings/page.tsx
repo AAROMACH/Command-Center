@@ -563,7 +563,7 @@ export default function TechEarningsPage() {
                                                     </TableCell>
                                                     <TableCell className="text-right font-mono font-semibold text-text-primary whitespace-nowrap" title={log.status === 'Approved' ? undefined : 'Estimated until payroll approves'}>
                                                         {log.status === 'Approved' ? '' : '≈ '}${logPay.total.toFixed(2)}
-                                                        <span className="block text-[10px] font-normal text-text-muted">Work ${logPay.jobPay.toFixed(2)} · Reimb. ${logPay.reimbursementPay.toFixed(2)}</span>
+                                                        <span className="block text-[10px] font-normal text-text-muted">Work ${logPay.jobPay.toFixed(2)} · Reimb. ${logPay.reimbursementPay.toFixed(2)}{logPay.adjustmentPay !== 0 ? ` · Adj. ${logPay.adjustmentPay > 0 ? '+' : '−'}$${Math.abs(logPay.adjustmentPay).toFixed(2)}` : ''}</span>
                                                     </TableCell>
                                                     <TableCell className="text-right pr-4">
                                                         {isApproved ? (

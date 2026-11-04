@@ -9,6 +9,7 @@ import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Tech
 import { externalWorkOrderId, displayWorkOrderNumber, fieldNationUrl, isImported } from '@/lib/work-order-identity';
 import { hasPermission } from '@/lib/permissions';
 import { computeWeeklyLogPay, effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
+import { adjustmentForText } from '@/lib/pay-adjustments';
 import { mergeJobs, weekOfValue, parseLocalDate } from '@/lib/jobs';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/empty-state';
@@ -707,8 +708,8 @@ export default function TechWeeklyLogPage() {
                                                 <span>{(log.items || []).length} {(log.items || []).length === 1 ? 'job' : 'jobs'}</span>
                                                 <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
                                                 <span className="text-text-green font-mono">${settlementOf(log).toFixed(2)}</span>
-                                                {(() => { const p = payOf(log); return p.reimbursementPay > 0 ? (
-                                                    <span className="hidden sm:inline font-mono">(${p.jobPay.toFixed(2)} work + ${p.reimbursementPay.toFixed(2)} reimb.)</span>
+                                                {(() => { const p = payOf(log); return p.reimbursementPay > 0 || p.adjustmentPay !== 0 ? (
+                                                    <span className="hidden sm:inline font-mono">(${p.jobPay.toFixed(2)} work + ${p.reimbursementPay.toFixed(2)} reimb.{p.adjustmentPay !== 0 ? ` ${p.adjustmentPay > 0 ? '+' : '−'} $${Math.abs(p.adjustmentPay).toFixed(2)} adj.` : ''})</span>
                                                 ) : null; })()}
                                             </div>
                                         </div>
@@ -874,7 +875,7 @@ export default function TechWeeklyLogPage() {
             {(() => {
                 const p = payOf(activeLog);
                 return (
-                    <div className="max-w-6xl mx-auto grid grid-cols-3 gap-2 sm:gap-3 text-left">
+                    <div className={cn('max-w-6xl mx-auto grid gap-2 sm:gap-3 text-left', p.adjustmentPay !== 0 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3')}>
                         <div className="rounded-xl border border-border-main bg-bg-secondary px-3 py-2.5">
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Work pay</p>
                             <p className="text-base sm:text-lg font-bold font-mono tabular-nums text-text-primary leading-tight">${p.jobPay.toFixed(2)}</p>
@@ -886,6 +887,14 @@ export default function TechWeeklyLogPage() {
                                 <p className="text-[10px] text-text-muted leading-tight mt-0.5">+${p.pendingReimbursement.toFixed(2)} waiting on payroll</p>
                             )}
                         </div>
+                        {p.adjustmentPay !== 0 && (
+                            <div className="rounded-xl border border-border-main bg-bg-secondary px-3 py-2.5">
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Pay adjustments</p>
+                                <p className={cn('text-base sm:text-lg font-bold font-mono tabular-nums leading-tight', p.adjustmentPay > 0 ? 'text-text-green' : 'text-text-red')}>
+                                    {p.adjustmentPay > 0 ? '+' : '−'}${Math.abs(p.adjustmentPay).toFixed(2)}
+                                </p>
+                            </div>
+                        )}
                         <div className="rounded-xl border border-green-border/40 bg-green-dim/40 px-3 py-2.5">
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-text-green">Total</p>
                             <p className="text-base sm:text-lg font-bold font-mono tabular-nums text-text-green leading-tight">${p.total.toFixed(2)}</p>
@@ -893,6 +902,28 @@ export default function TechWeeklyLogPage() {
                     </div>
                 );
             })()}
+
+            {/* PAY ADJUSTMENTS paid on this log — each names the job and week it corrects */}
+            {(activeLog.payAdjustments || []).length > 0 && (
+                <div className="max-w-6xl mx-auto rounded-xl border border-accent-gold/40 bg-accent-gold/5 p-3 sm:p-4 space-y-2 text-left">
+                    <p className="text-[12px] font-semibold text-text-primary flex items-center gap-1.5"><DollarSign size={13} className="text-accent-gold" /> Pay adjustments on this week</p>
+                    {(activeLog.payAdjustments || []).map(a => (
+                        <div key={a.id} className="rounded-lg border border-border-sub bg-bg-secondary p-2.5 flex items-start justify-between gap-3">
+                            <div className="min-w-0 space-y-0.5">
+                                <p className="text-[13px] font-semibold text-text-primary break-words">{adjustmentForText(a)}</p>
+                                {a.paidAmount != null && a.correctAmount != null && (
+                                    <p className="text-[12px] text-text-secondary font-mono">Paid ${a.paidAmount.toFixed(2)} → should be ${a.correctAmount.toFixed(2)}</p>
+                                )}
+                                {a.techNote && <p className="text-[12px] text-text-muted break-words">Your note: “{a.techNote}”</p>}
+                                {a.reason && <p className="text-[12px] text-text-muted break-words">Payroll: {a.reason}</p>}
+                            </div>
+                            <span className={cn('text-sm font-mono font-bold shrink-0', a.amount >= 0 ? 'text-text-green' : 'text-text-red')}>
+                                {a.amount >= 0 ? '+' : '−'}${Math.abs(a.amount).toFixed(2)}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {/* UNSET REASONS WARNING */}
             {!isLocked && counts.pending > 0 && (
@@ -983,6 +1014,7 @@ export default function TechWeeklyLogPage() {
                             techId={currentTechId}
                             onDisputeJob={isDisputeModeOn ? openJobDispute : undefined}
                             hasOpenPayrollDispute={disputedWorkOrderIds.has(item.workOrderId)}
+                            payAdjustedBy={myPayrollDisputes.find(d => d.weeklyLogId === activeLog.id && d.workOrderId === item.workOrderId && d.status === 'resolved' && !!d.adjustment)}
                         />
                     ))}
                     {(activeLog.items || []).length === 0 && (
@@ -1281,7 +1313,7 @@ export default function TechWeeklyLogPage() {
     );
 }
 
-function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId, onDisputeJob, hasOpenPayrollDispute }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, kind: DisputeKind, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null, onDisputeJob?: (item: WeeklyLogItem) => void, hasOpenPayrollDispute?: boolean }) {
+function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId, onDisputeJob, hasOpenPayrollDispute, payAdjustedBy }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, kind: DisputeKind, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null, onDisputeJob?: (item: WeeklyLogItem) => void, hasOpenPayrollDispute?: boolean, payAdjustedBy?: PayrollDispute }) {
     const job = workOrders.find(wo => wo.id === item.workOrderId);
     const itemReimbursements = reimbursements.filter(r => r.workOrderId === item.workOrderId);
     const settledReimbursement = itemReimbursements
@@ -1366,6 +1398,11 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                 {hasOpenPayrollDispute && (
                                     <Badge variant="destructive" className="text-[10px] uppercase tracking-wide flex items-center gap-1">
                                         <AlertTriangle size={10} /> Under review
+                                    </Badge>
+                                )}
+                                {payAdjustedBy?.adjustment && (
+                                    <Badge variant="active" className="text-[10px] uppercase tracking-wide flex items-center gap-1">
+                                        <DollarSign size={10} /> Pay adjusted
                                     </Badge>
                                 )}
                                 {settledReimbursement > 0 && (
@@ -1488,6 +1525,20 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                     )}
                 </div>
 
+                {payAdjustedBy?.adjustment && (() => {
+                    const a = payAdjustedBy.adjustment;
+                    return (
+                        <div className="mx-4 mb-3 rounded-lg border border-accent-gold/40 bg-accent-gold/5 p-2.5 space-y-0.5 text-left">
+                            <p className="text-[12px] font-semibold text-text-primary">
+                                Pay adjusted {a.amount >= 0 ? '+' : '−'}${Math.abs(a.amount).toFixed(2)}
+                                {a.paidAmount != null && a.correctAmount != null && <span className="font-mono font-normal text-text-secondary"> · paid ${a.paidAmount.toFixed(2)} → should be ${a.correctAmount.toFixed(2)}</span>}
+                            </p>
+                            <p className="text-[12px] text-text-muted">{a.status === 'queued' ? 'Will be paid on your next log.' : `Paid on your week of ${a.appliedWeekOf}.`}</p>
+                            {payAdjustedBy.notes && <p className="text-[12px] text-text-muted break-words">Your note: “{payAdjustedBy.notes}”</p>}
+                            {payAdjustedBy.resolution?.note && <p className="text-[12px] text-text-muted break-words">Payroll: {payAdjustedBy.resolution.note}</p>}
+                        </div>
+                    );
+                })()}
                 {itemReimbursements.length > 0 && (
                     <div className="px-5 pb-4 -mt-1 text-left space-y-1.5">
                         {itemReimbursements.map(r => (

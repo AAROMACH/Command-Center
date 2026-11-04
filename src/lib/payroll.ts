@@ -1,4 +1,4 @@
-import type { WeeklyLogItem, FinancialRecord, MissingAssignmentReport, WorkOrder } from './types';
+import type { WeeklyLogItem, FinancialRecord, MissingAssignmentReport, PayAdjustment, WorkOrder } from './types';
 
 // ── Field Nation platform fee ───────────────────────────────────────────────
 //
@@ -48,6 +48,7 @@ type SettlementLog = {
   items?: WeeklyLogItem[];
   reimbursements?: FinancialRecord[];
   missingAssignmentReports?: MissingAssignmentReport[];
+  payAdjustments?: PayAdjustment[];
 };
 
 /** One reimbursement the tech is paid on a log, net of the Field Nation fee. */
@@ -91,7 +92,9 @@ export type WeeklyLogPay = {
   jobPay: number;
   /** Approved reimbursements, net of the FN fee. */
   reimbursementPay: number;
-  /** jobPay + reimbursementPay — what the tech nets for the week. */
+  /** Pay corrections paid on this log (+ owed / − overpaid). */
+  adjustmentPay: number;
+  /** jobPay + reimbursementPay + adjustmentPay — what the tech nets for the week. */
   total: number;
   /** Reimbursements the tech requested that payroll hasn't reviewed (gross, not in total). */
   pendingReimbursement: number;
@@ -114,11 +117,15 @@ export function computeWeeklyLogPay(log: SettlementLog, jobsById: Map<string, Wo
     s + payCents(r.jobType === 'Imported' ? (r.finalPay || 0) : (r.pay || 0)), 0);
   const reimbCents = weeklyLogReimbursementLines(log).reduce((s, l) => s + payCents(l.net), 0);
   const pendingCents = (log.reimbursements || []).filter(r => r.status === 'pending').reduce((s, r) => s + payCents(Number(r.amount) || 0), 0);
+  const adjCents = (log.payAdjustments || []).reduce((s, a) => s + payCents(Number(a.amount) || 0), 0);
   const jobCents = itemPayCents + reportPayCents;
-  return { jobPay: jobCents / 100, reimbursementPay: reimbCents / 100, total: (jobCents + reimbCents) / 100, pendingReimbursement: pendingCents / 100 };
+  return {
+    jobPay: jobCents / 100, reimbursementPay: reimbCents / 100, adjustmentPay: adjCents / 100,
+    total: (jobCents + reimbCents + adjCents) / 100, pendingReimbursement: pendingCents / 100,
+  };
 }
 
-/** A weekly log's true settlement total (work pay + reimbursements). See computeWeeklyLogPay. */
+/** A weekly log's true settlement total (work pay + reimbursements + adjustments). See computeWeeklyLogPay. */
 export function computeWeeklyLogSettlement(log: SettlementLog, jobsById: Map<string, WorkOrder> = new Map()): number {
   return computeWeeklyLogPay(log, jobsById).total;
 }

@@ -1,9 +1,9 @@
 import 'server-only';
 
-import { getFirestore, type DocumentReference, type DocumentSnapshot, type Firestore } from 'firebase-admin/firestore';
+import { getFirestore, type DocumentReference, type DocumentSnapshot, type Firestore, type Transaction } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
 import { ID_PREFIXES } from '@/lib/constants';
-import type { DisputeKind, FinancialRecord, MissingAssignmentReport, WeeklyLog, WeeklyLogItem, WorkOrder } from '@/lib/types';
+import type { DisputeKind, FinancialRecord, MissingAssignmentReport, PayAdjustment, WeeklyLog, WeeklyLogItem, WorkOrder } from '@/lib/types';
 import { computeWeeklyLogSettlement } from '@/lib/payroll';
 import { TECH_DISPUTE_OPTIONS, disputeKindOf } from '@/lib/disputes';
 import { externalWorkOrderId } from '@/lib/work-order-identity';
@@ -62,8 +62,24 @@ export async function loadJob(jobId: string): Promise<WorkOrder | null> {
 
 const logsOf = (techId: string) => fs().collection('weeklyLogs').where('techId', '==', techId);
 const claimRef = (techId: string, weekOf: string) => fs().doc(`weeklyLogClaims/${techId}_${weekOf}`);
-const newDraft = (id: string, techId: string, weekOf: string, items: WeeklyLogItem[]) =>
-  ({ id, techId, weekOf, status: 'Draft', items, reimbursements: [], totalPayout: 0 });
+const newDraft = (id: string, techId: string, weekOf: string, items: WeeklyLogItem[], payAdjustments: PayAdjustment[] = []) =>
+  ({ id, techId, weekOf, status: 'Draft', items, reimbursements: [], totalPayout: 0, ...(payAdjustments.length ? { payAdjustments } : {}) });
+
+/**
+ * Pay adjustments payroll made while the tech had no open log (lib/pay-adjustments)
+ * go on the next Draft. Call inside the transaction that creates the Draft:
+ * reads first, then `mark` once the Draft is written.
+ */
+async function takeQueuedAdjustments(tx: Transaction, techId: string, logId: string, weekOf: string) {
+  const snap = await tx.get(fs().collection('payrollAdjustments').where('techId', '==', techId).where('status', '==', 'queued'));
+  const adjustments = snap.docs.map(d => ({ ...d.data(), id: d.id, status: 'applied', appliedLogId: logId, appliedWeekOf: weekOf } as PayAdjustment));
+  const mark = () => snap.docs.forEach(d => {
+    tx.update(d.ref, { status: 'applied', appliedLogId: logId, appliedWeekOf: weekOf });
+    const disputeId = d.data().disputeId as string | undefined;
+    if (disputeId) tx.update(fs().doc(`payrollDisputes/${disputeId}`), { 'adjustment.status': 'applied', 'adjustment.appliedLogId': logId, 'adjustment.appliedWeekOf': weekOf });
+  });
+  return { adjustments, mark };
+}
 
 // ── Creating logs / filing jobs ─────────────────────────────────────────────
 
@@ -76,8 +92,10 @@ export async function createDraft(techId: string, weekOf: string): Promise<'crea
     const c = await tx.get(claim);
     const claimedId = c.exists ? (c.data()?.logId as string) : null;
     if (claimedId && (await tx.get(fs().doc(`weeklyLogs/${claimedId}`))).exists) return 'exists';
+    const queued = await takeQueuedAdjustments(tx, techId, logId, weekOf);
     tx.set(claim, { techId, weekOf, logId });
-    tx.set(fs().doc(`weeklyLogs/${logId}`), newDraft(logId, techId, weekOf, []));
+    tx.set(fs().doc(`weeklyLogs/${logId}`), newDraft(logId, techId, weekOf, [], queued.adjustments));
+    queued.mark();
     return 'created';
   });
 }
@@ -109,8 +127,10 @@ async function claimAndFile(techId: string, weekOf: string, item: WeeklyLogItem,
       return 'updated';
     }
     if (!createIfClosed && (claimed?.exists || !existing.empty)) return 'closed';
+    const queued = await takeQueuedAdjustments(tx, techId, reservedId, weekOf);
     tx.set(claim, { techId, weekOf, logId: reservedId });
-    tx.set(fs().doc(`weeklyLogs/${reservedId}`), newDraft(reservedId, techId, weekOf, [item]));
+    tx.set(fs().doc(`weeklyLogs/${reservedId}`), newDraft(reservedId, techId, weekOf, [item], queued.adjustments));
+    queued.mark();
     return 'created';
   });
 }

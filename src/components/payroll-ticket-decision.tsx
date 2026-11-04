@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { ArrowRight, Check, Loader2, X } from 'lucide-react';
+import { ArrowRight, Check, Loader2, Search, Wrench, X } from 'lucide-react';
 import type { PayrollDispute, WeeklyLog, WorkOrder } from '@/lib/types';
 import { PAYROLL_TICKET_CARDS } from '@/lib/disputes';
 import { db, auth } from '@/lib/firebase';
@@ -42,6 +42,7 @@ export function PayrollTicketDecision({ dispute, canDecide, fallbackName, source
     jobsById?: Map<string, WorkOrder>;
 }) {
     const { toast } = useToast();
+    const [reviewing, setReviewing] = useState(false);
     const [choice, setChoice] = useState<'yes' | 'no' | null>(null);
     const [note, setNote] = useState('');
     const [paid, setPaid] = useState('');
@@ -49,7 +50,6 @@ export function PayrollTicketDecision({ dispute, canDecide, fallbackName, source
     const [target, setTarget] = useState<string | null | undefined>(undefined);
     const [busy, setBusy] = useState(false);
     const card = PAYROLL_TICKET_CARDS[dispute.reason] || PAYROLL_TICKET_CARDS.incorrect_pay;
-    const plain = (label: string) => label.replace(/^(Yes|No): /, '').replace(/^./, c => c.toUpperCase());
     const jobs = jobsById || new Map<string, WorkOrder>();
 
     useEffect(() => {
@@ -131,17 +131,29 @@ export function PayrollTicketDecision({ dispute, canDecide, fallbackName, source
         }
     };
 
+    // Step 1: one neutral Review button — nothing is decided yet.
+    if (!reviewing && !choice) {
+        return (
+            <Button variant="outline" className="h-10 px-5" disabled={!canDecide} onClick={() => setReviewing(true)}
+                title={canDecide ? undefined : 'You don\'t have permission to decide payroll disputes'}>
+                <Search size={14} className="mr-1.5" /> Review
+            </Button>
+        );
+    }
+
+    // Step 2: fix it (enter the amounts next) or decline (give a reason).
     if (!choice) {
         return (
             <div className="space-y-2 text-left">
                 <p className="text-[14px] font-semibold text-text-primary">{card.question}</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:max-w-lg">
-                    <Button className="h-10 whitespace-normal bg-text-green hover:bg-text-green/90 text-white" disabled={!canDecide} onClick={() => setChoice('yes')}>
-                        <Check size={14} className="mr-1.5 shrink-0" /> {card.yesLabel}
+                <div className="flex flex-col sm:flex-row gap-2 sm:max-w-xl">
+                    <Button className="h-10 whitespace-normal bg-text-green hover:bg-text-green/90 text-white" onClick={() => setChoice('yes')}>
+                        <Wrench size={14} className="mr-1.5 shrink-0" /> {card.yesLabel}
                     </Button>
-                    <Button variant="outline" className="h-10 whitespace-normal border-brand-red/50 text-text-red hover:bg-brand-red-dim" disabled={!canDecide} onClick={() => setChoice('no')}>
+                    <Button variant="outline" className="h-10 whitespace-normal border-brand-red/50 text-text-red hover:bg-brand-red-dim" onClick={() => setChoice('no')}>
                         <X size={14} className="mr-1.5 shrink-0" /> {card.noLabel}
                     </Button>
+                    <Button variant="ghost" className="h-10 text-text-muted" onClick={() => setReviewing(false)}>Cancel</Button>
                 </div>
             </div>
         );
@@ -183,7 +195,7 @@ export function PayrollTicketDecision({ dispute, canDecide, fallbackName, source
                 <Button variant="outline" className="h-10" disabled={busy} onClick={() => { setChoice(null); setNote(''); setCorrect(''); }}>Cancel</Button>
                 <Button className="h-10 whitespace-normal" disabled={busy || (choice === 'no' && !note.trim()) || (choice === 'yes' && !amountsOk)} onClick={save}>
                     {busy ? <Loader2 size={13} className="mr-1.5 animate-spin" /> : <Check size={13} className="mr-1.5" />}
-                    {choice === 'yes' ? (diff ? `Save · ${diff > 0 ? '+' : '−'}${money(Math.abs(diff))}` : 'Save') : plain(card.noLabel)}
+                    {choice === 'yes' ? (diff ? `Save · ${diff > 0 ? '+' : '−'}${money(Math.abs(diff))}` : 'Save') : 'Decline'}
                 </Button>
             </div>
         </div>

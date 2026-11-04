@@ -338,6 +338,8 @@ async function runTechJobAction(job: Job, action: TechJobAction, ctx: TechAction
       await updateDoc(ref, {
         status: 'in-progress',
         ...(activeTrip ? { activeTripLogId: activeTrip } : {}),
+        // First arrival — the client's request tracker shows "work started" at this time.
+        ...(!(live as { checkInAt?: string }).checkInAt ? { checkInAt: new Date().toISOString() } : {}),
         history: arrayUnion(historyEntry(`Arrival verified at ${now}. Status: ON SITE. Location: [${location}].`, user, 'note')),
       });
       // No admin alert per check-in (it emailed/texted every arrival): the
@@ -360,6 +362,7 @@ async function runTechJobAction(job: Job, action: TechJobAction, ctx: TechAction
       const completion = await ctx.completeAndFile(live, () => updateDoc(ref, {
         status: 'completed',
         activeTripLogId: null,
+        completedAt: new Date().toISOString(),
         // ui-check-ignore: weekly-log-audit matches this stored text
         history: arrayUnion(historyEntry(`Mission finalized at ${now}. Status: CLOSED. Location: [${location}].`, user, 'note')),
       }));

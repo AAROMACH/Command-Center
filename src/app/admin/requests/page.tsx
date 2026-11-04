@@ -1,4 +1,5 @@
 'use client';
+import { RequestTrackerById } from '@/components/request-tracker';
 import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
@@ -222,6 +223,8 @@ export default function RequestsPage() {
         reviewedBy: auth.currentUser?.uid || null,
         reviewedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        // The client's request tracker shows when it was approved.
+        ...(status === 'approved' ? { approvedAt: new Date().toISOString(), approvedBy: auth.currentUser?.displayName || 'Admin' } : {}),
         ...extra,
       });
       toast({ title: STATUS_LABELS[status] });
@@ -585,6 +588,13 @@ export default function RequestsPage() {
                 </div>
               )}
 
+              {selected.category === 'service_ticket' && selected.rawCollection === 'clientRequests' && (
+                <div className="border-t border-border-sub pt-4 space-y-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Progress (what the client sees)</p>
+                  <RequestTrackerById requestId={selected.rawId} audience="staff" />
+                </div>
+              )}
+
               {/* Actions */}
               {canManage && (
                 <div className="border-t border-border-sub pt-4 space-y-2">
@@ -615,7 +625,7 @@ export default function RequestsPage() {
                     {selected.category === 'service_ticket' && selected.status === 'approved' && selected.rawCollection === 'clientRequests' && (
                       <Link href="/admin/dispatch" className="col-span-2">
                         <Button size="sm" variant="outline" className="text-[12px] font-semibold h-8 w-full">
-                          <Wrench size={12} className="mr-1.5" />Convert in Dispatch<ExternalLink size={10} className="ml-1.5" />
+                          <Wrench size={12} className="mr-1.5" />Job or quote — in Dispatch<ExternalLink size={10} className="ml-1.5" />
                         </Button>
                       </Link>
                     )}

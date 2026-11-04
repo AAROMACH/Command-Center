@@ -25,6 +25,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DocKindHeader, DOC_BRAND } from '@/components/price-book-picker';
 import { canEditQuote, quoteDiscount, quoteToEditor, saveQuoteEdits } from '@/lib/quote-actions';
+import { createProjectFromQuote } from '@/lib/project-billing';
 import { SiteWalkWizard } from '@/components/site-walk/site-walk-wizard';
 import { SiteWalkReview } from '@/components/site-walk/site-walk-review';
 import { SiteWalkList, useSiteWalks } from '@/components/site-walk/site-walk-list';
@@ -312,12 +313,18 @@ function QuoteDetailDialog({
     }
   };
 
-  const handleConvert = async (target: 'work_order' | 'project') => {
-    const field = target === 'work_order' ? 'convertedToWorkOrderId' : 'convertedToProjectId';
-    const status: QuoteStatus = target === 'work_order' ? 'converted_to_work_order' : 'converted_to_project';
-    const refId = `${target.replace('_', '-')}-${Date.now()}`;
-    await act({ status, [field]: refId });
-    toast({ title: `Quote converted to ${target.replace('_', ' ')}`, description: `Ref: ${refId}` });
+  // Approved quote → its project (quotes are for projects; jobs go straight
+  // from a request to dispatch). Creates the project for real.
+  const handleConvertToProject = async () => {
+    setActing(true);
+    try {
+      const projectId = await createProjectFromQuote(quote, auth.currentUser?.uid || '');
+      toast({ title: 'Project created', description: `${projectId} — budget and hours from this quote. Staff it on the project page.` });
+      onUpdated();
+      window.location.href = paths.project(projectId) || `/admin/projects/${projectId}`;
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Could not create the project', description: e.message });
+    } finally { setActing(false); }
   };
 
   return (
@@ -499,14 +506,12 @@ function QuoteDetailDialog({
               )}
               {quote.status === 'approved' && (
                 <>
-                  <Button size="sm" variant="outline" className="h-8"
-                    onClick={() => handleConvert('work_order')} disabled={acting || !!quote.convertedToWorkOrderId}>
-                    <ArrowRight size={14} className="mr-1.5" />Convert to job
-                  </Button>
-                  <Button size="sm" variant="outline" className="h-8"
-                    onClick={() => handleConvert('project')} disabled={acting || !!quote.convertedToProjectId}>
+{!paths.inSalesPortal && (
+                  <Button size="sm" className="h-8 col-span-2 bg-brand-blue hover:bg-brand-blue/90 text-white"
+                    onClick={handleConvertToProject} disabled={acting || (!!quote.convertedToProjectId && !quote.convertedToProjectId.startsWith('project-'))}>
                     <ArrowRight size={14} className="mr-1.5" />Convert to project
                   </Button>
+                  )}
                   {onCreateInvoice && <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white col-span-2"
                     onClick={() => onCreateInvoice(quote)} disabled={acting || !!quote.convertedToInvoiceId}>
                     <ArrowRight size={14} className="mr-1.5" />Create invoice

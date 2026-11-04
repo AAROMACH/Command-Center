@@ -503,6 +503,14 @@ export type ServiceRequest = {
   closedAt?: string;
   convertedId?: string;
   conversionType?: 'assignment' | 'project';
+  /** Request tracker (lib/request-tracker). */
+  clientId?: string | null;
+  createdAt?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  /** Project track: the quote made from this request. */
+  quoteId?: string | null;
+  quotedAt?: string;
 };
 
 // New service request form (public-facing, saves to `serviceRequests` collection)

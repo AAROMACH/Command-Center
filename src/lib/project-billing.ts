@@ -140,3 +140,44 @@ export async function createProjectInvoice(project: Project, pricing: PricingSet
   if (quote) await updateDoc(doc(db, 'quotes', quote.id), { status: 'converted_to_invoice', convertedToInvoiceId: id, updatedAt: new Date().toISOString() });
   return id;
 }
+
+/**
+ * An approved quote becomes its project (it used to stamp a made-up id and
+ * create nothing). The project is linked to the quote — budget and hours come
+ * from it, parts added later bill on it, and its invoice is drafted from it —
+ * and, when the quote came from a client request, the request moves on to
+ * "Project underway" in the client's tracker.
+ */
+export async function createProjectFromQuote(quote: Quote, by: string): Promise<string> {
+  if (quote.convertedToProjectId && !quote.convertedToProjectId.startsWith('project-')) return quote.convertedToProjectId;
+  const now = new Date().toISOString();
+  const requestId = (quote as Quote & { requestId?: string | null }).requestId || null;
+  const req = requestId ? await getDoc(doc(db, 'clientRequests', requestId)).catch(() => null) : null;
+  const reqData = req?.exists() ? req.data() as { location?: string } : null;
+  const est = quoteEstimate(quote);
+  const id = await createDocId(ID_PREFIXES.PROJECT);
+  const project = {
+    id,
+    name: quote.title || `${quote.customerCompany || quote.customerName} project`,
+    client: quote.customerCompany || quote.customerName || '',
+    clientId: quote.clientId || null,
+    location: reqData?.location || '',
+    status: 'active',
+    startDate: now.slice(0, 10),
+    estimatedDuration: '',
+    scope: quote.scopeSummary || quote.description || '',
+    assignedTechnicianIds: [], team: [],
+    phases: [{ id: 'ph-1', phaseNumber: 1, name: 'Site prep', tasks: [] }],
+    siteHazardNotes: [], actualBudget: 0, actualHours: 0,
+    sourceQuoteId: quote.id,
+    ...(est ? { projectBudget: est.total, estimatedHours: est.laborHours } : {}),
+    requestId,
+    createdBy: by, createdAt: now, updatedAt: now,
+  };
+  await setDoc(doc(db, 'projects', id), JSON.parse(JSON.stringify(project)));
+  await updateDoc(doc(db, 'quotes', quote.id), { status: 'converted_to_project', convertedToProjectId: id, updatedAt: now });
+  if (requestId) {
+    await updateDoc(doc(db, 'clientRequests', requestId), { status: 'closed', convertedId: id, conversionType: 'project', closedAt: now }).catch(() => {});
+  }
+  return id;
+}

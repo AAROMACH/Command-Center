@@ -51,6 +51,8 @@ export async function saveInvoiceFromEditor(r: PriceDocResult, existing: Invoice
     planDiscount: r.discount,
     tax: r.totals.taxAmount,
     total: r.totals.total,
+    // When it was marked paid (the request tracker's last step).
+    ...(r.status === 'paid' && existing?.status !== 'paid' ? { paidAt: new Date().toISOString() } : {}),
     ...extra,
   };
   // Firestore rejects undefined fields.

@@ -98,6 +98,13 @@ export function planDiscountFor(clientId: string | null | undefined, subscriptio
   return { planId: plan.id, planName: plan.name, laborPct, materialsPct };
 }
 
+/** The discount's own line on a quote / invoice: "Gold plan discount (10% off labor)". */
+export function discountLineLabel(d: Partial<PlanDiscount> | null | undefined): string {
+  if (!d?.planName) return 'Discount';
+  const what = describeDiscount({ planId: '', planName: d.planName, laborPct: d.laborPct || 0, materialsPct: d.materialsPct || 0 });
+  return `${d.planName} plan discount${what ? ` (${what})` : ''}`;
+}
+
 export function describeDiscount(d: PlanDiscount): string {
   return [d.laborPct ? `${d.laborPct}% off labor` : '', d.materialsPct ? `${d.materialsPct}% off materials` : ''].filter(Boolean).join(', ');
 }

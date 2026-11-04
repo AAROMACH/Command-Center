@@ -14,7 +14,7 @@ import { ID_PREFIXES } from '@/lib/constants';
 import { syncLeadOnQuoteCreated } from '@/lib/crm-actions';
 import type { Lead, SiteSurvey, Quote, QuoteStatus } from '@/lib/types';
 import { PriceDocEditor, type PriceDocResult, type PriceDocValues } from '@/components/price-doc-editor';
-import { fromQuoteLines, toQuoteLines, type PlanDiscount } from '@/lib/price-lines';
+import { discountLineLabel, fromQuoteLines, toQuoteLines, type PlanDiscount } from '@/lib/price-lines';
 import { saveInvoiceFromEditor } from '@/lib/invoice-actions';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { isClient } from '@/lib/permissions';
@@ -385,7 +385,7 @@ function QuoteDetailDialog({
                 </div>
                 {(quote.discountAmount ?? 0) > 0 && (
                   <div className="flex justify-between text-[11px] text-text-green">
-                    <span>{(quote as Quote & { planDiscount?: PlanDiscount | null }).planDiscount?.planName ? `${(quote as Quote & { planDiscount?: PlanDiscount | null }).planDiscount!.planName} plan discount` : 'Discount'}</span>
+                    <span>{discountLineLabel((quote as Quote & { planDiscount?: PlanDiscount | null }).planDiscount)}</span>
                     <span>−{fmtMoney(quote.discountAmount ?? 0)}</span>
                   </div>
                 )}

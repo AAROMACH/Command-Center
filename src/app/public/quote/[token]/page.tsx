@@ -1,5 +1,6 @@
 'use client';
 
+import { discountLineLabel } from '@/lib/price-lines';
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import type { Quote, QuoteOptionalGroup } from '@/lib/types';
@@ -249,7 +250,7 @@ export default function PublicQuotePage() {
                 </div>
                 {(quote.discountAmount ?? 0) > 0 && (
                   <div className="flex justify-between text-[12px] text-text-green">
-                    <span>{(quote as { planDiscount?: { planName?: string } | null }).planDiscount?.planName ? `${(quote as { planDiscount?: { planName?: string } | null }).planDiscount!.planName} plan discount` : 'Discount'}</span>
+                    <span>{discountLineLabel((quote as { planDiscount?: { planName?: string; laborPct?: number; materialsPct?: number } | null }).planDiscount)}</span>
                     <span className="tabular-nums">−{fmtMoney(quote.discountAmount ?? 0)}</span>
                   </div>
                 )}

@@ -15,6 +15,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ invoice: {
     invoiceNumber: i.invoiceNumber, clientName: i.clientName, issueDate: i.issueDate, dueDate: i.dueDate, status: i.status,
     lineItems: (i.lineItems || []).map((l: any) => ({ description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, category: l.category, multiplier: l.multiplier })),
-    subtotal: i.subtotal, discountAmount: i.discountAmount || 0, planName: i.planDiscount?.planName || null, tax: i.tax, total: i.total, notes: i.notes || '',
+    subtotal: i.subtotal, discountAmount: i.discountAmount || 0, planName: i.planDiscount?.planName || null, laborPct: i.planDiscount?.laborPct || 0, materialsPct: i.planDiscount?.materialsPct || 0, tax: i.tax, total: i.total, notes: i.notes || '',
   } });
 }

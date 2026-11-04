@@ -1,4 +1,5 @@
 'use client';
+import { discountLineLabel } from '@/lib/price-lines';
 import { useSessionState } from '@/hooks/use-session-state';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -247,12 +248,16 @@ export default function ClientQuotesPage() {
                                             <TableCell className="text-right font-mono text-xs font-bold">{fmtCurrency(item.total)}</TableCell>
                                         </TableRow>
                                     ))}
-                                    {(quote.discountAmount ?? 0) > 0 && (
-                                        <TableRow className="border-border-sub hover:bg-transparent">
-                                            <TableCell colSpan={4} className="text-right text-[10px] font-semibold uppercase tracking-wider text-text-muted">Discount</TableCell>
-                                            <TableCell className="text-right font-mono text-xs text-text-muted">-{fmtCurrency(quote.discountAmount ?? 0)}</TableCell>
+                                    {(quote.discountAmount ?? 0) > 0 && (<>
+                                        <TableRow className="border-t-2 border-border-sub hover:bg-transparent">
+                                            <TableCell colSpan={4} className="text-right text-[10px] font-semibold uppercase tracking-wider text-text-muted">Subtotal</TableCell>
+                                            <TableCell className="text-right font-mono text-xs">{fmtCurrency(quote.subtotal ?? 0)}</TableCell>
                                         </TableRow>
-                                    )}
+                                        <TableRow className="border-border-sub hover:bg-transparent">
+                                            <TableCell colSpan={4} className="text-right text-[11px] font-semibold text-text-green">{discountLineLabel((quote as { planDiscount?: { planName?: string; laborPct?: number; materialsPct?: number } | null }).planDiscount)}</TableCell>
+                                            <TableCell className="text-right font-mono text-xs text-text-green">−{fmtCurrency(quote.discountAmount ?? 0)}</TableCell>
+                                        </TableRow>
+                                    </>)}
                                     {(quote.taxAmount ?? 0) > 0 && (
                                         <TableRow className="border-border-sub hover:bg-transparent">
                                             <TableCell colSpan={4} className="text-right text-[10px] font-semibold uppercase tracking-wider text-text-muted">Tax</TableCell>

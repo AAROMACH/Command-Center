@@ -1,5 +1,6 @@
 'use client';
 
+import { discountLineLabel } from '@/lib/price-lines';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
@@ -7,7 +8,7 @@ import { Loader2 } from 'lucide-react';
 type PublicInvoice = {
   invoiceNumber: string; clientName: string; issueDate: string; dueDate: string; status: string;
   lineItems: { description: string; quantity: number; unitPrice: number; category: string; multiplier?: number }[];
-  subtotal: number; discountAmount: number; planName: string | null; tax: number; total: number; notes: string;
+  subtotal: number; discountAmount: number; planName: string | null; laborPct?: number; materialsPct?: number; tax: number; total: number; notes: string;
 };
 
 const money = (n: number) => `$${(Number(n) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
@@ -62,7 +63,7 @@ export default function PublicInvoicePage() {
         </div>
         <div className="ml-auto w-full max-w-xs space-y-1 text-[13px] tabular-nums">
           <div className="flex justify-between"><span className="text-text-muted">Subtotal</span><span>{money(inv.subtotal)}</span></div>
-          {inv.discountAmount > 0 && <div className="flex justify-between"><span className="text-text-muted">{inv.planName ? `${inv.planName} plan discount` : 'Discount'}</span><span>−{money(inv.discountAmount)}</span></div>}
+          {inv.discountAmount > 0 && <div className="flex justify-between"><span className="text-text-green">{discountLineLabel(inv.planName ? { planName: inv.planName, laborPct: inv.laborPct, materialsPct: inv.materialsPct } : null)}</span><span>−{money(inv.discountAmount)}</span></div>}
           {inv.tax > 0 && <div className="flex justify-between"><span className="text-text-muted">Tax</span><span>{money(inv.tax)}</span></div>}
           <div className="flex justify-between border-t border-border-sub pt-1 text-[15px] font-bold"><span>Total</span><span>{money(inv.total)}</span></div>
         </div>

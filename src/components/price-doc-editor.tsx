@@ -16,7 +16,7 @@ import { isClient } from '@/lib/permissions';
 import { useAllSubscriptions, usePricingSettings, useServicePlans } from '@/hooks/use-billing';
 import { describeFactor, formatMoney, isLiveSubscription } from '@/lib/billing';
 import {
-  describeDiscount, lineAmount, materialPrice, planDiscountFor, priceTotals,
+  describeDiscount, discountLineLabel, lineAmount, materialPrice, planDiscountFor, priceTotals,
   type PlanDiscount, type PriceBookItem, type PriceLine, type PriceSection, type PriceTotals,
 } from '@/lib/price-lines';
 import type { Material, Project, QuoteOptionalGroup, QuoteOptionItem, Technician, WorkOrder } from '@/lib/types';
@@ -425,11 +425,12 @@ export function PriceDocEditor({
             <div className="rounded-lg bg-bg-secondary border border-border-sub p-4 space-y-2 text-[12px]">
               <div className="flex justify-between"><span className="text-text-muted">Labor</span><span className="font-mono">{formatMoney(totals.laborSubtotal)}</span></div>
               <div className="flex justify-between"><span className="text-text-muted">Materials</span><span className="font-mono">{formatMoney(totals.materialsSubtotal)}</span></div>
+              <div className="flex justify-between border-t border-border-sub pt-2"><span className="font-semibold text-text-primary">Subtotal</span><span className="font-mono">{formatMoney(totals.subtotal)}</span></div>
               {discount ? (
                 <div className="flex justify-between items-start gap-2 text-text-green">
                   <span className="flex flex-col">
-                    <span className="flex items-center gap-1.5"><BadgePercent size={12} /> {discount.planName} plan discount</span>
-                    <span className="text-[10px] text-text-muted">{describeDiscount(discount)} ·{' '}
+                    <span className="flex items-center gap-1.5"><BadgePercent size={12} /> {discountLineLabel(discount)}</span>
+                    <span className="text-[10px] text-text-muted">Shown as its own line on the {kind} ·{' '}
                       <button type="button" className="underline hover:text-brand-red" onClick={() => setDiscountMode('removed')}>remove</button></span>
                   </span>
                   <span className="font-mono">−{formatMoney(totals.discountAmount)}</span>

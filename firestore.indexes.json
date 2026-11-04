@@ -2,6 +2,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "invoices",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workOrderIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "clientName", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "projectDocuments",
       "queryScope": "COLLECTION",
       "fields": [

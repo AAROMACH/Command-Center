@@ -1,4 +1,5 @@
 'use client';
+import { JobInvoicePanel } from '@/components/job-invoice';
 import { logDisplayStatus } from '@/lib/weekly-log-core';
 import { flagRemovedHelperEntries } from '@/lib/helper-progress';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
@@ -527,6 +528,9 @@ export default function AssignmentDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Client invoice (manual jobs) ─────────────────────────────────── */}
+      <JobInvoicePanel job={{ ...assignment, id: assignmentId } as WorkOrder} />
 
       {/* Team ───────────────────────────────────────────────────────────── */}
       <div className="bg-bg-secondary rounded-xl border border-border-sub p-4">

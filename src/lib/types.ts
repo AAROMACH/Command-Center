@@ -940,6 +940,10 @@ export type Invoice = {
   planDiscount?: { planId: string; planName: string; laborPct: number; materialsPct: number } | null;
   /** The quote this invoice was created from. */
   quoteId?: string | null;
+  /** Weekly/monthly roll-up: every job this invoice bills (lib/job-invoicing). */
+  workOrderIds?: string[];
+  sentAt?: string | null;
+  paidAt?: string | null;
   /** Outside customer (no client account). */
   customerEmail?: string | null;
 };

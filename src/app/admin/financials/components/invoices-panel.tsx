@@ -14,6 +14,7 @@ import { PriceDocEditor, type PriceDocResult } from '@/components/price-doc-edit
 import { deleteInvoice, invoiceToEditor, saveInvoiceFromEditor } from '@/lib/invoice-actions';
 import { useAuth } from '@/contexts/auth-context';
 import { isSuperAdmin } from '@/lib/permissions';
+import { BillJobsDialog } from '@/components/job-invoice';
 import { parseLocalDate } from '@/lib/jobs';
 import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
@@ -49,6 +50,7 @@ export function InvoicesPanel({ search = '', onResetSearch, hideNewButton = fals
     const [saving, setSaving] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [deleting, setDeleting] = useState(false);
+    const [billJobsOpen, setBillJobsOpen] = useState(false);
     const { toast } = useToast();
     // Firestore rules: only a super admin can delete an invoice.
     const { user } = useAuth();
@@ -128,7 +130,10 @@ export function InvoicesPanel({ search = '', onResetSearch, hideNewButton = fals
                         <CardTitle className="text-base">Client invoices</CardTitle>
                         <CardDescription>Create and track every client invoice.</CardDescription>
                     </div>
-                    {!hideNewButton && <Button onClick={() => { setSelectedInvoice(null); setIsEditorOpen(true); }} className="h-9 px-4"><Plus size={14} className="mr-2"/>New invoice</Button>}
+                    <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" className="h-9 px-4" onClick={() => setBillJobsOpen(true)} title="One invoice for a client's completed jobs in a week or month">Bill completed jobs</Button>
+                        {!hideNewButton && <Button onClick={() => { setSelectedInvoice(null); setIsEditorOpen(true); }} className="h-9 px-4"><Plus size={14} className="mr-2"/>New invoice</Button>}
+                    </div>
                 </CardHeader>
                 <div className="flex flex-wrap items-center gap-2 px-6 pb-4">
                     <Select value={invStatusFilter} onValueChange={setInvStatusFilter}>
@@ -187,6 +192,7 @@ export function InvoicesPanel({ search = '', onResetSearch, hideNewButton = fals
                     <div className="px-4"><ListPager pager={invoicePager} noun="invoices" /></div>
                 </CardContent>
             </Card>
+            <BillJobsDialog open={billJobsOpen} onClose={() => setBillJobsOpen(false)} />
             <PriceDocEditor
                 open={isEditorOpen}
                 onClose={() => setIsEditorOpen(false)}

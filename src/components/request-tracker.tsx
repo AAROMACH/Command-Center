@@ -50,11 +50,15 @@ export function useRequestLinks(req: ServiceRequest | null, company?: string | n
   const invValue = project?.id || job?.id || null;
   useEffect(() => {
     if (!invField || !invValue) { setInvoice(null); return; }
-    return onSnapshot(query(collection(db, 'invoices'), ...scoped(where(invField, '==', invValue))), s => {
-      const live = s.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)).filter(i => i.status !== 'void')
-        .sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
-      setInvoice(live[0] || null);
-    }, () => setInvoice(null));
+    // A job is billed on its own invoice, or with others on a weekly/monthly one.
+    const found: Record<string, Invoice[]> = { one: [], many: [] };
+    const pick = () => setInvoice([...found.one, ...found.many].filter(i => i.status !== 'void')
+      .sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''))[0] || null);
+    const listen = (key: 'one' | 'many', c: QueryConstraint) => onSnapshot(query(collection(db, 'invoices'), ...scoped(c)),
+      s => { found[key] = s.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)); pick(); }, () => { found[key] = []; pick(); });
+    const subs = [listen('one', where(invField, '==', invValue))];
+    if (invField === 'workOrderId') subs.push(listen('many', where('workOrderIds', 'array-contains', invValue)));
+    return () => subs.forEach(u => u());
   }, [invField, invValue, company]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { quote, project, job, invoice };

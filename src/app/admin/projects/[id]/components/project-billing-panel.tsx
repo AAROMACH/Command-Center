@@ -2,12 +2,20 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { FileText, Link2, Loader2, Package, Plus, Receipt, Trash2, Unlink } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit3, FileText, Link2, Loader2, Package, Plus, Receipt, Trash2, Unlink } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { usePricingSettings } from '@/hooks/use-billing';
 import { materialPrice } from '@/lib/price-lines';
 import { addProjectPart, createProjectInvoice, linkQuoteToProject, removeProjectPart, unlinkQuote } from '@/lib/project-billing';
+import { canEditQuote, quoteDiscount, quoteToEditor, saveQuoteEdits } from '@/lib/quote-actions';
+import { deleteInvoice, invoiceToEditor, saveInvoiceFromEditor } from '@/lib/invoice-actions';
+import { PriceDocEditor, type PriceDocResult } from '@/components/price-doc-editor';
+import { DOC_BRAND } from '@/components/price-book-picker';
+import { StatusBadge } from '@/components/status-badge';
+import { useAuth } from '@/contexts/auth-context';
+import { isSuperAdmin } from '@/lib/permissions';
+import { statusLabel } from '@/lib/status-styles';
 import { quoteEstimate } from '@/lib/project-economics';
 import type { Invoice, Material, Project, Quote } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -42,6 +50,48 @@ export function ProjectBillingPanel({ project }: { project: Project }) {
     const quote = quotes.find(q => q.id === project.sourceQuoteId) || null;
     const est = quoteEstimate(quote);
     const by = auth.currentUser?.displayName || 'Admin';
+    const { user } = useAuth();
+
+    // ── Edit the linked quote (same quote as on Quotes & Invoices) ──
+    const [quoteEditOpen, setQuoteEditOpen] = useState(false);
+    const [showLines, setShowLines] = useState(false);
+    const [savingQuote, setSavingQuote] = useState(false);
+    const doSaveQuote = async (r: PriceDocResult) => {
+        if (!quote) return;
+        if (!r.title) { toast({ variant: 'destructive', title: 'Title required' }); return; }
+        setSavingQuote(true);
+        try {
+            await saveQuoteEdits(quote, r, project);
+            toast({ title: `Quote ${quote.quoteNumber} updated`, description: 'The project budget follows the new quote total.' });
+            setQuoteEditOpen(false);
+        } catch (e: any) { toast({ variant: 'destructive', title: 'Could not save quote', description: e.message }); }
+        finally { setSavingQuote(false); }
+    };
+
+    // ── Edit / delete the invoice ──
+    const [invoiceEditOpen, setInvoiceEditOpen] = useState(false);
+    const [savingInvoice, setSavingInvoice] = useState(false);
+    const [deletingInvoice, setDeletingInvoice] = useState(false);
+    const doSaveInvoice = async (r: PriceDocResult) => {
+        if (!invoice) return;
+        setSavingInvoice(true);
+        try {
+            await saveInvoiceFromEditor(r, invoice);
+            toast({ title: 'Invoice updated', description: `Invoice ${r.invoiceNumber} was saved.` });
+            setInvoiceEditOpen(false);
+        } catch (e: any) { toast({ variant: 'destructive', title: 'Save failed', description: e.message }); }
+        finally { setSavingInvoice(false); }
+    };
+    const doDeleteInvoice = async () => {
+        if (!invoice || !confirm(`Delete invoice ${invoice.invoiceNumber}? This can't be undone. The project can be invoiced again.`)) return;
+        setDeletingInvoice(true);
+        try {
+            await deleteInvoice(invoice);
+            toast({ title: 'Invoice deleted' });
+            setInvoiceEditOpen(false);
+        } catch (e: any) { toast({ variant: 'destructive', title: 'Delete failed', description: e?.code === 'permission-denied' ? 'Only a super admin can delete invoices.' : e.message }); }
+        finally { setDeletingInvoice(false); }
+    };
 
     // ── Link a quote ──
     const [linkOpen, setLinkOpen] = useState(false);
@@ -72,13 +122,17 @@ export function ProjectBillingPanel({ project }: { project: Project }) {
     // ── Add materials & parts ──
     const [partOpen, setPartOpen] = useState(false);
     const [partSearch, setPartSearch] = useState('');
+    const [partCategory, setPartCategory] = useState('all');
     const [partId, setPartId] = useState('');
     const [qty, setQty] = useState('1');
     const partChoices = useMemo(() => {
-        const q = partSearch.trim().toLowerCase();
-        return materials.filter(m => m.status !== 'inactive' && (!q || `${m.name} ${m.category} ${m.sku || ''}`.toLowerCase().includes(q)))
-            .sort((a, b) => a.name.localeCompare(b.name)).slice(0, 50);
-    }, [materials, partSearch]);
+        const words = partSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        return materials.filter(m => m.status !== 'inactive'
+                && (partCategory === 'all' || (m.category || 'Other') === partCategory)
+                && words.every(w => `${m.name} ${m.category} ${m.sku || ''}`.toLowerCase().includes(w)))
+            .sort((a, b) => a.name.localeCompare(b.name)).slice(0, 100);
+    }, [materials, partSearch, partCategory]);
+    const partCategories = useMemo(() => [...new Set(materials.filter(m => m.status !== 'inactive').map(m => m.category || 'Other'))].sort(), [materials]);
     const chosen = materials.find(m => m.id === partId);
     const doAddPart = async () => {
         if (!chosen) return;
@@ -109,10 +163,19 @@ export function ProjectBillingPanel({ project }: { project: Project }) {
             <h3 className="field-group-title !mb-0 font-bold"><Receipt className="text-brand-red h-4 w-4" /> Quote, parts & invoice</h3>
 
             {/* Quote */}
-            <div className="rounded-lg border border-border-sub bg-bg-primary p-3 space-y-2">
+            <div className="rounded-lg border border-border-sub border-l-4 border-l-brand-blue bg-bg-primary p-3 space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-[12px] font-semibold text-text-primary flex items-center gap-1.5"><FileText size={13} /> Quote</p>
+                    <p className={cn('text-[12px] font-semibold flex items-center gap-1.5', DOC_BRAND.quote.text)}>
+                        <FileText size={13} /> Quote
+                        {quote && <Badge variant="info" className="h-4 px-1.5 text-[10px] uppercase">{statusLabel(quote.status)}</Badge>}
+                    </p>
                     <div className="flex gap-1.5">
+                        {quote && (
+                            <Button size="sm" variant="outline" className="h-8 border-brand-blue/40 text-brand-blue hover:bg-brand-blue/5" onClick={() => setQuoteEditOpen(true)}
+                                disabled={!canEditQuote(quote)} title={canEditQuote(quote) ? 'Edit the quote — lines, prices, scope' : 'Already invoiced — edit the invoice instead'}>
+                                <Edit3 size={13} className="mr-1" /> Edit quote
+                            </Button>
+                        )}
                         <Button size="sm" variant="outline" className="h-8" onClick={() => setLinkOpen(true)}><Link2 size={13} className="mr-1" /> {quote ? 'Change' : 'Link a quote'}</Button>
                         {quote && <Button size="sm" variant="ghost" className="h-8 text-text-muted" onClick={() => confirm('Unlink this quote? The budget stays as it is.') && unlinkQuote(project)}><Unlink size={13} /></Button>}
                     </div>
@@ -125,6 +188,30 @@ export function ProjectBillingPanel({ project }: { project: Project }) {
                         <div><p className="text-text-muted">Total</p><p className="font-mono font-semibold text-text-green">{fmt(est.total)}</p></div>
                     </div>
                 ) : <p className="text-[12px] text-text-muted">No quote linked. Link one to set the budget, estimated hours and materials.</p>}
+                {quote && (
+                    <div>
+                        <button type="button" onClick={() => setShowLines(v => !v)} className="text-[12px] text-text-muted hover:text-text-primary flex items-center gap-1">
+                            {showLines ? <ChevronDown size={13} /> : <ChevronRight size={13} />} {quote.title || 'Untitled'} · {quote.lineItems.length} line{quote.lineItems.length === 1 ? '' : 's'}
+                        </button>
+                        {showLines && (
+                            <div className="mt-1.5 rounded-md border border-border-sub divide-y divide-border-sub">
+                                {quote.lineItems.map(l => {
+                                    const fromProject = (project.addedParts || []).some(p => p.quoteLineId === l.id);
+                                    return (
+                                        <div key={l.id} className="flex items-center justify-between gap-3 px-2.5 py-1.5 text-[12px]">
+                                            <span className="min-w-0 break-words">
+                                                {l.quantity} × {l.name}
+                                                {fromProject && <Badge variant="outline" className="ml-1.5 h-4 px-1 text-[10px]">added on job</Badge>}
+                                            </span>
+                                            <span className="font-mono shrink-0">{fmt(l.total)}</span>
+                                        </div>
+                                    );
+                                })}
+                                {!quote.lineItems.length && <p className="px-2.5 py-2 text-[12px] text-text-muted">No lines yet.</p>}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Parts added on the project */}
@@ -152,14 +239,19 @@ export function ProjectBillingPanel({ project }: { project: Project }) {
             </div>
 
             {/* Invoice */}
-            <div className="rounded-lg border border-border-sub bg-bg-primary p-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="rounded-lg border border-border-sub border-l-4 border-l-text-green bg-bg-primary p-3 flex flex-wrap items-center justify-between gap-2">
                 <div className="text-[12px]">
-                    <p className="font-semibold text-text-primary flex items-center gap-1.5"><Receipt size={13} /> Invoice</p>
+                    <p className={cn('font-semibold flex items-center gap-1.5', DOC_BRAND.invoice.text)}><Receipt size={13} /> Invoice</p>
                     {invoice ? (
-                        <p className="text-text-muted mt-0.5">{invoice.invoiceNumber} · <span className="font-mono">{fmt(invoice.total)}</span> · <Badge variant="outline" className="h-4 px-1.5 text-[10px] uppercase">{invoice.status}</Badge></p>
+                        <p className="text-text-muted mt-0.5 flex items-center gap-1.5 flex-wrap">{invoice.invoiceNumber} · <span className="font-mono">{fmt(invoice.total)}</span> · <StatusBadge kind="invoice" value={invoice.status} /></p>
                     ) : <p className="text-text-muted mt-0.5">{project.status === 'completed' ? 'Not created yet.' : 'Drafted automatically when the project is completed.'}</p>}
                 </div>
-                {invoice ? <SendInvoiceButton invoice={invoice} /> : (
+                {invoice ? (
+                    <div className="flex gap-1.5">
+                        <Button size="sm" variant="outline" className="h-8" onClick={() => setInvoiceEditOpen(true)}><Edit3 size={13} className="mr-1" /> Edit</Button>
+                        <SendInvoiceButton invoice={invoice} />
+                    </div>
+                ) : (
                     <Button size="sm" variant="outline" className="h-8" onClick={doCreateInvoice} disabled={busy}>
                         {busy && <Loader2 size={13} className="mr-1 animate-spin" />} Create invoice now
                     </Button>
@@ -202,6 +294,17 @@ export function ProjectBillingPanel({ project }: { project: Project }) {
                         <DialogDescription>{quote ? `Added to quote ${quote.quoteNumber} at its price-book sell price, so it's billed on the invoice. Its cost counts in project costs.` : 'No quote linked — it counts in project costs only. Link a quote to bill it.'}</DialogDescription>
                     </DialogHeader>
                     <Input value={partSearch} onChange={e => setPartSearch(e.target.value)} placeholder="Search the price book" />
+                    {partCategories.length > 1 && (
+                        <div className="flex gap-1.5 overflow-x-auto pb-1">
+                            {['all', ...partCategories].map(c => (
+                                <button key={c} type="button" onClick={() => setPartCategory(c)}
+                                    className={cn('shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium whitespace-nowrap',
+                                        partCategory === c ? 'border-brand-red bg-brand-red/10 text-brand-red' : 'border-border-sub text-text-muted hover:text-text-primary')}>
+                                    {c === 'all' ? 'All' : c}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                     <div className="max-h-[40svh] overflow-y-auto space-y-1">
                         {partChoices.map(m => (
                             <button key={m.id} type="button" onClick={() => setPartId(m.id)}
@@ -225,6 +328,34 @@ export function ProjectBillingPanel({ project }: { project: Project }) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <PriceDocEditor
+                open={quoteEditOpen && !!quote}
+                onClose={() => setQuoteEditOpen(false)}
+                kind="quote"
+                initial={quote ? quoteToEditor(quote) : undefined}
+                initialDiscount={quote ? quoteDiscount(quote) : undefined}
+                title={quote ? `Edit quote ${quote.quoteNumber} · ${project.name}` : 'Edit quote'}
+                headerExtra={quote ? <Badge variant="info" className="text-[10px] uppercase">{statusLabel(quote.status)}</Badge> : undefined}
+                saveLabel="Save quote"
+                saving={savingQuote}
+                onSave={doSaveQuote}
+            />
+
+            <PriceDocEditor
+                open={invoiceEditOpen && !!invoice}
+                onClose={() => setInvoiceEditOpen(false)}
+                kind="invoice"
+                initial={invoice ? invoiceToEditor(invoice) : undefined}
+                initialDiscount={invoice ? (invoice.planDiscount ?? null) : undefined}
+                title={invoice ? `Edit invoice ${invoice.invoiceNumber}` : 'Edit invoice'}
+                headerExtra={invoice ? <StatusBadge kind="invoice" value={invoice.status} /> : undefined}
+                saveLabel="Save invoice"
+                saving={savingInvoice}
+                onSave={doSaveInvoice}
+                onDelete={invoice && isSuperAdmin(user) ? doDeleteInvoice : undefined}
+                deleting={deletingInvoice}
+            />
         </div>
     );
 }

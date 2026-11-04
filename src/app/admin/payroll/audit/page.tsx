@@ -34,7 +34,7 @@ import { format, parseISO, isWithinInterval } from 'date-fns';
 import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder, PayrollDispute, FinancialRecord } from '@/lib/types';
 import { getSubroles, isClient, isSuperAdmin } from '@/lib/permissions';
 import { mergeJobs, parseLocalDate } from '@/lib/jobs';
-import { effectiveJobPay, computeWeeklyLogSettlement } from '@/lib/payroll';
+import { effectiveJobPay, computeWeeklyLogSettlement, computeWeeklyLogPay, type WeeklyLogPay } from '@/lib/payroll';
 import { downloadPaystub } from '@/lib/paystub';
 import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
@@ -138,12 +138,14 @@ export default function PayrollAuditPage() {
     // CSV, summary chips, Paystub History) reads the exact same number as
     // the review dialog's "Net Tech Settlement" — computed once per log
     // instead of re-deriving it inline at each call site.
-    const settlementByLogId = useMemo(() => {
-        const map = new Map<string, number>();
-        weeklyLogs.forEach(log => map.set(log.id, computeWeeklyLogSettlement(log, jobsById)));
+    const payByLogId = useMemo(() => {
+        const map = new Map<string, WeeklyLogPay>();
+        weeklyLogs.forEach(log => map.set(log.id, computeWeeklyLogPay(log, jobsById)));
         return map;
     }, [weeklyLogs, jobsById]);
-    const settlementOf = (log: WeeklyLog) => settlementByLogId.get(log.id) ?? computeWeeklyLogSettlement(log, jobsById);
+    // Work pay + reimbursements, split for display.
+    const payOf = (log: WeeklyLog) => payByLogId.get(log.id) ?? computeWeeklyLogPay(log, jobsById);
+    const settlementOf = (log: WeeklyLog) => payOf(log).total;
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [mergingKey, setMergingKey] = useState<string | null>(null);
     const [deletingLogId, setDeletingLogId] = useState<string | null>(null);
@@ -258,7 +260,7 @@ export default function PayrollAuditPage() {
         approved: filteredLogs.filter(l => l.status === 'Approved').reduce((s, l) => s + settlementOf(l), 0),
         pending: filteredLogs.filter(l => l.status === 'Submitted').reduce((s, l) => s + settlementOf(l), 0),
         count: filteredLogs.length,
-    }), [filteredLogs, settlementByLogId]); // eslint-disable-line react-hooks/exhaustive-deps
+    }), [filteredLogs, payByLogId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Multiple Drafts are a data-integrity issue; a Draft beside an Approved
     // log can also hold later work that needs a fresh payroll review.
@@ -400,13 +402,15 @@ export default function PayrollAuditPage() {
     };
 
     const handleExportCsv = () => {
-        const rows = [['Week Of', 'Tech', 'Status', 'Total Payout', 'Items']];
+        const rows = [['Week Of', 'Tech', 'Status', 'Work Pay', 'Reimbursements', 'Total Payout', 'Items']];
         filteredLogs.forEach(log => {
             const tech = technicians.find(t => t.id === log.techId);
             rows.push([
                 log.weekOf,
                 tech?.name || log.techId,
                 log.status,
+                payOf(log).jobPay.toFixed(2),
+                payOf(log).reimbursementPay.toFixed(2),
                 String(settlementOf(log)),
                 String(log.items?.length || 0),
             ]);
@@ -507,6 +511,9 @@ export default function PayrollAuditPage() {
                                     <div className="hidden sm:block text-right">
                                         <p className={cn('text-[12px] font-bold font-mono', log.status === 'Approved' ? 'text-text-green' : 'text-text-primary')}>
                                             ${settlementOf(log).toFixed(2)}
+                                        </p>
+                                        <p className="text-[10px] text-text-muted font-mono whitespace-nowrap leading-tight" title="Work pay + reimbursements (net of the Field Nation fee)">
+                                            Work ${payOf(log).jobPay.toFixed(2)}<br />Reimb. ${payOf(log).reimbursementPay.toFixed(2)}
                                         </p>
                                         <p className="text-[10px] text-text-muted">{log.items?.length || 0} {log.items?.length === 1 ? 'job' : 'jobs'}</p>
                                     </div>

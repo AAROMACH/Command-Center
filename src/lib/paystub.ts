@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import type { WeeklyLog, WorkOrder, Technician } from './types';
-import { effectiveJobPay, computeWeeklyLogSettlement, netOfFieldNationFee } from './payroll';
+import { effectiveJobPay, computeWeeklyLogSettlement, weeklyLogReimbursementLines } from './payroll';
 import { displayWorkOrderNumber } from './work-order-identity';
 
 type PaystubJobLine = {
@@ -66,9 +66,9 @@ function buildPaystubData(
     };
   });
 
-  const reimbursements: PaystubReimbLine[] = (log.reimbursements || [])
-    .filter(r => r.status !== 'pending' && r.status !== 'rejected')
-    .map(r => ({ description: r.description || 'Reimbursement', amount: netOfFieldNationFee(r.amount) }));
+  // Same lines the settlement total counts (log records + job-level Reimb.).
+  const reimbursements: PaystubReimbLine[] = weeklyLogReimbursementLines(log, jobsById)
+    .map(r => ({ description: r.description, amount: r.net }));
 
   return {
     companyName: 'AAROMACH LLC',

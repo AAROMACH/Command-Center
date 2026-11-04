@@ -46,7 +46,7 @@ import {
     Receipt,
 } from 'lucide-react';
 import { cn, formatCityState, sanitize } from '@/lib/utils';
-import { FIELD_NATION_FEE_RATE, netOfFieldNationFee, computeWeeklyLogSettlement, effectiveJobPay } from '@/lib/payroll';
+import { FIELD_NATION_FEE_RATE, netOfFieldNationFee, computeWeeklyLogPay, effectiveJobPay } from '@/lib/payroll';
 import { DISPUTE_CARDS, PAYROLL_TICKET_CARDS, disputeKindOf, firstName, isLegacyOtherReason, shortWeek, type CardContext } from '@/lib/disputes';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
@@ -542,10 +542,11 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     // Shared with the Payroll Audit Weekly tab, CSV export, and
     // Paystub History via computeWeeklyLogSettlement() so this dialog's "Net
     // Tech Settlement" can never drift from what those screens show.
-    const calculatedTotalPayout = useMemo(
-        () => computeWeeklyLogSettlement(localLog || {}, jobsById),
+    const logPay = useMemo(
+        () => computeWeeklyLogPay(localLog || {}, jobsById),
         [localLog, jobsById],
     );
+    const calculatedTotalPayout = logPay.total;
     
     const reviewReimbursement = async (reimbId: string, decision: 'approved' | 'rejected') => {
         if (!localLog) return;
@@ -1628,6 +1629,9 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                             <div className="rounded-xl border border-green-border/40 bg-green-dim/40 px-3 py-2.5">
                                 <p className="text-[10px] font-semibold uppercase tracking-wider text-text-green">Total pay</p>
                                 <p className="text-lg font-bold font-mono tabular-nums text-text-green leading-tight">${calculatedTotalPayout.toFixed(2)}</p>
+                                <p className="text-[10px] text-text-muted font-mono tabular-nums leading-tight mt-0.5" title="Work pay + reimbursements (net of the Field Nation fee)">
+                                    Work ${logPay.jobPay.toFixed(2)} · Reimb. ${logPay.reimbursementPay.toFixed(2)}
+                                </p>
                             </div>
                         </div>
                         <LogApprovalHistory key={localLog.id} logId={localLog.id} submittedAt={localLog.submittedAt} />

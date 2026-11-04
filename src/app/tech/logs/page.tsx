@@ -8,7 +8,7 @@ import { usePaged, ListPager, PAGE_SIZES_SMALL, PAGE_SIZES_LARGE } from '@/compo
 import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog, PayrollDispute, DisputeKind, DisputeResolution } from '@/lib/types';
 import { externalWorkOrderId, displayWorkOrderNumber, fieldNationUrl, isImported } from '@/lib/work-order-identity';
 import { hasPermission } from '@/lib/permissions';
-import { computeWeeklyLogSettlement, effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
+import { computeWeeklyLogPay, effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
 import { mergeJobs, weekOfValue, parseLocalDate } from '@/lib/jobs';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/empty-state';
@@ -249,7 +249,8 @@ export default function TechWeeklyLogPage() {
         return [...merged, ...logOnlyJobs.filter(j => !have.has(j.id))];
     }, [assignedWorkOrders, workOrders, helperJobs, logOnlyJobs]);
     const jobsById = useMemo(() => new Map(allJobs.map(j => [j.id, j])), [allJobs]);
-    const settlementOf = (log: WeeklyLog) => computeWeeklyLogSettlement(log, jobsById);
+    const payOf = (log: WeeklyLog) => computeWeeklyLogPay(log, jobsById);
+    const settlementOf = (log: WeeklyLog) => payOf(log).total;
 
     // Open post-approval disputes filed against the active log — surfaced as
     // an "Under Review" tag so a tech can see a dispute is being processed
@@ -706,6 +707,9 @@ export default function TechWeeklyLogPage() {
                                                 <span>{(log.items || []).length} {(log.items || []).length === 1 ? 'job' : 'jobs'}</span>
                                                 <div className="h-1 w-1 rounded-full bg-text-muted opacity-30" />
                                                 <span className="text-text-green font-mono">${settlementOf(log).toFixed(2)}</span>
+                                                {(() => { const p = payOf(log); return p.reimbursementPay > 0 ? (
+                                                    <span className="hidden sm:inline font-mono">(${p.jobPay.toFixed(2)} work + ${p.reimbursementPay.toFixed(2)} reimb.)</span>
+                                                ) : null; })()}
                                             </div>
                                         </div>
                                     </div>
@@ -865,6 +869,30 @@ export default function TechWeeklyLogPage() {
                     )}
                 </div>
             </div>
+
+            {/* PAY: work vs reimbursements vs total */}
+            {(() => {
+                const p = payOf(activeLog);
+                return (
+                    <div className="max-w-6xl mx-auto grid grid-cols-3 gap-2 sm:gap-3 text-left">
+                        <div className="rounded-xl border border-border-main bg-bg-secondary px-3 py-2.5">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Work pay</p>
+                            <p className="text-base sm:text-lg font-bold font-mono tabular-nums text-text-primary leading-tight">${p.jobPay.toFixed(2)}</p>
+                        </div>
+                        <div className="rounded-xl border border-accent-gold/30 bg-accent-gold-dim/40 px-3 py-2.5">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-gold">Reimbursements</p>
+                            <p className="text-base sm:text-lg font-bold font-mono tabular-nums text-accent-gold leading-tight">${p.reimbursementPay.toFixed(2)}</p>
+                            {p.pendingReimbursement > 0 && (
+                                <p className="text-[10px] text-text-muted leading-tight mt-0.5">+${p.pendingReimbursement.toFixed(2)} waiting on payroll</p>
+                            )}
+                        </div>
+                        <div className="rounded-xl border border-green-border/40 bg-green-dim/40 px-3 py-2.5">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-green">Total</p>
+                            <p className="text-base sm:text-lg font-bold font-mono tabular-nums text-text-green leading-tight">${p.total.toFixed(2)}</p>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* UNSET REASONS WARNING */}
             {!isLocked && counts.pending > 0 && (
@@ -1256,7 +1284,9 @@ export default function TechWeeklyLogPage() {
 function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId, onDisputeJob, hasOpenPayrollDispute }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, kind: DisputeKind, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null, onDisputeJob?: (item: WeeklyLogItem) => void, hasOpenPayrollDispute?: boolean }) {
     const job = workOrders.find(wo => wo.id === item.workOrderId);
     const itemReimbursements = reimbursements.filter(r => r.workOrderId === item.workOrderId);
-    const settledReimbursement = itemReimbursements
+    // Payroll's Reimb. amount on an Imported job replaces its records (lib/payroll).
+    const jobAuditReimb = job?.source === 'Imported' && !item.isHelper ? Number(job.auditReimbursement) || 0 : 0;
+    const settledReimbursement = jobAuditReimb > 0 ? netOfFieldNationFee(jobAuditReimb) : itemReimbursements
         .filter(r => r.status !== 'pending' && r.status !== 'rejected')
         .reduce((acc, r) => acc + netOfFieldNationFee(r.amount), 0);
     const requestedReimbursement = itemReimbursements
@@ -1375,7 +1405,7 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                             <p className="text-sm font-mono font-bold text-text-green text-right">${(isDisputed ? 0 : effectiveJobPay(item, shown)).toFixed(2)}</p>
                         </div>
 
-                        {itemReimbursements.length > 0 && (
+                        {(itemReimbursements.length > 0 || jobAuditReimb > 0) && (
                             <div className="text-right px-4 border-l border-border-sub/30 min-w-[100px]">
                                 <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-right">Reimbursement</p>
                                 <p className="text-sm font-mono font-bold text-accent-gold text-right">${settledReimbursement.toFixed(2)}</p>

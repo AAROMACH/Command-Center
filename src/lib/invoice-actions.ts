@@ -1,4 +1,4 @@
-import { doc, setDoc } from 'firebase/firestore';
+import { deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { createDocId } from './generateId';
 import { ID_PREFIXES } from './constants';
@@ -27,7 +27,8 @@ export function invoiceToEditor(inv: Invoice): Partial<PriceDocValues> {
 /** Builds the invoice doc from the editor and saves it; returns its id. */
 export async function saveInvoiceFromEditor(r: PriceDocResult, existing: Invoice | null, extra: Partial<Invoice> = {}): Promise<string> {
   const id = existing?.id || await createDocId(ID_PREFIXES.INVOICE);
-  const isProject = r.relatedId.startsWith('proj');
+  // Project ids are 'prj-…' (older ones 'proj…'); anything else is a job.
+  const isProject = /^pro?j/.test(r.relatedId);
   const clientName = r.customerType === 'in_app_client'
     ? (r.client?.clientCompany || r.client?.name || existing?.clientName || '')
     : (r.customerCompany || r.customerName);
@@ -55,4 +56,28 @@ export async function saveInvoiceFromEditor(r: PriceDocResult, existing: Invoice
   // Firestore rejects undefined fields.
   await setDoc(doc(db, 'invoices', id), JSON.parse(JSON.stringify(invoice)));
   return id;
+}
+
+/**
+ * Delete an invoice and undo what pointed at it: the project goes back to
+ * "no invoice yet" and the quote it came from goes back to Approved, so
+ * either can be invoiced again.
+ */
+export async function deleteInvoice(inv: Invoice): Promise<void> {
+  const now = new Date().toISOString();
+  await deleteDoc(doc(db, 'invoices', inv.id));
+  if (inv.projectId) {
+    const p = await getDoc(doc(db, 'projects', inv.projectId)).catch(() => null);
+    if (p?.exists() && p.data().invoiceId === inv.id) await updateDoc(p.ref, { invoiceId: null, updatedAt: now });
+  }
+  if (inv.quoteId) {
+    const q = await getDoc(doc(db, 'quotes', inv.quoteId)).catch(() => null);
+    if (q?.exists() && q.data().convertedToInvoiceId === inv.id) {
+      await updateDoc(q.ref, {
+        convertedToInvoiceId: null,
+        ...(q.data().status === 'converted_to_invoice' ? { status: 'approved' } : {}),
+        updatedAt: now,
+      });
+    }
+  }
 }

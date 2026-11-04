@@ -25,6 +25,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DocKindHeader, DOC_BRAND } from '@/components/price-book-picker';
 import { canEditQuote, quoteDiscount, quoteToEditor, saveQuoteEdits } from '@/lib/quote-actions';
+import { SiteWalkWizard } from '@/components/site-walk/site-walk-wizard';
+import { SiteWalkReview } from '@/components/site-walk/site-walk-review';
+import { SiteWalkList, useSiteWalks } from '@/components/site-walk/site-walk-list';
+import { newSiteWalk } from '@/lib/site-walk-actions';
+import type { SiteWalk } from '@/lib/estimating';
+import { useAuth } from '@/contexts/auth-context';
+import { useDirectory } from '@/hooks/use-directory';
+import { isTech } from '@/lib/permissions';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -43,7 +51,7 @@ import {
   FileSearch, Plus, Send, Copy, Clock, CheckCircle2, XCircle,
   Archive, RotateCcw, Trash2, ExternalLink, ChevronRight,
   Building2, User, Mail, Phone, DollarSign, FileText, Loader2,
-  Edit3, ArrowRight, Settings, Download,
+  Edit3, ArrowRight, Settings, Download, ClipboardCheck,
 } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -576,6 +584,17 @@ export default function AdminQuotesPage() {
     }
   };
   const [loading, setLoading] = useState(true);
+  // ── Site walks: the walkthrough → admin approval → draft quote ──
+  const { user: authUser } = useAuth();
+  const directory = useDirectory();
+  const walkTechs = useMemo(() => directory.filter(isTech).sort((a, b) => (a.name || '').localeCompare(b.name || '')), [directory]);
+  const { walks, loading: walksLoading } = useSiteWalks({ all: true });
+  const [walkOpen, setWalkOpen] = useState<SiteWalk | null>(null);
+  const [walkReviewId, setWalkReviewId] = useState<string | null>(null);
+  const walkReview = walks.find(w => w.id === walkReviewId) || null;
+  const openWalk = (w: SiteWalk) => (['submitted', 'approved', 'archived'].includes(w.status) ? setWalkReviewId(w.id) : setWalkOpen(w));
+  const startWalk = (prefill: Partial<SiteWalk> = {}) => authUser && setWalkOpen(newSiteWalk({ id: authUser.id, name: authUser.name || 'Office' }, prefill));
+  const walksWaiting = walks.filter(w => w.status === 'submitted').length;
   const [viewMode, setViewMode] = useViewMode('quotes');
   const [prefillLead, setPrefillLead] = useState<Lead | null>(null);
   const [tab, setTab] = useSessionState('admin/quotes:tab', 'draft');
@@ -660,15 +679,22 @@ export default function AdminQuotesPage() {
         actions={<>
           <ViewToggle value={viewMode} onChange={setViewMode} />
           {inSalesPortal ? (
-            <Button onClick={() => setIsNewOpen(true)} className="bg-brand-red hover:bg-brand-red/90 text-white h-9">
-              <Plus size={14} className="mr-1.5" />New quote
-            </Button>
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button className="bg-brand-red hover:bg-brand-red/90 text-white h-9"><Plus size={14} className="mr-1.5" />New</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setTimeout(() => startWalk(), 0)}><ClipboardCheck size={13} className="mr-2" />Site walk</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setTimeout(() => setIsNewOpen(true), 0)}><FileSearch size={13} className="mr-2" />Quote</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button className="bg-brand-red hover:bg-brand-red/90 text-white h-9"><Plus size={14} className="mr-1.5" />New</Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setTimeout(() => startWalk(), 0)}><ClipboardCheck size={13} className="mr-2" />Site walk</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setTimeout(() => setIsNewOpen(true), 0)}><FileSearch size={13} className="mr-2" />Quote</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setTimeout(() => { setInvoiceFromQuote(null); setInvoiceOpen(true); }, 0)}><FileText size={13} className="mr-2" />Invoice</DropdownMenuItem>
               </DropdownMenuContent>
@@ -687,6 +713,7 @@ export default function AdminQuotesPage() {
 
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="tabs flex-wrap h-auto gap-1 p-1 mb-4">
+          <TabsTrigger value="walks" className="tab">Site walks<TabCount n={walksWaiting} /></TabsTrigger>
           <TabsTrigger value="draft" className="tab">Draft<TabCount n={draft.length} /></TabsTrigger>
           <TabsTrigger value="sent" className="tab">Sent<TabCount n={sent.length} /></TabsTrigger>
           <TabsTrigger value="approved" className="tab">Approved<TabCount n={approved.length} /></TabsTrigger>
@@ -694,6 +721,9 @@ export default function AdminQuotesPage() {
           {!inSalesPortal && <TabsTrigger value="invoices" className="tab">Invoices</TabsTrigger>}
         </TabsList>
 
+        <TabsContent value="walks" className="mt-0">
+          <SiteWalkList walks={walks} loading={walksLoading} onOpen={openWalk} techs={walkTechs} search={search} />
+        </TabsContent>
         <TabsContent value="draft" className="mt-0">{grid(draft, '0')}</TabsContent>
         <TabsContent value="sent" className="mt-0">{grid(sent, '1')}</TabsContent>
         <TabsContent value="approved" className="mt-0">{grid(approved, '2')}</TabsContent>
@@ -710,6 +740,10 @@ export default function AdminQuotesPage() {
         onSaved={() => {}}
         prefillLead={prefillLead}
       />
+
+      <SiteWalkWizard open={!!walkOpen} initial={walkOpen} onClose={() => setWalkOpen(null)} onSubmitted={() => setTab('walks')} />
+      <SiteWalkReview walk={walkReview} onClose={() => setWalkReviewId(null)}
+        onQuoteCreated={id => { setTab('draft'); setSelectedQuoteId(id); }} />
 
       <QuoteDetailDialog
         quote={selectedQuote}

@@ -788,6 +788,29 @@ service cloud.firestore {
       allow write: if isAdmin() || isSales();
     }
 
+    // Site walks (lib/estimating): a tech walks a site and submits it; the
+    // office prices and approves it into a quote. Techs see and edit their
+    // own or assigned walks while Draft / Sent back, and can only move them
+    // to Draft or Submitted — never approve. No prices are stored on a walk
+    // until the office reviews it.
+    function walkIsMine(d) {
+      return d.createdBy == request.auth.uid || d.get('assignedTechId', null) == request.auth.uid;
+    }
+    match /siteWalks/{id} {
+      allow read: if isAdmin() || isSales() || (isTech() && walkIsMine(resource.data));
+      allow create: if isAdmin() || isSales()
+          || (isTech() && request.resource.data.createdBy == request.auth.uid
+              && request.resource.data.status in ['draft', 'submitted']);
+      allow update: if isAdmin() || isSales()
+          || (isTech() && walkIsMine(resource.data)
+              && resource.data.status in ['draft', 'returned']
+              && request.resource.data.status in ['draft', 'submitted']
+              && request.resource.data.createdBy == resource.data.createdBy
+              && request.resource.data.get('assignedTechId', null) == resource.data.get('assignedTechId', null)
+              && request.resource.data.get('quoteId', null) == null);
+      allow delete: if isAdmin() || (isTech() && resource.data.createdBy == request.auth.uid && resource.data.status == 'draft');
+    }
+
     // Assets & materials (admin portal only)
     match /materials/{id} {
       // Sales reads the price book to price quotes.

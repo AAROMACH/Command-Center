@@ -1,10 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import type { CrmContact, Lead, LeadActivity, Quote, SiteSurvey } from '@/lib/types';
 import { SiteSurveyDialog } from './site-survey-dialog';
+import { SiteWalkWizard } from '@/components/site-walk/site-walk-wizard';
+import { WALK_STATUS } from '@/components/site-walk/site-walk-list';
+import { newSiteWalk } from '@/lib/site-walk-actions';
+import type { SiteWalk } from '@/lib/estimating';
+import { collection as fsCollection, onSnapshot as fsOnSnapshot, query as fsQuery, where as fsWhere } from 'firebase/firestore';
+import { db as fsDb } from '@/lib/firebase';
 import { totalDrops } from '@/lib/crm-survey';
 import { contactRoleLabel } from '@/lib/crm-accounts';
 import { useRouter } from 'next/navigation';
@@ -75,7 +81,16 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
   const [isFullDetailOpen, setIsFullDetailOpen] = useState(false);
   const [taskText, setTaskText] = useState('');
   const [taskDue, setTaskDue] = useState('');
-  const [surveyOpen, setSurveyOpen] = useState<SiteSurvey | 'new' | null>(null);
+  const [surveyOpen, setSurveyOpen] = useState<SiteSurvey | null>(null);
+  // Site walks replace the old site survey; older surveys stay viewable.
+  const [walkOpen, setWalkOpen] = useState<SiteWalk | null>(null);
+  const [leadWalks, setLeadWalks] = useState<SiteWalk[]>([]);
+  useEffect(() => {
+    if (!lead?.id) { setLeadWalks([]); return; }
+    return fsOnSnapshot(fsQuery(fsCollection(fsDb, 'siteWalks'), fsWhere('leadId', '==', lead.id)),
+      snap => setLeadWalks(snap.docs.map(d => ({ ...(d.data() as SiteWalk), id: d.id })).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))),
+      () => setLeadWalks([]));
+  }, [lead?.id]);
 
   if (!lead) return null;
 
@@ -429,11 +444,26 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
             return (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <p className={sectionLabel}>Site Surveys ({leadSurveys.length})</p>
-                  <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold uppercase tracking-wider" onClick={() => setSurveyOpen('new')}>
-                    <Footprints size={10} className="mr-1.5" /> New Survey
+                  <p className={sectionLabel}>Site walks ({leadWalks.length + leadSurveys.length})</p>
+                  <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold uppercase tracking-wider"
+                    onClick={() => setWalkOpen(newSiteWalk({ id: currentUserId, name: currentUserName || 'Sales' }, {
+                      leadId: lead.id, customerCompany: lead.companyName || '', contactName: lead.contactName || '',
+                      contactEmail: lead.contactEmail || '', contactPhone: lead.contactPhone || '', siteAddress: lead.address || '',
+                    }))}>
+                    <Footprints size={10} className="mr-1.5" /> New site walk
                   </Button>
                 </div>
+                {leadWalks.map(w => (
+                  <button key={w.id} onClick={() => setWalkOpen(w)}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border-sub bg-bg-primary hover:border-border-main text-left">
+                    <Footprints size={12} className="text-brand-red shrink-0" />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[12px] font-bold text-text-primary truncate">{w.siteName || w.customerCompany || w.id}</span>
+                      <span className="block text-[11px] text-text-muted">{[w.walkDate, w.createdByName, w.quoteId && `quote ${w.quoteId}`].filter(Boolean).join(' · ')}</span>
+                    </span>
+                    <Badge variant={WALK_STATUS[w.status].variant} className="text-[10px] h-5">{WALK_STATUS[w.status].label}</Badge>
+                  </button>
+                ))}
                 {leadSurveys.map(s => (
                   <button key={s.id} onClick={() => setSurveyOpen(s)}
                     className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border-sub bg-bg-primary hover:border-border-main text-left">
@@ -586,11 +616,12 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
         <SiteSurveyDialog
           open={!!surveyOpen}
           lead={lead}
-          survey={surveyOpen === 'new' ? null : surveyOpen}
+          survey={surveyOpen}
           currentUserId={currentUserId}
           currentUserName={currentUserName}
           onClose={() => setSurveyOpen(null)}
         />
+        <SiteWalkWizard open={!!walkOpen} initial={walkOpen} onClose={() => setWalkOpen(null)} />
 
         {/* Full Detail dialog — every field plus the original uploaded files
             so sales can recover anything the import extraction missed. */}

@@ -28,10 +28,11 @@ import {
     User, MapPin, Calendar, AlertTriangle, ChevronRight, Edit2, CheckCircle,
     DollarSign, Tag, RotateCcw, XCircle, Hammer, History, ArrowRightLeft,
     ShoppingCart, Boxes, ClipboardList, Loader2, ImagePlus, X,
-Percent, } from 'lucide-react';
+Percent, ClipboardCheck, } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/page-header';
 import { PricingTab } from './pricing-tab';
+import { ServiceCatalogTab } from './service-catalog-tab';
 import { usePricingSettings } from '@/hooks/use-billing';
 import { canonicalCategory, localDay, markupFor, roundCents, type PricingSettings } from '@/lib/billing';
 import { materialPrice } from '@/lib/price-lines';
@@ -172,7 +173,7 @@ export default function AssetsAndMaterialsPage() {
     // Filter pills: the price-book categories plus any older category still on a material.
     const matCats = useMemo(() => [...new Set([...pricing.categories.map(c => c.name), ...materials.map(m => m.category).filter(Boolean)])], [pricing.categories, materials]);
     const { user: authUser } = useAuth();
-    const [mainTab, setMainTab] = useState<'assets' | 'log' | 'materials' | 'pricing'>('assets');
+    const [mainTab, setMainTab] = useState<'assets' | 'log' | 'materials' | 'pricing' | 'catalog'>('assets');
     const [logFilter, setLogFilter] = useState<'all' | 'out' | 'overdue' | 'returned'>('all');
     const [viewMode, setViewMode] = useViewMode('assets');
     const [assetCatFilter, setAssetCatFilter] = useState<AssetCategory | 'all'>('all');
@@ -821,7 +822,7 @@ export default function AssetsAndMaterialsPage() {
             </StatGrid>
 
             {/* Main tabs */}
-            <Tabs value={mainTab} onValueChange={v => { setMainTab(v as 'assets' | 'log' | 'materials' | 'pricing'); setSearch(''); }} className="w-full">
+            <Tabs value={mainTab} onValueChange={v => { setMainTab(v as 'assets' | 'log' | 'materials' | 'pricing' | 'catalog'); setSearch(''); }} className="w-full">
                 <TabsList className="border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 mb-5">
                     <TabsTrigger value="assets" className={tabTriggerCls}>
                         <span className="flex items-center gap-2"><Boxes size={12} /> Assets ({assets.length})</span>
@@ -834,6 +835,9 @@ export default function AssetsAndMaterialsPage() {
                     </TabsTrigger>
                     <TabsTrigger value="pricing" className={tabTriggerCls}>
                         <span className="flex items-center gap-2"><Percent size={12} /> Rates &amp; markups</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="catalog" className={tabTriggerCls}>
+                        <span className="flex items-center gap-2"><ClipboardCheck size={12} /> Service catalog</span>
                     </TabsTrigger>
                 </TabsList>
 
@@ -1227,6 +1231,10 @@ export default function AssetsAndMaterialsPage() {
                 </TabsContent>
 
                 {/* ── Labor & pricing: labor rates, markup, sales tax (adminConfig/pricing) ── */}
+                <TabsContent value="catalog" className="m-0">
+                    <ServiceCatalogTab />
+                </TabsContent>
+
                 <TabsContent value="pricing" className="m-0">
                     <PricingTab settings={pricing} canEdit={canEditUserPay(authUser)} materials={materials} />
                 </TabsContent>

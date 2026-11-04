@@ -41,6 +41,8 @@ import {
   Download,
   Archive,
   X,
+  Map as MapIcon,
+  List as ListIcon,
 } from "lucide-react";
 import { Checkbox } from '@/components/ui/checkbox';
 import { PageHeader } from '@/components/page-header';
@@ -50,6 +52,13 @@ import type { WorkOrder, Technician, WeeklyLog } from "@/lib/types";
 import { externalWorkOrderId, isImported } from "@/lib/work-order-identity";
 import { format, startOfDay } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
+import dynamic from 'next/dynamic';
+
+// Leaflet needs the browser — same map as Schedule.
+const AdminMapView = dynamic(() => import('@/app/admin/map/components/admin-map-view'), {
+  ssr: false,
+  loading: () => <div className="h-full flex items-center justify-center text-[12px] text-text-muted">Loading map…</div>,
+});
 import {
   Dialog,
   DialogContent,
@@ -364,6 +373,9 @@ export default function AssignmentsHubPage() {
     }
   };
 
+  // List or map of the jobs in the current tab (after search, filters, dates).
+  const [view, setView] = useSessionState<'list' | 'map'>('admin/assignments:view', 'list');
+
   const handleCardClick = (wo: WorkOrder) => {
     router.push('/admin/assignments/' + wo.id);
   };
@@ -660,10 +672,36 @@ export default function AssignmentsHubPage() {
               History <span className="tab-count">({archivedWorkOrders.length})</span>
             </TabsTrigger>
           </TabsList>
+          <div className="flex shrink-0 rounded-lg border border-border-main bg-bg-secondary p-0.5" role="group" aria-label="View">
+            {([['list', 'List', ListIcon], ['map', 'Map', MapIcon]] as const).map(([v, label, Icon]) => (
+              <button key={v} type="button" onClick={() => setView(v)} aria-pressed={view === v}
+                className={cn('h-9 px-3 rounded-md text-[12px] font-medium flex items-center gap-1.5 transition-colors',
+                  view === v ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary')}>
+                <Icon size={14} /> {label}
+              </button>
+            ))}
+          </div>
         </div>
 
+        {view === 'map' && (
+          <div className="space-y-2">
+            <p className="text-[12px] text-text-muted">
+              {tabRows.length} {tab === 'schedule' ? 'active' : 'history'} job{tabRows.length === 1 ? '' : 's'} in this view — the search, filters and dates above apply. Click a pin to open the job.
+            </p>
+            <div className="relative h-[65vh] min-h-[420px] rounded-xl overflow-hidden border border-border-main isolate">
+              {tabRows.length ? (
+                <AdminMapView jobs={tabRows} selectedJob={null} onSelectJob={handleCardClick}
+                  onResolveCoords={(jobId, lat, lng, address) => {
+                    // Save the geocode so the job isn't looked up again.
+                    updateDoc(doc(db, 'assignments', jobId), { lat, lng, geocodedAddress: address }).catch(() => {});
+                  }} />
+              ) : <div className="p-6">{emptyState(tab === 'schedule' ? 'active' : 'history')}</div>}
+            </div>
+          </div>
+        )}
+
         {/* Select-all (phones have no table header) + bulk actions */}
-        {tabRows.length > 0 && (
+        {view === 'list' && tabRows.length > 0 && (
           <div className={cn("mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-4 py-2.5 text-[13px]",
             selectedRows.length > 0 ? "border-brand-red/40 bg-brand-red/5" : "border-border-main bg-bg-secondary md:hidden")}>
             <label className="flex items-center gap-2 font-medium text-text-primary md:hidden">
@@ -705,7 +743,7 @@ export default function AssignmentsHubPage() {
           </div>
         )}
 
-        <div className="space-y-6 text-left">
+        <div className={cn('space-y-6 text-left', view === 'map' && 'hidden')}>
             <TabsContent value="schedule" className="mt-0 space-y-6 text-left">
                 {/* Mobile: card list (sort lives in the header toolbar) */}
                 <div className="md:hidden space-y-3">

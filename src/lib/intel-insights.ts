@@ -108,10 +108,11 @@ export function topClients(
         .slice(0, limit);
 }
 
-// ── Job density grid (Michigan + Ohio) ──────────────────────────────────────
+// ── Job density grid (the six-state service area) ───────────────────────────
 
-/** Map frame covering Michigan (both peninsulas) and Ohio. */
-export const MI_OH_BOUNDS: [[number, number], [number, number]] = [[38.3, -90.5], [48.4, -80.4]];
+/** Map frame covering the service area: MI, OH, IN, IL, WI and PA. (It used to
+ *  stop at Ohio's eastern border, so Pennsylvania jobs counted as "outside".) */
+export const SERVICE_AREA_BOUNDS: [[number, number], [number, number]] = [[36.9, -92.95], [48.35, -74.6]];
 /** Grid cell size in degrees (~10 miles north-south, ~10 miles east-west at this latitude). */
 export const DENSITY_CELL_LAT = 0.15;
 export const DENSITY_CELL_LNG = 0.2;
@@ -124,7 +125,7 @@ export type DensityCell = {
 };
 
 export function densityGrid(jobs: WorkOrder[]): { cells: DensityCell[]; plotted: number; missingCoords: number; outside: number } {
-    const [[s0, w0], [n0, e0]] = MI_OH_BOUNDS;
+    const [[s0, w0], [n0, e0]] = SERVICE_AREA_BOUNDS;
     const cells = new Map<string, DensityCell & { cityMap: Map<string, number> }>();
     let plotted = 0, missingCoords = 0, outside = 0;
     for (const j of jobs) {

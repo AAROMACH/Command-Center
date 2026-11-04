@@ -33,14 +33,7 @@ import { mergeJobs, jobTechId, jobDateTimeValue, JOB_STATUS_OPTIONS, isArchivedJ
 import { isSuperAdmin, isPayAdmin } from '@/lib/permissions';
 import { computeWeeklyLogSettlement } from '@/lib/payroll';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
-import { topCities } from '@/lib/intel-insights';
-import dynamic from 'next/dynamic';
 
-// Leaflet touches window — load the density map in the browser only.
-const JobDensityMap = dynamic(() => import('./components/job-density-map').then(m => m.JobDensityMap), {
-    ssr: false,
-    loading: () => <div className="h-[520px] rounded-lg border border-border-main bg-bg-tertiary/30 flex items-center justify-center text-[10px] font-bold uppercase tracking-wider text-text-muted">Loading map…</div>,
-});
 import { findUnloggedCompletions, findMismatchedLogEntries, findDesyncedAssignments } from '@/lib/weekly-log-audit';
 import { UnloggedCompletions } from './components/unlogged-completions';
 import { WrongTechEntries } from './components/wrong-tech-entries';
@@ -137,13 +130,6 @@ export default function FieldIntelligencePage() {
     const desyncedAssignments = useMemo(() => findDesyncedAssignments(missions), [missions]);
     const wrongTechCount = wrongTechEntries.length + desyncedAssignments.length;
 
-    // Density map follows the customer dashboard's focused view.
-    const [densityOpen, setDensityOpen] = useState(false);
-    const [intelJobIds, setIntelJobIds] = useState<Set<string> | null>(null);
-    const densityJobs = useMemo(
-        () => (intelJobIds ? missions.filter(j => intelJobIds.has(j.id)) : []),
-        [missions, intelJobIds],
-    );
     const flagsTotal = anomalyCounts + unloggedAudit.rows.length + wrongTechCount;
     const [flagsView, setFlagsView] = useState<'anomalies' | 'unlogged' | 'wrong-tech'>('anomalies');
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -179,9 +165,13 @@ export default function FieldIntelligencePage() {
     }, [selectedTechId, assignments, weeklyLogs, allPenalties, jobsById]);
 
     // Insights tab computed values
+    // Completion counts only jobs that were due (scheduled today or earlier)
+    // and not cancelled — upcoming work used to count as "not completed".
     const techReliability = useMemo(() => {
+        const today = new Date(); today.setHours(23, 59, 59, 999);
+        const due = (wo: WorkOrder) => { const t = jobDateTimeValue(wo.scheduleDate); return !t || t <= today.getTime(); };
         return staffTechs.map(tech => {
-            const techJobs = assignments.filter(wo => jobTechId(wo) === tech.id && !isArchivedJob(wo));
+            const techJobs = assignments.filter(wo => jobTechId(wo) === tech.id && !isArchivedJob(wo) && wo.status !== 'cancelled' && due(wo));
             const completed = techJobs.filter(wo => wo.status === 'completed').length;
             const total = techJobs.length;
             const revisits = techJobs.filter(wo =>
@@ -192,18 +182,10 @@ export default function FieldIntelligencePage() {
             const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
             const revisitRate = total > 0 ? Math.round((revisits / total) * 100) : 0;
             return { ...tech, completionRate, revisitRate, total, completed, revisits };
-        }).filter(t => t.total > 0).sort((a, b) => b.completionRate - a.completionRate);
+        // Revisit problems first (over 20%), then by completion.
+        }).filter(t => t.total > 0).sort((a, b) => Number(b.revisitRate > 20) - Number(a.revisitRate > 20) || b.completionRate - a.completionRate);
     }, [staffTechs, assignments]);
-
-    const revisitFlags = useMemo(
-        () => techReliability.filter(t => t.revisitRate > 20),
-        [techReliability]
-    );
-
-    const underpaidWarnings = useMemo(
-        () => workOrders.filter(wo => wo.status !== 'completed' && (!wo.pay || wo.pay < 30)).slice(0, 20),
-        [workOrders]
-    );
+    const revisitFlagCount = techReliability.filter(t => t.revisitRate > 20).length;
 
     // Insights: top clients (with gross profit) and top cities — lib/intel-insights.ts.
     // Quality tab: the last 6 months of completed work and how much of it
@@ -225,10 +207,9 @@ export default function FieldIntelligencePage() {
             };
         });
     }, [workOrders, assignments]);
-    const topCityRows = useMemo(() => topCities(mergeJobs(workOrders, assignments), 10), [workOrders, assignments]);
-
+    // Revisits by job type across all jobs (it only looked at the unassigned pool).
     const failurePatterns = useMemo(() => {
-        const revisitWOs = workOrders.filter(wo =>
+        const revisitWOs = missions.filter(wo => !isArchivedJob(wo)).filter(wo =>
             (wo.revisitCount && wo.revisitCount > 0) ||
             wo.jobType?.toLowerCase().includes('revisit') ||
             wo.title?.toLowerCase().includes('revisit') ||
@@ -242,7 +223,7 @@ export default function FieldIntelligencePage() {
         return Array.from(byType.entries())
             .map(([type, count]) => ({ type, count }))
             .sort((a, b) => b.count - a.count);
-    }, [workOrders]);
+    }, [missions]);
 
     type TimelineEvent = { id: string; timestamp: string; type: string; eventLabel: string; entity: string; techName?: string; techId?: string; clientName?: string; color: string; batchId?: string; };
 
@@ -301,7 +282,6 @@ export default function FieldIntelligencePage() {
         ...activeWeeklyLogs.filter(wl => wl.status === 'Draft').map(wl => ({ kind: 'log' as const, id: wl.id, wl })),
     ], [workOrders, activeWeeklyLogs]);
     const anomalyPager = usePaged(anomalyRows, PAGE_SIZES_SMALL, 'intel-anomalies');
-    const underpaidPager = usePaged(underpaidWarnings, PAGE_SIZES_SMALL, 'intel-underpaid');
     const timelinePageCount = Math.max(1, Math.ceil(filteredTimelineEvents.length / timelinePageSize));
     const timelinePageEvents = filteredTimelineEvents.slice(timelinePage * timelinePageSize, (timelinePage + 1) * timelinePageSize);
 
@@ -321,13 +301,13 @@ export default function FieldIntelligencePage() {
                 eyebrow="Reports"
                 icon={BarChart2}
                 title="Insights"
-                subtitle="Customers, technician performance, quality, app activity and flags."
+                subtitle="Work and revenue (with the job map), technicians, quality, app activity and flags."
             />
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <div className="overflow-x-auto">
                     <TabsList className="tabs mb-6 w-max">
-                        <TabsTrigger value="intelligence" className="tab">Customers</TabsTrigger>
+                        <TabsTrigger value="intelligence" className="tab">Work &amp; revenue</TabsTrigger>
                         <TabsTrigger value="techs" className="tab" onClick={() => setSelectedTechId(null)}>
                             Techs
                         </TabsTrigger>
@@ -343,34 +323,13 @@ export default function FieldIntelligencePage() {
                 </div>
 
                 <TabsContent value="intelligence" className="m-0">
-                    {/* Compact card; the map itself opens in a dialog instead of
-                        taking the full width of the page. */}
-                    <Card className="bg-bg-secondary border-border-main mb-5">
-                        <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
-                            <div className="min-w-0">
-                                <p className="text-[11px] font-bold text-text-primary">Job density — Michigan &amp; Ohio</p>
-                                <p className="text-[10px] text-text-muted">{densityJobs.length.toLocaleString()} completed job{densityJobs.length === 1 ? '' : 's'} in the dashboard view below</p>
-                            </div>
-                            <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase tracking-wider" onClick={() => setDensityOpen(true)}>
-                                Open map
-                            </Button>
-                        </CardContent>
-                    </Card>
-                    <Dialog open={densityOpen} onOpenChange={setDensityOpen}>
-                        <DialogContent className="sm:max-w-4xl bg-bg-elevated border-border-default">
-                            <DialogHeader>
-                                <DialogTitle className="text-sm font-bold">Job density — Michigan &amp; Ohio</DialogTitle>
-                                <DialogDescription className="text-[10px]">Darker squares = more jobs in that area for the selected filters. Hover a square for the count and top cities.</DialogDescription>
-                            </DialogHeader>
-                            {densityOpen && <JobDensityMap jobs={densityJobs} />}
-                        </DialogContent>
-                    </Dialog>
+                    {/* Completed work and money by customer, type and month; the
+                        Job map button in its filter bar shows where it happened. */}
                     <CustomerDashboard
                         jobs={missions}
                         weeklyLogs={weeklyLogs}
                         invoices={invoices}
                         technicians={technicians}
-                        onFilteredJobIds={setIntelJobIds}
                     />
                 </TabsContent>
 
@@ -578,6 +537,7 @@ export default function FieldIntelligencePage() {
                 </TabsContent>
 
                 <TabsContent value="insights" className="m-0">
+                    <p className="text-[12px] text-text-muted mb-4">How well the work gets done — completions, cancellations and revisits. Money and locations are on Work &amp; revenue.</p>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
                         {/* Last 6 months */}
@@ -613,13 +573,19 @@ export default function FieldIntelligencePage() {
 
                         {/* Tech Reliability Trends */}
                         <div className="lg:col-span-2 space-y-2">
-                            <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2">Technician reliability</h3>
+                            <div className="border-b border-border-sub pb-2">
+                                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
+                                    Technician reliability
+                                    {revisitFlagCount > 0 && <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">{revisitFlagCount} over 20% revisits</Badge>}
+                                </h3>
+                                <p className="text-[11px] text-text-muted mt-1">Completion = completed ÷ jobs that were due (scheduled today or earlier, not cancelled). Techs with revisits over 20% are listed first, in red.</p>
+                            </div>
                             {techReliability.length === 0 ? (
                                 <p className="text-[10px] text-text-muted py-4 text-center">No assignment data</p>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                     {techReliability.map(t => (
-                                        <div key={t.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-bg-secondary border border-border-main">
+                                        <div key={t.id} className={cn("flex items-center gap-3 p-2.5 rounded-lg border", t.revisitRate > 20 ? "border-border-alert bg-brand-red-dim/10" : "bg-bg-secondary border-border-main")}>
                                             <Avatar className="h-8 w-8 border border-border-sub shrink-0">
                                                 <AvatarImage src={t.avatarUrl} />
                                                 <AvatarFallback className="text-[11px]">{(t.name || 'U')[0]}</AvatarFallback>
@@ -644,83 +610,8 @@ export default function FieldIntelligencePage() {
                                             </div>
                                             <div className="text-right shrink-0">
                                                 <p className="text-[11px] font-bold text-text-primary">{t.completed}/{t.total}</p>
-                                                <p className="text-[10px] text-text-muted">Jobs</p>
+                                                <p className="text-[10px] text-text-muted">Done / due</p>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Revisit Rate Flags */}
-                        <div className="space-y-2">
-                            <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 flex items-center gap-2">
-                                Revisit Rate Flags
-                                {revisitFlags.length > 0 && <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">{revisitFlags.length}</Badge>}
-                            </h3>
-                            {revisitFlags.length === 0 ? (
-                                <div className="flex items-center gap-2 py-3 text-text-green">
-                                    <ShieldAlert size={14} />
-                                    <p className="text-[10px] font-bold">No techs above 20% revisit threshold</p>
-                                </div>
-                            ) : revisitFlags.map(t => (
-                                <div key={t.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border-alert bg-brand-red-dim/5">
-                                    <div className="flex items-center gap-2">
-                                        <Avatar className="h-7 w-7 border border-brand-red/30">
-                                            <AvatarImage src={t.avatarUrl} />
-                                            <AvatarFallback className="text-[11px]">{(t.name || 'U')[0]}</AvatarFallback>
-                                        </Avatar>
-                                        <p className="text-[11px] font-bold text-text-primary">{t.name}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-[11px] font-bold text-text-red">{t.revisitRate}% revisit</p>
-                                        <p className="text-[10px] text-text-muted">{t.revisits} of {t.total} jobs</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Underpaid Work Warnings */}
-                        <div className="space-y-2">
-                            <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border-sub pb-2 flex items-center gap-2">
-                                Underpaid Work
-                                {underpaidWarnings.length > 0 && <Badge variant="onhold" className="h-4 px-1.5 text-[10px]">{underpaidWarnings.length}</Badge>}
-                            </h3>
-                            {underpaidWarnings.length === 0 ? (
-                                <p className="text-[10px] text-text-muted py-3">No underpaid jobs detected</p>
-                            ) : underpaidPager.items.map(wo => (
-                                <div key={wo.id} className="flex items-center justify-between p-2 rounded-lg border border-border-warn bg-brand-amber-dim/5">
-                                    <div>
-                                        <p className="text-[11px] font-bold text-text-amber">{wo.title || wo.id}</p>
-                                        <p className="text-[11px] text-text-muted">{wo.clientName || 'No client'} — {wo.jobType || 'Unknown type'}</p>
-                                    </div>
-                                    <div className="text-right shrink-0">
-                                        <p className="text-[11px] font-bold text-text-amber">${wo.pay || 0}</p>
-                                        <p className="text-[10px] text-text-muted">Pay</p>
-                                    </div>
-                                </div>
-                            ))}
-                            <ListPager pager={underpaidPager} noun="jobs" />
-                        </div>
-
-                        {/* Top 10 Cities */}
-                        <div className="lg:col-span-2 space-y-2">
-                            <div className="border-b border-border-sub pb-2">
-                                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Top 10 cities</h3>
-                                <p className="text-[11px] text-text-muted mt-1">Where we work most, by job count (cancelled and archived jobs excluded).</p>
-                            </div>
-                            {topCityRows.length === 0 ? (
-                                <p className="text-[10px] text-text-muted py-3">No job addresses with a city yet</p>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
-                                    {topCityRows.map((c, i) => (
-                                        <div key={c.city} className="flex items-center gap-3">
-                                            <span className="w-5 text-right text-[10px] font-mono text-text-muted">{i + 1}</span>
-                                            <span className="w-40 shrink-0 truncate text-[11px] font-bold text-text-primary">{c.city}</span>
-                                            <div className="relative h-4 flex-1 rounded-sm bg-bg-tertiary/40">
-                                                <div className="absolute inset-y-0 left-0 rounded-sm" style={{ width: `${(c.jobs / topCityRows[0].jobs) * 100}%`, background: 'var(--brand-blue)' }} />
-                                            </div>
-                                            <span className="w-24 shrink-0 text-right text-[10px] font-mono text-text-secondary">{c.jobs} job{c.jobs !== 1 ? 's' : ''} · {c.completed} done</span>
                                         </div>
                                     ))}
                                 </div>

@@ -2,7 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
-import { ArrowDown, ArrowUp, Filter, RotateCcw, Search, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Filter, Map as MapIcon, RotateCcw, Search, X } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { topCities } from '@/lib/intel-insights';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,8 +22,14 @@ import {
     type CustomerRow, type IntelFilter,
 } from '@/lib/customer-intel';
 
+// Leaflet touches window — load the map in the browser only.
+const JobDensityMap = dynamic(() => import('./job-density-map').then(m => m.JobDensityMap), {
+    ssr: false,
+    loading: () => <div className="h-[60vh] min-h-[320px] rounded-lg border border-border-main bg-bg-tertiary/30 flex items-center justify-center text-[12px] text-text-muted">Loading map…</div>,
+});
+
 /**
- * Intel tab: customer work-order dashboard on live data — which customers
+ * Insights → Work & revenue: completed-work dashboard on live data — which customers
  * bring in the most net pay and profit. Clicking a
  * customer focuses the KPIs, monthly and type charts on them; the customer
  * comparisons (top chart, table) keep the other filters only.
@@ -53,14 +63,13 @@ const METRICS: Record<Metric, { label: string; fmt: (v: number) => string }> = {
 const label = 'text-[10px] font-bold uppercase tracking-wider text-text-muted';
 const control = 'h-8 bg-bg-primary border-border-main text-[10px] font-bold';
 
-export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onFilteredJobIds }: {
+export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians }: {
     jobs: WorkOrder[];
     weeklyLogs: WeeklyLog[];
     invoices: Invoice[];
     technicians: Technician[];
-    /** Job ids in the focused view — drives the density map. */
-    onFilteredJobIds?: (ids: Set<string>) => void;
 }) {
+    const [mapOpen, setMapOpen] = useState(false);
     const [trips, setTrips] = useState<TripLog[]>([]);
     useEffect(() => onSharedSnapshot('tripLogs', snap => setTrips(snap.docs.map(d => ({ ...d.data(), id: d.id } as TripLog)))), []);
 
@@ -114,7 +123,13 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
     const custsAll = useMemo(() => byCustomer(base, cap), [base, cap]);
     const custs = useMemo(() => custsAll.filter(c => c.jobs >= minJobs || c.buyer === p.buyer), [custsAll, minJobs, p.buyer]);
 
-    useEffect(() => { onFilteredJobIds?.(new Set(sel.map(r => r.id))); }, [sel, onFilteredJobIds]);
+    // The job map shows exactly the focused set — the same filters as the page.
+    const selJobs = useMemo(() => { const ids = new Set(sel.map(r => r.id)); return jobs.filter(j => ids.has(j.id)); }, [sel, jobs]);
+    const mapCities = useMemo(() => (mapOpen ? topCities(selJobs, 8) : []), [mapOpen, selJobs]);
+    const filterSummary = [
+        p.start || p.end ? `${p.start ? day(p.start) : 'start'} – ${p.end ? day(p.end) : 'today'}` : 'All dates',
+        p.type, p.provider, p.buyer,
+    ].filter(Boolean).join(' · ');
 
     // KPIs (focused set)
     const net = sel.reduce((s, r) => s + r.net, 0);
@@ -178,14 +193,9 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
     const isDefault = JSON.stringify({ ...p }) === JSON.stringify(DEFAULTS);
     const empty = all.length === 0;
 
-    return (
-        <div className="space-y-5 text-left">
-            {/* Filters */}
-            <div className="flex flex-wrap items-end gap-3 p-3 bg-bg-secondary/60 border border-border-sub rounded-xl">
-                <div className="flex items-center gap-2 shrink-0 self-center">
-                    <Filter size={12} className="text-text-muted" />
-                    <span className={label}>Filters</span>
-                </div>
+    /** Filter controls — on the page and again inside the job map, so the map
+     *  can be re-filtered without closing it. Both edit the same filters. */
+    const filterControls = (inDialog: boolean) => (<>
                 <label className="flex flex-col gap-1">
                     <span className={label}>Work date from</span>
                     <Input type="date" className={cn(control, 'w-[150px]')} value={p.start ?? ''} max={p.end ?? undefined} onChange={e => set({ start: e.target.value || null })} />
@@ -214,11 +224,23 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                         </SelectContent>
                     </Select>
                 </div>
-                <label className="flex flex-col gap-1">
+                {!inDialog && <label className="flex flex-col gap-1">
                     <span className={label}>Min. jobs per customer</span>
                     <Input type="number" min={1} step={1} className={cn(control, 'w-[90px]')} value={p.minJobs}
                         onChange={e => set({ minJobs: Math.max(1, Math.floor(Number(e.target.value) || 1)) })} />
-                </label>
+                </label>}
+                {inDialog && (
+                    <div className="flex flex-col gap-1">
+                        <span className={label}>Customer</span>
+                        <Select value={p.buyer ?? 'all'} onValueChange={v => set({ buyer: v === 'all' ? null : v })}>
+                            <SelectTrigger className={cn(control, 'w-[200px]')}><SelectValue /></SelectTrigger>
+                            <SelectContent className="bg-bg-elevated border-border-main max-h-[320px]">
+                                <SelectItem value="all" className="text-[10px] font-bold">All customers</SelectItem>
+                                {ranked.map(c => <SelectItem key={c.buyer} value={c.buyer} className="text-[10px] font-bold">{c.buyer}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
                 {p.buyer && (
                     <button onClick={() => set({ buyer: null })}
                         className="h-8 px-3 inline-flex items-center gap-1.5 rounded-full border border-brand-red/40 bg-brand-red/10 text-brand-red text-[12px] font-semibold" aria-label={`Clear customer focus ${p.buyer}`}>
@@ -231,7 +253,46 @@ export function CustomerDashboard({ jobs, weeklyLogs, invoices, technicians, onF
                         <RotateCcw size={11} /> Reset
                     </button>
                 )}
+    </>);
+
+    return (
+        <div className="space-y-5 text-left">
+            {/* Filters */}
+            <div className="flex flex-wrap items-end gap-3 p-3 bg-bg-secondary/60 border border-border-sub rounded-xl">
+                <div className="flex items-center gap-2 shrink-0 self-center">
+                    <Filter size={12} className="text-text-muted" />
+                    <span className={label}>Filters</span>
+                </div>
+                {filterControls(false)}
+                <Button size="sm" variant="outline" className="h-8 ml-auto self-end" onClick={() => setMapOpen(true)} disabled={empty}>
+                    <MapIcon size={13} className="mr-1.5" /> Job map
+                </Button>
             </div>
+
+            <Dialog open={mapOpen} onOpenChange={setMapOpen}>
+                <DialogContent className="sm:max-w-6xl bg-bg-elevated border-border-main max-h-[94vh] overflow-y-auto">
+                    <DialogHeader className="text-left">
+                        <DialogTitle className="text-base">Job map</DialogTitle>
+                        <DialogDescription className="text-[12px]">
+                            Where completed work happens — darker squares mean more jobs. Change the filters here and the map redraws. Showing {count(selJobs.length)} job{selJobs.length === 1 ? '' : 's'}: {filterSummary}.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex flex-wrap items-end gap-3 p-3 bg-bg-secondary/60 border border-border-sub rounded-xl">{filterControls(true)}</div>
+                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-4">
+                        {mapOpen && <JobDensityMap jobs={selJobs} />}
+                        <div className="space-y-2">
+                            <p className={label}>Busiest cities in this view</p>
+                            {mapCities.length === 0 ? <p className="text-[12px] text-text-muted">No job addresses with a city.</p> : mapCities.map((c, i) => (
+                                <div key={c.city} className="flex items-center gap-2 text-[12px]">
+                                    <span className="w-4 text-right font-mono text-text-muted">{i + 1}</span>
+                                    <span className="flex-1 min-w-0 truncate font-semibold text-text-primary">{c.city}</span>
+                                    <span className="font-mono text-text-secondary">{c.jobs}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {empty ? (
                 <EmptyState title="No completed jobs yet" description="This dashboard fills in as jobs are completed." />

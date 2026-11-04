@@ -49,5 +49,14 @@ export async function GET(req: NextRequest) {
     .filter(({ s }) => s.status !== 'inactive')
     .map(({ id, s }) => ({ id, clientId: (s.clientId && ids.has(s.clientId) ? s.clientId : byCompany.get((s.clientName || '').trim().toLowerCase())) || '', name: s.name || '', location: s.location || '' }))
     .filter(s => s.clientId && (s.name || s.location));
+  // Older clients keep their sites on the account (managedSites) instead.
+  users.docs.forEach(d => {
+    if (!ids.has(d.id)) return;
+    const managed = (d.data() as { managedSites?: { id?: string; name?: string; location?: string }[] }).managedSites || [];
+    managed.forEach((m, i) => {
+      if (!(m.name || m.location) || walkSites.some(w => w.clientId === d.id && w.location === m.location)) return;
+      walkSites.push({ id: m.id || `${d.id}-site-${i}`, clientId: d.id, name: m.name || '', location: m.location || '' });
+    });
+  });
   return NextResponse.json({ clients, sites: walkSites });
 }

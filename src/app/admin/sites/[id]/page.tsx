@@ -1,4 +1,5 @@
 'use client';
+import { ClientField, useClientDirectory } from '@/components/client-fields';
 import { PageHeader } from '@/components/page-header';
 import { StatCard, StatGrid } from '@/components/stat-card';
 import { PageLoading } from '@/components/empty-state';
@@ -43,6 +44,7 @@ export default function SiteDetailPage() {
   const [noteText, setNoteText] = useState('');
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Site>>({});
+  const dir = useClientDirectory();
   const [isEditing, setIsEditing] = useState(false);
   const [clientUser, setClientUser] = useState<Technician | null>(null);
   const { toast } = useToast();
@@ -200,7 +202,8 @@ export default function SiteDetailPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client</Label>
-                  <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" value={editForm.clientName || ''} onChange={e => setEditForm(f => ({ ...f, clientName: e.target.value }))} />
+                  <ClientField value={editForm.clientName || ''} clientId={editForm.clientId} clients={dir.clients} className="h-9 text-[11px] bg-bg-secondary border-border-main"
+                    onChange={(name, c) => setEditForm(f => ({ ...f, clientName: name, ...(c ? { clientId: c.id } : {}) }))} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Location</Label>

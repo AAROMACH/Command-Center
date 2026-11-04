@@ -1,5 +1,6 @@
 'use client';
 
+import { ClientPicker } from '@/components/client-picker';
 import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -121,12 +122,7 @@ export function SubscriptionDialog({
         <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
           <div className="space-y-1">
             <Label className={labelCls}>Client</Label>
-            <Select value={clientId} onValueChange={setClientId} disabled={!!existing}>
-              <SelectTrigger className={inputCls}><SelectValue placeholder="Choose client…" /></SelectTrigger>
-              <SelectContent>
-                {clients.map(c => <SelectItem key={c.id} value={c.id}>{clientLabel(c)}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <ClientPicker clients={clients} value={clientId} onChange={setClientId} disabled={!!existing} className={inputCls} />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">

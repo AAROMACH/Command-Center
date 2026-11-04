@@ -1,5 +1,6 @@
 
 'use client';
+import { ClientField, SiteAddressField, clientByName, useClientDirectory } from '@/components/client-fields';
 import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
@@ -138,6 +139,7 @@ export default function AssignmentsHubPage() {
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
+  const dir = useClientDirectory();
 
   const [currentUser, setCurrentUser] = useState<Technician | null>(null);
   const [orderToArchive, setOrderToArchive] = useState<WorkOrder | null>(null);
@@ -1108,11 +1110,16 @@ export default function AssignmentsHubPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                             <div className="space-y-2 text-left text-left">
                               <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-left">Client</Label>
-                              <Input value={editedOrder.clientName || ''} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold text-left" />
+                              <ClientField value={editedOrder.clientName || ''} clientId={(editedOrder as { clientId?: string | null }).clientId} clients={dir.clients}
+                      className="bg-bg-primary h-10 text-xs font-bold text-left"
+                      onChange={(name, c) => setEditedOrder({ ...editedOrder, clientName: name, ...(c ? { clientId: c.id } : {}) } as typeof editedOrder)} />
                             </div>
                             <div className="space-y-2 text-left text-left">
                               <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted text-left">Location</Label>
-                              <Input value={editedOrder.location || ''} onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})} className="bg-bg-primary h-10 text-xs text-left" />
+                              <SiteAddressField value={editedOrder.location || ''} sites={dir.sites}
+                      clientId={(editedOrder as { clientId?: string | null }).clientId || clientByName(dir.clients, editedOrder.clientName)?.id}
+                      className="bg-bg-primary h-10 text-xs text-left"
+                      onChange={addr => setEditedOrder({ ...editedOrder, location: addr })} />
                             </div>
                         </div>
 

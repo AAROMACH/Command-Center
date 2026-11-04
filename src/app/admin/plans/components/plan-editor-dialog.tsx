@@ -1,5 +1,6 @@
 'use client';
 
+import { ClientPicker } from '@/components/client-picker';
 import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -123,12 +124,7 @@ export function PlanEditorDialog({
               {draft.kind === 'custom' && (
                 <div className="space-y-1">
                   <Label className={labelCls}>Client *</Label>
-                  <Select value={draft.clientId || ''} onValueChange={v => set('clientId', v)}>
-                    <SelectTrigger className={inputCls}><SelectValue placeholder="Choose client…" /></SelectTrigger>
-                    <SelectContent>
-                      {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.clientCompany || c.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <ClientPicker clients={clients} value={draft.clientId || ''} onChange={v => set('clientId', v)} className={inputCls} />
                 </div>
               )}
             </div>

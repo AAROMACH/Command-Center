@@ -1,5 +1,6 @@
 'use client';
 
+import { ClientField, SiteAddressField, clientByName, useClientDirectory } from '@/components/client-fields';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { isClient } from '@/lib/permissions';
 import { 
@@ -68,6 +69,7 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
   const [isSiteRegistryOpen, setIsSiteRegistryOpen] = useState(false);
   const [registrySearch, setRegistrySearch] = useState("");
   const addressInputRef = useRef<HTMLInputElement>(null);
+  const dir = useClientDirectory();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -207,7 +209,8 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
       actualHours: 0,
       // Link the client account too, so the client portal finds the project
       // even if the company name is later edited on either side.
-      ...(selectedClient && isClient(selectedClient) ? { clientId: selectedClient.id } : {}),
+      ...(selectedClient && isClient(selectedClient) ? { clientId: selectedClient.id }
+        : clientByName(dir.clients, formData.client) ? { clientId: clientByName(dir.clients, formData.client)!.id } : {}),
     } as Project;
 
     onSave(newProject);
@@ -262,23 +265,9 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client Entity</Label>
-                  <div className="space-y-1.5">
-                    <Input 
-                        placeholder="Organization Name" 
-                        value={formData.client}
-                        onChange={e => setFormData({...formData, client: e.target.value})}
-                        className="bg-bg-primary border-border-sub h-10 text-xs font-bold tracking-wide focus:border-brand-red transition-all"
-                    />
-                    <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-6 text-[10px] uppercase font-bold tracking-wider text-brand-red hover:bg-brand-red/10 p-0 flex items-center gap-1.5"
-                        onClick={() => setIsRegistryOpen(true)}
-                    >
-                        <Search size={12}/> Find client
-                    </Button>
-                  </div>
+                  <ClientField value={formData.client || ''} clients={dir.clients}
+                      className="bg-bg-primary border-border-sub h-10 text-xs font-bold tracking-wide focus:border-brand-red transition-all"
+                      onChange={(name, c) => setFormData(prev => ({ ...prev, client: name, ...(c && c.company !== prev.client ? { location: '' } : {}) }))} />
                 </div>
               </div>
 
@@ -287,13 +276,10 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                 <div className="space-y-1.5">
                     <div className="relative group">
                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-                        <Input 
-                            ref={addressInputRef}
-                            placeholder="Full Address" 
-                            value={formData.location}
-                            onChange={e => setFormData({...formData, location: e.target.value})}
-                            className="bg-bg-primary pl-10 pr-10 h-10 text-xs border-border-sub focus:border-brand-red transition-all"
-                        />
+                        <SiteAddressField ref={addressInputRef} value={formData.location || ''} sites={dir.sites}
+                            clientId={clientByName(dir.clients, formData.client)?.id}
+                            onChange={addr => setFormData(prev => ({ ...prev, location: addr }))}
+                            className="bg-bg-primary pl-10 pr-10 h-10 text-xs border-border-sub focus:border-brand-red transition-all" />
                         {formData.location && (
                             <button 
                                 onClick={resolveAddress}
@@ -305,21 +291,6 @@ export function NewProjectDialog({ isOpen, setIsOpen, onSave }: NewProjectDialog
                             </button>
                         )}
                     </div>
-                    <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm" 
-                        disabled={!selectedClient?.managedSites || selectedClient.managedSites.length === 0}
-                        className={cn(
-                            "h-6 text-[10px] uppercase font-bold tracking-wider p-0 flex items-center gap-1.5",
-                            (!selectedClient?.managedSites || selectedClient.managedSites.length === 0) 
-                                ? "text-text-muted opacity-50 cursor-not-allowed" 
-                                : "text-accent-gold hover:bg-accent-gold/10"
-                        )}
-                        onClick={() => setIsSiteRegistryOpen(true)}
-                    >
-                        <MapPin size={12}/> {selectedClient?.managedSites ? 'Select Managed Site' : 'No Sites Found'}
-                    </Button>
                 </div>
               </div>
 

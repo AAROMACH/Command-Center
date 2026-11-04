@@ -1,4 +1,5 @@
 'use client';
+import { ClientField, SiteAddressField, clientByName, useClientDirectory } from '@/components/client-fields';
 import { createProjectInvoice } from '@/lib/project-billing';
 import { usePricingSettings } from '@/hooks/use-billing';
 import { projectLead } from '@/components/project-views';
@@ -90,6 +91,7 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
     const [activeTab, setActiveTab] = useState('overview');
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [editedProject, setEditedProject] = useState<Project>(project);
+    const dir = useClientDirectory();
     const [currentUser, setCurrentUser] = useState<Technician | null>(null);
     
     const { toast } = useToast();
@@ -325,23 +327,20 @@ export function ProjectDetailClient({ project, technicians, documents, timesheet
                                     </div>
                                     <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-bold text-text-muted">Client Entity</Label>
-                                        <Input 
-                                            disabled={isReadOnly}
-                                            value={editedProject.client || ''} 
-                                            onChange={e => setEditedProject({...editedProject, client: e.target.value})}
-                                            className="bg-bg-primary h-10 text-xs"
-                                        />
+                                        {isReadOnly ? <Input disabled value={editedProject.client || ''} className="bg-bg-primary h-10 text-xs" /> : (
+                                            <ClientField value={editedProject.client || ''} clientId={editedProject.clientId} clients={dir.clients} className="bg-bg-primary h-10 text-xs"
+                                                onChange={(name, c) => setEditedProject({ ...editedProject, client: name, ...(c ? { clientId: c.id } : {}) })} />
+                                        )}
                                     </div>
                                     <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-bold text-text-muted">Address</Label>
                                         <div className="relative">
                                             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
-                                            <Input 
-                                                disabled={isReadOnly}
-                                                value={editedProject.location || ''} 
-                                                onChange={e => setEditedProject({...editedProject, location: e.target.value})}
-                                                className="bg-bg-primary h-10 text-xs pl-10"
-                                            />
+                                            {isReadOnly ? <Input disabled value={editedProject.location || ''} className="bg-bg-primary h-10 text-xs pl-10" /> : (
+                                                <SiteAddressField value={editedProject.location || ''} sites={dir.sites}
+                                                    clientId={editedProject.clientId || clientByName(dir.clients, editedProject.client)?.id}
+                                                    onChange={addr => setEditedProject({ ...editedProject, location: addr })} className="bg-bg-primary h-10 text-xs pl-10" />
+                                            )}
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">

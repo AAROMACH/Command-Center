@@ -1,4 +1,5 @@
 'use client';
+import { ClientField, SiteAddressField, clientByName, useClientDirectory } from '@/components/client-fields';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -72,6 +73,7 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
   const [isSiteRegistryOpen, setIsSiteRegistryOpen] = useState(false);
   const [registrySearch, setRegistrySearch] = useState("");
   const addressInputRef = useRef<HTMLInputElement>(null);
+  const dir = useClientDirectory();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -306,36 +308,19 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client</Label>
-                    <div className="space-y-1.5">
-                        <Input 
-                            placeholder="Client name…" 
-                            value={formData.clientName}
-                            onChange={(e) => setFormData({...formData, clientName: e.target.value})}
-                            className="bg-bg-primary h-10 text-xs font-bold tracking-wide focus:border-brand-red transition-all"
-                        />
-                        <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-6 text-[10px] uppercase font-bold tracking-wider text-brand-red hover:bg-brand-red/10 p-0 flex items-center gap-1.5"
-                            onClick={() => setIsRegistryOpen(true)}
-                        >
-                            <Search size={12}/> Find client
-                        </Button>
-                    </div>
+                    <ClientField value={formData.clientName || ''} clientId={(formData as { clientId?: string | null }).clientId} clients={dir.clients}
+                        className="bg-bg-primary h-10 text-xs font-bold tracking-wide focus:border-brand-red transition-all"
+                        onChange={(name, c) => setFormData(prev => ({ ...prev, clientName: name, clientId: c?.id ?? null, ...(c && c.company !== prev.clientName ? { location: '' } : {}) } as typeof prev))} />
                 </div>
 
                 <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Location</Label>
                     <div className="space-y-1.5">
                         <div className="relative group">
-                            <Input 
-                                ref={addressInputRef}
-                                placeholder="Full address…" 
-                                value={formData.location}
-                                onChange={(e) => setFormData({...formData, location: e.target.value})}
-                                className="bg-bg-primary h-10 text-xs focus:border-brand-red transition-all pr-10"
-                            />
+                            <SiteAddressField ref={addressInputRef} value={formData.location || ''} sites={dir.sites}
+                                clientId={(formData as { clientId?: string | null }).clientId || clientByName(dir.clients, formData.clientName)?.id}
+                                onChange={addr => setFormData(prev => ({ ...prev, location: addr }))}
+                                className="bg-bg-primary h-10 text-xs focus:border-brand-red transition-all pr-10" />
                             {formData.location && (
                                 <button 
                                     onClick={resolveAddress}
@@ -347,21 +332,6 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
                                 </button>
                             )}
                         </div>
-                        <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="sm" 
-                            disabled={!selectedClient?.managedSites || selectedClient.managedSites.length === 0}
-                            className={cn(
-                                "h-6 text-[10px] uppercase font-bold tracking-wider p-0 flex items-center gap-1.5",
-                                (!selectedClient?.managedSites || selectedClient.managedSites.length === 0) 
-                                    ? "text-text-muted opacity-50 cursor-not-allowed" 
-                                    : "text-accent-gold hover:bg-accent-gold/10"
-                            )}
-                            onClick={() => setIsSiteRegistryOpen(true)}
-                        >
-                            <MapPin size={12}/> {selectedClient?.managedSites ? 'Select Managed Site' : 'No Sites Found'}
-                        </Button>
                     </div>
                 </div>
               </div>

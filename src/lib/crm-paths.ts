@@ -11,5 +11,5 @@ export function useCrmPaths() {
   const sales = (usePathname() || '').startsWith('/sales');
   return sales
     ? { inSalesPortal: true, pipeline: '/sales/pipeline', accounts: '/sales/accounts', quotes: '/sales/quotes', clients: null as string | null, project: (_id: string) => null as string | null }
-    : { inSalesPortal: false, pipeline: '/admin/crm', accounts: '/admin/crm/accounts', quotes: '/admin/quotes', clients: '/admin/crm/clients' as string | null, project: (id: string) => `/admin/projects/${id}` as string | null };
+    : { inSalesPortal: false, pipeline: '/admin/crm', accounts: '/admin/crm/accounts', quotes: '/admin/quotes', clients: '/admin/sites' as string | null, project: (id: string) => `/admin/projects/${id}` as string | null };
 }

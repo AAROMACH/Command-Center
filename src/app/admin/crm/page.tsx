@@ -461,7 +461,7 @@ export default function CRMPage() {
     if (!convertLead) return;
     setSavingClient(true);
     try {
-      await addDoc(collection(db, 'users'), {
+      const newClient = await addDoc(collection(db, 'users'), {
         name: convertLead.contactName,
         clientCompany: convertLead.companyName,
         email: convertLead.contactEmail,
@@ -475,7 +475,7 @@ export default function CRMPage() {
       await updateDoc(doc(db, 'leads', convertLead.id), { stage: 'won', convertedToClient: true, updatedAt: new Date().toISOString() });
       toast({ title: 'Client created', description: `${convertLead.companyName} is now an active client.` });
       setConvertLead(null);
-      if (paths.clients) router.push(paths.clients);
+      if (paths.clients) router.push(`/admin/clients/${newClient.id}`);
     } catch (e: any) {
       const denied = e?.code === 'permission-denied';
       toast({ variant: 'destructive', title: 'Failed to convert', description: denied ? 'Creating client accounts requires an admin.' : e.message });

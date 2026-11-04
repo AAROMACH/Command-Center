@@ -37,7 +37,8 @@ const ROUTE_PERMISSIONS: Array<{ prefix: string; permission: Permission }> = [
   { prefix: '/tech/assignments', permission: 'tech.assignments.view' },
   { prefix: '/tech/projects',    permission: 'tech.projects.view' },
   { prefix: '/tech/logs',        permission: 'tech.logs.view' },
-  { prefix: '/tech/site-walks',  permission: 'tech.assignments.view' },
+  { prefix: '/tech/site-walks',  permission: 'tech.site_walks.view' },
+  { prefix: '/admin/site-walks', permission: 'admin.crm.view' },
   { prefix: '/tech/messaging',   permission: 'tech.messages.view' },
   { prefix: '/tech/earnings',    permission: 'tech.earnings.view' },
   // Client portal

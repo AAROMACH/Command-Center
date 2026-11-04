@@ -1,5 +1,8 @@
 'use client';
 
+import { ClipboardCheck } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
+import Link from 'next/link';
 import { subscribeTechAssignments } from '@/lib/tech-assignments';
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useMemo } from 'react';
@@ -62,6 +65,8 @@ import { useHelperLogSync } from '@/hooks/use-helper-log-sync';
 import { techDisplayName } from '@/lib/utils';
 
 export default function TechDashboardPage() {
+    const { hasPermission } = useAuth();
+    const hasSiteWalks = hasPermission('tech.site_walks.create');
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [tech, setTech] = useState<Technician | null>(null);
     // Files a completed job this tech helped on into their own weekly log —
@@ -196,7 +201,14 @@ export default function TechDashboardPage() {
                 icon={Activity}
                 title={`Hi, ${tech.name?.split(' ')[0] || 'there'}`}
                 subtitle="Your jobs, schedule and logs for today."
-                actions={<PortalSwitchButton />}
+                actions={<>
+                    {hasSiteWalks && (
+                        <Button asChild variant="outline" className="h-11">
+                            <Link href="/tech/site-walks/new"><ClipboardCheck size={16} className="mr-1.5" /> Start a site walk</Link>
+                        </Button>
+                    )}
+                    <PortalSwitchButton />
+                </>}
             />
 
             {/* Stat cards */}

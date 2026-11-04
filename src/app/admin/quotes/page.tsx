@@ -3,6 +3,7 @@ import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import { db, auth } from '@/lib/firebase';
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
@@ -26,10 +27,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { DocKindHeader, DOC_BRAND } from '@/components/price-book-picker';
 import { canEditQuote, quoteDiscount, quoteToEditor, saveQuoteEdits } from '@/lib/quote-actions';
 import { createProjectFromQuote } from '@/lib/project-billing';
-import { SiteWalkWizard } from '@/components/site-walk/site-walk-wizard';
 import { SiteWalkReview } from '@/components/site-walk/site-walk-review';
 import { SiteWalkList, useSiteWalks } from '@/components/site-walk/site-walk-list';
-import { newSiteWalk } from '@/lib/site-walk-actions';
 import type { SiteWalk } from '@/lib/estimating';
 import { useAuth } from '@/contexts/auth-context';
 import { useDirectory } from '@/hooks/use-directory';
@@ -591,14 +590,16 @@ export default function AdminQuotesPage() {
   const [loading, setLoading] = useState(true);
   // ── Site walks: the walkthrough → admin approval → draft quote ──
   const { user: authUser } = useAuth();
+  const router = useRouter();
   const directory = useDirectory();
   const walkTechs = useMemo(() => directory.filter(isTech).sort((a, b) => (a.name || '').localeCompare(b.name || '')), [directory]);
   const { walks, loading: walksLoading } = useSiteWalks({ all: true });
-  const [walkOpen, setWalkOpen] = useState<SiteWalk | null>(null);
   const [walkReviewId, setWalkReviewId] = useState<string | null>(null);
   const walkReview = walks.find(w => w.id === walkReviewId) || null;
-  const openWalk = (w: SiteWalk) => (['submitted', 'approved', 'archived'].includes(w.status) ? setWalkReviewId(w.id) : setWalkOpen(w));
-  const startWalk = (prefill: Partial<SiteWalk> = {}) => authUser && setWalkOpen(newSiteWalk({ id: authUser.id, name: authUser.name || 'Office' }, prefill));
+  // Walks open as their own page (they save as you go); submitted ones open for review here.
+  const walkBase = inSalesPortal ? '/sales/site-walks' : '/admin/site-walks';
+  const openWalk = (w: SiteWalk) => (['submitted', 'approved', 'archived'].includes(w.status) ? setWalkReviewId(w.id) : router.push(`${walkBase}/${w.id}`));
+  const startWalk = () => router.push(`${walkBase}/new`);
   const walksWaiting = walks.filter(w => w.status === 'submitted').length;
   const [viewMode, setViewMode] = useViewMode('quotes');
   const [prefillLead, setPrefillLead] = useState<Lead | null>(null);
@@ -746,7 +747,6 @@ export default function AdminQuotesPage() {
         prefillLead={prefillLead}
       />
 
-      <SiteWalkWizard open={!!walkOpen} initial={walkOpen} onClose={() => setWalkOpen(null)} onSubmitted={() => setTab('walks')} />
       <SiteWalkReview walk={walkReview} onClose={() => setWalkReviewId(null)}
         onQuoteCreated={id => { setTab('draft'); setSelectedQuoteId(id); }} />
 

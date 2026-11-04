@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { collection, doc, onSnapshot, query, updateDoc, where, type Unsubscribe } from 'firebase/firestore';
-import { ClipboardList, MapPin } from 'lucide-react';
+import { ClipboardList, MapPin, Trash2 } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -47,10 +47,13 @@ export function useSiteWalks(scope: { all: true } | { techId: string | null }) {
   return { walks, loading };
 }
 
-export function SiteWalkList({ walks, loading, onOpen, techs, search = '' }: {
+export function SiteWalkList({ walks, loading, onOpen, techs, search = '', canDelete, onDelete }: {
   walks: SiteWalk[];
   loading: boolean;
   onOpen: (w: SiteWalk) => void;
+  /** Which drafts the viewer may delete, and what to do. */
+  canDelete?: (w: SiteWalk) => boolean;
+  onDelete?: (w: SiteWalk) => void;
   /** Office view: assign a draft walk to a tech (for a walk they'll do on site). */
   techs?: Technician[];
   search?: string;
@@ -92,6 +95,13 @@ export function SiteWalkList({ walks, loading, onOpen, techs, search = '' }: {
                 </p>
                 {w.status === 'returned' && w.returnNote && <p className="text-[12px] text-accent-gold">Sent back: {w.returnNote}</p>}
               </button>
+              {onDelete && w.status === 'draft' && (canDelete ? canDelete(w) : true) && (
+                <div className="px-4 pb-3 -mt-1">
+                  <button type="button" onClick={() => onDelete(w)} className="h-10 text-[13px] font-medium text-text-red flex items-center gap-1.5 hover:underline">
+                    <Trash2 size={14} /> Delete draft
+                  </button>
+                </div>
+              )}
               {techs && w.status === 'draft' && (
                 <div className="px-4 pb-3">
                   <Select value={w.assignedTechId || 'none'} onValueChange={async v => {

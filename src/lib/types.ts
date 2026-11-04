@@ -503,6 +503,14 @@ export type ServiceRequest = {
   closedAt?: string;
   convertedId?: string;
   conversionType?: 'assignment' | 'project';
+  /** Request tracker (lib/request-tracker). */
+  clientId?: string | null;
+  createdAt?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  /** Project track: the quote made from this request. */
+  quoteId?: string | null;
+  quotedAt?: string;
 };
 
 // New service request form (public-facing, saves to `serviceRequests` collection)
@@ -932,6 +940,10 @@ export type Invoice = {
   planDiscount?: { planId: string; planName: string; laborPct: number; materialsPct: number } | null;
   /** The quote this invoice was created from. */
   quoteId?: string | null;
+  /** Weekly/monthly roll-up: every job this invoice bills (lib/job-invoicing). */
+  workOrderIds?: string[];
+  sentAt?: string | null;
+  paidAt?: string | null;
   /** Outside customer (no client account). */
   customerEmail?: string | null;
 };

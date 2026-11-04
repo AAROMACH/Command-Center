@@ -59,6 +59,7 @@ import { PageHeader } from '@/components/page-header';
 import { SearchField } from '@/components/search-field';
 import { SortControl } from '@/components/list-toolbar';
 import { StatusBadge } from '@/components/status-badge';
+import { LiveRequestTracker } from '@/components/request-tracker';
 import { EmptyState } from '@/components/empty-state';
 import { usePaged, ListPager, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { requestMillis, formatRequestDate, requestKind } from '../_lib/requests';
@@ -333,17 +334,17 @@ export default function ClientTicketsPage() {
                 </TabsList>
 
                 <TabsContent value="requested" className="mt-0">
-                    <TicketList pagerKey="requested" searching={!!searchQuery} onClearSearch={() => setSearchQuery('')} resetKeys={[searchQuery, sortBy]}
+                    <TicketList company={currentUser?.clientCompany || null} pagerKey="requested" searching={!!searchQuery} onClearSearch={() => setSearchQuery('')} resetKeys={[searchQuery, sortBy]}
                         requests={myRequests.filter(r => ['new', 'reviewed', 'pending_review', 'pending'].includes(r.status as string))} />
                 </TabsContent>
                 
                 <TabsContent value="approved" className="mt-0">
-                    <TicketList pagerKey="approved" searching={!!searchQuery} onClearSearch={() => setSearchQuery('')} resetKeys={[searchQuery, sortBy]}
+                    <TicketList company={currentUser?.clientCompany || null} pagerKey="approved" searching={!!searchQuery} onClearSearch={() => setSearchQuery('')} resetKeys={[searchQuery, sortBy]}
                         requests={myRequests.filter(r => r.status === 'approved')} />
                 </TabsContent>
 
                 <TabsContent value="closed" className="mt-0">
-                    <TicketList pagerKey="closed" searching={!!searchQuery} onClearSearch={() => setSearchQuery('')} resetKeys={[searchQuery, sortBy]}
+                    <TicketList company={currentUser?.clientCompany || null} pagerKey="closed" searching={!!searchQuery} onClearSearch={() => setSearchQuery('')} resetKeys={[searchQuery, sortBy]}
                         requests={myRequests.filter(r => ['closed', 'rejected', 'denied', 'archived'].includes(r.status as string))} />
                 </TabsContent>
             </Tabs>
@@ -507,8 +508,10 @@ export default function ClientTicketsPage() {
     );
 }
 
-function TicketList({ requests, pagerKey, searching, onClearSearch, resetKeys }: {
+function TicketList({ requests, pagerKey, searching, onClearSearch, resetKeys, company }: {
     requests: ServiceRequest[];
+    /** The client's company — every tracker query is scoped to it. */
+    company: string | null;
     pagerKey: string;
     searching: boolean;
     onClearSearch: () => void;
@@ -524,7 +527,8 @@ function TicketList({ requests, pagerKey, searching, onClearSearch, resetKeys }:
         <div className="space-y-3 text-left">
             {pager.items.map(ticket => (
                 <Card key={ticket.id} className="rounded-xl border-border-main bg-bg-secondary shadow-sm transition-colors hover:border-text-muted">
-                    <CardContent className="flex items-center justify-between gap-4 p-4 text-left">
+                    <CardContent className="p-4 text-left space-y-3">
+                    <div className="flex items-center justify-between gap-4 text-left">
                         <div className="min-w-0 flex-1 space-y-1 text-left">
                             <div className="flex items-center gap-2">
                                 <span className="font-mono text-[11px] font-semibold text-text-muted">{(ticket.id || '').toUpperCase()}</span>
@@ -539,6 +543,10 @@ function TicketList({ requests, pagerKey, searching, onClearSearch, resetKeys }:
                             </div>
                         </div>
                         <StatusBadge kind="request" value={ticket.status} className="shrink-0" />
+                    </div>
+                    {/* Where it stands: progress bar, the next step and who it's
+                        waiting on; "Show every step" for times and details. */}
+                    <LiveRequestTracker request={ticket} audience="client" company={company} collapsible />
                     </CardContent>
                 </Card>
             ))}

@@ -54,6 +54,8 @@ export type Permission =
   | 'admin.crm.mark_won'
   | 'admin.crm.mark_lost'
   | 'admin.crm.import_leads'
+  // Price and approve submitted site walks into quotes.
+  | 'admin.crm.review_site_walk'
   // Clients
   | 'admin.clients.view'
   | 'admin.clients.manage'
@@ -141,6 +143,9 @@ export type Permission =
   | 'tech.logs.unsubmit_own'
   | 'tech.logs.move_assignment'
   | 'tech.earnings.view'
+  // Site walks: walk a site on a tablet and send it to the office for a quote.
+  | 'tech.site_walks.view'
+  | 'tech.site_walks.create'
   | 'tech.messages.view'
   | 'tech.messages.send'
   | 'tech.profile.view'
@@ -182,7 +187,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   'admin.crm.view', 'admin.crm.view_leads', 'admin.crm.manage_leads', 'admin.crm.create_lead',
   'admin.crm.create_opportunity', 'admin.crm.create_quote', 'admin.crm.edit_quote', 'admin.crm.send_quote',
   'admin.crm.approve_quote', 'admin.crm.convert_quote', 'admin.crm.mark_won', 'admin.crm.mark_lost',
-  'admin.crm.import_leads',
+  'admin.crm.import_leads', 'admin.crm.review_site_walk',
   // Admin - clients
   'admin.clients.view', 'admin.clients.manage',
   // Admin - weekly logs
@@ -218,7 +223,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   'tech.projects.lead', 'tech.projects.view_all', 'tech.projects.manage', 'tech.projects.create',
   'tech.projects.staff', 'tech.projects.close',
   'tech.logs.view', 'tech.logs.create', 'tech.logs.submit', 'tech.logs.unsubmit_own', 'tech.logs.move_assignment',
-  'tech.earnings.view', 'tech.messages.view', 'tech.messages.send',
+  'tech.earnings.view', 'tech.site_walks.view', 'tech.site_walks.create', 'tech.messages.view', 'tech.messages.send',
   'tech.profile.view', 'tech.profile.edit',
   // Client
   'client.dashboard.view', 'client.tickets.view', 'client.tickets.create', 'client.projects.view',
@@ -255,7 +260,7 @@ export const PERMISSION_TREE: PermissionTree = {
       'admin.crm.view', 'admin.crm.view_leads', 'admin.crm.manage_leads', 'admin.crm.create_lead',
       'admin.crm.create_opportunity', 'admin.crm.create_quote', 'admin.crm.edit_quote', 'admin.crm.send_quote',
       'admin.crm.approve_quote', 'admin.crm.convert_quote', 'admin.crm.mark_won', 'admin.crm.mark_lost',
-      'admin.crm.import_leads',
+      'admin.crm.import_leads', 'admin.crm.review_site_walk',
     ],
     clients: ['admin.clients.view', 'admin.clients.manage'],
     logs: [
@@ -307,6 +312,7 @@ export const PERMISSION_TREE: PermissionTree = {
       'tech.logs.unsubmit_own', 'tech.logs.move_assignment',
     ],
     earnings: ['tech.earnings.view'],
+    site_walks: ['tech.site_walks.view', 'tech.site_walks.create'],
     messages: ['tech.messages.view', 'tech.messages.send'],
     profile: ['tech.profile.view', 'tech.profile.edit'],
   },
@@ -375,7 +381,8 @@ const FIELD_TECH_PERMISSIONS: Permission[] = [
   'tech.assignments.check_in', 'tech.assignments.check_out', 'tech.assignments.complete',
   'tech.assignments.report_issue', 'tech.schedule.view', 'tech.projects.view', 'tech.projects.complete_task',
   'tech.logs.view', 'tech.logs.create', 'tech.logs.submit', 'tech.logs.unsubmit_own', 'tech.logs.move_assignment',
-  'tech.earnings.view', 'tech.messages.view', 'tech.messages.send', 'tech.profile.view', 'tech.profile.edit',
+  'tech.earnings.view', 'tech.site_walks.view', 'tech.site_walks.create',
+  'tech.messages.view', 'tech.messages.send', 'tech.profile.view', 'tech.profile.edit',
 ];
 
 export const SUBROLE_DEFINITIONS: Record<AppRole, SubroleDefinition> = {
@@ -446,7 +453,7 @@ export const SUBROLE_DEFINITIONS: Record<AppRole, SubroleDefinition> = {
       'admin.crm.view', 'admin.crm.view_leads', 'admin.crm.manage_leads',
       'admin.crm.create_lead', 'admin.crm.create_opportunity', 'admin.crm.create_quote',
       'admin.crm.edit_quote', 'admin.crm.send_quote', 'admin.crm.mark_won', 'admin.crm.mark_lost',
-      'admin.crm.import_leads',
+      'admin.crm.import_leads', 'admin.crm.review_site_walk',
     ],
   },
   field_technician: {

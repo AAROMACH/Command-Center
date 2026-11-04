@@ -335,12 +335,6 @@ export default function FinancialsPage() {
                         <TabsTrigger value="invoices" className="tab">Invoices</TabsTrigger>
                         <TabsTrigger value="reimbursements" className="tab">Reimbursements</TabsTrigger>
                     </TabsList>
-                    <button
-                        onClick={() => router.push('/admin/payroll/audit')}
-                        className="h-9 px-4 rounded-md border border-border-main text-[13px] font-medium transition-colors bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-bg-tertiary"
-                    >
-                        Payroll audit ↗
-                    </button>
                 </div>
                 
                 <div className="mt-6 text-left">

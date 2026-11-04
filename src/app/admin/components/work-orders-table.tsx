@@ -1,5 +1,6 @@
 "use client";
 
+import { ClientField, SiteAddressField, clientByName, useClientDirectory } from '@/components/client-fields';
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import type { WorkOrder, Technician } from "@/lib/types";
 import { format } from "date-fns";
@@ -141,6 +142,7 @@ export const WorkOrdersTable = React.memo(({
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
+  const dir = useClientDirectory();
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -825,11 +827,16 @@ export const WorkOrdersTable = React.memo(({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2 text-left">
                                 <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client</Label>
-                                <Input value={editedOrder.clientName || ''} onChange={(e) => setEditedOrder({...editedOrder, clientName: e.target.value})} className="bg-bg-primary h-10 text-xs font-bold" />
+                                <ClientField value={editedOrder.clientName || ''} clientId={(editedOrder as { clientId?: string | null }).clientId} clients={dir.clients}
+                      className="bg-bg-primary h-10 text-xs font-bold"
+                      onChange={(name, c) => setEditedOrder({ ...editedOrder, clientName: name, ...(c ? { clientId: c.id } : {}) } as typeof editedOrder)} />
                             </div>
                             <div className="space-y-2 text-left">
                                 <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Location</Label>
-                                <Input value={editedOrder.location || ''} onChange={(e) => setEditedOrder({...editedOrder, location: e.target.value})} className="bg-bg-primary h-10 text-xs" />
+                                <SiteAddressField value={editedOrder.location || ''} sites={dir.sites}
+                      clientId={(editedOrder as { clientId?: string | null }).clientId || clientByName(dir.clients, editedOrder.clientName)?.id}
+                      className="bg-bg-primary h-10 text-xs"
+                      onChange={addr => setEditedOrder({ ...editedOrder, location: addr })} />
                             </div>
                         </div>
 

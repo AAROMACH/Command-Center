@@ -5,9 +5,7 @@ import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import type { CrmContact, Lead, LeadActivity, Quote, SiteSurvey } from '@/lib/types';
 import { SiteSurveyDialog } from './site-survey-dialog';
-import { SiteWalkWizard } from '@/components/site-walk/site-walk-wizard';
 import { WALK_STATUS } from '@/components/site-walk/site-walk-list';
-import { newSiteWalk } from '@/lib/site-walk-actions';
 import type { SiteWalk } from '@/lib/estimating';
 import { collection as fsCollection, onSnapshot as fsOnSnapshot, query as fsQuery, where as fsWhere } from 'firebase/firestore';
 import { db as fsDb } from '@/lib/firebase';
@@ -73,6 +71,7 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
   const { toast } = useToast();
   const router = useRouter();
   const paths = useCrmPaths();
+  const walkBase = paths.inSalesPortal ? '/sales/site-walks' : '/admin/site-walks';
   const [activityType, setActivityType] = useState<LeadActivity['type']>('call');
   const [callOutcome, setCallOutcome] = useState('');
   const [activityNote, setActivityNote] = useState('');
@@ -83,7 +82,6 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
   const [taskDue, setTaskDue] = useState('');
   const [surveyOpen, setSurveyOpen] = useState<SiteSurvey | null>(null);
   // Site walks replace the old site survey; older surveys stay viewable.
-  const [walkOpen, setWalkOpen] = useState<SiteWalk | null>(null);
   const [leadWalks, setLeadWalks] = useState<SiteWalk[]>([]);
   useEffect(() => {
     if (!lead?.id) { setLeadWalks([]); return; }
@@ -446,15 +444,12 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
                 <div className="flex items-center justify-between">
                   <p className={sectionLabel}>Site walks ({leadWalks.length + leadSurveys.length})</p>
                   <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold uppercase tracking-wider"
-                    onClick={() => setWalkOpen(newSiteWalk({ id: currentUserId, name: currentUserName || 'Sales' }, {
-                      leadId: lead.id, customerCompany: lead.companyName || '', contactName: lead.contactName || '',
-                      contactEmail: lead.contactEmail || '', contactPhone: lead.contactPhone || '', siteAddress: lead.address || '',
-                    }))}>
+                    onClick={() => router.push(`${walkBase}/new?leadId=${lead.id}`)}>
                     <Footprints size={10} className="mr-1.5" /> New site walk
                   </Button>
                 </div>
                 {leadWalks.map(w => (
-                  <button key={w.id} onClick={() => setWalkOpen(w)}
+                  <button key={w.id} onClick={() => router.push(`${walkBase}/${w.id}`)}
                     className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border-sub bg-bg-primary hover:border-border-main text-left">
                     <Footprints size={12} className="text-brand-red shrink-0" />
                     <span className="flex-1 min-w-0">
@@ -621,7 +616,6 @@ export function LeadDetailDrawer({ lead, activities, quotes, contacts = [], surv
           currentUserName={currentUserName}
           onClose={() => setSurveyOpen(null)}
         />
-        <SiteWalkWizard open={!!walkOpen} initial={walkOpen} onClose={() => setWalkOpen(null)} />
 
         {/* Full Detail dialog — every field plus the original uploaded files
             so sales can recover anything the import extraction missed. */}

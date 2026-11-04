@@ -250,11 +250,11 @@ export const DISCOVERY: Record<WalkArea | 'general', string[]> = {
     'Are drawings, bid deadlines or low-voltage specs available?',
     'Any vendor onboarding or PO requirements?',
   ],
-  cabling: ['How many endpoints, and what are the ceiling / wall conditions?', 'Does the spec require a manufacturer system warranty?'],
+  cabling: ['Does the spec require a manufacturer system warranty?', 'Where are the MDF / IDF closets, and is there rack space and power?'],
   fiber: ['What endpoints, distance, strand count and fiber type?', 'Is formal certification or OTDR results required? (third party only)'],
   network: ['ISP, number of users, VLANs, PoE devices and uptime requirements?', 'Standardizing on a vendor (Cisco, Meraki, Aruba, Fortinet, Ubiquiti…)?'],
-  wifi: ['Where are the dead zones, and what devices / roaming needs exist?'],
-  cameras: ['Are the cameras and recording system already selected? Where does the NVR go?'],
+  wifi: ['What devices connect, and do people roam between areas (phones, scanners)?'],
+  cameras: ['Is the recording system (NVR) already selected? Where does it go, and how many days of recording?'],
   av: ['Which displays, mounting and signal standards?'],
   devices: ['Which POS vendor, and who controls payment processing?', 'How many devices, and who manages software credentials?'],
   support: ['What fails, how often, and what is the business impact?', 'What hours and response time do they need?'],
@@ -301,6 +301,18 @@ export type SiteWalk = {
   lines: WalkLine[];
   leadId?: string | null;
   clientId?: string | null;
+  /** The client's existing site, when picked (else the address is typed). */
+  siteId?: string | null;
+  /** Site step: "New network drops needed?" — the Drops step shows only on yes. */
+  needsDrops?: boolean | null;
+  /** Devices step: count, where, and who supplies the hardware, per device type. */
+  devices?: Partial<Record<DeviceKey, DeviceEntry>>;
+  /** Checks step: Wi-Fi tests and troubleshooting notes. */
+  tests?: Partial<WalkTests>;
+  /** Yes/no add-ons and labor hours asked on the steps. */
+  extras?: Partial<WalkExtras>;
+  /** Where the walker left off (reopening resumes here). */
+  lastStep?: string;
   assignedTechId?: string | null;
   assignedTechName?: string | null;
   createdBy: string;
@@ -356,11 +368,15 @@ export function conditionLines(c: SiteConditions, siteState: string, a: Estimati
 }
 
 /** Every line on the walk right now: derived + hand-added (skipped suggestions removed). */
-export function buildWalkLines(w: Pick<SiteWalk, 'drops' | 'conditions' | 'siteState' | 'manualLines' | 'skippedSuggestions'>, a: EstimatingAssumptions): WalkLine[] {
+export function buildWalkLines(w: Pick<SiteWalk, 'drops' | 'conditions' | 'siteState' | 'manualLines' | 'skippedSuggestions' | 'needsDrops' | 'areas' | 'devices' | 'extras'>, a: EstimatingAssumptions): WalkLine[] {
   const skipped = new Set(w.skippedSuggestions || []);
+  // Older walks have no needsDrops answer: their drops still count.
+  const drops = w.needsDrops === false ? [] : (w.drops || []);
   return [
-    ...dropLines(w.drops || [], a),
+    ...dropLines(drops, a),
     ...conditionLines(w.conditions, w.siteState, a).filter(l => !skipped.has(l.id)),
+    ...deviceLines(w),
+    ...extraLines(w),
     ...(w.manualLines || []).filter(l => (Number(l.qty) || 0) > 0),
   ];
 }
@@ -402,6 +418,17 @@ export function walkScopeText(w: SiteWalk, a: EstimatingAssumptions): string {
   if (cab.length) out.push(`Cabling: ${cab.join(', ')}`);
   (w.drops || []).filter(d => d.qty).forEach(d => out.push(`  • ${d.label || 'Drops'}: ${d.qty} × ${d.cable}${d.plenum ? ' plenum' : ''}, ${dropLength(d)} ft each`));
   if (c.accessNotes) out.push(`Access: ${c.accessNotes}`);
+  const devs = DEVICE_DEFS.filter(d => (w.areas || []).includes(d.area) && (Number(w.devices?.[d.key]?.count) || 0) > 0);
+  if (devs.length) {
+    out.push('Devices:');
+    devs.forEach(d => { const e = w.devices![d.key]!; out.push(`  • ${e.count} × ${d.label}${e.locations ? ` — ${e.locations}` : ''}${e.supply ? ` (${SUPPLY_LABEL[e.supply]})` : ''}`); });
+  }
+  const tests = w.tests || {};
+  const speed = [tests.downMbps ? `${tests.downMbps} down` : '', tests.upMbps ? `${tests.upMbps} up` : '', tests.pingMs ? `${tests.pingMs} ms ping` : ''].filter(Boolean).join(' / ');
+  if (speed) out.push(`Speed test: ${speed} (Mbps)`);
+  if (tests.wifiman) out.push(`WiFiman: ${tests.wifiman}`);
+  if (tests.deadZones) out.push(`Weak / dead Wi-Fi areas: ${tests.deadZones}`);
+  if (tests.symptoms) out.push(`Reported problem: ${tests.symptoms}`);
   const qa = Object.entries(w.answers || {}).filter(([, v]) => v?.trim());
   if (qa.length) { out.push('Discovery:'); qa.forEach(([q, v]) => out.push(`  • ${q} ${v.trim()}`)); }
   if (w.scopeNotes) out.push(`Notes: ${w.scopeNotes}`);
@@ -416,3 +443,84 @@ export const quoteTermsText = (a: EstimatingAssumptions) => [
   `WARRANTY: ${a.warranty}`,
   `VALIDITY: ${a.quoteValidityDays} days.`,
 ].join('\n');
+
+
+// ── Standardized walk questions (pages/site-walk) ────────────────────────────
+// Every walk asks the same things for the same kind of job, and every answer
+// maps to a catalog code, so the office prices walks the same way.
+
+export type DeviceKey = 'firewall' | 'switch' | 'ap' | 'camera' | 'display' | 'pos' | 'workstation';
+export type DeviceEntry = { count: number; locations: string; supply: 'us' | 'customer' | 'existing' | '' };
+export const DEVICE_DEFS: { key: DeviceKey; area: WalkArea; label: string; code: string; where: string }[] = [
+  { key: 'ap', area: 'wifi', label: 'Wi-Fi access points', code: 'SVC-019', where: 'Where each AP goes (room, ceiling height, mount)' },
+  { key: 'switch', area: 'network', label: 'Network switches', code: 'SVC-018', where: 'Closet / rack, PoE needed?' },
+  { key: 'firewall', area: 'network', label: 'Router / firewall', code: 'SVC-017', where: 'Where the ISP comes in' },
+  { key: 'camera', area: 'cameras', label: 'Cameras', code: 'SVC-024', where: 'Indoor / outdoor, what each one covers' },
+  { key: 'display', area: 'av', label: 'Displays / AV devices', code: 'SVC-025', where: 'Room, wall type, size' },
+  { key: 'pos', area: 'devices', label: 'POS stations', code: 'SVC-022', where: 'Counter / register locations' },
+  { key: 'workstation', area: 'devices', label: 'Printers / workstations', code: 'SVC-023', where: 'Desk / room' },
+];
+export const SUPPLY_LABEL: Record<Exclude<DeviceEntry['supply'], ''>, string> = {
+  us: 'We supply it', customer: 'Customer supplies it', existing: 'Reusing existing',
+};
+
+export type WalkTests = { downMbps: number; upMbps: number; pingMs: number; wifiman: string; deadZones: string; symptoms: string };
+export type WalkExtras = {
+  rackCleanup: boolean;
+  topology: 'none' | 'basic' | 'detailed';
+  wifiSurvey: boolean;
+  asBuilt: boolean;
+  /** Troubleshooting / support: estimated tech hours on site and remote. */
+  supportHours: number;
+  remoteHours: number;
+  configHours: number;
+};
+
+/** Areas whose work is counted on the Devices step. */
+const DEVICE_AREAS: WalkArea[] = ['network', 'wifi', 'cameras', 'av', 'devices'];
+
+/** The walk's steps, in order — Drops and Devices appear only when they apply. */
+export type WalkStep = 'job' | 'site' | 'drops' | 'devices' | 'checks' | 'review';
+export function walkSteps(w: Pick<SiteWalk, 'areas' | 'needsDrops'>): WalkStep[] {
+  const areas = w.areas || [];
+  return [
+    'job', 'site',
+    ...(w.needsDrops ? ['drops' as const] : []),
+    ...(areas.some(a => DEVICE_AREAS.includes(a)) ? ['devices' as const] : []),
+    'checks', 'review',
+  ];
+}
+export const STEP_LABEL: Record<WalkStep, string> = {
+  job: 'Job', site: 'Site', drops: 'Drops', devices: 'Devices', checks: 'Checks & photos', review: 'Review',
+};
+
+/** Device counts → catalog lines (only for the job types chosen). */
+export function deviceLines(w: Pick<SiteWalk, 'areas' | 'devices'>): WalkLine[] {
+  const areas = new Set(w.areas || []);
+  return DEVICE_DEFS.flatMap(d => {
+    const e = w.devices?.[d.key];
+    const n = Math.round(Number(e?.count) || 0);
+    if (!n || !areas.has(d.area)) return [];
+    const notes = [e?.locations?.trim(), e?.supply ? SUPPLY_LABEL[e.supply] : ''].filter(Boolean).join(' · ');
+    return [{ id: `dev-${d.key}`, code: d.code, qty: n, source: 'manual' as const, ...(notes ? { notes } : {}) }];
+  });
+}
+
+/** Yes/no add-ons and hours → catalog lines. */
+export function extraLines(w: Pick<SiteWalk, 'areas' | 'extras'>): WalkLine[] {
+  const x = w.extras || {};
+  const areas = new Set(w.areas || []);
+  const out: WalkLine[] = [];
+  const add = (key: string, code: string, qty: number, notes?: string) => { if (qty > 0) out.push({ id: `x-${key}`, code, qty, source: 'manual', ...(notes ? { notes } : {}) }); };
+  if (x.rackCleanup) add('rack', 'SVC-013', 1, 'Rack / closet cleanup');
+  if (areas.has('network') && x.topology === 'basic') add('topo', 'DOC-01', 1);
+  if (areas.has('network') && x.topology === 'detailed') add('topo', 'DOC-02', 1);
+  if (areas.has('wifi') && x.wifiSurvey) add('survey', 'SVC-020', 1);
+  if (x.asBuilt) add('asbuilt', 'DOC-04', 1, 'Label map / port schedule');
+  if (areas.has('network')) add('config', 'SVC-006', Number(x.configHours) || 0, 'Advanced configuration hours');
+  if (areas.has('support')) {
+    add('onsite', 'SVC-004', Number(x.supportHours) || 0, 'Estimated on-site hours');
+    add('remote', 'SVC-005', Number(x.remoteHours) || 0, 'Estimated remote hours');
+  }
+  return out;
+}

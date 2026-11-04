@@ -1,5 +1,6 @@
 'use client';
 
+import { ClientField, SiteAddressField, clientByName, useClientDirectory } from '@/components/client-fields';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { isClient } from '@/lib/permissions';
 import { 
@@ -64,6 +65,7 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
   const [registrySearch, setRegistrySearch] = useState("");
   
   const addressInputRef = useRef<HTMLInputElement>(null);
+  const dir = useClientDirectory();
   const imageInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   
@@ -285,36 +287,19 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client</Label>
-                <div className="space-y-1.5">
-                  <Input 
-                    placeholder="Name or Organization"
-                    value={formData.clientName}
-                    onChange={(e) => setFormData({...formData, clientName: e.target.value})}
-                    className="bg-bg-primary border-border-sub h-10 text-xs font-bold"
-                  />
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-6 text-[10px] uppercase font-bold tracking-wider text-brand-red hover:bg-brand-red/10 p-0 flex items-center gap-1.5"
-                    onClick={() => setIsRegistryOpen(true)}
-                  >
-                    <Search size={12}/> Find client
-                  </Button>
-                </div>
+                <ClientField value={formData.clientName || ''} clientId={(formData as { clientId?: string | null }).clientId} clients={dir.clients}
+                  className="bg-bg-primary border-border-sub h-10 text-xs font-bold"
+                  onChange={(name, c) => setFormData(prev => ({ ...prev, clientName: name, clientId: c?.id ?? null, ...(c && c.company !== prev.clientName ? { location: '' } : {}) } as typeof prev))} />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Location</Label>
                 <div className="space-y-1.5">
                     <div className="relative group">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-                    <Input 
-                        ref={addressInputRef}
-                        placeholder="Full Address"
-                        value={formData.location}
-                        onChange={(e) => setFormData({...formData, location: e.target.value})}
-                        className="bg-bg-primary h-10 text-xs pl-10 pr-10 border-border-sub focus:border-brand-red transition-all"
-                    />
+                    <SiteAddressField ref={addressInputRef} value={formData.location || ''} sites={dir.sites}
+                        clientId={(formData as { clientId?: string | null }).clientId || clientByName(dir.clients, formData.clientName)?.id}
+                        onChange={addr => setFormData(prev => ({ ...prev, location: addr }))}
+                        className="bg-bg-primary h-10 text-xs pl-10 pr-10 border-border-sub focus:border-brand-red transition-all" />
                     {formData.location && (
                         <button 
                             onClick={resolveAddress}
@@ -326,21 +311,6 @@ export function NewRequestDialog({ isOpen, setIsOpen, onSave }: NewRequestDialog
                         </button>
                     )}
                     </div>
-                    <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm" 
-                        disabled={!selectedClient?.managedSites || selectedClient.managedSites.length === 0}
-                        className={cn(
-                            "h-6 text-[10px] uppercase font-bold tracking-wider p-0 flex items-center gap-1.5",
-                            (!selectedClient?.managedSites || selectedClient.managedSites.length === 0) 
-                                ? "text-text-muted opacity-50 cursor-not-allowed" 
-                                : "text-accent-gold hover:bg-accent-gold/10"
-                        )}
-                        onClick={() => setIsSiteRegistryOpen(true)}
-                    >
-                        <MapPin size={12}/> {selectedClient?.managedSites ? 'Select Managed Site' : 'No Sites Found'}
-                    </Button>
                 </div>
               </div>
             </div>

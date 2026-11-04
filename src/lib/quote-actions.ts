@@ -1,4 +1,6 @@
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { createDocId } from './generateId';
+import { ID_PREFIXES } from './constants';
 import { db } from './firebase';
 import { fromQuoteLines, toQuoteLines, type PlanDiscount } from './price-lines';
 import type { Project, Quote } from './types';
@@ -83,4 +85,38 @@ export async function saveQuoteEdits(quote: Quote, r: PriceDocResult, linkedProj
     ...(orphaned ? { addedParts: parts.map(p => (p.quoteLineId && !lineIds.has(p.quoteLineId) ? { ...p, quoteLineId: null } : p)) } : {}),
     updatedAt: now,
   }).catch(() => {});
+}
+
+/**
+ * Create a draft quote from the editor (same shape as Quotes → New quote).
+ * `extra` carries links such as the client request it was made from.
+ */
+export async function createQuoteFromEditor(r: PriceDocResult, by: string, extra: Record<string, unknown> = {}): Promise<string> {
+  const quoteId = await createDocId(ID_PREFIXES.QUOTE);
+  const inApp = r.customerType === 'in_app_client';
+  const c = r.client;
+  const now = new Date().toISOString();
+  const quote = {
+    id: quoteId, quoteNumber: quoteId,
+    customerType: r.customerType,
+    clientId: inApp ? r.clientId : null,
+    customerName: inApp ? (c?.clientCompany || c?.name || '') : r.customerName,
+    customerCompany: inApp ? (c?.clientCompany || null) : (r.customerCompany || null),
+    customerEmail: inApp ? (c?.email || '') : r.customerEmail,
+    customerPhone: inApp ? (c?.phone || null) : (r.customerPhone || null),
+    title: r.title, description: r.description, scopeSummary: r.scopeSummary,
+    lineItems: toQuoteLines(r.lines), optionalChoices: r.optionalGroups,
+    subtotal: r.totals.subtotal, taxAmount: r.totals.taxAmount, discountAmount: r.totals.discountAmount,
+    planDiscount: r.discount, total: r.totals.total,
+    terms: r.terms, expirationDate: r.expirationDate || null,
+    publicToken: null, status: 'draft', sentAt: null, viewedAt: null, approvedAt: null, rejectedAt: null,
+    approvedByName: null, approvedByEmail: null, approvalNote: null, rejectionReason: null,
+    createdBy: by, createdAt: now, updatedAt: now,
+    originalQuoteId: null, revisionNumber: 1, supersededByQuoteId: null,
+    convertedToWorkOrderId: null, convertedToProjectId: null, convertedToInvoiceId: null,
+    leadId: null,
+    ...extra,
+  };
+  await setDoc(doc(db, 'quotes', quoteId), JSON.parse(JSON.stringify(quote)));
+  return quoteId;
 }

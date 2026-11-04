@@ -18,7 +18,7 @@ import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { isClient, isSuperAdmin } from '@/lib/permissions';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
-import { MARGIN_LABEL, genLineId, priceLine, type SiteWalk, type WalkLine } from '@/lib/estimating';
+import { MARGIN_LABEL, genLineId, priceLine, walkScopeText, type SiteWalk, type WalkLine } from '@/lib/estimating';
 import { approveSiteWalk, returnSiteWalk, useEstimatingSettings, walkTotalsWithPlan } from '@/lib/site-walk-actions';
 import type { Technician } from '@/lib/types';
 
@@ -41,7 +41,8 @@ export function SiteWalkReview({ walk, onClose, onQuoteCreated }: {
   onQuoteCreated?: (quoteId: string) => void;
 }) {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const canReview = hasPermission('admin.crm.review_site_walk');
   const settings = useEstimatingSettings();
   const a = settings.assumptions;
   const [lines, setLines] = useState<WalkLine[]>([]);
@@ -79,7 +80,7 @@ export function SiteWalkReview({ walk, onClose, onQuoteCreated }: {
 
   if (!walk) return null;
   const by = { id: user?.id || '', name: user?.name || 'Admin' };
-  const editable = walk.status === 'submitted';
+  const editable = walk.status === 'submitted' && canReview;
   const belowFloor = totals.status === 'below_floor';
   const canApproveLow = isSuperAdmin(user);
   const setLine = (id: string, patch: Partial<WalkLine>) => setLines(ls => ls.map(l => (l.id === id ? { ...l, ...patch } : l)));
@@ -140,19 +141,12 @@ export function SiteWalkReview({ walk, onClose, onQuoteCreated }: {
         </DialogHeader>
 
         <button type="button" onClick={() => setShowDetail(v => !v)} className="text-[13px] font-medium text-text-secondary hover:text-text-primary flex items-center gap-1 w-fit">
-          {showDetail ? <ChevronDown size={14} /> : <ChevronRight size={14} />} Walk details — conditions, drops, answers, {walk.photos.length} photo{walk.photos.length === 1 ? '' : 's'}
+          {showDetail ? <ChevronDown size={14} /> : <ChevronRight size={14} />} Walk details — site, drops, devices, tests, answers, {walk.photos.length} photo{walk.photos.length === 1 ? '' : 's'}
         </button>
         {showDetail && (
           <div className="rounded-lg border border-border-sub bg-bg-secondary p-3 space-y-3 text-[12px]">
             {walk.contactName && <p><span className="text-text-muted">Contact:</span> {walk.contactName} {walk.contactPhone} {walk.contactEmail}</p>}
-            {walk.conditions.accessNotes && <p><span className="text-text-muted">Access:</span> {walk.conditions.accessNotes}</p>}
-            {walk.drops.filter(d => d.qty).length > 0 && (
-              <div><p className="text-text-muted">Drops:</p>{walk.drops.filter(d => d.qty).map(d => (
-                <p key={d.id} className="font-mono">• {d.label || '—'}: {d.qty} × {d.cable}{d.plenum ? ' plenum' : ''}, {d.horizontalFt}+{d.verticalFt}+{d.slackFt} = {d.horizontalFt + d.verticalFt + d.slackFt} ft</p>
-              ))}</div>
-            )}
-            {Object.entries(walk.answers || {}).filter(([, v]) => v?.trim()).map(([q, v]) => <p key={q}><span className="text-text-muted">{q}</span> {v}</p>)}
-            {walk.scopeNotes && <p><span className="text-text-muted">Notes:</span> {walk.scopeNotes}</p>}
+            <p className="whitespace-pre-wrap leading-relaxed text-text-secondary">{walkScopeText(walk, a)}</p>
             {walk.photos.length > 0 && (
               <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                 {walk.photos.map(p => (

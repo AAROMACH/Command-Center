@@ -79,6 +79,9 @@ import { format, parseISO } from 'date-fns';
 import { PAY_TYPE_LABELS } from '@/lib/constants';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { useAuth } from '@/contexts/auth-context';
+import { LiveRequestTracker } from '@/components/request-tracker';
+import { PriceDocEditor, type PriceDocResult } from '@/components/price-doc-editor';
+import { createQuoteFromEditor } from '@/lib/quote-actions';
 
 type RequestsClientProps = {
     requests: ServiceRequest[];
@@ -207,7 +210,7 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                 });
                 setIsReviewOpen(false);
             } else if (status === 'approved') {
-                await updateDoc(docRef, { status: 'approved' });
+                await updateDoc(docRef, { status: 'approved', approvedAt: now, approvedBy: currentUser?.name || 'Admin' });
                 toast({
                     title: "Request approved",
                     description: `Request ${selectedRequest.id.toUpperCase()} approved.`,
@@ -217,6 +220,25 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
         } catch (e: any) {
             toast({ variant: "destructive", title: "Save failed", description: e.message });
         }
+    };
+
+    // Project track: the office sends a quote; the client approves it in their
+    // portal; the approved quote becomes the project (Quotes → Convert to project).
+    const [quoteOpen, setQuoteOpen] = useState(false);
+    const [savingQuote, setSavingQuote] = useState(false);
+    const saveQuote = async (r: PriceDocResult) => {
+        if (!selectedRequest) return;
+        if (!r.title) { toast({ variant: 'destructive', title: 'Title required' }); return; }
+        if (r.customerType === 'external_customer' && !r.customerEmail) { toast({ variant: 'destructive', title: 'Customer email required' }); return; }
+        setSavingQuote(true);
+        try {
+            const quoteId = await createQuoteFromEditor(r, currentUser?.id || '', { requestId: selectedRequest.id });
+            await updateDoc(doc(db, 'clientRequests', selectedRequest.id), { quoteId, quotedAt: new Date().toISOString() });
+            toast({ title: 'Quote created', description: `${quoteId} is a draft in Quotes & Invoices — send it to the client from there.` });
+            setQuoteOpen(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not create quote', description: e.message });
+        } finally { setSavingQuote(false); }
     };
 
     const handleViewMissionCard = (req: ServiceRequest) => {
@@ -259,6 +281,10 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                     pay: conversionPay,
                     payType: conversionPayType,
                     source: 'Client',
+                    // Lets the client's request tracker follow the job (it keeps
+                    // this when it moves to assignments).
+                    requestId: selectedRequest.id,
+                    ...(selectedRequest.clientId ? { clientId: selectedRequest.clientId } : {}),
                     history: [
                         { type: 'note', date: today, details: `Converted from service intake ${selectedRequest.id.toUpperCase()}.`, user: currentUser?.name || 'Admin' }
                     ]
@@ -472,6 +498,10 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
 
                     {selectedRequest && (
                         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8 min-h-0">
+                            <div className="rounded-xl border border-border-sub bg-bg-secondary p-4">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">Progress (what the client sees)</p>
+                                <LiveRequestTracker request={selectedRequest} audience="staff" collapsible />
+                            </div>
                             {selectedRequest.status === 'closed' && selectedRequest.convertedId && (
                                 <div className="p-4 rounded-xl bg-bg-secondary border border-border-sub flex items-center justify-between mb-6 shadow-sm">
                                     <div className="flex items-center gap-4">
@@ -716,14 +746,20 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                                         <Wrench size={16} className="mr-2" /> Convert to job
                                     </Button>
                                     <Button 
-                                        disabled={!userIsSuper}
+                                        disabled={!userIsSuper || !!selectedRequest.quoteId}
                                         variant="outline"
-                                        onClick={() => handleOpenConversion('project')} 
+                                        onClick={() => setQuoteOpen(true)} 
                                         className="h-11 border-accent-gold text-accent-gold hover:bg-accent-gold/10 uppercase font-bold text-[10px] tracking-wider"
+                                        title="Projects are quoted first: the client approves the quote, then it becomes the project"
                                     >
-                                        <Briefcase size={16} className="mr-2" /> Convert to project
+                                        <Briefcase size={16} className="mr-2" /> {selectedRequest.quoteId ? 'Quote created' : 'Project — send a quote'}
                                     </Button>
                                 </div>
+                                <p className="text-[11px] text-text-muted leading-relaxed">
+                                    {selectedRequest.quoteId
+                                        ? <>Quote <span className="font-mono">{selectedRequest.quoteId.toUpperCase()}</span> is in Quotes &amp; Invoices. Send it; once the client approves, use <b>Convert to project</b> on the quote.</>
+                                        : <>Job: goes straight to the dispatch pool, no quote. Project: you build a quote, the client approves it, then it becomes the project.</>}
+                                </p>
                             </div>
                         )}
                         
@@ -753,6 +789,25 @@ export function RequestsClient({ requests = [], workOrders = [], isHistory = fal
                     </div>
                 </SheetContent>
             </Sheet>
+
+            <PriceDocEditor
+                open={quoteOpen && !!selectedRequest}
+                onClose={() => setQuoteOpen(false)}
+                kind="quote"
+                initial={selectedRequest ? {
+                    customerType: selectedRequest.clientId ? 'in_app_client' : 'external_customer',
+                    clientId: selectedRequest.clientId || '',
+                    customerCompany: selectedRequest.clientId ? '' : selectedRequest.clientName,
+                    customerName: selectedRequest.clientId ? '' : selectedRequest.clientName,
+                    title: `${selectedRequest.clientName} — ${selectedRequest.requestType}`,
+                    scopeSummary: [selectedRequest.location, selectedRequest.description].filter(Boolean).join('\n'),
+                    description: `From client request ${selectedRequest.id.toUpperCase()}`,
+                } : undefined}
+                title={selectedRequest ? `Quote for request ${selectedRequest.id.toUpperCase()}` : 'New quote'}
+                saveLabel="Save quote as draft"
+                saving={savingQuote}
+                onSave={saveQuote}
+            />
 
             {/* REJECTION BRIEFING POPUP */}
             <Dialog open={isRejectionDialogOpen} onOpenChange={setIsRejectionDialogOpen}>

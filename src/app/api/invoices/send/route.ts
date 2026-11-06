@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     'Aaromach',
   ].join('\n');
   let emailed: 'sent' | 'skipped';
-  try { emailed = await sendEmail(to, subject, text); }
+  try { emailed = await sendEmail(to, subject, text, { kind: 'billing' }); }
   catch (e: any) { return NextResponse.json({ error: `Email failed: ${String(e?.message || e).slice(0, 200)}`, link }, { status: 502 }); }
   if (emailed === 'skipped') return NextResponse.json({ link, emailed: false, reason: 'Email isn’t set up on the server (RESEND_API_KEY missing).' });
 

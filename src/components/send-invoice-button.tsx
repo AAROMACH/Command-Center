@@ -23,7 +23,11 @@ const money = (n: number) => `$${(Number(n) || 0).toFixed(2).replace(/\B(?=(\d{3
 
 /** Preview and send: shows exactly what the client gets, with Edit for any
  *  last-minute change (remove items, add a discount / adjustment). */
-export function SendInvoiceButton({ invoice, size = 'sm', className }: { invoice: Invoice; size?: 'sm' | 'default'; className?: string }) {
+export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode = false }: {
+  invoice: Invoice; size?: 'sm' | 'default'; className?: string;
+  /** Sales portal: send / resend approved invoices only — no editing, no approval steps. */
+  salesMode?: boolean;
+}) {
   const { toast } = useToast();
   const { user } = useAuth();
   const me = { id: user?.id || auth.currentUser?.uid || '', name: user?.name || auth.currentUser?.displayName || 'Office' };
@@ -88,6 +92,10 @@ export function SendInvoiceButton({ invoice, size = 'sm', className }: { invoice
       onApprove={approvalAct(() => approveInvoice(invoice, me), 'Invoice approved')}
       onReturn={note => approvalAct(() => returnInvoice(invoice, me, note), 'Invoice sent back')()} />
   );
+  // Sales: nothing to do until the office has approved it.
+  if (needsApproval && salesMode) {
+    return <span className="text-[11px] text-text-muted whitespace-nowrap">{invoice.approval?.status === 'pending' ? 'Awaiting approval' : 'Not approved yet'}</span>;
+  }
   // Not an approver and not approved yet: submit / waiting / resubmit instead of Send.
   if (needsApproval && !approver) {
     const st = invoice.approval?.status;
@@ -137,7 +145,7 @@ export function SendInvoiceButton({ invoice, size = 'sm', className }: { invoice
               <div className="flex justify-between text-[13px] font-bold"><span className="font-sans">Total</span><span>{money(invoice.total)}</span></div>
             </div>
           </div>
-          <Button variant="outline" size="sm" className="self-start" onClick={() => { setOpen(false); setEditing(true); }}><Pencil size={13} className="mr-1.5" /> Edit invoice</Button>
+          {!salesMode && <Button variant="outline" size="sm" className="self-start" onClick={() => { setOpen(false); setEditing(true); }}><Pencil size={13} className="mr-1.5" /> Edit invoice</Button>}
           <label className="space-y-1.5 text-[12px] text-text-muted">
             Send to
             <Input type="email" value={to} onChange={e => setTo(e.target.value)} placeholder="client@example.com" disabled={loading} />

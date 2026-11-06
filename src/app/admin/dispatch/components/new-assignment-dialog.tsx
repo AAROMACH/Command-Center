@@ -3,7 +3,7 @@ import { ClientField, SiteAddressField, clientByName, useClientDirectory } from 
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { isClient } from '@/lib/permissions';
+import { isAdmin, isClient, isSales, isTech } from '@/lib/permissions';
 import { 
   Dialog, 
   DialogContent, 
@@ -173,8 +173,9 @@ export function NewAssignmentDialog({ isOpen, setIsOpen, onSave }: NewAssignment
   // clients that were deactivated/removed (accountStatus 'inactive'). Legacy
   // admin-created clients with no approvalStatus set are treated as approved.
   const clients = useMemo(() => {
+    // Clients only — a tech or admin with a company on file isn't one.
     return allUsers.filter(t =>
-      (isClient(t) || t.clientCompany)
+      (isClient(t) || (t.clientCompany && !isTech(t) && !isAdmin(t) && !isSales(t)))
       && t.approvalStatus !== 'pending'
       && t.approvalStatus !== 'denied'
       && t.accountStatus !== 'inactive'

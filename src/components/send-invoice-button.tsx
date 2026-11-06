@@ -23,8 +23,10 @@ const money = (n: number) => `$${(Number(n) || 0).toFixed(2).replace(/\B(?=(\d{3
 
 /** Preview and send: shows exactly what the client gets, with Edit for any
  *  last-minute change (remove items, add a discount / adjustment). */
-export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode = false }: {
+export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode = false, salesCanSubmit = false }: {
   invoice: Invoice; size?: 'sm' | 'default'; className?: string;
+  /** Sales with Create invoices: may submit their own drafts for approval. */
+  salesCanSubmit?: boolean;
   /** Sales portal: send / resend approved invoices only — no editing, no approval steps. */
   salesMode?: boolean;
 }) {
@@ -93,7 +95,7 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
       onReturn={note => approvalAct(() => returnInvoice(invoice, me, note), 'Invoice sent back')()} />
   );
   // Sales: nothing to do until the office has approved it.
-  if (needsApproval && salesMode) {
+  if (needsApproval && salesMode && !salesCanSubmit) {
     return <span className="text-[11px] text-text-muted whitespace-nowrap">{invoice.approval?.status === 'pending' ? 'Awaiting approval' : 'Not approved yet'}</span>;
   }
   // Not an approver and not approved yet: submit / waiting / resubmit instead of Send.

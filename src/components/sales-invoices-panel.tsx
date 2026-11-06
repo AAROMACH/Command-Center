@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { FileText } from 'lucide-react';
+import { FileText, Pencil, Plus, Receipt } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/auth-context';
+import { useToast } from '@/hooks/use-toast';
+import { BillJobsDialog } from '@/components/job-invoice';
+import { PriceDocEditor, type PriceDocResult } from '@/components/price-doc-editor';
+import { invoiceToEditor, saveInvoiceFromEditor } from '@/lib/invoice-actions';
+import { newInvoiceNumber } from '@/lib/doc-number';
 import { db } from '@/lib/firebase';
 import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
@@ -18,7 +25,30 @@ const money = (n: number) => `$${(Number(n) || 0).toFixed(2).replace(/\B(?=(\d{3
  * permission (admin.crm.send_invoice): send or resend invoices the office has
  * approved, and download the PDF. No editing, approving or payments.
  */
-export function SalesInvoicesPanel({ search = '' }: { search?: string }) {
+export function SalesInvoicesPanel({ search = '', canCreate = false, canSend = false }: {
+  search?: string;
+  /** "Create invoices" (admin.crm.create_invoice): new invoice, bill completed jobs, edit/submit own drafts. */
+  canCreate?: boolean;
+  /** "Send invoices" (admin.crm.send_invoice): send approved invoices. */
+  canSend?: boolean;
+}) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [editing, setEditing] = useState<Invoice | 'new' | null>(null);
+  const [billOpen, setBillOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const mine = (i: Invoice) => !!user?.id && i.createdBy === user.id;
+  const save = async (r: PriceDocResult) => {
+    setSaving(true);
+    try {
+      const existing = editing && editing !== 'new' ? editing : null;
+      const id = await saveInvoiceFromEditor(r, existing, existing ? {} : { createdBy: user?.id || '' }, { editorCanApprove: false });
+      toast({ title: existing ? 'Invoice updated' : 'Invoice drafted', description: existing ? undefined : `${newInvoiceNumber(r.invoiceNumber, id, r.issueDate)} — submit it for approval when it's ready.` });
+      setEditing(null);
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Could not save invoice', description: e?.code === 'permission-denied' ? 'You can only change your own draft invoices.' : e.message });
+    } finally { setSaving(false); }
+  };
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -34,12 +64,36 @@ export function SalesInvoicesPanel({ search = '' }: { search?: string }) {
       .sort((a, b) => numberSortKey(b.invoiceNumber, b.id) - numberSortKey(a.invoiceNumber, a.id));
   }, [invoices, search]);
 
+  const toolbar = canCreate && (
+    <div className="flex flex-wrap gap-2">
+      <Button size="sm" className="h-9" onClick={() => setEditing('new')}><Plus size={14} className="mr-1.5" /> New invoice</Button>
+      <Button size="sm" variant="outline" className="h-9" onClick={() => setBillOpen(true)}><Receipt size={14} className="mr-1.5" /> Bill completed jobs</Button>
+    </div>
+  );
+  const dialogs = canCreate && (
+    <>
+      <PriceDocEditor open={!!editing} onClose={() => setEditing(null)} kind="invoice" draftOnly
+        initial={editing && editing !== 'new' ? invoiceToEditor(editing) : undefined}
+        initialDiscount={editing && editing !== 'new' ? editing.planDiscount ?? null : undefined}
+        title={editing && editing !== 'new' ? `Edit invoice ${editing.invoiceNumber}` : 'New invoice'}
+        saveLabel="Save draft" saving={saving} onSave={save} />
+      <BillJobsDialog open={billOpen} onClose={() => setBillOpen(false)} salesMode />
+    </>
+  );
+
   if (error) return <p className="rounded-lg border border-brand-red/30 bg-brand-red/5 px-3 py-2 text-[13px] text-brand-red">{error}</p>;
   if (loading) return <p className="text-[13px] text-text-muted">Loading…</p>;
-  if (!rows.length) return <EmptyState icon={FileText} title="No open invoices" description="Invoices the office approves show up here to send." />;
+  if (!rows.length) return (
+    <div className="space-y-3">
+      {toolbar}
+      <EmptyState icon={FileText} title="No open invoices" description={canCreate ? 'Create one, or bill completed jobs.' : 'Invoices the office approves show up here to send.'} />
+      {dialogs}
+    </div>
+  );
   return (
     <div className="space-y-2">
-      <p className="text-[12px] text-text-muted">Open invoices. Send the approved ones to the client; drafts wait for the office to approve them.</p>
+      {toolbar}
+      <p className="text-[12px] text-text-muted">Open invoices.{canSend ? ' Send the approved ones to the client;' : ''} drafts go to a Super or Payroll Admin for approval{canCreate ? ' — submit yours when it’s ready' : ''}.</p>
       {rows.map(i => (
         <div key={i.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-border-sub border-l-4 border-l-text-green bg-bg-secondary px-4 py-2.5">
           <div className="min-w-0 flex-1">
@@ -48,10 +102,16 @@ export function SalesInvoicesPanel({ search = '' }: { search?: string }) {
           </div>
           <span className="font-mono text-[13px] font-bold">{money(i.total)}</span>
           <StatusBadge kind="invoice" value={i.status} />
-          <SendInvoiceButton invoice={i} salesMode className="h-8 px-2.5 text-[12px]" />
+          {canCreate && mine(i) && i.status === 'draft' && i.approval?.status !== 'approved' && (
+            <Button size="sm" variant="outline" className="h-8 px-2.5 text-[12px]" onClick={() => setEditing(i)}><Pencil size={13} className="mr-1" /> Edit</Button>
+          )}
+          {(canSend || (canCreate && mine(i) && i.status === 'draft' && i.approval?.status !== 'approved')) && (
+            <SendInvoiceButton invoice={i} salesMode salesCanSubmit={canCreate && mine(i)} className="h-8 px-2.5 text-[12px]" />
+          )}
           <InvoicePdfButton invoice={i} className="h-8 px-2.5 text-[12px]" />
         </div>
       ))}
+      {dialogs}
     </div>
   );
 }

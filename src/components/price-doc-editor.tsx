@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { savePriceToBook } from '@/lib/price-book-actions';
 import { cn } from '@/lib/utils';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
+import { auth } from '@/lib/firebase';
 import { isClient, isSuperAdmin } from '@/lib/permissions';
 import { useAllSubscriptions, usePricingSettings, useServicePlans } from '@/hooks/use-billing';
 import { describeFactor, formatMoney, isLiveSubscription } from '@/lib/billing';
@@ -142,7 +143,15 @@ export function PriceDocEditor({
       onSharedSnapshot('materials', snap => setMaterials(snap.docs.map(d => ({ ...d.data(), id: d.id } as Material))), () => setMaterials([])),
     ];
     if (!externalOnly) subs.push(onSharedSnapshot('users', snap => setClients(snap.docs.map(d => ({ ...d.data(), id: d.id } as Technician)).filter(isClient)
-      .sort((a, b) => (a.clientCompany || a.name || '').localeCompare(b.clientCompany || b.name || ''))), () => setClients([])));
+      .sort((a, b) => (a.clientCompany || a.name || '').localeCompare(b.clientCompany || b.name || ''))), () => {
+        // Sales can't read users: the client-only list from the server instead.
+        auth.currentUser?.getIdToken()
+          .then(t => fetch('/api/site-walk/clients', { headers: { Authorization: `Bearer ${t}` } }))
+          .then(r => (r.ok ? r.json() : { clients: [] }))
+          .then((d: { clients?: { id: string; company: string; name: string; email: string; phone: string }[] }) =>
+            setClients((d.clients || []).map(c => ({ id: c.id, name: c.name, clientCompany: c.company, email: c.email, phone: c.phone, roles: ['client'] } as unknown as Technician))))
+          .catch(() => setClients([]));
+      }));
     if (kind === 'invoice' && !externalOnly) {
       subs.push(onSharedSnapshot('projects', snap => setProjects(snap.docs.map(d => ({ ...d.data(), id: d.id } as Project))), () => setProjects([])));
       subs.push(onSharedSnapshot('assignments', snap => setJobs(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder))), () => setJobs([])));

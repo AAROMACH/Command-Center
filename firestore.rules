@@ -571,13 +571,18 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    // A Sales person's per-person invoice permission (Directory → Permissions).
+    function salesHas(p) {
+      return isSales() && userData().get('permissionOverrides', {}).get(p, false) == true;
+    }
+
     match /invoices/{id} {
-      // Sales people switched on for "Send invoices" (admin.crm.send_invoice,
-      // a per-person permission) read invoices to send them; the sending
-      // itself goes through /api/invoices/send.
+      // Sales people switched on for "Send invoices" (admin.crm.send_invoice)
+      // or "Create invoices" (admin.crm.create_invoice) read invoices; the
+      // sending itself goes through /api/invoices/send.
       allow read: if isSignedIn() && (
           isAdmin()
-          || (isSales() && userData().get('permissionOverrides', {}).get('admin.crm.send_invoice', false) == true)
+          || salesHas('admin.crm.send_invoice') || salesHas('admin.crm.create_invoice')
           || (isClient() && (
               resource.data.clientId == request.auth.uid
               || resource.data.clientName == userData().clientCompany
@@ -591,6 +596,18 @@ service cloud.firestore {
               && apprStatus(request.resource.data, 'approval') != 'approved'));
       allow update: if isAdmin()
           && approvalStepOk(resource.data, request.resource.data, 'approval', canApproveInvoices(), ['void']);
+      // "Create invoices" Sales: drafts of their own — create, edit and submit
+      // for approval while still draft; never approve, send or mark paid.
+      allow create: if salesHas('admin.crm.create_invoice')
+          && request.resource.data.status == 'draft'
+          && request.resource.data.get('createdBy', '') == request.auth.uid
+          && apprStatus(request.resource.data, 'approval') in ['', 'pending'];
+      allow update: if salesHas('admin.crm.create_invoice')
+          && resource.data.get('createdBy', '') == request.auth.uid
+          && request.resource.data.get('createdBy', '') == request.auth.uid
+          && resource.data.status == 'draft' && request.resource.data.status == 'draft'
+          && apprStatus(resource.data, 'approval') != 'approved'
+          && approvalStepOk(resource.data, request.resource.data, 'approval', false, []);
       allow delete: if isSuperAdmin();
     }
 

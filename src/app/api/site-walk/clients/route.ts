@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   const fs = getFirestore(adminApp);
   const me = await fs.collection('users').doc(uid).get();
   const caller = { ...(me.data() || {}), id: uid } as Technician & RoleLike;
-  if (!me.exists || !(isAdmin(caller) || hasPermission(caller, 'tech.site_walks.create') || hasPermission(caller, 'admin.crm.review_site_walk'))) {
+  if (!me.exists || !(isAdmin(caller) || hasPermission(caller, 'tech.site_walks.create') || hasPermission(caller, 'admin.crm.review_site_walk') || hasPermission(caller, 'admin.crm.create_invoice'))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

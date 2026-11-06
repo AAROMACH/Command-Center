@@ -666,6 +666,7 @@ export default function AdminQuotesPage() {
   // ── Site walks: the walkthrough → admin approval → draft quote ──
   const { user: authUser, hasPermission } = useAuth();
   const canSendInvoices = hasPermission("admin.crm.send_invoice");
+  const canCreateInvoices = hasPermission("admin.crm.create_invoice");
   const router = useRouter();
   const directory = useDirectory();
   const walkTechs = useMemo(() => directory.filter(isTech).sort((a, b) => (a.name || '').localeCompare(b.name || '')), [directory]);
@@ -823,7 +824,7 @@ export default function AdminQuotesPage() {
           <TabsTrigger value="sent" className="tab">Sent<TabCount n={sent.length} /></TabsTrigger>
           <TabsTrigger value="approved" className="tab">Approved<TabCount n={approved.length} /></TabsTrigger>
           <TabsTrigger value="rejected" className="tab">Rejected / expired<TabCount n={rejected.length} /></TabsTrigger>
-          {(!inSalesPortal || canSendInvoices) && <TabsTrigger value="invoices" className="tab">Invoices</TabsTrigger>}
+          {(!inSalesPortal || canSendInvoices || canCreateInvoices) && <TabsTrigger value="invoices" className="tab">Invoices</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="walks" className="mt-0">
@@ -840,7 +841,7 @@ export default function AdminQuotesPage() {
         <TabsContent value="approved" className="mt-0">{grid(approved, '2')}</TabsContent>
         <TabsContent value="rejected" className="mt-0">{grid(rejected, '3')}</TabsContent>
         <TabsContent value="invoices" className="mt-0">{inSalesPortal
-          ? (canSendInvoices && <SalesInvoicesPanel search={search} />)
+          ? ((canSendInvoices || canCreateInvoices) && <SalesInvoicesPanel search={search} canSend={canSendInvoices} canCreate={canCreateInvoices} />)
           : <InvoicesPanel search={search} onResetSearch={() => setSearch('')} hideNewButton />}</TabsContent>
       </Tabs>
 

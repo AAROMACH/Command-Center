@@ -8,7 +8,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { endOfMonth, endOfWeek, startOfMonth, startOfWeek, subMonths, subWeeks } from 'date-fns';
 import { Loader2, Receipt } from 'lucide-react';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import type { BillingClient, UnbilledJob } from '@/app/api/billing/unbilled-jobs/route';
 import { cn, } from '@/lib/utils';
 import { isClient } from '@/lib/permissions';
 import { parseLocalDate } from '@/lib/jobs';
@@ -16,7 +17,7 @@ import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { usePricingSettings } from '@/hooks/use-billing';
 import { useToast } from '@/hooks/use-toast';
 import { saveInvoiceFromEditor } from '@/lib/invoice-actions';
-import { billableHours, invoicedJobIds, isBillableJob, jobsInvoiceDraft, minutesOnSiteByJob, standardHourlyRate } from '@/lib/job-invoicing';
+import { billableHours, isBillableJob, jobsInvoiceDraft, minutesOnSiteByJob, standardHourlyRate } from '@/lib/job-invoicing';
 import type { Invoice, Technician, TripLog, WorkOrder } from '@/lib/types';
 import { PriceDocEditor, type PriceDocResult, type PriceDocValues } from '@/components/price-doc-editor';
 import { SendInvoiceButton } from '@/components/send-invoice-button';
@@ -37,20 +38,6 @@ function useClients() {
   return useMemo(() => users.filter(isClient), [users]);
 }
 
-const norm = (s?: string | null) => (s || '').trim().toLowerCase();
-
-/**
- * A job whose client is really a staff member (a tech or admin picked or
- * typed as the client): not billable until the job's client is fixed.
- */
-function staffAsClient(j: WorkOrder, users: Technician[]): Technician | null {
-  const id = (j as { clientId?: string | null }).clientId;
-  const byId = id ? users.find(u => u.id === id) : undefined;
-  if (byId) return isClient(byId) ? null : byId;
-  const name = norm(j.clientName);
-  if (!name || users.some(u => isClient(u) && (norm(u.clientCompany) === name || norm(u.name) === name))) return null;
-  return users.find(u => !isClient(u) && norm(u.name) === name) || null;
-}
 
 /**
  * Job page: the job's invoice, or — once it's completed — a draft invoice
@@ -141,31 +128,40 @@ function periodRange(p: Period): [Date, Date] | null {
  * Roll-up: one invoice for a client's completed, not-yet-invoiced manual jobs
  * in a period (one line per job). For clients billed weekly or monthly.
  */
-export function BillJobsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function BillJobsDialog({ open, onClose, salesMode = false }: {
+  open: boolean; onClose: () => void;
+  /** Sales "Create invoices": the invoice is a draft that goes for approval. */
+  salesMode?: boolean;
+}) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { settings: pricing } = usePricingSettings();
-  const users = useUsers();
-  const clients = useMemo(() => users.filter(isClient), [users]);
-  const [jobs, setJobs] = useState<WorkOrder[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [trips, setTrips] = useState<TripLog[]>([]);
+  // Jobs, time on site and clients come from the server (no pay), so Sales
+  // with "Create invoices" can bill too (/api/billing/unbilled-jobs).
+  const [data, setData] = useState<{ jobs: UnbilledJob[]; clients: BillingClient[] } | null>(null);
+  const [loadError, setLoadError] = useState('');
   useEffect(() => {
     if (!open) return;
-    const subs = [
-      onSharedSnapshot('assignments', s => setJobs(s.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)))),
-      onSharedSnapshot('invoices', s => setInvoices(s.docs.map(d => ({ ...d.data(), id: d.id } as Invoice)))),
-      onSharedSnapshot('tripLogs', s => setTrips(s.docs.map(d => ({ ...d.data(), id: d.id } as TripLog)))),
-    ];
-    return () => subs.forEach(u => u());
+    let alive = true;
+    setLoadError('');
+    (async () => {
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        const r = await fetch('/api/billing/unbilled-jobs', { headers: { Authorization: `Bearer ${token}` } });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'Could not load jobs');
+        if (alive) setData(d);
+      } catch (e: any) { if (alive) setLoadError(e.message); }
+    })();
+    return () => { alive = false; };
   }, [open]);
 
-  const billed = useMemo(() => invoicedJobIds(invoices), [invoices]);
-  const minutes = useMemo(() => minutesOnSiteByJob(trips), [trips]);
-  const candidates = useMemo(() => jobs.filter(j => j.status === 'completed' && isBillableJob(j) && !billed.has(j.id) && j.clientName), [jobs, billed]);
+  const clients = useMemo(() => (data?.clients || []).map(c => ({ ...c, roles: ['client'] } as unknown as Technician)), [data]);
+  const minutes = useMemo(() => new Map((data?.jobs || []).map(j => [j.id, j.minutes])), [data]);
+  const asJob = (j: UnbilledJob) => ({ ...j, status: 'completed' } as unknown as WorkOrder);
   // Jobs with a staff member as the client are held back until fixed.
-  const misfiled = useMemo(() => candidates.map(j => ({ j, who: staffAsClient(j, users) })).filter((x): x is { j: WorkOrder; who: Technician } => !!x.who), [candidates, users]);
-  const unbilled = useMemo(() => { const bad = new Set(misfiled.map(x => x.j.id)); return candidates.filter(j => !bad.has(j.id)); }, [candidates, misfiled]);
+  const misfiled = useMemo(() => (data?.jobs || []).filter(j => j.staffClient).map(j => ({ j: asJob(j), who: { name: j.staffClient as string } })), [data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const unbilled = useMemo(() => (data?.jobs || []).filter(j => !j.staffClient).map(asJob), [data]); // eslint-disable-line react-hooks/exhaustive-deps
   const byClient = useMemo(() => {
     const m = new Map<string, number>();
     unbilled.forEach(j => m.set(j.clientName, (m.get(j.clientName) || 0) + 1));
@@ -195,7 +191,7 @@ export function BillJobsDialog({ open, onClose }: { open: boolean; onClose: () =
   const save = async (r: PriceDocResult) => {
     setSaving(true);
     try {
-      const id = await saveInvoiceFromEditor(r, null, { workOrderIds: draftIds } as Partial<Invoice>);
+      const id = await saveInvoiceFromEditor(r, null, { workOrderIds: draftIds, ...(salesMode ? { createdBy: user?.id || '' } : {}) } as Partial<Invoice>, { editorCanApprove: canApproveInvoices(user) });
       toast({ title: 'Invoice drafted', description: `${draftIds.length} job${draftIds.length === 1 ? '' : 's'} on invoice ${newInvoiceNumber(r.invoiceNumber, id, r.issueDate)}.` });
       setDraft(null);
       onClose();
@@ -213,6 +209,8 @@ export function BillJobsDialog({ open, onClose }: { open: boolean; onClose: () =
               One invoice for a client&apos;s completed jobs that aren&apos;t invoiced yet — one line per job, from time on site × {rate ? `${fmt(rate.rate)}/h` : 'the labor rate'}. Field Nation jobs aren&apos;t included.
             </DialogDescription>
           </DialogHeader>
+          {loadError && <p className="rounded-md border border-brand-red/30 bg-brand-red/5 px-3 py-2 text-[12px] text-brand-red">{loadError}</p>}
+          {!data && !loadError && <p className="text-[12px] text-text-muted flex items-center gap-1.5"><Loader2 size={12} className="animate-spin" /> Loading completed jobs…</p>}
           {misfiled.length > 0 && (
             <details className="rounded-lg border border-accent-gold/40 bg-accent-gold/5 px-3 py-2 text-[12px]">
               <summary className="cursor-pointer text-text-secondary">
@@ -220,9 +218,9 @@ export function BillJobsDialog({ open, onClose }: { open: boolean; onClose: () =
               </summary>
               <div className="mt-2 space-y-1">
                 {misfiled.map(({ j, who }) => (
-                  <a key={j.id} href={`/admin/assignments/${j.id}`} className="flex justify-between gap-3 rounded px-1.5 py-1 hover:bg-bg-tertiary">
+                  <a key={j.id} href={salesMode ? undefined : `/admin/assignments/${j.id}`} className="flex justify-between gap-3 rounded px-1.5 py-1 hover:bg-bg-tertiary">
                     <span className="min-w-0 truncate">{j.title || j.description || j.id.toUpperCase()} <span className="text-text-muted">· {j.scheduleDate} · {j.id.toUpperCase()}</span></span>
-                    <span className="shrink-0 text-text-muted">client: {who.name} → fix</span>
+                    <span className="shrink-0 text-text-muted">client: {who.name}{salesMode ? ' — ask the office to fix' : ' → fix'}</span>
                   </a>
                 ))}
               </div>

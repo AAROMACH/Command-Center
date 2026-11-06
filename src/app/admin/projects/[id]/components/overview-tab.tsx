@@ -87,6 +87,13 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
         });
     }, [project]);
 
+    // Any box unlocked = editing: Save / Cancel show in the Site notes header.
+    const editing = unlocked.size > 0;
+    // Ctrl/Cmd+Enter saves; Escape cancels.
+    const saveKeys = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handleSaveChanges(); }
+        if (e.key === 'Escape' && editing) { e.preventDefault(); handleCancelChanges(); }
+    };
     const isDirty = useMemo(() => {
         return localProjectData.scope !== project.scope ||
                localProjectData.onsiteContactName !== project.onsiteContactName ||
@@ -142,7 +149,8 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
     };
 
     const handleSaveChanges = async () => {
-        if (isReadOnly || !isDirty) return;
+        if (isReadOnly) return;
+        if (!isDirty) { setUnlocked(new Set()); return; }
         try {
             const docRef = doc(db, 'projects', project.id);
             await updateDoc(docRef, {
@@ -166,110 +174,135 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
             siteAccessInstructions: project.siteAccessInstructions
         });
         setUnlocked(new Set());
-        toast({ title: "Changes discarded", description: "The project details were not changed." });
+        if (isDirty) toast({ title: "Changes discarded", description: "The project details were not changed." });
     }
     
     return (
         <>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="lg:col-span-2 space-y-4 text-left">
-                    <div className="field-group">
-                        <h3 className="field-group-title font-bold"><FileText className="text-brand-red h-4 w-4"/> Site notes</h3>
-                        
-                        <div className="field-row">
-                            <label className="field-label">Scope of work</label>
-                            <UnlockableField locked={!unlocked.has('scope')} onUnlock={() => unlock('scope')} canEdit={!isReadOnly}>
-                                <Textarea 
+            {/* Site notes, full width: the scope reads as a paragraph on the
+                left; contact and field intelligence on the right. */}
+            <div className="field-group mb-4 text-left">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <h3 className="field-group-title !mb-0 font-bold"><FileText className="text-brand-red h-4 w-4"/> Site notes</h3>
+                    {!isReadOnly && editing && (
+                        <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-text-muted hidden sm:inline">{isDirty ? 'Unsaved changes' : 'Editing'}</span>
+                            <Button variant="outline" size="sm" className="h-8" onClick={handleCancelChanges}>Cancel</Button>
+                            <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red-hover text-white" onClick={handleSaveChanges} disabled={!isDirty}>
+                                <Check size={13} className="mr-1" /> Save
+                            </Button>
+                        </div>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-x-6 gap-y-4">
+                    <div className="field-row lg:col-span-3 !mb-0">
+                        <label className="field-label">Scope of work</label>
+                        <UnlockableField locked={!unlocked.has('scope')} onUnlock={() => unlock('scope')} canEdit={!isReadOnly}>
+                            <Textarea
+                                disabled={isReadOnly}
+                                readOnly={!unlocked.has('scope')}
+                                className="field-textarea min-h-[260px] lg:min-h-[340px] !text-[13px] leading-relaxed whitespace-pre-wrap"
+                                placeholder="What we're doing on this job."
+                                value={localProjectData.scope || ''}
+                                onChange={e => setLocalProjectData({...localProjectData, scope: e.target.value})}
+                                onKeyDown={saveKeys}
+                            ></Textarea>
+                        </UnlockableField>
+                    </div>
+
+                    <div className="lg:col-span-2 space-y-3">
+                        <div className="field-row !mb-0">
+                            <label className="field-label">Site contact name</label>
+                            <UnlockableField locked={!unlocked.has('onsiteContactName')} onUnlock={() => unlock('onsiteContactName')} canEdit={!isReadOnly}>
+                                <Input
                                     disabled={isReadOnly}
-                                    readOnly={!unlocked.has('scope')}
-                                    className="field-textarea" 
-                                    value={localProjectData.scope || ''}
-                                    onChange={e => setLocalProjectData({...localProjectData, scope: e.target.value})}
-                                ></Textarea>
+                                    readOnly={!unlocked.has('onsiteContactName')}
+                                    className="field-input !text-[13px]"
+                                    placeholder="Full name"
+                                    value={localProjectData.onsiteContactName || ''}
+                                    onChange={e => setLocalProjectData({...localProjectData, onsiteContactName: e.target.value})}
+                                    onKeyDown={saveKeys}
+                                />
                             </UnlockableField>
                         </div>
-                        
-                        <div className="grid grid-cols-2 gap-4 mb-2">
-                            <div className="field-row">
-                                <label className="field-label">Onsite Contact Name</label>
-                                <UnlockableField locked={!unlocked.has('onsiteContactName')} onUnlock={() => unlock('onsiteContactName')} canEdit={!isReadOnly}>
-                                    <Input 
-                                        disabled={isReadOnly}
-                                        readOnly={!unlocked.has('onsiteContactName')}
-                                        className="field-input" 
-                                        placeholder="Full Name" 
-                                        value={localProjectData.onsiteContactName || ''}
-                                        onChange={e => setLocalProjectData({...localProjectData, onsiteContactName: e.target.value})}
-                                    />
-                                </UnlockableField>
-                            </div>
-                            <div className="field-row">
-                                <label className="field-label">Onsite Contact Phone</label>
-                                <UnlockableField locked={!unlocked.has('onsiteContactPhone')} onUnlock={() => unlock('onsiteContactPhone')} canEdit={!isReadOnly}>
-                                    <Input 
-                                        disabled={isReadOnly}
-                                        readOnly={!unlocked.has('onsiteContactPhone')}
-                                        className="field-input" 
-                                        placeholder="Phone Number" 
-                                        value={localProjectData.onsiteContactPhone || ''}
-                                        onChange={e => setLocalProjectData({...localProjectData, onsiteContactPhone: e.target.value})}
-                                    />
-                                </UnlockableField>
-                            </div>
+                        <div className="field-row !mb-0">
+                            <label className="field-label">Site contact phone</label>
+                            <UnlockableField locked={!unlocked.has('onsiteContactPhone')} onUnlock={() => unlock('onsiteContactPhone')} canEdit={!isReadOnly}>
+                                <Input
+                                    disabled={isReadOnly}
+                                    readOnly={!unlocked.has('onsiteContactPhone')}
+                                    className="field-input !text-[13px]"
+                                    placeholder="Phone number"
+                                    value={localProjectData.onsiteContactPhone || ''}
+                                    onChange={e => setLocalProjectData({...localProjectData, onsiteContactPhone: e.target.value})}
+                                    onKeyDown={saveKeys}
+                                />
+                            </UnlockableField>
+                            {localProjectData.onsiteContactPhone && !unlocked.has('onsiteContactPhone') && (
+                                <a href={`tel:${localProjectData.onsiteContactPhone.replace(/[^\d+]/g, '')}`} className="mt-1 inline-block text-[12px] text-brand-red hover:underline">Call</a>
+                            )}
                         </div>
-                        
-                        <div className="field-row">
-                            <label className="field-label">Field Intelligence & Site Notes</label>
-                            <div className="note-chips">
+
+                        <div className="field-row !mb-0">
+                            <label className="field-label">Field intelligence</label>
+                            <p className="text-[11px] text-text-muted mb-1.5">What the crew should know and why — e.g. &ldquo;Extra slack left above the ceiling in room 204: the old run was pulling out of the back of the jack.&rdquo;</p>
+                            <div className="space-y-1.5">
                                 {(project.siteHazardNotes || []).map(note => (
-                                    <div key={note.id} className={`note-chip ${note.type === 'danger' ? 'danger' : 'info'} group/note`}>
-                                        {note.type === 'danger' ? <AlertTriangle size={13}/> : <Info size={13}/>}
-                                        <span>{note.text}</span>
+                                    <div key={note.id} className={`flex items-start gap-2 rounded-md border px-2.5 py-2 text-[12px] ${note.type === 'danger' ? 'border-border-alert bg-brand-red-dim text-text-red' : 'border-accent/50 bg-accent-gold-dim text-accent-gold'}`}>
+                                        {note.type === 'danger' ? <AlertTriangle size={13} className="mt-0.5 shrink-0"/> : <Info size={13} className="mt-0.5 shrink-0"/>}
+                                        <span className="flex-1 min-w-0 whitespace-pre-wrap break-words text-text-primary">{note.text}</span>
                                         {!isReadOnly && (
-                                            <button 
-                                                onClick={() => handleDeleteNote(note.id)}
-                                                className="ml-1 opacity-60 hover:opacity-100 hover:text-text-primary transition-opacity"
-                                            >
-                                                <X size={12} />
+                                            <button onClick={() => handleDeleteNote(note.id)} aria-label="Remove note" className="opacity-60 hover:opacity-100 hover:text-text-primary shrink-0">
+                                                <X size={13} />
                                             </button>
                                         )}
                                     </div>
                                 ))}
-                                
-                                {isAddingNote && !isReadOnly && (
-                                    <div className="flex items-center gap-1.5 bg-bg-tertiary p-1 rounded-md border border-border-sub animate-in fade-in zoom-in-95 duration-200">
-                                        <Input 
-                                            className="h-6 text-[10px] w-32 bg-bg-primary border-none focus:ring-0 px-2" 
-                                            placeholder="Site access, contacts, notes…" 
+                                {isAddingNote && !isReadOnly ? (
+                                    <div className="rounded-md border border-border-sub bg-bg-tertiary p-2 space-y-1.5">
+                                        <Textarea
+                                            className="field-textarea min-h-[70px] !text-[12px]"
+                                            placeholder="What you found and why it matters…"
                                             value={newNoteText}
                                             autoFocus
                                             onChange={e => setNewNoteText(e.target.value)}
                                             onKeyDown={e => {
-                                                if (e.key === 'Enter') handleSaveNote();
+                                                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSaveNote();
                                                 if (e.key === 'Escape') setIsAddingNote(false);
                                             }}
                                         />
-                                        <button onClick={handleSaveNote} className="text-text-green hover:opacity-80 p-0.5"><Check size={14}/></button>
-                                        <button onClick={() => setIsAddingNote(false)} className="text-text-muted hover:text-text-red p-0.5"><X size={14}/></button>
+                                        <div className="flex justify-end gap-2">
+                                            <Button variant="outline" size="sm" className="h-7" onClick={() => setIsAddingNote(false)}>Cancel</Button>
+                                            <Button size="sm" className="h-7" onClick={handleSaveNote} disabled={!newNoteText.trim()}><Check size={13} className="mr-1"/> Add note</Button>
+                                        </div>
                                     </div>
-                                )}
-                                {!isAddingNote && !isReadOnly && (
-                                    <button className="note-chip-add" onClick={() => setIsAddingNote(true)}><Plus size={13}/> Add Note</button>
+                                ) : !isReadOnly && (
+                                    <button className="note-chip-add" onClick={() => setIsAddingNote(true)}><Plus size={13}/> Add note</button>
                                 )}
                             </div>
+                        </div>
+
+                        <div className="field-row !mb-0">
+                            <label className="field-label">Site access</label>
                             <UnlockableField locked={!unlocked.has('siteAccessInstructions')} onUnlock={() => unlock('siteAccessInstructions')} canEdit={!isReadOnly}>
-                                <Textarea 
+                                <Textarea
                                     disabled={isReadOnly}
                                     readOnly={!unlocked.has('siteAccessInstructions')}
-                                    className="field-textarea mt-2" 
-                                    placeholder="Parking, entry codes, badge requirements..." 
+                                    className="field-textarea min-h-[80px] !text-[12px]"
+                                    placeholder="Parking, entry codes, badge requirements..."
                                     value={localProjectData.siteAccessInstructions || ''}
                                     onChange={e => setLocalProjectData({...localProjectData, siteAccessInstructions: e.target.value})}
+                                    onKeyDown={saveKeys}
                                 ></Textarea>
                             </UnlockableField>
                         </div>
                     </div>
+                </div>
+            </div>
 
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="lg:col-span-2 space-y-4 text-left">
                      {showMoney && projectEconomics && <ProjectEconomicsCard project={project} projectEconomics={projectEconomics} />}
                      {/* Office only: quote link, parts added on site, the invoice. */}
                      {showMoney && !economicsFromServer && <ProjectBillingPanel project={project} />}
@@ -314,12 +347,6 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                 </div>
             </div>
 
-            {!isReadOnly && isDirty && (
-                <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-border-sub animate-in fade-in slide-in-from-top-2 duration-300">
-                    <Button variant="outline" className="h-10 px-8 uppercase font-bold text-[10px] tracking-wider" onClick={handleCancelChanges}>Discard Changes</Button>
-                    <Button variant="default" className="h-10 px-10 uppercase font-bold text-[10px] tracking-wider bg-brand-red hover:bg-brand-red-hover" onClick={handleSaveChanges}>Commit Updates</Button>
-                </div>
-            )}
             
             <ManageTeamDialog 
               isOpen={isTeamDialogOpen}

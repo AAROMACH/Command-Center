@@ -234,7 +234,8 @@ const OverviewTab = ({ project, technicians, dailyLogCount, isManager }: { proje
     const isReadOnly = project.status === 'completed';
 
     const handleSaveChanges = async () => {
-        if (isReadOnly || !isDirty) return;
+        if (isReadOnly) return;
+        if (!isDirty) { setUnlocked(new Set()); return; }
         try {
             const docRef = doc(db, 'projects', project.id);
             await updateDoc(docRef, { ...localProjectData });
@@ -245,101 +246,119 @@ const OverviewTab = ({ project, technicians, dailyLogCount, isManager }: { proje
         }
     };
 
+    const editing = unlocked.size > 0;
+    const cancelEdits = () => {
+        setUnlocked(new Set());
+        setLocalProjectData({
+            scope: project.scope,
+            onsiteContactName: project.onsiteContactName,
+            onsiteContactPhone: project.onsiteContactPhone,
+            siteAccessInstructions: project.siteAccessInstructions
+        });
+    };
+    // Ctrl/Cmd+Enter saves; Escape cancels.
+    const saveKeys = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handleSaveChanges(); }
+        if (e.key === 'Escape' && editing) { e.preventDefault(); cancelEdits(); }
+    };
+
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
-            <div className="lg:col-span-2 space-y-6">
-                <section className="field-group">
-                    <h3 className="field-group-title"><FileText size={14}/> Scope</h3>
-                    <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-4 text-left">
-                        <div className="space-y-1 text-left">
-                            <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-left">What we're doing</p>
-                            <UnlockableField locked={!unlocked.has('scope')} onUnlock={() => unlock('scope')} canEdit={!isReadOnly}>
-                                <Textarea 
+        <div className="space-y-6 animate-in fade-in duration-300">
+            {/* Site notes, full width: the scope reads as a paragraph on the
+                left; contact, field intelligence and access on the right. */}
+            <section className="field-group text-left">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <h3 className="field-group-title !mb-0"><FileText size={14}/> Site notes</h3>
+                    {!isReadOnly && editing && (
+                        <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-text-muted hidden sm:inline">{isDirty ? 'Unsaved changes' : 'Editing'}</span>
+                            <Button variant="outline" size="sm" className="h-9" onClick={cancelEdits}>Cancel</Button>
+                            <Button size="sm" className="h-9 bg-brand-red text-white" onClick={handleSaveChanges}>Save</Button>
+                        </div>
+                    )}
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-x-6 gap-y-4">
+                    <div className="lg:col-span-3 space-y-1">
+                        <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Scope of work</p>
+                        <UnlockableField locked={!unlocked.has('scope')} onUnlock={() => unlock('scope')} canEdit={!isReadOnly}>
+                            <Textarea
+                                disabled={isReadOnly}
+                                readOnly={!unlocked.has('scope')}
+                                className="field-textarea min-h-[240px] lg:min-h-[320px] !text-[13px] leading-relaxed"
+                                value={localProjectData.scope || ''}
+                                onChange={e => setLocalProjectData({...localProjectData, scope: e.target.value})}
+                                onKeyDown={saveKeys}
+                            />
+                        </UnlockableField>
+                    </div>
+                    <div className="lg:col-span-2 space-y-3">
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Site contact name</p>
+                            <UnlockableField locked={!unlocked.has('onsiteContactName')} onUnlock={() => unlock('onsiteContactName')} canEdit={!isReadOnly}>
+                                <Input
                                     disabled={isReadOnly}
-                                    readOnly={!unlocked.has('scope')}
-                                    className="field-textarea h-24" 
-                                    value={localProjectData.scope || ''}
-                                    onChange={e => setLocalProjectData({...localProjectData, scope: e.target.value})}
+                                    readOnly={!unlocked.has('onsiteContactName')}
+                                    className="h-10 text-[13px]"
+                                    value={localProjectData.onsiteContactName || ''}
+                                    onChange={e => setLocalProjectData({...localProjectData, onsiteContactName: e.target.value})}
+                                    onKeyDown={saveKeys}
+                                />
+                            </UnlockableField>
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Site contact phone</p>
+                            <UnlockableField locked={!unlocked.has('onsiteContactPhone')} onUnlock={() => unlock('onsiteContactPhone')} canEdit={!isReadOnly}>
+                                <Input
+                                    disabled={isReadOnly}
+                                    readOnly={!unlocked.has('onsiteContactPhone')}
+                                    className="h-10 text-[13px]"
+                                    value={localProjectData.onsiteContactPhone || ''}
+                                    onChange={e => setLocalProjectData({...localProjectData, onsiteContactPhone: e.target.value})}
+                                    onKeyDown={saveKeys}
+                                />
+                            </UnlockableField>
+                            {localProjectData.onsiteContactPhone && !unlocked.has('onsiteContactPhone') && (
+                                <a href={`tel:${localProjectData.onsiteContactPhone.replace(/[^\d+]/g, '')}`} className="inline-block text-[13px] text-brand-red hover:underline">Call</a>
+                            )}
+                        </div>
+                        {isManager && (
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Field intelligence</p>
+                                {(project.siteHazardNotes || []).length ? (
+                                    <div className="space-y-1.5">
+                                        {(project.siteHazardNotes || []).map(note => (
+                                            <div key={note.id} className={`flex items-start gap-2 rounded-md border px-2.5 py-2 text-[12px] ${note.type === 'danger' ? 'border-border-alert bg-brand-red-dim text-text-red' : 'border-accent/50 bg-accent-gold-dim text-accent-gold'}`}>
+                                                {note.type === 'danger' ? <AlertTriangle size={13} className="mt-0.5 shrink-0"/> : <Info size={13} className="mt-0.5 shrink-0"/>}
+                                                <span className="flex-1 min-w-0 whitespace-pre-wrap break-words text-text-primary">{note.text}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-[12px] text-text-muted">No field notes yet.</p>
+                                )}
+                            </div>
+                        )}
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Site access</p>
+                            <UnlockableField locked={!unlocked.has('siteAccessInstructions')} onUnlock={() => unlock('siteAccessInstructions')} canEdit={!isReadOnly}>
+                                <Textarea
+                                    disabled={isReadOnly}
+                                    readOnly={!unlocked.has('siteAccessInstructions')}
+                                    className="field-textarea min-h-[80px] !text-[12px]"
+                                    value={localProjectData.siteAccessInstructions || ''}
+                                    onChange={e => setLocalProjectData({...localProjectData, siteAccessInstructions: e.target.value})}
+                                    onKeyDown={saveKeys}
                                 />
                             </UnlockableField>
                         </div>
                     </div>
-                </section>
+                </div>
+            </section>
 
-                <section className="field-group">
-                    <h3 className="field-group-title"><MapPin size={14}/> Site access</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3 text-left">
-                            <div className="space-y-1 text-left">
-                                <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-left">Access instructions</p>
-                                <UnlockableField locked={!unlocked.has('siteAccessInstructions')} onUnlock={() => unlock('siteAccessInstructions')} canEdit={!isReadOnly}>
-                                    <Textarea 
-                                        disabled={isReadOnly}
-                                        readOnly={!unlocked.has('siteAccessInstructions')}
-                                        className="field-textarea h-20" 
-                                        value={localProjectData.siteAccessInstructions || ''}
-                                        onChange={e => setLocalProjectData({...localProjectData, siteAccessInstructions: e.target.value})}
-                                    />
-                                </UnlockableField>
-                            </div>
-                        </div>
-                        <div className="p-4 rounded-lg bg-bg-primary border border-border-sub space-y-3 text-left">
-                            <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-left">On-site contact</Label>
-                                <UnlockableField locked={!unlocked.has('onsiteContactName')} onUnlock={() => unlock('onsiteContactName')} canEdit={!isReadOnly}>
-                                    <Input 
-                                        disabled={isReadOnly}
-                                        readOnly={!unlocked.has('onsiteContactName')}
-                                        className="h-10 text-[13px]"
-                                        value={localProjectData.onsiteContactName || ''}
-                                        onChange={e => setLocalProjectData({...localProjectData, onsiteContactName: e.target.value})}
-                                    />
-                                </UnlockableField>
-                                <UnlockableField locked={!unlocked.has('onsiteContactPhone')} onUnlock={() => unlock('onsiteContactPhone')} canEdit={!isReadOnly}>
-                                    <Input 
-                                        disabled={isReadOnly}
-                                        readOnly={!unlocked.has('onsiteContactPhone')}
-                                        className="h-10 text-[13px]"
-                                        value={localProjectData.onsiteContactPhone || ''}
-                                        onChange={e => setLocalProjectData({...localProjectData, onsiteContactPhone: e.target.value})}
-                                    />
-                                </UnlockableField>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {isManager && (
-                    <section className="field-group">
-                        <h3 className="field-group-title"><AlertTriangle size={14}/> Site notes</h3>
-                        {(project.siteHazardNotes || []).length ? (
-                            <div className="note-chips">
-                                {(project.siteHazardNotes || []).map(note => (
-                                    <div key={note.id} className={`note-chip ${note.type === 'danger' ? 'danger' : 'info'}`}>
-                                        {note.type === 'danger' ? <AlertTriangle size={13}/> : <Info size={13}/>}
-                                        <span>{note.text}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-[12px] text-text-muted text-left">No site notes yet.</p>
-                        )}
-                    </section>
-                )}
-
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
                 {isManager && economics && <ProjectEconomicsCard project={project} projectEconomics={economics} />}
 
-                {isDirty && !isReadOnly && (
-                    <div className="flex justify-end gap-3 pt-2">
-                        <Button variant="outline" className="h-10 px-5" onClick={() => { setUnlocked(new Set()); setLocalProjectData({
-                            scope: project.scope,
-                            onsiteContactName: project.onsiteContactName,
-                            onsiteContactPhone: project.onsiteContactPhone,
-                            siteAccessInstructions: project.siteAccessInstructions
-                        }); }}>Discard changes</Button>
-                        <Button className="h-10 px-6 bg-brand-red" onClick={handleSaveChanges}>Save changes</Button>
-                    </div>
-                )}
             </div>
 
             <div className="space-y-6">
@@ -364,6 +383,7 @@ const OverviewTab = ({ project, technicians, dailyLogCount, isManager }: { proje
                     </div>
                 </section>
             </div>
+        </div>
         </div>
     );
 };

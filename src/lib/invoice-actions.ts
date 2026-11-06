@@ -1,6 +1,7 @@
 import { deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { createDocId } from './generateId';
+import { docNumber, newInvoiceNumber } from './doc-number';
 import { ID_PREFIXES } from './constants';
 import type { Invoice } from './types';
 import { toInvoiceLines, type PriceLine } from './price-lines';
@@ -25,7 +26,7 @@ export function invoiceToEditor(inv: Invoice): Partial<PriceDocValues> {
 }
 
 /** Builds the invoice doc from the editor and saves it; returns its id. */
-export async function saveInvoiceFromEditor(r: PriceDocResult, existing: Invoice | null, extra: Partial<Invoice> = {}): Promise<string> {
+export async function saveInvoiceFromEditor(r: PriceDocResult, existing: Invoice | null, extra: Partial<Invoice> = {}, opts: { editorCanApprove?: boolean } = {}): Promise<string> {
   const id = existing?.id || await createDocId(ID_PREFIXES.INVOICE);
   // Project ids are 'prj-…' (older ones 'proj…'); anything else is a job.
   const isProject = /^pro?j/.test(r.relatedId);
@@ -35,7 +36,8 @@ export async function saveInvoiceFromEditor(r: PriceDocResult, existing: Invoice
   const invoice: Invoice = {
     ...(existing || {}),
     id,
-    invoiceNumber: r.invoiceNumber,
+    // Blank (or the old random default) = the date + running number.
+    invoiceNumber: existing ? (r.invoiceNumber.trim() || existing.invoiceNumber || docNumber(id, r.issueDate || new Date())) : newInvoiceNumber(r.invoiceNumber, id, r.issueDate),
     clientId: r.customerType === 'in_app_client' ? r.clientId : '',
     clientName,
     customerEmail: r.customerType === 'external_customer' ? (r.customerEmail || null) : null,
@@ -53,6 +55,8 @@ export async function saveInvoiceFromEditor(r: PriceDocResult, existing: Invoice
     total: r.totals.total,
     // When it was marked paid (the request tracker's last step).
     ...(r.status === 'paid' && existing?.status !== 'paid' ? { paidAt: new Date().toISOString() } : {}),
+    // A change by someone who can't approve undoes an approval that hasn't gone out yet.
+    ...(opts.editorCanApprove === false && existing?.status === 'draft' && existing.approval?.status === 'approved' ? { approval: null } : {}),
     ...extra,
   };
   // Firestore rejects undefined fields.

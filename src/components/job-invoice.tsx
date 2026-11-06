@@ -1,5 +1,8 @@
 'use client';
 
+import { newInvoiceNumber } from '@/lib/doc-number';
+import { canApproveInvoices } from '@/lib/approvals';
+import { useAuth } from '@/contexts/auth-context';
 import { InvoicePdfButton } from '@/components/invoice-pdf-button';
 import { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
@@ -35,6 +38,7 @@ function useClients() {
  * from time on site × the standard labor rate, reviewed before saving.
  */
 export function JobInvoicePanel({ job }: { job: WorkOrder }) {
+  const { user } = useAuth();
   const { toast } = useToast();
   const { settings: pricing } = usePricingSettings();
   const clients = useClients();
@@ -60,8 +64,8 @@ export function JobInvoicePanel({ job }: { job: WorkOrder }) {
   const save = async (r: PriceDocResult) => {
     setSaving(true);
     try {
-      await saveInvoiceFromEditor(r, null);
-      toast({ title: 'Invoice drafted', description: `Invoice ${r.invoiceNumber} — send it from here or Quotes & Invoices.` });
+      const id = await saveInvoiceFromEditor(r, null);
+      toast({ title: 'Invoice drafted', description: `Invoice ${newInvoiceNumber(r.invoiceNumber, id, r.issueDate)} — send it from here or Quotes & Invoices.` });
       setDraft(null);
     } catch (e: any) { toast({ variant: 'destructive', title: 'Could not save invoice', description: e.message }); }
     finally { setSaving(false); }
@@ -92,7 +96,7 @@ export function JobInvoicePanel({ job }: { job: WorkOrder }) {
           <Receipt size={13} className="mr-1.5" /> Create invoice
         </Button>
       )}
-      <PriceDocEditor open={!!draft} onClose={() => setDraft(null)} kind="invoice" initial={draft || undefined}
+      <PriceDocEditor open={!!draft} onClose={() => setDraft(null)} kind="invoice" initial={draft || undefined} draftOnly={!canApproveInvoices(user)}
         title={`Invoice for ${job.title || job.id.toUpperCase()}`} saveLabel="Save invoice" saving={saving} onSave={save} />
     </div>
   );
@@ -119,6 +123,7 @@ function periodRange(p: Period): [Date, Date] | null {
  * in a period (one line per job). For clients billed weekly or monthly.
  */
 export function BillJobsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { user } = useAuth();
   const { toast } = useToast();
   const { settings: pricing } = usePricingSettings();
   const clients = useClients();
@@ -167,8 +172,8 @@ export function BillJobsDialog({ open, onClose }: { open: boolean; onClose: () =
   const save = async (r: PriceDocResult) => {
     setSaving(true);
     try {
-      await saveInvoiceFromEditor(r, null, { workOrderIds: draftIds } as Partial<Invoice>);
-      toast({ title: 'Invoice drafted', description: `${draftIds.length} job${draftIds.length === 1 ? '' : 's'} on invoice ${r.invoiceNumber}.` });
+      const id = await saveInvoiceFromEditor(r, null, { workOrderIds: draftIds } as Partial<Invoice>);
+      toast({ title: 'Invoice drafted', description: `${draftIds.length} job${draftIds.length === 1 ? '' : 's'} on invoice ${newInvoiceNumber(r.invoiceNumber, id, r.issueDate)}.` });
       setDraft(null);
       onClose();
     } catch (e: any) { toast({ variant: 'destructive', title: 'Could not save invoice', description: e.message }); }
@@ -221,7 +226,7 @@ export function BillJobsDialog({ open, onClose }: { open: boolean; onClose: () =
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <PriceDocEditor open={!!draft} onClose={() => setDraft(null)} kind="invoice" initial={draft || undefined}
+      <PriceDocEditor open={!!draft} onClose={() => setDraft(null)} kind="invoice" initial={draft || undefined} draftOnly={!canApproveInvoices(user)}
         title={`Invoice — ${client} · ${draftIds.length} job${draftIds.length === 1 ? '' : 's'}`} saveLabel="Save invoice" saving={saving} onSave={save} />
     </>
   );

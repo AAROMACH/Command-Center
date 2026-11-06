@@ -12,6 +12,8 @@ import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, getDoc, getDocs
 import { surveySummary } from '@/lib/crm-survey';
 import { useCrmPaths } from '@/lib/crm-paths';
 import { createDocId } from '@/lib/generateId';
+import { docNumber, newInvoiceNumber } from '@/lib/doc-number';
+import { renumberQuotes } from '@/lib/doc-number-actions';
 import { ID_PREFIXES } from '@/lib/constants';
 import { syncLeadOnQuoteCreated } from '@/lib/crm-actions';
 import type { Lead, SiteSurvey, Quote, QuoteStatus } from '@/lib/types';
@@ -20,6 +22,8 @@ import { discountLineLabel, fromQuoteLines, toQuoteLines, type PlanDiscount } fr
 import { saveInvoiceFromEditor } from '@/lib/invoice-actions';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { isClient } from '@/lib/permissions';
+import { approveQuote, approvedNow, approvalLabel, canApproveInvoices, canApproveQuotes, isApproved, requestQuoteApproval, returnQuote } from '@/lib/approvals';
+import { ApprovalPanel } from '@/components/approval-panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -149,7 +153,7 @@ function NewQuoteDialog({
       const inApp = r.customerType === 'in_app_client';
       const now = new Date().toISOString();
       const quote: Omit<Quote, 'id'> & { planDiscount: PlanDiscount | null } = {
-        quoteNumber: quoteId,
+        quoteNumber: docNumber(quoteId),
         customerType: r.customerType,
         clientId: inApp ? r.clientId : null,
         customerName: inApp ? (c?.clientCompany || c?.name || '') : r.customerName,
@@ -216,6 +220,13 @@ function NewQuoteDialog({
   );
 }
 
+/** Draft quotes waiting on (or sent back from) internal approval. */
+function ApprovalBadge({ quote }: { quote: Quote }) {
+  const a = quote.internalApproval;
+  if (quote.status !== 'draft' || !a || a.status === 'approved') return null;
+  return <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide', a.status === 'pending' ? 'bg-accent-gold/15 text-accent-gold' : 'bg-brand-red/10 text-brand-red')}>{approvalLabel(a)}</span>;
+}
+
 // ── Quote Card ────────────────────────────────────────────────────────────────
 
 function QuoteCard({ quote, onClick }: { quote: Quote; onClick: () => void }) {
@@ -227,7 +238,7 @@ function QuoteCard({ quote, onClick }: { quote: Quote; onClick: () => void }) {
           <p className="text-[12px] font-bold text-text-primary truncate">{quote.title}</p>
           <p className="text-[12px] text-text-muted">{quote.customerName || quote.customerCompany}</p>
         </div>
-        <QuoteStatusBadge status={quote.status} />
+        <div className="flex flex-col items-end gap-1"><QuoteStatusBadge status={quote.status} /><ApprovalBadge quote={quote} /></div>
       </div>
       <div className="flex items-center gap-3 text-[12px] text-text-muted">
         <span className="font-mono">{quote.quoteNumber}</span>
@@ -257,6 +268,7 @@ function QuoteRow({ quote, onClick }: { quote: Quote; onClick: () => void }) {
         <span className="hidden md:flex items-center gap-1 text-[12px] text-text-muted shrink-0"><Clock size={12} />Expires {quote.expirationDate}</span>
       )}
       <span className="text-[12px] font-bold text-text-primary shrink-0">{fmtMoney(quote.total)}</span>
+      <ApprovalBadge quote={quote} />
       <QuoteStatusBadge status={quote.status} />
     </button>
   );
@@ -280,6 +292,7 @@ function QuoteDetailDialog({
 }) {
   const { toast } = useToast();
   const paths = useCrmPaths();
+  const { user } = useAuth();
   const [acting, setActing] = useState(false);
   // "Client approved" — approval taken by phone, email, signed PDF or in person.
   const [approving, setApproving] = useState(false);
@@ -289,6 +302,15 @@ function QuoteDetailDialog({
   useEffect(() => { setApproving(false); setApproveNote(''); setApproveHow('Phone'); setApproveName(quote?.customerName || ''); }, [quote?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!quote) return null;
+
+  // Internal approval (lib/approvals): approvers may send; anyone else once it's approved.
+  const me = { id: user?.id || auth.currentUser?.uid || '', name: user?.name || auth.currentUser?.displayName || 'Office' };
+  const approver = canApproveQuotes(user);
+  const mayRelease = approver || isApproved(quote.internalApproval);
+  const approvalAct = (fn: () => Promise<void>, done: string) => async () => {
+    try { await fn(); toast({ title: done }); onUpdated(); }
+    catch (e: any) { toast({ variant: 'destructive', title: 'Could not update approval', description: e?.code === 'permission-denied' ? 'You don’t have permission for that.' : e.message }); throw e; }
+  };
 
   const publicUrl = quote.publicToken
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}/public/quote/${quote.publicToken}`
@@ -309,7 +331,12 @@ function QuoteDetailDialog({
 
   const handleSend = async () => {
     const token = quote.customerType === 'external_customer' && !quote.publicToken ? genToken() : quote.publicToken;
-    await act({ status: 'sent', sentAt: new Date().toISOString(), publicToken: token });
+    if (quote.status === 'draft' && !mayRelease) { toast({ variant: 'destructive', title: 'Needs approval first' }); return; }
+    await act({
+      status: 'sent', sentAt: new Date().toISOString(), publicToken: token,
+      // An approver sending their own (or an unapproved) quote approves it.
+      ...(isApproved(quote.internalApproval) ? {} : { internalApproval: approvedNow(me, quote.internalApproval) }),
+    });
     toast({ title: 'Quote sent', description: 'Status updated to Sent.' });
   };
 
@@ -483,14 +510,23 @@ function QuoteDetailDialog({
             {/* Email isn't set up on the server, so "Send" only marks it sent and
                 makes the approval link — the PDF / link go out by hand. */}
             <p className="text-[11px] text-text-muted leading-relaxed">Email the PDF (or the approval link) to the customer yourself. If they approve by phone, email or a signed PDF, record it with <b>Client approved</b>.</p>
-            <QuotePdfButton quote={quote} />
+            {quote.status === 'draft' && (
+              <ApprovalPanel kind="quote" approval={quote.internalApproval} canApprove={approver}
+                approverLabel="a Super Admin, Payroll Admin or Project Manager"
+                onRequest={approvalAct(() => requestQuoteApproval(quote, me), 'Sent for approval')}
+                onApprove={approvalAct(() => approveQuote(quote, me), 'Quote approved')}
+                onReturn={note => approvalAct(() => returnQuote(quote, me, note), 'Quote sent back')()} />
+            )}
+            {(mayRelease || quote.status !== 'draft') && <QuotePdfButton quote={quote} />}
             <div className="grid grid-cols-2 gap-2">
               {quote.status === 'draft' && (
                 <>
-                  <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white col-span-2"
-                    onClick={handleSend} disabled={acting}>
-                    <Send size={14} className="mr-1.5" />Mark as sent
-                  </Button>
+                  {mayRelease && (
+                    <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white col-span-2"
+                      onClick={handleSend} disabled={acting}>
+                      <Send size={14} className="mr-1.5" />Mark as sent
+                    </Button>
+                  )}
                   <Button size="sm" variant="outline" className="h-8 border-brand-red/30 text-brand-red hover:bg-brand-red/5"
                     onClick={() => act({ status: 'archived' })} disabled={acting}>
                     <Archive size={14} className="mr-1.5" />Archive
@@ -592,7 +628,7 @@ export default function AdminQuotesPage() {
     if (r.customerType === 'external_customer' && !r.customerEmail) { toast({ variant: 'destructive', title: 'Customer email required' }); return; }
     setSavingQuote(true);
     try {
-      await saveQuoteEdits(q, r);
+      await saveQuoteEdits(q, r, undefined, { editorCanApprove: canApproveQuotes(authUser) });
       toast({ title: 'Quote updated', description: q.status === 'draft' ? `${q.quoteNumber} saved.` : `${q.quoteNumber} saved — the client sees the new version next time they open it.` });
       setEditingQuote(null);
     } catch (e: any) {
@@ -615,7 +651,7 @@ export default function AdminQuotesPage() {
       const q = invoiceFromQuote;
       const id = await saveInvoiceFromEditor(r, null, q ? { quoteId: q.id } : {});
       if (q) await updateDoc(doc(db, 'quotes', q.id), { status: 'converted_to_invoice', convertedToInvoiceId: id, updatedAt: new Date().toISOString() });
-      toast({ title: 'Invoice created', description: `Invoice ${r.invoiceNumber} saved${q ? ` from ${q.quoteNumber}` : ''}.` });
+      toast({ title: 'Invoice created', description: `Invoice ${newInvoiceNumber(r.invoiceNumber, id, r.issueDate)} saved${q ? ` from ${q.quoteNumber}` : ''}.` });
       setInvoiceOpen(false);
       setInvoiceFromQuote(null);
       setTab('invoices');
@@ -666,6 +702,9 @@ export default function AdminQuotesPage() {
     });
   }, [quotes, inSalesPortal]);
 
+  // One-time: older quotes get the date + running number (11/05/26-007).
+  useEffect(() => { if (!inSalesPortal && quotes.length) renumberQuotes(quotes); }, [quotes, inSalesPortal]);
+
   useEffect(() => {
     const u1 = onSharedSnapshot('quotes', snap => {
       setQuotes(snap.docs.map(d => ({ ...d.data(), id: d.id } as Quote)));
@@ -693,7 +732,9 @@ export default function AdminQuotesPage() {
     });
   }, [quotes, search, sortBy, sortAsc]);
 
-  const draft     = shown.filter(q => q.status === 'draft');
+  // Waiting on approval first, so approvers see them at the top of Draft.
+  const draft     = shown.filter(q => q.status === 'draft').sort((a, b) => Number(b.internalApproval?.status === 'pending') - Number(a.internalApproval?.status === 'pending'));
+  const awaitingApproval = quotes.filter(q => q.status === 'draft' && q.internalApproval?.status === 'pending');
   const sent      = shown.filter(q => q.status === 'sent' || q.status === 'viewed' || q.status === 'changes_requested');
   const approved  = shown.filter(q => q.status === 'approved' || q.status === 'converted_to_work_order' || q.status === 'converted_to_project' || q.status === 'converted_to_invoice');
   const rejected  = shown.filter(q => q.status === 'rejected' || q.status === 'expired' || q.status === 'archived' || q.status === 'superseded');
@@ -764,6 +805,15 @@ export default function AdminQuotesPage() {
         </Button>
       </div>
 
+      {canApproveQuotes(authUser) && awaitingApproval.length > 0 && (
+        <button type="button" onClick={() => { setTab('draft'); setSearch(''); }}
+          className="mb-3 w-full flex items-center gap-2 rounded-lg border border-accent-gold/40 bg-accent-gold/5 px-3 py-2.5 text-left text-[13px] hover:bg-accent-gold/10">
+          <Clock size={14} className="text-accent-gold shrink-0" />
+          <span className="flex-1"><b>{awaitingApproval.length}</b> quote{awaitingApproval.length === 1 ? '' : 's'} awaiting your approval: {awaitingApproval.slice(0, 3).map(q => q.quoteNumber).join(', ')}{awaitingApproval.length > 3 ? '…' : ''}</span>
+          <span className="text-accent-gold font-semibold">Review in Draft →</span>
+        </button>
+      )}
+
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="tabs flex-wrap h-auto gap-1 p-1 mb-4">
           <TabsTrigger value="walks" className="tab">Site walks<TabCount n={walksWaiting} /></TabsTrigger>
@@ -829,6 +879,7 @@ export default function AdminQuotesPage() {
         open={invoiceOpen}
         onClose={() => { setInvoiceOpen(false); setInvoiceFromQuote(null); }}
         kind="invoice"
+        draftOnly={!canApproveInvoices(authUser)}
         initial={invoiceFromQuote ? {
           customerType: invoiceFromQuote.customerType,
           clientId: invoiceFromQuote.clientId || '',

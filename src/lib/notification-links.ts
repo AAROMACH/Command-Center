@@ -21,6 +21,8 @@ export function entityHref(portal: LinkPortal, type?: string, id?: string): stri
       : !ref && kind ? `?msg=${encodeURIComponent(kind)}` : '';
     return `/${portal}/messaging${q}`;
   }
+  if (type === 'quote') return portal === 'tech' ? '/tech/approvals' : portal === 'sales' ? '/sales/quotes' : portal === 'admin' ? '/admin/quotes' : '';
+  if (type === 'invoice') return portal === 'admin' ? '/admin/quotes?tab=invoices' : '';
   if (type === 'user') return portal === 'admin' ? `/admin/directory/${id}` : '';
   return '';
 }

@@ -77,7 +77,7 @@ export function emptyPriceDoc(kind: PriceDocKind): PriceDocValues {
     title: '', description: '', scopeSummary: '',
     terms: kind === 'quote' ? 'Payment due within 30 days of invoice.' : '',
     expirationDate: '', optionalGroups: [],
-    invoiceNumber: `INV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`,
+    invoiceNumber: '',
     issueDate: today(), dueDate: plusDays(30), relatedId: '', status: 'draft',
     lines: [],
   };
@@ -89,7 +89,7 @@ const areaCls = 'w-full text-[12px] bg-bg-secondary border border-border-main ro
 
 export function PriceDocEditor({
   open, onClose, kind, initial, initialDiscount, title, saveLabel, saving, onSave, externalOnly = false,
-  onDelete, deleting = false, deleteLabel, headerExtra,
+  onDelete, deleting = false, deleteLabel, headerExtra, draftOnly = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -111,6 +111,8 @@ export function PriceDocEditor({
   deleteLabel?: string;
   /** Extra chips beside the QUOTE / INVOICE label (status, linked project…). */
   headerExtra?: ReactNode;
+  /** Invoices: a draft that isn't approved can't be marked Sent / Paid here (lib/approvals). */
+  draftOnly?: boolean;
 }) {
   const [v, setV] = useState<PriceDocValues>(() => ({ ...emptyPriceDoc(kind), ...initial }));
   // 'auto' = the client's plan discount; 'removed' = taken off for this doc;
@@ -151,7 +153,7 @@ export function PriceDocEditor({
   const priceBook = useMemo<PriceBookItem[]>(() => [
     ...settings.laborRates.map(r => ({
       id: `rate:${r.id}`, name: r.unit === 'hour' ? `${r.label} ($${r.rate}/hr)` : r.label, unitPrice: r.rate,
-      section: 'labor' as const, taxable: false, group: 'Labor rates', unit: r.unit === 'hour' ? 'hr' : '',
+      section: 'labor' as const, taxable: false, group: 'Labor rates', unit: r.unit === 'hour' ? 'hr' : 'job',
     })),
     ...materials.filter(m => m.status !== 'inactive').map(m => ({
       id: `mat:${m.id}`, name: m.name, unitPrice: materialPrice(m, settings), section: 'material' as const,
@@ -395,7 +397,7 @@ export function PriceDocEditor({
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1.5"><Label className={labelCls}>Invoice #</Label>
-                    <Input className={`${inputCls} font-mono`} value={v.invoiceNumber} onChange={e => set('invoiceNumber', e.target.value)} /></div>
+                    <Input className={`${inputCls} font-mono`} value={v.invoiceNumber} placeholder="Assigned on save (MM/DD/YY-###)" onChange={e => set('invoiceNumber', e.target.value)} /></div>
                   <div className="space-y-1.5"><Label className={labelCls}>Issue date</Label>
                     <Input type="date" className={inputCls} value={v.issueDate} onChange={e => set('issueDate', e.target.value)} /></div>
                   <div className="space-y-1.5"><Label className={labelCls}>Due date</Label>
@@ -500,8 +502,8 @@ export function PriceDocEditor({
 
         <DialogFooter className="gap-2 pt-2 flex-wrap sm:justify-between">
           {kind === 'invoice' ? (
-            <Select value={v.status} onValueChange={s => set('status', s as InvoiceStatus)}>
-              <SelectTrigger className="h-9 w-[150px] text-[12px] bg-bg-secondary border-border-main"><SelectValue /></SelectTrigger>
+            <Select value={v.status} onValueChange={s => set('status', s as InvoiceStatus)} disabled={draftOnly && v.status === 'draft'}>
+              <SelectTrigger className="h-9 w-[150px] text-[12px] bg-bg-secondary border-border-main" title={draftOnly && v.status === 'draft' ? 'A Super Admin or Payroll Admin has to approve it before it’s sent' : undefined}><SelectValue /></SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
                 <SelectItem value="draft">Draft</SelectItem>
                 <SelectItem value="sent">Sent</SelectItem>

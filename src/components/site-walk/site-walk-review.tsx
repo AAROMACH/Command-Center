@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { isClient, isSuperAdmin } from '@/lib/permissions';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { MARGIN_LABEL, genLineId, priceLine, walkScopeText, type SiteWalk, type WalkLine } from '@/lib/estimating';
+import { canApproveQuotes } from '@/lib/approvals';
 import { approveSiteWalk, returnSiteWalk, useEstimatingSettings, walkTotalsWithPlan } from '@/lib/site-walk-actions';
 import type { Technician } from '@/lib/types';
 
@@ -105,8 +106,8 @@ export function SiteWalkReview({ walk, onClose, onQuoteCreated }: {
         customerType, clientId: client!.id, name: client!.clientCompany || client!.name || '', company: client!.clientCompany || null, email: client!.email || '', phone: client!.phone || null,
       } : {
         customerType, clientId: null, name: walk.contactName || walk.customerCompany, company: walk.customerCompany || null, email: email.trim(), phone: walk.contactPhone || null,
-      }, by, discount);
-      toast({ title: 'Approved — draft quote created', description: `${quoteId} is in Drafts, ready to review and send.` });
+      }, by, discount, { approverSignsOff: canApproveQuotes(user) });
+      toast({ title: 'Approved — draft quote created', description: canApproveQuotes(user) ? `${quoteId} is in Drafts, approved and ready to send.` : `${quoteId} is in Drafts. Submit it for approval before it goes to the client.` });
       onQuoteCreated?.(quoteId);
       onClose();
     } catch (e: any) { toast({ variant: 'destructive', title: 'Could not approve', description: e.message }); }

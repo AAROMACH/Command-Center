@@ -32,6 +32,24 @@ service cloud.firestore {
       return d.get('roles', []).hasAny(['super_admin']) || d.get('role', '') in ['super_admin', 'admin'];
     }
 
+    // ── Internal approval of quotes and invoices (lib/approvals) ──
+    function canApproveQuotes() { return isSuperAdmin() || isPayrollAdmin() || isProjectManager(); }
+    function canApproveInvoices() { return isSuperAdmin() || isPayrollAdmin(); }
+    // The approval's status, or '' when there is none.
+    function apprStatus(d, field) {
+      return d.get(field, null) is map ? d.get(field, null).get('status', '') : '';
+    }
+    // Approving or sending back takes an approver; leaving draft (other than
+    // to one of `exits`, e.g. archived / void) takes an approved doc.
+    function approvalStepOk(before, after, field, approver, exits) {
+      let was = apprStatus(before, field);
+      let now = apprStatus(after, field);
+      let decided = (now == 'approved' && was != 'approved') || (now == 'returned' && was != 'returned');
+      let leavesDraft = before.get('status', '') == 'draft' && after.get('status', '') != 'draft'
+          && !(after.get('status', '') in exits);
+      return (!decided || approver) && (!leavesDraft || now == 'approved');
+    }
+
     function isPayrollAdmin() {
       let d = userData();
       return d.get('roles', []).hasAny(['super_admin', 'payroll_admin'])
@@ -534,13 +552,22 @@ service cloud.firestore {
       // caller's specific token" (rules can't see query filter values), so
       // `resource.data.publicToken != null` ended up granting anonymous
       // read of every sent quote in the collection. Closed.
-      allow read: if isAdmin() || isSales()
+      // Project Managers read quotes to approve them (Tech Portal → Approvals).
+      allow read: if isAdmin() || isSales() || isProjectManager()
           || (isSignedIn() && isClient() && resource.data.clientId == request.auth.uid);
-      // Sales quotes (role grants create/edit/send_quote). Approval itself
-      // only happens server-side through /api/public-quote.
-      allow create: if isAdmin() || isSales();
-      allow update: if isAdmin()
-          || (isSales() && request.resource.data.status != 'approved');
+      // Sales quotes (role grants create/edit/send_quote). The client's
+      // approval only happens server-side through /api/public-quote.
+      // Internal approval (lib/approvals): only a quote approver approves or
+      // sends back, and a draft can't go out until it's approved.
+      allow create: if (isAdmin() || isSales())
+          && (canApproveQuotes() || (request.resource.data.status == 'draft'
+              && apprStatus(request.resource.data, 'internalApproval') != 'approved'));
+      allow update: if (isAdmin() || (isSales() && request.resource.data.status != 'approved'))
+          && approvalStepOk(resource.data, request.resource.data, 'internalApproval', canApproveQuotes(), ['archived']);
+      // A Project Manager only signs off: approve or send back, nothing else.
+      allow update: if isProjectManager()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['internalApproval', 'updatedAt'])
+          && approvalStepOk(resource.data, request.resource.data, 'internalApproval', true, []);
       allow delete: if isSuperAdmin();
     }
 
@@ -552,7 +579,14 @@ service cloud.firestore {
               || resource.data.clientName == userData().clientCompany
           ))
       );
-      allow create, update: if isAdmin();
+      // Internal approval (lib/approvals): only Super / Payroll Admins approve
+      // or send back, and a draft can't be marked sent or paid until approved.
+      // (Emailing goes through /api/invoices/send, which checks the same.)
+      allow create: if isAdmin()
+          && (canApproveInvoices() || (request.resource.data.status == 'draft'
+              && apprStatus(request.resource.data, 'approval') != 'approved'));
+      allow update: if isAdmin()
+          && approvalStepOk(resource.data, request.resource.data, 'approval', canApproveInvoices(), ['void']);
       allow delete: if isSuperAdmin();
     }
 

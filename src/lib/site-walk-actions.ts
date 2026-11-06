@@ -6,6 +6,8 @@ import { db } from './firebase';
 import { usePricingSettings } from '@/hooks/use-billing';
 import type { LaborRate } from './billing';
 import { createDocId } from './generateId';
+import { docNumber } from './doc-number';
+import { approvedNow } from './approvals';
 import { ID_PREFIXES } from './constants';
 import { priceTotals, toQuoteLines, unitLabel, type PlanDiscount, type PriceLine } from './price-lines';
 import { syncLeadOnQuoteCreated } from './crm-actions';
@@ -116,7 +118,7 @@ export function walkTotalsWithPlan(priced: PricedLine[], discount: PlanDiscount 
  */
 export async function approveSiteWalk(w: SiteWalk, settings: EstimatingSettings, customer: {
   customerType: 'in_app_client' | 'external_customer'; clientId: string | null; name: string; company: string | null; email: string; phone: string | null;
-}, by: { id: string; name: string }, discount: PlanDiscount | null = null): Promise<string> {
+}, by: { id: string; name: string }, discount: PlanDiscount | null = null, opts: { approverSignsOff?: boolean } = {}): Promise<string> {
   const a = settings.assumptions;
   const catalog = new Map(settings.services.map(s => [s.code, s]));
   const priced = w.lines.map(l => priceLine(l, catalog, a)).filter(l => l.service && l.qty > 0);
@@ -128,7 +130,7 @@ export async function approveSiteWalk(w: SiteWalk, settings: EstimatingSettings,
   const now = new Date();
   const expires = new Date(now.getTime() + a.quoteValidityDays * 86400000).toISOString().slice(0, 10);
   const quote: Omit<Quote, 'id'> & Record<string, unknown> = {
-    quoteNumber: quoteId,
+    quoteNumber: docNumber(quoteId),
     customerType: customer.customerType,
     clientId: customer.clientId,
     customerName: customer.name,
@@ -150,6 +152,9 @@ export async function approveSiteWalk(w: SiteWalk, settings: EstimatingSettings,
     convertedToWorkOrderId: null, convertedToProjectId: null, convertedToInvoiceId: null,
     leadId: w.leadId ?? null,
     siteWalkId: w.id,
+    // A quote approver reviewing the walk signs the quote off too; anyone
+    // else's walk review leaves it to be approved (lib/approvals).
+    internalApproval: opts.approverSignsOff ? approvedNow(by) : null,
   };
   await setDoc(doc(db, 'quotes', quoteId), JSON.parse(JSON.stringify({ id: quoteId, ...quote })));
   await updateDoc(doc(db, 'siteWalks', w.id), {

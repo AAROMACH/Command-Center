@@ -1,6 +1,7 @@
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { readProjectParts, writeProjectParts } from './project-parts';
 import { createDocId } from './generateId';
+import { docNumber } from './doc-number';
 import { ID_PREFIXES } from './constants';
 import { db } from './firebase';
 import { fromQuoteLines, toQuoteLines, type PlanDiscount } from './price-lines';
@@ -41,7 +42,7 @@ export const quoteDiscount = (q: Quote) => (q as QuoteWithDiscount).planDiscount
  * the quote is a project's quote, the project budget follows the new total,
  * and parts whose quote line was deleted stay as project costs only.
  */
-export async function saveQuoteEdits(quote: Quote, r: PriceDocResult, linkedProject?: Project): Promise<void> {
+export async function saveQuoteEdits(quote: Quote, r: PriceDocResult, linkedProject?: Project, opts: { editorCanApprove?: boolean } = {}): Promise<void> {
   const inApp = r.customerType === 'in_app_client';
   const c = r.client;
   const now = new Date().toISOString();
@@ -66,6 +67,8 @@ export async function saveQuoteEdits(quote: Quote, r: PriceDocResult, linkedProj
     terms: r.terms,
     expirationDate: r.expirationDate || null,
     updatedAt: now,
+    // A change by someone who can't approve undoes an approval that hasn't gone out yet.
+    ...(quote.status === 'draft' && quote.internalApproval?.status === 'approved' && !opts.editorCanApprove ? { internalApproval: null } : {}),
   });
 
   // Keep the project on this quote in step with it.
@@ -97,7 +100,7 @@ export async function createQuoteFromEditor(r: PriceDocResult, by: string, extra
   const c = r.client;
   const now = new Date().toISOString();
   const quote = {
-    id: quoteId, quoteNumber: quoteId,
+    id: quoteId, quoteNumber: docNumber(quoteId),
     customerType: r.customerType,
     clientId: inApp ? r.clientId : null,
     customerName: inApp ? (c?.clientCompany || c?.name || '') : r.customerName,

@@ -27,10 +27,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0);
 
+function useUsers() {
+  const [users, setUsers] = useState<Technician[]>([]);
+  useEffect(() => onSharedSnapshot('users', s => setUsers(s.docs.map(d => ({ ...d.data(), id: d.id } as Technician))), () => setUsers([])), []);
+  return users;
+}
 function useClients() {
-  const [clients, setClients] = useState<Technician[]>([]);
-  useEffect(() => onSharedSnapshot('users', s => setClients(s.docs.map(d => ({ ...d.data(), id: d.id } as Technician)).filter(isClient)), () => setClients([])), []);
-  return clients;
+  const users = useUsers();
+  return useMemo(() => users.filter(isClient), [users]);
+}
+
+const norm = (s?: string | null) => (s || '').trim().toLowerCase();
+
+/**
+ * A job whose client is really a staff member (a tech or admin picked or
+ * typed as the client): not billable until the job's client is fixed.
+ */
+function staffAsClient(j: WorkOrder, users: Technician[]): Technician | null {
+  const id = (j as { clientId?: string | null }).clientId;
+  const byId = id ? users.find(u => u.id === id) : undefined;
+  if (byId) return isClient(byId) ? null : byId;
+  const name = norm(j.clientName);
+  if (!name || users.some(u => isClient(u) && (norm(u.clientCompany) === name || norm(u.name) === name))) return null;
+  return users.find(u => !isClient(u) && norm(u.name) === name) || null;
 }
 
 /**
@@ -126,7 +145,8 @@ export function BillJobsDialog({ open, onClose }: { open: boolean; onClose: () =
   const { user } = useAuth();
   const { toast } = useToast();
   const { settings: pricing } = usePricingSettings();
-  const clients = useClients();
+  const users = useUsers();
+  const clients = useMemo(() => users.filter(isClient), [users]);
   const [jobs, setJobs] = useState<WorkOrder[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [trips, setTrips] = useState<TripLog[]>([]);
@@ -142,7 +162,10 @@ export function BillJobsDialog({ open, onClose }: { open: boolean; onClose: () =
 
   const billed = useMemo(() => invoicedJobIds(invoices), [invoices]);
   const minutes = useMemo(() => minutesOnSiteByJob(trips), [trips]);
-  const unbilled = useMemo(() => jobs.filter(j => j.status === 'completed' && isBillableJob(j) && !billed.has(j.id) && j.clientName), [jobs, billed]);
+  const candidates = useMemo(() => jobs.filter(j => j.status === 'completed' && isBillableJob(j) && !billed.has(j.id) && j.clientName), [jobs, billed]);
+  // Jobs with a staff member as the client are held back until fixed.
+  const misfiled = useMemo(() => candidates.map(j => ({ j, who: staffAsClient(j, users) })).filter((x): x is { j: WorkOrder; who: Technician } => !!x.who), [candidates, users]);
+  const unbilled = useMemo(() => { const bad = new Set(misfiled.map(x => x.j.id)); return candidates.filter(j => !bad.has(j.id)); }, [candidates, misfiled]);
   const byClient = useMemo(() => {
     const m = new Map<string, number>();
     unbilled.forEach(j => m.set(j.clientName, (m.get(j.clientName) || 0) + 1));
@@ -190,6 +213,21 @@ export function BillJobsDialog({ open, onClose }: { open: boolean; onClose: () =
               One invoice for a client&apos;s completed jobs that aren&apos;t invoiced yet — one line per job, from time on site × {rate ? `${fmt(rate.rate)}/h` : 'the labor rate'}. Field Nation jobs aren&apos;t included.
             </DialogDescription>
           </DialogHeader>
+          {misfiled.length > 0 && (
+            <details className="rounded-lg border border-accent-gold/40 bg-accent-gold/5 px-3 py-2 text-[12px]">
+              <summary className="cursor-pointer text-text-secondary">
+                <b>{misfiled.length}</b> completed job{misfiled.length === 1 ? ' has' : 's have'} a staff member as the client ({[...new Set(misfiled.map(x => x.who.name))].join(', ')}) — left out until the client is fixed.
+              </summary>
+              <div className="mt-2 space-y-1">
+                {misfiled.map(({ j, who }) => (
+                  <a key={j.id} href={`/admin/assignments/${j.id}`} className="flex justify-between gap-3 rounded px-1.5 py-1 hover:bg-bg-tertiary">
+                    <span className="min-w-0 truncate">{j.title || j.description || j.id.toUpperCase()} <span className="text-text-muted">· {j.scheduleDate} · {j.id.toUpperCase()}</span></span>
+                    <span className="shrink-0 text-text-muted">client: {who.name} → fix</span>
+                  </a>
+                ))}
+              </div>
+            </details>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Select value={client} onValueChange={setClient}>
               <SelectTrigger className="h-9"><SelectValue placeholder={byClient.length ? 'Choose a client…' : 'No unbilled jobs'} /></SelectTrigger>

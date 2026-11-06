@@ -70,7 +70,7 @@ export async function sendSms(to: string, text: string): Promise<'sent' | 'skipp
 /** Is email delivery configured on the server (Resend)? */
 export const emailConfigured = () => !!process.env.RESEND_API_KEY;
 
-const EMAIL_FROM = () => process.env.RESEND_FROM_EMAIL || 'AAROMACH <billing@mail.aaromach.com>';
+const EMAIL_FROM = () => process.env.RESEND_FROM_EMAIL || 'AAROMACH <invoices@billing.aaromach.com>';
 
 /**
  * Send one email through Resend. 'skipped' when RESEND_API_KEY isn't set.

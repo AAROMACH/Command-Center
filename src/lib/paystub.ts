@@ -29,8 +29,10 @@ type PaystubData = {
   status: string;
   jobs: PaystubJobLine[];
   reimbursements: PaystubReimbLine[];
-  /** Pay corrections (+/−), each naming the job and week it's for. */
+  /** Pay corrections (+/−) and held jobs released this week, each naming the job and week it's for. */
   adjustments: PaystubReimbLine[];
+  /** Jobs payroll is holding — listed so the tech knows, NOT in totalPaid. */
+  onHold: PaystubReimbLine[];
   totalPaid: number;
 };
 
@@ -43,7 +45,7 @@ type PaystubData = {
  * Payroll Audit page and the tech Earnings page so both produce identical
  * paystubs for the same log.
  */
-function buildPaystubData(
+export function buildPaystubData(
   log: WeeklyLog,
   tech: Technician | undefined,
   techId: string,
@@ -54,7 +56,9 @@ function buildPaystubData(
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekEnd.getDate() + 6);
 
-  const verifiedItems = (log.items || []).filter(i => i.confirmationStatus !== 'disputed');
+  // Exactly the jobs the settlement pays (lib/payroll countedItems): not
+  // disputed, not a removed helper, not held by payroll.
+  const verifiedItems = (log.items || []).filter(i => i.confirmationStatus !== 'disputed' && !i.helperRemoved && !i.payHold);
   const jobs: PaystubJobLine[] = verifiedItems.map(item => {
     const job = jobsById.get(item.workOrderId);
     const asmtId = (item.workOrderId || '').toUpperCase();
@@ -67,6 +71,16 @@ function buildPaystubData(
       timeStr: job?.scheduleTime || '',
       pay: effectiveJobPay(item, job),
     };
+  });
+
+  // Missing jobs the tech reported and payroll approved — paid, so listed.
+  (log.missingAssignmentReports || []).filter(r => r.isAudited).forEach(r => {
+    const pay = r.jobType === 'Imported' ? (r.finalPay || 0) : (r.pay || 0);
+    if (!pay) return;
+    jobs.push({
+      label: r.summary || r.clientName || 'Reported job', asmtId: (r.externalWorkOrderId || r.id || '').toUpperCase(),
+      woNumber: r.externalWorkOrderId || '', dateStr: r.date || 'N/A', timeStr: r.time || '', pay,
+    });
   });
 
   // Same lines the settlement total counts.
@@ -84,9 +98,19 @@ function buildPaystubData(
     jobs,
     reimbursements,
     adjustments: (log.payAdjustments || []).map(a => ({
-      description: [adjustmentForText(a), a.paidAmount != null && a.correctAmount != null ? `(paid $${a.paidAmount.toFixed(2)}, should be $${a.correctAmount.toFixed(2)})` : ''].filter(Boolean).join(' '),
+      description: a.kind === 'held_job'
+        ? `Held job paid: ${a.jobLabel || (a.workOrderId || '').toUpperCase()} (from the week of ${a.sourceWeekOf})`
+        : [adjustmentForText(a), a.reason ? `- ${a.reason}` : '', a.paidAmount != null && a.correctAmount != null ? `(paid $${a.paidAmount.toFixed(2)}, should be $${a.correctAmount.toFixed(2)})` : ''].filter(Boolean).join(' '),
       amount: a.amount,
     })),
+    onHold: (log.items || []).filter(i => i.payHold).map(i => {
+      const job = jobsById.get(i.workOrderId);
+      const name = job?.title || job?.description || (i.workOrderId || '').toUpperCase();
+      return {
+        description: `${name}${job ? ` (WO# ${displayWorkOrderNumber(job)})` : ''} - ${i.payHold!.status === 'released' ? 'released, paid on a later week' : i.payHold!.reason}`,
+        amount: i.payHold!.amount,
+      };
+    }),
     totalPaid: computeWeeklyLogSettlement(log, jobsById),
   };
 }
@@ -197,7 +221,7 @@ export async function downloadPaystub(
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(20);
-  doc.text(`VERIFIED JOBS (${data.jobs.length})`, marginX, y);
+  doc.text(`JOBS PAID THIS WEEK (${data.jobs.length})`, marginX, y);
   y += 18;
 
   if (data.jobs.length === 0) {
@@ -260,7 +284,7 @@ export async function downloadPaystub(
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(20);
-    doc.text('PAY ADJUSTMENTS', marginX, y);
+    doc.text('HELD JOBS & PAY ADJUSTMENTS', marginX, y);
     y += 18;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
@@ -285,8 +309,37 @@ export async function downloadPaystub(
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(20);
-  doc.text('TOTAL PAID', marginX, y);
+  doc.text('TOTAL PAID THIS WEEK', marginX, y);
   doc.text(`$${data.totalPaid.toFixed(2)}`, pageWidth - marginX, y, { align: 'right' });
+  y += 14;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(110);
+  doc.text('= jobs paid this week + reimbursements + held jobs & adjustments above. This is the amount transferred.', marginX, y);
+
+  // On hold: shown so the tech knows it's coming; not part of the total.
+  if (data.onHold.length > 0) {
+    newPageIfNeeded(40 + data.onHold.length * 16);
+    y += 26;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(150, 105, 0);
+    doc.text('ON HOLD - NOT IN THIS PAYMENT', marginX, y);
+    y += 18;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    data.onHold.forEach(h => {
+      newPageIfNeeded(16);
+      doc.setTextColor(90);
+      const text = doc.splitTextToSize(h.description, pageWidth - marginX * 2 - 80) as string[];
+      doc.text(text, marginX, y);
+      doc.text(`$${h.amount.toFixed(2)}`, pageWidth - marginX, y, { align: 'right' });
+      y += 12 * text.length + 4;
+    });
+    doc.setFontSize(8.5);
+    doc.setTextColor(110);
+    doc.text('Held jobs are paid on the week they are released; that week lists them.', marginX, y + 4);
+  }
 
   doc.save(`paystub-${data.techName.replace(/\s+/g, '-')}-${log.weekOf}.pdf`);
 }

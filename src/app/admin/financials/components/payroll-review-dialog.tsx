@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 import { cn, formatCityState, sanitize } from '@/lib/utils';
 import { FIELD_NATION_FEE_RATE, netOfFieldNationFee, computeWeeklyLogPay, effectiveJobPay } from '@/lib/payroll';
+import { DEFAULT_HOLD_REASON, holdJobPay, undoJobHold } from '@/lib/pay-holds';
 import { DISPUTE_CARDS, PAYROLL_TICKET_CARDS, disputeKindOf, firstName, isLegacyOtherReason, shortWeek, type CardContext } from '@/lib/disputes';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
@@ -506,6 +507,26 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     }, [allJobs]);
 
     const jobsById = useMemo(() => new Map(allJobs.map(m => [m.id, m])), [allJobs]);
+
+    // Hold a job's pay out of this week (waiting on the customer), or undo it.
+    const toggleHold = async (item: WeeklyLogItem, hold: boolean) => {
+        if (!localLog) return;
+        let reason = DEFAULT_HOLD_REASON;
+        if (hold) {
+            const r = window.prompt('Why is this job on hold? The tech sees this.', DEFAULT_HOLD_REASON);
+            if (r === null) return;
+            reason = r.trim() || DEFAULT_HOLD_REASON;
+        }
+        try {
+            const items = hold
+                ? await holdJobPay(localLog.id, item.id, reason, auth.currentUser?.displayName || 'Payroll', jobsById)
+                : await undoJobHold(localLog.id, item.id, jobsById);
+            setLocalLog({ ...localLog, items });
+            toast({ title: hold ? 'Job pay on hold' : 'Hold removed', description: hold ? 'Left out of this week’s total until it’s released.' : 'Paid on this week again.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not update', description: e.message });
+        }
+    };
 
     const getHelperNames = useCallback((wo: WorkOrder | undefined): string[] => {
         if (!wo?.additionalTechnicianIds?.length) return [];
@@ -1885,6 +1906,28 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </div>
                                                     </div>
                                                 </div>
+
+                                                {/* Pay hold: big jobs can wait for the customer to pay us (lib/pay-holds). */}
+                                                {canApproveLog && (
+                                                    <div className="flex flex-wrap items-center gap-2 pl-2 sm:pl-[52px] text-[12px]" onClick={e => e.stopPropagation()}>
+                                                        {item.payHold?.status === 'held' ? (
+                                                            <>
+                                                                <Badge variant="outline" className="border-accent-gold/50 bg-accent-gold/10 text-accent-gold text-[10px] uppercase tracking-wide">On hold · ${item.payHold.amount.toFixed(2)}</Badge>
+                                                                <span className="text-text-muted">{item.payHold.reason} · not in this week&apos;s total. Release it from Payroll Audit → Adjustments.</span>
+                                                                {!localLog?.paid && (
+                                                                    <Button size="sm" variant="ghost" className="h-7 px-2 text-text-muted" onClick={() => toggleHold(item, false)}>Undo hold</Button>
+                                                                )}
+                                                            </>
+                                                        ) : item.payHold?.status === 'released' ? (
+                                                            <Badge variant="outline" className="border-text-green/40 bg-text-green/10 text-text-green text-[10px] uppercase tracking-wide">Held, then released · ${item.payHold.amount.toFixed(2)}</Badge>
+                                                        ) : !localLog?.paid && (
+                                                            <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => toggleHold(item, true)}
+                                                                title="Leave this job out of this week's pay until you release it (e.g. waiting on the customer to pay)">
+                                                                Hold pay
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                )}
 
                                                 {jobReimbursements.length > 0 && (
                                                     <div className="flex flex-col gap-1.5 pl-2 sm:pl-[52px] min-w-0" onClick={e => e.stopPropagation()}>

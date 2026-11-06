@@ -632,9 +632,29 @@ export type DisputeResolution = {
   at: string;
 };
 
+/**
+ * Payroll held this job's pay out of its week (e.g. waiting on the customer
+ * to pay). Held = not in that week's total; released = paid later as a
+ * held-job line on another week (lib/pay-holds).
+ */
+export type PayHold = {
+  status: 'held' | 'released';
+  /** Shown to the tech, e.g. "Waiting on customer payment". */
+  reason: string;
+  /** The job's pay when it was held — what's paid on release. */
+  amount: number;
+  heldAt: string;
+  heldBy: string;
+  releasedAt?: string | null;
+  releasedBy?: string | null;
+  /** The payrollAdjustments line that pays it. */
+  adjustmentId?: string | null;
+};
+
 export type WeeklyLogItem = {
   id: string;
   workOrderId: string;
+  payHold?: PayHold | null;
   confirmationStatus?: 'confirmed' | 'disputed' | null;
   disputeReason?: string;
   disputeNotes?: string;
@@ -790,6 +810,10 @@ export type PayAdjustment = {
   appliedWeekOf?: string | null;
   by: string;
   at: string;
+  /** 'held_job' = a job held from an earlier week, paid on this one (lib/pay-holds). */
+  kind?: 'adjustment' | 'held_job';
+  heldLogId?: string | null;
+  heldItemId?: string | null;
   /** Payroll confirmed it was actually paid out (in the payroll run). */
   paidOutAt?: string | null;
   paidOutBy?: string | null;

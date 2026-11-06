@@ -24,6 +24,7 @@ import {
     ChevronDown,
     ChevronRight,
     Download,
+  Hourglass,
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -53,6 +54,8 @@ import { SearchField } from '@/components/search-field';
 import { DateRangeButton } from '@/components/list-toolbar';
 import { effectiveJobPay, computeWeeklyLogSettlement, computeWeeklyLogPay } from '@/lib/payroll';
 import { downloadPaystub } from '@/lib/paystub';
+import { adjustmentForText } from '@/lib/pay-adjustments';
+import { heldJobs } from '@/lib/pay-holds';
 import { displayWorkOrderNumber, externalWorkOrderId } from '@/lib/work-order-identity';
 import { money } from '@/lib/financial-summary';
 
@@ -407,6 +410,9 @@ export default function TechEarningsPage() {
         return <PageLoading label="Loading your earnings…" />;
     }
 
+    // Jobs payroll is holding (waiting on the customer) — owed, not lost.
+    const heldTotal = (() => { const h = heldJobs(weeklyLogs); return { count: h.length, amount: h.reduce((t, x) => t + x.hold.amount, 0) }; })();
+
     return (
         <div className="space-y-6">
             <PageHeader
@@ -419,7 +425,11 @@ export default function TechEarningsPage() {
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                 <StatCard label="Paid (approved)" icon={CheckCircle2} tone="done" value={`$${metrics.settled.toFixed(2)}`} sub={logFiltersActive ? 'Filtered logs' : 'All approved logs'} />
                 <StatCard label="Waiting on approval" icon={ArrowUpRight} tone="progress" value={`≈ $${metrics.pending.toFixed(2)}`} sub="Estimated · submitted logs" />
-                <StatCard label="Reimbursements pending" icon={Receipt} value={`$${metrics.pendingReim.toFixed(2)}`} sub="Waiting on review" className="col-span-2 md:col-span-1" />
+                <StatCard label="Reimbursements pending" icon={Receipt} value={`$${metrics.pendingReim.toFixed(2)}`} sub="Waiting on review" className={cn(!heldTotal.count && 'col-span-2 md:col-span-1')} />
+                {heldTotal.count > 0 && (
+                    <StatCard label="Jobs on hold" icon={Hourglass} tone="progress" value={`$${heldTotal.amount.toFixed(2)}`}
+                        sub={`${heldTotal.count} job${heldTotal.count === 1 ? '' : 's'} · paid once released`} className="md:col-span-3" />
+                )}
             </div>
 
             {/* Project Payouts */}
@@ -527,7 +537,10 @@ export default function TechEarningsPage() {
                                         // its reimbursement figure is marked Pending until then.
                                         const isApproved = log.status === 'Approved';
                                         const isExpanded = expandedLogs.has(log.id);
-                                        const verifiedItems = (log.items || []).filter(i => i.confirmationStatus !== 'disputed');
+                                        const verifiedItems = (log.items || []).filter(i => i.confirmationStatus !== 'disputed' && !i.payHold && !i.helperRemoved);
+                                        // Held by payroll (waiting on the customer): shown, not in this week's total.
+                                        const heldItems = (log.items || []).filter(i => i.payHold);
+                                        const adjustments = log.payAdjustments || [];
                                         const nonRejectedReimbs = (log.reimbursements || []).filter(r => r.status !== 'rejected');
                                         const logPay = computeWeeklyLogPay(log, jobsById);
                                         const reimbTotal = isApproved
@@ -581,9 +594,10 @@ export default function TechEarningsPage() {
                                                 {isExpanded && (
                                                     <TableRow key={`${log.id}-detail`} className="hover:bg-transparent border-border-sub">
                                                         <TableCell colSpan={4} className="bg-bg-primary/40 p-0">
-                                                            {verifiedItems.length === 0 ? (
-                                                                <p className="text-center py-6 text-[12px] text-text-muted">No confirmed jobs on this log.</p>
-                                                            ) : (
+                                                            <p className="px-4 sm:px-6 pt-3 text-[10px] font-bold uppercase tracking-wider text-text-muted">Paid this week</p>
+                                                            {verifiedItems.length === 0 && adjustments.length === 0 ? (
+                                                                <p className="text-center py-6 text-[12px] text-text-muted">No jobs paid on this week.</p>
+                                                            ) : verifiedItems.length === 0 ? null : (
                                                                 <div className="divide-y divide-border-sub">
                                                                     {verifiedItems.map(item => {
                                                                         const job = jobsById.get(item.workOrderId);
@@ -605,6 +619,26 @@ export default function TechEarningsPage() {
                                                                     })}
                                                                 </div>
                                                             )}
+                                                            {/* Missing jobs the tech reported that payroll approved — paid this week. */}
+                                                            {(log.missingAssignmentReports || []).filter(r => r.isAudited && (r.jobType === 'Imported' ? (r.finalPay || 0) : (r.pay || 0)) > 0).map(r => (
+                                                                <div key={r.id} className="flex items-center justify-between gap-4 px-4 sm:px-6 py-3 border-t border-border-sub text-left">
+                                                                    <div className="min-w-0">
+                                                                        <p className="text-[13px] font-semibold text-text-primary truncate">{r.summary || r.clientName || 'Reported job'}</p>
+                                                                        <p className="text-[11px] text-text-muted mt-0.5">Job you reported · {r.date}{r.externalWorkOrderId ? ` · WO# ${r.externalWorkOrderId}` : ''}</p>
+                                                                    </div>
+                                                                    <span className="shrink-0 text-sm font-mono font-bold text-text-green">${(r.jobType === 'Imported' ? (r.finalPay || 0) : (r.pay || 0)).toFixed(2)}</span>
+                                                                </div>
+                                                            ))}
+                                                            {/* Held jobs released this week, and pay corrections — each says which job and week it's for. */}
+                                                            {adjustments.map(a => (
+                                                                <div key={a.id} className="flex items-center justify-between gap-4 px-4 sm:px-6 py-3 border-t border-border-sub text-left">
+                                                                    <div className="min-w-0">
+                                                                        <p className="text-[13px] font-semibold text-text-primary truncate">{a.kind === 'held_job' ? `Held job paid · ${a.jobLabel || a.workOrderId?.toUpperCase() || 'job'}` : 'Pay adjustment'}</p>
+                                                                        <p className="text-[11px] text-text-muted mt-0.5">{a.kind === 'held_job' ? `From the week of ${a.sourceWeekOf}` : `${adjustmentForText(a)} · ${a.reason}`}</p>
+                                                                    </div>
+                                                                    <span className={cn('shrink-0 text-sm font-mono font-bold', Number(a.amount) >= 0 ? 'text-text-green' : 'text-text-red')}>{Number(a.amount) >= 0 ? '+' : '−'}${Math.abs(Number(a.amount) || 0).toFixed(2)}</span>
+                                                                </div>
+                                                            ))}
                                                             {nonRejectedReimbs.length > 0 && (
                                                                 <div className="flex items-center justify-between gap-4 px-4 sm:px-6 py-3 border-t border-border-sub bg-bg-secondary/40">
                                                                     <div className="flex items-center gap-2">
@@ -613,6 +647,28 @@ export default function TechEarningsPage() {
                                                                         <StatusBadge kind="pay" value={isApproved ? 'approved' : 'submitted'} label={isApproved ? 'Approved' : 'Pending'} />
                                                                     </div>
                                                                     <span className="shrink-0 text-sm font-mono font-bold text-accent-gold">${reimbTotal.toFixed(2)}</span>
+                                                                </div>
+                                                            )}
+                                                            <div className="flex items-center justify-between gap-4 px-4 sm:px-6 py-3 border-t-2 border-border-main">
+                                                                <span className="text-[13px] font-bold text-text-primary">{log.status === 'Approved' ? 'Total for this week' : 'Estimated total'}</span>
+                                                                <span className="shrink-0 text-sm font-mono font-bold text-text-primary">{log.status === 'Approved' ? '' : '≈ '}${logPay.total.toFixed(2)}</span>
+                                                            </div>
+                                                            {heldItems.length > 0 && (
+                                                                <div className="border-t border-border-sub bg-accent-gold/5">
+                                                                    <p className="px-4 sm:px-6 pt-3 text-[10px] font-bold uppercase tracking-wider text-accent-gold">On hold — not in this week&apos;s pay</p>
+                                                                    {heldItems.map(item => {
+                                                                        const job = jobsById.get(item.workOrderId);
+                                                                        const h = item.payHold!;
+                                                                        return (
+                                                                            <div key={item.id} className="flex items-center justify-between gap-4 px-4 sm:px-6 py-2.5 text-left">
+                                                                                <div className="min-w-0">
+                                                                                    <p className="text-[13px] font-semibold text-text-primary truncate">{job?.title || job?.description || 'Job'}{job ? ` · WO# ${displayWorkOrderNumber(job)}` : ''}</p>
+                                                                                    <p className="text-[11px] text-text-muted mt-0.5">{h.status === 'released' ? 'Released — paid on a later week' : h.reason}</p>
+                                                                                </div>
+                                                                                <span className="shrink-0 text-sm font-mono font-semibold text-accent-gold">${h.amount.toFixed(2)}</span>
+                                                                            </div>
+                                                                        );
+                                                                    })}
                                                                 </div>
                                                             )}
                                                         </TableCell>

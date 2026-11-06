@@ -42,6 +42,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { PayrollTicketDecision } from '@/components/payroll-ticket-decision';
 import { PAYOUT_LABEL, adjustmentForText, createPayAdjustment, jobLabelFor, payoutStatus } from '@/lib/pay-adjustments';
 import { PAYOUT_BADGE, PayrollAdjustmentDialog } from '@/components/payroll-adjustment-dialog';
+import { HeldJobsPanel } from '@/components/held-jobs-panel';
 import { PAYROLL_TICKET_CARDS } from '@/lib/disputes';
 import { PayrollReviewDialog } from '@/app/admin/financials/components/payroll-review-dialog';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
@@ -1096,6 +1097,8 @@ export default function PayrollAuditPage() {
                             <ListPager pager={disputePager} noun="disputes" />
                         </div>
                     )}
+
+                    <HeldJobsPanel logs={weeklyLogs} technicians={technicians} jobsById={jobsById} by={currentUser?.name || 'Payroll'} canEdit={canEditAdjustments} />
 
                     <div className="flex items-center justify-between">
                         <p className="text-[13px] font-semibold text-text-primary">{adjQuery ? `${sortedAdjustments.length} of ${adjustments.length}` : adjustments.length} adjustment{adjustments.length !== 1 ? 's' : ''}</p>

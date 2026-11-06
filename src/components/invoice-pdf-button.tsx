@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { FileDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { downloadInvoicePdf, invoicePdfData, type InvoicePdfData } from '@/lib/invoice-pdf';
-import type { Invoice } from '@/lib/types';
+import { downloadInvoicePdf, invoicePdfData, quotePdfData, type InvoicePdfData } from '@/lib/invoice-pdf';
+import type { Invoice, Quote } from '@/lib/types';
 
 /** "PDF" — downloads the invoice as a branded PDF to attach to an email. */
 export function InvoicePdfButton({ invoice, data, label = 'PDF', className, variant = 'outline', size = 'sm' }: {
@@ -33,4 +33,9 @@ export function InvoicePdfButton({ invoice, data, label = 'PDF', className, vari
       {busy ? <Loader2 size={13} className="mr-1.5 animate-spin" /> : <FileDown size={13} className="mr-1.5" />}{label}
     </Button>
   );
+}
+
+/** "Download PDF" for a quote — prices only, never cost or margin. */
+export function QuotePdfButton({ quote, className = 'h-8 w-full' }: { quote: Quote; className?: string }) {
+  return <InvoicePdfButton data={quotePdfData(quote)} label="Download PDF" className={className} />;
 }

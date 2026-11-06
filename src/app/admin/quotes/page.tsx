@@ -1,4 +1,5 @@
 'use client';
+import { QuotePdfButton } from '@/components/invoice-pdf-button';
 import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
@@ -280,6 +281,12 @@ function QuoteDetailDialog({
   const { toast } = useToast();
   const paths = useCrmPaths();
   const [acting, setActing] = useState(false);
+  // "Client approved" — approval taken by phone, email, signed PDF or in person.
+  const [approving, setApproving] = useState(false);
+  const [approveHow, setApproveHow] = useState('Phone');
+  const [approveName, setApproveName] = useState('');
+  const [approveNote, setApproveNote] = useState('');
+  useEffect(() => { setApproving(false); setApproveNote(''); setApproveHow('Phone'); setApproveName(quote?.customerName || ''); }, [quote?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!quote) return null;
 
@@ -473,12 +480,16 @@ function QuoteDetailDialog({
           {/* Actions */}
           <div className="border-t border-border-sub pt-4 space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Actions</p>
+            {/* Email isn't set up on the server, so "Send" only marks it sent and
+                makes the approval link — the PDF / link go out by hand. */}
+            <p className="text-[11px] text-text-muted leading-relaxed">Email the PDF (or the approval link) to the customer yourself. If they approve by phone, email or a signed PDF, record it with <b>Client approved</b>.</p>
+            <QuotePdfButton quote={quote} />
             <div className="grid grid-cols-2 gap-2">
               {quote.status === 'draft' && (
                 <>
                   <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white col-span-2"
                     onClick={handleSend} disabled={acting}>
-                    <Send size={14} className="mr-1.5" />Send quote
+                    <Send size={14} className="mr-1.5" />Mark as sent
                   </Button>
                   <Button size="sm" variant="outline" className="h-8 border-brand-red/30 text-brand-red hover:bg-brand-red/5"
                     onClick={() => act({ status: 'archived' })} disabled={acting}>
@@ -486,8 +497,13 @@ function QuoteDetailDialog({
                   </Button>
                 </>
               )}
-              {(quote.status === 'sent' || quote.status === 'viewed') && (
+              {(quote.status === 'sent' || quote.status === 'viewed' || quote.status === 'changes_requested') && (
                 <>
+                  {!paths.inSalesPortal && (
+                    <Button size="sm" className="h-8 col-span-2 bg-text-green hover:bg-text-green/90 text-white" onClick={() => setApproving(true)} disabled={acting}>
+                      <CheckCircle2 size={14} className="mr-1.5" />Client approved
+                    </Button>
+                  )}
                   <Button size="sm" variant="outline" className="h-8 col-span-2"
                     onClick={handleSend} disabled={acting}>
                     <RotateCcw size={14} className="mr-1.5" />Resend
@@ -503,6 +519,27 @@ function QuoteDetailDialog({
                     <Clock size={14} className="mr-1.5" />Mark expired
                   </Button>
                 </>
+              )}
+              {approving && (
+                <div className="col-span-2 rounded-lg border border-text-green/40 bg-text-green/5 p-3 space-y-2">
+                  <p className="text-[12px] font-semibold text-text-primary">Record the client's approval</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['Phone', 'Email', 'Signed PDF', 'In person'].map(h => (
+                      <button key={h} type="button" onClick={() => setApproveHow(h)}
+                        className={cn('h-8 px-3 rounded-full border text-[12px]', approveHow === h ? 'border-text-green bg-text-green/10 text-text-green' : 'border-border-sub text-text-muted')}>{h}</button>
+                    ))}
+                  </div>
+                  <Input value={approveName} onChange={e => setApproveName(e.target.value)} placeholder="Who approved (name)" className="h-8 text-[12px]" />
+                  <Input value={approveNote} onChange={e => setApproveNote(e.target.value)} placeholder="Note (optional)" className="h-8 text-[12px]" />
+                  <div className="flex gap-2 justify-end">
+                    <Button size="sm" variant="outline" className="h-8" onClick={() => setApproving(false)}>Cancel</Button>
+                    <Button size="sm" className="h-8 bg-text-green hover:bg-text-green/90 text-white" disabled={acting || !approveName.trim()} onClick={async () => {
+                      const by = auth.currentUser?.displayName || 'Office';
+                      await act({ status: 'approved', approvedAt: new Date().toISOString(), approvedByName: approveName.trim(), approvedByEmail: null,
+                        approvalNote: `Approved by ${approveHow.toLowerCase()}${approveNote.trim() ? ` — ${approveNote.trim()}` : ''} (recorded by ${by})` });
+                    }}>Save approval</Button>
+                  </div>
+                </div>
               )}
               {quote.status === 'approved' && (
                 <>

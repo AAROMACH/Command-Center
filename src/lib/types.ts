@@ -656,6 +656,10 @@ export type PayHold = {
 export type WeeklyLogItem = {
   id: string;
   workOrderId: string;
+  /** Hours the tech says they worked (they often check in late or not at
+   *  all). Shown to payroll next to the checked-in time on site. */
+  hoursWorked?: number | null;
+  hoursWorkedAt?: string | null;
   payHold?: PayHold | null;
   confirmationStatus?: 'confirmed' | 'disputed' | null;
   disputeReason?: string;

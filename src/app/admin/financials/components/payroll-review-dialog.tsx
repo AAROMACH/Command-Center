@@ -1936,6 +1936,12 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                                             {wo ? getHoursOnsite(wo.id) : 'TBD'}
                                                                         </p>
                                                                     </div>
+                                                                    <div className="text-left" title={item.hoursWorkedAt ? `Entered ${new Date(item.hoursWorkedAt).toLocaleString()}` : undefined}>
+                                                                        <p className="text-[11px] text-text-muted">Tech says</p>
+                                                                        <p className="text-[13px] font-mono font-semibold text-text-primary leading-tight text-left">
+                                                                            {item.hoursWorked != null ? `${item.hoursWorked}h` : '—'}
+                                                                        </p>
+                                                                    </div>
                                                                     <div className="text-left">
                                                                         <p className="text-[11px] text-text-muted">Pay</p>
                                                                         <p className="text-[13px] font-mono font-semibold text-text-green leading-tight text-left">

@@ -281,6 +281,18 @@ export const confirmItem = (techId: string, logId: string, itemId: string) =>
     };
   });
 
+/** The tech's own hours worked on a job (Draft only), in quarter hours. */
+export const setItemHours = (techId: string, logId: string, itemId: string, hours: unknown) =>
+  withOwnLog(logId, techId, { draftOnly: true }, log => {
+    findItem(log, itemId);
+    const raw = hours === null || hours === '' ? null : Number(hours);
+    if (raw !== null && (!Number.isFinite(raw) || raw < 0 || raw > 24 * 7)) throw new WeeklyLogError('Enter hours between 0 and 168.');
+    const value = raw === null ? null : Math.round(raw * 4) / 4;
+    return {
+      items: (log.items || []).map(i => i.id === itemId ? { ...i, hoursWorked: value, hoursWorkedAt: new Date().toISOString() } : i),
+    };
+  });
+
 /** A tech flags a job. `kind` picks payroll's yes/no card (lib/disputes.ts);
  *  a fresh dispute always clears any earlier payroll decision. */
 export const disputeItem = (techId: string, logId: string, itemId: string, reason: unknown, notes: unknown, kind?: unknown) =>

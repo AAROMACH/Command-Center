@@ -1,4 +1,5 @@
 "use client";
+import { BootScreen } from "@/components/boot-screen";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -225,13 +226,9 @@ export default function LoginPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
 
-  if (restoring) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-primary">
-        <Loader2 className="h-6 w-6 animate-spin text-text-muted" aria-label="Signing you in" />
-      </div>
-    );
-  }
+  // Startup: the app always opens here — show the drilling-screw badge while
+  // a remembered sign-in is restored.
+  if (restoring) return <BootScreen label="Signing you in…" />;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-primary p-4">

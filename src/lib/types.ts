@@ -950,6 +950,8 @@ export type Invoice = {
   customerEmail?: string | null;
   /** Super / Payroll Admin sign-off before it's sent (lib/approvals). */
   approval?: DocApproval | null;
+  /** Who made it — set for Sales-made drafts, which only they may edit. */
+  createdBy?: string;
 };
 
 /** Internal sign-off before a quote or invoice goes to the client (lib/approvals). */

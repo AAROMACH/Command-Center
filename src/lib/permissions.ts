@@ -58,6 +58,8 @@ export type Permission =
   | 'admin.crm.review_site_walk'
   // Optional for Sales (switch on per person): send approved invoices to clients.
   | 'admin.crm.send_invoice'
+  // Optional for Sales (switch on per person): create invoices and bill completed jobs (drafts, for approval).
+  | 'admin.crm.create_invoice'
   // Clients
   | 'admin.clients.view'
   | 'admin.clients.manage'
@@ -191,7 +193,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   'admin.crm.view', 'admin.crm.view_leads', 'admin.crm.manage_leads', 'admin.crm.create_lead',
   'admin.crm.create_opportunity', 'admin.crm.create_quote', 'admin.crm.edit_quote', 'admin.crm.send_quote',
   'admin.crm.approve_quote', 'admin.crm.convert_quote', 'admin.crm.mark_won', 'admin.crm.mark_lost',
-  'admin.crm.import_leads', 'admin.crm.review_site_walk', 'admin.crm.send_invoice',
+  'admin.crm.import_leads', 'admin.crm.review_site_walk', 'admin.crm.send_invoice', 'admin.crm.create_invoice',
   // Admin - clients
   'admin.clients.view', 'admin.clients.manage',
   // Admin - weekly logs
@@ -264,7 +266,7 @@ export const PERMISSION_TREE: PermissionTree = {
       'admin.crm.view', 'admin.crm.view_leads', 'admin.crm.manage_leads', 'admin.crm.create_lead',
       'admin.crm.create_opportunity', 'admin.crm.create_quote', 'admin.crm.edit_quote', 'admin.crm.send_quote',
       'admin.crm.approve_quote', 'admin.crm.convert_quote', 'admin.crm.mark_won', 'admin.crm.mark_lost',
-      'admin.crm.import_leads', 'admin.crm.review_site_walk', 'admin.crm.send_invoice',
+      'admin.crm.import_leads', 'admin.crm.review_site_walk', 'admin.crm.send_invoice', 'admin.crm.create_invoice',
     ],
     clients: ['admin.clients.view', 'admin.clients.manage'],
     logs: [

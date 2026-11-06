@@ -25,6 +25,7 @@ import type { Technician, NotificationPreferences } from '@/lib/types';
 import { FontPreferenceSetting } from '@/components/font-preference-setting';
 import { ThemeToggleSetting } from '@/components/theme-toggle-setting';
 import { PageHeader } from '@/components/page-header';
+import { SettingsTabs } from '@/components/settings-tabs';
 import { cn } from '@/lib/utils';
 
 export default function ClientSettingsPage() {
@@ -67,7 +68,7 @@ export default function ClientSettingsPage() {
     if (!mounted) return null;
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8 text-left pb-24">
+        <div className="max-w-4xl mx-auto space-y-5 text-left pb-24">
             <PageHeader
                 eyebrow="Client portal"
                 icon={SettingsIcon}
@@ -75,38 +76,16 @@ export default function ClientSettingsPage() {
                 subtitle="Your notifications, display and account status."
             />
 
-            <div className="space-y-10">
-                {/* NOTIFICATIONS */}
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2 px-1">
-                        <Bell size={14} className="text-text-muted" />
-                        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Notifications</h3>
-                    </div>
-                    <NotificationEventsCard />
-                </section>
-
-                {/* DISPLAY (personal — this account only) */}
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2 px-1">
-                        <Type size={14} className="text-text-muted" />
-                        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Display</h3>
-                    </div>
-                    <ThemeToggleSetting />
-                    <FontPreferenceSetting />
-                </section>
-
-                {/* ORGANIZATION */}
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2 px-1">
-                        <Building2 size={14} className="text-text-muted" />
-                        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Account</h3>
-                    </div>
+            <SettingsTabs tabs={[
+                { id: 'notifications', label: 'Notifications', icon: Bell, content: <NotificationEventsCard /> },
+                { id: 'display', label: 'Display', icon: Type, content: <><ThemeToggleSetting /><FontPreferenceSetting /></> },
+                { id: 'account', label: 'Account', icon: Building2, content: (
                     <Card className="rounded-xl bg-bg-secondary border-border-main shadow-sm">
                         <CardHeader className="text-left">
                             <CardTitle className="text-base font-semibold">Account status</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="p-6 rounded-lg bg-bg-secondary/50 border border-border-sub flex items-center justify-between">
+                            <div className="p-4 sm:p-6 rounded-lg bg-bg-secondary/50 border border-border-sub flex flex-wrap items-center justify-between gap-3">
                                 <div className="text-left space-y-1">
                                     <p className="text-sm font-semibold text-text-primary">{currentUser?.clientCompany || 'Individual account'}</p>
                                     <p className="text-[12px] text-text-muted">Client account</p>
@@ -124,8 +103,8 @@ export default function ClientSettingsPage() {
                             </div>
                         </CardContent>
                     </Card>
-                </section>
-            </div>
+                ) },
+            ]} />
         </div>
     );
 }

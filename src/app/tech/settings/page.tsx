@@ -28,6 +28,7 @@ import { TERMINOLOGY } from '@/lib/constants';
 import type { Technician, NotificationPreferences } from '@/lib/types';
 import { FontPreferenceSetting } from '@/components/font-preference-setting';
 import { ThemeToggleSetting } from '@/components/theme-toggle-setting';
+import { SettingsTabs } from '@/components/settings-tabs';
 
 export default function TechSettingsPage() {
     const [mounted, setMounted] = useState(false);
@@ -88,42 +89,25 @@ export default function TechSettingsPage() {
     if (!mounted) return <PageLoading label="Loading settings…" />;
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8 text-left pb-24">
+        <div className="max-w-4xl mx-auto space-y-5 text-left pb-24">
             <PageHeader eyebrow="Tech portal" icon={SettingsIcon} title="Settings" subtitle="Notifications, display and work preferences." />
 
-            <div className="space-y-12">
-                {/* NOTIFICATIONS */}
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2 px-1">
-                        <Bell size={14} className="text-brand-red" />
-                        <h2 className="section-label">{TERMINOLOGY.CONFIG.NOTIFICATIONS}</h2>
-                    </div>
+            <SettingsTabs tabs={[
+                { id: 'notifications', label: TERMINOLOGY.CONFIG.NOTIFICATIONS, icon: Bell, content: (<>
                     <NotificationEventsCard />
-                </section>
-
-                {/* EXPERIENCE */}
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2 px-1">
-                        <Monitor size={14} className="text-brand-red" />
-                        <h2 className="section-label">Display</h2>
-                    </div>
+                </>) },
+                { id: 'display', label: 'Display', icon: Monitor, content: (<>
                     <ThemeToggleSetting />
                     <FontPreferenceSetting />
-                </section>
-
-                {/* WORK PREFERENCES */}
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2 px-1">
-                        <Route size={14} className="text-brand-red" />
-                        <h2 className="section-label">Work preferences</h2>
-                    </div>
+                </>) },
+                { id: 'work', label: 'Work', icon: Route, content: (<>
                     <Card>
                         <CardHeader className="text-left">
                             <CardTitle className="text-base font-semibold">Route &amp; mileage</CardTitle>
                             <CardDescription className="text-[12px]">Set your default route optimization and distance units.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4 text-left">
-                            <div className="flex items-center justify-between gap-3 p-4 rounded-lg bg-bg-secondary/50 border border-border-sub">
+                            <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-lg bg-bg-secondary/50 border border-border-sub">
                                 <div className="space-y-0.5 text-left">
                                     <p className="text-[13px] font-semibold">Route order</p>
                                     <p className="text-[12px] text-text-muted">Default ordering for your daily job route.</p>
@@ -145,7 +129,7 @@ export default function TechSettingsPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="flex items-center justify-between gap-3 p-4 rounded-lg bg-bg-secondary/50 border border-border-sub">
+                            <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-lg bg-bg-secondary/50 border border-border-sub">
                                 <div className="space-y-0.5 text-left">
                                     <p className="text-[13px] font-semibold">Distance units</p>
                                     <p className="text-[12px] text-text-muted">Miles or kilometers for mileage tracking.</p>
@@ -167,21 +151,15 @@ export default function TechSettingsPage() {
                             </div>
                         </CardContent>
                     </Card>
-                </section>
-
-                {/* CALENDAR INTEGRATION */}
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2 px-1">
-                        <Calendar size={14} className="text-brand-red" />
-                        <h2 className="section-label">Calendar</h2>
-                    </div>
+                </>) },
+                { id: 'calendar', label: 'Calendar', icon: Calendar, content: (<>
                     <Card>
                         <CardHeader className="text-left">
                             <CardTitle className="text-base font-semibold">Google Calendar</CardTitle>
                             <CardDescription className="text-[12px]">Sync your job assignments with Google Calendar.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="flex items-center justify-between gap-3 p-4 rounded-lg bg-bg-secondary/50 border border-border-sub hover:border-text-muted transition-all">
+                            <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-lg bg-bg-secondary/50 border border-border-sub hover:border-text-muted transition-all">
                                 <div className="space-y-0.5 text-left">
                                     <p className="text-[13px] font-semibold">Sync jobs</p>
                                     <p className="text-[12px] text-text-muted">Automatically add assignments to your Google Calendar.</p>
@@ -192,8 +170,8 @@ export default function TechSettingsPage() {
                             </div>
                         </CardContent>
                     </Card>
-                </section>
-            </div>
+                </>) },
+            ]} />
         </div>
     );
 }

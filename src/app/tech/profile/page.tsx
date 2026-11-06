@@ -3,7 +3,6 @@ import { PageHeader } from '@/components/page-header';
 import { EmptyState, PageLoading } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
 import { statusLabel } from '@/lib/status-styles';
-import { SearchField } from '@/components/search-field';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import type { Technician, TimeOffRequest, ReliabilityEvent, PersonnelDocument } from '@/lib/types';
 import { usePenaltyEvents } from '@/hooks/use-penalty-events';
@@ -21,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { AddressAutocompleteInput } from "@/components/ui/address-autocomplete-input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SettingsTabs } from "@/components/settings-tabs";
 import { useToast } from '@/hooks/use-toast';
 import { Gauge, ShieldAlert, MapPin, Mail, Phone, Calendar as CalendarIcon, Plus, X, User, Activity, Search, CheckCircle2, Key, Loader2, Camera, FileText, Upload, StickyNote, Bell } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
@@ -32,7 +31,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useSearchParams } from 'next/navigation';
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import { auditFieldChange } from '@/lib/audit';
 import { getSubroles, isTech as isTechRole, SUBROLE_DEFINITIONS } from '@/lib/permissions';
@@ -54,14 +52,10 @@ const DOC_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function TechProfilePage() {
-    const searchParams = useSearchParams();
     const [currentTechId, setCurrentTechId] = useState<string | null>(null);
     const [tech, setTech] = useState<Technician | undefined>(undefined);
     const [myTimeOff, setMyTimeOff] = useState<TimeOffRequest[]>([]);
     const [mounted, setMounted] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [activeTab, _setActiveTabRaw] = useState(() => { const sp = searchParams.get('tab'); if (sp) return sp; try { return localStorage.getItem('cc:profile:tab') || 'identity'; } catch { return 'identity'; } });
-    const setActiveTab = (v: string) => { _setActiveTabRaw(v); try { localStorage.setItem('cc:profile:tab', v); } catch {} };
     const { toast } = useToast();
     const [isTimeOffDialogOpen, setIsTimeOffDialogOpen] = useState(false);
     const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
@@ -318,22 +312,19 @@ export default function TechProfilePage() {
     if (!mounted) return <PageLoading label="Loading your profile…" />;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-5 max-w-5xl mx-auto pb-24 text-left">
             <PageHeader
                 eyebrow="Tech portal"
                 icon={User}
                 title="My profile"
                 subtitle="Your details, reliability record, documents and time off."
-                actions={<SearchField value={searchQuery} onChange={setSearchQuery} placeholder="Find a setting" className="w-full sm:w-[240px]" />}
             />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* LEFT: Identity card */}
-                <div className="space-y-6">
-                    <Card className="rounded-xl shadow-sm bg-bg-secondary border-border-main text-center">
-                        <CardContent className="pt-8 pb-8 space-y-4">
-                            <div className="flex justify-center relative">
-                                <Avatar className="h-24 w-24 border-2 border-border-sub">
+            {/* Who you are — compact so the tabs start high on a phone. */}
+            <Card className="rounded-xl bg-bg-secondary border-border-main">
+                <CardContent className="p-4 flex items-center gap-4">
+                            <div className="relative shrink-0">
+                                <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-2 border-border-sub">
                                     <AvatarImage asChild src={avatarUrl}>
                                         <Image src={avatarUrl || "https://picsum.photos/seed/tech/96/96"} alt="Avatar" width={96} height={96} data-ai-hint="person face" />
                                     </AvatarImage>
@@ -346,7 +337,7 @@ export default function TechProfilePage() {
                                 )}
                                 <button
                                     aria-label="Change photo"
-                                    className="absolute bottom-0 right-1/3 translate-x-1/2 h-10 w-10 flex items-center justify-center rounded-full bg-bg-primary border border-border-main hover:bg-bg-tertiary transition-colors"
+                                    className="absolute -bottom-1 -right-1 h-9 w-9 flex items-center justify-center rounded-full bg-bg-primary border border-border-main hover:bg-bg-tertiary transition-colors"
                                     onClick={() => fileInputRef.current?.click()}
                                     disabled={isUploading}
                                 >
@@ -360,43 +351,15 @@ export default function TechProfilePage() {
                                     onChange={handleAvatarChange}
                                 />
                             </div>
-                            <div className="space-y-1 text-center">
-                                <h2 className="text-xl font-semibold text-text-primary">{tech?.name || '—'}</h2>
-                                <p className="text-xs text-brand-red font-bold">{roleLabel}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <div className="min-w-0">
+                        <h2 className="text-lg font-semibold text-text-primary truncate">{tech?.name || '—'}</h2>
+                        <p className="text-[12px] text-brand-red font-semibold">{roleLabel}</p>
+                    </div>
+                </CardContent>
+            </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Security</CardTitle>
-                            <CardDescription>Change the password you sign in with.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Button variant="outline" className="w-full h-10" onClick={() => setIsPasswordDialogOpen(true)}>
-                                <Key size={14} className="mr-2" /> Change password
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* RIGHT: Tabs */}
-                <div className="lg:col-span-2">
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="tabs grid grid-cols-3 sm:flex w-full sm:w-auto border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-x-3 gap-y-1 sm:gap-8 justify-start mb-6">
-                            <TabsTrigger value="identity" className="tab-trigger-plans">Identity</TabsTrigger>
-                            {isFieldTech && (
-                                <TabsTrigger value="reliability" className="tab-trigger-plans">Reliability</TabsTrigger>
-                            )}
-                            <TabsTrigger value="documents" className="tab-trigger-plans">Documents</TabsTrigger>
-                            {isFieldTech && (
-                                <TabsTrigger value="timeoff" className="tab-trigger-plans">Time off</TabsTrigger>
-                            )}
-                            <TabsTrigger value="integrations" className="tab-trigger-plans">Integrations</TabsTrigger>
-                        </TabsList>
-
-                        {/* IDENTITY TAB */}
-                        <TabsContent value="identity" className="m-0 space-y-6">
+            <SettingsTabs tabs={[
+                { id: 'identity', label: 'Details', icon: User, content: (<>
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Personal information</CardTitle>
@@ -596,10 +559,8 @@ export default function TechProfilePage() {
                                     </div>
                                 </CardContent>
                             </Card>
-                        </TabsContent>
-
-                        {/* RELIABILITY TAB */}
-                        <TabsContent value="reliability" className="m-0 space-y-6">
+                </>) },
+                { id: 'reliability', label: 'Reliability', icon: Activity, show: isFieldTech, content: (<>
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
@@ -641,10 +602,8 @@ export default function TechProfilePage() {
                                     )}
                                 </CardContent>
                             </Card>
-                        </TabsContent>
-
-                        {/* DOCUMENTS TAB */}
-                        <TabsContent value="documents" className="m-0 space-y-4">
+                </>) },
+                { id: 'documents', label: 'Documents', icon: FileText, content: (<>
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-[14px] font-semibold text-text-primary">My documents</p>
@@ -677,10 +636,8 @@ export default function TechProfilePage() {
                                     ))}
                                 </div>
                             )}
-                        </TabsContent>
-
-                        {/* TIME OFF TAB */}
-                        <TabsContent value="timeoff" className="m-0 space-y-6">
+                </>) },
+                { id: 'timeoff', label: 'Time off', icon: CalendarIcon, show: isFieldTech, content: (<>
                             <div className="flex items-center justify-between">
                                 <div>
                                     <h3 className="text-[14px] font-semibold text-text-primary">Time-off requests</h3>
@@ -721,42 +678,21 @@ export default function TechProfilePage() {
                                     ))}
                                 </div>
                             )}
-                        </TabsContent>
-
-                        <TabsContent value="integrations" className="m-0 space-y-6">
-                            <div className="rounded-xl border border-border-sub bg-bg-secondary p-6 space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2.5 bg-brand-blue/10 rounded-lg">
-                                        <svg viewBox="0 0 24 24" className="h-5 w-5 text-brand-blue" fill="currentColor">
-                                            <path d="M12.545 10.239v3.821h5.445c-.712 2.315-2.647 3.972-5.445 3.972a6.033 6.033 0 110-12.064 5.963 5.963 0 014.123 1.632l2.883-2.88C17.545 2.901 15.035 2 12.545 2 7.021 2 2.543 6.477 2.543 12s4.478 10 10.002 10c8.396 0 10.249-7.85 9.426-11.748l-9.426-.013z" />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <p className="text-[14px] font-semibold text-text-primary">Google Calendar</p>
-                                        <p className="text-[12px] text-text-muted mt-0.5">Sync your schedule, PTO, and job assignments with Google Calendar.</p>
-                                    </div>
-                                </div>
-                                <div className="rounded-lg border border-dashed border-brand-blue/30 bg-brand-blue/5 p-4 text-center">
-                                    <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-blue mb-1">Coming soon</p>
-                                    <p className="text-[12px] text-text-muted leading-relaxed">
-                                        Google Calendar integration is in development. Once enabled, your assigned jobs, scheduled PTO, and calendar events will sync automatically.
-                                    </p>
-                                </div>
-                                <div className="space-y-2 text-[12px] text-text-muted">
-                                    <p className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">What will sync</p>
-                                    <ul className="space-y-1 pl-3">
-                                        <li>· Your jobs (title, date, time, location)</li>
-                                        <li>· Approved PTO / time-off blocks</li>
-                                        <li>· Project milestones and deadlines</li>
-                                        <li>· Follow-up reminders</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </TabsContent>
-
-                    </Tabs>
-                </div>
-            </div>
+                </>) },
+                { id: 'security', label: 'Security', icon: Key, content: (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Security</CardTitle>
+                            <CardDescription>Change the password you sign in with.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Button variant="outline" className="w-full sm:w-auto h-10" onClick={() => setIsPasswordDialogOpen(true)}>
+                                <Key size={14} className="mr-2" /> Change password
+                            </Button>
+                        </CardContent>
+                    </Card>
+                ) },
+            ]} />
 
             {/* Document Upload Dialog */}
             <Dialog open={uploadDocOpen} onOpenChange={setUploadDocOpen}>

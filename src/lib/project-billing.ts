@@ -37,7 +37,8 @@ export async function unlinkQuote(project: Project): Promise<void> {
 
 /** New quote lines → recomputed totals, the same way the quote editor does. */
 function quoteTotalsPatch(quote: QuoteWithDiscount, lines: PriceLine[], pricing: PricingSettings) {
-  const t = priceTotals(lines, quote.planDiscount || null, pricing.salesTaxPct);
+  // Quotes carry no sales tax; it's settled on the invoice.
+  const t = priceTotals(lines.map(l => ({ ...l, taxable: false })), quote.planDiscount || null, 0);
   return {
     lineItems: toQuoteLines(lines), subtotal: t.subtotal, taxAmount: t.taxAmount,
     discountAmount: t.discountAmount, total: t.total, updatedAt: new Date().toISOString(),

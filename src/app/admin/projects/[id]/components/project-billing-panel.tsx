@@ -1,5 +1,6 @@
 'use client';
 
+import { InvoicePdfButton } from '@/components/invoice-pdf-button';
 import { useEffect, useMemo, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { ChevronDown, ChevronRight, Edit3, FileText, Link2, Loader2, Package, Plus, Receipt, Trash2, Unlink } from 'lucide-react';
@@ -249,6 +250,7 @@ export function ProjectBillingPanel({ project }: { project: Project }) {
                 {invoice ? (
                     <div className="flex gap-1.5">
                         <Button size="sm" variant="outline" className="h-8" onClick={() => setInvoiceEditOpen(true)}><Edit3 size={13} className="mr-1" /> Edit</Button>
+                        <InvoicePdfButton invoice={invoice} />
                         <SendInvoiceButton invoice={invoice} />
                     </div>
                 ) : (

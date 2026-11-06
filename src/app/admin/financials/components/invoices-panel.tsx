@@ -1,4 +1,5 @@
 'use client';
+import { InvoicePdfButton } from '@/components/invoice-pdf-button';
 import { SendInvoiceButton } from '@/components/send-invoice-button';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
@@ -175,6 +176,7 @@ export function InvoicesPanel({ search = '', onResetSearch, hideNewButton = fals
                                         <div className="flex items-center gap-2">
                                             <StatusBadge kind="invoice" value={invoice.status} />
                                             {invoice.status !== 'paid' && <SendInvoiceButton invoice={invoice} className="h-7 px-2 text-[12px]" />}
+                                            <InvoicePdfButton invoice={invoice} className="h-7 px-2 text-[12px]" />
                                         </div>
                                     </TableCell>
                                 </TableRow>

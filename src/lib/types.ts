@@ -647,8 +647,10 @@ export type PayHold = {
   heldBy: string;
   releasedAt?: string | null;
   releasedBy?: string | null;
-  /** The payrollAdjustments line that pays it. */
+  /** The payrollAdjustments line that pays it, and the week it lands on. */
   adjustmentId?: string | null;
+  releasedLogId?: string | null;
+  releasedWeekOf?: string | null;
 };
 
 export type WeeklyLogItem = {

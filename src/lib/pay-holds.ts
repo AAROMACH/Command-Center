@@ -104,7 +104,7 @@ export async function releaseHeldJob(heldLogId: string, itemId: string, toLogId:
       by, at: now,
     });
     const heldItems = (held.items || []).map(i => (i.id === itemId
-      ? { ...i, payHold: { ...item.payHold!, status: 'released' as const, releasedAt: now, releasedBy: by, adjustmentId: adj.id } } : i));
+      ? { ...i, payHold: { ...item.payHold!, status: 'released' as const, releasedAt: now, releasedBy: by, adjustmentId: adj.id, releasedLogId: to?.id ?? null, releasedWeekOf: to?.weekOf ?? null } } : i));
     if (to && to.id === held.id) {
       const list = [...(held.payAdjustments || []), adj];
       tx.update(heldRef, withTotal(held, { items: clean(heldItems), payAdjustments: list }, jobsById));

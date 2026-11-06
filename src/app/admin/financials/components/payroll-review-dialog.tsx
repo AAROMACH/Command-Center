@@ -47,7 +47,7 @@ import {
 } from 'lucide-react';
 import { cn, formatCityState, sanitize } from '@/lib/utils';
 import { FIELD_NATION_FEE_RATE, netOfFieldNationFee, computeWeeklyLogPay, effectiveJobPay } from '@/lib/payroll';
-import { DEFAULT_HOLD_REASON, holdJobPay, undoJobHold } from '@/lib/pay-holds';
+import { DEFAULT_HOLD_REASON, heldJobs, holdJobPay, releaseHeldJob, undoJobHold } from '@/lib/pay-holds';
 import { DISPUTE_CARDS, PAYROLL_TICKET_CARDS, disputeKindOf, firstName, isLegacyOtherReason, shortWeek, type CardContext } from '@/lib/disputes';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
@@ -507,6 +507,21 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     }, [allJobs]);
 
     const jobsById = useMemo(() => new Map(allJobs.map(m => [m.id, m])), [allJobs]);
+
+    // Jobs held on this tech's EARLIER weeks — they roll forward here each
+    // week until payroll pays them (Pay on this week) on an open week.
+    const carriedHolds = useMemo(() => (localLog ? heldJobs(allWeeklyLogs, localLog.techId).filter(h => h.log.id !== localLog.id) : []), [allWeeklyLogs, localLog]);
+    const canPayHoldsHere = !!localLog && !localLog.paid && (localLog.status === 'Draft' || localLog.status === 'Submitted');
+    const payHoldHere = async (logId: string, itemId: string) => {
+        if (!localLog) return;
+        try {
+            const adj = await releaseHeldJob(logId, itemId, localLog.id, auth.currentUser?.displayName || 'Payroll', jobsById);
+            setLocalLog(prev => prev ? { ...prev, payAdjustments: [...(prev.payAdjustments || []).filter(a => a.id !== adj.id), adj] } : prev);
+            toast({ title: 'Held job added to this week', description: `$${adj.amount.toFixed(2)} is paid on the week of ${localLog.weekOf}.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not add it', description: e.message });
+        }
+    };
 
     // Hold a job's pay out of this week (waiting on the customer), or undo it.
     const toggleHold = async (item: WeeklyLogItem, hold: boolean) => {
@@ -1156,7 +1171,9 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     const flaggedCount = flaggedItems.length + removedFlagged.length + (localLog?.missingAssignmentReports?.length || 0);
 
     const totalJobsCount = (localLog?.items?.length || 0) + (localLog?.missingAssignmentReports?.length || 0);
-    const auditCompleteCount = (localLog?.items || []).filter(i => i.isAdminReviewed && i.confirmationStatus !== 'disputed').length + (localLog?.missingAssignmentReports || []).filter(isReportDecided).length;
+    // A job on hold counts as handled: it's out of this week's total, so it
+    // never blocks approving or paying out the rest of the week.
+    const auditCompleteCount = (localLog?.items || []).filter(i => (i.isAdminReviewed && i.confirmationStatus !== 'disputed') || !!i.payHold).length + (localLog?.missingAssignmentReports || []).filter(isReportDecided).length;
     const isManifestFullyAudited = auditCompleteCount === totalJobsCount && totalJobsCount > 0;
     const canApproveNow = isManifestFullyAudited && undecidedCount === 0;
 
@@ -1807,6 +1824,30 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                             </div>
                                         )}
 
+                                        {canApproveLog && carriedHolds.length > 0 && (
+                                            <div className="rounded-xl border border-accent-gold/40 bg-accent-gold/5 p-3 space-y-2">
+                                                <p className="text-[12px] font-semibold text-text-primary">Jobs on hold from earlier weeks ({carriedHolds.length})</p>
+                                                <p className="text-[11px] text-text-muted">Still owed to {technician?.name || 'this tech'}. Pay one on this week once the money is there; otherwise it rolls on to the next week.</p>
+                                                {carriedHolds.map(h => {
+                                                    const wo = findWorkOrder(h.item.workOrderId);
+                                                    return (
+                                                        <div key={`${h.log.id}-${h.item.id}`} className="flex flex-wrap items-center gap-2 rounded-lg border border-border-sub bg-bg-primary px-3 py-2">
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="text-[13px] font-semibold text-text-primary truncate">{wo?.title || wo?.description || (h.item.workOrderId || '').toUpperCase()}</p>
+                                                                <p className="text-[11px] text-text-muted">Week of {h.log.weekOf} · {h.hold.reason}</p>
+                                                            </div>
+                                                            <span className="font-mono text-[13px] font-semibold">${h.hold.amount.toFixed(2)}</span>
+                                                            {canPayHoldsHere ? (
+                                                                <Button size="sm" className="h-8" onClick={() => payHoldHere(h.log.id, h.item.id)}>Pay on this week</Button>
+                                                            ) : (
+                                                                <span className="text-[11px] text-text-muted">Pay it on an open week</span>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+
                                         {confirmedItems.length > 0 ? confirmedItems.map(item => {
                                             const wo = findWorkOrder(item.workOrderId);
                                             const isImported = wo?.source === 'Imported';
@@ -2033,7 +2074,9 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                 <p className="text-[12px] text-text-muted flex-1">
                                     {localLog.paid
                                         ? <>Paid out{localLog.paidAt ? ` ${format(new Date(localLog.paidAt), 'MMM d, yyyy')}` : ''}{localLog.paidByName ? ` by ${localLog.paidByName}` : ''}.</>
-                                        : 'Approved — pay it out once the money has gone out.'}
+                                        : (localLog.items || []).some(i => i.payHold?.status === 'held')
+                                            ? `Approved — pay it out once the money has gone out. ${(localLog.items || []).filter(i => i.payHold?.status === 'held').length} held job(s) aren’t in this payout; they stay on hold and show up on the next week to pay.`
+                                            : 'Approved — pay it out once the money has gone out.'}
                                 </p>
                                 <Button variant="outline" className="h-10 px-6 order-last sm:order-none" onClick={() => setIsOpen(false)}>Close</Button>
                                 {localLog.paid ? (

@@ -159,6 +159,9 @@ export async function updatePayAdjustment(adj: PayAdjustment, patch: {
     const fromRef = fromId ? doc(db, 'weeklyLogs', fromId) : null;
     const toRef = toLogId ? doc(db, 'weeklyLogs', toLogId) : null;
     const fromSnap = fromRef ? await tx.get(fromRef) : null;
+    // The held job's original week (read before any write), if this pays one.
+    const heldSnap = adj.kind === 'held_job' && adj.heldLogId && adj.heldLogId !== fromId && adj.heldLogId !== toLogId
+      ? await tx.get(doc(db, 'weeklyLogs', adj.heldLogId)) : null;
     const toSnap = toRef && toLogId !== fromId ? await tx.get(toRef) : null;
     const from = fromSnap?.exists() ? ({ ...fromSnap.data(), id: fromSnap.id } as WeeklyLog) : null;
     const to = toLogId === fromId ? from : toSnap?.exists() ? ({ ...toSnap.data(), id: toSnap.id } as WeeklyLog) : null;
@@ -184,6 +187,13 @@ export async function updatePayAdjustment(adj: PayAdjustment, patch: {
       tx.update(toRef, withTotal(to, list));
     }
     tx.set(doc(db, 'payrollAdjustments', adj.id), saved);
+    // A held job paid by this line: keep its "paid on" week in step.
+    if (adj.kind === 'held_job' && adj.heldLogId && adj.heldItemId && heldSnap?.exists()) {
+      const heldLog = heldSnap.data() as WeeklyLog;
+      const items = (heldLog.items || []).map(i => (i.id === adj.heldItemId && i.payHold
+        ? { ...i, payHold: { ...i.payHold, releasedLogId: saved.appliedLogId ?? null, releasedWeekOf: saved.appliedWeekOf ?? null } } : i));
+      tx.update(doc(db, 'weeklyLogs', adj.heldLogId), { items: JSON.parse(JSON.stringify(items)) });
+    }
   });
   return saved;
 }

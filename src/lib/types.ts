@@ -948,6 +948,21 @@ export type Invoice = {
   paidAt?: string | null;
   /** Outside customer (no client account). */
   customerEmail?: string | null;
+  /** Super / Payroll Admin sign-off before it's sent (lib/approvals). */
+  approval?: DocApproval | null;
+};
+
+/** Internal sign-off before a quote or invoice goes to the client (lib/approvals). */
+export type DocApproval = {
+  status: 'pending' | 'approved' | 'returned';
+  requestedBy?: string | null;
+  requestedByName?: string | null;
+  requestedAt?: string | null;
+  decidedBy?: string | null;
+  decidedByName?: string | null;
+  decidedAt?: string | null;
+  /** Why it was sent back. */
+  note?: string | null;
 };
 
 export type PlanTier = {
@@ -1247,6 +1262,8 @@ export type Quote = {
   convertedToInvoiceId: string | null;
   /** CRM lead this quote was written for — approval marks that lead Won. */
   leadId?: string | null;
+  /** Internal sign-off before it goes to the client (lib/approvals). */
+  internalApproval?: DocApproval | null;
 };
 
 export type AssetCategory = 'vehicle' | 'tool' | 'electronic' | 'inventory' | 'safety';

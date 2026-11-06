@@ -44,7 +44,7 @@ type NotifyPayload = {
 };
 
 const AUDIENCE_PORTAL: Record<Audience, NotifyPortal> = { admins: 'admin', payroll_admins: 'admin', project_managers: 'tech' };
-const ENTITY_TYPES = new Set<NotifyEntity['type']>(['assignment', 'project', 'request', 'lead', 'weeklyLog', 'user']);
+const ENTITY_TYPES = new Set<NotifyEntity['type']>(['assignment', 'project', 'request', 'lead', 'weeklyLog', 'user', 'quote', 'invoice']);
 
 const ADMIN_ROLES = ['super_admin', 'dispatch_admin', 'payroll_admin'];
 const AUDIENCE_ROLES: Record<Audience, string[]> = {
@@ -71,6 +71,11 @@ async function mayNotifyCrew(
   fs: FirebaseFirestore.Firestore, callerId: string, caller: Record<string, any>,
   recipientId: string, recipient: Record<string, any>, entity?: NotifyPayload['entity'],
 ): Promise<boolean> {
+  // A Project Manager who approves or sends back a quote tells whoever made it.
+  if (entity?.type === 'quote' && typeof entity.id === 'string' && rolesOf(caller).includes('project_manager')) {
+    const q = (await fs.collection('quotes').doc(entity.id).get()).data();
+    if (q && (q.createdBy === recipientId || q.internalApproval?.requestedBy === recipientId)) return true;
+  }
   if (!rolesOf(recipient).some(r => TECH_ROLES.includes(r))) return false;
   if (rolesOf(caller).includes('project_manager')) return true;
   if (entity?.type !== 'project' || typeof entity.id !== 'string' || !rolesOf(caller).includes('project_lead')) return false;

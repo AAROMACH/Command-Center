@@ -1,7 +1,7 @@
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
-type Entity = { id: string; type: 'assignment' | 'project' | 'request' | 'lead' | 'weeklyLog' | 'user' | 'message' };
+type Entity = { id: string; type: 'assignment' | 'project' | 'request' | 'lead' | 'weeklyLog' | 'user' | 'message' | 'quote' | 'invoice' };
 /** Which portal's bell shows the alert — see /api/notify. */
 export type NotifyPortal = 'admin' | 'tech' | 'client' | 'sales';
 type Options = {
@@ -87,6 +87,20 @@ export const NotificationService = {
    */
   async notifyProjectManagers(projectId: string, title: string, body: string, routine = true) {
     return post({ audience: 'project_managers', title, body, entity: { id: projectId, type: 'project' }, inAppOnly: routine });
+  },
+
+  /**
+   * Quote approvers: Super + Payroll Admins (Admin Portal) and Project
+   * Managers (Tech Portal → Approvals).
+   */
+  async notifyQuoteApprovers(quoteId: string, title: string, body: string) {
+    const entity: Entity = { id: quoteId, type: 'quote' };
+    return Promise.all([post({ audience: 'payroll_admins', title, body, entity }), post({ audience: 'project_managers', title, body, entity })]);
+  },
+
+  /** Invoice approvers: Super + Payroll Admins. */
+  async notifyInvoiceApprovers(invoiceId: string, title: string, body: string) {
+    return post({ audience: 'payroll_admins', title, body, entity: { id: invoiceId, type: 'invoice' } });
   },
 
   /** Tells the tech payroll resolved their dispute. `outcome` is payroll's

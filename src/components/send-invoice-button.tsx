@@ -10,6 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-context';
+import { ApprovalPanel } from '@/components/approval-panel';
+import { approveInvoice, canApproveInvoices, isApproved, requestInvoiceApproval, returnInvoice } from '@/lib/approvals';
 
 /**
  * "Send invoice": confirm who it goes to, then the server emails the client a
@@ -22,6 +25,16 @@ const money = (n: number) => `$${(Number(n) || 0).toFixed(2).replace(/\B(?=(\d{3
  *  last-minute change (remove items, add a discount / adjustment). */
 export function SendInvoiceButton({ invoice, size = 'sm', className }: { invoice: Invoice; size?: 'sm' | 'default'; className?: string }) {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const me = { id: user?.id || auth.currentUser?.uid || '', name: user?.name || auth.currentUser?.displayName || 'Office' };
+  const approver = canApproveInvoices(user);
+  // A draft goes out once a Super / Payroll Admin approves it (lib/approvals).
+  const needsApproval = invoice.status === 'draft' && !isApproved(invoice.approval);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const approvalAct = (fn: () => Promise<void>, done: string) => async () => {
+    try { await fn(); toast({ title: done }); setReviewOpen(false); }
+    catch (e: any) { toast({ variant: 'destructive', title: 'Could not update approval', description: e?.code === 'permission-denied' ? 'You don’t have permission for that.' : e.message }); throw e; }
+  };
   const [open, setOpen] = useState(false);
   const [to, setTo] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,7 +45,7 @@ export function SendInvoiceButton({ invoice, size = 'sm', className }: { invoice
   const saveEdit = async (r: PriceDocResult) => {
     setSavingEdit(true);
     try {
-      await saveInvoiceFromEditor(r, invoice);
+      await saveInvoiceFromEditor(r, invoice, {}, { editorCanApprove: approver });
       toast({ title: 'Invoice updated', description: 'Check the preview, then send.' });
       setEditing(false);
       setOpen(true);
@@ -68,6 +81,33 @@ export function SendInvoiceButton({ invoice, size = 'sm', className }: { invoice
   };
 
   if (invoice.status === 'void') return null;
+  const panel = (
+    <ApprovalPanel kind="invoice" approval={invoice.approval} canApprove={approver}
+      approverLabel="a Super Admin or Payroll Admin"
+      onRequest={approvalAct(() => requestInvoiceApproval(invoice, me), 'Sent for approval')}
+      onApprove={approvalAct(() => approveInvoice(invoice, me), 'Invoice approved')}
+      onReturn={note => approvalAct(() => returnInvoice(invoice, me, note), 'Invoice sent back')()} />
+  );
+  // Not an approver and not approved yet: submit / waiting / resubmit instead of Send.
+  if (needsApproval && !approver) {
+    const st = invoice.approval?.status;
+    return (
+      <span onClick={e => e.stopPropagation()} className="inline-flex">
+        <Button size={size} variant={st === 'pending' ? 'outline' : 'default'} className={className} onClick={e => { e.stopPropagation(); setReviewOpen(true); }}>
+          <Send size={13} className="mr-1.5" /> {st === 'pending' ? 'Awaiting approval' : st === 'returned' ? 'Sent back — review' : 'Submit for approval'}
+        </Button>
+        <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
+          <DialogContent className="sm:max-w-md" onClick={e => e.stopPropagation()}>
+            <DialogHeader className="text-left">
+              <DialogTitle>Invoice {invoice.invoiceNumber}</DialogTitle>
+              <DialogDescription>{money(invoice.total)}{invoice.clientName ? ` · ${invoice.clientName}` : ''}</DialogDescription>
+            </DialogHeader>
+            {panel}
+          </DialogContent>
+        </Dialog>
+      </span>
+    );
+  }
   // The span keeps clicks in the button / dialog (a portal, but React events
   // still bubble) from also opening the invoice row they sit in.
   return (
@@ -81,6 +121,7 @@ export function SendInvoiceButton({ invoice, size = 'sm', className }: { invoice
             <DialogTitle>Send invoice {invoice.invoiceNumber}</DialogTitle>
             <DialogDescription>Check it over — this is what the client sees. Edit to remove items or add a discount, then send.</DialogDescription>
           </DialogHeader>
+          {needsApproval && invoice.approval?.status === 'pending' && panel}
           <div className="rounded-lg border border-border-sub bg-bg-primary p-3 space-y-1.5 max-h-[40svh] overflow-y-auto text-[12px]">
             {(invoice.lineItems || []).map(l => (
               <div key={l.id} className="flex justify-between gap-3">

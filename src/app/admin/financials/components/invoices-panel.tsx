@@ -16,6 +16,8 @@ import type { Invoice } from '@/lib/types';
 import { PriceDocEditor, type PriceDocResult } from '@/components/price-doc-editor';
 import { deleteInvoice, invoiceToEditor, saveInvoiceFromEditor } from '@/lib/invoice-actions';
 import { useAuth } from '@/contexts/auth-context';
+import { cn } from '@/lib/utils';
+import { approvalLabel, canApproveInvoices, isApproved } from '@/lib/approvals';
 import { isSuperAdmin } from '@/lib/permissions';
 import { BillJobsDialog } from '@/components/job-invoice';
 import { parseLocalDate } from '@/lib/jobs';
@@ -101,7 +103,7 @@ export function InvoicesPanel({ search = '', onResetSearch, hideNewButton = fals
     const handleSaveInvoice = async (r: PriceDocResult) => {
         setSaving(true);
         try {
-            await saveInvoiceFromEditor(r, selectedInvoice);
+            await saveInvoiceFromEditor(r, selectedInvoice, {}, { editorCanApprove: canApproveInvoices(user) });
             toast({ title: selectedInvoice ? 'Invoice updated' : 'Invoice created', description: `Invoice ${r.invoiceNumber} was saved.` });
             setIsEditorOpen(false);
         } catch (e: any) {
@@ -180,6 +182,10 @@ export function InvoicesPanel({ search = '', onResetSearch, hideNewButton = fals
                                     <TableCell>
                                         <div className="flex items-center gap-2">
                                             <StatusBadge kind="invoice" value={invoice.status} />
+                                            {invoice.status === 'draft' && invoice.approval && invoice.approval.status !== 'approved' && (
+                                                <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap', invoice.approval.status === 'pending' ? 'bg-accent-gold/15 text-accent-gold' : 'bg-brand-red/10 text-brand-red')}
+                                                    title={invoice.approval.note || undefined}>{approvalLabel(invoice.approval)}</span>
+                                            )}
                                             {invoice.status !== 'paid' && <SendInvoiceButton invoice={invoice} className="h-7 px-2 text-[12px]" />}
                                             <InvoicePdfButton invoice={invoice} className="h-7 px-2 text-[12px]" />
                                         </div>
@@ -201,6 +207,7 @@ export function InvoicesPanel({ search = '', onResetSearch, hideNewButton = fals
             </Card>
             <BillJobsDialog open={billJobsOpen} onClose={() => setBillJobsOpen(false)} />
             <PriceDocEditor
+                draftOnly={!canApproveInvoices(user) && !isApproved(selectedInvoice?.approval)}
                 open={isEditorOpen}
                 onClose={() => setIsEditorOpen(false)}
                 kind="invoice"

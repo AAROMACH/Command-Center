@@ -146,6 +146,8 @@ export type Permission =
   // Site walks: walk a site on a tablet and send it to the office for a quote.
   | 'tech.site_walks.view'
   | 'tech.site_walks.create'
+  // Approvals: Project Managers approve quotes before they go to the client.
+  | 'tech.approvals.view'
   | 'tech.messages.view'
   | 'tech.messages.send'
   | 'tech.profile.view'
@@ -223,7 +225,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   'tech.projects.lead', 'tech.projects.view_all', 'tech.projects.manage', 'tech.projects.create',
   'tech.projects.staff', 'tech.projects.close',
   'tech.logs.view', 'tech.logs.create', 'tech.logs.submit', 'tech.logs.unsubmit_own', 'tech.logs.move_assignment',
-  'tech.earnings.view', 'tech.site_walks.view', 'tech.site_walks.create', 'tech.messages.view', 'tech.messages.send',
+  'tech.earnings.view', 'tech.site_walks.view', 'tech.site_walks.create', 'tech.approvals.view', 'tech.messages.view', 'tech.messages.send',
   'tech.profile.view', 'tech.profile.edit',
   // Client
   'client.dashboard.view', 'client.tickets.view', 'client.tickets.create', 'client.projects.view',
@@ -313,6 +315,7 @@ export const PERMISSION_TREE: PermissionTree = {
     ],
     earnings: ['tech.earnings.view'],
     site_walks: ['tech.site_walks.view', 'tech.site_walks.create'],
+    approvals: ['tech.approvals.view'],
     messages: ['tech.messages.view', 'tech.messages.send'],
     profile: ['tech.profile.view', 'tech.profile.edit'],
   },
@@ -437,7 +440,7 @@ export const SUBROLE_DEFINITIONS: Record<AppRole, SubroleDefinition> = {
     permissions: [
       ...FIELD_TECH_PERMISSIONS,
       'tech.projects.create_task', 'tech.projects.assign_task', 'tech.projects.lead',
-      'tech.projects.view_all', 'tech.projects.manage', 'tech.projects.create',
+      'tech.projects.view_all', 'tech.projects.manage', 'tech.projects.create', 'tech.approvals.view',
       'tech.projects.staff', 'tech.projects.close',
     ],
   },

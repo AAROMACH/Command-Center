@@ -89,7 +89,7 @@ const areaCls = 'w-full text-[12px] bg-bg-secondary border border-border-main ro
 
 export function PriceDocEditor({
   open, onClose, kind, initial, initialDiscount, title, saveLabel, saving, onSave, externalOnly = false,
-  onDelete, deleting = false, deleteLabel, headerExtra,
+  onDelete, deleting = false, deleteLabel, headerExtra, draftOnly = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -111,6 +111,8 @@ export function PriceDocEditor({
   deleteLabel?: string;
   /** Extra chips beside the QUOTE / INVOICE label (status, linked project…). */
   headerExtra?: ReactNode;
+  /** Invoices: a draft that isn't approved can't be marked Sent / Paid here (lib/approvals). */
+  draftOnly?: boolean;
 }) {
   const [v, setV] = useState<PriceDocValues>(() => ({ ...emptyPriceDoc(kind), ...initial }));
   // 'auto' = the client's plan discount; 'removed' = taken off for this doc;
@@ -500,8 +502,8 @@ export function PriceDocEditor({
 
         <DialogFooter className="gap-2 pt-2 flex-wrap sm:justify-between">
           {kind === 'invoice' ? (
-            <Select value={v.status} onValueChange={s => set('status', s as InvoiceStatus)}>
-              <SelectTrigger className="h-9 w-[150px] text-[12px] bg-bg-secondary border-border-main"><SelectValue /></SelectTrigger>
+            <Select value={v.status} onValueChange={s => set('status', s as InvoiceStatus)} disabled={draftOnly && v.status === 'draft'}>
+              <SelectTrigger className="h-9 w-[150px] text-[12px] bg-bg-secondary border-border-main" title={draftOnly && v.status === 'draft' ? 'A Super Admin or Payroll Admin has to approve it before it’s sent' : undefined}><SelectValue /></SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
                 <SelectItem value="draft">Draft</SelectItem>
                 <SelectItem value="sent">Sent</SelectItem>

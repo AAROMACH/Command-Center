@@ -50,6 +50,7 @@ import {
   Inbox,
   FileSearch,
   ClipboardCheck,
+  CheckCircle2,
 } from "lucide-react";
 import { isAssignedTo } from '@/lib/jobs';
 
@@ -141,6 +142,7 @@ const techNavGroups: NavGroup[] = [
       { href: "/tech/projects",    label: "Projects",    icon: FolderKanban,  permission: "tech.projects.view" },
       { href: "/tech/logs",        label: "Logs",        icon: FileText,      permission: "tech.logs.view" },
       { href: "/tech/site-walks",  label: "Site Walks",  icon: ClipboardCheck, permission: "tech.site_walks.view" },
+      { href: "/tech/approvals",   label: "Approvals",   icon: CheckCircle2,   permission: "tech.approvals.view" },
     ],
   },
   {

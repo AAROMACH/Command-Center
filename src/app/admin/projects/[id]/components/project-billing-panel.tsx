@@ -10,6 +10,7 @@ import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { usePricingSettings } from '@/hooks/use-billing';
 import { materialPrice } from '@/lib/price-lines';
 import { savePriceToBook } from '@/lib/price-book-actions';
+import { canApproveInvoices, canApproveQuotes } from '@/lib/approvals';
 import { addProjectPart, createProjectInvoice, linkQuoteToProject, removeProjectPart, unlinkQuote } from '@/lib/project-billing';
 import { canEditQuote, quoteDiscount, quoteToEditor, saveQuoteEdits } from '@/lib/quote-actions';
 import { deleteInvoice, invoiceToEditor, saveInvoiceFromEditor } from '@/lib/invoice-actions';
@@ -66,7 +67,7 @@ export function ProjectBillingPanel({ project }: { project: Project }) {
         if (!r.title) { toast({ variant: 'destructive', title: 'Title required' }); return; }
         setSavingQuote(true);
         try {
-            await saveQuoteEdits(quote, r, project);
+            await saveQuoteEdits(quote, r, project, { editorCanApprove: canApproveQuotes(user) });
             toast({ title: `Quote ${quote.quoteNumber} updated`, description: 'The project budget follows the new quote total.' });
             setQuoteEditOpen(false);
         } catch (e: any) { toast({ variant: 'destructive', title: 'Could not save quote', description: e.message }); }

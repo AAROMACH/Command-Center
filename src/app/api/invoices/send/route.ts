@@ -4,7 +4,7 @@ import { randomBytes } from 'crypto';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
-import { isAdmin } from '@/lib/permissions';
+import { getSubroles, isAdmin } from '@/lib/permissions';
 import { emailConfigured, sendEmail } from '@/lib/server/notify-delivery';
 
 /**
@@ -19,7 +19,10 @@ async function caller(req: NextRequest) {
   try {
     const uid = (await getAuth(adminApp).verifyIdToken(h.replace(/^Bearer /, ''))).uid;
     const u = (await getFirestore(adminApp).doc(`users/${uid}`).get()).data();
-    return u && isAdmin(u as any) ? { uid, name: (u.name as string) || 'Aaromach' } : null;
+    if (!u || !isAdmin(u as any)) return null;
+    // Only Super / Payroll Admins approve invoices (lib/approvals).
+    const approver = getSubroles(u as any).some(r => r === 'super_admin' || r === 'payroll_admin');
+    return { uid, name: (u.name as string) || 'Aaromach', approver };
   } catch { return null; }
 }
 
@@ -53,6 +56,10 @@ export async function POST(req: NextRequest) {
   if (!snap.exists) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
   const inv = snap.data() || {};
   if (inv.status === 'void') return NextResponse.json({ error: 'This invoice is void.' }, { status: 409 });
+  const approved = inv.approval?.status === 'approved';
+  if (inv.status === 'draft' && !approved && !who.approver) {
+    return NextResponse.json({ error: 'A Super Admin or Payroll Admin has to approve this invoice before it’s sent.' }, { status: 403 });
+  }
 
   const to = (typeof body.to === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.to.trim())) ? body.to.trim() : await recipientOf(inv);
   const token: string = inv.publicToken || randomBytes(24).toString('hex');
@@ -86,6 +93,13 @@ export async function POST(req: NextRequest) {
   await ref.update({
     ...(inv.status === 'draft' ? { status: 'sent' } : {}),
     sentAt: new Date().toISOString(), sentTo: to, sentBy: who.name,
+    // An approver sending an unapproved invoice approves it.
+    ...(approved ? {} : {
+      approval: {
+        status: 'approved', requestedBy: inv.approval?.requestedBy ?? who.uid, requestedByName: inv.approval?.requestedByName ?? who.name,
+        requestedAt: inv.approval?.requestedAt ?? new Date().toISOString(), decidedBy: who.uid, decidedByName: who.name, decidedAt: new Date().toISOString(), note: null,
+      },
+    }),
   });
   return NextResponse.json({ link, emailed: true, to });
 }

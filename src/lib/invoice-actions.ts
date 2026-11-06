@@ -26,7 +26,7 @@ export function invoiceToEditor(inv: Invoice): Partial<PriceDocValues> {
 }
 
 /** Builds the invoice doc from the editor and saves it; returns its id. */
-export async function saveInvoiceFromEditor(r: PriceDocResult, existing: Invoice | null, extra: Partial<Invoice> = {}): Promise<string> {
+export async function saveInvoiceFromEditor(r: PriceDocResult, existing: Invoice | null, extra: Partial<Invoice> = {}, opts: { editorCanApprove?: boolean } = {}): Promise<string> {
   const id = existing?.id || await createDocId(ID_PREFIXES.INVOICE);
   // Project ids are 'prj-…' (older ones 'proj…'); anything else is a job.
   const isProject = /^pro?j/.test(r.relatedId);
@@ -55,6 +55,8 @@ export async function saveInvoiceFromEditor(r: PriceDocResult, existing: Invoice
     total: r.totals.total,
     // When it was marked paid (the request tracker's last step).
     ...(r.status === 'paid' && existing?.status !== 'paid' ? { paidAt: new Date().toISOString() } : {}),
+    // A change by someone who can't approve undoes an approval that hasn't gone out yet.
+    ...(opts.editorCanApprove === false && existing?.status === 'draft' && existing.approval?.status === 'approved' ? { approval: null } : {}),
     ...extra,
   };
   // Firestore rejects undefined fields.

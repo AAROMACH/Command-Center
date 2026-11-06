@@ -29,6 +29,7 @@ import type { Technician, NotificationPreferences } from '@/lib/types';
 import { FontPreferenceSetting } from '@/components/font-preference-setting';
 import { ThemeToggleSetting } from '@/components/theme-toggle-setting';
 import { IntegrationsPanel } from '@/components/integrations-panel';
+import { SettingsTabs } from '@/components/settings-tabs';
 
 
 export default function AdminSettingsPage() {
@@ -96,7 +97,7 @@ export default function AdminSettingsPage() {
     };
 
     return (
-        <div className="space-y-6 text-left max-w-5xl mx-auto pb-24">
+        <div className="space-y-5 text-left max-w-5xl mx-auto pb-24">
             <PageHeader
                 eyebrow="Admin"
                 icon={SettingsIcon}
@@ -104,95 +105,55 @@ export default function AdminSettingsPage() {
                 subtitle="Your notifications and display, plus company-wide settings for your role."
             />
 
-            <div className="space-y-12">
-                {/* GENERAL — what the app actually runs on */}
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2 px-1">
-                        <Globe size={14} className="text-brand-red" />
-                        <h3 className="text-[13px] font-semibold text-text-primary">General</h3>
-                    </div>
-                    <Card>
-                        <CardContent className="p-4 flex items-center justify-between gap-4">
-                            <div className="space-y-1 text-left">
-                                <h4 className="text-xs font-bold text-text-primary">Business Time Zone</h4>
-                                <p className="text-[10px] text-text-muted">Weekly logs, pay weeks and schedules use this time zone.</p>
-                            </div>
-                            <span className="text-[12px] font-mono font-bold text-text-primary">{BUSINESS_TIME_ZONE.replace('_', ' ')}</span>
-                        </CardContent>
-                    </Card>
-                </section>
-
-                {/* NOTIFICATIONS */}
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2 px-1">
-                        <Bell size={14} className="text-brand-red" />
-                        <h3 className="text-[13px] font-semibold text-text-primary">{TERMINOLOGY.CONFIG.NOTIFICATIONS}</h3>
-                    </div>
-                    <NotificationEventsCard />
-                </section>
-
-                {/* DISPLAY (personal — this account only) */}
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2 px-1">
-                        <Type size={14} className="text-brand-red" />
-                        <h3 className="text-[13px] font-semibold text-text-primary">Display</h3>
-                    </div>
-                    <ThemeToggleSetting />
-                    <FontPreferenceSetting />
-                </section>
-
-                {/* FINANCE */}
-                {canEditFinance && (
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2 px-1">
-                        <Banknote size={14} className="text-brand-red" />
-                        <h3 className="text-[13px] font-semibold text-text-primary">Finance & payroll</h3>
-                    </div>
-                    <Card>
-                        <CardHeader className="text-left">
-                            <CardTitle>Mileage Reimbursement Rate</CardTitle>
-                            <CardDescription>The per-mile rate used to calculate mileage reimbursements. IRS standard rate is $0.67/mile (2024).</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center gap-3 max-w-sm">
-                                <div className="relative flex-1">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm font-mono">$</span>
-                                    <Input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={mileageRate}
-                                        onChange={e => setMileageRate(e.target.value)}
-                                        className="h-9 pl-7 text-[11px] bg-bg-primary border-border-main font-mono"
-                                        placeholder="0.67"
-                                    />
-                                </div>
-                                <span className="text-[10px] font-bold uppercase text-text-muted tracking-wider shrink-0">per mile</span>
-                                <Button
-                                    size="sm"
-                                    onClick={handleSaveMileageRate}
-                                    disabled={savingMileageRate}
-                                    className="h-9 bg-brand-red hover:bg-brand-red/90 text-white shrink-0"
-                                >
-                                    {savingMileageRate ? 'Saving...' : 'Save Rate'}
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </section>
-                )}
-
-                {/* INTEGRATIONS */}
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2 px-1">
-                        <Activity size={14} className="text-brand-red" />
-                        <h3 className="text-[13px] font-semibold text-text-primary">{TERMINOLOGY.CONFIG.INTEGRATIONS}</h3>
-                    </div>
-                    {isSuperAdmin(currentUser) ? <IntegrationsPanel /> : (
-                        <p className="text-[12px] text-text-muted px-1">Integrations and API keys are managed by Super Admins.</p>
-                    )}
-                </section>
-            </div>
+            <SettingsTabs
+                hashTabs={{ quickbooks: 'integrations', integrations: 'integrations' }}
+                tabs={[
+                    {
+                        id: 'general', label: 'General', icon: Globe,
+                        content: (
+                            <Card>
+                                <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
+                                    <div className="space-y-1 text-left min-w-0">
+                                        <h4 className="text-[13px] font-semibold text-text-primary">Business time zone</h4>
+                                        <p className="text-[12px] text-text-muted">Weekly logs, pay weeks and schedules use this time zone.</p>
+                                    </div>
+                                    <span className="text-[13px] font-mono font-bold text-text-primary">{BUSINESS_TIME_ZONE.replace('_', ' ')}</span>
+                                </CardContent>
+                            </Card>
+                        ),
+                    },
+                    { id: 'notifications', label: TERMINOLOGY.CONFIG.NOTIFICATIONS, icon: Bell, content: <NotificationEventsCard /> },
+                    { id: 'display', label: 'Display', icon: Type, content: <><ThemeToggleSetting /><FontPreferenceSetting /></> },
+                    {
+                        id: 'finance', label: 'Finance', icon: Banknote, show: canEditFinance,
+                        content: (
+                            <Card>
+                                <CardHeader className="text-left">
+                                    <CardTitle>Mileage reimbursement rate</CardTitle>
+                                    <CardDescription>The per-mile rate used to calculate mileage reimbursements. IRS standard rate is $0.67/mile (2024).</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex flex-wrap items-center gap-3 max-w-md">
+                                        <div className="relative flex-1 min-w-[140px]">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm font-mono">$</span>
+                                            <Input type="number" step="0.01" min="0" inputMode="decimal" value={mileageRate}
+                                                onChange={e => setMileageRate(e.target.value)}
+                                                className="h-10 pl-7 text-[13px] bg-bg-primary border-border-main font-mono" placeholder="0.67" />
+                                        </div>
+                                        <span className="text-[12px] text-text-muted shrink-0">per mile</span>
+                                        <Button size="sm" onClick={handleSaveMileageRate} disabled={savingMileageRate}
+                                            className="h-10 bg-brand-red hover:bg-brand-red/90 text-white shrink-0 w-full sm:w-auto">
+                                            {savingMileageRate ? 'Saving…' : 'Save rate'}
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ),
+                    },
+                    // API keys and connections are Super Admin only.
+                    { id: 'integrations', label: TERMINOLOGY.CONFIG.INTEGRATIONS, icon: Activity, show: isSuperAdmin(currentUser), content: <IntegrationsPanel /> },
+                ]}
+            />
         </div>
     );
 }

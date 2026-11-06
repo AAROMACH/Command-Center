@@ -67,7 +67,9 @@ export type ReimbursementPayLine = {
 const countedItems = (log: SettlementLog) => (log.items || [])
   .filter(i => i.confirmationStatus !== 'disputed')
   // Removed as a helper: not paid unless payroll decides they worked it.
-  .filter(i => !i.helperRemoved);
+  .filter(i => !i.helperRemoved)
+  // Held by payroll: paid later, on the week it's released to (lib/pay-holds).
+  .filter(i => !i.payHold);
 
 /**
  * Every reimbursement paid on a log: approved reimbursements (pending and

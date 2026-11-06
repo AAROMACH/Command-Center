@@ -5,7 +5,8 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
 import { getSubroles, hasPermission, isAdmin } from '@/lib/permissions';
-import { emailConfigured, sendEmail } from '@/lib/server/notify-delivery';
+import { emailConfigured, emailDeliveryStatus, sendEmail } from '@/lib/server/notify-delivery';
+import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * Send a client invoice: emails the client a summary and a private link to
@@ -39,12 +40,29 @@ async function recipientOf(inv: Record<string, any>): Promise<string> {
 
 const money = (n: unknown) => `$${(Number(n) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 
+/** One recorded send: who, to whom, when, and Resend's delivery status. */
+type SendRecord = { at: string; to: string; by: string; emailId: string | null; status: string };
+/** A send within this many minutes of the last one is refused — no accidental double emails. */
+const RESEND_COOLDOWN_MIN = 10;
+
 export async function GET(req: NextRequest) {
   if (!(await caller(req))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const id = req.nextUrl.searchParams.get('invoiceId') || '';
-  const snap = id ? await getFirestore(adminApp).doc(`invoices/${id}`).get() : null;
+  const ref = id ? getFirestore(adminApp).doc(`invoices/${id}`) : null;
+  const snap = ref ? await ref.get() : null;
   if (!snap?.exists) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
-  return NextResponse.json({ to: await recipientOf(snap.data() || {}), emailConfigured: emailConfigured() });
+  const inv = snap.data() || {};
+  // Refresh the latest sends' delivery status from Resend (sent → delivered / bounced).
+  const log: SendRecord[] = Array.isArray(inv.sendLog) ? inv.sendLog : [];
+  let changed = false;
+  const fresh = await Promise.all(log.map(async (e, i) => {
+    if (!e.emailId || i < log.length - 3 || ['delivered', 'bounced', 'complained'].includes(e.status)) return e;
+    const st = await emailDeliveryStatus(e.emailId);
+    if (st && st !== e.status) { changed = true; return { ...e, status: st }; }
+    return e;
+  }));
+  if (changed) await ref!.update({ sendLog: fresh });
+  return NextResponse.json({ to: await recipientOf(inv), emailConfigured: emailConfigured(), sendLog: fresh, cooldownMinutes: RESEND_COOLDOWN_MIN });
 }
 
 export async function POST(req: NextRequest) {
@@ -62,11 +80,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'A Super Admin or Payroll Admin has to approve this invoice before it’s sent.' }, { status: 403 });
   }
 
+  // No spamming the client: one send at a time, and not again within the cooldown.
+  const lastAt = Date.parse(inv.sentAt || '') || 0;
+  const minsSince = (Date.now() - lastAt) / 60000;
+  if (lastAt && minsSince < RESEND_COOLDOWN_MIN) {
+    return NextResponse.json({ error: `Already sent ${Math.max(1, Math.round(minsSince))} min ago${inv.sentTo ? ` to ${inv.sentTo}` : ''}. Wait ${Math.ceil(RESEND_COOLDOWN_MIN - minsSince)} min to send again.` }, { status: 429 });
+  }
+  const locked = await fs.runTransaction(async tx => {
+    const cur = (await tx.get(ref)).data() || {};
+    if (cur.sendingAt && Date.now() - Date.parse(cur.sendingAt) < 60000) return false;
+    tx.update(ref, { sendingAt: new Date().toISOString() });
+    return true;
+  });
+  if (!locked) return NextResponse.json({ error: 'This invoice is already being sent — check back in a moment.' }, { status: 409 });
+  const unlock = () => ref.update({ sendingAt: FieldValue.delete() }).catch(() => {});
+
   const to = (typeof body.to === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.to.trim())) ? body.to.trim() : await recipientOf(inv);
   const token: string = inv.publicToken || randomBytes(24).toString('hex');
   const link = `${req.nextUrl.origin}/public/invoice/${token}`;
   if (!inv.publicToken) await ref.update({ publicToken: token });
-  if (!to) return NextResponse.json({ link, emailed: false, reason: 'No email address for this client.' });
+  if (!to) { await unlock(); return NextResponse.json({ link, emailed: false, reason: 'No email address for this client.' }); }
 
   const subject = `Invoice ${inv.invoiceNumber} from Aaromach — ${money(inv.total)}`;
   const text = [
@@ -87,13 +120,19 @@ export async function POST(req: NextRequest) {
     'Aaromach',
   ].join('\n');
   let emailed: 'sent' | 'skipped';
-  try { emailed = await sendEmail(to, subject, text); }
-  catch (e: any) { return NextResponse.json({ error: `Email failed: ${String(e?.message || e).slice(0, 200)}`, link }, { status: 502 }); }
-  if (emailed === 'skipped') return NextResponse.json({ link, emailed: false, reason: 'Email isn’t set up on the server (RESEND_API_KEY missing).' });
+  let emailId: string | null = null;
+  const sendNo = (Array.isArray(inv.sendLog) ? inv.sendLog.length : 0) + 1;
+  try {
+    // Same key for a retry of this send, so Resend never delivers it twice.
+    emailed = await sendEmail(to, subject, text, { kind: 'billing', idempotencyKey: `invoice-send/${snap.id}/${sendNo}`, onSent: id => { emailId = id; } });
+  } catch (e: any) { await unlock(); return NextResponse.json({ error: `Email failed: ${String(e?.message || e).slice(0, 200)}`, link }, { status: 502 }); }
+  if (emailed === 'skipped') { await unlock(); return NextResponse.json({ link, emailed: false, reason: 'Email isn’t set up on the server (RESEND_API_KEY missing).' }); }
+  const record: SendRecord = { at: new Date().toISOString(), to, by: who.name, emailId, status: 'sent' };
 
   await ref.update({
     ...(inv.status === 'draft' ? { status: 'sent' } : {}),
-    sentAt: new Date().toISOString(), sentTo: to, sentBy: who.name,
+    sentAt: record.at, sentTo: to, sentBy: who.name,
+    sendLog: FieldValue.arrayUnion(record), sendingAt: FieldValue.delete(),
     // An approver sending an unapproved invoice approves it.
     ...(approved ? {} : {
       approval: {
@@ -102,5 +141,5 @@ export async function POST(req: NextRequest) {
       },
     }),
   });
-  return NextResponse.json({ link, emailed: true, to });
+  return NextResponse.json({ link, emailed: true, to, emailId });
 }

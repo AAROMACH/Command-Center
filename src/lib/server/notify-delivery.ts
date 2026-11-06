@@ -75,7 +75,37 @@ export async function sendSms(to: string, text: string): Promise<'sent' | 'skipp
 /** Is email delivery configured on the server (Resend)? */
 export const emailConfigured = () => !!process.env.RESEND_API_KEY;
 
-const EMAIL_FROM = () => process.env.RESEND_FROM_EMAIL || 'AAROMACH <invoices@billing.aaromach.com>';
+/**
+ * Who an email comes from, by kind. All send from the one verified Resend
+ * domain (mail.aaromach.com); Reply-To sends answers to a real inbox, since
+ * Resend can't receive. Each is an App Hosting setting, with these defaults.
+ *  - billing:       invoices and quotes            → replies to support@aaromach.com
+ *  - support:       client requests / tickets      → replies to support@aaromach.com
+ *  - notifications: staff alerts, digests, tests   → no reply address
+ */
+export type EmailKind = 'billing' | 'support' | 'notifications';
+
+/** Where Resend says an email is: sent → delivered, or bounced / complained / delayed. */
+export async function emailDeliveryStatus(emailId: string): Promise<string | null> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey || !emailId) return null;
+  const r = await fetch(`https://api.resend.com/emails/${encodeURIComponent(emailId)}`, { headers: { Authorization: `Bearer ${apiKey}` } }).catch(() => null);
+  if (!r?.ok) return null;
+  const d = await r.json().catch(() => ({})) as { last_event?: string };
+  return d.last_event || null;
+}
+export const EMAIL_SENDERS: Record<EmailKind, { fromEnv: string; from: string; replyToEnv?: string; replyTo?: string }> = {
+  billing: { fromEnv: 'EMAIL_FROM_BILLING', from: 'AAROMACH Billing <billing@mail.aaromach.com>', replyToEnv: 'EMAIL_REPLY_TO_BILLING', replyTo: 'support@aaromach.com' },
+  support: { fromEnv: 'EMAIL_FROM_SUPPORT', from: 'AAROMACH Support <support@mail.aaromach.com>', replyToEnv: 'EMAIL_REPLY_TO_SUPPORT', replyTo: 'support@aaromach.com' },
+  notifications: { fromEnv: 'EMAIL_FROM_NOTIFICATIONS', from: 'AAROMACH <notifications@mail.aaromach.com>' },
+};
+export function emailSender(kind: EmailKind): { from: string; replyTo: string | null } {
+  const s = EMAIL_SENDERS[kind];
+  return {
+    from: process.env[s.fromEnv] || s.from,
+    replyTo: (s.replyToEnv && process.env[s.replyToEnv]) || s.replyTo || null,
+  };
+}
 
 /**
  * Send one email through Resend. 'skipped' when RESEND_API_KEY isn't set.
@@ -83,15 +113,17 @@ const EMAIL_FROM = () => process.env.RESEND_FROM_EMAIL || 'AAROMACH <invoices@bi
  * retry-after); other errors throw. `idempotencyKey` (e.g. `invoice/<id>/<n>`)
  * keeps a retried request from sending twice.
  */
-export async function sendEmail(to: string, subject: string, body: string, opts: { idempotencyKey?: string } = {}): Promise<'sent' | 'skipped'> {
+export async function sendEmail(to: string, subject: string, body: string, opts: { idempotencyKey?: string; kind?: EmailKind; onSent?: (emailId: string | null) => void } = {}): Promise<'sent' | 'skipped'> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn('[notify] RESEND_API_KEY not set — email skipped');
     return 'skipped';
   }
   const resend = new Resend(apiKey);
+  const sender = emailSender(opts.kind || 'notifications');
   const email = {
-    from: EMAIL_FROM(),
+    from: sender.from,
+    ...(sender.replyTo ? { replyTo: sender.replyTo } : {}),
     to: [to],
     subject,
     text: body,
@@ -104,6 +136,7 @@ export async function sendEmail(to: string, subject: string, body: string, opts:
     const { data, error, headers } = await resend.emails.send(email, opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey.slice(0, 256) } : undefined);
     if (!error) {
       console.info(`[notify] email sent via Resend id=${data?.id || '?'}`);
+      opts.onSent?.(data?.id || null);
       await recordHealth('resend', true);
       return 'sent';
     }
@@ -160,7 +193,8 @@ export async function deliverNotification(
     await Promise.all(channels.map(async type => {
       let status: 'sent' | 'failed' | 'pending' = 'pending';
       try {
-        if (type === 'email') status = (await sendEmail(data.email, subject, msg.body)) === 'sent' ? 'sent' : 'pending';
+        // Clients hear from Support (they can reply); staff alerts are no-reply.
+        if (type === 'email') status = (await sendEmail(data.email, subject, msg.body, { kind: (msg.portal || portalForRecipient(data, entity)) === 'client' ? 'support' : 'notifications' })) === 'sent' ? 'sent' : 'pending';
         else if (type === 'sms') status = (await sendSms(data.phone, `${subject}\n\n${msg.body}`)) === 'sent' ? 'sent' : 'pending';
 
       } catch (err) {

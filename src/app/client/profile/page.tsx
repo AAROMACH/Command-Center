@@ -28,7 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import { auditFieldChange } from '@/lib/audit';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SettingsTabs } from '@/components/settings-tabs';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { PageHeader } from '@/components/page-header';
@@ -135,28 +135,25 @@ export default function ClientProfilePage() {
     if (!mounted) return <PageLoading label="Loading profile…" />;
 
     return (
-        <div className="max-w-5xl mx-auto space-y-6 text-left">
+        <div className="max-w-5xl mx-auto space-y-5 text-left pb-24">
             <PageHeader
                 eyebrow="Client portal"
                 icon={User}
                 title="Profile"
                 subtitle="Your contact details, company and billing preferences."
                 actions={
-                    <Button onClick={handleSave} disabled={isSaving}>
+                    <Button onClick={handleSave} disabled={isSaving} className="hidden sm:inline-flex">
                         {isSaving && <Loader2 size={14} className="mr-2 animate-spin" />}
                         Save changes
                     </Button>
                 }
             />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
-                {/* LEFT: Identity Card */}
-                <div className="space-y-6 text-left">
-                    <Card className="rounded-xl bg-bg-secondary border-border-main shadow-sm text-center">
-                        <CardContent className="pt-8 pb-8 space-y-4">
-                            <div className="flex justify-center">
-                                <div className="relative">
-                                    <Avatar className="h-24 w-24 border-2 border-border-sub">
+            {/* Who you are — compact so the tabs start high on a phone. */}
+            <Card className="rounded-xl bg-bg-secondary border-border-main">
+                <CardContent className="p-4 flex items-center gap-4">
+                                <div className="relative shrink-0">
+                                    <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-2 border-border-sub">
                                         <AvatarImage asChild src={avatarUrl}>
                                             <Image src={avatarUrl || "https://picsum.photos/seed/client/96/96"} alt="Avatar" width={96} height={96} data-ai-hint="person face" />
                                         </AvatarImage>
@@ -182,54 +179,22 @@ export default function ClientProfilePage() {
                                         onChange={handleAvatarChange}
                                     />
                                 </div>
-                            </div>
-                            <div className="space-y-1 text-center">
-                                <h2 className="text-xl font-semibold text-text-primary text-center">{currentUser?.name || '—'}</h2>
-                                <p className="text-[13px] text-text-muted capitalize text-center">{currentUser?.role || 'Client'}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <div className="min-w-0">
+                        <h2 className="text-lg font-semibold text-text-primary truncate">{currentUser?.name || '—'}</h2>
+                        <p className="text-[12px] text-text-muted truncate">{currentUser?.clientCompany || 'Client'}</p>
+                    </div>
+                </CardContent>
+            </Card>
 
-                    <Card className="rounded-xl bg-bg-secondary border-border-main shadow-sm text-left">
-                        <CardHeader className="pb-3 text-left">
-                            <CardTitle className="text-[10px] font-semibold uppercase tracking-wider text-text-muted flex items-center gap-2 text-left">
-                                <ShieldCheck size={14} className="text-text-green"/> Portal access
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-[13px] text-text-primary">Full access to your company&apos;s jobs, requests and invoices.</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="rounded-xl bg-bg-secondary border-border-main shadow-sm text-left">
-                        <CardHeader className="text-left">
-                            <CardTitle className="text-base font-semibold">Security</CardTitle>
-                            <CardDescription>Change the password you use to sign in.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <Button variant="outline" className="w-full" onClick={() => setIsPasswordDialogOpen(true)}>
-                                <Key size={14} className="mr-2"/> Change password
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* RIGHT: Detailed Information Tabs */}
-                <div className="lg:col-span-2 text-left">
-                    <Tabs defaultValue="identity" className="w-full text-left">
-                        <TabsList className="tabs mb-6">
-                            <TabsTrigger value="identity" className="tab">Contact details</TabsTrigger>
-                            <TabsTrigger value="billing" className="tab">Billing</TabsTrigger>
-                        </TabsList>
-
-                        <TabsContent value="identity" className="m-0 space-y-6 text-left">
+            <SettingsTabs tabs={[
+                { id: 'contact', label: 'Contact', icon: User, content: (<>
                             <Card className="rounded-xl bg-bg-secondary border-border-main shadow-sm">
                                 <CardHeader className="text-left">
                                     <CardTitle className="text-base font-semibold">Contact</CardTitle>
                                     <CardDescription>How we reach you about jobs and requests.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[12px] font-medium text-text-secondary">Full name</Label>
                                             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" className="bg-bg-primary" />
@@ -239,7 +204,7 @@ export default function ClientProfilePage() {
                                             <Input value={preferredName} onChange={(e) => setPreferredName(e.target.value)} placeholder="Goes by…" className="bg-bg-primary" />
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2 text-left">
                                             <Label className="text-[12px] font-medium text-text-secondary">Email</Label>
                                             <Input value={currentUser?.email || ''} readOnly className="bg-bg-primary opacity-60 cursor-not-allowed" />
@@ -269,9 +234,8 @@ export default function ClientProfilePage() {
                                     </div>
                                 </CardContent>
                             </Card>
-                        </TabsContent>
-
-                        <TabsContent value="billing" className="m-0 space-y-6 text-left">
+                </>) },
+                { id: 'billing', label: 'Billing', icon: CreditCard, content: (<>
                             <Card className="rounded-xl bg-bg-secondary border-border-main shadow-sm">
                                 <CardHeader className="text-left">
                                     <div className="flex items-center gap-2 mb-1">
@@ -352,9 +316,29 @@ export default function ClientProfilePage() {
                                     </Button>
                                 </CardContent>
                             </Card>
-                        </TabsContent>
-                    </Tabs>
-                </div>
+                </>) },
+                { id: 'security', label: 'Security', icon: Key, content: (<>
+                    <Card className="rounded-xl bg-bg-secondary border-border-main shadow-sm text-left">
+                        <CardHeader className="text-left">
+                            <CardTitle className="text-base font-semibold">Security</CardTitle>
+                            <CardDescription>Change the password you use to sign in.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setIsPasswordDialogOpen(true)}>
+                                <Key size={14} className="mr-2"/> Change password
+                            </Button>
+                        </CardContent>
+                    </Card>
+                    <p className="text-[12px] text-text-muted px-1 flex items-center gap-1.5"><ShieldCheck size={13} className="text-text-green" /> Full access to your company&apos;s jobs, requests and invoices.</p>
+                </>) },
+            ]} />
+
+            {/* Save sits at the bottom on phones (thumb reach), in the header on desktop. */}
+            <div className="sm:hidden sticky bottom-3 z-10">
+                <Button onClick={handleSave} disabled={isSaving} className="w-full h-11 shadow-lg">
+                    {isSaving && <Loader2 size={14} className="mr-2 animate-spin" />}
+                    Save changes
+                </Button>
             </div>
 
             <ChangePasswordDialog

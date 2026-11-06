@@ -611,6 +611,17 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    // Staff pay plans and their week-by-week record (lib/staff-pay): payroll
+    // manages them; each person can read their own to verify what was paid.
+    match /staffPayPlans/{id} {
+      allow read: if isPayrollAdmin() || (isSignedIn() && resource.data.personId == request.auth.uid);
+      allow write: if isPayrollAdmin();
+    }
+    match /staffPayEntries/{id} {
+      allow read: if isPayrollAdmin() || (isSignedIn() && resource.data.personId == request.auth.uid);
+      allow write: if isPayrollAdmin();
+    }
+
     match /reimbursements/{id} {
       allow read: if isSignedIn() && (
           isPayrollAdmin()

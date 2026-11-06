@@ -1,6 +1,5 @@
 'use client';
 import { PageHeader } from '@/components/page-header';
-import { SearchField } from '@/components/search-field';
 import { PageLoading } from '@/components/empty-state';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -13,18 +12,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { User, Search, Loader2, Camera } from "lucide-react";
+import { User, Loader2, Camera, ShieldCheck, Wallet } from "lucide-react";
+import { MyStaffPay } from "@/components/staff-pay-panel";
+import Link from "next/link";
+import { SettingsTabs } from "@/components/settings-tabs";
 import Image from "next/image";
-import { resolveNotificationPrefs, withNotificationPref } from '@/lib/notification-prefs';
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ProfilePage() {
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [mounted, setMounted] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
     const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
 
     const [name, setName] = useState("");
@@ -33,9 +32,6 @@ export default function ProfilePage() {
     const [isUploading, setIsUploading] = useState(false);
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
 
-    const [emailNotif, setEmailNotif] = useState(true);
-    const [pushNotif, setPushNotif] = useState(false);
-    const [smsNotif, setSmsNotif] = useState(true);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
@@ -56,10 +52,6 @@ export default function ProfilePage() {
                     setName(data.name || '');
                     setEmail(data.email || '');
                     setAvatarUrl(data.avatarUrl);
-                    const prefs = resolveNotificationPrefs(data.notificationPreferences);
-                    setEmailNotif(prefs.email);
-                    setPushNotif(prefs.push);
-                    setSmsNotif(prefs.sms);
                 }
             });
         });
@@ -100,44 +92,27 @@ export default function ProfilePage() {
         }
     };
 
-    const handleNotifChange = async (key: 'email' | 'push' | 'sms', value: boolean) => {
-        if (key === 'email') setEmailNotif(value);
-        else if (key === 'sms') setSmsNotif(value);
-        else setPushNotif(value);
-        if (!currentUser?.id) return;
-        try {
-            await updateDoc(doc(db, 'users', currentUser.id), {
-                notificationPreferences: withNotificationPref(currentUser.notificationPreferences, key, value),
-            });
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Save failed', description: err.message });
-        }
-    };
 
     if (!mounted) return <PageLoading label="Loading profile…" />;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-5 max-w-4xl mx-auto pb-24 text-left">
             <PageHeader
                 eyebrow="Account"
                 icon={User}
-                title="Profile & settings"
-                subtitle="Your details, notifications and security."
-                actions={<>
-                    <SearchField className="w-full md:w-[260px]" placeholder="Find a setting…" value={searchQuery} onChange={setSearchQuery} />
-                
-                </>}
+                title="Profile"
+                subtitle="Your details and sign-in security."
             />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-6 text-left">
+            <SettingsTabs tabs={[
+                { id: 'personal', label: 'Personal', icon: User, content: (<>
                     <Card>
                         <CardHeader>
                             <CardTitle>Personal information</CardTitle>
                             <CardDescription>Update your photo and personal details here.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="flex items-center gap-6">
+                            <div className="flex flex-wrap items-center gap-4 sm:gap-6">
                                 <div className="relative">
                                     <Avatar className="h-20 w-20">
                                         <AvatarImage asChild src={avatarUrl} alt="User Avatar">
@@ -182,16 +157,20 @@ export default function ProfilePage() {
                                 </div>
                             </div>
                         </CardContent>
-                        <CardFooter className="border-t px-6 py-4">
-                            <Button onClick={handleSave} disabled={isSaving}>
+                        <CardFooter className="border-t px-4 sm:px-6 py-4">
+                            <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
                                 {isSaving && <Loader2 size={14} className="mr-2 animate-spin" />}
                                 Save Changes
                             </Button>
                         </CardFooter>
                     </Card>
-                </div>
-
-                <div className="space-y-6 text-left">
+                </>) },
+                { id: 'pay', label: 'My pay', icon: Wallet, content: (<>
+                    <p className="text-[12px] text-text-muted px-1">Bonuses and payments the company pays you week by week — what was paid, skipped, and is still owed.</p>
+                    {currentUser?.id ? <MyStaffPay userId={currentUser.id} /> : null}
+                    <p className="text-[12px] text-text-muted px-1">Nothing listed? You have no pay plans.</p>
+                </>) },
+                { id: 'security', label: 'Security', icon: ShieldCheck, content: (<>
                     <Card>
                         <CardHeader>
                             <CardTitle>Security</CardTitle>
@@ -213,56 +192,11 @@ export default function ProfilePage() {
                             </TooltipProvider>
                         </CardContent>
                     </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Notifications</CardTitle>
-                            <CardDescription>Choose how you want to be notified.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <Label htmlFor="email-notifications" className="flex flex-col space-y-1">
-                                    <span>Email notifications</span>
-                                    <span className="font-normal leading-snug text-text-muted">
-                                        Receive updates and alerts via email.
-                                    </span>
-                                </Label>
-                                <Switch
-                                    id="email-notifications"
-                                    checked={emailNotif}
-                                    onCheckedChange={(v) => handleNotifChange('email', v)}
-                                />
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <Label htmlFor="sms-notifications" className="flex flex-col space-y-1">
-                                    <span>Text messages</span>
-                                    <span className="font-normal leading-snug text-text-muted">
-                                        Alerts texted to your phone number.
-                                    </span>
-                                </Label>
-                                <Switch
-                                    id="sms-notifications"
-                                    checked={smsNotif}
-                                    onCheckedChange={(v) => handleNotifChange('sms', v)}
-                                />
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <Label htmlFor="push-notifications" className="flex flex-col space-y-1">
-                                    <span>In-App Notifications</span>
-                                    <span className="font-normal leading-snug text-text-muted">
-                                        Alerts in the bell at the top of the app.
-                                    </span>
-                                </Label>
-                                <Switch
-                                    id="push-notifications"
-                                    checked={pushNotif}
-                                    onCheckedChange={(v) => handleNotifChange('push', v)}
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
+                    <p className="text-[12px] text-text-muted px-1">
+                        Notification choices (email, text, phone) are in <Link href="/admin/settings?tab=notifications" className="text-brand-red hover:underline">Settings → Notifications</Link>.
+                    </p>
+                </>) },
+            ]} />
 
             <ChangePasswordDialog
                 isOpen={isPasswordDialogOpen}

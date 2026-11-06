@@ -58,7 +58,8 @@ import {
     Car,
     Activity as ActivityIcon,
     Trash2,
-    ArrowLeftRight
+    ArrowLeftRight,
+    Hourglass,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -132,7 +133,7 @@ export default function TechWeeklyLogPage() {
     // weekly log so it shows up here and reaches payroll.
     const { helperJobs } = useHelperLogSync(currentTechId);
     const [tripLogs, setTripLogs] = useState<TripLog[]>([]);
-    const [logView, setLogView] = useState<'work' | 'trips'>('work');
+    const [logView, setLogView] = useState<'work' | 'trips' | 'holds'>('work');
     const [mounted, setMounted] = useState(false);
     const [mileageUnit, setMileageUnit] = useState<'mi' | 'km'>('mi');
     
@@ -588,6 +589,21 @@ export default function TechWeeklyLogPage() {
 
     const canSubmit = counts.total > 0 && counts.pending === 0;
 
+    // Jobs payroll held (waiting on the customer): in limbo until paid on a later week.
+    const holdLines = useMemo(() => weeklyLogs
+        .filter(l => l.techId === currentTechId)
+        .flatMap(l => (l.items || []).filter(i => i.payHold).map(i => {
+            const job = jobsById.get(i.workOrderId);
+            return {
+                key: `${l.id}-${i.id}`, weekOf: l.weekOf, status: i.payHold!.status, reason: i.payHold!.reason, amount: i.payHold!.amount,
+                paidWeek: i.payHold!.releasedWeekOf || null, heldAt: i.payHold!.heldAt,
+                title: job?.title || job?.description || (i.workOrderId || '').toUpperCase(), wo: job ? displayWorkOrderNumber(job) : '',
+            };
+        }))
+        .sort((a, b) => (a.status === b.status ? (b.heldAt || '').localeCompare(a.heldAt || '') : a.status === 'held' ? -1 : 1)),
+        [weeklyLogs, currentTechId, jobsById]);
+    const heldOpen = holdLines.filter(h => h.status === 'held');
+
     const ViewTabs = () => (
         <div className="tabs !mb-0 flex-nowrap" role="tablist">
             <button type="button" role="tab" aria-selected={logView === 'work'} onClick={() => setLogView('work')}
@@ -598,8 +614,50 @@ export default function TechWeeklyLogPage() {
                 className={cn('tab inline-flex items-center', logView === 'trips' && 'active')}>
                 <Car size={14} className="mr-1.5" />Mileage
             </button>
+            {holdLines.length > 0 && (
+                <button type="button" role="tab" aria-selected={logView === 'holds'} onClick={() => setLogView('holds')}
+                    className={cn('tab inline-flex items-center', logView === 'holds' && 'active')}>
+                    <Hourglass size={14} className="mr-1.5" />On hold{heldOpen.length ? ` (${heldOpen.length})` : ''}
+                </button>
+            )}
         </div>
     );
+
+    if (logView === 'holds') {
+        return (
+            <div className="space-y-6 text-left">
+                <PageHeader
+                    eyebrow="Weekly logs"
+                    icon={Hourglass}
+                    title="Jobs on hold"
+                    subtitle="Jobs payroll is holding until the customer pays. Each one is paid on a later week — that week's log and pay stub list it."
+                    actions={<ViewTabs />}
+                />
+                <div className="max-w-4xl mx-auto space-y-4">
+                    {heldOpen.length > 0 && (
+                        <div className="rounded-xl border border-accent-gold/40 bg-accent-gold/5 p-4 flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-[13px] text-text-primary"><b>{heldOpen.length}</b> job{heldOpen.length === 1 ? '' : 's'} waiting to be paid</p>
+                            <p className="font-mono text-[15px] font-bold text-accent-gold">${heldOpen.reduce((t, h) => t + h.amount, 0).toFixed(2)}</p>
+                        </div>
+                    )}
+                    <div className="space-y-2">
+                        {holdLines.map(h => (
+                            <div key={h.key} className={cn('rounded-xl border p-3 sm:p-4 flex flex-wrap items-center gap-3', h.status === 'held' ? 'border-accent-gold/40 bg-bg-secondary' : 'border-border-sub bg-bg-secondary/60')}>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[14px] font-semibold text-text-primary">{h.title}</p>
+                                    <p className="text-[12px] text-text-muted">Worked the week of {h.weekOf}{h.wo ? ` · WO# ${h.wo}` : ''}</p>
+                                    <p className={cn('text-[12px] mt-1', h.status === 'held' ? 'text-accent-gold' : 'text-text-green')}>
+                                        {h.status === 'held' ? `On hold — ${h.reason}` : h.paidWeek ? `Paid on the week of ${h.paidWeek}` : 'Released — goes on your next log'}
+                                    </p>
+                                </div>
+                                <span className="font-mono text-[15px] font-bold text-text-primary">${h.amount.toFixed(2)}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (logView === 'trips') {
         return (
@@ -998,6 +1056,14 @@ export default function TechWeeklyLogPage() {
                             return jobDateTimeValue(ja?.scheduleDate, ja?.scheduleTime) - jobDateTimeValue(jb?.scheduleDate, jb?.scheduleTime);
                         })
                         .map((item, itemIdx) => (
+                        <div key={`wrap-${item.id || item.workOrderId || itemIdx}`} className="space-y-1">
+                        {item.payHold && (
+                            <p className={cn('text-[12px] font-semibold px-1', item.payHold.status === 'held' ? 'text-accent-gold' : 'text-text-green')}>
+                                {item.payHold.status === 'held'
+                                    ? `On hold — ${item.payHold.reason}. Not in this week's pay; it's paid on a later week.`
+                                    : `Held, then paid on the week of ${item.payHold.releasedWeekOf || 'a later week'}.`}
+                            </p>
+                        )}
                         <JobAuditCard
                             key={item.id || item.workOrderId || `item-${itemIdx}`}
                             item={item}
@@ -1016,6 +1082,7 @@ export default function TechWeeklyLogPage() {
                             hasOpenPayrollDispute={disputedWorkOrderIds.has(item.workOrderId)}
                             payAdjustedBy={myPayrollDisputes.find(d => d.weeklyLogId === activeLog.id && d.workOrderId === item.workOrderId && d.status === 'resolved' && !!d.adjustment)}
                         />
+                        </div>
                     ))}
                     {(activeLog.items || []).length === 0 && (
                         <EmptyState icon={ActivityIcon} title="No jobs on this log yet" description="Jobs you complete this week show up here." />

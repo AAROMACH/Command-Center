@@ -5,6 +5,7 @@ import { adminApp } from '@/lib/firebase-admin';
 import { getSubroles } from '@/lib/permissions';
 import { getConnection, qboConfigured, qboEnv, qboGet } from '@/lib/server/quickbooks';
 import { readHealth, recordHealth, type HealthEntry } from '@/lib/server/integration-health';
+import { EMAIL_SENDERS, emailSender, type EmailKind } from '@/lib/server/notify-delivery';
 
 /**
  * Settings → Integrations (Super Admins). A service shows Connected only when
@@ -22,24 +23,29 @@ export type IntegrationState = 'connected' | 'failed' | 'missing' | 'untested' |
 export type IntegrationStatus = {
   id: string; name: string; purpose: string; state: IntegrationState;
   detail: string; lastUse: HealthEntry | null; checkedAt: string;
-  vars: { name: string; set: boolean; secret: boolean }[];
+  /** optional = has a built-in default, so 'not set' is fine. */
+  vars: { name: string; set: boolean; secret: boolean; optional?: boolean }[];
 };
 
 const set = (n: string) => !!process.env[n];
 type Check = { ok: boolean; detail: string };
 
 async function checkResend(): Promise<Check> {
-  const from = process.env.RESEND_FROM_EMAIL || 'AAROMACH <invoices@billing.aaromach.com>';
-  const domain = (from.match(/@([^>\s]+)/)?.[1] || '').toLowerCase();
+  // Every sender (billing, support, notifications) must be on a verified domain.
+  const senders = (Object.keys(EMAIL_SENDERS) as EmailKind[]).map(k => ({ kind: k, ...emailSender(k) }));
+  const domains = [...new Set(senders.map(x => (x.from.match(/@([^>\s]+)/)?.[1] || '').toLowerCase()).filter(Boolean))];
+  const summary = senders.map(x => `${x.kind}: ${x.from}${x.replyTo ? ` (replies → ${x.replyTo})` : ''}`).join(' · ');
   const r = await fetch('https://api.resend.com/domains', { headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` } });
   const d = await r.json().catch(() => ({})) as any;
   // A sending-only key can't list domains — Resend saying so proves the key is real.
-  if (!r.ok && d?.name === 'restricted_api_key') return { ok: true, detail: `Key accepted (sending-only). Sends from ${from}` };
+  if (!r.ok && d?.name === 'restricted_api_key') return { ok: true, detail: `Key accepted (sending-only, so domains can't be listed). ${summary}` };
   if (!r.ok) return { ok: false, detail: `Resend rejected the key: ${d?.message || r.status}` };
-  const dom = (d.data || []).find((x: any) => String(x.name).toLowerCase() === domain);
-  if (!dom) return { ok: false, detail: `Key works, but ${domain} isn't a domain on this Resend account` };
-  if (dom.status !== 'verified') return { ok: false, detail: `${domain} is "${dom.status}" in Resend — finish its DNS records` };
-  return { ok: true, detail: `Key accepted; ${domain} verified. Sends from ${from}` };
+  for (const dom of domains) {
+    const found = (d.data || []).find((x: any) => String(x.name).toLowerCase() === dom);
+    if (!found) return { ok: false, detail: `${dom} isn't a domain on this Resend account — add and verify it. ${summary}` };
+    if (found.status !== 'verified') return { ok: false, detail: `${dom} is "${found.status}" in Resend — finish its DNS records. ${summary}` };
+  }
+  return { ok: true, detail: `Key accepted; ${domains.join(', ')} verified. ${summary}` };
 }
 
 async function checkQuickBooks(): Promise<Check> {
@@ -80,7 +86,7 @@ export async function GET(req: NextRequest) {
 
   const before = await readHealth(); // last real use, before this check overwrites it
   const now = new Date().toISOString();
-  const v = (name: string, secret = true) => ({ name, set: set(name), secret });
+  const v = (name: string, secret = true, optional = false) => ({ name, set: set(name), secret, optional });
   const lastUse = (id: string) => (before[id]?.source === 'use' ? before[id] : null);
 
   const [resend, qbo, twilio] = await Promise.all([
@@ -93,10 +99,10 @@ export async function GET(req: NextRequest) {
   const list: IntegrationStatus[] = [
     { id: 'resend', name: 'Resend (email)', purpose: 'Invoice emails, notifications, CRM digest', state: st(resend),
       detail: resend?.detail || 'RESEND_API_KEY not set — emails are skipped', lastUse: lastUse('resend'), checkedAt: now,
-      vars: [v('RESEND_API_KEY'), v('RESEND_FROM_EMAIL', false)] },
+      vars: [v('RESEND_API_KEY'), ...(Object.values(EMAIL_SENDERS).flatMap(x => [x.fromEnv, x.replyToEnv].filter(Boolean) as string[]).map(n => v(n, false, true)))] },
     { id: 'quickbooks', name: 'QuickBooks Online', purpose: 'Customers, invoices and Pay now links; payments back to the app', state: st(qbo),
       detail: qbo?.detail || 'QBO_CLIENT_ID / QBO_CLIENT_SECRET not set', lastUse: lastUse('quickbooks'), checkedAt: now,
-      vars: [v('QBO_CLIENT_ID', false), v('QBO_CLIENT_SECRET'), v('QBO_ENV', false), v('QBO_REDIRECT_URI', false)] },
+      vars: [v('QBO_CLIENT_ID', false), v('QBO_CLIENT_SECRET'), v('QBO_ENV', false, true), v('QBO_REDIRECT_URI', false, true)] },
     { id: 'twilio', name: 'Twilio (text messages)', purpose: 'SMS notifications', state: st(twilio),
       detail: twilio?.detail || 'Not set up — texts are skipped', lastUse: lastUse('twilio'), checkedAt: now,
       vars: [v('TWILIO_ACCOUNT_SID', false), v('TWILIO_AUTH_TOKEN'), v('TWILIO_FROM_NUMBER', false)] },
@@ -109,7 +115,7 @@ export async function GET(req: NextRequest) {
       vars: [v('NEXT_PUBLIC_FIREBASE_VAPID_KEY', false)] },
     { id: 'digest', name: 'CRM daily digest', purpose: 'Scheduled sales digest email', state: set('CRM_DIGEST_SECRET') ? 'untested' : 'missing',
       detail: set('CRM_DIGEST_SECRET') ? 'Secret set — not tested here; it runs when the scheduler calls it' : 'Not set — the scheduled digest can’t run', lastUse: null, checkedAt: now,
-      vars: [v('CRM_DIGEST_SECRET'), v('CRM_DIGEST_TZ', false)] },
+      vars: [v('CRM_DIGEST_SECRET'), v('CRM_DIGEST_TZ', false, true)] },
     ...(['GEMINI_API_KEY', 'GOOGLE_GENAI_API_KEY', 'RECAPTCHA_SECRET_KEY'].filter(set).map(n => ({
       id: n.toLowerCase(), name: n, purpose: 'Set in hosting, but nothing in the app uses it', state: 'unused' as const,
       detail: 'Safe to remove, or keep for a planned feature — store it as a secret either way', lastUse: null, checkedAt: now, vars: [v(n)],

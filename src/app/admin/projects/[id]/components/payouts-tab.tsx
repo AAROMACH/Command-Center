@@ -20,7 +20,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, DollarSign, Check, Loader2, Banknote, Clock, Calculator, ChevronDown, ChevronUp, Filter } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, isInactiveTechnician } from '@/lib/utils';
+import { isTech } from '@/lib/permissions';
 import { money } from '@/lib/financial-summary';
 
 const STATUS_STYLES: Record<ProjectPayout['status'], { label: string; variant: any }> = {
@@ -44,6 +45,8 @@ const EMPTY_FORM = {
 };
 
 export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
+  // Field staff only (techs and PMs) — not admins, clients or sales.
+  const fieldStaff = technicians.filter(t => isTech(t as any));
   const { toast } = useToast();
   const [payouts, setPayouts] = useState<ProjectPayout[]>([]);
   const [projectLogs, setProjectLogs] = useState<ProjectDailyLog[]>([]);
@@ -369,7 +372,7 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
                 <SelectItem value="">All Technicians</SelectItem>
-                {technicians.map(t => (
+                {fieldStaff.map(t => (
                   <SelectItem key={t.id} value={t.id}>{t.name || t.id}</SelectItem>
                 ))}
               </SelectContent>
@@ -531,7 +534,7 @@ export function PayoutsTab({ projectId, technicians, currentUserId }: Props) {
                   <SelectValue placeholder="Select technician" />
                 </SelectTrigger>
                 <SelectContent className="bg-bg-elevated border-border-main">
-                  {technicians.map(t => (
+                  {fieldStaff.filter(t => !isInactiveTechnician(t)).map(t => (
                     <SelectItem key={t.id} value={t.id}>{t.name || t.id}</SelectItem>
                   ))}
                 </SelectContent>

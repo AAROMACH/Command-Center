@@ -1,3 +1,4 @@
+import { ScrewLoader } from '@/components/screw-loader';
 import type { ReactNode } from 'react';
 import { Inbox, type LucideIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -41,7 +42,7 @@ export function LoadingState({ label = 'Loading…', rows = 4, className }: { la
 export function PageLoading({ label = 'Loading…' }: { label?: string }) {
     return (
         <div className="flex h-[50vh] flex-col items-center justify-center gap-3" role="status" aria-live="polite">
-            <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-brand-red border-t-transparent" />
+            <ScrewLoader size={48} />
             <p className="text-[12px] text-text-muted">{label}</p>
         </div>
     );

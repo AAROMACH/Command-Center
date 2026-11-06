@@ -46,6 +46,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const users = await db.getAll(...techIds.map(t => db.doc(`users/${t}`)));
     users.forEach(u => { rates.set(u.id, u.data()?.hourlyRate); names.set(u.id, u.data()?.name || u.id); });
   }
+  // Parts and their cost live in the staff-only project billing record (older
+  // projects still have them on the project itself).
+  const billing = await db.doc(`projectBilling/${id}`).get();
+  if (billing.exists) project.addedParts = (billing.data()?.addedParts as Project['addedParts']) || [];
   const quoteSnap = project.sourceQuoteId ? await db.doc(`quotes/${project.sourceQuoteId}`).get() : null;
   const quote = quoteSnap?.exists ? ({ ...quoteSnap.data(), id: quoteSnap.id } as Quote) : null;
 

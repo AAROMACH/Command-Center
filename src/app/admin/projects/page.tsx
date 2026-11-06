@@ -1,5 +1,6 @@
 
 'use client';
+import { migrateLegacyParts } from '@/lib/project-parts';
 import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
@@ -41,6 +42,9 @@ type SortOption = 'name' | 'date' | 'progress' | 'client';
 
 export default function ProjectsPage() {
   const [allProjects, setAllProjects] = useState<Project[]>([]);
+  // Parts (with our cost) used to sit on the project record, which clients can
+  // read; move any that are left to the staff-only billing record.
+  useEffect(() => { if (allProjects.some(p => (p.addedParts || []).length)) migrateLegacyParts(allProjects); }, [allProjects]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [searchQuery, setSearchQuery] = useSessionState('admin/projects:searchQuery', "");
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);

@@ -1,5 +1,6 @@
 'use client';
 
+import { useProjectParts } from '@/lib/project-parts';
 import { InvoicePdfButton } from '@/components/invoice-pdf-button';
 import { useEffect, useMemo, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -49,6 +50,8 @@ export function ProjectBillingPanel({ project }: { project: Project }) {
     }, [project.invoiceId]);
 
     const quote = quotes.find(q => q.id === project.sourceQuoteId) || null;
+    // Parts carry our cost — kept in the staff-only project billing record.
+    const parts = useProjectParts(project);
     const est = quoteEstimate(quote);
     const by = auth.currentUser?.displayName || 'Admin';
     const { user } = useAuth();
@@ -197,7 +200,7 @@ export function ProjectBillingPanel({ project }: { project: Project }) {
                         {showLines && (
                             <div className="mt-1.5 rounded-md border border-border-sub divide-y divide-border-sub">
                                 {quote.lineItems.map(l => {
-                                    const fromProject = (project.addedParts || []).some(p => p.quoteLineId === l.id);
+                                    const fromProject = parts.some(p => p.quoteLineId === l.id);
                                     return (
                                         <div key={l.id} className="flex items-center justify-between gap-3 px-2.5 py-1.5 text-[12px]">
                                             <span className="min-w-0 break-words">
@@ -223,9 +226,9 @@ export function ProjectBillingPanel({ project }: { project: Project }) {
                         <Plus size={13} className="mr-1" /> Add materials & parts
                     </Button>
                 </div>
-                {(project.addedParts || []).length ? (
+                {parts.length ? (
                     <div className="space-y-1">
-                        {(project.addedParts || []).map(p => (
+                        {parts.map(p => (
                             <div key={p.id} className="flex items-center justify-between gap-3 text-[12px]">
                                 <span className="min-w-0 break-words">{p.quantity} × {p.name}</span>
                                 <span className="flex items-center gap-2 shrink-0 font-mono">

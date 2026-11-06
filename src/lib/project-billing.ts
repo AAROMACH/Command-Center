@@ -1,4 +1,5 @@
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { readProjectParts, writeProjectParts } from './project-parts';
 import { db } from './firebase';
 import { createDocId } from './generateId';
 import { ID_PREFIXES } from './constants';
@@ -37,7 +38,8 @@ export async function unlinkQuote(project: Project): Promise<void> {
 
 /** New quote lines → recomputed totals, the same way the quote editor does. */
 function quoteTotalsPatch(quote: QuoteWithDiscount, lines: PriceLine[], pricing: PricingSettings) {
-  const t = priceTotals(lines, quote.planDiscount || null, pricing.salesTaxPct);
+  // Quotes carry no sales tax; it's settled on the invoice.
+  const t = priceTotals(lines.map(l => ({ ...l, taxable: false })), quote.planDiscount || null, 0);
   return {
     lineItems: toQuoteLines(lines), subtotal: t.subtotal, taxAmount: t.taxAmount,
     discountAmount: t.discountAmount, total: t.total, updatedAt: new Date().toISOString(),
@@ -74,14 +76,15 @@ export async function addProjectPart(project: Project, material: Material, quant
       patch.projectBudget = totals.total;
     }
   }
-  await updateDoc(doc(db, 'projects', project.id), {
-    ...patch, addedParts: [...(project.addedParts || []), part], updatedAt: new Date().toISOString(),
-  });
+  // Parts (with our cost) are staff-only — lib/project-parts.
+  await writeProjectParts(project.id, [...(await readProjectParts(project)), part]);
+  await updateDoc(doc(db, 'projects', project.id), { ...patch, updatedAt: new Date().toISOString() });
 }
 
 /** Remove an added part — and its line from the linked quote. */
 export async function removeProjectPart(project: Project, partId: string, pricing: PricingSettings): Promise<void> {
-  const part = (project.addedParts || []).find(p => p.id === partId);
+  const parts = await readProjectParts(project);
+  const part = parts.find(p => p.id === partId);
   if (!part) return;
   const patch: Record<string, unknown> = {};
   if (project.sourceQuoteId && part.quoteLineId) {
@@ -94,9 +97,8 @@ export async function removeProjectPart(project: Project, partId: string, pricin
       patch.projectBudget = totals.total;
     }
   }
-  await updateDoc(doc(db, 'projects', project.id), {
-    ...patch, addedParts: (project.addedParts || []).filter(p => p.id !== partId), updatedAt: new Date().toISOString(),
-  });
+  await writeProjectParts(project.id, parts.filter(p => p.id !== partId));
+  await updateDoc(doc(db, 'projects', project.id), { ...patch, updatedAt: new Date().toISOString() });
 }
 
 /**
@@ -114,7 +116,7 @@ export async function createProjectInvoice(project: Project, pricing: PricingSet
   const lines: PriceLine[] = quote
     // Every quote line, as the quote's total counts them (parts added on the project included).
     ? fromQuoteLines(quote.lineItems)
-    : (project.addedParts || []).map(p => ({ id: p.id, name: p.name, quantity: p.quantity, unitPrice: p.unitPrice, section: 'material' as const, taxable: p.taxable }));
+    : (await readProjectParts(project)).map(p => ({ id: p.id, name: p.name, quantity: p.quantity, unitPrice: p.unitPrice, section: 'material' as const, taxable: p.taxable }));
   if (!lines.length) return null;
   const discount = quote?.planDiscount || null;
   const t = priceTotals(lines, discount, pricing.salesTaxPct);

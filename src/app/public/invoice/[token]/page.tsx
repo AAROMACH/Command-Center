@@ -1,6 +1,7 @@
 'use client';
 
 import { discountLineLabel } from '@/lib/price-lines';
+import { InvoicePdfButton } from '@/components/invoice-pdf-button';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
@@ -37,6 +38,12 @@ export default function PublicInvoicePage() {
             <p className="text-[12px] font-bold uppercase tracking-wider text-brand-red">Aaromach</p>
             <h1 className="text-2xl font-bold text-text-primary">Invoice {inv.invoiceNumber}</h1>
             <p className="text-[13px] text-text-muted">{inv.clientName}</p>
+            <InvoicePdfButton className="mt-2" label="Download PDF" data={{
+              invoiceNumber: inv.invoiceNumber, clientName: inv.clientName, issueDate: inv.issueDate, dueDate: inv.dueDate, status: inv.status,
+              lineItems: inv.lineItems, subtotal: inv.subtotal, discountAmount: inv.discountAmount,
+              discountLabel: inv.planName ? discountLineLabel({ planName: inv.planName, laborPct: inv.laborPct, materialsPct: inv.materialsPct }) : null,
+              tax: inv.tax, total: inv.total, notes: inv.notes,
+            }} />
           </div>
           <div className="text-right text-[13px]">
             <p><span className="text-text-muted">Issued</span> {inv.issueDate}</p>

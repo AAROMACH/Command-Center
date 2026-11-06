@@ -1,4 +1,5 @@
 'use client';
+import { useProjectParts } from '@/lib/project-parts';
 import { UnlockableField } from '@/components/unlockable-field';
 import { ProjectBillingPanel } from './project-billing-panel';
 import type { Quote, Project, Technician, ProjectDailyLog, Expense, Invoice } from '@/lib/types';
@@ -93,10 +94,11 @@ export function OverviewTab({ project, allTechnicians, dailyLogs, showMoney = tr
                localProjectData.siteAccessInstructions !== project.siteAccessInstructions;
     }, [localProjectData, project]);
 
+    const parts = useProjectParts(showMoney && !economicsFromServer ? project : null);
     const liveEconomics = useMemo(() => computeProjectEconomics(
-        project, dailyLogs, id => allTechnicians.find(t => t.id === id)?.hourlyRate, expenses, invoices,
+        { ...project, addedParts: parts }, dailyLogs, id => allTechnicians.find(t => t.id === id)?.hourlyRate, expenses, invoices,
         { nameOf: id => allTechnicians.find(t => t.id === id)?.name, quote },
-    ), [project, dailyLogs, allTechnicians, expenses, invoices, quote]);
+    ), [project, parts, dailyLogs, allTechnicians, expenses, invoices, quote]);
     const projectEconomics = economicsFromServer ? serverEconomics : liveEconomics;
 
     const getTechnician = (id: string) => allTechnicians.find(t => t.id === id);

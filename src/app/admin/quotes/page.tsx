@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { usePaged, ListPager, PAGE_SIZES_LARGE } from '@/components/list-pager';
 import { db, auth } from '@/lib/firebase';
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
-import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, getDoc, getDocs, query, where, deleteField } from 'firebase/firestore';
 import { surveySummary } from '@/lib/crm-survey';
 import { useCrmPaths } from '@/lib/crm-paths';
 import { createDocId } from '@/lib/generateId';
@@ -619,6 +619,15 @@ export default function AdminQuotesPage() {
       setIsNewOpen(true);
     }).catch(() => {});
   }, []);
+
+  // One-time cleanup: early site-walk quotes saved the internal margin on the
+  // quote itself, which the client can read. Remove it wherever it's left.
+  useEffect(() => {
+    if (inSalesPortal) return;
+    quotes.filter(q => (q as Quote & { estimate?: unknown }).estimate).forEach(q => {
+      updateDoc(doc(db, 'quotes', q.id), { estimate: deleteField() }).catch(() => {});
+    });
+  }, [quotes, inSalesPortal]);
 
   useEffect(() => {
     const u1 = onSharedSnapshot('quotes', snap => {

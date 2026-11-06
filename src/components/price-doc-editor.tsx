@@ -163,7 +163,10 @@ export function PriceDocEditor({
   const liveSub = v.customerType === 'in_app_client' && v.clientId ? subscriptions.find(x => x.clientId === v.clientId && isLiveSubscription(x)) : undefined;
   const livePlanName = liveSub ? plans.find(p => p.id === liveSub.planId)?.name : undefined;
   const discount: PlanDiscount | null = discountMode === 'auto' ? planDiscount : discountMode === 'removed' ? null : discountMode;
-  const totals = useMemo(() => priceTotals(v.lines, discount, settings.salesTaxPct), [v.lines, discount, settings.salesTaxPct]);
+  // Quotes carry no sales tax (no per-line Taxable switch, no tax row); it's
+  // settled on the invoice.
+  const taxPct = kind === 'quote' ? 0 : settings.salesTaxPct;
+  const totals = useMemo(() => priceTotals(v.lines, discount, taxPct), [v.lines, discount, taxPct]);
 
   const pickClient = (id: string) => { set('clientId', id); setDiscountMode('auto'); };
 
@@ -206,7 +209,7 @@ export function PriceDocEditor({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-[13px] font-semibold text-text-primary flex items-center gap-2">
             {isLabor ? <Hammer size={14} className="text-brand-red" /> : <Package size={14} className="text-accent-gold" />}
-            {isLabor ? 'Labor (not taxed)' : `Materials (${settings.salesTaxPct}% tax on taxable items)`}
+            {isLabor ? (kind === 'quote' ? 'Labor' : 'Labor (not taxed)') : kind === 'quote' ? 'Materials' : `Materials (${settings.salesTaxPct}% tax on taxable items)`}
           </h3>
           <div className="flex items-center gap-2">
             <PriceBookPicker items={items} section={s} onPick={it => addLine(s, it)} />
@@ -231,7 +234,7 @@ export function PriceDocEditor({
               <span>{isLabor ? 'Description' : 'Item'}</span>
               <span className="text-center">{isLabor ? 'Hrs' : 'Qty'}</span>
               <span className="text-center">{isLabor ? 'Rate' : 'Unit price'}</span>
-              <span className="text-center">{isLabor ? 'Multiplier' : 'Taxable'}</span>
+              <span className="text-center">{isLabor ? 'Multiplier' : kind === 'quote' ? '' : 'Taxable'}</span>
               <span className="text-right">Amount</span>
               <span />
             </div>
@@ -254,7 +257,7 @@ export function PriceDocEditor({
                         {multiplierKey(l) === 'saved' && <SelectItem value="saved" className="text-[12px]">{l.multiplierLabel || (l.emergency ? 'Emergency' : 'Saved')} ×{l.multiplier ?? 1.5}</SelectItem>}
                       </SelectContent>
                     </Select>
-                  ) : (
+                  ) : kind === 'quote' ? <span /> : (
                     <div className="flex items-center justify-center gap-1.5" title="Charge sales tax on this item">
                       <span className="sm:hidden text-[10px] text-text-muted">Tax</span>
                       <Switch className="scale-75" checked={l.taxable} onCheckedChange={val => setLine(l.id, { taxable: val })} />
@@ -440,7 +443,7 @@ export function PriceDocEditor({
                   <Undo2 size={11} /> Apply {planDiscount.planName} plan discount
                 </button>
               ) : null}
-              <div className="flex justify-between text-accent-gold"><span>Sales tax ({settings.salesTaxPct}%, materials)</span><span className="font-mono">{formatMoney(totals.taxAmount)}</span></div>
+              {kind === 'invoice' && <div className="flex justify-between text-accent-gold"><span>Sales tax ({settings.salesTaxPct}%, materials)</span><span className="font-mono">{formatMoney(totals.taxAmount)}</span></div>}
               <div className="flex justify-between items-center border-t border-dashed border-border-sub pt-2">
                 <span className="font-bold text-text-primary">Total</span>
                 <span className="text-xl font-mono font-bold text-text-green">{formatMoney(totals.total)}</span>
@@ -471,7 +474,7 @@ export function PriceDocEditor({
             )}
             <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
             <Button size="sm" disabled={saving || !canSave} className="bg-brand-red hover:bg-brand-red/90 text-white"
-              onClick={() => onSave({ ...v, discount, totals, client })}>
+              onClick={() => onSave({ ...v, ...(kind === 'quote' ? { lines: v.lines.map(l => ({ ...l, taxable: false })) } : {}), discount, totals, client })}>
               {saving && <Loader2 size={12} className="animate-spin mr-1.5" />}{saveLabel}
             </Button>
           </div>

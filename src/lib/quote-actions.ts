@@ -1,4 +1,5 @@
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { readProjectParts, writeProjectParts } from './project-parts';
 import { createDocId } from './generateId';
 import { ID_PREFIXES } from './constants';
 import { db } from './firebase';
@@ -77,14 +78,13 @@ export async function saveQuoteEdits(quote: Quote, r: PriceDocResult, linkedProj
   if (!project) return;
   if (project.sourceQuoteId !== quote.id) return;
   const lineIds = new Set(lineItems.map(l => l.id));
-  const parts = project.addedParts || [];
-  const orphaned = parts.some(p => p.quoteLineId && !lineIds.has(p.quoteLineId));
-  // Best effort: the quote is saved either way (Sales can't edit projects).
-  await updateDoc(doc(db, 'projects', project.id), {
-    projectBudget: r.totals.total,
-    ...(orphaned ? { addedParts: parts.map(p => (p.quoteLineId && !lineIds.has(p.quoteLineId) ? { ...p, quoteLineId: null } : p)) } : {}),
-    updatedAt: now,
-  }).catch(() => {});
+  // Best effort: the quote is saved either way (Sales can't edit projects or
+  // read project billing).
+  await updateDoc(doc(db, 'projects', project.id), { projectBudget: r.totals.total, updatedAt: now }).catch(() => {});
+  const parts = await readProjectParts(project).catch(() => []);
+  if (parts.some(p => p.quoteLineId && !lineIds.has(p.quoteLineId))) {
+    await writeProjectParts(project.id, parts.map(p => (p.quoteLineId && !lineIds.has(p.quoteLineId) ? { ...p, quoteLineId: null } : p))).catch(() => {});
+  }
 }
 
 /**

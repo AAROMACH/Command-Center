@@ -1,5 +1,6 @@
 'use client';
 
+import { InvoicePdfButton } from '@/components/invoice-pdf-button';
 import { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { endOfMonth, endOfWeek, startOfMonth, startOfWeek, subMonths, subWeeks } from 'date-fns';
@@ -84,7 +85,9 @@ export function JobInvoicePanel({ job }: { job: WorkOrder }) {
           </p>
         )}
       </div>
-      {invoice ? (invoice.status !== 'paid' && <SendInvoiceButton invoice={invoice} />) : (
+      {invoice ? (
+        <div className="flex gap-1.5"><InvoicePdfButton invoice={invoice} />{invoice.status !== 'paid' && <SendInvoiceButton invoice={invoice} />}</div>
+      ) : (
         <Button size="sm" disabled={!done} onClick={() => setDraft(jobsInvoiceDraft([job], minutes, pricing, clients))}>
           <Receipt size={13} className="mr-1.5" /> Create invoice
         </Button>

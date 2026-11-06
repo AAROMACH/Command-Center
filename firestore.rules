@@ -404,6 +404,14 @@ service cloud.firestore {
       return userData().get('clientCompany', '');
     }
 
+    // Parts added on a project, with OUR cost next to the sell price
+    // (lib/project-parts). Office admins only — the project record itself is
+    // readable by the client and the crew. Project managers get cost totals
+    // from /api/projects/[id]/economics (Admin SDK), never the raw costs.
+    match /projectBilling/{id} {
+      allow read, write: if isAdmin();
+    }
+
     match /projects/{id} {
       // Projects carry the client's company name in `client` (the new-project
       // form never set clientId), so company match is the real link — the

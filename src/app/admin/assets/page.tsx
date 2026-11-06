@@ -866,7 +866,7 @@ export default function AssetsAndMaterialsPage() {
                         <span className="flex items-center gap-2"><ShoppingCart size={12} /> Materials ({materials.filter(m => m.status === 'active').length})</span>
                     </TabsTrigger>
                     <TabsTrigger value="pricing" className={tabTriggerCls}>
-                        <span className="flex items-center gap-2"><Percent size={12} /> Rates &amp; markups</span>
+                        <span className="flex items-center gap-2"><Percent size={12} /> Labor rates &amp; markups</span>
                     </TabsTrigger>
                     <TabsTrigger value="catalog" className={tabTriggerCls}>
                         <span className="flex items-center gap-2"><ClipboardCheck size={12} /> Service catalog</span>
@@ -1264,7 +1264,7 @@ export default function AssetsAndMaterialsPage() {
 
                 {/* ── Labor & pricing: labor rates, markup, sales tax (adminConfig/pricing) ── */}
                 <TabsContent value="catalog" className="m-0">
-                    <ServiceCatalogTab />
+                    <ServiceCatalogTab canEditPricing={canEditUserPay(authUser)} />
                 </TabsContent>
 
                 <Dialog open={trimOpen} onOpenChange={setTrimOpen}>

@@ -31,6 +31,13 @@ export type CatalogService = {
   note?: string;
   capability?: string;
   active?: boolean;
+  /**
+   * Hourly items can bill at one of the Labor rates (Labor rates & markups) instead
+   * of their own price, so an hour of tech time has one price everywhere.
+   */
+  laborRateId?: string | null;
+  /** Runtime only (resolveCatalog): the linked labor rate's name. */
+  linkedRateLabel?: string;
 };
 
 export type EstimatingAssumptions = {
@@ -79,10 +86,10 @@ export const DEFAULT_ASSUMPTIONS: EstimatingAssumptions = {
 
 type Row = [code: string, category: string, name: string, unit: string, low: number, target: number, high: number, material: number, hours: number, other: number, note: string, capability: string];
 const ROWS: Row[] = [
-  ['SVC-004', 'Labor', 'Standard on-site technician', 'hour', 100, 115, 145, 0, 1, 0, 'Per technician; include minimum, travel and complexity', 'Advertised'],
-  ['SVC-005', 'Labor', 'Remote troubleshooting', 'hour', 85, 105, 130, 0, 1, 0, 'Confirm remote support coverage', 'Advertised'],
-  ['SVC-006', 'Labor', 'Advanced network configuration', 'hour', 125, 155, 200, 0, 1, 0, 'Only where qualified engineer available', 'Confirm depth'],
-  ['SVC-007', 'Labor', 'After-hours technician', 'hour', 150, 175, 225, 0, 1, 0, 'Require scheduling and authorization', 'Confirm availability'],
+  ['SVC-004', 'Hourly labor', 'Standard on-site technician', 'hour', 100, 115, 145, 0, 1, 0, 'Per technician; include minimum, travel and complexity', 'Advertised'],
+  ['SVC-005', 'Hourly labor', 'Remote troubleshooting', 'hour', 85, 105, 130, 0, 1, 0, 'Confirm remote support coverage', 'Advertised'],
+  ['SVC-006', 'Hourly labor', 'Advanced network configuration', 'hour', 125, 155, 200, 0, 1, 0, 'Only where qualified engineer available', 'Confirm depth'],
+  ['SVC-007', 'Hourly labor', 'After-hours technician', 'hour', 150, 175, 225, 0, 1, 0, 'Require scheduling and authorization', 'Confirm availability'],
   ['SVC-008', 'Copper', 'CAT5e installed drop', 'drop', 125, 185, 300, 20, 1.2, 8, 'Typical accessible route, termination and basic test', 'Advertised'],
   ['SVC-009', 'Copper', 'CAT6 installed drop', 'drop', 150, 250, 400, 32.5, 1.6, 12.5, 'Define max routed length, access, testing and patch panel', 'Advertised'],
   ['SVC-010', 'Copper', 'CAT6A installed drop', 'drop', 200, 325, 500, 55, 2.1, 15, 'Thicker cable and higher termination effort', 'Advertised'],
@@ -128,8 +135,44 @@ const ROWS: Row[] = [
   ['WST-01', 'Site conditions', 'Cable removal / disposal', 'hour', 90, 125, 190, 5, 1, 10, 'Existing cable removal and approved disposal', 'Operational'],
 ];
 
+/** Monthly support is sold as a Service Plan (Billing), not from site walks. */
+const DEFAULT_OFF = new Set(['SVC-026', 'SVC-027']);
+
 export const DEFAULT_SERVICES: CatalogService[] = ROWS.map(([code, category, name, unit, priceLow, priceTarget, priceHigh, materialCost, techHours, otherCost, note, capability]) =>
-  ({ code, category, name, unit, priceLow, priceTarget, priceHigh, materialCost, techHours, otherCost, note, capability, active: true }));
+  ({ code, category, name, unit, priceLow, priceTarget, priceHigh, materialCost, techHours, otherCost, note, capability, active: !DEFAULT_OFF.has(code) }));
+
+/** Billed by the hour (hour, tech-hour…) — these can follow a labor rate. */
+export const isHourlyUnit = (unit: string) => /hour|\bhr\b/i.test(unit || '');
+
+type RateLike = { id: string; label: string; rate: number; unit: 'hour' | 'flat' };
+
+/** Catalog with linked hourly items priced at their labor rate. */
+export function resolveCatalog(services: CatalogService[], laborRates: RateLike[]): CatalogService[] {
+  const rates = new Map(laborRates.filter(r => r.unit === 'hour' && r.rate > 0).map(r => [r.id, r]));
+  return services.map(s => {
+    const r = s.laborRateId ? rates.get(s.laborRateId) : undefined;
+    return r ? { ...s, priceLow: r.rate, priceTarget: r.rate, priceHigh: r.rate, linkedRateLabel: r.label } : s;
+  });
+}
+
+/** Which labor rate an hourly catalog item most likely is, by name. */
+const RATE_HINTS: [RegExp, RegExp][] = [
+  [/after.?hours/i, /after.?hours|overtime|emergency/i],
+  [/remote/i, /remote/i],
+  [/advanced|engineer/i, /advanced|engineer|senior|config/i],
+  [/travel/i, /travel|drive/i],
+  [/standard|on.?site/i, /standard|on.?site|field|technician|labor/i],
+];
+export function suggestLaborRate(s: Pick<CatalogService, 'name' | 'unit'>, laborRates: RateLike[]): RateLike | null {
+  if (!isHourlyUnit(s.unit)) return null;
+  const hourly = laborRates.filter(r => r.unit === 'hour');
+  for (const [item, rate] of RATE_HINTS) {
+    if (!item.test(s.name)) continue;
+    const hits = hourly.filter(r => rate.test(r.label));
+    return hits.length === 1 ? hits[0] : null;
+  }
+  return null;
+}
 
 const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 

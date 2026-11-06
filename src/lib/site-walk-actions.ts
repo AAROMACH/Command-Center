@@ -1,23 +1,32 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { deleteDoc, doc, getDoc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
+import { usePricingSettings } from '@/hooks/use-billing';
+import type { LaborRate } from './billing';
 import { createDocId } from './generateId';
 import { ID_PREFIXES } from './constants';
 import { priceTotals, toQuoteLines, type PlanDiscount, type PriceLine } from './price-lines';
 import { syncLeadOnQuoteCreated } from './crm-actions';
 import { NotificationService } from './notification-service';
 import {
-  DEFAULT_ASSUMPTIONS, DEFAULT_SERVICES, buildWalkLines, emptyConditions, marginStatus, priceLine, quoteTermsText, walkScopeText, walkTotals,
+  DEFAULT_ASSUMPTIONS, DEFAULT_SERVICES, buildWalkLines, resolveCatalog, emptyConditions, marginStatus, priceLine, quoteTermsText, walkScopeText, walkTotals,
   type CatalogService, type EstimatingSettings, type PricedLine, type SiteWalk,
 } from './estimating';
 import type { Lead, Quote } from './types';
 
 const SETTINGS_DOC = () => doc(db, 'adminConfig', 'estimating');
 
-/** Catalog + assumptions (Assets & Materials → Service catalog). Defaults = the v3 workbook. */
-export function useEstimatingSettings(): EstimatingSettings & { loading: boolean; exists: boolean; catalog: Map<string, CatalogService> } {
+/**
+ * Catalog + assumptions (Assets & Materials → Service catalog). Defaults = the
+ * v3 workbook. `services` / `catalog` have hourly items that are linked to a
+ * labor rate priced at that rate; `rawServices` is the catalog as saved.
+ */
+export function useEstimatingSettings(): EstimatingSettings & {
+  loading: boolean; exists: boolean; catalog: Map<string, CatalogService>; rawServices: CatalogService[]; laborRates: LaborRate[];
+} {
+  const { settings: pricing } = usePricingSettings();
   const [state, setState] = useState<EstimatingSettings & { loading: boolean; exists: boolean }>({
     assumptions: DEFAULT_ASSUMPTIONS, services: DEFAULT_SERVICES, loading: true, exists: false,
   });
@@ -33,8 +42,9 @@ export function useEstimatingSettings(): EstimatingSettings & { loading: boolean
       loading: false, exists: snap.exists(),
     });
   }, () => setState(s => ({ ...s, loading: false }))), []);
-  const catalog = new Map(state.services.map(s => [s.code, s]));
-  return { ...state, catalog };
+  const services = useMemo(() => resolveCatalog(state.services, pricing.laborRates), [state.services, pricing.laborRates]);
+  const catalog = useMemo(() => new Map(services.map(s => [s.code, s])), [services]);
+  return { ...state, services, rawServices: state.services, laborRates: pricing.laborRates, catalog };
 }
 
 export const saveEstimatingSettings = (s: EstimatingSettings) =>

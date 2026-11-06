@@ -187,7 +187,7 @@ export function SiteWalkReview({ walk, onClose, onQuoteCreated }: {
                     {editable ? <Input type="number" inputMode="decimal" value={l.qty} onChange={e => setLine(l.id, { qty: parseFloat(e.target.value) || 0 })} className="h-8 w-20 ml-auto text-right font-mono" /> : <span className="font-mono">{l.qty}</span>}
                   </td>
                   <td className="px-2 py-2 text-right font-mono text-text-muted whitespace-nowrap" title="Low – target – high">
-                    {l.service ? <>{fmt(l.service.priceTarget)}<span className="block text-[11px]">{fmt(l.service.priceLow)}–{fmt(l.service.priceHigh)}</span></> : '—'}
+                    {l.service ? <>{fmt(l.service.priceTarget)}<span className="block text-[11px]">{l.service.linkedRateLabel ? `Labor rate: ${l.service.linkedRateLabel}` : `${fmt(l.service.priceLow)}–${fmt(l.service.priceHigh)}`}</span></> : '—'}
                   </td>
                   <td className="px-2 py-2 text-right">
                     {editable ? <Input type="number" step="0.05" inputMode="decimal" value={l.priceFactor ?? 1} onChange={e => setLine(l.id, { priceFactor: parseFloat(e.target.value) || 1 })} className="h-8 w-20 ml-auto text-right font-mono" /> : <span className="font-mono">{l.priceFactor ?? 1}</span>}

@@ -116,8 +116,11 @@ export function PricingTab({ settings, canEdit, materials }: { settings: Pricing
         {/* Labor rates */}
         <Card className="bg-bg-secondary border-border-main">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Labor &amp; service rates</CardTitle>
-            <CardDescription className="text-xs">Picked on quote and invoice labor lines. Plan labor discounts apply to these.</CardDescription>
+            <CardTitle className="text-sm">Labor rates</CardTitle>
+            <CardDescription className="text-xs">
+              What an hour of tech time (or a flat labor charge) bills at — picked on quote and invoice labor lines; job invoices use the first hourly rate × time on site. Plan labor discounts apply to these.
+              Packaged per-drop / per-device prices for site walks are in the Service catalog tab; its hourly items can follow these rates.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {draft.laborRates.length === 0 && <p className="text-[12px] text-text-muted py-2">No rates yet — add your labor and service charges.</p>}

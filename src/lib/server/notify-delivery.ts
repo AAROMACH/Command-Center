@@ -84,6 +84,16 @@ export const emailConfigured = () => !!process.env.RESEND_API_KEY;
  *  - notifications: staff alerts, digests, tests   → no reply address
  */
 export type EmailKind = 'billing' | 'support' | 'notifications';
+
+/** Where Resend says an email is: sent → delivered, or bounced / complained / delayed. */
+export async function emailDeliveryStatus(emailId: string): Promise<string | null> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey || !emailId) return null;
+  const r = await fetch(`https://api.resend.com/emails/${encodeURIComponent(emailId)}`, { headers: { Authorization: `Bearer ${apiKey}` } }).catch(() => null);
+  if (!r?.ok) return null;
+  const d = await r.json().catch(() => ({})) as { last_event?: string };
+  return d.last_event || null;
+}
 export const EMAIL_SENDERS: Record<EmailKind, { fromEnv: string; from: string; replyToEnv?: string; replyTo?: string }> = {
   billing: { fromEnv: 'EMAIL_FROM_BILLING', from: 'AAROMACH Billing <billing@mail.aaromach.com>', replyToEnv: 'EMAIL_REPLY_TO_BILLING', replyTo: 'support@aaromach.com' },
   support: { fromEnv: 'EMAIL_FROM_SUPPORT', from: 'AAROMACH Support <support@mail.aaromach.com>', replyToEnv: 'EMAIL_REPLY_TO_SUPPORT', replyTo: 'support@aaromach.com' },
@@ -103,7 +113,7 @@ export function emailSender(kind: EmailKind): { from: string; replyTo: string | 
  * retry-after); other errors throw. `idempotencyKey` (e.g. `invoice/<id>/<n>`)
  * keeps a retried request from sending twice.
  */
-export async function sendEmail(to: string, subject: string, body: string, opts: { idempotencyKey?: string; kind?: EmailKind } = {}): Promise<'sent' | 'skipped'> {
+export async function sendEmail(to: string, subject: string, body: string, opts: { idempotencyKey?: string; kind?: EmailKind; onSent?: (emailId: string | null) => void } = {}): Promise<'sent' | 'skipped'> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn('[notify] RESEND_API_KEY not set — email skipped');
@@ -126,6 +136,7 @@ export async function sendEmail(to: string, subject: string, body: string, opts:
     const { data, error, headers } = await resend.emails.send(email, opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey.slice(0, 256) } : undefined);
     if (!error) {
       console.info(`[notify] email sent via Resend id=${data?.id || '?'}`);
+      opts.onSent?.(data?.id || null);
       await recordHealth('resend', true);
       return 'sent';
     }

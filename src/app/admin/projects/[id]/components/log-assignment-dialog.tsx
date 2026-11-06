@@ -11,6 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { isTech } from '@/lib/permissions';
+import { isInactiveTechnician } from '@/lib/utils';
 
 type LogAssignmentDialogProps = {
     isOpen: boolean;
@@ -106,7 +108,8 @@ export function LogAssignmentDialog({ isOpen, setIsOpen, technicians, projectId,
                                     <SelectValue placeholder="Select technician" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {technicians.map(tech => (
+                                    {/* Field staff only (techs and PMs), active — no admins, clients or sales. */}
+                                    {technicians.filter(t => isTech(t as any) && !isInactiveTechnician(t)).map(tech => (
                                         <SelectItem key={tech.id} value={tech.id} className="text-xs font-bold">{tech.name}</SelectItem>
                                     ))}
                                 </SelectContent>

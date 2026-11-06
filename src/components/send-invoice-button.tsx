@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-context';
 import { ApprovalPanel } from '@/components/approval-panel';
 import { approveInvoice, canApproveInvoices, isApproved, requestInvoiceApproval, returnInvoice } from '@/lib/approvals';
@@ -61,12 +62,16 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
   };
   const lineAmt = (l: Invoice['lineItems'][number]) => (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0) * (l.category === 'labor' && (l as any).multiplier ? (l as any).multiplier : 1);
 
+  // Every send of this invoice with Resend's delivery status — proof it went out.
+  const [sendLog, setSendLog] = useState<{ at: string; to: string; by: string; emailId: string | null; status: string }[]>([]);
+  const sentRecently = !!invoice.sentAt && Date.now() - Date.parse(invoice.sentAt) < 10 * 60000;
   const start = async () => {
     setOpen(true); setLink(''); setLoading(true);
     try {
       const r = await fetch(`/api/invoices/send?invoiceId=${encodeURIComponent(invoice.id)}`, { headers: { Authorization: `Bearer ${await token()}` } });
       const d = await r.json();
       setTo(d.to || '');
+      setSendLog(Array.isArray(d.sendLog) ? d.sendLog : []);
     } catch { /* leave blank to type */ }
     setLoading(false);
   };
@@ -79,7 +84,7 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Send failed');
-      if (d.emailed) { toast({ title: 'Invoice sent', description: `Emailed to ${d.to}.` }); setOpen(false); }
+      if (d.emailed) { toast({ title: 'Invoice sent', description: `Emailed to ${d.to}. Reopen Send to check it was delivered.` }); setOpen(false); }
       else { setLink(d.link); toast({ variant: 'destructive', title: 'Not emailed', description: `${d.reason} Copy the link below to send it yourself.` }); }
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Could not send', description: e.message });
@@ -158,9 +163,27 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
               <Button size="sm" variant="outline" onClick={() => { navigator.clipboard?.writeText(link); toast({ title: 'Link copied' }); }}><Copy size={13} /></Button>
             </div>
           )}
+          {sendLog.length > 0 && (
+            <div className="rounded-lg border border-border-sub p-2.5 space-y-1 text-[12px]">
+              <p className="font-semibold text-text-primary">Sent before</p>
+              {sendLog.slice(-5).reverse().map((e, i) => (
+                <div key={`${e.at}-${i}`} className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-text-secondary">{new Date(e.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} · {e.to} · {e.by}</span>
+                  <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                    e.status === 'delivered' || e.status === 'opened' || e.status === 'clicked' ? 'border-text-green/40 text-text-green'
+                      : e.status === 'bounced' || e.status === 'complained' ? 'border-brand-red/40 text-brand-red'
+                      : 'border-border-sub text-text-muted')}>
+                    {e.status === 'sent' ? 'Sent — not confirmed yet' : e.status}
+                  </span>
+                </div>
+              ))}
+              {sendLog.some(e => e.status === 'bounced') && <p className="text-brand-red">A bounce means the address didn’t accept it — check the email, then send again.</p>}
+            </div>
+          )}
+          {sentRecently && <p className="text-[12px] text-accent-gold">Sent less than 10 minutes ago — wait before sending again so the client doesn’t get duplicates.</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={send} disabled={loading || !to.trim()}>{loading && <Loader2 size={13} className="mr-1.5 animate-spin" />} Send</Button>
+            <Button onClick={send} disabled={loading || !to.trim() || sentRecently}>{loading && <Loader2 size={13} className="mr-1.5 animate-spin" />} Send</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

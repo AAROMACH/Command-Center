@@ -984,6 +984,9 @@ export type Invoice = {
   approval?: DocApproval | null;
   /** Who made it — set for Sales-made drafts, which only they may edit. */
   createdBy?: string;
+  /** Each email send (server-written) with Resend's delivery status. */
+  sendLog?: { at: string; to: string; by: string; emailId: string | null; status: string }[];
+  sentTo?: string | null;
 };
 
 /** Internal sign-off before a quote or invoice goes to the client (lib/approvals). */

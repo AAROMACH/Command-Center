@@ -155,9 +155,10 @@ export function IntegrationsPanel() {
               )}
               <div className="flex flex-wrap gap-1.5 pl-8">
                 {i.vars.map(x => (
-                  <span key={x.name} className={cn('rounded border px-1.5 py-0.5 font-mono text-[10px]', x.set ? 'border-text-green/30 text-text-green' : 'border-border-sub text-text-muted')}
-                    title={x.set ? 'Set in hosting' : 'Not set'}>
-                    {x.set ? '✓' : '—'} {x.name}{x.secret ? ' (secret)' : ''}
+                  <span key={x.name} className={cn('rounded border px-1.5 py-0.5 font-mono text-[10px]',
+                    x.set ? 'border-text-green/30 text-text-green' : x.optional ? 'border-border-sub text-text-muted' : 'border-brand-red/40 text-brand-red')}
+                    title={x.set ? 'Set in hosting' : x.optional ? 'Not set — the built-in default is used' : 'Required — not set in hosting'}>
+                    {x.set ? '✓' : x.optional ? '○' : '✕'} {x.name}{x.secret ? ' (secret)' : ''}{!x.set && x.optional ? ' · default' : ''}{!x.set && !x.optional ? ' · missing' : ''}
                   </span>
                 ))}
               </div>

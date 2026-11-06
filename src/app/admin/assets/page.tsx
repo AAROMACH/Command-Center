@@ -5,12 +5,9 @@ import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { db, storage } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, updateDoc, setDoc, deleteField, doc, writeBatch } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, setDoc, deleteField, doc } from 'firebase/firestore';
 import { ref as storageRef, deleteObject } from 'firebase/storage';
 import { uploadFile } from '@/lib/upload';
-import { STANDARD_MATERIALS, isRetiredStandard } from '@/lib/standard-materials';
-import { RECOMMENDED_MARKUPS, STANDARD_MATERIAL_COSTS } from '@/lib/standard-material-prices';
-import { savePricing } from '@/lib/billing-actions';
 import type { Asset, AssetCategory, Material, AssetAssignment, Technician } from '@/lib/types';
 import { isClient } from '@/lib/permissions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -26,15 +23,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
     Package, Plus, Car, Wrench, Laptop, Archive, Shield,
     User, MapPin, Calendar, AlertTriangle, ChevronRight, Edit2, CheckCircle,
-    DollarSign, Tag, RotateCcw, XCircle, Hammer, History, ArrowRightLeft,
-    ShoppingCart, Boxes, ClipboardList, Loader2, ImagePlus, X,
-Percent, ClipboardCheck, Scissors, } from 'lucide-react';
+    Tag, RotateCcw, XCircle, Hammer, History, ArrowRightLeft,
+    ShoppingCart, Boxes, ClipboardList, ImagePlus, X,
+Percent, ClipboardCheck, } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/page-header';
 import { PricingTab } from './pricing-tab';
 import { ServiceCatalogTab } from './service-catalog-tab';
 import { usePricingSettings } from '@/hooks/use-billing';
-import { canonicalCategory, localDay, markupFor, roundCents, type PricingSettings } from '@/lib/billing';
+import { canonicalCategory, localDay, markupFor } from '@/lib/billing';
 import { materialPrice } from '@/lib/price-lines';
 import { canEditUserPay } from '@/lib/profile-permissions';
 import { useAuth } from '@/contexts/auth-context';
@@ -129,7 +126,6 @@ const EMPTY_MAT_FORM = {
 };
 
 const MAX_MAT_IMAGE = 5 * 1024 * 1024; // matches storage.rules (materialImages)
-const SUGGESTED_COST_NOTE = 'Suggested contractor cost — check against your supplier invoice';
 
 /** Square material thumbnail: the uploaded image, or a neutral placeholder. */
 function MaterialThumb({ url, name, size = 40, className }: { url?: string; name: string; size?: number; className?: string }) {
@@ -527,68 +523,6 @@ export default function AssetsAndMaterialsPage() {
 
     // ── Material CRUD ──────────────────────────────────────────────────────
 
-    // One-time starter list (lib/standard-materials): names, categories and
-    // units at $0 cost, priced from each category's markup once a cost is set.
-    // Skips names already in the price book, so it's safe to click again.
-    // Trim: standard items we've retired as too obscure (lib/standard-materials
-    // RETIRED_STANDARD_NAMES) that are still active here. Marked Inactive, not
-    // deleted — hidden from pickers, kept on old quotes, reversible.
-    const trimCandidates = useMemo(() => materials.filter(m => m.status !== 'inactive' && isRetiredStandard(m.name))
-        .sort((a, b) => (a.category || '').localeCompare(b.category || '') || a.name.localeCompare(b.name)), [materials]);
-    const [trimOpen, setTrimOpen] = useState(false);
-    const [trimPick, setTrimPick] = useState<Set<string>>(new Set());
-    const [trimming, setTrimming] = useState(false);
-    const openTrim = () => { setTrimPick(new Set(trimCandidates.map(m => m.id))); setTrimOpen(true); };
-    const doTrim = async () => {
-        const ids = [...trimPick];
-        if (!ids.length) return;
-        setTrimming(true);
-        try {
-            const now = new Date().toISOString();
-            for (let i = 0; i < ids.length; i += 400) {
-                const batch = writeBatch(db);
-                ids.slice(i, i + 400).forEach(id => batch.update(doc(db, 'materials', id), { status: 'inactive', updatedAt: now }));
-                await batch.commit();
-            }
-            toast({ title: 'Price book trimmed', description: `${ids.length} materials marked inactive. Filter by Inactive to bring any back.` });
-            setTrimOpen(false);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Could not trim', description: e.message });
-        } finally { setTrimming(false); }
-    };
-
-    const [seeding, setSeeding] = useState(false);
-    const loadStandardMaterials = async () => {
-        const have = new Set(materials.map(m => (m.name || '').trim().toLowerCase()));
-        const toAdd = STANDARD_MATERIALS.filter(m => !have.has(m.name.toLowerCase()));
-        if (!toAdd.length) { toast({ title: 'Already loaded', description: 'Every standard material is already in your price book.' }); return; }
-        if (!confirm(`Add ${toAdd.length} standard low-voltage materials with suggested contractor costs? Sell prices follow each category's markup. Names already in your price book are skipped.`)) return;
-        setSeeding(true);
-        try {
-            const now = new Date().toISOString();
-            for (let i = 0; i < toAdd.length; i += 400) {
-                const batch = writeBatch(db);
-                toAdd.slice(i, i + 400).forEach(m => {
-                    const cost = STANDARD_MATERIAL_COSTS[m.name] ?? 0;
-                    const markup = markupFor(m.category, pricing);
-                    batch.set(doc(collection(db, 'materials')), {
-                        name: m.name, category: m.category, unitType: m.unitType,
-                        ...(m.description ? { description: m.description } : {}),
-                        standardCost: cost, billablePrice: roundCents(cost * (1 + markup / 100)),
-                        markupPercentage: markup, priceOverride: false,
-                        taxable: true, status: 'active', notes: cost ? SUGGESTED_COST_NOTE : 'Standard list — add cost', createdAt: now, updatedAt: now,
-                    });
-                });
-                await batch.commit();
-            }
-            toast({ title: 'Standard materials added', description: `${toAdd.length} materials added with suggested costs. Check them against your supplier invoices.` });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Could not add materials', description: e.message });
-        } finally {
-            setSeeding(false);
-        }
-    };
-
     const resetMatImage = () => { setMatImageFile(null); setMatImagePreview(''); };
 
     const closeMatForm = () => {
@@ -611,70 +545,6 @@ export default function AssetsAndMaterialsPage() {
         }
         setMatImageFile(file);
         setMatImagePreview(URL.createObjectURL(file));
-    };
-
-    // Fills suggested costs on standard items still at $0 (never touches a
-    // price set by hand) and brings the price book's category markups up to
-    // the recommended ones where they're still at the untouched 20% default.
-    const [fillingPrices, setFillingPrices] = useState(false);
-    const fillSuggestedPrices = async () => {
-        const toPrice = materials.filter(m =>
-            !(m.standardCost > 0) && !(m.priceOverride === true || (m.priceOverride === undefined && (m.billablePrice || 0) > 0))
-            && STANDARD_MATERIAL_COSTS[m.name] != null);
-        const canSetMarkups = canEditUserPay(authUser);
-        const nextCategories = [...pricing.categories];
-        const markupChanges: string[] = [];
-        for (const [name, pct] of Object.entries(RECOMMENDED_MARKUPS)) {
-            const i = nextCategories.findIndex(c => c.name.toLowerCase() === name.toLowerCase());
-            if (i === -1) { nextCategories.push({ id: `cat-${Date.now().toString(36)}-${markupChanges.length}`, name, markupPct: pct }); markupChanges.push(`${name} ${pct}%`); }
-            else if (nextCategories[i].markupPct === 20 && pct !== 20) { nextCategories[i] = { ...nextCategories[i], markupPct: pct }; markupChanges.push(`${name} 20% → ${pct}%`); }
-        }
-        const doMarkups = canSetMarkups && markupChanges.length > 0;
-        if (!toPrice.length && !doMarkups) {
-            toast({ title: 'Nothing to fill', description: 'Every standard material already has a cost, and the category markups are set.' });
-            return;
-        }
-        const lines = [
-            toPrice.length ? `Fill suggested costs on ${toPrice.length} standard materials still at $0.` : '',
-            doMarkups ? `Set category markups: ${markupChanges.join(', ')}.` : '',
-            'Anything you priced by hand is left alone.',
-        ].filter(Boolean).join('\n\n');
-        if (!confirm(lines)) return;
-        setFillingPrices(true);
-        try {
-            let settings: PricingSettings = pricing;
-            if (doMarkups) {
-                settings = { ...pricing, categories: nextCategories };
-                await savePricing(settings);
-            }
-            const now = new Date().toISOString();
-            for (let i = 0; i < toPrice.length; i += 400) {
-                const batch = writeBatch(db);
-                toPrice.slice(i, i + 400).forEach(m => {
-                    const cost = STANDARD_MATERIAL_COSTS[m.name];
-                    const markup = markupFor(m.category, settings);
-                    batch.update(doc(db, 'materials', m.id), {
-                        standardCost: cost, billablePrice: roundCents(cost * (1 + markup / 100)),
-                        markupPercentage: markup, priceOverride: false,
-                        ...(m.notes === 'Standard list — add cost' || !m.notes ? { notes: SUGGESTED_COST_NOTE } : {}),
-                        updatedAt: now,
-                    });
-                });
-                await batch.commit();
-            }
-            toast({
-                title: 'Suggested prices filled',
-                description: [
-                    toPrice.length ? `${toPrice.length} materials priced` : '',
-                    doMarkups ? 'category markups updated' : '',
-                    !canSetMarkups && markupChanges.length ? 'markups need a billing admin to change' : '',
-                ].filter(Boolean).join(' · '),
-            });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Could not fill prices', description: e.message });
-        } finally {
-            setFillingPrices(false);
-        }
     };
 
     const openAddMaterial = () => {
@@ -825,17 +695,6 @@ export default function AssetsAndMaterialsPage() {
                         </Button>
                     ) : mainTab === 'materials' && (
                         <>
-                            <Button size="sm" variant="outline" className="h-9" onClick={fillSuggestedPrices} disabled={fillingPrices}>
-                                {fillingPrices ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : <DollarSign size={14} className="mr-1.5" />} Fill suggested prices
-                            </Button>
-                            {trimCandidates.length > 0 && (
-                                <Button size="sm" variant="outline" className="h-9" onClick={openTrim}>
-                                    <Scissors size={14} className="mr-1.5" /> Trim price book ({trimCandidates.length})
-                                </Button>
-                            )}
-                            <Button size="sm" variant="outline" className="h-9" onClick={loadStandardMaterials} disabled={seeding}>
-                                {seeding ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : <ShoppingCart size={14} className="mr-1.5" />} Load standard materials
-                            </Button>
                             <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white" onClick={openAddMaterial}>
                                 <Plus size={14} className="mr-1.5" /> Add material
                             </Button>
@@ -866,7 +725,7 @@ export default function AssetsAndMaterialsPage() {
                         <span className="flex items-center gap-2"><ShoppingCart size={12} /> Materials ({materials.filter(m => m.status === 'active').length})</span>
                     </TabsTrigger>
                     <TabsTrigger value="pricing" className={tabTriggerCls}>
-                        <span className="flex items-center gap-2"><Percent size={12} /> Rates &amp; markups</span>
+                        <span className="flex items-center gap-2"><Percent size={12} /> Labor rates &amp; markups</span>
                     </TabsTrigger>
                     <TabsTrigger value="catalog" className={tabTriggerCls}>
                         <span className="flex items-center gap-2"><ClipboardCheck size={12} /> Service catalog</span>
@@ -1264,44 +1123,8 @@ export default function AssetsAndMaterialsPage() {
 
                 {/* ── Labor & pricing: labor rates, markup, sales tax (adminConfig/pricing) ── */}
                 <TabsContent value="catalog" className="m-0">
-                    <ServiceCatalogTab />
+                    <ServiceCatalogTab canEditPricing={canEditUserPay(authUser)} />
                 </TabsContent>
-
-                <Dialog open={trimOpen} onOpenChange={setTrimOpen}>
-                    <DialogContent className="bg-bg-elevated border-border-main sm:max-w-xl max-h-[88vh] flex flex-col">
-                        <DialogHeader className="text-left">
-                            <DialogTitle>Trim price book</DialogTitle>
-                            <DialogDescription>
-                                Standard items we don&apos;t really sell or install. Checked ones are marked Inactive — hidden from quotes, invoices and project parts, still on old quotes, and you can turn any back on from the Inactive filter.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="flex items-center gap-3 text-[12px]">
-                            <button type="button" className="text-brand-red hover:underline" onClick={() => setTrimPick(new Set(trimCandidates.map(m => m.id)))}>Select all</button>
-                            <button type="button" className="text-text-muted hover:underline" onClick={() => setTrimPick(new Set())}>Clear</button>
-                            <span className="ml-auto text-text-muted">{trimPick.size} of {trimCandidates.length} selected</span>
-                        </div>
-                        <div className="flex-1 overflow-y-auto space-y-0.5 -mx-1 px-1">
-                            {trimCandidates.map((m, i) => (
-                                <div key={m.id}>
-                                    {(i === 0 || trimCandidates[i - 1].category !== m.category) && (
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted pt-2 pb-1">{m.category}</p>
-                                    )}
-                                    <label className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-bg-tertiary cursor-pointer text-[13px]">
-                                        <input type="checkbox" className="accent-brand-red h-4 w-4" checked={trimPick.has(m.id)}
-                                            onChange={e => setTrimPick(p => { const n = new Set(p); if (e.target.checked) n.add(m.id); else n.delete(m.id); return n; })} />
-                                        <span className="flex-1 min-w-0">{m.name}</span>
-                                    </label>
-                                </div>
-                            ))}
-                        </div>
-                        <DialogFooter className="gap-2">
-                            <Button variant="outline" onClick={() => setTrimOpen(false)}>Cancel</Button>
-                            <Button className="bg-brand-red hover:bg-brand-red/90 text-white" disabled={!trimPick.size || trimming} onClick={doTrim}>
-                                {trimming && <Loader2 size={14} className="mr-1.5 animate-spin" />} Mark {trimPick.size} inactive
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
 
                 <TabsContent value="pricing" className="m-0">
                     <PricingTab settings={pricing} canEdit={canEditUserPay(authUser)} materials={materials} />

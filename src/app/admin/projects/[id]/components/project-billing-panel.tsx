@@ -9,6 +9,7 @@ import { db, auth } from '@/lib/firebase';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { usePricingSettings } from '@/hooks/use-billing';
 import { materialPrice } from '@/lib/price-lines';
+import { savePriceToBook } from '@/lib/price-book-actions';
 import { addProjectPart, createProjectInvoice, linkQuoteToProject, removeProjectPart, unlinkQuote } from '@/lib/project-billing';
 import { canEditQuote, quoteDiscount, quoteToEditor, saveQuoteEdits } from '@/lib/quote-actions';
 import { deleteInvoice, invoiceToEditor, saveInvoiceFromEditor } from '@/lib/invoice-actions';
@@ -129,6 +130,8 @@ export function ProjectBillingPanel({ project }: { project: Project }) {
     const [partCategory, setPartCategory] = useState('all');
     const [partId, setPartId] = useState('');
     const [qty, setQty] = useState('1');
+    const [price, setPrice] = useState('');
+    const [savePrice, setSavePrice] = useState(false);
     const partChoices = useMemo(() => {
         const words = partSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
         return materials.filter(m => m.status !== 'inactive'
@@ -138,13 +141,22 @@ export function ProjectBillingPanel({ project }: { project: Project }) {
     }, [materials, partSearch, partCategory]);
     const partCategories = useMemo(() => [...new Set(materials.filter(m => m.status !== 'inactive').map(m => m.category || 'Other'))].sort(), [materials]);
     const chosen = materials.find(m => m.id === partId);
+    const bookPrice = chosen ? materialPrice(chosen, pricing) : 0;
+    const unitPrice = price.trim() === '' ? bookPrice : Number(price) || 0;
+    const priceChanged = !!chosen && Math.abs(unitPrice - bookPrice) >= 0.005;
+    const pickPart = (id: string) => { setPartId(id); setPrice(''); setSavePrice(false); };
     const doAddPart = async () => {
         if (!chosen) return;
         setBusy(true);
         try {
-            await addProjectPart(project, chosen, Number(qty), by, pricing);
-            toast({ title: 'Part added', description: quote ? `Added to quote ${quote.quoteNumber} and billed on the invoice.` : 'Added to project costs. Link a quote to bill it.' });
-            setPartId(''); setQty('1'); setPartSearch('');
+            await addProjectPart(project, chosen, Number(qty), by, pricing, priceChanged ? unitPrice : undefined);
+            let booked = false;
+            if (priceChanged && savePrice && isSuperAdmin(user)) {
+                try { await savePriceToBook(`mat:${chosen.id}`, unitPrice, pricing); booked = true; }
+                catch (e: any) { toast({ variant: 'destructive', title: 'Part added, but the price book wasn’t updated', description: e.message }); }
+            }
+            toast({ title: 'Part added', description: `${quote ? `Added to quote ${quote.quoteNumber} and billed on the invoice.` : 'Added to project costs. Link a quote to bill it.'}${booked ? ` Price book now ${fmt(unitPrice)}/${chosen.unitType}.` : ''}` });
+            setPartId(''); setQty('1'); setPartSearch(''); setPrice(''); setSavePrice(false);
         } catch (e: any) { toast({ variant: 'destructive', title: 'Could not add part', description: e.message }); }
         finally { setBusy(false); }
     };
@@ -230,7 +242,7 @@ export function ProjectBillingPanel({ project }: { project: Project }) {
                     <div className="space-y-1">
                         {parts.map(p => (
                             <div key={p.id} className="flex items-center justify-between gap-3 text-[12px]">
-                                <span className="min-w-0 break-words">{p.quantity} × {p.name}</span>
+                                <span className="min-w-0 break-words">{p.quantity}{p.unit ? ` ${p.unit}` : ''} × {p.name}</span>
                                 <span className="flex items-center gap-2 shrink-0 font-mono">
                                     <span className="text-text-muted">cost {fmt(p.quantity * p.unitCost)}</span>
                                     <span>bill {fmt(p.quantity * p.unitPrice)}</span>
@@ -312,7 +324,7 @@ export function ProjectBillingPanel({ project }: { project: Project }) {
                     )}
                     <div className="max-h-[40svh] overflow-y-auto space-y-1">
                         {partChoices.map(m => (
-                            <button key={m.id} type="button" onClick={() => setPartId(m.id)}
+                            <button key={m.id} type="button" onClick={() => pickPart(m.id)}
                                 className={cn('w-full text-left rounded-md border px-2.5 py-2 text-[12px] flex justify-between gap-2', partId === m.id ? 'border-brand-red bg-brand-red/5' : 'border-border-sub hover:bg-bg-tertiary')}>
                                 <span className="min-w-0"><span className="font-semibold">{m.name}</span> <span className="text-text-muted">· {m.category}</span></span>
                                 <span className="font-mono shrink-0">{fmt(materialPrice(m, pricing))}/{m.unitType}</span>
@@ -320,6 +332,20 @@ export function ProjectBillingPanel({ project }: { project: Project }) {
                         ))}
                         {!partChoices.length && <p className="text-[12px] text-text-muted py-4 text-center">No materials match. Add them in Assets & Materials.</p>}
                     </div>
+                    {chosen && (
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-border-sub bg-bg-tertiary/40 px-2.5 py-2 text-[12px]">
+                            <label className="flex items-center gap-2">Price / {chosen.unitType}
+                                <Input type="number" inputMode="decimal" min={0} step="0.01" value={price} placeholder={bookPrice.toFixed(2)} onChange={e => setPrice(e.target.value)} className="h-8 w-28 font-mono" />
+                            </label>
+                            {priceChanged && <span className="text-text-muted">Price book: {fmt(bookPrice)}</span>}
+                            {priceChanged && isSuperAdmin(user) && (
+                                <label className="flex items-center gap-1.5 cursor-pointer text-accent-gold">
+                                    <input type="checkbox" className="accent-brand-red" checked={savePrice} onChange={e => setSavePrice(e.target.checked)} />
+                                    Also make {fmt(unitPrice)} the price book price
+                                </label>
+                            )}
+                        </div>
+                    )}
                     <DialogFooter className="flex-row items-center gap-2 sm:justify-between">
                         <label className="flex items-center gap-2 text-[12px]">Qty
                             <Input type="number" inputMode="decimal" min={0} value={qty} onChange={e => setQty(e.target.value)} className="h-9 w-24" />
@@ -327,7 +353,7 @@ export function ProjectBillingPanel({ project }: { project: Project }) {
                         <div className="flex gap-2">
                             <Button variant="outline" onClick={() => setPartOpen(false)}>Done</Button>
                             <Button onClick={doAddPart} disabled={!chosen || busy}>
-                                {busy && <Loader2 size={13} className="mr-1 animate-spin" />} Add{chosen ? ` · ${fmt(materialPrice(chosen, pricing) * (Number(qty) || 0))}` : ''}
+                                {busy && <Loader2 size={13} className="mr-1 animate-spin" />} Add{chosen ? ` · ${fmt(unitPrice * (Number(qty) || 0))}` : ''}
                             </Button>
                         </div>
                     </DialogFooter>

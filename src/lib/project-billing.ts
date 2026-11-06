@@ -3,9 +3,9 @@ import { readProjectParts, writeProjectParts } from './project-parts';
 import { db } from './firebase';
 import { createDocId } from './generateId';
 import { ID_PREFIXES } from './constants';
-import { fromQuoteLines, materialPrice, priceTotals, toInvoiceLines, toQuoteLines, type PlanDiscount, type PriceLine } from './price-lines';
+import { fromQuoteLines, materialPrice, priceTotals, toInvoiceLines, toQuoteLines, unitLabel, type PlanDiscount, type PriceLine } from './price-lines';
 import { quoteEstimate } from './project-economics';
-import type { PricingSettings } from './billing';
+import { roundCents, type PricingSettings } from './billing';
 import type { Invoice, Material, Project, ProjectPart, Quote } from './types';
 
 /**
@@ -51,13 +51,14 @@ function quoteTotalsPatch(quote: QuoteWithDiscount, lines: PriceLine[], pricing:
  * (its cost counts in project costs) and, when a quote is linked, added to the
  * quote as a billed line — the budget follows the new quote total.
  */
-export async function addProjectPart(project: Project, material: Material, quantity: number, by: string, pricing: PricingSettings): Promise<void> {
+export async function addProjectPart(project: Project, material: Material, quantity: number, by: string, pricing: PricingSettings, priceOverride?: number): Promise<void> {
   const qty = Math.max(0, Number(quantity) || 0);
   if (!qty) throw new Error('Enter a quantity.');
-  const unitPrice = materialPrice(material, pricing);
+  const unitPrice = priceOverride != null && Number.isFinite(priceOverride) ? roundCents(priceOverride) : materialPrice(material, pricing);
+  const unit = unitLabel(material.unitType);
   const part: ProjectPart = {
     id: genLineId(), materialId: material.id, name: material.name, quantity: qty,
-    unitCost: Number(material.standardCost) || 0, unitPrice, taxable: material.taxable !== false,
+    unitCost: Number(material.standardCost) || 0, unitPrice, taxable: material.taxable !== false, unit,
     quoteLineId: null, addedBy: by, addedAt: new Date().toISOString(),
   };
   const patch: Record<string, unknown> = {};
@@ -68,7 +69,7 @@ export async function addProjectPart(project: Project, material: Material, quant
       const lineId = genLineId();
       const lines: PriceLine[] = [...fromQuoteLines(quote.lineItems), {
         id: lineId, name: material.name, quantity: qty, unitPrice, section: 'material',
-        taxable: part.taxable, itemRef: `mat:${material.id}`, required: true, sourceCategory: 'materials',
+        taxable: part.taxable, itemRef: `mat:${material.id}`, required: true, sourceCategory: 'materials', unit,
       }];
       const totals = quoteTotalsPatch(quote, lines, pricing);
       await updateDoc(doc(db, 'quotes', quote.id), totals);
@@ -116,7 +117,7 @@ export async function createProjectInvoice(project: Project, pricing: PricingSet
   const lines: PriceLine[] = quote
     // Every quote line, as the quote's total counts them (parts added on the project included).
     ? fromQuoteLines(quote.lineItems)
-    : (await readProjectParts(project)).map(p => ({ id: p.id, name: p.name, quantity: p.quantity, unitPrice: p.unitPrice, section: 'material' as const, taxable: p.taxable }));
+    : (await readProjectParts(project)).map(p => ({ id: p.id, name: p.name, quantity: p.quantity, unitPrice: p.unitPrice, section: 'material' as const, taxable: p.taxable, ...(p.unit ? { unit: p.unit } : {}) }));
   if (!lines.length) return null;
   const discount = quote?.planDiscount || null;
   const t = priceTotals(lines, discount, pricing.salesTaxPct);

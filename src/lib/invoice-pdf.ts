@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import { DEFAULT_ASSUMPTIONS } from './estimating';
-import { discountLineLabel } from './price-lines';
+import { discountLineLabel, lineUnit } from './price-lines';
 import type { Invoice, Quote } from './types';
 
 /**
@@ -34,7 +34,7 @@ export type InvoicePdfData = {
   status?: string;
   /** e.g. "Project PRJ-0012" or "Job ASMT-0041". */
   reference?: string | null;
-  lineItems: { description: string; quantity: number; unitPrice: number; category?: string; multiplier?: number; isEmergencyProtocol?: boolean }[];
+  lineItems: { description: string; quantity: number; unitPrice: number; category?: string; multiplier?: number; isEmergencyProtocol?: boolean; unit?: string }[];
   subtotal: number;
   discountAmount?: number;
   discountLabel?: string | null;
@@ -54,7 +54,7 @@ export function invoicePdfData(inv: Invoice): InvoicePdfData {
     reference: inv.projectId ? `Project ${inv.projectId.toUpperCase()}`
       : (inv.workOrderIds?.length || 0) > 1 ? `${inv.workOrderIds!.length} jobs: ${inv.workOrderIds!.map(i => i.toUpperCase()).join(', ')}`
       : inv.workOrderId ? `Job ${inv.workOrderId.toUpperCase()}` : null,
-    lineItems: inv.lineItems || [],
+    lineItems: (inv.lineItems || []).map(l => ({ ...l, unit: lineUnit({ ...(l as { unit?: string; itemRef?: string }), category: l.category, description: l.description }) })),
     subtotal: Number(inv.subtotal ?? inv.total) || 0,
     discountAmount: Number(inv.discountAmount) || 0,
     discountLabel: inv.planDiscount ? discountLineLabel(inv.planDiscount) : null,
@@ -69,6 +69,7 @@ export function quotePdfData(q: Quote): InvoicePdfData {
   const lines = (q.lineItems || []).map(l => ({
     description: l.name, quantity: l.quantity, unitPrice: l.unitPrice,
     category: ['labor', 'service', 'travel'].includes(l.category) ? 'labor' : 'material',
+    unit: lineUnit({ ...(l as { unit?: string }), category: l.category, name: l.name }),
     multiplier: (l as { multiplier?: number }).multiplier,
   }));
   const pd = (q as Quote & { planDiscount?: Parameters<typeof discountLineLabel>[0] }).planDiscount;
@@ -164,12 +165,13 @@ export async function buildInvoicePdf(data: InvoicePdfData, opts: { paymentTerms
   }
 
   // ── Line items ──
-  const col = { desc: M + 8, qty: W - M - 190, rate: W - M - 100, amt: W - M - 8 };
+  const col = { desc: M + 8, qty: W - M - 236, unit: W - M - 228, rate: W - M - 100, amt: W - M - 8 };
   const header = () => {
     doc.setFillColor(245, 245, 245); doc.rect(M, y - 13, W - 2 * M, 22, 'F');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(90);
     doc.text('DESCRIPTION', col.desc, y + 1);
     doc.text('QTY', col.qty, y + 1, { align: 'right' });
+    doc.text('UNIT', col.unit, y + 1);
     doc.text('RATE', col.rate, y + 1, { align: 'right' });
     doc.text('AMOUNT', col.amt, y + 1, { align: 'right' });
     y += 22;
@@ -183,12 +185,13 @@ export async function buildInvoicePdf(data: InvoicePdfData, opts: { paymentTerms
   for (const l of data.lineItems) {
     const f = lineFactor(l);
     const desc = `${l.description || 'Item'}${f !== 1 ? `  (×${f})` : ''}`;
-    const wrapped = doc.splitTextToSize(desc, col.qty - col.desc - 40) as string[];
+    const wrapped = doc.splitTextToSize(desc, col.qty - col.desc - 30) as string[];
     const rowH = Math.max(18, wrapped.length * 12 + 6);
     if (newPageIfNeeded(rowH)) header();
     doc.setFont('helvetica', 'normal'); doc.setTextColor(30);
     doc.text(wrapped, col.desc, y);
     doc.text(String(Number(l.quantity) || 0), col.qty, y, { align: 'right' });
+    if (l.unit) { doc.setTextColor(100); doc.text(l.unit.slice(0, 12), col.unit, y); doc.setTextColor(30); }
     doc.text(money(Number(l.unitPrice) || 0), col.rate, y, { align: 'right' });
     doc.setFont('helvetica', 'bold');
     doc.text(money((Number(l.quantity) || 0) * (Number(l.unitPrice) || 0) * f), col.amt, y, { align: 'right' });

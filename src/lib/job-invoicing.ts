@@ -32,7 +32,7 @@ export function minutesOnSiteByJob(trips: TripLog[]): Map<string, number> {
   return m;
 }
 
-/** The hourly rate a job draft uses: the first hourly labor rate in Rates & markups. */
+/** The hourly rate a job draft uses: the first hourly labor rate in Labor rates & markups. */
 export const standardHourlyRate = (pricing: PricingSettings): LaborRate | null =>
   pricing.laborRates.find(r => r.unit === 'hour') || null;
 
@@ -57,7 +57,7 @@ export function jobLaborLine(j: WorkOrder, minutes: number, rate: LaborRate | nu
   return {
     id: `job-${j.id}`.replace(/[^a-z0-9-]/gi, ''),
     name: `${jobName(j)}${when} — ${hrs ? `${hrs} h on site` : 'no time recorded, enter hours'}`,
-    quantity: hrs, unitPrice: rate?.rate || 0, section: 'labor', taxable: false, required: true,
+    quantity: hrs, unitPrice: rate?.rate || 0, section: 'labor', taxable: false, required: true, unit: 'hr',
     ...(rate ? { itemRef: `rate:${rate.id}` } : {}),
   };
 }

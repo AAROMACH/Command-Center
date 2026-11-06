@@ -790,6 +790,12 @@ export type PayAdjustment = {
   appliedWeekOf?: string | null;
   by: string;
   at: string;
+  /** Payroll confirmed it was actually paid out (in the payroll run). */
+  paidOutAt?: string | null;
+  paidOutBy?: string | null;
+  /** Last edit (amount, reason or week). */
+  editedAt?: string | null;
+  editedBy?: string | null;
 };
 
 export type PayrollDispute = {

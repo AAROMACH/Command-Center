@@ -40,7 +40,8 @@ import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { PayrollTicketDecision } from '@/components/payroll-ticket-decision';
-import { adjustmentForText, createPayAdjustment, jobLabelFor } from '@/lib/pay-adjustments';
+import { PAYOUT_LABEL, adjustmentForText, createPayAdjustment, jobLabelFor, payoutStatus } from '@/lib/pay-adjustments';
+import { PAYOUT_BADGE, PayrollAdjustmentDialog } from '@/components/payroll-adjustment-dialog';
 import { PAYROLL_TICKET_CARDS } from '@/lib/disputes';
 import { PayrollReviewDialog } from '@/app/admin/financials/components/payroll-review-dialog';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
@@ -118,6 +119,9 @@ export default function PayrollAuditPage() {
     const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
     const [adjustments, setAdjustments] = useState<any[]>([]);
     const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
+    const [editingAdj, setEditingAdj] = useState<any | null>(null);
+    // Reviewed disputes leave the alert list after their first review.
+    const [showReviewed, setShowReviewed] = useState(false);
     const [adjustForm, setAdjustForm] = useState({ techId: '', jobKey: '', amount: '', reason: '' });
     const [adjustSaving, setAdjustSaving] = useState(false);
     // Post-approval disputes techs file against a log/job after it's left
@@ -465,7 +469,11 @@ export default function PayrollAuditPage() {
         .sort((a, b) => (a.status === b.status ? (b.createdAt || '').localeCompare(a.createdAt || '') : a.status === 'open' ? -1 : 1)),
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [payrollDisputes, adjQuery, technicians]);
-    const disputePager = usePaged(sortedDisputes, PAGE_SIZES_SMALL, 'payroll-disputes', [adjQuery]);
+    const reviewedCount = payrollDisputes.filter(d => d.status !== 'open').length;
+    const shownDisputes = useMemo(() => sortedDisputes.filter(d => showReviewed || d.status === 'open'), [sortedDisputes, showReviewed]);
+    const disputePager = usePaged(shownDisputes, PAGE_SIZES_SMALL, 'payroll-disputes', [adjQuery, showReviewed]);
+    const logsById = useMemo(() => new Map(weeklyLogs.map(l => [l.id, l])), [weeklyLogs]);
+    const canEditAdjustments = isSuperAdmin(currentUser) || getSubroles(currentUser).includes('payroll_admin');
     // New adjustments carry `at`; older record-only ones a `date`.
     const adjTime = (a: any) => (a.at ? new Date(a.at).getTime() : parseLocalDate(a.date)?.getTime() ?? 0) || 0;
     // Jobs on the chosen tech's approved/paid logs — what a manual adjustment can be for.
@@ -1030,11 +1038,18 @@ export default function PayrollAuditPage() {
                     )}
                     {payrollDisputes.length > 0 && (
                         <div className="space-y-2">
-                            <p className="text-[13px] font-semibold text-text-primary">
-                                Payroll disputes ({payrollDisputes.filter(d => d.status === 'open').length} open)
-                            </p>
-                            {sortedDisputes.length === 0 && (
-                                <p className="text-[12px] text-text-muted py-2">No disputes match this search.</p>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="text-[13px] font-semibold text-text-primary">
+                                    Payroll disputes ({payrollDisputes.filter(d => d.status === 'open').length} open)
+                                </p>
+                                {reviewedCount > 0 && (
+                                    <button type="button" className="text-[12px] text-text-muted hover:text-text-primary underline-offset-2 hover:underline" onClick={() => setShowReviewed(v => !v)}>
+                                        {showReviewed ? 'Hide reviewed' : `Show reviewed (${reviewedCount})`}
+                                    </button>
+                                )}
+                            </div>
+                            {shownDisputes.length === 0 && (
+                                <p className="text-[12px] text-text-muted py-2">{sortedDisputes.length ? 'No open disputes — reviewed ones are in the adjustments below.' : 'No disputes match this search.'}</p>
                             )}
                             <div className="space-y-2">
                                 {disputePager.items.map(dispute => {
@@ -1097,6 +1112,7 @@ export default function PayrollAuditPage() {
                                     <TableHead className="text-text-muted">Amount</TableHead>
                                     <TableHead className="text-text-muted">For</TableHead>
                                     <TableHead className="text-text-muted">Paid on</TableHead>
+                                    <TableHead className="text-text-muted">Status</TableHead>
                                     <TableHead className="text-text-muted">Reason</TableHead>
                                     <TableHead className="text-text-muted">Added by</TableHead>
                                 </TableRow>
@@ -1105,8 +1121,9 @@ export default function PayrollAuditPage() {
                                 {adjPager.items.map(adj => {
                                     const tech = technicians.find(t => t.id === adj.techId);
                                     const amount = parseFloat(adj.amount || 0);
+                                    const ps = payoutStatus(adj, logsById);
                                     return (
-                                        <TableRow key={adj.id} className="border-border-sub hover:bg-bg-secondary">
+                                        <TableRow key={adj.id} className="border-border-sub hover:bg-bg-secondary cursor-pointer" onClick={() => setEditingAdj(adj)} title="Edit adjustment">
                                             <TableCell className="font-bold text-[12px] text-text-primary">{tech?.name || adj.techId}</TableCell>
                                             <TableCell className="text-[12px] text-text-muted">{adjTime(adj) ? new Date(adjTime(adj)).toLocaleDateString() : '—'}</TableCell>
                                             <TableCell className={cn('text-[11px] font-bold font-mono whitespace-nowrap', amount >= 0 ? 'text-text-green' : 'text-text-red')}>
@@ -1121,6 +1138,10 @@ export default function PayrollAuditPage() {
                                                     : adj.status === 'queued' ? <span className="text-accent-gold">Next log (none open)</span>
                                                     : <span className="text-text-muted" title="Added before adjustments were paid through logs">Record only</span>}
                                             </TableCell>
+                                            <TableCell className="whitespace-nowrap">
+                                                <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-semibold', PAYOUT_BADGE[ps.status])}>{PAYOUT_LABEL[ps.status]}</span>
+                                                {ps.weekPaid && <span className="block text-[10px] text-accent-gold mt-0.5">Week paid — confirm</span>}
+                                            </TableCell>
                                             <TableCell className="text-[12px] text-text-muted max-w-[200px] truncate" title={adj.reason || ''}>{adj.reason || '—'}</TableCell>
                                             <TableCell className="text-[12px] text-text-muted">{adj.by || adj.addedBy || '—'}</TableCell>
                                         </TableRow>
@@ -1128,13 +1149,16 @@ export default function PayrollAuditPage() {
                                 })}
                                 {sortedAdjustments.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-12 text-[13px] text-text-muted">{adjustments.length ? 'No adjustments match this search' : 'No adjustments yet'}</TableCell>
+                                        <TableCell colSpan={8} className="text-center py-12 text-[13px] text-text-muted">{adjustments.length ? 'No adjustments match this search' : 'No adjustments yet'}</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
                         </Table>
                     </div>
                     <ListPager pager={adjPager} noun="adjustments" />
+                    <PayrollAdjustmentDialog adj={editingAdj} techName={editingAdj ? (techNameOf(editingAdj.techId) || editingAdj.techId) : ''}
+                        logs={weeklyLogs} jobsById={jobsById} by={currentUser?.name || 'Payroll'} canEdit={canEditAdjustments}
+                        onClose={() => setEditingAdj(null)} />
                 </TabsContent>
 
                 {/* ── Project timesheets: project hours by week, paid on that week's log ── */}

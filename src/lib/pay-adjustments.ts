@@ -1,6 +1,6 @@
 import { collection, doc, getDocs, query, runTransaction, where } from 'firebase/firestore';
 import { db } from './firebase';
-import { effectiveJobPay, netOfFieldNationFee } from './payroll';
+import { computeWeeklyLogSettlement, effectiveJobPay, netOfFieldNationFee } from './payroll';
 import { displayWorkOrderNumber } from './work-order-identity';
 import type { PayAdjustment, PayrollDispute, WeeklyLog, WorkOrder } from './types';
 
@@ -107,4 +107,98 @@ export async function createPayAdjustment(input: NewAdjustment): Promise<PayAdju
 export function adjustmentForText(a: Pick<PayAdjustment, 'jobLabel' | 'workOrderId' | 'sourceWeekOf'>): string {
   const parts = [a.jobLabel || (a.workOrderId ? a.workOrderId.toUpperCase() : ''), a.sourceWeekOf ? `week of ${a.sourceWeekOf}` : ''].filter(Boolean);
   return parts.length ? `For ${parts.join(' · ')}` : 'General adjustment';
+}
+
+// ── Payout status, editing and moving ───────────────────────────────────────
+
+export type PayoutStatus = 'paid' | 'upcoming' | 'not_set' | 'record_only';
+export const PAYOUT_LABEL: Record<PayoutStatus, string> = {
+  paid: 'Paid', upcoming: 'Upcoming', not_set: 'Not set', record_only: 'Record only',
+};
+
+/**
+ * Where an adjustment stands:
+ *  - Paid: payroll marked it paid out (they put it in the payroll run).
+ *  - Upcoming: it's on a week that hasn't been marked paid out yet.
+ *  - Not set: no week yet (queued for the tech's next log).
+ *  - Record only: added before adjustments were paid through logs.
+ * `weekPaid` = its week is marked paid but the adjustment isn't — a nudge to
+ * confirm it really went out.
+ */
+export function payoutStatus(a: Partial<PayAdjustment> & { status?: string }, logsById: Map<string, WeeklyLog>): { status: PayoutStatus; weekPaid: boolean } {
+  if (a.paidOutAt) return { status: 'paid', weekPaid: false };
+  if (a.status === 'applied' && a.appliedLogId) return { status: 'upcoming', weekPaid: !!logsById.get(a.appliedLogId)?.paid };
+  if (a.status === 'queued') return { status: 'not_set', weekPaid: false };
+  return { status: 'record_only', weekPaid: false };
+}
+
+/** Logs an adjustment can be moved to: the tech's unpaid Draft / Submitted weeks, newest first. */
+export function movableLogs(techId: string, logs: WeeklyLog[]): WeeklyLog[] {
+  return logs
+    .filter(l => l.techId === techId && !l.paid && !(l as { archived?: boolean }).archived && (l.status === 'Draft' || l.status === 'Submitted'))
+    .sort((a, b) => weekKey(b.weekOf).localeCompare(weekKey(a.weekOf)));
+}
+
+const stripAdj = (a: PayAdjustment) => JSON.parse(JSON.stringify(a)) as PayAdjustment;
+
+/**
+ * Edit an adjustment: amount / reason / note, and the week it's paid on
+ * (`toLogId` — a log id, or null for "not set": the next log the tech opens).
+ * Both logs' copies and stored totals are updated in one transaction. A paid
+ * adjustment, or one on a week already paid, can't be changed.
+ */
+export async function updatePayAdjustment(adj: PayAdjustment, patch: {
+  amount: number; reason: string; paidAmount?: number | null; correctAmount?: number | null;
+}, toLogId: string | null, by: string, jobsById: Map<string, WorkOrder>): Promise<PayAdjustment> {
+  const amount = roundCents(Number(patch.amount) || 0);
+  if (!amount) throw new Error('The adjustment is $0.00 — remove it instead, or enter an amount.');
+  if (adj.paidOutAt) throw new Error('This adjustment is marked paid. Unmark it first to change it.');
+  const fromId = adj.status === 'applied' ? adj.appliedLogId || null : null;
+  let saved!: PayAdjustment;
+  await runTransaction(db, async tx => {
+    const fromRef = fromId ? doc(db, 'weeklyLogs', fromId) : null;
+    const toRef = toLogId ? doc(db, 'weeklyLogs', toLogId) : null;
+    const fromSnap = fromRef ? await tx.get(fromRef) : null;
+    const toSnap = toRef && toLogId !== fromId ? await tx.get(toRef) : null;
+    const from = fromSnap?.exists() ? ({ ...fromSnap.data(), id: fromSnap.id } as WeeklyLog) : null;
+    const to = toLogId === fromId ? from : toSnap?.exists() ? ({ ...toSnap.data(), id: toSnap.id } as WeeklyLog) : null;
+    if (from?.paid) throw new Error(`The week of ${from.weekOf} is already paid — this adjustment can't change.`);
+    if (toLogId && !to) throw new Error('That week no longer exists.');
+    if (to && (to.paid || (to.status !== 'Draft' && to.status !== 'Submitted'))) throw new Error(`The week of ${to.weekOf} is ${to.paid ? 'paid' : to.status} — pick an open week.`);
+
+    saved = stripAdj({
+      ...adj, amount, reason: patch.reason.trim(),
+      paidAmount: patch.paidAmount ?? null, correctAmount: patch.correctAmount ?? null,
+      status: to ? 'applied' : 'queued', appliedLogId: to?.id ?? null, appliedWeekOf: to?.weekOf ?? null,
+      editedAt: new Date().toISOString(), editedBy: by,
+    });
+    const withTotal = (log: WeeklyLog, list: PayAdjustment[]) => ({
+      payAdjustments: list,
+      totalPayout: computeWeeklyLogSettlement({ ...log, payAdjustments: list }, jobsById),
+    });
+    if (from && fromRef && (!to || to.id !== from.id)) {
+      tx.update(fromRef, withTotal(from, (from.payAdjustments || []).filter(x => x.id !== adj.id)));
+    }
+    if (to && toRef) {
+      const list = (to.payAdjustments || []).filter(x => x.id !== adj.id).concat(saved);
+      tx.update(toRef, withTotal(to, list));
+    }
+    tx.set(doc(db, 'payrollAdjustments', adj.id), saved);
+  });
+  return saved;
+}
+
+/** Payroll confirms the adjustment went out in the payroll run (or undoes it). */
+export async function setAdjustmentPaid(adj: PayAdjustment, paid: boolean, by: string): Promise<void> {
+  const patch = paid ? { paidOutAt: new Date().toISOString(), paidOutBy: by } : { paidOutAt: null, paidOutBy: null };
+  await runTransaction(db, async tx => {
+    const logRef = adj.status === 'applied' && adj.appliedLogId ? doc(db, 'weeklyLogs', adj.appliedLogId) : null;
+    const log = logRef ? await tx.get(logRef) : null;
+    if (paid && adj.status !== 'applied') throw new Error('Put it on a week first — it isn’t on one yet.');
+    if (log?.exists()) {
+      const list = ((log.data() as WeeklyLog).payAdjustments || []).map(x => (x.id === adj.id ? stripAdj({ ...x, ...patch }) : x));
+      tx.update(logRef!, { payAdjustments: list });
+    }
+    tx.update(doc(db, 'payrollAdjustments', adj.id), patch);
+  });
 }

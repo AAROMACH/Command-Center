@@ -140,12 +140,13 @@ export async function approveSiteWalk(w: SiteWalk, settings: EstimatingSettings,
     convertedToWorkOrderId: null, convertedToProjectId: null, convertedToInvoiceId: null,
     leadId: w.leadId ?? null,
     siteWalkId: w.id,
-    // Internal: margin at approval (not shown to the client).
-    estimate: { directCost: t.cost, grossProfit: t.gp, gmPct: t.gmPct },
   };
   await setDoc(doc(db, 'quotes', quoteId), JSON.parse(JSON.stringify({ id: quoteId, ...quote })));
   await updateDoc(doc(db, 'siteWalks', w.id), {
     status: 'approved', quoteId, lines: w.lines, reviewedBy: by.name, reviewedAt: now.toISOString(), updatedAt: now.toISOString(),
+    // Margin at approval stays with the walk (staff only) — never on the
+    // quote, which the client can read.
+    approvedEstimate: { directCost: t.cost, grossProfit: t.gp, gmPct: t.gmPct, discountAmount: t.discountAmount },
   });
   if (w.leadId) {
     const lead = await getDoc(doc(db, 'leads', w.leadId)).catch(() => null);

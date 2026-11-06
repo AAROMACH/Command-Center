@@ -67,7 +67,17 @@ export async function GET(req: NextRequest) {
     await doc.ref.update({ status: 'viewed', viewedAt: new Date().toISOString() });
     data.status = 'viewed';
   }
-  return NextResponse.json({ quote: { ...data, id: doc.id } });
+  return NextResponse.json({ quote: { ...clientSafe(data), id: doc.id } });
+}
+
+/** Internal fields that never go to the customer's browser (cost and margin,
+ *  who made it, and links to internal records). */
+const INTERNAL_FIELDS = ['estimate', 'createdBy', 'leadId', 'siteWalkId', 'requestId',
+  'convertedToWorkOrderId', 'convertedToProjectId', 'convertedToInvoiceId', 'originalQuoteId', 'supersededByQuoteId'];
+function clientSafe(data: FirebaseFirestore.DocumentData) {
+  const out = { ...data };
+  INTERNAL_FIELDS.forEach(k => { delete out[k]; });
+  return out;
 }
 
 type RespondPayload = {

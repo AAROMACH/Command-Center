@@ -5,7 +5,7 @@ import { adminApp } from '@/lib/firebase-admin';
 import { hasPermission, isAdmin, isTech, type RoleLike } from '@/lib/permissions';
 import type { WeeklyLogItem } from '@/lib/types';
 import {
-  WeeklyLogError, addMissingReport, addReimbursement, confirmItem, createDraft, deleteReimbursement,
+  WeeklyLogError, addMissingReport, addReimbursement, confirmItem, setItemHours, createDraft, deleteReimbursement,
   disputeItem, answerHelperRemoval, fileJob, jobsOnOwnLogs, moveItem, removeJobFromDrafts, requestUnsubmit, submitLog, unsubmitLog,
   type CarriedFigures,
 } from '@/lib/server/weekly-log-server';
@@ -103,6 +103,10 @@ export async function POST(req: NextRequest) {
       // ── Log edits: always the caller's own log ──
       case 'confirmItem':
         await confirmItem(uid, String(body.logId), String(body.itemId));
+        return NextResponse.json({ ok: true });
+
+      case 'setItemHours':
+        await setItemHours(uid, String(body.logId), String(body.itemId), body.hours);
         return NextResponse.json({ ok: true });
 
       case 'disputeItem': {

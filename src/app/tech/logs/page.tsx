@@ -62,6 +62,7 @@ import {
     Hourglass,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { minutesOnSiteByJob } from '@/lib/job-invoicing';
 import { Textarea } from '@/components/ui/textarea';
 import { cn, formatCityState, sanitize, formatDistance } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -364,6 +365,20 @@ export default function TechWeeklyLogPage() {
     // Every log edit goes through the server (/api/weekly-log): it changes
     // only what a tech may change — pay comes from the job records and new
     // reimbursements are always pending payroll review.
+    // Checked-in time per job (check-in → check-out on the tech's trips).
+    const onsiteMinutesByJob = useMemo(() => minutesOnSiteByJob(tripLogs), [tripLogs]);
+    // Techs often check in late or not at all — they enter the hours they worked.
+    const handleSetHours = async (itemId: string, hours: number | null) => {
+        if (!activeLog || isLocked) return;
+        try {
+            await weeklyLogAction('setItemHours', { logId: activeLog.id, itemId, hours });
+            toast({ title: 'Hours saved', description: 'Payroll sees them next to your checked-in time.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not save hours', description: e.message });
+            throw e;
+        }
+    };
+
     const handleConfirm = async (itemId: string) => {
         if (!activeLog || isLocked) return;
         try {
@@ -1081,6 +1096,8 @@ export default function TechWeeklyLogPage() {
                             onDisputeJob={isDisputeModeOn ? openJobDispute : undefined}
                             hasOpenPayrollDispute={disputedWorkOrderIds.has(item.workOrderId)}
                             payAdjustedBy={myPayrollDisputes.find(d => d.weeklyLogId === activeLog.id && d.workOrderId === item.workOrderId && d.status === 'resolved' && !!d.adjustment)}
+                            onsiteMinutes={onsiteMinutesByJob.get(item.workOrderId) || 0}
+                            onSetHours={handleSetHours}
                         />
                         </div>
                     ))}
@@ -1380,7 +1397,7 @@ export default function TechWeeklyLogPage() {
     );
 }
 
-function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId, onDisputeJob, hasOpenPayrollDispute, payAdjustedBy }: { item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, kind: DisputeKind, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null, onDisputeJob?: (item: WeeklyLogItem) => void, hasOpenPayrollDispute?: boolean, payAdjustedBy?: PayrollDispute }) {
+function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId, onDisputeJob, hasOpenPayrollDispute, payAdjustedBy, onsiteMinutes, onSetHours }: { onsiteMinutes?: number, onSetHours?: (itemId: string, hours: number | null) => Promise<void>, item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, kind: DisputeKind, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null, onDisputeJob?: (item: WeeklyLogItem) => void, hasOpenPayrollDispute?: boolean, payAdjustedBy?: PayrollDispute }) {
     const job = workOrders.find(wo => wo.id === item.workOrderId);
     const itemReimbursements = reimbursements.filter(r => r.workOrderId === item.workOrderId);
     const settledReimbursement = itemReimbursements
@@ -1501,6 +1518,10 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                 )}
                             </div>
                         </div>
+
+                        {!isImported(shown) && (
+                            <HoursWorkedBox item={item} onsiteMinutes={onsiteMinutes || 0} isLocked={isLocked} onSetHours={onSetHours} />
+                        )}
 
                         <div className="text-right px-4 border-l border-border-sub/30 min-w-[100px]">
                             <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-right">{isDisputed ? 'Excluded (disputed)' : 'Pay'}</p>
@@ -1978,6 +1999,42 @@ function TripLogsView({ tripLogs, workOrders, mileageUnit, techId, techName }: {
                     </tbody>
                 </table>
             </div>
+        </div>
+    );
+}
+
+
+/** Manual jobs: checked-in time, and the hours the tech says they worked (editable on a Draft). */
+function HoursWorkedBox({ item, onsiteMinutes, isLocked, onSetHours }: {
+    item: WeeklyLogItem; onsiteMinutes: number; isLocked: boolean; onSetHours?: (itemId: string, hours: number | null) => Promise<void>;
+}) {
+    const [value, setValue] = useState(item.hoursWorked != null ? String(item.hoursWorked) : '');
+    const [saving, setSaving] = useState(false);
+    useEffect(() => { setValue(item.hoursWorked != null ? String(item.hoursWorked) : ''); }, [item.hoursWorked]);
+    const checkedIn = onsiteMinutes > 0 ? `${(onsiteMinutes / 60).toFixed(2).replace(/\.?0+$/, '')} h` : 'none';
+    const dirty = (value.trim() === '' ? null : Number(value)) !== (item.hoursWorked ?? null);
+    const save = async () => {
+        if (!onSetHours) return;
+        setSaving(true);
+        try { await onSetHours(item.id, value.trim() === '' ? null : Number(value)); } catch { /* toast shown */ } finally { setSaving(false); }
+    };
+    return (
+        <div className="px-4 border-l border-border-sub/30 min-w-[150px] text-left" onClick={e => e.stopPropagation()}>
+            <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Hours worked</p>
+            {isLocked || !onSetHours ? (
+                <p className="text-sm font-mono font-bold text-text-primary">{item.hoursWorked != null ? `${item.hoursWorked} h` : '—'}</p>
+            ) : (
+                <div className="flex items-center gap-1.5 mt-0.5">
+                    <Input type="number" inputMode="decimal" step="0.25" min="0" value={value} placeholder={onsiteMinutes > 0 ? (onsiteMinutes / 60).toFixed(2) : '0'}
+                        onChange={e => setValue(e.target.value)} className="h-9 w-20 font-mono text-[13px]" aria-label="Hours worked" />
+                    {dirty && (
+                        <Button size="sm" className="h-9 px-2.5" disabled={saving || (value.trim() !== '' && !(Number(value) >= 0))} onClick={save}>
+                            {saving ? <Loader2 size={13} className="animate-spin" /> : 'Save'}
+                        </Button>
+                    )}
+                </div>
+            )}
+            <p className="text-[11px] text-text-muted mt-0.5">Checked in: {checkedIn}</p>
         </div>
     );
 }

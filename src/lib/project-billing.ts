@@ -2,6 +2,7 @@ import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { readProjectParts, writeProjectParts } from './project-parts';
 import { db } from './firebase';
 import { createDocId } from './generateId';
+import { docNumber } from './doc-number';
 import { ID_PREFIXES } from './constants';
 import { fromQuoteLines, materialPrice, priceTotals, toInvoiceLines, toQuoteLines, unitLabel, type PlanDiscount, type PriceLine } from './price-lines';
 import { quoteEstimate } from './project-economics';
@@ -125,7 +126,7 @@ export async function createProjectInvoice(project: Project, pricing: PricingSet
   const today = new Date();
   const invoice: Invoice = {
     id,
-    invoiceNumber: `INV-${today.getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`,
+    invoiceNumber: docNumber(id, today),
     clientId: quote?.clientId || (project as any).clientId || '',
     clientName: quote?.customerCompany || quote?.customerName || project.client || '',
     customerEmail: quote?.customerType === 'external_customer' ? (quote.customerEmail || null) : null,

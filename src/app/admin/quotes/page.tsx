@@ -12,6 +12,8 @@ import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc, getDoc, getDocs
 import { surveySummary } from '@/lib/crm-survey';
 import { useCrmPaths } from '@/lib/crm-paths';
 import { createDocId } from '@/lib/generateId';
+import { docNumber, newInvoiceNumber } from '@/lib/doc-number';
+import { renumberQuotes } from '@/lib/doc-number-actions';
 import { ID_PREFIXES } from '@/lib/constants';
 import { syncLeadOnQuoteCreated } from '@/lib/crm-actions';
 import type { Lead, SiteSurvey, Quote, QuoteStatus } from '@/lib/types';
@@ -149,7 +151,7 @@ function NewQuoteDialog({
       const inApp = r.customerType === 'in_app_client';
       const now = new Date().toISOString();
       const quote: Omit<Quote, 'id'> & { planDiscount: PlanDiscount | null } = {
-        quoteNumber: quoteId,
+        quoteNumber: docNumber(quoteId),
         customerType: r.customerType,
         clientId: inApp ? r.clientId : null,
         customerName: inApp ? (c?.clientCompany || c?.name || '') : r.customerName,
@@ -615,7 +617,7 @@ export default function AdminQuotesPage() {
       const q = invoiceFromQuote;
       const id = await saveInvoiceFromEditor(r, null, q ? { quoteId: q.id } : {});
       if (q) await updateDoc(doc(db, 'quotes', q.id), { status: 'converted_to_invoice', convertedToInvoiceId: id, updatedAt: new Date().toISOString() });
-      toast({ title: 'Invoice created', description: `Invoice ${r.invoiceNumber} saved${q ? ` from ${q.quoteNumber}` : ''}.` });
+      toast({ title: 'Invoice created', description: `Invoice ${newInvoiceNumber(r.invoiceNumber, id, r.issueDate)} saved${q ? ` from ${q.quoteNumber}` : ''}.` });
       setInvoiceOpen(false);
       setInvoiceFromQuote(null);
       setTab('invoices');
@@ -665,6 +667,9 @@ export default function AdminQuotesPage() {
       updateDoc(doc(db, 'quotes', q.id), { estimate: deleteField() }).catch(() => {});
     });
   }, [quotes, inSalesPortal]);
+
+  // One-time: older quotes get the date + running number (11/05/26-007).
+  useEffect(() => { if (!inSalesPortal && quotes.length) renumberQuotes(quotes); }, [quotes, inSalesPortal]);
 
   useEffect(() => {
     const u1 = onSharedSnapshot('quotes', snap => {

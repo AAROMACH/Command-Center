@@ -1,6 +1,7 @@
 import { deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { createDocId } from './generateId';
+import { docNumber, newInvoiceNumber } from './doc-number';
 import { ID_PREFIXES } from './constants';
 import type { Invoice } from './types';
 import { toInvoiceLines, type PriceLine } from './price-lines';
@@ -35,7 +36,8 @@ export async function saveInvoiceFromEditor(r: PriceDocResult, existing: Invoice
   const invoice: Invoice = {
     ...(existing || {}),
     id,
-    invoiceNumber: r.invoiceNumber,
+    // Blank (or the old random default) = the date + running number.
+    invoiceNumber: existing ? (r.invoiceNumber.trim() || existing.invoiceNumber || docNumber(id, r.issueDate || new Date())) : newInvoiceNumber(r.invoiceNumber, id, r.issueDate),
     clientId: r.customerType === 'in_app_client' ? r.clientId : '',
     clientName,
     customerEmail: r.customerType === 'external_customer' ? (r.customerEmail || null) : null,

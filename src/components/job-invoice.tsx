@@ -1,5 +1,6 @@
 'use client';
 
+import { newInvoiceNumber } from '@/lib/doc-number';
 import { InvoicePdfButton } from '@/components/invoice-pdf-button';
 import { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
@@ -60,8 +61,8 @@ export function JobInvoicePanel({ job }: { job: WorkOrder }) {
   const save = async (r: PriceDocResult) => {
     setSaving(true);
     try {
-      await saveInvoiceFromEditor(r, null);
-      toast({ title: 'Invoice drafted', description: `Invoice ${r.invoiceNumber} — send it from here or Quotes & Invoices.` });
+      const id = await saveInvoiceFromEditor(r, null);
+      toast({ title: 'Invoice drafted', description: `Invoice ${newInvoiceNumber(r.invoiceNumber, id, r.issueDate)} — send it from here or Quotes & Invoices.` });
       setDraft(null);
     } catch (e: any) { toast({ variant: 'destructive', title: 'Could not save invoice', description: e.message }); }
     finally { setSaving(false); }
@@ -167,8 +168,8 @@ export function BillJobsDialog({ open, onClose }: { open: boolean; onClose: () =
   const save = async (r: PriceDocResult) => {
     setSaving(true);
     try {
-      await saveInvoiceFromEditor(r, null, { workOrderIds: draftIds } as Partial<Invoice>);
-      toast({ title: 'Invoice drafted', description: `${draftIds.length} job${draftIds.length === 1 ? '' : 's'} on invoice ${r.invoiceNumber}.` });
+      const id = await saveInvoiceFromEditor(r, null, { workOrderIds: draftIds } as Partial<Invoice>);
+      toast({ title: 'Invoice drafted', description: `${draftIds.length} job${draftIds.length === 1 ? '' : 's'} on invoice ${newInvoiceNumber(r.invoiceNumber, id, r.issueDate)}.` });
       setDraft(null);
       onClose();
     } catch (e: any) { toast({ variant: 'destructive', title: 'Could not save invoice', description: e.message }); }

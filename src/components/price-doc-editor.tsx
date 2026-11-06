@@ -77,7 +77,7 @@ export function emptyPriceDoc(kind: PriceDocKind): PriceDocValues {
     title: '', description: '', scopeSummary: '',
     terms: kind === 'quote' ? 'Payment due within 30 days of invoice.' : '',
     expirationDate: '', optionalGroups: [],
-    invoiceNumber: `INV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`,
+    invoiceNumber: '',
     issueDate: today(), dueDate: plusDays(30), relatedId: '', status: 'draft',
     lines: [],
   };
@@ -395,7 +395,7 @@ export function PriceDocEditor({
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1.5"><Label className={labelCls}>Invoice #</Label>
-                    <Input className={`${inputCls} font-mono`} value={v.invoiceNumber} onChange={e => set('invoiceNumber', e.target.value)} /></div>
+                    <Input className={`${inputCls} font-mono`} value={v.invoiceNumber} placeholder="Assigned on save (MM/DD/YY-###)" onChange={e => set('invoiceNumber', e.target.value)} /></div>
                   <div className="space-y-1.5"><Label className={labelCls}>Issue date</Label>
                     <Input type="date" className={inputCls} value={v.issueDate} onChange={e => set('issueDate', e.target.value)} /></div>
                   <div className="space-y-1.5"><Label className={labelCls}>Due date</Label>

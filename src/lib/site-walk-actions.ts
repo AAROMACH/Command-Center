@@ -6,6 +6,7 @@ import { db } from './firebase';
 import { usePricingSettings } from '@/hooks/use-billing';
 import type { LaborRate } from './billing';
 import { createDocId } from './generateId';
+import { docNumber } from './doc-number';
 import { ID_PREFIXES } from './constants';
 import { priceTotals, toQuoteLines, unitLabel, type PlanDiscount, type PriceLine } from './price-lines';
 import { syncLeadOnQuoteCreated } from './crm-actions';
@@ -128,7 +129,7 @@ export async function approveSiteWalk(w: SiteWalk, settings: EstimatingSettings,
   const now = new Date();
   const expires = new Date(now.getTime() + a.quoteValidityDays * 86400000).toISOString().slice(0, 10);
   const quote: Omit<Quote, 'id'> & Record<string, unknown> = {
-    quoteNumber: quoteId,
+    quoteNumber: docNumber(quoteId),
     customerType: customer.customerType,
     clientId: customer.clientId,
     customerName: customer.name,

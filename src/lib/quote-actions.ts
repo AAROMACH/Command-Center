@@ -1,6 +1,7 @@
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { readProjectParts, writeProjectParts } from './project-parts';
 import { createDocId } from './generateId';
+import { docNumber } from './doc-number';
 import { ID_PREFIXES } from './constants';
 import { db } from './firebase';
 import { fromQuoteLines, toQuoteLines, type PlanDiscount } from './price-lines';
@@ -97,7 +98,7 @@ export async function createQuoteFromEditor(r: PriceDocResult, by: string, extra
   const c = r.client;
   const now = new Date().toISOString();
   const quote = {
-    id: quoteId, quoteNumber: quoteId,
+    id: quoteId, quoteNumber: docNumber(quoteId),
     customerType: r.customerType,
     clientId: inApp ? r.clientId : null,
     customerName: inApp ? (c?.clientCompany || c?.name || '') : r.customerName,

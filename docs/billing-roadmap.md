@@ -37,7 +37,7 @@ The app is where work, quotes, invoices, plans and pay are created.
 1. Materials catalog feeds quote/invoice lines (cost, category markup, sell price, taxable). CSV price import + price history. Quote shows margin.
 2. Plan benefits apply automatically (labor discount on quotes/invoices for subscribed clients).
 3. Quote → real invoice (and deposit invoice); sequential invoice numbers.
-4. Email quotes/invoices with a PDF (SendGrid — needs `SENDGRID_API_KEY`); overdue reminders.
+4. Email quotes/invoices with a PDF (Resend — needs `RESEND_API_KEY`); overdue reminders.
 5. Statuses: sent, viewed, partial, paid (with date), overdue.
 
 ### Phase 2 — Client ID migration

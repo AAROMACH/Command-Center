@@ -5,13 +5,13 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
 import { isAdmin } from '@/lib/permissions';
-import { sendEmail } from '@/lib/server/notify-delivery';
+import { emailConfigured, sendEmail } from '@/lib/server/notify-delivery';
 
 /**
  * Send a client invoice: emails the client a summary and a private link to
  * the full invoice (/public/invoice/<token>), then marks it Sent. Admins only.
  * GET ?invoiceId= returns who it would go to, for the confirm step.
- * If email isn't set up (no SendGrid key) nothing is marked sent — the link
+ * If email isn't set up (no Resend key) nothing is marked sent — the link
  * comes back so it can be sent by hand.
  */
 async function caller(req: NextRequest) {
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('invoiceId') || '';
   const snap = id ? await getFirestore(adminApp).doc(`invoices/${id}`).get() : null;
   if (!snap?.exists) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
-  return NextResponse.json({ to: await recipientOf(snap.data() || {}), emailConfigured: !!process.env.SENDGRID_API_KEY });
+  return NextResponse.json({ to: await recipientOf(snap.data() || {}), emailConfigured: emailConfigured() });
 }
 
 export async function POST(req: NextRequest) {
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
   let emailed: 'sent' | 'skipped';
   try { emailed = await sendEmail(to, subject, text); }
   catch (e: any) { return NextResponse.json({ error: `Email failed: ${String(e?.message || e).slice(0, 200)}`, link }, { status: 502 }); }
-  if (emailed === 'skipped') return NextResponse.json({ link, emailed: false, reason: 'Email isn’t set up on the server (SENDGRID_API_KEY missing).' });
+  if (emailed === 'skipped') return NextResponse.json({ link, emailed: false, reason: 'Email isn’t set up on the server (RESEND_API_KEY missing).' });
 
   await ref.update({
     ...(inv.status === 'draft' ? { status: 'sent' } : {}),

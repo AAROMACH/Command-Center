@@ -8,7 +8,7 @@ import { sendPush } from '@/lib/server/push';
 /**
  * "Send me a test" in Settings: one alert to the caller on every channel,
  * reporting what happened on each — so a channel that isn't set up (no
- * SendGrid/Twilio keys, no phone registered) says so instead of failing
+ * Resend/Twilio keys, no phone registered) says so instead of failing
  * silently. Ignores the person's settings (it's a test). Only ever sends to the caller.
  */
 type Result = { channel: string; ok: boolean; detail: string };
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   };
 
   await run('Email', true, !data.email ? 'No email address on your profile.' : null, async () => {
-    if ((await sendEmail(data.email, `[AAROMACH] ${title.toUpperCase()}`, body)) === 'skipped') throw new Error('Email isn’t set up on the server (SENDGRID_API_KEY missing).');
+    if ((await sendEmail(data.email, `[AAROMACH] ${title.toUpperCase()}`, body)) === 'skipped') throw new Error('Email isn’t set up on the server (RESEND_API_KEY missing).');
     return `Sent to ${data.email}.`;
   });
   await run('Text message', true, !data.phone ? 'No phone number on your profile.' : null, async () => {

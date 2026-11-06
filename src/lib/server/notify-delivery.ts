@@ -2,6 +2,7 @@ import type { Firestore } from 'firebase-admin/firestore';
 import { alertOn, channelOn, resolveNotificationPrefs } from '@/lib/notification-prefs';
 import { alertTypeForTitle, eventForTitle, type NotificationEvent } from '@/lib/notification-events';
 import { entityHref } from '@/lib/notification-links';
+import { Resend } from 'resend';
 import { sendPush } from './push';
 
 /**
@@ -66,31 +67,47 @@ export async function sendSms(to: string, text: string): Promise<'sent' | 'skipp
   return 'sent';
 }
 
-export async function sendEmail(to: string, subject: string, body: string): Promise<'sent' | 'skipped'> {
-  const apiKey = process.env.SENDGRID_API_KEY;
-  const fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@aaromach.com';
+/** Is email delivery configured on the server (Resend)? */
+export const emailConfigured = () => !!process.env.RESEND_API_KEY;
+
+const EMAIL_FROM = () => process.env.RESEND_FROM_EMAIL || 'AAROMACH <billing@mail.aaromach.com>';
+
+/**
+ * Send one email through Resend. 'skipped' when RESEND_API_KEY isn't set.
+ * Network errors, 429 and 5xx are retried with backoff (429 honors
+ * retry-after); other errors throw. `idempotencyKey` (e.g. `invoice/<id>/<n>`)
+ * keeps a retried request from sending twice.
+ */
+export async function sendEmail(to: string, subject: string, body: string, opts: { idempotencyKey?: string } = {}): Promise<'sent' | 'skipped'> {
+  const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.warn('[notify] SendGrid env vars not set — email skipped');
+    console.warn('[notify] RESEND_API_KEY not set — email skipped');
     return 'skipped';
   }
-  const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      personalizations: [{ to: [{ email: to }] }],
-      from: { email: fromEmail },
-      subject,
-      content: [
-        { type: 'text/plain', value: body },
-        { type: 'text/html', value: `<p>${escapeHtml(body).replace(/\n/g, '<br/>')}</p>` },
-      ],
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(JSON.stringify((err as any).errors || res.status));
+  const resend = new Resend(apiKey);
+  const email = {
+    from: EMAIL_FROM(),
+    to: [to],
+    subject,
+    text: body,
+    html: `<p>${escapeHtml(body).replace(/\n/g, '<br/>')}</p>`,
+  };
+  let lastError = 'Resend request failed';
+  for (let attempt = 0; attempt < 3; attempt++) {
+    // The SDK returns { data, error } and doesn't throw.
+    const { data, error, headers } = await resend.emails.send(email, opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey.slice(0, 256) } : undefined);
+    if (!error) {
+      console.info(`[notify] email sent via Resend id=${data?.id || '?'}`);
+      return 'sent';
+    }
+    lastError = `Resend ${error.statusCode ?? ''} ${error.name}: ${error.message}`.replace(/\s+/g, ' ');
+    // Retry network errors (no status), 429 and 5xx; other 4xx won't succeed.
+    const status = error.statusCode;
+    if (status != null && status !== 429 && status < 500) break;
+    const retryAfter = Number(headers?.['retry-after']);
+    await new Promise(r => setTimeout(r, Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 500 * 2 ** attempt));
   }
-  return 'sent';
+  throw new Error(lastError);
 }
 
 

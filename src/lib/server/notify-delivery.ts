@@ -4,6 +4,7 @@ import { alertTypeForTitle, eventForTitle, type NotificationEvent } from '@/lib/
 import { entityHref } from '@/lib/notification-links';
 import { Resend } from 'resend';
 import { sendPush } from './push';
+import { recordHealth } from './integration-health';
 
 /**
  * Server-side delivery shared by /api/notify, the CRM digest and the
@@ -62,8 +63,12 @@ export async function sendSms(to: string, text: string): Promise<'sent' | 'skipp
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error((err as any).message || `Twilio ${res.status}`);
+    const msg = (err as any).message || `Twilio ${res.status}`;
+    // A bad phone number is the recipient's problem, not the connection's.
+    if (res.status === 401 || res.status === 403 || res.status >= 500) await recordHealth('twilio', false, msg);
+    throw new Error(msg);
   }
+  await recordHealth('twilio', true);
   return 'sent';
 }
 
@@ -93,20 +98,26 @@ export async function sendEmail(to: string, subject: string, body: string, opts:
     html: `<p>${escapeHtml(body).replace(/\n/g, '<br/>')}</p>`,
   };
   let lastError = 'Resend request failed';
+  let lastStatus: number | null = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     // The SDK returns { data, error } and doesn't throw.
     const { data, error, headers } = await resend.emails.send(email, opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey.slice(0, 256) } : undefined);
     if (!error) {
       console.info(`[notify] email sent via Resend id=${data?.id || '?'}`);
+      await recordHealth('resend', true);
       return 'sent';
     }
     lastError = `Resend ${error.statusCode ?? ''} ${error.name}: ${error.message}`.replace(/\s+/g, ' ');
     // Retry network errors (no status), 429 and 5xx; other 4xx won't succeed.
     const status = error.statusCode;
+    lastStatus = status ?? null;
     if (status != null && status !== 429 && status < 500) break;
     const retryAfter = Number(headers?.['retry-after']);
     await new Promise(r => setTimeout(r, Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 500 * 2 ** attempt));
   }
+  // Only connection-level failures count against the integration (bad key,
+  // unverified domain, Resend down) — not one bad recipient address.
+  if (lastStatus == null || lastStatus === 401 || lastStatus === 403 || lastStatus >= 500) await recordHealth('resend', false, lastError);
   throw new Error(lastError);
 }
 

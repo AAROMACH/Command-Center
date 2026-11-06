@@ -2,6 +2,7 @@ import 'server-only';
 import { randomBytes } from 'crypto';
 import { getFirestore } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
+import { recordHealth } from './integration-health';
 
 /**
  * QuickBooks Online connection (OAuth 2.0), server only.
@@ -92,7 +93,9 @@ async function accessToken(): Promise<{ token: string; realmId: string }> {
   const c = await getConnection();
   if (!c) throw new Error('QuickBooks isn’t connected.');
   if (Date.now() < c.accessExpiresAt) return { token: c.accessToken, realmId: c.realmId };
-  const t = await tokenRequest({ grant_type: 'refresh_token', refresh_token: c.refreshToken });
+  let t: Awaited<ReturnType<typeof tokenRequest>>;
+  try { t = await tokenRequest({ grant_type: 'refresh_token', refresh_token: c.refreshToken }); }
+  catch (e) { await recordHealth('quickbooks', false, e); throw e; }
   const now = Date.now();
   await ref.update({
     accessToken: t.access_token, refreshToken: t.refresh_token,
@@ -110,7 +113,13 @@ export async function qboGet(path: string): Promise<any> {
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
   });
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(`QuickBooks ${r.status}: ${JSON.stringify((d as any).Fault?.Error?.[0]?.Detail || (d as any).Fault || d).slice(0, 300)}`);
+  if (!r.ok) {
+    const msg = `QuickBooks ${r.status}: ${JSON.stringify((d as any).Fault?.Error?.[0]?.Detail || (d as any).Fault || d).slice(0, 300)}`;
+    // 401/403 = the connection itself is broken; 5xx = QuickBooks is down.
+    if (r.status === 401 || r.status === 403 || r.status >= 500) await recordHealth('quickbooks', false, msg);
+    throw new Error(msg);
+  }
+  await recordHealth('quickbooks', true);
   return d;
 }
 

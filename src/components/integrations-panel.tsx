@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { IntegrationStatus } from '@/app/api/integrations/status/route';
+import type { IntegrationState, IntegrationStatus } from '@/app/api/integrations/status/route';
 
 type QboStatus = {
   connected: boolean; configured: boolean; env: string; live?: boolean; error?: string;
@@ -23,12 +23,36 @@ const authed = async (url: string, init: RequestInit = {}) => {
   return d;
 };
 
-const BADGE: Record<IntegrationStatus['status'], { label: string; cls: string; Icon: typeof CheckCircle2 }> = {
-  ready: { label: 'Ready', cls: 'text-text-green', Icon: CheckCircle2 },
-  partial: { label: 'Needs setup', cls: 'text-accent-gold', Icon: TriangleAlert },
+const BADGE: Record<IntegrationState, { label: string; cls: string; Icon: typeof CheckCircle2 }> = {
+  connected: { label: 'Connected', cls: 'text-text-green', Icon: CheckCircle2 },
+  failed: { label: 'Not working', cls: 'text-brand-red', Icon: TriangleAlert },
   missing: { label: 'Not set up', cls: 'text-text-muted', Icon: CircleDashed },
+  untested: { label: 'Set — not tested', cls: 'text-accent-gold', Icon: CircleDashed },
   unused: { label: 'Not used', cls: 'text-text-muted', Icon: CircleDashed },
 };
+
+const when = (iso: string) => { try { return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return iso; } };
+
+/**
+ * The Maps key is a browser key locked to the site's address, so it's tested
+ * here: load the Maps script and listen for Google's auth-failure hook.
+ */
+function testMapsKey(key: string): Promise<{ ok: boolean; detail: string }> {
+  const w = window as any;
+  if (w.google?.maps) return Promise.resolve({ ok: !w.__mapsAuthFailed, detail: w.__mapsAuthFailed ? 'Google rejected the key on this page' : 'Loaded on this page without errors' });
+  return new Promise(resolve => {
+    let done = false;
+    const finish = (ok: boolean, detail: string) => { if (!done) { done = true; resolve({ ok, detail }); } };
+    w.gm_authFailure = () => { w.__mapsAuthFailed = true; finish(false, 'Google rejected the key (invalid, billing off, or not allowed for app.aaromach.com)'); };
+    w.__ccMapsTest = () => setTimeout(() => finish(!w.__mapsAuthFailed, 'Key accepted by Google Maps in your browser'), 2500);
+    const sc = document.createElement('script');
+    sc.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=__ccMapsTest&loading=async`;
+    sc.async = true;
+    sc.onerror = () => finish(false, 'Couldn’t load Google Maps');
+    document.head.appendChild(sc);
+    setTimeout(() => finish(false, 'Google Maps didn’t answer in time'), 12000);
+  });
+}
 
 /**
  * Settings → Integrations (Super Admins): every outside service the app uses,
@@ -46,7 +70,14 @@ export function IntegrationsPanel() {
     setError('');
     try {
       const [a, b] = await Promise.all([authed('/api/integrations/status'), authed('/api/quickbooks/status')]);
-      setList(a.integrations); setQbo(b);
+      setQbo(b);
+      const items: IntegrationStatus[] = a.integrations;
+      setList(items);
+      const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+      if (key && items.some(i => i.id === 'maps')) {
+        const r = await testMapsKey(key);
+        setList(cur => (cur || []).map(i => (i.id === 'maps' ? { ...i, state: r.ok ? 'connected' : 'failed', detail: r.detail } : i)));
+      }
     } catch (e: any) { setError(e.message); }
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -84,7 +115,7 @@ export function IntegrationsPanel() {
         </Button>
       </div>
       {list.map(i => {
-        const b = BADGE[i.status];
+        const b = BADGE[i.state];
         return (
           <Card key={i.id} id={i.id === 'quickbooks' ? 'quickbooks' : undefined} className="bg-bg-secondary border-border-main">
             <CardContent className="p-4 space-y-2">
@@ -93,10 +124,15 @@ export function IntegrationsPanel() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-[14px] font-semibold text-text-primary">{i.name}</p>
-                    <Badge variant={i.status === 'ready' ? 'active' : 'outline'} className="text-[10px] h-4 px-2">{b.label}</Badge>
+                    <Badge variant={i.state === 'connected' ? 'active' : 'outline'} className={cn('text-[10px] h-4 px-2', i.state === 'failed' && 'border-brand-red/50 text-brand-red')}>{b.label}</Badge>
                   </div>
                   <p className="text-[12px] text-text-muted">{i.purpose}</p>
-                  <p className="text-[12px] text-text-secondary mt-1">{i.detail}</p>
+                  <p className={cn('text-[12px] mt-1', i.state === 'failed' ? 'text-brand-red' : 'text-text-secondary')}>{i.detail}</p>
+                  {i.lastUse && (
+                    <p className={cn('text-[11px] mt-0.5', i.lastUse.ok ? 'text-text-muted' : 'text-brand-red')}>
+                      Last real use {when(i.lastUse.at)}: {i.lastUse.ok ? 'worked' : `failed — ${i.lastUse.error}`}
+                    </p>
+                  )}
                 </div>
                 {i.id === 'quickbooks' && qbo?.configured && (
                   qbo.connected ? (
@@ -129,7 +165,7 @@ export function IntegrationsPanel() {
           </Card>
         );
       })}
-      <p className="text-[11px] text-text-muted">Keys are set in Firebase App Hosting (secrets in Google Secret Manager). This page only shows whether each is set — never the value.</p>
+      <p className="text-[11px] text-text-muted">Checked live just now: Connected means the service answered a real test. Failures in everyday use (an email or QuickBooks call that didn’t go through) also show here, and Super Admins get an alert when a service stops working. Keys are set in Firebase App Hosting (secrets in Google Secret Manager). This page only shows whether each is set — never the value.</p>
     </div>
   );
 }

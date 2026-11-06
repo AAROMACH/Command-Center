@@ -15,15 +15,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Settings as SettingsIcon,
-  MapPin,
   Activity,
-  CheckCircle2,
   Globe,
   Bell,
   Banknote,
   Type,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { TERMINOLOGY } from '@/lib/constants';
 import { isPayAdmin, isSuperAdmin } from '@/lib/permissions';
@@ -31,6 +28,7 @@ import { BUSINESS_TIME_ZONE } from '@/lib/weekly-log-core';
 import type { Technician, NotificationPreferences } from '@/lib/types';
 import { FontPreferenceSetting } from '@/components/font-preference-setting';
 import { ThemeToggleSetting } from '@/components/theme-toggle-setting';
+import { IntegrationsPanel } from '@/components/integrations-panel';
 
 
 export default function AdminSettingsPage() {
@@ -42,7 +40,6 @@ export default function AdminSettingsPage() {
     // The mileage rate feeds payroll reimbursements — payroll and super admins
     // only (firestore.rules adminConfig/finance matches).
     const canEditFinance = isSuperAdmin(currentUser) || isPayAdmin(currentUser);
-    const mapsConfigured = !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
     // Signed-in user from Firebase Auth (sessionStorage is per-tab).
     useEffect(() => {
@@ -191,28 +188,9 @@ export default function AdminSettingsPage() {
                         <Activity size={14} className="text-brand-red" />
                         <h3 className="text-[13px] font-semibold text-text-primary">{TERMINOLOGY.CONFIG.INTEGRATIONS}</h3>
                     </div>
-                    <Card className="bg-bg-secondary border-border-main">
-                        <CardContent className="p-6">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-bg-primary rounded-lg border border-border-sub shrink-0">
-                                    <MapPin size={22} className="text-text-green" />
-                                </div>
-                                <div className="flex-1 min-w-0 text-left">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <p className="text-sm font-bold tracking-wide text-text-primary">Google Maps Platform</p>
-                                        <Badge variant={mapsConfigured ? 'active' : 'outline'} className="text-[10px] h-4 px-2">{mapsConfigured ? 'Configured' : 'Not configured'}</Badge>
-                                    </div>
-                                    <p className="text-[10px] text-text-muted font-medium">Address lookup, job maps and routing</p>
-                                    <p className="text-[11px] text-text-muted mt-1">{mapsConfigured ? 'API key is set for this deployment.' : 'Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in the hosting environment.'}</p>
-                                </div>
-                                {mapsConfigured && (
-                                <div className="shrink-0 text-right hidden sm:block">
-                                    <CheckCircle2 size={20} className="text-text-green ml-auto mb-1" />
-                                </div>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
+                    {isSuperAdmin(currentUser) ? <IntegrationsPanel /> : (
+                        <p className="text-[12px] text-text-muted px-1">Integrations and API keys are managed by Super Admins.</p>
+                    )}
                 </section>
             </div>
         </div>

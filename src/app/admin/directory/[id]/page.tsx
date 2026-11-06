@@ -32,7 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { canEditUserAccess } from '@/lib/profile-permissions';
 import {
-  vendorReadiness, customerReadiness, customerDisplayName, hasW9OnFile, WORKER_TYPE_LABELS, type Readiness,
+  vendorReadiness, customerReadiness, customerDisplayName, hasW9OnFile, WORKER_TYPE_LABELS, CHECK_LEVEL_LABEL, type CheckLevel, type Readiness,
 } from '@/lib/accounting-readiness';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import type { Technician, WorkOrder, PersonnelDocument, Project, ReliabilityEvent, QboLink } from '@/lib/types';
@@ -76,7 +76,9 @@ type DirectoryDocument = PersonnelDocument & { _legacy?: boolean };
 
 /** QuickBooks readiness checklist for a vendor (tech) or customer (client). */
 function ReadinessPanel({ title, readiness, link }: { title: string; readiness: Readiness; link?: QboLink }) {
-  const done = readiness.checks.filter(c => c.ok).length;
+  const req = readiness.checks.filter(c => c.level === 'required');
+  const reqDone = req.filter(c => c.ok).length;
+  const order: CheckLevel[] = ['required', '1099', 'invoicing', 'policy'];
   return (
     <div className="p-5 rounded-xl border border-border-sub bg-bg-secondary space-y-3">
       <div className="flex items-center justify-between border-b border-border-sub pb-2">
@@ -85,26 +87,37 @@ function ReadinessPanel({ title, readiness, link }: { title: string; readiness: 
         </h3>
         {readiness.applies && (
           <Badge variant={readiness.ready ? 'approved' : 'inprogress'} className="text-[10px] font-semibold uppercase tracking-wide">
-            {readiness.ready ? 'Ready' : `${done}/${readiness.checks.length}`}
+            {readiness.ready ? (readiness.warnings.length ? `Ready · ${readiness.warnings.length} to finish` : 'Ready') : `Blocked · ${reqDone}/${req.length} required`}
           </Badge>
         )}
       </div>
       {!readiness.applies ? (
         <p className="text-[12px] text-text-muted">{readiness.note}</p>
       ) : (
-        <ul className="space-y-1.5">
-          {readiness.checks.map(c => (
-            <li key={c.key} className="flex items-start gap-2">
-              {c.ok
-                ? <CheckCircle size={12} className="text-text-green mt-0.5 shrink-0" />
-                : <XCircle size={12} className="text-text-red mt-0.5 shrink-0" />}
-              <div className="min-w-0">
-                <p className={cn('text-[12px]', c.ok ? 'text-text-secondary' : 'text-text-primary font-semibold')}>{c.label}</p>
-                {!c.ok && c.hint && <p className="text-[11px] text-text-muted">{c.hint}</p>}
+        <div className="space-y-3">
+          {order.map(level => {
+            const rows = readiness.checks.filter(c => c.level === level);
+            if (!rows.length) return null;
+            return (
+              <div key={level} className="space-y-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{CHECK_LEVEL_LABEL[level]}</p>
+                <ul className="space-y-1.5">
+                  {rows.map(c => (
+                    <li key={c.key} className="flex items-start gap-2">
+                      {c.ok
+                        ? <CheckCircle size={12} className="text-text-green mt-0.5 shrink-0" />
+                        : <XCircle size={12} className={cn('mt-0.5 shrink-0', level === 'required' ? 'text-text-red' : 'text-accent-gold')} />}
+                      <div className="min-w-0">
+                        <p className={cn('text-[12px]', c.ok ? 'text-text-secondary' : 'text-text-primary font-semibold')}>{c.label}</p>
+                        {!c.ok && c.hint && <p className="text-[11px] text-text-muted">{c.hint}</p>}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </li>
-          ))}
-        </ul>
+            );
+          })}
+        </div>
       )}
       <div className="pt-2 border-t border-border-sub flex items-center justify-between text-[12px]">
         <span className="text-text-muted font-medium">QuickBooks link</span>

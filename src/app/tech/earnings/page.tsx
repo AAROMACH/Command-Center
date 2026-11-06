@@ -56,6 +56,7 @@ import { effectiveJobPay, computeWeeklyLogSettlement, computeWeeklyLogPay } from
 import { downloadPaystub } from '@/lib/paystub';
 import { adjustmentForText } from '@/lib/pay-adjustments';
 import { heldJobs } from '@/lib/pay-holds';
+import { MyStaffPay } from '@/components/staff-pay-panel';
 import { displayWorkOrderNumber, externalWorkOrderId } from '@/lib/work-order-identity';
 import { money } from '@/lib/financial-summary';
 
@@ -431,6 +432,9 @@ export default function TechEarningsPage() {
                         sub={`${heldTotal.count} job${heldTotal.count === 1 ? '' : 's'} · paid once released`} className="md:col-span-3" />
                 )}
             </div>
+
+            {/* Bonuses / installments outside job logs (staff pay plans), if any. */}
+            {currentTechId && <MyStaffPay userId={currentTechId} />}
 
             {/* Project Payouts */}
             {projectPayouts.length > 0 && (

@@ -13,7 +13,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { User, Loader2, Camera, ShieldCheck } from "lucide-react";
+import { User, Loader2, Camera, ShieldCheck, Wallet } from "lucide-react";
+import { MyStaffPay } from "@/components/staff-pay-panel";
 import Link from "next/link";
 import { SettingsTabs } from "@/components/settings-tabs";
 import Image from "next/image";
@@ -163,6 +164,11 @@ export default function ProfilePage() {
                             </Button>
                         </CardFooter>
                     </Card>
+                </>) },
+                { id: 'pay', label: 'My pay', icon: Wallet, content: (<>
+                    <p className="text-[12px] text-text-muted px-1">Bonuses and payments the company pays you week by week — what was paid, skipped, and is still owed.</p>
+                    {currentUser?.id ? <MyStaffPay userId={currentUser.id} /> : null}
+                    <p className="text-[12px] text-text-muted px-1">Nothing listed? You have no pay plans.</p>
                 </>) },
                 { id: 'security', label: 'Security', icon: ShieldCheck, content: (<>
                     <Card>

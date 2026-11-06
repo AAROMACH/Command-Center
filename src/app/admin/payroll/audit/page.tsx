@@ -43,6 +43,7 @@ import { PayrollTicketDecision } from '@/components/payroll-ticket-decision';
 import { PAYOUT_LABEL, adjustmentForText, createPayAdjustment, jobLabelFor, payoutStatus } from '@/lib/pay-adjustments';
 import { PAYOUT_BADGE, PayrollAdjustmentDialog } from '@/components/payroll-adjustment-dialog';
 import { HeldJobsPanel } from '@/components/held-jobs-panel';
+import { StaffPayPanel } from '@/components/staff-pay-panel';
 import { PAYROLL_TICKET_CARDS } from '@/lib/disputes';
 import { PayrollReviewDialog } from '@/app/admin/financials/components/payroll-review-dialog';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
@@ -850,6 +851,7 @@ export default function PayrollAuditPage() {
                         { value: 'history', label: 'Paystub history', short: 'Paystubs', count: approvedLogsByTech.length },
                         { value: 'adjustments', label: 'Adjustments', count: adjustments.length + payrollDisputes.filter(d => d.status === 'open').length },
                         { value: 'projects', label: 'Project timesheets', short: 'Projects', count: 0 },
+                        { value: 'staff', label: 'Staff pay', short: 'Staff', count: 0 },
                     ].map(t => (
                         <TabsTrigger key={t.value} value={t.value} className="tab-underline">
                             {'short' in t ? <><span className="sm:hidden">{t.short}</span><span className="hidden sm:inline">{t.label}</span></> : t.label}
@@ -1162,6 +1164,11 @@ export default function PayrollAuditPage() {
                     <PayrollAdjustmentDialog adj={editingAdj} techName={editingAdj ? (techNameOf(editingAdj.techId) || editingAdj.techId) : ''}
                         logs={weeklyLogs} jobsById={jobsById} by={currentUser?.name || 'Payroll'} canEdit={canEditAdjustments}
                         onClose={() => setEditingAdj(null)} />
+                </TabsContent>
+
+                {/* ── Staff pay: weekly bonuses and installments outside job logs ── */}
+                <TabsContent value="staff" className="m-0">
+                    <StaffPayPanel by={currentUser?.name || 'Payroll'} canEdit={canEditAdjustments} />
                 </TabsContent>
 
                 {/* ── Project timesheets: project hours by week, paid on that week's log ── */}

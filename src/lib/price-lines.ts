@@ -122,13 +122,23 @@ const UNIT_ABBR: Record<string, string> = { each: 'ea', foot: 'ft', feet: 'ft', 
 export const unitLabel = (u?: string | null) => { const k = (u || '').trim(); return UNIT_ABBR[k.toLowerCase()] || k; };
 
 /** A line's unit, with a best guess for older lines saved without one. */
-export function lineUnit(l: { unit?: string; section?: string; category?: string; name?: string; description?: string; itemRef?: string }): string {
+export function lineUnit(l: { unit?: string; section?: string; category?: string; name?: string; description?: string; itemRef?: string; unitPrice?: number }): string {
   if (l.unit) return unitLabel(l.unit);
   const name = l.name || l.description || '';
-  if (/\/\s*(hr|hour)\b/i.test(name)) return 'hr';
+  // Site walk service lines have their own units (drop, device…), filled from the catalog.
+  if (l.itemRef?.startsWith('svc:')) return '';
   const labor = l.section === 'labor' || ['labor', 'service', 'travel'].includes(l.category || '');
-  return labor ? '' : 'ea';
+  // Labor is billed in hours — except credits and discount/adjustment lines.
+  if (labor) return (Number(l.unitPrice) || 0) < 0 || /discount|adjust|credit/i.test(name) ? '' : 'hr';
+  // Bulk cable and wire are priced per foot; boxes, reels and patch cords aren't.
+  if (/\bbox\b/i.test(name)) return 'box';
+  if (/\breel\b/i.test(name)) return 'reel';
+  if (/\b(cable|wire)\b/i.test(name) && !/patch|\d+\s*(ft|m)\b|\bper\b/i.test(name)) return 'ft';
+  return 'ea';
 }
+
+/** 1500 → "1,500"; 2.5 → "2.5". */
+export const formatQty = (n: number) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
 
 /** Sell price for a material: its billable price, or cost + category markup. */
 export function materialPrice(m: { billablePrice?: number; standardCost?: number; category?: string; priceOverride?: boolean }, settings: PricingSettings): number {

@@ -151,7 +151,7 @@ export function PriceDocEditor({
   const priceBook = useMemo<PriceBookItem[]>(() => [
     ...settings.laborRates.map(r => ({
       id: `rate:${r.id}`, name: r.unit === 'hour' ? `${r.label} ($${r.rate}/hr)` : r.label, unitPrice: r.rate,
-      section: 'labor' as const, taxable: false, group: 'Labor rates', unit: r.unit === 'hour' ? 'hr' : '',
+      section: 'labor' as const, taxable: false, group: 'Labor rates', unit: r.unit === 'hour' ? 'hr' : 'job',
     })),
     ...materials.filter(m => m.status !== 'inactive').map(m => ({
       id: `mat:${m.id}`, name: m.name, unitPrice: materialPrice(m, settings), section: 'material' as const,

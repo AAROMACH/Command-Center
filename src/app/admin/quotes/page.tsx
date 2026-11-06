@@ -46,6 +46,7 @@ import { cn } from '@/lib/utils';
 import { ViewToggle, useViewMode } from '@/components/view-toggle';
 import { PageHeader } from '@/components/page-header';
 import { InvoicesPanel } from '@/app/admin/financials/components/invoices-panel';
+import { SalesInvoicesPanel } from '@/components/sales-invoices-panel';
 import { EmptyState, LoadingState } from '@/components/empty-state';
 import { SearchField } from '@/components/search-field';
 import { SortControl } from '@/components/list-toolbar';
@@ -663,7 +664,8 @@ export default function AdminQuotesPage() {
   };
   const [loading, setLoading] = useState(true);
   // ── Site walks: the walkthrough → admin approval → draft quote ──
-  const { user: authUser } = useAuth();
+  const { user: authUser, hasPermission } = useAuth();
+  const canSendInvoices = hasPermission("admin.crm.send_invoice");
   const router = useRouter();
   const directory = useDirectory();
   const walkTechs = useMemo(() => directory.filter(isTech).sort((a, b) => (a.name || '').localeCompare(b.name || '')), [directory]);
@@ -821,7 +823,7 @@ export default function AdminQuotesPage() {
           <TabsTrigger value="sent" className="tab">Sent<TabCount n={sent.length} /></TabsTrigger>
           <TabsTrigger value="approved" className="tab">Approved<TabCount n={approved.length} /></TabsTrigger>
           <TabsTrigger value="rejected" className="tab">Rejected / expired<TabCount n={rejected.length} /></TabsTrigger>
-          {!inSalesPortal && <TabsTrigger value="invoices" className="tab">Invoices</TabsTrigger>}
+          {(!inSalesPortal || canSendInvoices) && <TabsTrigger value="invoices" className="tab">Invoices</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="walks" className="mt-0">
@@ -837,7 +839,9 @@ export default function AdminQuotesPage() {
         <TabsContent value="sent" className="mt-0">{grid(sent, '1')}</TabsContent>
         <TabsContent value="approved" className="mt-0">{grid(approved, '2')}</TabsContent>
         <TabsContent value="rejected" className="mt-0">{grid(rejected, '3')}</TabsContent>
-        <TabsContent value="invoices" className="mt-0"><InvoicesPanel search={search} onResetSearch={() => setSearch('')} hideNewButton /></TabsContent>
+        <TabsContent value="invoices" className="mt-0">{inSalesPortal
+          ? (canSendInvoices && <SalesInvoicesPanel search={search} />)
+          : <InvoicesPanel search={search} onResetSearch={() => setSearch('')} hideNewButton />}</TabsContent>
       </Tabs>
 
       <NewQuoteDialog

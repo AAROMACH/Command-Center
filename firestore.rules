@@ -572,8 +572,12 @@ service cloud.firestore {
     }
 
     match /invoices/{id} {
+      // Sales people switched on for "Send invoices" (admin.crm.send_invoice,
+      // a per-person permission) read invoices to send them; the sending
+      // itself goes through /api/invoices/send.
       allow read: if isSignedIn() && (
           isAdmin()
+          || (isSales() && userData().get('permissionOverrides', {}).get('admin.crm.send_invoice', false) == true)
           || (isClient() && (
               resource.data.clientId == request.auth.uid
               || resource.data.clientName == userData().clientCompany

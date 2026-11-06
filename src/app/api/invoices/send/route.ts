@@ -4,7 +4,7 @@ import { randomBytes } from 'crypto';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
-import { getSubroles, isAdmin } from '@/lib/permissions';
+import { getSubroles, hasPermission, isAdmin } from '@/lib/permissions';
 import { emailConfigured, sendEmail } from '@/lib/server/notify-delivery';
 
 /**
@@ -19,7 +19,8 @@ async function caller(req: NextRequest) {
   try {
     const uid = (await getAuth(adminApp).verifyIdToken(h.replace(/^Bearer /, ''))).uid;
     const u = (await getFirestore(adminApp).doc(`users/${uid}`).get()).data();
-    if (!u || !isAdmin(u as any)) return null;
+    // Admins, and Sales people given the Send invoices permission.
+    if (!u || !(isAdmin(u as any) || hasPermission(u as any, 'admin.crm.send_invoice'))) return null;
     // Only Super / Payroll Admins approve invoices (lib/approvals).
     const approver = getSubroles(u as any).some(r => r === 'super_admin' || r === 'payroll_admin');
     return { uid, name: (u.name as string) || 'Aaromach', approver };

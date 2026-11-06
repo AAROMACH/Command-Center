@@ -428,6 +428,8 @@ export type ProjectPart = {
   /** Sell price per unit (price book), billed to the client on the quote. */
   unitPrice: number;
   taxable: boolean;
+  /** Material unit type (each, foot…). */
+  unit?: string;
   /** The quote line this part became, so it can be removed again. */
   quoteLineId?: string | null;
   addedBy: string;

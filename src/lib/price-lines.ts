@@ -29,6 +29,8 @@ export type PriceLine = {
   emergency?: boolean;
   /** Price-book source ('rate:<id>' | 'mat:<id>'), so lines map to QuickBooks items. */
   itemRef?: string;
+  /** What a quantity of 1 is: hr, ft, ea, drop… (shown on the PDF). */
+  unit?: string;
   /** Quotes: false = the client may leave it out. */
   required?: boolean;
   /** The quote category it came from, kept so a round trip doesn't change it. */
@@ -51,10 +53,12 @@ const lineExtras = (l: PriceLine) => ({
   ...(l.section === 'labor' && l.multiplier != null && l.multiplier !== 1 ? { multiplier: l.multiplier, multiplierLabel: l.multiplierLabel || '' } : {}),
   ...(l.section === 'labor' && l.multiplier == null && l.emergency ? { emergency: true } : {}),
   ...(l.itemRef ? { itemRef: l.itemRef } : {}),
+  ...(l.unit?.trim() ? { unit: l.unit.trim() } : {}),
 });
 const readExtras = (i: Record<string, any>) => ({
   ...(typeof i.multiplier === 'number' ? { multiplier: i.multiplier, multiplierLabel: i.multiplierLabel || '' } : {}),
   ...(typeof i.itemRef === 'string' ? { itemRef: i.itemRef } : {}),
+  ...(typeof i.unit === 'string' && i.unit ? { unit: i.unit } : {}),
 });
 
 export type PriceTotals = {
@@ -111,7 +115,20 @@ export function describeDiscount(d: PlanDiscount): string {
 
 // ── Price book ────────────────────────────────────────────────────────────────
 
-export type PriceBookItem = { id: string; name: string; unitPrice: number; section: PriceSection; taxable: boolean; group: string };
+export type PriceBookItem = { id: string; name: string; unitPrice: number; section: PriceSection; taxable: boolean; group: string; unit?: string };
+
+const UNIT_ABBR: Record<string, string> = { each: 'ea', foot: 'ft', feet: 'ft', hour: 'hr', hours: 'hr', 'tech-hour': 'hr' };
+/** Short unit for a line: material unit types and catalog units (each → ea, foot → ft, hour → hr). */
+export const unitLabel = (u?: string | null) => { const k = (u || '').trim(); return UNIT_ABBR[k.toLowerCase()] || k; };
+
+/** A line's unit, with a best guess for older lines saved without one. */
+export function lineUnit(l: { unit?: string; section?: string; category?: string; name?: string; description?: string; itemRef?: string }): string {
+  if (l.unit) return unitLabel(l.unit);
+  const name = l.name || l.description || '';
+  if (/\/\s*(hr|hour)\b/i.test(name)) return 'hr';
+  const labor = l.section === 'labor' || ['labor', 'service', 'travel'].includes(l.category || '');
+  return labor ? '' : 'ea';
+}
 
 /** Sell price for a material: its billable price, or cost + category markup. */
 export function materialPrice(m: { billablePrice?: number; standardCost?: number; category?: string; priceOverride?: boolean }, settings: PricingSettings): number {

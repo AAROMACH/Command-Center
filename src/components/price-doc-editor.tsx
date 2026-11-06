@@ -9,14 +9,17 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { DOC_BRAND, DocKindHeader, PriceBookPicker } from '@/components/price-book-picker';
 import { ClientPicker } from '@/components/client-picker';
 import { Switch } from '@/components/ui/switch';
-import { Hammer, Package, Plus, Trash2, Loader2, BadgePercent, Undo2 } from 'lucide-react';
+import { Hammer, Package, Plus, Trash2, Loader2, BadgePercent, Undo2, BookmarkCheck } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
+import { useToast } from '@/hooks/use-toast';
+import { savePriceToBook } from '@/lib/price-book-actions';
 import { cn } from '@/lib/utils';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
-import { isClient } from '@/lib/permissions';
+import { isClient, isSuperAdmin } from '@/lib/permissions';
 import { useAllSubscriptions, usePricingSettings, useServicePlans } from '@/hooks/use-billing';
 import { describeFactor, formatMoney, isLiveSubscription } from '@/lib/billing';
 import {
-  describeDiscount, discountLineLabel, lineAmount, materialPrice, planDiscountFor, priceTotals,
+  describeDiscount, discountLineLabel, lineAmount, materialPrice, planDiscountFor, priceTotals, unitLabel,
   type PlanDiscount, type PriceBookItem, type PriceLine, type PriceSection, type PriceTotals,
 } from '@/lib/price-lines';
 import type { Material, Project, QuoteOptionalGroup, QuoteOptionItem, Technician, WorkOrder } from '@/lib/types';
@@ -148,13 +151,37 @@ export function PriceDocEditor({
   const priceBook = useMemo<PriceBookItem[]>(() => [
     ...settings.laborRates.map(r => ({
       id: `rate:${r.id}`, name: r.unit === 'hour' ? `${r.label} ($${r.rate}/hr)` : r.label, unitPrice: r.rate,
-      section: 'labor' as const, taxable: false, group: 'Labor rates',
+      section: 'labor' as const, taxable: false, group: 'Labor rates', unit: r.unit === 'hour' ? 'hr' : '',
     })),
     ...materials.filter(m => m.status !== 'inactive').map(m => ({
       id: `mat:${m.id}`, name: m.name, unitPrice: materialPrice(m, settings), section: 'material' as const,
-      taxable: m.taxable !== false, group: m.category || 'Other',
+      taxable: m.taxable !== false, group: m.category || 'Other', unit: unitLabel(m.unitType),
     })),
   ], [settings, materials]);
+  const bookById = useMemo(() => new Map(priceBook.map(i => [i.id, i])), [priceBook]);
+
+  // Super admins can make a price changed here the price-book price.
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const canSetBookPrice = isSuperAdmin(user);
+  const [bookSaving, setBookSaving] = useState<string | null>(null);
+  const bookDiff = (l: PriceLine) => {
+    const it = l.itemRef ? bookById.get(l.itemRef) : undefined;
+    return it && Math.abs((Number(l.unitPrice) || 0) - it.unitPrice) >= 0.005 ? it : null;
+  };
+  const saveToBook = async (l: PriceLine) => {
+    const it = bookDiff(l);
+    if (!it || !l.itemRef) return;
+    const name = it.name.replace(/\s*\(\$[^)]*\)$/, '');
+    if (!confirm(`Change the price book price of "${name}" from ${formatMoney(it.unitPrice)} to ${formatMoney(l.unitPrice)}${it.unit ? `/${it.unit}` : ''}?\n\nNew quotes and invoices use it from now on; ones already made keep their prices.${l.itemRef.startsWith('mat:') ? ' This material gets a fixed price (it stops following its category markup).' : ''}`)) return;
+    setBookSaving(l.id);
+    try {
+      await savePriceToBook(l.itemRef, l.unitPrice, settings);
+      toast({ title: 'Price book updated', description: `${name}: ${formatMoney(l.unitPrice)}${it.unit ? `/${it.unit}` : ''}` });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Could not update the price book', description: e?.code === 'permission-denied' ? 'Only super admins can change price book prices.' : e.message });
+    } finally { setBookSaving(null); }
+  };
 
   // ── Discount ──
   const client = clients.find(c => c.id === v.clientId);
@@ -176,6 +203,7 @@ export function PriceDocEditor({
       id: genId(), name: from?.name || '', quantity: 1, unitPrice: from?.unitPrice || 0, section,
       taxable: section === 'material' ? (from ? from.taxable : true) : false, required: true,
       ...(from ? { itemRef: from.id } : {}),
+      ...(from?.unit ? { unit: from.unit } : {}),
     }],
   }));
   const setLine = (id: string, patch: Partial<PriceLine>) => setV(p => ({ ...p, lines: p.lines.map(l => l.id === id ? { ...l, ...patch } : l) }));
@@ -267,12 +295,30 @@ export function PriceDocEditor({
                 <span className="hidden sm:block text-right text-[12px] font-mono font-bold text-text-primary">{formatMoney(lineAmount(l))}</span>
                 <button type="button" onClick={() => removeLine(l.id)} className="hidden sm:block text-text-muted hover:text-brand-red justify-self-center"><Trash2 size={13} /></button>
                 <span className="sm:hidden col-span-2 text-right text-[12px] font-mono font-bold text-text-primary">{formatMoney(lineAmount(l))}</span>
-                {kind === 'quote' && (
-                  <label className="col-span-2 sm:col-span-6 flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer px-1">
-                    <input type="checkbox" className="accent-brand-red" checked={l.required !== false} onChange={e => setLine(l.id, { required: e.target.checked })} />
-                    Required
+                <div className="col-span-2 sm:col-span-6 flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1 text-[11px] text-text-muted">
+                  <label className="flex items-center gap-1.5">
+                    Unit
+                    <Input className="h-6 w-20 px-1.5 text-[11px] bg-bg-primary border-border-sub" value={l.unit || ''} placeholder={isLabor ? 'hr' : 'ea'}
+                      onChange={e => setLine(l.id, { unit: e.target.value })} />
                   </label>
-                )}
+                  {kind === 'quote' && (
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input type="checkbox" className="accent-brand-red" checked={l.required !== false} onChange={e => setLine(l.id, { required: e.target.checked })} />
+                      Required
+                    </label>
+                  )}
+                  {canSetBookPrice && (() => {
+                    const it = bookDiff(l);
+                    return it ? (
+                      <button type="button" onClick={() => saveToBook(l)} disabled={bookSaving === l.id}
+                        className="ml-auto flex items-center gap-1 text-accent-gold hover:underline disabled:opacity-60"
+                        title="Make this the price-book price for new quotes and invoices">
+                        {bookSaving === l.id ? <Loader2 size={11} className="animate-spin" /> : <BookmarkCheck size={11} />}
+                        Price book: {formatMoney(it.unitPrice)} — save {formatMoney(l.unitPrice)} to price book
+                      </button>
+                    ) : null;
+                  })()}
+                </div>
               </div>
             ))}
           </div>

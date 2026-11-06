@@ -7,7 +7,7 @@ import { usePricingSettings } from '@/hooks/use-billing';
 import type { LaborRate } from './billing';
 import { createDocId } from './generateId';
 import { ID_PREFIXES } from './constants';
-import { priceTotals, toQuoteLines, type PlanDiscount, type PriceLine } from './price-lines';
+import { priceTotals, toQuoteLines, unitLabel, type PlanDiscount, type PriceLine } from './price-lines';
 import { syncLeadOnQuoteCreated } from './crm-actions';
 import { NotificationService } from './notification-service';
 import {
@@ -90,7 +90,7 @@ export async function returnSiteWalk(w: SiteWalk, note: string, by: string): Pro
 export const walkQuoteLines = (priced: PricedLine[]): PriceLine[] => priced.filter(l => l.service && l.qty > 0).map(l => ({
   id: l.id.replace(/[^a-z0-9-]/gi, '') || Math.random().toString(36).slice(2, 10),
   name: l.service!.name, quantity: l.qty, unitPrice: l.sell, section: 'labor', taxable: false,
-  itemRef: `svc:${l.code}`, required: true, sourceCategory: 'service',
+  itemRef: `svc:${l.code}`, required: true, sourceCategory: 'service', unit: unitLabel(l.service!.unit),
 }));
 
 /**

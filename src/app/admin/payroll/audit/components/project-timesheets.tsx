@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { addDoc, collection } from 'firebase/firestore';
 import { addDays, format, parse } from 'date-fns';
-import { CheckCircle2, ChevronDown, Clock, Loader2 } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Clock, Loader2, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { db } from '@/lib/firebase';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { makeProjectPayoutId } from '@/lib/doc-ids';
@@ -39,7 +40,11 @@ export function ProjectTimesheets({ technicians, approverName, canEditRate }: {
   const [logs, setLogs] = useState<ProjectDailyLog[]>([]);
   const [payouts, setPayouts] = useState<ProjectPayout[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [week, setWeek] = useState('');
+  // 'all' = every date; otherwise one week (MM-dd-yyyy Monday).
+  const [week, setWeek] = useState('all');
+  const [search, setSearch] = useState('');
+  // Default: only sessions not paid out yet. Toggle to see every timesheet.
+  const [showPaid, setShowPaid] = useState(false);
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
   // Rate overrides for this screen, per tech + week; default is the tech's hourly rate.
@@ -57,10 +62,13 @@ export function ProjectTimesheets({ technicians, approverName, canEditRate }: {
   const paidIds = useMemo(() => new Set(payouts.flatMap(p => p.timesheetLogIds || [])), [payouts]);
   const weeks = useMemo(() => Array.from(new Set(closed.map(l => weekOfForScheduleDate(l.date))))
     .sort((x, y) => parse(y, 'MM-dd-yyyy', new Date()).getTime() - parse(x, 'MM-dd-yyyy', new Date()).getTime()), [closed]);
-  useEffect(() => { if (!week && weeks.length) setWeek(weeks[0]); }, [weeks, week]);
+  const projectName = (id: string) => projects.find(p => p.id === id)?.name || id;
 
   const rows = useMemo(() => {
-    const inWeek = closed.filter(l => weekOfForScheduleDate(l.date) === week);
+    const q = search.trim().toLowerCase();
+    const inWeek = closed.filter(l => (week === 'all' || weekOfForScheduleDate(l.date) === week)
+      && (showPaid || !paidIds.has(l.id))
+      && (!q || (projects.find(p => p.id === l.projectId)?.name || l.projectId || '').toLowerCase().includes(q)));
     const byTech = new Map<string, ProjectDailyLog[]>();
     inWeek.forEach(l => byTech.set(l.techId, [...(byTech.get(l.techId) || []), l]));
     return Array.from(byTech.entries()).map(([techId, list]) => {
@@ -74,19 +82,21 @@ export function ProjectTimesheets({ technicians, approverName, canEditRate }: {
       const unpaidHours = unpaid.reduce((s, l) => s + (l.hoursWorked || 0), 0);
       return { techId, name: tech?.name || 'Unknown tech', rate, defaultRate, logs: sorted, hours, unpaid, unpaidHours };
     }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [closed, week, technicians, paidIds, rateEdits]);
-
-  const projectName = (id: string) => projects.find(p => p.id === id)?.name || id;
+  }, [closed, week, technicians, paidIds, rateEdits, search, showPaid, projects]);
 
   const approve = async (row: typeof rows[number]) => {
     if (!row.rate) { toast({ variant: 'destructive', title: 'No hourly rate', description: canEditRate ? `Enter a rate for ${row.name}, or set it in the Directory.` : `Set ${row.name}'s hourly rate in the Directory first.` }); return; }
     setBusy(row.techId);
     try {
+      // Each session is paid on the week it was worked (All dates may span several).
+      const byWeek = new Map<string, ProjectDailyLog[]>();
+      row.unpaid.forEach(l => { const w = weekOfForScheduleDate(l.date); byWeek.set(w, [...(byWeek.get(w) || []), l]); });
       // Refuse an approved week up front — nothing is written in that case.
-      await assertWeekOpen(row.techId, week);
+      for (const w of byWeek.keys()) await assertWeekOpen(row.techId, w);
+      for (const [week, weekList] of byWeek) {
       // One payout per project, so each project's labor cost stays on that project.
       const byProject = new Map<string, ProjectDailyLog[]>();
-      row.unpaid.forEach(l => byProject.set(l.projectId, [...(byProject.get(l.projectId) || []), l]));
+      weekList.forEach(l => byProject.set(l.projectId, [...(byProject.get(l.projectId) || []), l]));
       for (const [projectId, list] of byProject) {
         const hours = +list.reduce((s, l) => s + (l.hoursWorked || 0), 0).toFixed(2);
         const amount = +(hours * row.rate).toFixed(2);
@@ -103,7 +113,8 @@ export function ProjectTimesheets({ technicians, approverName, canEditRate }: {
         const lastDate = list[list.length - 1].date;
         await addPayoutToWeeklyLog(row.techId, id, { projectId, amount, notes, weekOf: week, workDate: lastDate });
       }
-      toast({ title: 'Added to the weekly log', description: `${row.name}: ${row.unpaidHours.toFixed(2)}h for the week of ${week}.` });
+      }
+      toast({ title: 'Added to the weekly log', description: `${row.name}: ${row.unpaidHours.toFixed(2)}h${byWeek.size > 1 ? `, across ${byWeek.size} weeks` : ` for the week of ${[...byWeek.keys()][0]}`}.` });
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Could not add', description: e?.message || 'Try again.' });
     } finally {
@@ -118,12 +129,28 @@ export function ProjectTimesheets({ technicians, approverName, canEditRate }: {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
+        <div className="relative w-full sm:w-[260px]">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search project…" className="h-10 pl-8" aria-label="Search project" />
+        </div>
         <Select value={week} onValueChange={setWeek}>
-          <SelectTrigger className="h-10 w-full sm:w-[260px]"><SelectValue placeholder="Week" /></SelectTrigger>
-          <SelectContent>{weeks.map(w => <SelectItem key={w} value={w}>{weekLabel(w)}</SelectItem>)}</SelectContent>
+          <SelectTrigger className="h-10 w-full sm:w-[240px]"><SelectValue placeholder="Week" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All dates</SelectItem>
+            {weeks.map(w => <SelectItem key={w} value={w}>{weekLabel(w)}</SelectItem>)}
+          </SelectContent>
         </Select>
-        <p className="text-[12px] text-text-muted">Check each tech's project hours, then add them to that week's log to be paid.</p>
+        <div className="tabs flex-nowrap" role="tablist" aria-label="Which timesheets">
+          <button type="button" role="tab" aria-selected={!showPaid} className={cn('tab', !showPaid && 'active')} onClick={() => setShowPaid(false)}>Not paid yet</button>
+          <button type="button" role="tab" aria-selected={showPaid} className={cn('tab', showPaid && 'active')} onClick={() => setShowPaid(true)}>Show all</button>
+        </div>
+        <p className="w-full text-[12px] text-text-muted">Check each tech's project hours, then add them to the log of the week they were worked.</p>
       </div>
+
+      {!rows.length && (
+        <EmptyState icon={CheckCircle2} title={search ? 'No timesheets match' : showPaid ? 'No timesheets here' : 'Nothing waiting to be paid'}
+          description={search ? 'Try another project name.' : showPaid ? 'No project hours for these dates.' : 'Every project timesheet for these dates is on a weekly log. Pick Show all to see them.'} />
+      )}
 
       {rows.map(row => {
         const isOpen = open.has(row.techId);

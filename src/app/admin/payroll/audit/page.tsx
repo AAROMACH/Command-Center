@@ -44,6 +44,7 @@ import { PAYOUT_LABEL, adjustmentForText, createPayAdjustment, jobLabelFor, payo
 import { PAYOUT_BADGE, PayrollAdjustmentDialog } from '@/components/payroll-adjustment-dialog';
 import { HeldJobsPanel } from '@/components/held-jobs-panel';
 import { StaffPayPanel } from '@/components/staff-pay-panel';
+import { WagesButton } from '@/components/wages-dialog';
 import { PAYROLL_TICKET_CARDS } from '@/lib/disputes';
 import { PayrollReviewDialog } from '@/app/admin/financials/components/payroll-review-dialog';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
@@ -643,9 +644,14 @@ export default function PayrollAuditPage() {
                 title="Payroll audit"
                 subtitle="Every weekly log submission and approval, with disputes and adjustments."
                 actions={
-                    <Button variant="outline" size="sm" className="h-9 border-border-main" onClick={handleExportCsv}>
-                        <Download size={14} className="mr-1.5" /> Export CSV
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                        {(isSuperAdmin(currentUser) || getSubroles(currentUser).includes('payroll_admin')) && (
+                            <WagesButton people={technicians} by={currentUser?.name || 'Payroll'} />
+                        )}
+                        <Button variant="outline" size="sm" className="h-9 border-border-main" onClick={handleExportCsv}>
+                            <Download size={14} className="mr-1.5" /> Export CSV
+                        </Button>
+                    </div>
                 }
             />
 
@@ -848,10 +854,10 @@ export default function PayrollAuditPage() {
                 <TabsList className="border-b border-border-sub bg-transparent rounded-none h-auto p-0 gap-x-4 sm:gap-8 justify-start mb-4 w-full sm:w-auto">
                     {[
                         { value: 'weekly', label: 'Weekly', count: filteredLogs.length },
-                        { value: 'history', label: 'Paystub history', short: 'Paystubs', count: approvedLogsByTech.length },
-                        { value: 'adjustments', label: 'Adjustments', count: adjustments.length + payrollDisputes.filter(d => d.status === 'open').length },
                         { value: 'projects', label: 'Project timesheets', short: 'Projects', count: 0 },
+                        { value: 'history', label: 'Paystub history', short: 'Paystubs', count: approvedLogsByTech.length },
                         { value: 'staff', label: 'Staff pay', short: 'Staff', count: 0 },
+                        { value: 'adjustments', label: 'Adjustments', count: adjustments.length + payrollDisputes.filter(d => d.status === 'open').length },
                     ].map(t => (
                         <TabsTrigger key={t.value} value={t.value} className="tab-underline">
                             {'short' in t ? <><span className="sm:hidden">{t.short}</span><span className="hidden sm:inline">{t.label}</span></> : t.label}

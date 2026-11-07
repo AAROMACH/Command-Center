@@ -83,12 +83,12 @@ function exportRequestsCsv(rows: GlobalRequest[], name = 'requests') {
 
 // ── Tabs / filters ─────────────────────────────────────────────────────────
 
-type TabId = 'inbox' | 'service' | 'intake' | 'approved' | 'converted' | 'archived';
+// Tabs are where a request is in its life; what kind it is (service ticket,
+// new client, quote…) is the Type filter — a request is never in two tabs.
+type TabId = 'inbox' | 'approved' | 'converted' | 'archived';
 
 const TAB_FILTERS: Record<TabId, (r: GlobalRequest) => boolean> = {
   inbox: r => r.status === 'new' || r.status === 'pending_review',
-  service: r => r.category === 'service_ticket',
-  intake: r => r.category === 'client_intake',
   approved: r => r.status === 'approved',
   converted: r => r.status === 'converted',
   archived: r => r.status === 'archived' || r.status === 'closed' || r.status === 'denied',
@@ -131,12 +131,13 @@ export default function RequestsPage() {
   const [acting, setActing] = useState(false);
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
 
-  const [activeTab, setActiveTab] = useSessionState<TabId>('admin/requests:activeTab', 'inbox');
+  const [savedTab, setActiveTab] = useSessionState<TabId>('admin/requests:activeTab', 'inbox');
+  // An old saved tab (Service / Client Intake) opens the Inbox.
+  const activeTab: TabId = savedTab in TAB_FILTERS ? savedTab : 'inbox';
   const [viewMode, setViewMode] = useViewMode('requests');
   const [searchQuery, setSearchQuery] = useSessionState('admin/requests:searchQuery', '');
   const [sourceFilter, setSourceFilter] = useSessionState<'all' | RequestSource>('admin/requests:sourceFilter', 'all');
   const [categoryFilter, setCategoryFilter] = useSessionState<'all' | RequestCategory>('admin/requests:categoryFilter', 'all');
-  const [statusFilter, setStatusFilter] = useSessionState<'all' | RequestStatus>('admin/requests:statusFilter', 'all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | RequestPriority>('all');
   const [sortBy, setSortBy] = useSessionState<SortId>('admin/requests:sortBy', 'newest');
   const [checked, setChecked] = useState<Set<string>>(new Set());
@@ -179,7 +180,6 @@ export default function RequestsPage() {
     let items = allRequests.filter(TAB_FILTERS[activeTab]);
     if (sourceFilter !== 'all') items = items.filter(r => r.source === sourceFilter);
     if (categoryFilter !== 'all') items = items.filter(r => r.category === categoryFilter);
-    if (statusFilter !== 'all') items = items.filter(r => r.status === statusFilter);
     if (priorityFilter !== 'all') items = items.filter(r => r.priority === priorityFilter);
     const q = searchQuery.trim().toLowerCase();
     if (q) {
@@ -197,11 +197,11 @@ export default function RequestsPage() {
         default: return newest(a, b);
       }
     });
-  }, [allRequests, activeTab, sourceFilter, categoryFilter, statusFilter, priorityFilter, searchQuery, sortBy]);
-  const pager = usePaged(filtered, PAGE_SIZES_SMALL, 'admin-requests', [activeTab, sourceFilter, categoryFilter, statusFilter, priorityFilter, searchQuery, sortBy]);
+  }, [allRequests, activeTab, sourceFilter, categoryFilter, priorityFilter, searchQuery, sortBy]);
+  const pager = usePaged(filtered, PAGE_SIZES_SMALL, 'admin-requests', [activeTab, sourceFilter, categoryFilter, priorityFilter, searchQuery, sortBy]);
 
   // Selection follows the visible set: cleared whenever tab / search / filters change.
-  useEffect(() => { setChecked(new Set()); }, [activeTab, sourceFilter, categoryFilter, statusFilter, priorityFilter, searchQuery]);
+  useEffect(() => { setChecked(new Set()); }, [activeTab, sourceFilter, categoryFilter, priorityFilter, searchQuery]);
   const checkedRows = useMemo(() => filtered.filter(r => checked.has(r.id)), [filtered, checked]);
   const pageIds = pager.items.map(r => r.id);
   const pageAll = pageIds.length > 0 && pageIds.every(id => checked.has(id));
@@ -210,8 +210,8 @@ export default function RequestsPage() {
   const toggleOne = (id: string, on: boolean) => setChecked(prev => { const n = new Set(prev); if (on) n.add(id); else n.delete(id); return n; });
   const togglePage = (on: boolean) => setChecked(prev => { const n = new Set(prev); pageIds.forEach(id => (on ? n.add(id) : n.delete(id))); return n; });
 
-  const filtersOn = sourceFilter !== 'all' || categoryFilter !== 'all' || statusFilter !== 'all' || priorityFilter !== 'all' || !!searchQuery.trim();
-  const resetFilters = () => { setSourceFilter('all'); setCategoryFilter('all'); setStatusFilter('all'); setPriorityFilter('all'); setSearchQuery(''); };
+  const filtersOn = sourceFilter !== 'all' || categoryFilter !== 'all' || priorityFilter !== 'all' || !!searchQuery.trim();
+  const resetFilters = () => { setSourceFilter('all'); setCategoryFilter('all'); setPriorityFilter('all'); setSearchQuery(''); };
 
   // ── Actions ──────────────────────────────────────────────────────────────
 
@@ -316,11 +316,9 @@ export default function RequestsPage() {
           <TabsList className="tabs w-max">
             {([
               { value: 'inbox', label: 'Inbox' },
-              { value: 'service', label: 'Service' },
-              { value: 'intake', label: 'Client Intake' },
               { value: 'approved', label: 'Approved' },
               { value: 'converted', label: 'Converted' },
-              { value: 'archived', label: 'Archived' },
+              { value: 'archived', label: 'Closed' },
             ] as { value: TabId; label: string }[]).map(t => (
               <TabsTrigger key={t.value} value={t.value} className="tab shrink-0">
                 {t.label}{(t.value === 'inbox') && <TabCount n={tabCounts.inbox} />}
@@ -333,6 +331,8 @@ export default function RequestsPage() {
       {/* Filters + search */}
       <div className="space-y-2.5 py-1 border-b border-border-sub pb-3">
         <div className="flex items-center gap-4 flex-wrap">
+          <FilterGroup label="Type" value={categoryFilter} onChange={setCategoryFilter}
+            options={[{ value: 'all' as const, label: 'All' }, ...(Object.keys(CATEGORY_LABELS) as RequestCategory[]).map(c => ({ value: c, label: CATEGORY_LABELS[c] }))]} />
           <FilterGroup label="Source" value={sourceFilter} onChange={setSourceFilter}
             options={[{ value: 'all', label: 'All' }, { value: 'app', label: 'App' }, { value: 'manual', label: 'Manual' }, { value: 'form', label: 'Form' }]} />
           <FilterGroup label="Priority" value={priorityFilter} onChange={setPriorityFilter}
@@ -345,24 +345,6 @@ export default function RequestsPage() {
             placeholder="Search name, company, email, phone, location…"
             className="flex-1 min-w-[200px]"
             />
-          <Select value={categoryFilter} onValueChange={v => setCategoryFilter(v as typeof categoryFilter)}>
-            <SelectTrigger className="h-9 w-[160px] text-[10px] font-bold bg-bg-secondary border-border-main shrink-0"><SelectValue /></SelectTrigger>
-            <SelectContent className="bg-bg-elevated border-border-main">
-              <SelectItem value="all" className="text-[10px] font-bold">Category: All</SelectItem>
-              {(Object.keys(CATEGORY_LABELS) as RequestCategory[]).map(c => (
-                <SelectItem key={c} value={c} className="text-[10px] font-bold">{CATEGORY_LABELS[c]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={v => setStatusFilter(v as typeof statusFilter)}>
-            <SelectTrigger className="h-9 w-[160px] text-[10px] font-bold bg-bg-secondary border-border-main shrink-0"><SelectValue /></SelectTrigger>
-            <SelectContent className="bg-bg-elevated border-border-main">
-              <SelectItem value="all" className="text-[10px] font-bold">Status: All</SelectItem>
-              {(Object.keys(STATUS_LABELS) as RequestStatus[]).map(s => (
-                <SelectItem key={s} value={s} className="text-[10px] font-bold">{STATUS_LABELS[s]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <SortControl value={sortBy} onChange={v => setSortBy(v as SortId)} options={SORT_OPTIONS}
             dateAsc={false} onToggleDirection={() => {}} className="shrink-0" />
           <Button variant="outline" className="h-9 shrink-0" disabled={filtered.length === 0}

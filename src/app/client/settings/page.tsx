@@ -19,7 +19,12 @@ import {
   ShieldCheck,
   CheckCircle2,
   Type,
+  Receipt,
+  LifeBuoy,
+  Key,
 } from 'lucide-react';
+import Link from 'next/link';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import type { Technician, NotificationPreferences } from '@/lib/types';
 import { FontPreferenceSetting } from '@/components/font-preference-setting';
@@ -65,6 +70,20 @@ export default function ClientSettingsPage() {
         }
     };
 
+    // Where invoices are emailed (invoice send uses billingEmail, else the sign-in email).
+    const [billingEmail, setBillingEmail] = useState('');
+    const [savingBilling, setSavingBilling] = useState(false);
+    useEffect(() => { setBillingEmail(currentUser?.billingEmail || ''); }, [currentUser?.billingEmail]);
+    const saveBilling = async () => {
+        if (!currentUser) return;
+        const v = billingEmail.trim();
+        if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { toast({ variant: 'destructive', title: 'Check the email address' }); return; }
+        setSavingBilling(true);
+        try { await updateDoc(doc(db, 'users', currentUser.id), { billingEmail: v || null }); toast({ title: 'Invoice email saved', description: v ? `Invoices go to ${v}.` : 'Invoices go to your sign-in email.' }); }
+        catch (e: any) { toast({ variant: 'destructive', title: 'Save failed', description: e.message }); }
+        finally { setSavingBilling(false); }
+    };
+
     if (!mounted) return null;
 
     return (
@@ -79,7 +98,22 @@ export default function ClientSettingsPage() {
             <SettingsTabs tabs={[
                 { id: 'notifications', label: 'Notifications', icon: Bell, content: <NotificationEventsCard /> },
                 { id: 'display', label: 'Display', icon: Type, content: <><ThemeToggleSetting /><FontPreferenceSetting /></> },
-                { id: 'account', label: 'Account', icon: Building2, content: (
+                { id: 'billing', label: 'Billing', icon: Receipt, content: (
+                    <Card>
+                        <CardHeader className="text-left">
+                            <CardTitle>Invoice email</CardTitle>
+                            <CardDescription>Where we send your invoices. Leave blank to use your sign-in email ({currentUser?.email || '—'}).</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex flex-wrap items-center gap-2">
+                            <Input type="email" value={billingEmail} onChange={e => setBillingEmail(e.target.value)} placeholder="accounts@yourcompany.com"
+                                className="h-10 flex-1 min-w-[220px] max-w-md" aria-label="Invoice email" />
+                            <Button onClick={saveBilling} disabled={savingBilling || billingEmail.trim() === (currentUser?.billingEmail || '')} className="h-10 w-full sm:w-auto">
+                                {savingBilling ? 'Saving…' : 'Save'}
+                            </Button>
+                        </CardContent>
+                    </Card>
+                ) },
+                { id: 'account', label: 'Account', icon: Building2, content: (<>
                     <Card className="rounded-xl bg-bg-secondary border-border-main shadow-sm">
                         <CardHeader className="text-left">
                             <CardTitle className="text-base font-semibold">Account status</CardTitle>
@@ -103,7 +137,25 @@ export default function ClientSettingsPage() {
                             </div>
                         </CardContent>
                     </Card>
-                ) },
+                    <Card>
+                        <CardContent className="p-0 divide-y divide-border-sub">
+                            <Link href="/client/profile" className="flex items-center gap-3 p-4 hover:bg-bg-tertiary/40 transition-colors">
+                                <Key size={16} className="text-text-muted shrink-0" />
+                                <div className="min-w-0 flex-1 text-left">
+                                    <p className="text-[13px] font-semibold text-text-primary">Profile and password</p>
+                                    <p className="text-[12px] text-text-muted">Your name, phone and sign-in password.</p>
+                                </div>
+                            </Link>
+                            <a href="mailto:support@aaromach.com" className="flex items-center gap-3 p-4 hover:bg-bg-tertiary/40 transition-colors">
+                                <LifeBuoy size={16} className="text-text-muted shrink-0" />
+                                <div className="min-w-0 flex-1 text-left">
+                                    <p className="text-[13px] font-semibold text-text-primary">Need help?</p>
+                                    <p className="text-[12px] text-text-muted">Email support@aaromach.com — for company details, users or billing questions.</p>
+                                </div>
+                            </a>
+                        </CardContent>
+                    </Card>
+                </>) },
             ]} />
         </div>
     );

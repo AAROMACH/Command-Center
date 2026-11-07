@@ -1864,7 +1864,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                     isAudited ? "bg-bg-primary border-green-border/40 border-l-[color:var(--text-green)]" : "bg-bg-secondary border-border-sub border-l-[color:var(--accent-gold)] hover:border-text-muted"
                                                 )}>
                                                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:min-h-[3rem] sm:items-center cursor-pointer" onClick={() => wo && handleOpenJobDetail(wo)}>
-                                                    <div className="order-2 sm:order-1 shrink-0 flex items-center gap-2 sm:pr-2 sm:border-r border-border-sub/30" onClick={e => e.stopPropagation()}>
+                                                    <div className="order-2 sm:order-1 shrink-0 flex flex-col items-stretch gap-1.5 sm:pr-2 sm:border-r border-border-sub/30" onClick={e => e.stopPropagation()}>
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
@@ -1880,6 +1880,25 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                             {hasPendingReimb ? <Lock size={12} className="mr-1"/> : isAudited ? <Check size={12} className="mr-1"/> : <ClipboardCheck size={12} className="mr-1"/>}
                                                             {hasPendingReimb ? 'Locked' : isAudited ? 'Verified' : 'Verify'}
                                                         </Button>
+                                                        {/* Pay hold sits under Verify so it doesn't take a row of its own (lib/pay-holds). */}
+                                                        {canApproveLog && (item.payHold?.status === 'held' ? (
+                                                            <div className="flex items-center gap-1">
+                                                                <Badge variant="outline" className="border-accent-gold/50 bg-accent-gold/10 text-accent-gold text-[10px] uppercase tracking-wide whitespace-nowrap"
+                                                                    title={`${item.payHold.reason} · not in this week's total. Release it from Payroll Audit → Adjustments.`}>
+                                                                    On hold · ${item.payHold.amount.toFixed(2)}
+                                                                </Badge>
+                                                                {!localLog?.paid && (
+                                                                    <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[11px] text-text-muted" onClick={() => toggleHold(item, false)}>Undo</Button>
+                                                                )}
+                                                            </div>
+                                                        ) : item.payHold?.status === 'released' ? (
+                                                            <Badge variant="outline" className="border-text-green/40 bg-text-green/10 text-text-green text-[10px] uppercase tracking-wide whitespace-nowrap">Released · ${item.payHold.amount.toFixed(2)}</Badge>
+                                                        ) : !localLog?.paid && (
+                                                            <Button size="sm" variant="outline" className="w-full sm:w-auto h-8 sm:h-7 px-2 text-[11px]" onClick={() => toggleHold(item, true)}
+                                                                title="Leave this job out of this week's pay until you release it (e.g. waiting on the customer to pay)">
+                                                                Hold pay
+                                                            </Button>
+                                                        ))}
                                                     </div>
 
                                                     <div className={cn("order-1 sm:order-2 flex-1 flex flex-col gap-2", !isImported && "sm:flex-row sm:items-center sm:justify-between")}>
@@ -1953,28 +1972,6 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </div>
                                                     </div>
                                                 </div>
-
-                                                {/* Pay hold: big jobs can wait for the customer to pay us (lib/pay-holds). */}
-                                                {canApproveLog && (
-                                                    <div className="flex flex-wrap items-center gap-2 pl-2 sm:pl-[52px] text-[12px]" onClick={e => e.stopPropagation()}>
-                                                        {item.payHold?.status === 'held' ? (
-                                                            <>
-                                                                <Badge variant="outline" className="border-accent-gold/50 bg-accent-gold/10 text-accent-gold text-[10px] uppercase tracking-wide">On hold · ${item.payHold.amount.toFixed(2)}</Badge>
-                                                                <span className="text-text-muted">{item.payHold.reason} · not in this week&apos;s total. Release it from Payroll Audit → Adjustments.</span>
-                                                                {!localLog?.paid && (
-                                                                    <Button size="sm" variant="ghost" className="h-7 px-2 text-text-muted" onClick={() => toggleHold(item, false)}>Undo hold</Button>
-                                                                )}
-                                                            </>
-                                                        ) : item.payHold?.status === 'released' ? (
-                                                            <Badge variant="outline" className="border-text-green/40 bg-text-green/10 text-text-green text-[10px] uppercase tracking-wide">Held, then released · ${item.payHold.amount.toFixed(2)}</Badge>
-                                                        ) : !localLog?.paid && (
-                                                            <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => toggleHold(item, true)}
-                                                                title="Leave this job out of this week's pay until you release it (e.g. waiting on the customer to pay)">
-                                                                Hold pay
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                )}
 
                                                 {jobReimbursements.length > 0 && (
                                                     <div className="flex flex-col gap-1.5 pl-2 sm:pl-[52px] min-w-0" onClick={e => e.stopPropagation()}>

@@ -12,3 +12,19 @@ env:
     availability:
       - BUILD
       - RUNTIME
+
+  # QuickBooks Online (src/lib/server/quickbooks.ts). Both keys live in
+  # Secret Manager; the App Hosting compute account has Secret Accessor.
+  - variable: QBO_CLIENT_ID
+    secret: QBO_CLIENT_ID
+    availability:
+      - RUNTIME
+  - variable: QBO_CLIENT_SECRET
+    secret: QBO_CLIENT_SECRET
+    availability:
+      - RUNTIME
+  # 'production' = the real company file; anything else uses the Intuit sandbox.
+  - variable: QBO_ENV
+    value: production
+    availability:
+      - RUNTIME

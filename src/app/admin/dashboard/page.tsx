@@ -331,12 +331,19 @@ export default function DashboardPage() {
 
     // Dispatch: jobs open too long — unassigned for 3+ days, or past their date and not done.
     const daysAgo = (iso?: string | null) => { const t = iso ? Date.parse(iso) : NaN; return Number.isFinite(t) ? Math.floor((Date.now() - t) / 86_400_000) : null; };
+    // Dispatch thresholds (Settings → General): adminConfig/operations.
+    const [ops, setOps] = useState<{ openTooLongDays: number; dueSoonDays: number }>({ openTooLongDays: 3, dueSoonDays: 2 });
+    useEffect(() => onSnapshot(doc(db, 'adminConfig', 'operations'), s => {
+        const d = s.data() || {};
+        setOps({ openTooLongDays: Number(d.openTooLongDays) > 0 ? Number(d.openTooLongDays) : 3, dueSoonDays: Number(d.dueSoonDays) > 0 ? Number(d.dueSoonDays) : 2 });
+    }, () => {}), []);
+
     const openTooLong = useMemo(() => {
         const today = new Date(); today.setHours(0, 0, 0, 0);
         const rows: { wo: WorkOrder; days: number; why: string }[] = [];
         unassignedJobs.forEach(wo => {
             const d = daysAgo((wo as WorkOrder & { createdAt?: string }).createdAt);
-            if (d != null && d >= 3) rows.push({ wo, days: d, why: `Unassigned ${d} days` });
+            if (d != null && d >= ops.openTooLongDays) rows.push({ wo, days: d, why: `Unassigned ${d} days` });
         });
         assignments.forEach(wo => {
             if (['completed', 'cancelled'].includes(wo.status) || isArchivedJob(wo)) return;
@@ -346,12 +353,12 @@ export default function DashboardPage() {
             rows.push({ wo, days: d, why: `${d} day${d === 1 ? '' : 's'} past its date · ${wo.status.replace(/_/g, ' ')}` });
         });
         return rows.sort((a, b) => b.days - a.days);
-    }, [unassignedJobs, assignments]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [unassignedJobs, assignments, ops.openTooLongDays]); // eslint-disable-line react-hooks/exhaustive-deps
     const dueSoonUnassigned = useMemo(() => {
         const soon = new Date(); soon.setHours(0, 0, 0, 0);
-        const lim = soon.getTime() + 2 * 86_400_000;
+        const lim = soon.getTime() + ops.dueSoonDays * 86_400_000;
         return unassignedJobs.filter(wo => { const d = parseLocalDate(wo.scheduleDate); return !!d && d.getTime() < lim; }).length;
-    }, [unassignedJobs]);
+    }, [unassignedJobs, ops.dueSoonDays]);
 
     // Payroll: approved weeks not paid out yet (oldest first), weeks waiting for
     // approval, and jobs on hold.
@@ -468,9 +475,9 @@ export default function DashboardPage() {
                 <StatGrid className="mb-8 grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
                     <StatCard icon={Users} label="Unassigned" value={unassignedJobs.length} sub="Need a technician" tone={unassignedJobs.length ? 'progress' : 'done'}
                         onClick={() => router.push('/admin/dispatch')} />
-                    <StatCard icon={AlertCircle} label="Due in 2 days" value={dueSoonUnassigned} sub="Unassigned and coming up" tone={dueSoonUnassigned ? 'problem' : 'done'}
+                    <StatCard icon={AlertCircle} label={`Due in ${ops.dueSoonDays} day${ops.dueSoonDays === 1 ? '' : 's'}`} value={dueSoonUnassigned} sub="Unassigned and coming up" tone={dueSoonUnassigned ? 'problem' : 'done'}
                         onClick={() => router.push('/admin/dispatch')} />
-                    <StatCard icon={Clock} label="Open too long" value={openTooLong.length} sub="Unassigned 3+ days or past date" tone={openTooLong.length ? 'problem' : 'done'}
+                    <StatCard icon={Clock} label="Open too long" value={openTooLong.length} sub={`Unassigned ${ops.openTooLongDays}+ days or past date`} tone={openTooLong.length ? 'problem' : 'done'}
                         onClick={() => document.getElementById('open-too-long')?.scrollIntoView({ behavior: 'smooth' })} />
                     <StatCard icon={Wrench} label="Active jobs" value={activeAssignmentsCount} sub="Assigned and in progress" tone="done"
                         onClick={() => router.push('/admin/dispatch?subtab=assignments')} />
@@ -631,7 +638,7 @@ export default function DashboardPage() {
                         <Card id="open-too-long">
                             <CardHeader className="pb-3 text-left">
                                 <CardTitle>Open too long</CardTitle>
-                                <CardDescription>Unassigned for 3+ days, or past their date and not completed — longest first.</CardDescription>
+                                <CardDescription>Unassigned for {ops.openTooLongDays}+ days, or past their date and not completed — longest first.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-1.5">
                                 {openTooLong.slice(0, 10).map(({ wo, days, why }) => (

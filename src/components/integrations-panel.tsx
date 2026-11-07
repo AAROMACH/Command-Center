@@ -27,7 +27,7 @@ const BADGE: Record<IntegrationState, { label: string; cls: string; Icon: typeof
   connected: { label: 'Connected', cls: 'text-text-green', Icon: CheckCircle2 },
   failed: { label: 'Not working', cls: 'text-brand-red', Icon: TriangleAlert },
   missing: { label: 'Not set up', cls: 'text-text-muted', Icon: CircleDashed },
-  untested: { label: 'Set — not tested', cls: 'text-accent-gold', Icon: CircleDashed },
+  untested: { label: 'Set up', cls: 'text-accent-gold', Icon: CircleDashed },
   unused: { label: 'Not used', cls: 'text-text-muted', Icon: CircleDashed },
 };
 
@@ -105,17 +105,23 @@ export function IntegrationsPanel() {
   };
 
   if (error) return <p className="rounded-lg border border-brand-red/30 bg-brand-red/5 px-3 py-2 text-[13px] text-brand-red">{error}</p>;
-  if (!list) return <p className="text-[13px] text-text-muted flex items-center gap-1.5"><Loader2 size={13} className="animate-spin" /> Checking integrations…</p>;
+  if (!list) return <p className="text-[13px] text-text-muted flex items-center gap-1.5"><Loader2 size={13} className="animate-spin" /> Checking connections…</p>;
 
+  const problems = list.filter(i => i.state === 'failed').length;
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className={cn('text-[13px] font-medium', problems ? 'text-brand-red' : 'text-text-secondary')}>
+          {problems ? `${problems} connection${problems === 1 ? ' needs' : 's need'} attention` : 'Everything the app connects to, and whether it’s working.'}
+        </p>
         <Button variant="outline" size="sm" className="h-8" disabled={!!busy} onClick={async () => { setBusy('refresh'); await load(); setBusy(null); }}>
-          <RefreshCw size={13} className={cn('mr-1.5', busy === 'refresh' && 'animate-spin')} /> Recheck
+          <RefreshCw size={13} className={cn('mr-1.5', busy === 'refresh' && 'animate-spin')} /> Check again
         </Button>
       </div>
       {list.map(i => {
         const b = BADGE[i.state];
+        const plain = PLAIN[i.id];
+        const summary = plainSummary(i, qbo);
         return (
           <Card key={i.id} id={i.id === 'quickbooks' ? 'quickbooks' : undefined} className="bg-bg-secondary border-border-main">
             <CardContent className="p-4 space-y-2">
@@ -123,16 +129,11 @@ export function IntegrationsPanel() {
                 <b.Icon size={18} className={cn('mt-0.5 shrink-0', b.cls)} />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-[14px] font-semibold text-text-primary">{i.name}</p>
-                    <Badge variant={i.state === 'connected' ? 'active' : 'outline'} className={cn('text-[10px] h-4 px-2', i.state === 'failed' && 'border-brand-red/50 text-brand-red')}>{b.label}</Badge>
+                    <p className="text-[14px] font-semibold text-text-primary">{plain?.name || i.name}</p>
+                    <span className={cn('text-[11px] font-semibold', b.cls)}>{b.label}</span>
                   </div>
-                  <p className="text-[12px] text-text-muted">{i.purpose}</p>
-                  <p className={cn('text-[12px] mt-1', i.state === 'failed' ? 'text-brand-red' : 'text-text-secondary')}>{i.detail}</p>
-                  {i.lastUse && (
-                    <p className={cn('text-[11px] mt-0.5', i.lastUse.ok ? 'text-text-muted' : 'text-brand-red')}>
-                      Last real use {when(i.lastUse.at)}: {i.lastUse.ok ? 'worked' : `failed — ${i.lastUse.error}`}
-                    </p>
-                  )}
+                  <p className="text-[12px] text-text-muted">{plain?.what || i.purpose}</p>
+                  {summary && <p className={cn('text-[12px] mt-1', i.state === 'failed' ? 'text-brand-red' : 'text-text-secondary')}>{summary}</p>}
                 </div>
                 {i.id === 'quickbooks' && qbo?.configured && (
                   qbo.connected ? (
@@ -141,32 +142,63 @@ export function IntegrationsPanel() {
                     </Button>
                   ) : (
                     <Button size="sm" className="h-9 bg-text-green hover:bg-text-green/90 text-white" disabled={!!busy} onClick={connect}>
-                      {busy === 'connect' ? <Loader2 size={13} className="mr-1.5 animate-spin" /> : <Link2 size={13} className="mr-1.5" />} Connect to QuickBooks
+                      {busy === 'connect' ? <Loader2 size={13} className="mr-1.5 animate-spin" /> : <Link2 size={13} className="mr-1.5" />} Connect
                     </Button>
                   )
                 )}
               </div>
-              {i.id === 'quickbooks' && qbo?.connected && (
-                <p className={cn('text-[12px] pl-8', qbo.live ? 'text-text-muted' : 'text-brand-red')}>
-                  {qbo.live
-                    ? `Connected by ${qbo.connectedByName || 'an admin'}${qbo.connectedAt ? ` on ${new Date(qbo.connectedAt).toLocaleDateString()}` : ''} · ${qbo.env === 'production' ? 'live books' : 'sandbox (test company)'}`
-                    : `Connected, but QuickBooks isn't answering: ${qbo.error}. Disconnect and connect again.`}
-                </p>
-              )}
-              <div className="flex flex-wrap gap-1.5 pl-8">
-                {i.vars.map(x => (
-                  <span key={x.name} className={cn('rounded border px-1.5 py-0.5 font-mono text-[10px]',
-                    x.set ? 'border-text-green/30 text-text-green' : x.optional ? 'border-border-sub text-text-muted' : 'border-brand-red/40 text-brand-red')}
-                    title={x.set ? 'Set in hosting' : x.optional ? 'Not set — the built-in default is used' : 'Required — not set in hosting'}>
-                    {x.set ? '✓' : x.optional ? '○' : '✕'} {x.name}{x.secret ? ' (secret)' : ''}{!x.set && x.optional ? ' · default' : ''}{!x.set && !x.optional ? ' · missing' : ''}
-                  </span>
-                ))}
-              </div>
+              {/* The technical part (exact error, key names) — for whoever sets up hosting. */}
+              <details className="pl-8 group">
+                <summary className="cursor-pointer select-none text-[11px] text-text-muted hover:text-text-primary">Technical details</summary>
+                <div className="mt-1.5 space-y-1.5">
+                  <p className="text-[11px] text-text-muted break-words">{i.detail}</p>
+                  {i.lastUse && (
+                    <p className={cn('text-[11px]', i.lastUse.ok ? 'text-text-muted' : 'text-brand-red')}>
+                      Last used {when(i.lastUse.at)}: {i.lastUse.ok ? 'worked' : `failed — ${i.lastUse.error}`}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-1.5">
+                    {i.vars.map(x => (
+                      <span key={x.name} className={cn('rounded border px-1.5 py-0.5 font-mono text-[10px]',
+                        x.set ? 'border-text-green/30 text-text-green' : x.optional ? 'border-border-sub text-text-muted' : 'border-brand-red/40 text-brand-red')}>
+                        {x.set ? '✓' : x.optional ? '○' : '✕'} {x.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </details>
             </CardContent>
           </Card>
         );
       })}
-      <p className="text-[11px] text-text-muted">Checked live just now: Connected means the service answered a real test. Failures in everyday use (an email or QuickBooks call that didn’t go through) also show here, and Super Admins get an alert when a service stops working. Keys are set in Firebase App Hosting (secrets in Google Secret Manager). This page only shows whether each is set — never the value.</p>
+      <p className="text-[11px] text-text-muted">Super Admins get an alert if a connection stops working. Keys are kept in Firebase hosting — this page never shows them.</p>
     </div>
   );
+}
+
+/** Plain names and what each one does for the business. */
+const PLAIN: Record<string, { name: string; what: string }> = {
+  resend: { name: 'Email', what: 'Sends invoices, notifications and the daily sales email.' },
+  quickbooks: { name: 'QuickBooks', what: 'Accounting: customers, invoices and payments.' },
+  twilio: { name: 'Text messages', what: 'Sends text alerts to staff and clients.' },
+  maps: { name: 'Google Maps', what: 'Address lookup, job maps and routes.' },
+  push: { name: 'Phone notifications', what: 'Pop-up alerts on phones and browsers.' },
+  digest: { name: 'Daily sales email', what: 'The scheduled morning sales summary.' },
+};
+
+/** One short sentence an office user understands. */
+function plainSummary(i: IntegrationStatus, qbo: QboStatus | null): string {
+  if (i.id === 'quickbooks') {
+    if (!qbo?.configured) return 'Not set up yet.';
+    if (!qbo.connected) return 'Ready — press Connect and sign in to QuickBooks.';
+    if (!qbo.live) return 'Lost the connection. Disconnect, then connect again.';
+    return `Connected to ${qbo.companyName || 'your company'}${qbo.env === 'production' ? '' : ' (test company)'}${qbo.connectedByName ? ` by ${qbo.connectedByName}` : ''}.`;
+  }
+  switch (i.state) {
+    case 'connected': return i.lastUse && !i.lastUse.ok ? 'Working now, but it failed recently — see details.' : 'Working.';
+    case 'failed': return 'Not working right now — see details, or ask whoever manages hosting.';
+    case 'missing': return 'Not set up, so this is turned off.';
+    case 'untested': return 'Set up. It can’t be tested from here.';
+    case 'unused': return 'Not used by the app — safe to remove.';
+  }
 }

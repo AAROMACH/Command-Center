@@ -8,7 +8,7 @@ import { usePaged, ListPager, PAGE_SIZES_SMALL, PAGE_SIZES_LARGE } from '@/compo
 import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog, PayrollDispute, DisputeKind, DisputeResolution } from '@/lib/types';
 import { externalWorkOrderId, displayWorkOrderNumber, fieldNationUrl, isImported } from '@/lib/work-order-identity';
 import { hasPermission } from '@/lib/permissions';
-import { computeWeeklyLogPay, effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
+import { computeWeeklyLogEstimate, computeWeeklyLogPay, effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
 import { adjustmentForText } from '@/lib/pay-adjustments';
 import { mergeJobs, weekOfValue, parseLocalDate } from '@/lib/jobs';
 import { PageHeader } from '@/components/page-header';
@@ -375,6 +375,19 @@ export default function TechWeeklyLogPage() {
             toast({ title: 'Hours saved', description: 'Payroll sees them next to your checked-in time.' });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Could not save hours', description: e.message });
+            throw e;
+        }
+    };
+
+    // Estimated pay: techs may guess each job's pay until payroll approves.
+    const estimateFinal = !activeLog || activeLog.status === 'Approved' || !!(activeLog as any).isPaid;
+    const handleSetEstimate = async (itemId: string, amount: number | null) => {
+        if (!activeLog || estimateFinal) return;
+        try {
+            await weeklyLogAction('setItemEstimate', { logId: activeLog.id, itemId, amount });
+            toast({ title: 'Estimate saved', description: 'Only you see this. Payroll sets the real pay when they approve.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not save estimate', description: e.message });
             throw e;
         }
     };
@@ -946,11 +959,13 @@ export default function TechWeeklyLogPage() {
 
             {/* PAY: work vs reimbursements vs total */}
             {(() => {
-                const p = payOf(activeLog);
-                return (
+                const isEst = !estimateFinal;
+                const p = isEst ? computeWeeklyLogEstimate(activeLog, jobsById) : payOf(activeLog);
+                const hasGuess = isEst && (activeLog.items || []).some(i => i.estimatedPay != null);
+                return (<>
                     <div className={cn('max-w-6xl mx-auto grid gap-2 sm:gap-3 text-left', p.adjustmentPay !== 0 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3')}>
                         <div className="rounded-xl border border-border-main bg-bg-secondary px-3 py-2.5">
-                            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Work pay</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">{isEst ? 'Estimated work pay' : 'Work pay'}</p>
                             <p className="text-base sm:text-lg font-bold font-mono tabular-nums text-text-primary leading-tight">${p.jobPay.toFixed(2)}</p>
                         </div>
                         <div className="rounded-xl border border-accent-gold/30 bg-accent-gold-dim/40 px-3 py-2.5">
@@ -969,11 +984,16 @@ export default function TechWeeklyLogPage() {
                             </div>
                         )}
                         <div className="rounded-xl border border-green-border/40 bg-green-dim/40 px-3 py-2.5">
-                            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-green">Total</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-green">{isEst ? 'Estimated total' : 'Total'}</p>
                             <p className="text-base sm:text-lg font-bold font-mono tabular-nums text-text-green leading-tight">${p.total.toFixed(2)}</p>
                         </div>
                     </div>
-                );
+                    {isEst && (
+                        <p className="max-w-6xl mx-auto text-[11px] text-text-muted text-left -mt-1">
+                            {hasGuess ? 'Includes your own pay estimates. ' : ''}Estimate only — it becomes your real total when payroll approves this week.
+                        </p>
+                    )}
+                </>);
             })()}
 
             {/* PAY ADJUSTMENTS paid on this log — each names the job and week it corrects */}
@@ -1098,6 +1118,8 @@ export default function TechWeeklyLogPage() {
                             payAdjustedBy={myPayrollDisputes.find(d => d.weeklyLogId === activeLog.id && d.workOrderId === item.workOrderId && d.status === 'resolved' && !!d.adjustment)}
                             onsiteMinutes={onsiteMinutesByJob.get(item.workOrderId) || 0}
                             onSetHours={handleSetHours}
+                            canEstimate={!estimateFinal}
+                            onSetEstimate={handleSetEstimate}
                         />
                         </div>
                     ))}
@@ -1397,7 +1419,7 @@ export default function TechWeeklyLogPage() {
     );
 }
 
-function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId, onDisputeJob, hasOpenPayrollDispute, payAdjustedBy, onsiteMinutes, onSetHours }: { onsiteMinutes?: number, onSetHours?: (itemId: string, hours: number | null) => Promise<void>, item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, kind: DisputeKind, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null, onDisputeJob?: (item: WeeklyLogItem) => void, hasOpenPayrollDispute?: boolean, payAdjustedBy?: PayrollDispute }) {
+function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId, onDisputeJob, hasOpenPayrollDispute, payAdjustedBy, onsiteMinutes, onSetHours, canEstimate, onSetEstimate }: { canEstimate?: boolean, onSetEstimate?: (itemId: string, amount: number | null) => Promise<void>, onsiteMinutes?: number, onSetHours?: (itemId: string, hours: number | null) => Promise<void>, item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, kind: DisputeKind, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null, onDisputeJob?: (item: WeeklyLogItem) => void, hasOpenPayrollDispute?: boolean, payAdjustedBy?: PayrollDispute }) {
     const job = workOrders.find(wo => wo.id === item.workOrderId);
     const itemReimbursements = reimbursements.filter(r => r.workOrderId === item.workOrderId);
     const settledReimbursement = itemReimbursements
@@ -1527,6 +1549,10 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                             <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-right">{isDisputed ? 'Excluded (disputed)' : 'Pay'}</p>
                             <p className="text-sm font-mono font-bold text-text-green text-right">${(isDisputed ? 0 : effectiveJobPay(item, shown)).toFixed(2)}</p>
                         </div>
+
+                        {!isDisputed && (canEstimate || item.estimatedPay != null) && (
+                            <PayEstimateBox item={item} editable={!!canEstimate && !!onSetEstimate} onSetEstimate={onSetEstimate} />
+                        )}
 
                         {itemReimbursements.length > 0 && (
                             <div className="text-right px-4 border-l border-border-sub/30 min-w-[100px]">
@@ -2035,6 +2061,43 @@ function HoursWorkedBox({ item, onsiteMinutes, isLocked, onSetHours }: {
                 </div>
             )}
             <p className="text-[11px] text-text-muted mt-0.5">Checked in: {checkedIn}</p>
+        </div>
+    );
+}
+
+
+/** The tech's own guess at a job's pay (until approval). Only feeds their estimated total. */
+function PayEstimateBox({ item, editable, onSetEstimate }: {
+    item: WeeklyLogItem; editable: boolean; onSetEstimate?: (itemId: string, amount: number | null) => Promise<void>;
+}) {
+    const saved = item.estimatedPay ?? null;
+    const [value, setValue] = useState(saved != null ? String(saved) : '');
+    const [saving, setSaving] = useState(false);
+    useEffect(() => { setValue(saved != null ? String(saved) : ''); }, [saved]);
+    const parsed = value.trim() === '' ? null : Number(value);
+    const dirty = parsed !== saved;
+    const save = async () => {
+        if (!onSetEstimate) return;
+        setSaving(true);
+        try { await onSetEstimate(item.id, parsed); } catch { /* toast shown */ } finally { setSaving(false); }
+    };
+    return (
+        <div className="px-4 border-l border-border-sub/30 min-w-[130px] text-left" onClick={e => e.stopPropagation()}>
+            <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Your estimate</p>
+            {!editable ? (
+                <p className="text-sm font-mono font-bold text-text-muted">{saved != null ? `$${saved.toFixed(2)}` : '—'}</p>
+            ) : (
+                <div className="flex items-center gap-1.5 mt-0.5">
+                    <Input type="number" inputMode="decimal" step="0.01" min="0" value={value} placeholder="$"
+                        onChange={e => setValue(e.target.value)} className="h-9 w-24 font-mono text-[13px]" aria-label="Estimated pay" />
+                    {dirty && (
+                        <Button size="sm" className="h-9 px-2.5" disabled={saving || (parsed !== null && !(parsed >= 0))} onClick={save}>
+                            {saving ? <Loader2 size={13} className="animate-spin" /> : 'Save'}
+                        </Button>
+                    )}
+                </div>
+            )}
+            <p className="text-[11px] text-text-muted mt-0.5">Not final</p>
         </div>
     );
 }

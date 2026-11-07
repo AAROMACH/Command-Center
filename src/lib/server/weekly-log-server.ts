@@ -293,6 +293,18 @@ export const setItemHours = (techId: string, logId: string, itemId: string, hour
     };
   });
 
+/** The tech's estimated pay on a job — any log payroll hasn't approved yet.
+ *  Only the tech's estimate; payroll never pays from it. */
+export const setItemEstimate = (techId: string, logId: string, itemId: string, amount: unknown) =>
+  withOwnLog(logId, techId, { draftOnly: false }, log => {
+    if (log.status === 'Approved' || (log as any).isPaid) throw new WeeklyLogError('This log is approved — its pay is final.', 409);
+    findItem(log, itemId);
+    const raw = amount === null || amount === '' ? null : Number(amount);
+    if (raw !== null && (!Number.isFinite(raw) || raw < 0 || raw > 100000)) throw new WeeklyLogError('Enter an amount between $0 and $100,000.');
+    const value = raw === null ? null : Math.round(raw * 100) / 100;
+    return { items: (log.items || []).map(i => i.id === itemId ? { ...i, estimatedPay: value } : i) };
+  });
+
 /** A tech flags a job. `kind` picks payroll's yes/no card (lib/disputes.ts);
  *  a fresh dispute always clears any earlier payroll decision. */
 export const disputeItem = (techId: string, logId: string, itemId: string, reason: unknown, notes: unknown, kind?: unknown) =>

@@ -26,7 +26,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { getAvailablePortals, isTech } from '@/lib/permissions';
+import { getAvailablePortals, getSubroles, isTech } from '@/lib/permissions';
+import { heldJobs } from '@/lib/pay-holds';
 import { useRouter } from 'next/navigation';
 import { PortalSwitchButton } from '@/components/portal-switch-button';
 import { PageHeader } from '@/components/page-header';
@@ -307,6 +308,66 @@ export default function DashboardPage() {
         };
     }, [invoices, weeklyLogs, jobsById, pendingPay]);
 
+    // ── Role focus ────────────────────────────────────────────────────────
+    // Each admin sees the dashboard for their job: Dispatch Admins the jobs
+    // that need a tech or have been open too long; Payroll Admins what needs
+    // paying and approving; Super Admins everything (Overview) and can switch.
+    type Focus = 'overview' | 'dispatch' | 'payroll';
+    const subroles = getSubroles(currentUser);
+    const focusOptions: Focus[] = subroles.includes('super_admin') || !currentUser
+        ? ['overview', 'dispatch', 'payroll']
+        : [subroles.includes('dispatch_admin') && 'dispatch', subroles.includes('payroll_admin') && 'payroll'].filter(Boolean) as Focus[];
+    const [focusPick, setFocusPick] = useState<Focus | null>(null);
+    useEffect(() => { try { const f = localStorage.getItem('cc:dashboard:focus') as Focus | null; if (f) setFocusPick(f); } catch { /* private mode */ } }, []);
+    const focus: Focus = focusPick && focusOptions.includes(focusPick) ? focusPick : (focusOptions[0] || 'overview');
+    const pickFocus = (f: Focus) => { setFocusPick(f); try { localStorage.setItem('cc:dashboard:focus', f); } catch { /* private mode */ } };
+    const showDispatch = focus !== 'payroll';
+    const showMoney = focus !== 'dispatch';
+    const FOCUS_LABEL: Record<Focus, string> = { overview: 'Overview', dispatch: 'Dispatch', payroll: 'Payroll' };
+    const DISPATCH_ITEMS = ['unassigned-soon', 'overdue-jobs', 'time-off'];
+    const PAYROLL_ITEMS = ['disputes', 'disputed-items', 'missing', 'reapprove', 'overdue-invoices'];
+    const focusAttention = focus === 'overview' ? attention
+        : attention.filter(a => (focus === 'dispatch' ? DISPATCH_ITEMS : PAYROLL_ITEMS).includes(a.id));
+
+    // Dispatch: jobs open too long — unassigned for 3+ days, or past their date and not done.
+    const daysAgo = (iso?: string | null) => { const t = iso ? Date.parse(iso) : NaN; return Number.isFinite(t) ? Math.floor((Date.now() - t) / 86_400_000) : null; };
+    const openTooLong = useMemo(() => {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const rows: { wo: WorkOrder; days: number; why: string }[] = [];
+        unassignedJobs.forEach(wo => {
+            const d = daysAgo((wo as WorkOrder & { createdAt?: string }).createdAt);
+            if (d != null && d >= 3) rows.push({ wo, days: d, why: `Unassigned ${d} days` });
+        });
+        assignments.forEach(wo => {
+            if (['completed', 'cancelled'].includes(wo.status) || isArchivedJob(wo)) return;
+            const sd = parseLocalDate(wo.scheduleDate);
+            if (!sd || sd.getTime() >= today.getTime()) return;
+            const d = Math.floor((today.getTime() - sd.getTime()) / 86_400_000);
+            rows.push({ wo, days: d, why: `${d} day${d === 1 ? '' : 's'} past its date · ${wo.status.replace(/_/g, ' ')}` });
+        });
+        return rows.sort((a, b) => b.days - a.days);
+    }, [unassignedJobs, assignments]); // eslint-disable-line react-hooks/exhaustive-deps
+    const dueSoonUnassigned = useMemo(() => {
+        const soon = new Date(); soon.setHours(0, 0, 0, 0);
+        const lim = soon.getTime() + 2 * 86_400_000;
+        return unassignedJobs.filter(wo => { const d = parseLocalDate(wo.scheduleDate); return !!d && d.getTime() < lim; }).length;
+    }, [unassignedJobs]);
+
+    // Payroll: approved weeks not paid out yet (oldest first), weeks waiting for
+    // approval, and jobs on hold.
+    const techName = (id: string) => technicians.find(t => t.id === id)?.name || id;
+    const weekAge = (weekOf: string) => { const [m, d, y] = (weekOf || '').split('-').map(Number); return y ? Math.floor((Date.now() - new Date(y, m - 1, d).getTime()) / 86_400_000) : 0; };
+    const readyToPay = useMemo(() => weeklyLogs
+        .filter(l => l.status === 'Approved' && !l.paid && !(l as WeeklyLog & { archived?: boolean }).archived && !inactiveTechIds.has(l.techId))
+        .map(l => ({ log: l, total: computeWeeklyLogSettlement(l, jobsById), age: weekAge(l.weekOf) }))
+        .filter(r => r.total !== 0)
+        .sort((a, b) => b.age - a.age), [weeklyLogs, jobsById, inactiveTechIds]); // eslint-disable-line react-hooks/exhaustive-deps
+    const awaitingApproval = useMemo(() => pendingLogs
+        .map(l => ({ log: l, total: computeWeeklyLogSettlement(l, jobsById), age: weekAge(l.weekOf) }))
+        .sort((a, b) => b.age - a.age), [pendingLogs, jobsById]); // eslint-disable-line react-hooks/exhaustive-deps
+    const holds = useMemo(() => heldJobs(weeklyLogs), [weeklyLogs]);
+    const sum = (rows: { total: number }[]) => rows.reduce((t, r) => t + r.total, 0);
+
 
     return (
         <div className="animate-in fade-in duration-500 text-left">
@@ -314,7 +375,9 @@ export default function DashboardPage() {
                 eyebrow={TERMINOLOGY.PORTAL.ADMIN}
                 icon={LayoutDashboard}
                 title="Dashboard"
-                subtitle="Today's jobs, open requests and what needs attention."
+                subtitle={focus === 'dispatch' ? 'Jobs that need a tech, and jobs open too long.'
+                    : focus === 'payroll' ? 'What needs paying out, approving and deciding.'
+                    : "Today's jobs, open requests and what needs attention."}
                 actions={
                     <div className="flex items-center gap-3">
                         <PortalSwitchButton />
@@ -322,8 +385,17 @@ export default function DashboardPage() {
                 }
             />
 
+            {focusOptions.length > 1 && (
+                <div className="tabs !mb-4 flex-nowrap overflow-x-auto no-scrollbar" role="tablist" aria-label="Dashboard focus">
+                    {focusOptions.map(f => (
+                        <button key={f} type="button" role="tab" aria-selected={focus === f} onClick={() => pickFocus(f)}
+                            className={cn('tab shrink-0', focus === f && 'active')}>{FOCUS_LABEL[f]}</button>
+                    ))}
+                </div>
+            )}
+
             {/* Financial KPIs — even 2×2 box on phones/tablets, one row on desktop */}
-            <div className="grid grid-cols-2 lg:flex lg:flex-wrap lg:items-center gap-2 mb-4 px-1">
+            {showMoney && <div className="grid grid-cols-2 lg:flex lg:flex-wrap lg:items-center gap-2 mb-4 px-1">
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-sub bg-bg-secondary min-w-0">
                     <Banknote size={11} className="text-text-green shrink-0" />
                     <div>
@@ -352,20 +424,25 @@ export default function DashboardPage() {
                         <p className="text-[12px] font-bold font-mono text-text-primary">${financialKpis.upcomingPayroll.toLocaleString()}</p>
                     </div>
                 </div>
-            </div>
+            </div>}
 
             {/* Quick Actions */}
             <div className="flex flex-wrap items-center gap-2 mb-4">
-                <Link href="/admin/dispatch">
+                {showDispatch && <Link href="/admin/dispatch">
                     <Button size="sm" className="gap-1.5">
                         <Plus size={11} /> New job
                     </Button>
-                </Link>
-                <Link href="/admin/projects?action=new">
+                </Link>}
+                {showDispatch && <Link href="/admin/projects?action=new">
                     <Button size="sm" variant="outline" className="gap-1.5">
                         <FolderKanban size={11} /> New project
                     </Button>
-                </Link>
+                </Link>}
+                {focus === 'payroll' && <Link href="/admin/payroll/audit">
+                    <Button size="sm" className="gap-1.5">
+                        <Banknote size={11} /> Payroll audit
+                    </Button>
+                </Link>}
                 <Link href="/admin/messaging">
                     <Button size="sm" variant="outline" className="gap-1.5">
                         <MessageSquare size={11} /> Send announcement
@@ -375,7 +452,7 @@ export default function DashboardPage() {
 
             {/* Quick status chips */}
             <div className="flex flex-wrap items-center gap-2 mb-6">
-                {slaAlerts.length > 0 && (
+                {showDispatch && slaAlerts.length > 0 && (
                     <button
                         onClick={() => slaRef.current?.scrollIntoView({ behavior: 'smooth' })}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-bg-tertiary border border-border-main text-text-muted text-[10px] font-bold uppercase tracking-wider hover:text-text-primary transition-colors"
@@ -387,7 +464,32 @@ export default function DashboardPage() {
             </div>
 
             {/* Stat tiles */}
-            <StatGrid className="mb-8 grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
+            {focus === 'dispatch' && (
+                <StatGrid className="mb-8 grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
+                    <StatCard icon={Users} label="Unassigned" value={unassignedJobs.length} sub="Need a technician" tone={unassignedJobs.length ? 'progress' : 'done'}
+                        onClick={() => router.push('/admin/dispatch')} />
+                    <StatCard icon={AlertCircle} label="Due in 2 days" value={dueSoonUnassigned} sub="Unassigned and coming up" tone={dueSoonUnassigned ? 'problem' : 'done'}
+                        onClick={() => router.push('/admin/dispatch')} />
+                    <StatCard icon={Clock} label="Open too long" value={openTooLong.length} sub="Unassigned 3+ days or past date" tone={openTooLong.length ? 'problem' : 'done'}
+                        onClick={() => document.getElementById('open-too-long')?.scrollIntoView({ behavior: 'smooth' })} />
+                    <StatCard icon={Wrench} label="Active jobs" value={activeAssignmentsCount} sub="Assigned and in progress" tone="done"
+                        onClick={() => router.push('/admin/dispatch?subtab=assignments')} />
+                </StatGrid>
+            )}
+            {focus === 'payroll' && (
+                <StatGrid className="mb-8 grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
+                    <StatCard icon={Banknote} label="Ready to pay out" value={`$${Math.round(sum(readyToPay)).toLocaleString()}`} sub={`${readyToPay.length} approved week${readyToPay.length === 1 ? '' : 's'} not paid`} tone={readyToPay.length ? 'problem' : 'done'}
+                        onClick={() => document.getElementById('ready-to-pay')?.scrollIntoView({ behavior: 'smooth' })} />
+                    <StatCard icon={ClipboardList} label="Waiting approval" value={`$${Math.round(sum(awaitingApproval)).toLocaleString()}`} sub={`${awaitingApproval.length} submitted log${awaitingApproval.length === 1 ? '' : 's'}`} tone={awaitingApproval.length ? 'progress' : 'done'}
+                        onClick={() => router.push('/admin/payroll/audit')} />
+                    <StatCard icon={Clock} label="Jobs on hold" value={`$${Math.round(holds.reduce((t, h) => t + h.hold.amount, 0)).toLocaleString()}`} sub={`${holds.length} waiting on customer payment`} tone={holds.length ? 'progress' : 'done'}
+                        onClick={() => router.push('/admin/payroll/audit')} />
+                    <StatCard icon={AlertCircle} label="Needs a decision" value={focusAttention.reduce((t, a) => t + a.n, 0)}
+                        sub={focusAttention.length === 0 ? 'Nothing waiting' : focusAttention[0].text} tone={focusAttention.length ? 'problem' : 'done'}
+                        onClick={() => setIsAttentionOpen(true)} />
+                </StatGrid>
+            )}
+            {focus === 'overview' && <StatGrid className="mb-8 grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
                 <StatCard icon={Wrench} label="Active jobs" value={activeAssignmentsCount} sub="Assigned and in progress" tone="done"
                     onClick={() => router.push('/admin/dispatch?subtab=assignments')} />
                 <StatCard icon={ClipboardList} label="Pending logs" value={pendingLogs.length} sub="Waiting for review" tone={pendingLogs.length ? 'progress' : undefined}
@@ -397,7 +499,7 @@ export default function DashboardPage() {
                 <StatCard icon={AlertCircle} label="Needs attention" value={attention.reduce((t, a) => t + a.n, 0)}
                     sub={attention.length === 0 ? 'Nothing urgent' : attention.length === 1 ? attention[0].text : `${attention.length} kinds of issue — tap to see`} tone={attention.length ? 'problem' : 'done'}
                     onClick={() => setIsAttentionOpen(true)} />
-            </StatGrid>
+            </StatGrid>}
 
             {/* NEEDS ATTENTION */}
             <Dialog open={isAttentionOpen} onOpenChange={setIsAttentionOpen}>
@@ -406,11 +508,11 @@ export default function DashboardPage() {
                         <DialogTitle className="text-base font-semibold">Needs attention</DialogTitle>
                         <DialogDescription>Items that cost money or a customer if they wait. Tap one to go fix it.</DialogDescription>
                     </DialogHeader>
-                    {attention.length === 0 ? (
+                    {focusAttention.length === 0 ? (
                         <EmptyState compact icon={AlertCircle} title="Nothing urgent" description="Disputes, overdue jobs and invoices show up here." />
                     ) : (
                         <div className="divide-y divide-border-sub rounded-lg border border-border-sub">
-                            {attention.map(a => (
+                            {focusAttention.map(a => (
                                 <Link key={a.id} href={a.href === '#requests' ? '#' : a.href}
                                     onClick={e => { setIsAttentionOpen(false); if (a.href === '#requests') { e.preventDefault(); setIsPendingDialogOpen(true); } }}
                                     className="flex items-center gap-3 p-3 hover:bg-bg-tertiary transition-colors">
@@ -428,7 +530,7 @@ export default function DashboardPage() {
             </Dialog>
 
             {/* Today's Schedule Strip */}
-            {todayJobs.length > 0 && (
+            {showDispatch && todayJobs.length > 0 && (
                 <div className="mb-6">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2 flex items-center gap-1.5">
                         <Calendar size={10} className="text-brand-red" />
@@ -462,10 +564,89 @@ export default function DashboardPage() {
                 </div>
             )}
 
+            {focus === 'payroll' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <Card id="ready-to-pay">
+                        <CardHeader className="pb-3 text-left">
+                            <CardTitle>Ready to pay out</CardTitle>
+                            <CardDescription>Approved weeks not marked paid yet — oldest first.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-1.5">
+                            {readyToPay.length ? readyToPay.slice(0, 12).map(r => (
+                                <Link key={r.log.id} href="/admin/payroll/audit" className={cn('flex items-center gap-3 rounded-lg border px-3 py-2 hover:bg-bg-tertiary', r.age > 13 ? 'border-brand-red/40' : 'border-border-sub')}>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-[13px] font-semibold text-text-primary truncate">{techName(r.log.techId)}</p>
+                                        <p className={cn('text-[12px]', r.age > 13 ? 'text-brand-red' : 'text-text-muted')}>Week of {r.log.weekOf}{r.age > 13 ? ` · ${Math.floor(r.age / 7)} weeks ago` : ''}</p>
+                                    </div>
+                                    <span className="font-mono text-[13px] font-bold text-text-primary">${r.total.toFixed(2)}</span>
+                                    <ChevronRight size={14} className="text-text-muted" />
+                                </Link>
+                            )) : <EmptyState compact icon={Banknote} title="Nothing waiting to be paid" />}
+                        </CardContent>
+                    </Card>
+                    <div className="space-y-6">
+                        <Card>
+                            <CardHeader className="pb-3 text-left">
+                                <CardTitle>Waiting for approval</CardTitle>
+                                <CardDescription>Submitted weeks to review.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-1.5">
+                                {awaitingApproval.length ? awaitingApproval.slice(0, 8).map(r => (
+                                    <Link key={r.log.id} href="/admin/payroll/audit" className="flex items-center gap-3 rounded-lg border border-border-sub px-3 py-2 hover:bg-bg-tertiary">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[13px] font-semibold text-text-primary truncate">{techName(r.log.techId)}</p>
+                                            <p className="text-[12px] text-text-muted">Week of {r.log.weekOf}</p>
+                                        </div>
+                                        <span className="font-mono text-[13px] text-text-secondary">≈ ${r.total.toFixed(2)}</span>
+                                    </Link>
+                                )) : <EmptyState compact icon={ClipboardList} title="No logs waiting" />}
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="pb-3 text-left">
+                                <CardTitle>Jobs on hold</CardTitle>
+                                <CardDescription>Owed to techs once the customer pays — release from Payroll Audit.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-1.5">
+                                {holds.length ? holds.slice(0, 8).map(h => (
+                                    <Link key={`${h.log.id}-${h.item.id}`} href="/admin/payroll/audit" className="flex items-center gap-3 rounded-lg border border-border-sub px-3 py-2 hover:bg-bg-tertiary">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[13px] font-semibold text-text-primary truncate">{jobsById.get(h.item.workOrderId)?.title || h.item.workOrderId.toUpperCase()}</p>
+                                            <p className="text-[12px] text-text-muted truncate">{techName(h.log.techId)} · week of {h.log.weekOf} · {h.hold.reason}</p>
+                                        </div>
+                                        <span className="font-mono text-[13px] font-bold text-accent-gold">${h.hold.amount.toFixed(2)}</span>
+                                    </Link>
+                                )) : <EmptyState compact icon={Clock} title="No jobs on hold" />}
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+            )}
+
             {/* Main grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {showDispatch && <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left column — 2/3 */}
                 <div className="lg:col-span-2 space-y-6">
+                    {openTooLong.length > 0 && (
+                        <Card id="open-too-long">
+                            <CardHeader className="pb-3 text-left">
+                                <CardTitle>Open too long</CardTitle>
+                                <CardDescription>Unassigned for 3+ days, or past their date and not completed — longest first.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-1.5">
+                                {openTooLong.slice(0, 10).map(({ wo, days, why }) => (
+                                    <Link key={wo.id} href={`/admin/assignments/${wo.id}`} className={cn('flex items-center gap-3 rounded-lg border px-3 py-2 hover:bg-bg-tertiary', days >= 7 ? 'border-brand-red/40' : 'border-border-sub')}>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[13px] font-semibold text-text-primary truncate">{wo.title || wo.description || wo.id.toUpperCase()}</p>
+                                            <p className="text-[12px] text-text-muted truncate">{wo.clientName ? `${wo.clientName} · ` : ''}{why}</p>
+                                        </div>
+                                        <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-semibold', days >= 7 ? 'border-brand-red/40 text-brand-red' : 'border-accent-gold/40 text-accent-gold')}>{days}d</span>
+                                    </Link>
+                                ))}
+                                {openTooLong.length > 10 && <p className="text-[12px] text-text-muted px-1">+{openTooLong.length - 10} more</p>}
+                            </CardContent>
+                        </Card>
+                    )}
                     {/* Unassigned Jobs Table */}
                     <Card>
                         <CardHeader className="text-left">
@@ -627,7 +808,7 @@ export default function DashboardPage() {
                     </Card>
 
                     {/* This Week */}
-                    <Card>
+                    {focus === 'overview' && <Card>
                         <CardHeader className="pb-3 text-left">
                             <CardTitle>Business snapshot</CardTitle>
                             <CardDescription>Projects, invoices and this week's finished work.</CardDescription>
@@ -646,9 +827,9 @@ export default function DashboardPage() {
                                 </div>
                             ))}
                         </CardContent>
-                    </Card>
+                    </Card>}
                 </div>
-            </div>
+            </div>}
 
             {/* OPEN REQUESTS DIALOG */}
             <Dialog open={isPendingDialogOpen} onOpenChange={setIsPendingDialogOpen}>

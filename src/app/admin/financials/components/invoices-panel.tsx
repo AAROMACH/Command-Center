@@ -186,6 +186,14 @@ export function InvoicesPanel({ search = '', onResetSearch, hideNewButton = fals
                                                 <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap', invoice.approval.status === 'pending' ? 'bg-accent-gold/15 text-accent-gold' : 'bg-brand-red/10 text-brand-red')}
                                                     title={invoice.approval.note || undefined}>{approvalLabel(invoice.approval)}</span>
                                             )}
+                                            {invoice.qboError ? (
+                                                <span className="rounded-full border border-brand-red/40 px-2 py-0.5 text-[10px] font-semibold text-brand-red whitespace-nowrap" title={invoice.qboError}>QuickBooks error</span>
+                                            ) : invoice.qboInvoiceId ? (
+                                                <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap', invoice.qboWarning ? 'border-accent-gold/50 text-accent-gold' : 'border-text-green/40 text-text-green')}
+                                                    title={invoice.qboWarning || (invoice.paidVia === 'quickbooks' ? 'Paid online through QuickBooks' : 'In QuickBooks')}>
+                                                    {invoice.paidVia === 'quickbooks' ? 'Paid in QB' : 'In QB'}
+                                                </span>
+                                            ) : null}
                                             {invoice.status !== 'paid' && <SendInvoiceButton invoice={invoice} className="h-7 px-2 text-[12px]" />}
                                             <InvoicePdfButton invoice={invoice} className="h-7 px-2 text-[12px]" />
                                         </div>

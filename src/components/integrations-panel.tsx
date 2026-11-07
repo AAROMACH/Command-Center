@@ -96,6 +96,14 @@ export function IntegrationsPanel() {
     try { window.location.href = (await authed('/api/quickbooks/connect', { method: 'POST' })).url; }
     catch (e: any) { toast({ variant: 'destructive', title: 'Could not start', description: e.message }); setBusy(null); }
   };
+  const checkPayments = async () => {
+    setBusy('refresh');
+    try {
+      const d = await authed('/api/quickbooks/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'payments' }) });
+      toast({ title: d.paid ? `${d.paid} invoice${d.paid === 1 ? '' : 's'} marked paid` : 'No new payments', description: `Checked ${d.checked} open invoice${d.checked === 1 ? '' : 's'} in QuickBooks.` });
+    } catch (e: any) { toast({ variant: 'destructive', title: 'Could not check', description: e.message }); }
+    finally { setBusy(null); }
+  };
   const disconnect = async () => {
     if (!confirm('Disconnect QuickBooks? Invoices stop syncing until someone connects again. Nothing in QuickBooks is deleted.')) return;
     setBusy('disconnect');
@@ -137,9 +145,16 @@ export function IntegrationsPanel() {
                 </div>
                 {i.id === 'quickbooks' && qbo?.configured && (
                   qbo.connected ? (
+                    <div className="flex flex-wrap gap-2">
+                    {qbo.live && (
+                      <Button variant="outline" size="sm" className="h-9" disabled={!!busy} onClick={checkPayments} title="Mark invoices paid that were paid in QuickBooks">
+                        <RefreshCw size={13} className="mr-1.5" /> Check payments
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" className="h-9" disabled={!!busy} onClick={disconnect}>
                       {busy === 'disconnect' ? <Loader2 size={13} className="mr-1.5 animate-spin" /> : <Unplug size={13} className="mr-1.5" />} Disconnect
                     </Button>
+                    </div>
                   ) : (
                     <Button size="sm" className="h-9 bg-text-green hover:bg-text-green/90 text-white" disabled={!!busy} onClick={connect}>
                       {busy === 'connect' ? <Loader2 size={13} className="mr-1.5 animate-spin" /> : <Link2 size={13} className="mr-1.5" />} Connect

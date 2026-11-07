@@ -7,6 +7,7 @@ import { adminApp } from '@/lib/firebase-admin';
 import { getSubroles, hasPermission, isAdmin } from '@/lib/permissions';
 import { emailConfigured, emailDeliveryStatus, sendEmail } from '@/lib/server/notify-delivery';
 import { FieldValue } from 'firebase-admin/firestore';
+import { pushInvoice, qboReady } from '@/lib/server/qbo-sync';
 
 /**
  * Send a client invoice: emails the client a summary and a private link to
@@ -101,6 +102,15 @@ export async function POST(req: NextRequest) {
   if (!inv.publicToken) await ref.update({ publicToken: token });
   if (!to) { await unlock(); return NextResponse.json({ link, emailed: false, reason: 'No email address for this client.' }); }
 
+  // QuickBooks connected: put the invoice in the books first and get its Pay now
+  // link. A QuickBooks problem never stops the email — it's saved on the invoice.
+  let payLink: string | null = null;
+  let qboError: string | null = null;
+  if (await qboReady().catch(() => false)) {
+    const r = await pushInvoice(snap.id, to);
+    payLink = r.payLink; qboError = r.ok ? null : (r.error || 'QuickBooks sync failed');
+  }
+
   const subject = `Invoice ${inv.invoiceNumber} from Aaromach — ${money(inv.total)}`;
   const text = [
     `Hello${inv.clientName ? ` ${inv.clientName}` : ''},`,
@@ -115,6 +125,7 @@ export async function POST(req: NextRequest) {
     ] : []),
     '',
     `View the full invoice: ${link}`,
+    ...(payLink ? ['', `Pay online (card or bank transfer): ${payLink}`] : []),
     '',
     'Thank you for your business.',
     'Aaromach',
@@ -141,5 +152,5 @@ export async function POST(req: NextRequest) {
       },
     }),
   });
-  return NextResponse.json({ link, emailed: true, to, emailId });
+  return NextResponse.json({ link, emailed: true, to, emailId, payLink, qboError });
 }

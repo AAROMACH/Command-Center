@@ -84,7 +84,11 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Send failed');
-      if (d.emailed) { toast({ title: 'Invoice sent', description: `Emailed to ${d.to}. Reopen Send to check it was delivered.` }); setOpen(false); }
+      if (d.emailed) {
+        toast({ title: 'Invoice sent', description: `Emailed to ${d.to}${d.payLink ? ' with a Pay now link' : ''}. Reopen Send to check it was delivered.` });
+        if (d.qboError) toast({ variant: 'destructive', title: 'Not added to QuickBooks', description: d.qboError });
+        setOpen(false);
+      }
       else { setLink(d.link); toast({ variant: 'destructive', title: 'Not emailed', description: `${d.reason} Copy the link below to send it yourself.` }); }
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Could not send', description: e.message });

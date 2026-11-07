@@ -9,7 +9,7 @@ import { Loader2 } from 'lucide-react';
 type PublicInvoice = {
   invoiceNumber: string; clientName: string; issueDate: string; dueDate: string; status: string;
   lineItems: { description: string; quantity: number; unitPrice: number; category: string; multiplier?: number }[];
-  subtotal: number; discountAmount: number; planName: string | null; laborPct?: number; materialsPct?: number; tax: number; total: number; notes: string;
+  subtotal: number; discountAmount: number; planName: string | null; laborPct?: number; materialsPct?: number; tax: number; total: number; notes: string; payLink?: string | null;
 };
 
 const money = (n: number) => `$${(Number(n) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
@@ -38,6 +38,12 @@ export default function PublicInvoicePage() {
             <p className="text-[12px] font-bold uppercase tracking-wider text-brand-red">Aaromach</p>
             <h1 className="text-2xl font-bold text-text-primary">Invoice {inv.invoiceNumber}</h1>
             <p className="text-[13px] text-text-muted">{inv.clientName}</p>
+            {inv.payLink && (
+              <a href={inv.payLink} target="_blank" rel="noopener noreferrer"
+                className="mt-3 mr-2 inline-flex h-10 items-center rounded-lg bg-brand-red px-4 text-[14px] font-semibold text-white hover:bg-brand-red/90">
+                Pay now — {money(inv.total)}
+              </a>
+            )}
             <InvoicePdfButton className="mt-2" label="Download PDF" data={{
               invoiceNumber: inv.invoiceNumber, clientName: inv.clientName, issueDate: inv.issueDate, dueDate: inv.dueDate, status: inv.status,
               lineItems: inv.lineItems, subtotal: inv.subtotal, discountAmount: inv.discountAmount,

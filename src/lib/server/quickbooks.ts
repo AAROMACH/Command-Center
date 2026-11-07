@@ -105,6 +105,28 @@ async function accessToken(): Promise<{ token: string; realmId: string }> {
   return { token: t.access_token, realmId: c.realmId };
 }
 
+/** POST /v3/company/{realm}{path} with a JSON body (create / sparse update). */
+export async function qboPost(path: string, body: unknown): Promise<any> {
+  const { token, realmId } = await accessToken();
+  const sep = path.includes('?') ? '&' : '?';
+  const r = await fetch(`${qboApiBase()}/v3/company/${realmId}${path}${sep}minorversion=75`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const msg = `QuickBooks ${r.status}: ${JSON.stringify((d as any).Fault?.Error?.[0]?.Detail || (d as any).Fault?.Error?.[0]?.Message || (d as any).Fault || d).slice(0, 300)}`;
+    if (r.status === 401 || r.status === 403 || r.status >= 500) await recordHealth('quickbooks', false, msg);
+    throw new Error(msg);
+  }
+  await recordHealth('quickbooks', true);
+  return d;
+}
+
+/** A QuickBooks query (SELECT … FROM …), e.g. qboQuery("select * from Customer where DisplayName = 'X'"). */
+export const qboQuery = async (sql: string) => (await qboGet(`/query?query=${encodeURIComponent(sql)}`))?.QueryResponse || {};
+
 /** GET /v3/company/{realm}{path} — JSON. */
 export async function qboGet(path: string): Promise<any> {
   const { token, realmId } = await accessToken();

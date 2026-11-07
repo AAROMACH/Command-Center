@@ -995,6 +995,13 @@ export type Invoice = {
   createdBy?: string;
   /** Each email send (server-written) with Resend's delivery status. */
   sendLog?: { at: string; to: string; by: string; emailId: string | null; status: string }[];
+  /** QuickBooks copy (server-written, lib/server/qbo-sync). */
+  qboInvoiceId?: string | null;
+  qboPayLink?: string | null;
+  qboSyncedAt?: string | null;
+  qboError?: string | null;
+  qboWarning?: string | null;
+  paidVia?: string | null;
   sentTo?: string | null;
 };
 

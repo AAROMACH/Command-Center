@@ -38,10 +38,18 @@ export function PlanTotals({ plan, s }: { plan: StaffPayPlan; s: PlanSummary }) 
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[12px]">
       <div><p className="text-text-muted">Each week</p><p className="font-mono font-semibold text-text-primary">{money(plan.weeklyAmount)}</p></div>
       <div><p className="text-text-muted">Paid so far</p><p className="font-mono font-semibold text-text-green">{money(s.paidTotal)}</p></div>
-      <div><p className="text-text-muted">Banked (owed)</p><p className={cn('font-mono font-semibold', s.banked > 0 ? 'text-accent-gold' : 'text-text-primary')}>{money(s.banked)}</p></div>
-      {plan.kind === 'installment'
-        ? <div><p className="text-text-muted">Left of {money(plan.total || 0)}</p><p className="font-mono font-semibold text-text-primary">{money(s.remaining || 0)}</p></div>
-        : <div><p className="text-text-muted">Weeks recorded</p><p className="font-mono font-semibold text-text-primary">{s.weeks.filter(w => w.entry).length}</p></div>}
+      {plan.kind === 'installment' ? (
+        <>
+          {/* The whole unpaid balance is owed; "behind" is just the missed/short weeks within it. */}
+          <div><p className="text-text-muted">Still owed (of {money(plan.total || 0)})</p><p className={cn('font-mono font-semibold', (s.remaining || 0) > 0 ? 'text-accent-gold' : 'text-text-primary')}>{money(s.remaining || 0)}</p></div>
+          <div><p className="text-text-muted">Behind schedule</p><p className={cn('font-mono font-semibold', s.banked > 0 ? 'text-brand-red' : 'text-text-primary')}>{money(s.banked)}</p></div>
+        </>
+      ) : (
+        <>
+          <div><p className="text-text-muted">Banked (owed)</p><p className={cn('font-mono font-semibold', s.banked > 0 ? 'text-accent-gold' : 'text-text-primary')}>{money(s.banked)}</p></div>
+          <div><p className="text-text-muted">Weeks recorded</p><p className="font-mono font-semibold text-text-primary">{s.weeks.filter(w => w.entry).length}</p></div>
+        </>
+      )}
     </div>
   );
 }
@@ -240,14 +248,14 @@ function RecordPaidDialog({ rec, onClose, by }: { rec: { plan: StaffPayPlan; wee
       <DialogContent className="sm:max-w-sm">
         <DialogHeader className="text-left">
           <DialogTitle>{rec.plan.personName} · {rec.plan.label}</DialogTitle>
-          <DialogDescription>Week of {rec.week.weekOf} · {money(rec.week.scheduled)} due{rec.banked > 0 ? ` · ${money(rec.banked)} banked` : ''}</DialogDescription>
+          <DialogDescription>Week of {rec.week.weekOf} · {money(rec.week.scheduled)} due{rec.banked > 0 ? ` · ${money(rec.banked)} behind` : ''}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5"><Label className="text-[12px]">Amount actually paid</Label>
             <Input type="number" inputMode="decimal" className="h-10 font-mono" value={amount} onChange={e => setAmount(e.target.value)} /></div>
           {rec.banked > 0 && (
             <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => setAmount(String(Math.round((rec.week.scheduled + rec.banked) * 100) / 100))}>
-              Include all banked ({money(rec.week.scheduled + rec.banked)})
+              Catch up all missed ({money(rec.week.scheduled + rec.banked)})
             </Button>
           )}
           <p className="text-[11px] text-text-muted">Less than due banks the difference; more than due pays the bank down.</p>

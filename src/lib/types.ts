@@ -660,6 +660,9 @@ export type WeeklyLogItem = {
    *  all). Shown to payroll next to the checked-in time on site. */
   hoursWorked?: number | null;
   hoursWorkedAt?: string | null;
+  /** The tech's own guess at this job's pay, for an estimated weekly total
+   *  before approval. Never used to pay — payroll's numbers are the real ones. */
+  estimatedPay?: number | null;
   payHold?: PayHold | null;
   confirmationStatus?: 'confirmed' | 'disputed' | null;
   disputeReason?: string;

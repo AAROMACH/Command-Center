@@ -64,7 +64,7 @@ export type ReimbursementPayLine = {
   source: 'log' | 'report';
 };
 
-const countedItems = (log: SettlementLog) => (log.items || [])
+export const countedItems = (log: SettlementLog) => (log.items || [])
   .filter(i => i.confirmationStatus !== 'disputed')
   // Removed as a helper: not paid unless payroll decides they worked it.
   .filter(i => !i.helperRemoved)
@@ -125,6 +125,17 @@ export function computeWeeklyLogPay(log: SettlementLog, jobsById: Map<string, Wo
     jobPay: jobCents / 100, reimbursementPay: reimbCents / 100, adjustmentPay: adjCents / 100,
     total: (jobCents + reimbCents + adjCents) / 100, pendingReimbursement: pendingCents / 100,
   };
+}
+
+/** The tech's estimate: real pay, with each job's own guessed pay swapped in
+ *  where they entered one. Display only — never used to pay. */
+export function computeWeeklyLogEstimate(log: SettlementLog, jobsById: Map<string, WorkOrder> = new Map()): WeeklyLogPay {
+  const real = computeWeeklyLogPay(log, jobsById);
+  const deltaCents = countedItems(log).reduce((s, i) => {
+    const est = (i as WeeklyLogItem).estimatedPay;
+    return est == null ? s : s + payCents(est) - payCents(effectiveJobPay(i, jobsById.get(i.workOrderId)));
+  }, 0);
+  return { ...real, jobPay: real.jobPay + deltaCents / 100, total: real.total + deltaCents / 100 };
 }
 
 /** A weekly log's true settlement total (work pay + reimbursements + adjustments). See computeWeeklyLogPay. */

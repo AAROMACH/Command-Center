@@ -243,6 +243,8 @@ export type Technician = {
    *  user as a Vendor (a paid tech) or a Customer (a client). See
    *  lib/accounting-readiness.ts. */
   accounting?: UserAccounting;
+  /** Client: where invoices are emailed (else their sign-in email). */
+  billingEmail?: string | null;
   billingDetails?: {
     contactName: string;
     email: string;

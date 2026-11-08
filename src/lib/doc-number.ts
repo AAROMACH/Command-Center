@@ -16,10 +16,16 @@ export function shortDate(when: string | Date = new Date()): string {
   return `${p(ok.getMonth() + 1)}/${p(ok.getDate())}/${p(ok.getFullYear() % 100)}`;
 }
 
-/** '11/05/26-007' for doc 'qt-007' made 11/05/26; the id itself if it has no counter. */
+/**
+ * '11/05/26-007' for quote 'qt-007' made 11/05/26. Invoices use the common
+ * invoice style with no slashes: 'INV-110526-012' for 'inv-012'. The id
+ * itself if it has no counter.
+ */
 export function docNumber(id: string, when: string | Date = new Date()): string {
   const seq = docSeq(id);
-  return seq ? `${shortDate(when)}-${seq}` : id;
+  if (!seq) return id;
+  if (/^inv-/i.test(id)) return `INV-${shortDate(when).replace(/\//g, '')}-${seq}`;
+  return `${shortDate(when)}-${seq}`;
 }
 
 /** A number the app made up (the doc id, or the old random INV-2026-1234), not one typed by hand. */

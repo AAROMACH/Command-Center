@@ -20,6 +20,7 @@ import {
   Bell,
   Banknote,
   Type,
+  Mail,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { TERMINOLOGY } from '@/lib/constants';
@@ -32,6 +33,7 @@ import { FontPreferenceSetting } from '@/components/font-preference-setting';
 import { ThemeToggleSetting } from '@/components/theme-toggle-setting';
 import { IntegrationsPanel } from '@/components/integrations-panel';
 import { SettingsTabs } from '@/components/settings-tabs';
+import { CommunicationsSettingsCard } from '@/components/communications-settings-card';
 
 
 export default function AdminSettingsPage() {
@@ -188,6 +190,7 @@ export default function AdminSettingsPage() {
                             </Card>
                         </>),
                     },
+                    { id: 'communications', label: 'Communications', icon: Mail, show: isSuperAdmin(currentUser), content: <CommunicationsSettingsCard showEmailLog /> },
                     { id: 'notifications', label: TERMINOLOGY.CONFIG.NOTIFICATIONS, icon: Bell, content: <NotificationEventsCard /> },
                     { id: 'display', label: 'Display', icon: Type, content: <>
                         <ThemeToggleSetting /><FontPreferenceSetting />

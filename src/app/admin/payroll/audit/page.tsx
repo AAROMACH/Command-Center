@@ -44,6 +44,7 @@ import { PayrollTicketDecision } from '@/components/payroll-ticket-decision';
 import { PAYOUT_LABEL, adjustmentForText, createPayAdjustment, jobLabelFor, payoutStatus } from '@/lib/pay-adjustments';
 import { PAYOUT_BADGE, PayrollAdjustmentDialog } from '@/components/payroll-adjustment-dialog';
 import { HeldJobsPanel } from '@/components/held-jobs-panel';
+import { heldJobs } from '@/lib/pay-holds';
 import { StaffPayPanel } from '@/components/staff-pay-panel';
 import { WagesButton } from '@/components/wages-dialog';
 import { PAYROLL_TICKET_CARDS } from '@/lib/disputes';
@@ -483,6 +484,8 @@ export default function PayrollAuditPage() {
     // New adjustments carry `at`; older record-only ones a `date`.
     const adjTime = (a: any) => (a.at ? new Date(a.at).getTime() : parseLocalDate(a.date)?.getTime() ?? 0) || 0;
     // Jobs on the chosen tech's approved/paid logs — what a manual adjustment can be for.
+    // Holds tab: jobs whose pay is held until the customer pays.
+    const heldCount = useMemo(() => heldJobs(weeklyLogs).length, [weeklyLogs]);
     const adjustJobChoices = useMemo(() => weeklyLogs
         .filter(l => l.techId === adjustForm.techId && l.status === 'Approved')
         .sort((a, b) => (b.weekOf.split('-').reverse().join('')).localeCompare(a.weekOf.split('-').reverse().join('')))
@@ -878,6 +881,7 @@ export default function PayrollAuditPage() {
                         { value: 'history', label: 'Paystub history', short: 'Paystubs', count: approvedLogsByTech.length },
                         { value: 'staff', label: 'Staff pay', short: 'Staff', count: 0 },
                         { value: 'adjustments', label: 'Adjustments', count: adjustments.length + payrollDisputes.filter(d => d.status === 'open').length },
+                        { value: 'holds', label: 'Holds', count: heldCount },
                     ].map(t => (
                         <TabsTrigger key={t.value} value={t.value} className="tab-underline">
                             {'short' in t ? <><span className="sm:hidden">{t.short}</span><span className="hidden sm:inline">{t.label}</span></> : t.label}
@@ -1126,8 +1130,6 @@ export default function PayrollAuditPage() {
                         </div>
                     )}
 
-                    <HeldJobsPanel logs={weeklyLogs} technicians={technicians} jobsById={jobsById} by={currentUser?.name || 'Payroll'} canEdit={canEditAdjustments} />
-
                     <div className="flex items-center justify-between">
                         <p className="text-[13px] font-semibold text-text-primary">{adjQuery ? `${sortedAdjustments.length} of ${adjustments.length}` : adjustments.length} adjustment{adjustments.length !== 1 ? 's' : ''}</p>
                         <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setAdjustDialogOpen(true)}>
@@ -1190,6 +1192,15 @@ export default function PayrollAuditPage() {
                     <PayrollAdjustmentDialog adj={editingAdj} techName={editingAdj ? (techNameOf(editingAdj.techId) || editingAdj.techId) : ''}
                         logs={weeklyLogs} jobsById={jobsById} by={currentUser?.name || 'Payroll'} canEdit={canEditAdjustments}
                         onClose={() => setEditingAdj(null)} />
+                </TabsContent>
+
+                {/* ── Holds: jobs whose pay is held until the customer pays ── */}
+                <TabsContent value="holds" className="m-0 space-y-4">
+                    {heldCount > 0 ? (
+                        <HeldJobsPanel logs={weeklyLogs} technicians={technicians} jobsById={jobsById} by={currentUser?.name || 'Payroll'} canEdit={canEditAdjustments} />
+                    ) : (
+                        <EmptyState icon={Clock} title="No jobs on hold" description="Use Hold pay on a job in a weekly log to keep it out of that week's pay until the customer pays." />
+                    )}
                 </TabsContent>
 
                 {/* ── Staff pay: weekly bonuses and installments outside job logs ── */}

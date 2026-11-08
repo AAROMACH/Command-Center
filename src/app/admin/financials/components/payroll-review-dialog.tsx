@@ -1958,7 +1958,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         {canApproveLog && (item.payHold?.status === 'held' ? (
                                                             <div className="flex items-center gap-1">
                                                                 <Badge variant="outline" className="border-accent-gold/50 bg-accent-gold/10 text-accent-gold text-[10px] uppercase tracking-wide whitespace-nowrap"
-                                                                    title={`${item.payHold.reason} · not in this week's total. Release it from Payroll Audit → Adjustments.`}>
+                                                                    title={`${item.payHold.reason} · not in this week's total. Release it from Payroll Audit → Holds.`}>
                                                                     On hold · ${item.payHold.amount.toFixed(2)}
                                                                 </Badge>
                                                                 {!localLog?.paid && (

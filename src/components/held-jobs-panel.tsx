@@ -63,15 +63,16 @@ export function HeldJobsPanel({ logs, technicians, jobsById, by, canEdit }: {
           const days = (() => { try { return differenceInCalendarDays(new Date(), parseISO(h.hold.heldAt)); } catch { return 0; } })();
           return (
             <div key={`${h.log.id}-${h.item.id}`} className="flex flex-wrap items-center gap-3 rounded-lg border border-accent-gold/30 bg-accent-gold/5 px-3 py-2.5">
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-semibold text-text-primary truncate">{jobLabelFor(job, h.item.workOrderId)}</p>
+              {/* Phones: details take the full row; amount and buttons wrap below. */}
+              <div className="min-w-0 flex-1 basis-full sm:basis-0">
+                <p className="text-[13px] font-semibold text-text-primary break-words">{jobLabelFor(job, h.item.workOrderId)}</p>
                 <p className="text-[12px] text-text-muted">
                   {nameOf(h.log.techId)} · week of {h.log.weekOf}{job?.clientName ? ` · ${job.clientName}` : ''} · {h.hold.reason} · held {days} day{days === 1 ? '' : 's'}
                 </p>
               </div>
               <span className="font-mono text-[13px] font-bold text-text-primary">{money(h.hold.amount)}</span>
               {canEdit && (
-                <div className="flex gap-1.5">
+                <div className="flex gap-1.5 ml-auto sm:ml-0">
                   {!h.log.paid && <Button size="sm" variant="ghost" className="h-8 text-text-muted" onClick={() => undo(h)}>Undo</Button>}
                   <Button size="sm" className="h-8" onClick={() => open(h)}>Release</Button>
                 </div>

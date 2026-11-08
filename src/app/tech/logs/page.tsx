@@ -789,7 +789,8 @@ export default function TechWeeklyLogPage() {
                                         <div className={cn(
                                             "p-2.5 rounded-xl border",
                                             log.status === 'Draft' ? "bg-accent-gold-dim border-accent-gold/30 text-accent-gold" :
-                                            log.status === 'Approved' ? "bg-green-dim border-green-border/30 text-text-green" :
+                                            log.status === 'Approved' && log.paid ? "bg-green-dim border-green-border/30 text-text-green" :
+                                            log.status === 'Approved' ? "bg-brand-blue/10 border-brand-blue/30 text-brand-blue" :
                                             "bg-bg-tertiary border-border-sub text-text-muted"
                                         )}>
                                             <CalendarIcon size={16} />

@@ -565,7 +565,7 @@ export default function PayrollAuditPage() {
                                             </div>
                                             <p className="hidden sm:block text-[11px] text-text-muted font-mono whitespace-nowrap">Week of {log.weekOf}</p>
                                         </div>
-                                        <p className={cn('sm:hidden shrink-0 text-[13px] font-semibold font-mono', log.status === 'Approved' ? 'text-text-green' : 'text-text-primary')}>
+                                        <p className={cn('sm:hidden shrink-0 text-[13px] font-semibold font-mono', log.paid ? 'text-text-green' : log.status === 'Approved' ? 'text-brand-blue' : 'text-text-primary')}>
                                             ${settlementOf(log).toFixed(2)}
                                         </p>
                                     </div>
@@ -578,7 +578,7 @@ export default function PayrollAuditPage() {
                                         {log.mergeReviewRequired && <span className="text-[11px] font-semibold text-accent-gold flex items-center gap-1"><AlertTriangle size={11} /> Needs reapproval</span>}
                                     </div>
                                     <div className="hidden sm:block text-right">
-                                        <p className={cn('text-[12px] font-bold font-mono', log.status === 'Approved' ? 'text-text-green' : 'text-text-primary')}>
+                                        <p className={cn('text-[12px] font-bold font-mono', log.paid ? 'text-text-green' : log.status === 'Approved' ? 'text-brand-blue' : 'text-text-primary')}>
                                             ${settlementOf(log).toFixed(2)}
                                         </p>
                                         <p className="text-[10px] text-text-muted font-mono whitespace-nowrap leading-tight" title="Work pay + reimbursements (net of the Field Nation fee)">

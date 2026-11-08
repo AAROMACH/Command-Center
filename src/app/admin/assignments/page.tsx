@@ -242,8 +242,8 @@ export default function AssignmentsHubPage() {
       const s = log.status as string;
       const stage =
         s === 'Paid' ? { label: 'Paid Out', cls: 'bg-text-green/10 text-text-green border-text-green/30' }
-        : s === 'Approved' ? { label: 'Approved', cls: 'bg-text-green/10 text-text-green border-text-green/30' }
-        : s === 'Submitted' ? { label: 'Submitted', cls: 'bg-brand-blue/10 text-brand-blue border-brand-blue/30' }
+        : s === 'Approved' ? { label: 'Approved', cls: 'bg-brand-blue/10 text-brand-blue border-brand-blue/30' }
+        : s === 'Submitted' ? { label: 'Submitted', cls: 'bg-accent-gold/10 text-accent-gold border-accent-gold/30' }
         : s === 'Rejected' ? { label: 'Rejected', cls: 'bg-brand-red/10 text-brand-red border-brand-red/30' }
         : { label: 'In Draft Log', cls: 'bg-bg-tertiary text-text-muted border-border-sub' };
       for (const item of log.items || []) {

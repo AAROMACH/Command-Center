@@ -61,7 +61,8 @@ export type NewAdjustment = {
   jobLabel?: string | null;
   sourceLogId?: string | null;
   sourceWeekOf?: string | null;
-  /** Field Nation jobs: the full labor pay payroll entered (amount = tech's share). */
+  /** Job pay corrections: labor pay before/after (see PayAdjustment). */
+  laborBefore?: number | null;
   laborAmount?: number | null;
 };
 
@@ -84,6 +85,7 @@ export async function createPayAdjustment(input: NewAdjustment): Promise<PayAdju
     jobLabel: input.jobLabel ?? null,
     sourceLogId: input.sourceLogId ?? null,
     sourceWeekOf: input.sourceWeekOf ?? null,
+    laborBefore: input.laborBefore ?? null,
     laborAmount: input.laborAmount ?? null,
     status: target ? 'applied' : 'queued',
     appliedLogId: target?.id ?? null,
@@ -104,6 +106,19 @@ export async function createPayAdjustment(input: NewAdjustment): Promise<PayAdju
     tx.set(ref, adj);
   });
   return adj;
+}
+
+/**
+ * The before → after of a job pay correction: "Labor $195.00 → $250.00 ·
+ * your pay $82.05 → $105.20". Null for a plain amount (no job math).
+ */
+export function correctionText(a: Pick<PayAdjustment, 'laborBefore' | 'laborAmount' | 'paidAmount' | 'correctAmount'>, whose: 'your' | 'tech' = 'your'): string | null {
+  const usd = (n: number) => `${n < 0 ? '−' : ''}$${Math.abs(n).toFixed(2)}`;
+  const parts: string[] = [];
+  // Manual jobs: labor and pay are the same number — show it once.
+  if (a.laborBefore != null && a.laborAmount != null && a.laborBefore !== a.paidAmount) parts.push(`Labor ${usd(a.laborBefore)} → ${usd(a.laborAmount)}`);
+  if (a.paidAmount != null && a.correctAmount != null) parts.push(`${parts.length ? whose : whose === 'your' ? 'Your' : 'Tech'} pay ${usd(a.paidAmount)} → ${usd(a.correctAmount)}`);
+  return parts.length ? parts.join(' · ') : null;
 }
 
 /** Shown to the tech: "For WO# 18927 · Camera install · week of 10-12-2026". */
@@ -152,6 +167,8 @@ const stripAdj = (a: PayAdjustment) => JSON.parse(JSON.stringify(a)) as PayAdjus
  */
 export async function updatePayAdjustment(adj: PayAdjustment, patch: {
   amount: number; reason: string; paidAmount?: number | null; correctAmount?: number | null;
+  /** Job corrections: labor before/after. Omitted = keep what's stored. */
+  laborBefore?: number | null; laborAmount?: number | null;
 }, toLogId: string | null, by: string, jobsById: Map<string, WorkOrder>): Promise<PayAdjustment> {
   const amount = roundCents(Number(patch.amount) || 0);
   if (!amount) throw new Error('The adjustment is $0.00 — remove it instead, or enter an amount.');
@@ -175,6 +192,8 @@ export async function updatePayAdjustment(adj: PayAdjustment, patch: {
     saved = stripAdj({
       ...adj, amount, reason: patch.reason.trim(),
       paidAmount: patch.paidAmount ?? null, correctAmount: patch.correctAmount ?? null,
+      ...(patch.laborBefore !== undefined ? { laborBefore: patch.laborBefore } : {}),
+      ...(patch.laborAmount !== undefined ? { laborAmount: patch.laborAmount } : {}),
       status: to ? 'applied' : 'queued', appliedLogId: to?.id ?? null, appliedWeekOf: to?.weekOf ?? null,
       editedAt: new Date().toISOString(), editedBy: by,
     });

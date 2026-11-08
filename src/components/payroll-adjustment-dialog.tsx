@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
-  PAYOUT_LABEL, adjustmentForText, movableLogs, payoutStatus, setAdjustmentPaid, updatePayAdjustment, type PayoutStatus,
+  PAYOUT_LABEL, adjustmentForText, correctionText, movableLogs, payoutStatus, setAdjustmentPaid, updatePayAdjustment, type PayoutStatus,
 } from '@/lib/pay-adjustments';
+import { PayCorrectionCalculator, type PayCorrection } from '@/components/pay-correction-calculator';
 import type { PayAdjustment, WeeklyLog, WorkOrder } from '@/lib/types';
 
 const NOT_SET = '__not_set';
@@ -54,7 +55,15 @@ export function PayrollAdjustmentDialog({ adj, techName, logs, jobsById, by, can
 
   const logsById = useMemo(() => new Map(logs.map(l => [l.id, l])), [logs]);
   const options = useMemo(() => (adj ? movableLogs(adj.techId, logs) : []), [adj, logs]);
+  // A correction on a job: re-run the calculator from its original pay on file;
+  // the amount is the tech's difference. Plain adjustments keep the amount box.
+  const [calc, setCalc] = useState<PayCorrection | null>(null);
+  const baseline = useMemo(() => (adj?.workOrderId && adj.paidAmount != null
+    ? { labor: Number(adj.laborBefore ?? adj.paidAmount), tech: Number(adj.paidAmount) } : null), [adj]);
+  useEffect(() => { setCalc(null); }, [adj?.id]);
   if (!adj) return null;
+  const job = adj.workOrderId ? jobsById.get(adj.workOrderId) : undefined;
+  const isFn = adj.laborBefore != null && adj.laborBefore !== adj.paidAmount ? true : job?.source === 'Imported';
 
   const legacy = !adj.status || (adj.status !== 'applied' && adj.status !== 'queued');
   const st = payoutStatus(adj, logsById);
@@ -64,13 +73,17 @@ export function PayrollAdjustmentDialog({ adj, techName, logs, jobsById, by, can
     : legacy ? 'Added before adjustments were paid through weekly logs — record only.'
     : adj.paidOutAt ? 'Marked paid — unmark it to make changes.'
     : current?.paid ? `The week of ${current.weekOf} is already paid, so this can’t change.` : '';
-  const dirty = Number(amount) !== Number(adj.amount) || reason.trim() !== (adj.reason || '').trim()
+  // With the calculator, the amount is its difference (unchanged until a new total is entered).
+  const effAmount = baseline && calc ? calc.diff : Number(amount);
+  const dirty = effAmount !== Number(adj.amount) || reason.trim() !== (adj.reason || '').trim()
     || week !== (adj.status === 'applied' && adj.appliedLogId ? adj.appliedLogId : NOT_SET);
 
   const save = async () => {
     setBusy('save');
     try {
-      const saved = await updatePayAdjustment(adj, { amount: Number(amount), reason, paidAmount: adj.paidAmount, correctAmount: adj.correctAmount },
+      const saved = await updatePayAdjustment(adj, baseline && calc
+        ? { amount: calc.diff, reason, paidAmount: calc.techBefore, correctAmount: calc.techAfter, laborBefore: calc.laborBefore, laborAmount: calc.laborAfter }
+        : { amount: Number(amount), reason, paidAmount: adj.paidAmount, correctAmount: adj.correctAmount },
         week === NOT_SET ? null : week, by, jobsById);
       toast({ title: 'Adjustment updated', description: saved.status === 'applied' ? `Paid on the week of ${saved.appliedWeekOf}.` : 'Not on a week — it goes on the tech’s next log.' });
       onClose();
@@ -128,14 +141,25 @@ export function PayrollAdjustmentDialog({ adj, techName, logs, jobsById, by, can
 
         {lockReason && <p className="text-[12px] text-text-muted">{lockReason}</p>}
 
+        {baseline && (
+          <div className="space-y-1.5">
+            {correctionText(adj, 'tech') && (
+              <p className="text-[12px] text-text-muted">Now: {correctionText(adj, 'tech')} · {amountText}</p>
+            )}
+            {!locked && (
+              <PayCorrectionCalculator key={adj.id} job={job} baseline={baseline} fieldNation={isFn}
+                initial={adj.laborAmount ?? adj.correctAmount} onChange={setCalc} />
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {!baseline && (
           <div className="space-y-1.5">
             <Label className="text-[12px]">Amount (+ owed / − overpaid)</Label>
             <Input type="number" step="0.01" inputMode="decimal" className="h-10 font-mono" value={amount} disabled={locked} onChange={e => setAmount(e.target.value)} />
-            {adj.paidAmount != null && adj.correctAmount != null && (
-              <p className="text-[11px] text-text-muted">Paid ${Number(adj.paidAmount).toFixed(2)} → should be ${Number(adj.correctAmount).toFixed(2)}</p>
-            )}
           </div>
+          )}
           <div className="space-y-1.5">
             <Label className="text-[12px]">Pay it on</Label>
             <Select value={week} onValueChange={setWeek} disabled={locked}>
@@ -160,7 +184,7 @@ export function PayrollAdjustmentDialog({ adj, techName, logs, jobsById, by, can
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose}>Close</Button>
           {!locked && (
-            <Button className="bg-brand-red hover:bg-brand-red/90 text-white" disabled={!dirty || !!busy || !Number(amount) || !reason.trim()} onClick={save}>
+            <Button className="bg-brand-red hover:bg-brand-red/90 text-white" disabled={!dirty || !!busy || !effAmount || !reason.trim()} onClick={save}>
               {busy === 'save' && <Loader2 size={13} className="mr-1.5 animate-spin" />} Save changes
             </Button>
           )}

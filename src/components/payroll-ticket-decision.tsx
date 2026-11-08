@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { PayCorrectionCalculator, type PayCorrection } from '@/components/pay-correction-calculator';
 
 const money = (n: number) => `${n < 0 ? '−' : ''}$${Math.abs(n).toFixed(2)}`;
 const signed = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}$${Math.abs(n).toFixed(2)}`;
@@ -48,9 +49,13 @@ export function PayrollTicketDecision({ dispute, canDecide, fallbackName, source
     const [paid, setPaid] = useState('');
     const [correct, setCorrect] = useState('');
     const [target, setTarget] = useState<string | null | undefined>(undefined);
+    // Wrong pay on a job: the calculator (labor before/after → the tech's difference).
+    const [calc, setCalc] = useState<PayCorrection | null>(null);
     const [busy, setBusy] = useState(false);
     const card = PAYROLL_TICKET_CARDS[dispute.reason] || PAYROLL_TICKET_CARDS.incorrect_pay;
     const jobs = jobsById || new Map<string, WorkOrder>();
+    const useCalc = dispute.reason === 'incorrect_pay' && !!dispute.workOrderId;
+    const calcItem = useCalc ? (sourceLog?.items || []).find(i => i.workOrderId === dispute.workOrderId) : undefined;
 
     useEffect(() => {
         if (choice !== 'yes') return;
@@ -77,8 +82,8 @@ export function PayrollTicketDecision({ dispute, canDecide, fallbackName, source
         );
     }
 
-    const paidN = parseFloat(paid);
-    const correctN = parseFloat(correct);
+    const paidN = useCalc ? (calc?.techBefore ?? NaN) : parseFloat(paid);
+    const correctN = useCalc ? (calc?.techAfter ?? NaN) : parseFloat(correct);
     const amountsOk = choice !== 'yes' || (Number.isFinite(paidN) && Number.isFinite(correctN));
     const diff = amountsOk && choice === 'yes' ? Math.round((correctN - paidN) * 100) / 100 : 0;
 
@@ -100,6 +105,8 @@ export function PayrollTicketDecision({ dispute, canDecide, fallbackName, source
                     by,
                     paidAmount: paidN,
                     correctAmount: correctN,
+                    laborBefore: useCalc ? calc?.laborBefore ?? null : null,
+                    laborAmount: useCalc ? calc?.laborAfter ?? null : null,
                     techNote: dispute.notes || null,
                     disputeId: dispute.id,
                     workOrderId: dispute.workOrderId || null,
@@ -163,10 +170,21 @@ export function PayrollTicketDecision({ dispute, canDecide, fallbackName, source
         <div className="rounded-lg border-2 border-accent-gold/50 bg-accent-gold/5 p-3 space-y-3 text-left">
             <p className="text-[13px] font-semibold text-text-primary break-words">
                 {choice === 'yes'
-                    ? `Correct ${dispute.techName}'s pay. Enter what they were paid and what they should have been paid — the difference goes on their next log.`
+                    ? useCalc
+                        ? `Correct ${dispute.techName}'s pay. Enter the correct total — the app works out the difference for the tech, and that goes on their next log.`
+                        : `Correct ${dispute.techName}'s pay. Enter what they were paid and what they should have been paid — the difference goes on their next log.`
                     : `Close ${dispute.techName}'s dispute with no change? ${dispute.techName} will see your reason.`}
             </p>
-            {choice === 'yes' && (
+            {choice === 'yes' && useCalc && (
+                <div className="space-y-2">
+                    {dispute.notes && <p className="text-[12px] text-text-muted break-words">{dispute.techName}&apos;s note: “{dispute.notes}”</p>}
+                    <PayCorrectionCalculator job={dispute.workOrderId ? jobs.get(dispute.workOrderId) : undefined} item={calcItem} onChange={setCalc} autoFocus />
+                    {calc && calc.diff !== 0 && (
+                        <p className="text-[12px] text-text-muted">{calc.diff > 0 ? 'Paid' : 'Deducted'} {target === undefined ? '…' : target ? `on the week of ${target}` : 'on their next log (none open yet)'}.</p>
+                    )}
+                </div>
+            )}
+            {choice === 'yes' && !useCalc && (
                 <div className="space-y-2">
                     <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2 sm:max-w-md">
                         <div className="space-y-1">
@@ -192,7 +210,7 @@ export function PayrollTicketDecision({ dispute, canDecide, fallbackName, source
                 <Textarea value={note} onChange={e => setNote(e.target.value)} className="min-h-[60px] text-[13px] bg-bg-primary" />
             </div>
             <div className="flex flex-col-reverse sm:flex-row gap-2">
-                <Button variant="outline" className="h-10" disabled={busy} onClick={() => { setChoice(null); setNote(''); setCorrect(''); }}>Cancel</Button>
+                <Button variant="outline" className="h-10" disabled={busy} onClick={() => { setChoice(null); setNote(''); setCorrect(''); setCalc(null); }}>Cancel</Button>
                 <Button className="h-10 whitespace-normal" disabled={busy || (choice === 'no' && !note.trim()) || (choice === 'yes' && !amountsOk)} onClick={save}>
                     {busy ? <Loader2 size={13} className="mr-1.5 animate-spin" /> : <Check size={13} className="mr-1.5" />}
                     {choice === 'yes' ? (diff ? `Save · ${diff > 0 ? '+' : '−'}${money(Math.abs(diff))}` : 'Save') : 'Decline'}

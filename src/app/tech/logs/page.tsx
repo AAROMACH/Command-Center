@@ -5,11 +5,11 @@ import { useSessionState } from '@/hooks/use-session-state';
 
 import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_SMALL, PAGE_SIZES_LARGE } from '@/components/list-pager';
-import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog, PayrollDispute, DisputeKind, DisputeResolution } from '@/lib/types';
+import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog, PayrollDispute, DisputeKind, DisputeResolution, PayAdjustment } from '@/lib/types';
 import { externalWorkOrderId, displayWorkOrderNumber, fieldNationUrl, isImported } from '@/lib/work-order-identity';
 import { hasPermission } from '@/lib/permissions';
 import { computeWeeklyLogEstimate, computeWeeklyLogPay, effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
-import { adjustmentForText } from '@/lib/pay-adjustments';
+import { adjustmentForText, correctionText } from '@/lib/pay-adjustments';
 import { mergeJobs, weekOfValue, parseLocalDate } from '@/lib/jobs';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/empty-state';
@@ -623,7 +623,7 @@ export default function TechWeeklyLogPage() {
     const adjPlacement = useMemo(() => {
         const m = new Map<string, AdjPlacement>();
         weeklyLogs.filter(l => l.techId === currentTechId).forEach(l => (l.payAdjustments || []).forEach(a => {
-            m.set(a.id, { weekOf: l.weekOf, paidOut: !!l.paid || !!a.paidOutAt, amount: a.amount });
+            m.set(a.id, { weekOf: l.weekOf, paidOut: !!l.paid || !!a.paidOutAt, amount: a.amount, adj: a });
         }));
         return m;
     }, [weeklyLogs, currentTechId]);
@@ -1015,8 +1015,8 @@ export default function TechWeeklyLogPage() {
                         <div key={a.id} className="rounded-lg border border-border-sub bg-bg-secondary p-2.5 flex items-start justify-between gap-3">
                             <div className="min-w-0 space-y-0.5">
                                 <p className="text-[13px] font-semibold text-text-primary break-words">{adjustmentForText(a)}</p>
-                                {a.paidAmount != null && a.correctAmount != null && (
-                                    <p className="text-[12px] text-text-secondary font-mono">Paid ${a.paidAmount.toFixed(2)} → should be ${a.correctAmount.toFixed(2)}</p>
+                                {correctionText(a) && (
+                                    <p className="text-[12px] text-text-secondary font-mono break-words">{correctionText(a)} · difference {a.amount >= 0 ? '+' : '−'}${Math.abs(a.amount).toFixed(2)}</p>
                                 )}
                                 {a.techNote && <p className="text-[12px] text-text-muted break-words">Your note: “{a.techNote}”</p>}
                                 {a.reason && <p className="text-[12px] text-text-muted break-words">Payroll: {a.reason}</p>}
@@ -1431,7 +1431,7 @@ export default function TechWeeklyLogPage() {
     );
 }
 
-type AdjPlacement = { weekOf: string; paidOut: boolean; amount: number };
+type AdjPlacement = { weekOf: string; paidOut: boolean; amount: number; adj?: PayAdjustment };
 
 /** Plain status of a payment: paid out, scheduled on a week, or not on a week yet. */
 function placementText(p: AdjPlacement | null | undefined, whose: 'your' | 'the'): string {
@@ -1681,8 +1681,10 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                         <div className="mx-4 mb-3 rounded-lg border border-accent-gold/40 bg-accent-gold/5 p-2.5 space-y-0.5 text-left">
                             <p className="text-[12px] font-semibold text-text-primary">
                                 Pay adjusted {amount >= 0 ? '+' : '−'}${Math.abs(amount).toFixed(2)}
-                                {a.paidAmount != null && a.correctAmount != null && <span className="font-mono font-normal text-text-secondary"> · paid ${a.paidAmount.toFixed(2)} → should be ${a.correctAmount.toFixed(2)}</span>}
                             </p>
+                            {correctionText(placed?.adj || a) && (
+                                <p className="text-[12px] font-mono text-text-secondary break-words">{correctionText(placed?.adj || a)}</p>
+                            )}
                             <p className="text-[12px] text-text-muted">{placementText(placed, 'your')}.</p>
                             {payAdjustedBy.notes && <p className="text-[12px] text-text-muted break-words">Your note: “{payAdjustedBy.notes}”</p>}
                             {payAdjustedBy.resolution?.note && <p className="text-[12px] text-text-muted break-words">Payroll: {payAdjustedBy.resolution.note}</p>}

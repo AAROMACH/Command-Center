@@ -13,7 +13,17 @@ export type CommunicationsSettings = {
   billingContactName?: string;
   billingContactEmail?: string;
   billingContactPhone?: string;
+  /** Shown under your name on the billing banner. */
+  billingContactTitle?: string;
+  /** Company banner on support emails. */
+  companyPhone?: string;
+  companyWebsite?: string;
+  /** The app's address, saved from the browser — used to link the logo in emails. */
+  appUrl?: string;
 };
+
+export const DEFAULT_COMPANY_PHONE = '(313) 241-0588';
+export const DEFAULT_COMPANY_WEBSITE = 'aaromach.com';
 
 export const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
 

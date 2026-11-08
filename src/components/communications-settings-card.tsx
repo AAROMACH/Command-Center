@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { billingContactLine, isEmail, type CommunicationsSettings } from '@/lib/communications-settings';
+import { billingContactLine, isEmail, DEFAULT_COMPANY_PHONE, DEFAULT_COMPANY_WEBSITE, type CommunicationsSettings } from '@/lib/communications-settings';
 
 const DEFAULT_REPLY = 'support@aaromach.com';
 
@@ -43,6 +43,8 @@ export function CommunicationsSettingsCard({ showEmailLog }: { showEmailLog?: bo
         supportReplyTo: clean(s.supportReplyTo), billingReplyTo: clean(s.billingReplyTo),
         billingContactOn: !!s.billingContactOn, billingContactName: clean(s.billingContactName),
         billingContactEmail: clean(s.billingContactEmail), billingContactPhone: clean(s.billingContactPhone),
+        billingContactTitle: clean(s.billingContactTitle), companyPhone: clean(s.companyPhone), companyWebsite: clean(s.companyWebsite),
+        appUrl: window.location.origin,
       }, { merge: true });
       toast({ title: 'Communications saved', description: 'Emails sent from now on use these settings.' });
     } catch (e) {
@@ -90,7 +92,10 @@ export function CommunicationsSettingsCard({ showEmailLog }: { showEmailLog?: bo
           <div className="grid gap-4 sm:grid-cols-3">
             {field('Name', 'How you’re named in the line.', s.billingContactName, v => set({ billingContactName: v }), 'Corey', 'text')}
             {field('Email', 'Your direct email.', s.billingContactEmail, v => set({ billingContactEmail: v }), 'you@aaromach.com')}
-            {field('Phone (optional)', 'Shown after the email.', s.billingContactPhone, v => set({ billingContactPhone: v }), '(248) 555-0100', 'tel')}
+            {field('Phone (optional)', 'Blank uses the company phone.', s.billingContactPhone, v => set({ billingContactPhone: v }), DEFAULT_COMPANY_PHONE, 'tel')}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {field('Title', 'Under your name on the billing banner.', s.billingContactTitle, v => set({ billingContactTitle: v }), 'Chief Operating Officer', 'text')}
           </div>
           <div className="rounded-lg border border-border-sub bg-bg-primary p-3">
             <p className="text-[11px] text-text-muted mb-1">Added to the bottom of billing emails</p>
@@ -98,6 +103,17 @@ export function CommunicationsSettingsCard({ showEmailLog }: { showEmailLog?: bo
           </div>
         </CardContent>
       )}
+    </Card>
+
+    <Card>
+      <CardHeader className="text-left">
+        <CardTitle>Email banners</CardTitle>
+        <CardDescription>The footer with the logo at the bottom of customer emails. Billing emails show your personal banner (name and title above); support emails show the company banner.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4 sm:grid-cols-2">
+        {field('Company phone', 'On both banners.', s.companyPhone, v => set({ companyPhone: v }), DEFAULT_COMPANY_PHONE, 'tel')}
+        {field('Website', 'On the company banner.', s.companyWebsite, v => set({ companyWebsite: v }), DEFAULT_COMPANY_WEBSITE, 'text')}
+      </CardContent>
     </Card>
 
     <Button size="sm" onClick={save} disabled={!loaded || saving || invalid} className="h-10 bg-brand-red hover:bg-brand-red/90 text-white w-full sm:w-auto">

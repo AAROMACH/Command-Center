@@ -1477,6 +1477,8 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
         scheduleDate: item.workDate || '', scheduleTime: '', location: '', clientName: '',
         pay: item.jobPay || 0, payType: 'fixed', status: 'completed', priority: 'medium', projectType: '',
     } as unknown as WorkOrder);
+    // Field Nation lead job: show the labor pay payroll entered next to the tech's share.
+    const showLabor = !isDisputed && !item.isHelper && (isImported(shown) || (!job && item.jobSource === 'Imported'));
 
     return (
         <Card className={cn(
@@ -1495,7 +1497,8 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                         )}>
                             {isDisputed ? <AlertTriangle size={20}/> : isConfirmed ? <CheckCircle2 size={20}/> : <Clock size={20}/>}
                         </div>
-                        <div className="min-w-0 text-left flex-1">
+                        {/* Phones: full row, so the pay boxes wrap below instead of squeezing the title. */}
+                        <div className="min-w-0 text-left flex-1 basis-full sm:basis-0">
                             <div className="flex flex-wrap items-center gap-2 text-left">
                                 <h3 className="text-[14px] font-semibold text-text-primary break-words text-left min-w-0">{shown.title || shown.description}</h3>
                                 {item.isHelper && <Badge variant="outline" className="text-[10px] uppercase tracking-wide">Helper</Badge>}
@@ -1546,8 +1549,19 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                         )}
 
                         <div className="text-right px-4 border-l border-border-sub/30 min-w-[100px]">
-                            <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-right">{isDisputed ? 'Excluded (disputed)' : 'Pay'}</p>
+                            {/* Field Nation jobs: the labor pay payroll entered, then the tech's
+                                share from the calculator, so it can be checked against the WO. */}
+                            {showLabor && (
+                                <div className="mb-1" title="The job's full labor pay as entered by payroll. Compare it with the work order on Field Nation.">
+                                    <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-right">Labor pay</p>
+                                    <p className="text-[12px] font-mono font-semibold text-text-primary text-right">${Number(shown.pay ?? item.jobPay ?? 0).toFixed(2)}</p>
+                                </div>
+                            )}
+                            <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-right">{isDisputed ? 'Excluded (disputed)' : showLabor ? 'Your pay' : 'Pay'}</p>
                             <p className="text-sm font-mono font-bold text-text-green text-right">${(isDisputed ? 0 : effectiveJobPay(item, shown)).toFixed(2)}</p>
+                            {showLabor && (
+                                <p className="text-[10px] text-text-muted text-right whitespace-nowrap">after 15.85% FN fee, ÷ 2</p>
+                            )}
                         </div>
 
                         {!isDisputed && (canEstimate || item.estimatedPay != null) && (

@@ -77,7 +77,7 @@ function parseScheduleDate(s: string): Date | null {
 // ── Tech card ────────────────────────────────────────────────────────────────
 function TechCard({ tech, role }: { tech: Technician; role: 'lead' | 'helper' }) {
   return (
-    <div className="flex h-full items-center gap-3 rounded-xl border border-border-sub bg-bg-primary/40 p-3">
+    <div className="flex items-center gap-3 rounded-xl border border-border-sub bg-bg-primary/40 p-3">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bg-tertiary text-sm font-semibold text-text-primary">
         {tech.name.charAt(0)}
       </div>

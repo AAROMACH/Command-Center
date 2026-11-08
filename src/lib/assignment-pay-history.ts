@@ -168,7 +168,7 @@ export function buildAssignmentPayHistory(input: {
       events.push({
         at: log.submittedAt || log.weekOf, logId: log.id, tone: 'scheduled', amount: pay, who,
         title: `On ${isHelper ? 'helper' : 'lead'} log · week of ${log.weekOf}`,
-        detail: `${tech}'s log is ${status}${log.submittedAt ? ' (submitted)' : ''}.`,
+        detail: `Filed on ${tech}'s log${log.submittedAt ? ' (submitted)' : ''} — now ${status}.`,
       });
       if (item.helperRemoved) events.push({
         at: item.helperRemoved.at, logId: log.id, tone: 'problem', who: item.helperRemoved.by,
@@ -221,7 +221,7 @@ export function buildAssignmentPayHistory(input: {
         : type === 'dispute_removed' ? `Removed after a ${humanize(String(h.kind || 'dispute')).toLowerCase()} dispute.` : undefined;
       events.push({
         at: String(h.at || h.date || log.weekOf), logId: log.id, tone: type === 'item_moved' ? 'progress' : 'neutral',
-        who: (h.by as string) || undefined, title: humanize(type), detail: extra,
+        who: (h.by as string) || undefined, title: type === 'item_moved' ? 'Job moved between weeks' : humanize(type), detail: extra,
       });
     }
   }

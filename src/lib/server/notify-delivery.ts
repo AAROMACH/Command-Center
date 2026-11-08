@@ -9,6 +9,7 @@ import { logEmail, type EmailLogEntry } from './email-log';
 import { getFirestore } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
 import { billingContactLine, isEmail, type CommunicationsSettings } from '@/lib/communications-settings';
+import { bannerHtml, emailHtml } from './email-banner';
 
 /**
  * Server-side delivery shared by /api/notify, the CRM digest and the
@@ -47,9 +48,6 @@ export function portalForRecipient(data: Record<string, any>, entity?: NotifyEnt
   if (roles.includes('sales')) return 'sales';
   return 'admin';
 }
-
-const escapeHtml = (s: string) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 export async function sendSms(to: string, text: string): Promise<'sent' | 'skipped'> {
   const sid = process.env.TWILIO_ACCOUNT_SID;
@@ -155,7 +153,7 @@ export async function sendEmail(to: string, subject: string, body: string, opts:
     to: [to],
     subject,
     text: body,
-    html: `<p>${escapeHtml(body).replace(/\n/g, '<br/>')}</p>`,
+    html: emailHtml(body, bannerHtml(opts.kind || 'notifications', settings, sender.replyTo)),
   };
   const logBase = {
     to, from: sender.from, replyTo: sender.replyTo, subject, text: body, kind: opts.kind || 'notifications' as EmailKind,

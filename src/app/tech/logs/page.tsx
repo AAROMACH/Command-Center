@@ -892,6 +892,7 @@ export default function TechWeeklyLogPage() {
                     <div className="text-left">
                         <div className="flex items-center gap-3 text-left">
                             <h1 className="text-lg sm:text-xl font-semibold text-text-primary text-left">Week of {activeLog.weekOf}</h1>
+                            <p className="text-[11px] font-mono text-text-muted text-left" title="Give this number to payroll if something on this log needs fixing">{activeLog.id.toUpperCase()}</p>
                             <StatusBadge kind="log" value={logDisplayStatus(activeLog)} />
                         </div>
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-left">

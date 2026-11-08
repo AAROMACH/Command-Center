@@ -1773,6 +1773,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                     <DialogDescription className="text-[12px] text-text-muted text-left">
                                         Week of <span className="font-semibold text-text-primary">{(() => { try { const [m, d, y] = (localLog.weekOf || '').split('-'); return format(new Date(+y, +m - 1, +d), 'MMMM d, yyyy'); } catch { return localLog.weekOf; } })()}</span>
                                         {' · '}{totalJobsCount} {totalJobsCount === 1 ? 'job' : 'jobs'}
+                                        {' · '}<span className="font-mono" title="Weekly log id — the record to look for in the database">{localLog.id.toUpperCase()}</span>
                                         {localLog.submittedAt && <> · Submitted {format(parseISO(localLog.submittedAt), 'MMM d, h:mm a')}</>}
                                     </DialogDescription>
                                 </div>

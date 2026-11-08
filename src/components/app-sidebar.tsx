@@ -323,7 +323,9 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-border-main" style={{ background: "#0f0f0f" }}>
       <SidebarHeader className="border-b border-border-sub px-3 py-3">
         <div className="flex items-center gap-2 overflow-hidden group-data-[collapsible=icon]:justify-center">
-          <Link href={dashboardHref} className="flex items-center gap-2.5 min-w-0">
+          {/* Tap the logo to refresh the page you're on (Dashboard is in the menu). */}
+          <button type="button" onClick={() => window.location.reload()} title="Refresh" aria-label="Refresh this page"
+            className="flex items-center gap-2.5 min-w-0 text-left rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red">
             {logo && (
               <Image
                 src={logo.imageUrl}
@@ -339,7 +341,7 @@ export function AppSidebar() {
               <span className="font-mono text-[13px] font-bold tracking-tight text-white leading-none truncate">Aaromach</span>
               <span className="text-[10px] font-bold uppercase tracking-wider text-brand-red truncate">{portalLabel}</span>
             </div>
-          </Link>
+          </button>
         </div>
       </SidebarHeader>
 

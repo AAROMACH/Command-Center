@@ -810,6 +810,8 @@ export type PayAdjustment = {
   /** The tech's dispute text, when it came from a dispute. */
   techNote?: string | null;
   disputeId?: string | null;
+  /** Field Nation jobs: the full labor pay entered; `amount` is the tech's share of it. */
+  laborAmount?: number | null;
   /** The job and week being corrected. */
   workOrderId?: string | null;
   jobLabel?: string | null;

@@ -61,6 +61,8 @@ export type NewAdjustment = {
   jobLabel?: string | null;
   sourceLogId?: string | null;
   sourceWeekOf?: string | null;
+  /** Field Nation jobs: the full labor pay payroll entered (amount = tech's share). */
+  laborAmount?: number | null;
 };
 
 /** Save an adjustment and put it on the tech's next open log (or queue it). */
@@ -82,6 +84,7 @@ export async function createPayAdjustment(input: NewAdjustment): Promise<PayAdju
     jobLabel: input.jobLabel ?? null,
     sourceLogId: input.sourceLogId ?? null,
     sourceWeekOf: input.sourceWeekOf ?? null,
+    laborAmount: input.laborAmount ?? null,
     status: target ? 'applied' : 'queued',
     appliedLogId: target?.id ?? null,
     appliedWeekOf: target?.weekOf ?? null,

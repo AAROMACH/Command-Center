@@ -142,3 +142,17 @@ export function computeWeeklyLogEstimate(log: SettlementLog, jobsById: Map<strin
 export function computeWeeklyLogSettlement(log: SettlementLog, jobsById: Map<string, WorkOrder> = new Map()): number {
   return computeWeeklyLogPay(log, jobsById).total;
 }
+
+/**
+ * The tech's share of a Field Nation job's full labor pay: minus the 15.85%
+ * FN fee, then half — same split as effectiveJobPay. Keeps the sign, so a
+ * negative labor correction gives a negative tech amount.
+ */
+export function techShareOfFieldNationLabor(labor: number): { fee: number; net: number; techPay: number } {
+  const sign = labor < 0 ? -1 : 1;
+  const abs = Math.abs(labor);
+  const fee = payCents(abs * FIELD_NATION_FEE_RATE) / 100;
+  const net = payCents(abs - fee) / 100;
+  const techPay = payCents(net * 0.5) / 100;
+  return { fee: sign * fee, net: sign * net, techPay: sign * techPay };
+}

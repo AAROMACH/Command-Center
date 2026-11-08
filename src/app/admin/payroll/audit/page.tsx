@@ -4,7 +4,7 @@ import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { statusTone, TONE_BADGE } from '@/lib/status-styles';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { db, auth } from '@/lib/firebase';
 import { NotificationService } from '@/lib/notification-service';
@@ -195,7 +195,25 @@ export default function PayrollAuditPage() {
         return () => { unsubT(); unsubL(); unsubAdj(); unsubWO(); unsubAsmt(); unsubDisputes(); };
     }, []);
 
-    const openReview = (log: WeeklyLog) => { setReviewLog(log); setReviewOpen(true); };
+    // The open log is kept in the address (?log=<id>) so a refresh reopens it.
+    const setLogParam = (id: string | null) => {
+        try {
+            const url = new URL(window.location.href);
+            if (id) url.searchParams.set('log', id); else url.searchParams.delete('log');
+            window.history.replaceState(window.history.state, '', url.toString());
+        } catch { /* address unchanged */ }
+    };
+    const openReview = (log: WeeklyLog) => { setReviewLog(log); setReviewOpen(true); setLogParam(log.id); };
+    const setReviewOpenAndUrl = (open: boolean) => { setReviewOpen(open); if (!open) setLogParam(null); };
+    const restoredLog = useRef(false);
+    useEffect(() => {
+        if (restoredLog.current || !weeklyLogs.length) return;
+        restoredLog.current = true;
+        const id = new URLSearchParams(window.location.search).get('log');
+        const log = id ? weeklyLogs.find(l => l.id === id) : undefined;
+        if (log) { setReviewLog(log); setReviewOpen(true); }
+        else if (id) setLogParam(null);
+    }, [weeklyLogs]);
 
     // Clicking a job inside an expanded log opens the shared job side panel.
     const [panelJob, setPanelJob] = useState<WorkOrder | null>(null);
@@ -658,10 +676,8 @@ export default function PayrollAuditPage() {
 
     return (
         <div className="space-y-5">
-            {/* Back to wherever the admin came from (Financials, Dashboard, an
-                alert); straight to Financials when opened directly. */}
+            {/* Payroll is its own page (in the menu) — no back link to Accounting. */}
             <PageHeader
-                back={{ href: '/admin/financials', label: 'Accounting' }}
                 eyebrow="Finance"
                 icon={Receipt}
                 title="Payroll audit"
@@ -1322,7 +1338,7 @@ export default function PayrollAuditPage() {
             {reviewLog && (
                 <PayrollReviewDialog
                     isOpen={reviewOpen}
-                    setIsOpen={setReviewOpen}
+                    setIsOpen={setReviewOpenAndUrl}
                     log={reviewLog}
                     technician={technicians.find(t => t.id === reviewLog.techId)}
                     missions={missions}

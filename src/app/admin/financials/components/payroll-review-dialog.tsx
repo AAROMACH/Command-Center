@@ -149,6 +149,61 @@ function CounterpartPayBadge({
 }
 
 /**
+ * A helper's own line on their week: the pay they get, paid exactly as
+ * entered (no Field Nation fee or split). Saved onto this log's item only.
+ */
+function HelperPayBox({ item, logId, locked, onSaved }: {
+    item: WeeklyLogItem; logId: string; locked: boolean; onSaved: (items: WeeklyLogItem[]) => void;
+}) {
+    const { toast } = useToast();
+    const [draft, setDraft] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
+    const value = draft ?? String(item.jobPay ?? '');
+    const save = async () => {
+        const amount = Math.round((Number(draft) || 0) * 100) / 100;
+        if (amount < 0) return;
+        setSaving(true);
+        try {
+            const ref = doc(db, 'weeklyLogs', logId);
+            const fresh = (await getDoc(ref)).data() as WeeklyLog | undefined;
+            if (!fresh) throw new Error('This log no longer exists.');
+            if (isLockedLog(fresh as any)) throw new Error('This week is already approved or paid — reopen it to change the pay.');
+            const items = (fresh.items || []).map(i => i.id === item.id ? { ...i, jobPay: amount, payoutAmount: amount } : i);
+            await updateDoc(ref, { items: sanitize(items) });
+            onSaved(items);
+            setDraft(null);
+            toast({ title: 'Helper pay saved', description: `$${amount.toFixed(2)}, paid as entered.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not save helper pay', description: e.message });
+        } finally {
+            setSaving(false);
+        }
+    };
+    return (
+        <div className="flex flex-wrap items-center gap-3 px-3 py-2 rounded-md bg-bg-tertiary/30 border border-border-sub">
+            <div className="text-left">
+                <p className="text-[11px] text-text-muted">Helper pay</p>
+                {locked ? (
+                    <p className="text-[13px] font-mono font-semibold text-text-green leading-tight">${(item.jobPay || 0).toFixed(2)}</p>
+                ) : (
+                    <div className="flex items-center gap-1.5">
+                        <div className="relative">
+                            <DollarSign size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                            <Input type="number" inputMode="decimal" min={0} step="0.01" value={value} placeholder="0"
+                                onChange={e => setDraft(e.target.value)} className="h-9 w-28 pl-6 font-mono text-[13px]" aria-label="Helper pay" />
+                        </div>
+                        <Button size="sm" className="h-9" disabled={saving || draft === null} onClick={save}>
+                            {saving ? <Loader2 size={13} className="animate-spin" /> : 'Save'}
+                        </Button>
+                    </div>
+                )}
+            </div>
+            <p className="text-[11px] text-text-muted max-w-[220px]">Paid to the helper as entered — no FN fee or split. The lead’s pay isn’t affected.</p>
+        </div>
+    );
+}
+
+/**
  * "Helper added" on a lead's job: every helper's entry for this job, with their
  * pay editable right here. Saving writes the pay onto the HELPER's own weekly
  * log, marks it verified and tags it "Approved from lead's log", so payroll
@@ -205,7 +260,10 @@ function HelperPayEditor({ workOrderId, leadLog, allWeeklyLogs, allTechnicians, 
                 </button>
             </PopoverTrigger>
             <PopoverContent className="w-72 max-w-[calc(100vw-2rem)] p-3 bg-bg-elevated border-border-main shadow-md text-left space-y-3" onClick={e => e.stopPropagation()}>
-                <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Helper pay</p>
+                <div>
+                    <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Helper pay</p>
+                    <p className="text-[11px] text-text-muted">Paid to the helper as entered — no FN fee or split.</p>
+                </div>
                 {helpers.map(({ log, item, name }) => {
                     const locked = isLockedLog(log as any);
                     const tagged = !!item.approvedFromLeadLog;
@@ -670,6 +728,8 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         }
     };
 
+    // Approve / Return in progress — the button shows it and can't be pressed twice.
+    const [statusBusy, setStatusBusy] = useState<WeeklyLog['status'] | null>(null);
     const handleStatusChange = async (status: WeeklyLog['status']) => {
         // Approving a log needs admin.logs.approve; sending it back
         // (Rejected/Draft) needs admin.logs.return.
@@ -682,8 +742,9 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             toast({ variant: 'destructive', title: 'Decide the flagged jobs first', description: `${undecidedCount} flagged job${undecidedCount === 1 ? '' : 's'} still need a yes or no.` });
             return;
         }
-        if (localLog) {
+        if (localLog && !statusBusy) {
             const finalTotal = calculatedTotalPayout;
+            setStatusBusy(status);
             try {
                 const logRef = doc(db, 'weeklyLogs', localLog.id);
                 // Record when (and by whom) a log was approved — Payroll Audit shows
@@ -693,7 +754,13 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                     ? { approvedAt: new Date().toISOString(), approvedBy: auth.currentUser?.uid || null, approvedByName: authUser?.name || auth.currentUser?.displayName || 'Admin', mergeReviewRequired: false }
                     : { approvedAt: null, approvedBy: null, approvedByName: null };
                 await updateDoc(logRef, { status, totalPayout: finalTotal, ...approval });
+                // Show the result right away (the review flips to Approved/Returned).
+                setLocalLog(prev => prev ? { ...prev, status, totalPayout: finalTotal, ...approval } as WeeklyLog : prev);
                 onStatusChange(localLog.id, status, finalTotal);
+                toast({
+                    title: status === 'Approved' ? 'Log approved' : status === 'Rejected' ? 'Returned to tech' : 'Log updated',
+                    description: status === 'Approved' ? `${technician?.name ?? 'Tech'} · week of ${localLog.weekOf} · $${finalTotal.toFixed(2)}` : undefined,
+                });
                 if (localLog.techId && status !== localLog.status) {
                     const msg = status === 'Approved'
                         ? { title: 'Weekly log approved', body: `Your log for ${localLog.weekOf} was approved — $${finalTotal.toFixed(2)}.` }
@@ -704,16 +771,19 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                 }
                 const adminId = auth.currentUser?.uid ?? '';
                 const adminName = auth.currentUser?.displayName ?? 'Admin';
-                await auditEvent(
+                // The audit record shouldn't hold up the screen.
+                auditEvent(
                     'weeklyLogs',
                     localLog.id,
                     adminId,
                     adminName,
                     `payroll_${status.toLowerCase()}`,
                     `Log for week of ${localLog.weekOf} (tech: ${technician?.name ?? localLog.techId}) ${status.toLowerCase()} by ${adminName}. Total payout: $${finalTotal.toFixed(2)}`
-                );
+                ).catch(() => {});
             } catch (e: any) {
                 toast({ variant: 'destructive', title: 'Could not save', description: e.message });
+            } finally {
+                setStatusBusy(null);
             }
         }
     };
@@ -2017,7 +2087,12 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </div>
 
                                                         <div className={cn("w-full min-w-0", !isImported && "sm:w-auto")} onClick={e => e.stopPropagation()}>
-                                                            {isImported && wo ? (
+                                                            {item.isHelper ? (
+                                                                // A helper is paid exactly what payroll enters — never the
+                                                                // lead's job calculator (that edits the LEAD's labor pay).
+                                                                <HelperPayBox item={item} logId={localLog!.id} locked={isLogLockedForEdit}
+                                                                    onSaved={items => setLocalLog(prev => prev ? { ...prev, items } : prev)} />
+                                                            ) : isImported && wo ? (
                                                                 <div className="border-t border-border-sub/40 pt-2">
                                                                     <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} approvedReimbTotal={approvedReimbTotal} isLocked={isLogLockedForEdit} />
                                                                 </div>
@@ -2190,15 +2265,16 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                         ) : (canApproveLog || canReturnLog) ? (
                             <>
                                 {canReturnLog && localLog?.status === 'Submitted' && (
-                                    <Button variant="destructive-outline" className="w-full sm:w-auto order-3 sm:order-1 h-10 px-6" onClick={() => handleStatusChange('Rejected')}>
-                                        <X size={16} className="mr-2"/> Return to tech
+                                    <Button variant="destructive-outline" className="w-full sm:w-auto order-3 sm:order-1 h-10 px-6" disabled={!!statusBusy} onClick={() => handleStatusChange('Rejected')}>
+                                        {statusBusy === 'Rejected' ? <Loader2 size={16} className="mr-2 animate-spin"/> : <X size={16} className="mr-2"/>}
+                                        {statusBusy === 'Rejected' ? 'Returning…' : 'Return to tech'}
                                     </Button>
                                 )}
                                 <div className="hidden sm:block flex-1 order-2" />
                                 <Button variant="outline" className="w-full sm:w-auto order-2 sm:order-3 h-10 px-6" onClick={() => setIsOpen(false)}>Close</Button>
                                 {canApproveLog && (
                                     <Button
-                                        disabled={!canApproveNow}
+                                        disabled={!canApproveNow || !!statusBusy}
                                         title={canApproveNow ? undefined : undecidedCount ? 'Answer every flagged job under Needs a decision first' : 'Verify every job before approving'}
                                         className={cn(
                                             "w-full sm:w-auto order-1 sm:order-4 h-10 px-6 sm:px-8 shadow-sm transition-all",
@@ -2206,8 +2282,8 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         )}
                                         onClick={() => handleStatusChange('Approved')}
                                     >
-                                        <Check size={16} className="mr-2"/>
-                                        {undecidedCount > 0
+                                        {statusBusy === 'Approved' ? <Loader2 size={16} className="mr-2 animate-spin"/> : <Check size={16} className="mr-2"/>}
+                                        {statusBusy === 'Approved' ? 'Approving…' : undecidedCount > 0
                                             ? `Decide the ${undecidedCount} flagged job${undecidedCount === 1 ? '' : 's'} first`
                                             : isManifestFullyAudited ? 'Approve log' : `Verify ${totalJobsCount - auditCompleteCount} more to approve`}
                                     </Button>

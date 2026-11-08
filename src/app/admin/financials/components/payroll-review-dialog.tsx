@@ -2,7 +2,7 @@
 import { logDisplayStatus } from '@/lib/weekly-log-core';
 
 import { useState, useEffect, useMemo, useCallback, useRef, type ReactNode } from 'react';
-import type { WeeklyLog, Technician, WorkOrder, WeeklyLogItem, FinancialRecord, PayrollDispute, TripLog, MissingAssignmentReport, DisputeKind, DisputeResolution } from '@/lib/types';
+import type { WeeklyLog, Technician, WorkOrder, WeeklyLogItem, FinancialRecord, PayrollDispute, TripLog, MissingAssignmentReport, DisputeKind, DisputeResolution, PayAdjustment } from '@/lib/types';
 import { onSiteSessions } from '@/lib/time-on-site';
 import { Button } from '@/components/ui/button';
 import {
@@ -74,7 +74,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { PayrollTicketDecision } from '@/components/payroll-ticket-decision';
-import { adjustmentForText } from '@/lib/pay-adjustments';
+import { adjustmentForText, updatePayAdjustment } from '@/lib/pay-adjustments';
 import { money } from '@/lib/financial-summary';
 
 type PayrollReviewDialogProps = {
@@ -421,6 +421,46 @@ function ImportedJobAudit({
     );
 }
 
+/**
+ * A held job from an earlier week, paid on this log. Field Nation jobs get
+ * the same pay calculator as this week's jobs; others a plain amount.
+ */
+function HeldPaidCard({ adj, wo, open, locked, onSave }: {
+    adj: PayAdjustment; wo?: WorkOrder; open: boolean; locked: boolean; onSave: (amount: number) => Promise<void>;
+}) {
+    const [editing, setEditing] = useState(open);
+    useEffect(() => { if (open) setEditing(true); }, [open]);
+    const [amount, setAmount] = useState(String(adj.amount));
+    useEffect(() => { setAmount(String(adj.amount)); }, [adj.amount]);
+    const isImported = wo?.source === 'Imported';
+    return (
+        <div id={`held-paid-${adj.id}`} className={cn('rounded-xl border border-dashed bg-bg-secondary p-3 space-y-2 scroll-mt-4', open ? 'border-brand-red/60' : 'border-border-main')}>
+            <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-semibold text-text-primary break-words">{wo?.title || adj.jobLabel || (adj.workOrderId || '').toUpperCase()}</p>
+                    <p className="text-[11px] text-text-muted">Done the week of {adj.sourceWeekOf || '—'} · paid on this week’s log</p>
+                </div>
+                <Badge variant="outline" className="shrink-0 text-[10px] uppercase tracking-wide">Earlier week</Badge>
+                <span className="shrink-0 font-mono text-[13px] font-semibold text-text-green">${adj.amount.toFixed(2)}</span>
+            </div>
+            {!locked && !adj.paidOutAt && (editing ? (
+                isImported && wo ? (
+                    <ImportedJobAudit wo={wo} commitLabel="Save pay"
+                        onUpdateWorkOrder={(_id, u) => onSave(Math.max(0, Number(u.finalPay) || 0) + netOfFieldNationFee(Number(u.auditReimbursement) || 0))} />
+                ) : (
+                    <div className="flex items-center gap-2">
+                        <Label className="text-[12px] text-text-muted shrink-0">Pay</Label>
+                        <Input type="number" inputMode="decimal" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} className="h-9 w-32" />
+                        <Button size="sm" className="h-9" onClick={() => onSave(Number(amount) || 0)}>Save pay</Button>
+                    </div>
+                )
+            ) : (
+                <button type="button" className="text-[12px] font-medium text-brand-red hover:underline" onClick={() => setEditing(true)}>Edit pay</button>
+            ))}
+        </div>
+    );
+}
+
 export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, technician, missions, allTechnicians = [], allWeeklyLogs = [], onStatusChange }: PayrollReviewDialogProps) {
     const [localLog, setLocalLog] = useState<WeeklyLog | null>(null);
     const [selectedJobForDetail, setSelectedJobForDetail] = useState<WorkOrder | null>(null);
@@ -512,12 +552,37 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
     // week until payroll pays them (Pay on this week) on an open week.
     const carriedHolds = useMemo(() => (localLog ? heldJobs(allWeeklyLogs, localLog.techId).filter(h => h.log.id !== localLog.id) : []), [allWeeklyLogs, localLog]);
     const canPayHoldsHere = !!localLog && !localLog.paid && (localLog.status === 'Draft' || localLog.status === 'Submitted');
+    // The held-jobs box starts collapsed so it doesn't push this week's jobs down.
+    const [holdsOpen, setHoldsOpen] = useState(false);
+    // Held jobs from earlier weeks paid on THIS log — listed at the bottom of
+    // the jobs, apart from this week's own work.
+    const paidHeldHere = (localLog?.payAdjustments || []).filter(a => a.kind === 'held_job');
+    // The one just added: scrolled to, with its pay calculator open.
+    const [justPaidId, setJustPaidId] = useState<string | null>(null);
+    useEffect(() => {
+        if (!justPaidId) return;
+        const t = window.setTimeout(() => document.getElementById(`held-paid-${justPaidId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80);
+        return () => window.clearTimeout(t);
+    }, [justPaidId, paidHeldHere.length]);
+    // Change a held job's pay on this log (adjustment amount only; the job's
+    // original week and record are untouched).
+    const saveHeldPay = async (adj: PayAdjustment, amount: number) => {
+        if (!localLog) return;
+        try {
+            const saved = await updatePayAdjustment(adj, { amount, reason: adj.reason }, localLog.id, auth.currentUser?.displayName || 'Payroll', jobsById);
+            setLocalLog(prev => prev ? { ...prev, payAdjustments: (prev.payAdjustments || []).map(a => a.id === saved.id ? saved : a) } : prev);
+            toast({ title: 'Pay updated', description: `$${saved.amount.toFixed(2)} paid on the week of ${localLog.weekOf}.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not save', description: e.message });
+        }
+    };
     const payHoldHere = async (logId: string, itemId: string) => {
         if (!localLog) return;
         try {
             const adj = await releaseHeldJob(logId, itemId, localLog.id, auth.currentUser?.displayName || 'Payroll', jobsById);
             setLocalLog(prev => prev ? { ...prev, payAdjustments: [...(prev.payAdjustments || []).filter(a => a.id !== adj.id), adj] } : prev);
-            toast({ title: 'Held job added to this week', description: `$${adj.amount.toFixed(2)} is paid on the week of ${localLog.weekOf}.` });
+            setJustPaidId(adj.id);
+            toast({ title: 'Added to the bottom of this week', description: `$${adj.amount.toFixed(2)} — check the pay there.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Could not add it', description: e.message });
         }
@@ -1673,10 +1738,10 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                 </p>
                             </div>
                         </div>
-                        {(localLog.payAdjustments || []).length > 0 && (
+                        {(localLog.payAdjustments || []).some(a => a.kind !== 'held_job') && (
                             <div className="rounded-xl border border-accent-gold/40 bg-accent-gold/5 px-3 py-2 space-y-1.5 text-left">
                                 <p className="text-[10px] font-semibold uppercase tracking-wider text-accent-gold">Pay adjustments paid on this log</p>
-                                {(localLog.payAdjustments || []).map(a => (
+                                {(localLog.payAdjustments || []).filter(a => a.kind !== 'held_job').map(a => (
                                     <div key={a.id} className="flex items-start justify-between gap-3 text-[12px]">
                                         <div className="min-w-0">
                                             <p className="font-semibold text-text-primary break-words">{adjustmentForText(a)}</p>
@@ -1825,8 +1890,15 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         )}
 
                                         {canApproveLog && carriedHolds.length > 0 && (
-                                            <div className="rounded-xl border border-accent-gold/40 bg-accent-gold/5 p-3 space-y-2">
-                                                <p className="text-[12px] font-semibold text-text-primary">Jobs on hold from earlier weeks ({carriedHolds.length})</p>
+                                            <div className="rounded-xl border border-accent-gold/40 bg-accent-gold/5">
+                                                <button type="button" onClick={() => setHoldsOpen(o => !o)} aria-expanded={holdsOpen}
+                                                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left">
+                                                    <ChevronRight size={14} className={cn('shrink-0 text-text-muted transition-transform', holdsOpen && 'rotate-90')} />
+                                                    <span className="flex-1 min-w-0 text-[13px] font-semibold text-text-primary">Jobs on hold from earlier weeks ({carriedHolds.length})</span>
+                                                    <span className="shrink-0 font-mono text-[12px] font-semibold text-accent-gold">${carriedHolds.reduce((t, h) => t + h.hold.amount, 0).toFixed(2)} owed</span>
+                                                </button>
+                                                {holdsOpen && (
+                                                <div className="px-3 pb-3 space-y-2">
                                                 <p className="text-[11px] text-text-muted">Still owed to {technician?.name || 'this tech'}. Pay one on this week once the money is there; otherwise it rolls on to the next week.</p>
                                                 {carriedHolds.map(h => {
                                                     const wo = findWorkOrder(h.item.workOrderId);
@@ -1845,6 +1917,8 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </div>
                                                     );
                                                 })}
+                                                </div>
+                                                )}
                                             </div>
                                         )}
 
@@ -1884,7 +1958,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         {canApproveLog && (item.payHold?.status === 'held' ? (
                                                             <div className="flex items-center gap-1">
                                                                 <Badge variant="outline" className="border-accent-gold/50 bg-accent-gold/10 text-accent-gold text-[10px] uppercase tracking-wide whitespace-nowrap"
-                                                                    title={`${item.payHold.reason} · not in this week's total. Release it from Payroll Audit → Adjustments.`}>
+                                                                    title={`${item.payHold.reason} · not in this week's total. Release it from Payroll Audit → Holds.`}>
                                                                     On hold · ${item.payHold.amount.toFixed(2)}
                                                                 </Badge>
                                                                 {!localLog?.paid && (
@@ -2002,6 +2076,20 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                             );
                                         }) : (
                                             <EmptyState icon={CheckCircle2} title="No confirmed jobs on this log" description="Jobs the tech confirmed show up here for you to verify." />
+                                        )}
+
+                                        {paidHeldHere.length > 0 && (
+                                            <div className="space-y-2 pt-2">
+                                                <div className="flex items-baseline justify-between gap-2 border-t border-border-sub pt-3">
+                                                    <p className="text-[13px] font-semibold text-text-primary">Paid on this log — work from earlier weeks ({paidHeldHere.length})</p>
+                                                    <span className="font-mono text-[12px] font-semibold text-text-green">+${paidHeldHere.reduce((t, a) => t + a.amount, 0).toFixed(2)}</span>
+                                                </div>
+                                                <p className="text-[12px] text-text-muted">Not done this week. Each was held from an earlier week and is paid out on this week’s log.</p>
+                                                {paidHeldHere.map(a => (
+                                                    <HeldPaidCard key={a.id} adj={a} wo={a.workOrderId ? findWorkOrder(a.workOrderId) : undefined}
+                                                        open={justPaidId === a.id} locked={isLogLockedForEdit} onSave={amount => saveHeldPay(a, amount)} />
+                                                ))}
+                                            </div>
                                         )}
                                     </div>
                                 </ScrollArea>

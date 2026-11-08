@@ -35,6 +35,7 @@ import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder, PayrollDispute, F
 import { getSubroles, isClient, isSuperAdmin } from '@/lib/permissions';
 import { mergeJobs, parseLocalDate } from '@/lib/jobs';
 import { effectiveJobPay, computeWeeklyLogSettlement, computeWeeklyLogPay, type WeeklyLogPay } from '@/lib/payroll';
+import { PayCorrectionCalculator, type PayCorrection } from '@/components/pay-correction-calculator';
 import { downloadPaystub } from '@/lib/paystub';
 import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
@@ -43,6 +44,7 @@ import { PayrollTicketDecision } from '@/components/payroll-ticket-decision';
 import { PAYOUT_LABEL, adjustmentForText, createPayAdjustment, jobLabelFor, payoutStatus } from '@/lib/pay-adjustments';
 import { PAYOUT_BADGE, PayrollAdjustmentDialog } from '@/components/payroll-adjustment-dialog';
 import { HeldJobsPanel } from '@/components/held-jobs-panel';
+import { heldJobs } from '@/lib/pay-holds';
 import { StaffPayPanel } from '@/components/staff-pay-panel';
 import { WagesButton } from '@/components/wages-dialog';
 import { PAYROLL_TICKET_CARDS } from '@/lib/disputes';
@@ -126,6 +128,8 @@ export default function PayrollAuditPage() {
     // Reviewed disputes leave the alert list after their first review.
     const [showReviewed, setShowReviewed] = useState(false);
     const [adjustForm, setAdjustForm] = useState({ techId: '', jobKey: '', amount: '', reason: '' });
+    // Linked to a job: the pay correction calculator decides the amount.
+    const [adjCalc, setAdjCalc] = useState<PayCorrection | null>(null);
     const [adjustSaving, setAdjustSaving] = useState(false);
     // Post-approval disputes techs file against a log/job after it's left
     // Draft — surfaced under Adjustments so they're visible without opening
@@ -480,13 +484,32 @@ export default function PayrollAuditPage() {
     // New adjustments carry `at`; older record-only ones a `date`.
     const adjTime = (a: any) => (a.at ? new Date(a.at).getTime() : parseLocalDate(a.date)?.getTime() ?? 0) || 0;
     // Jobs on the chosen tech's approved/paid logs — what a manual adjustment can be for.
+    // Holds tab: jobs whose pay is held until the customer pays.
+    const heldCount = useMemo(() => heldJobs(weeklyLogs).length, [weeklyLogs]);
     const adjustJobChoices = useMemo(() => weeklyLogs
         .filter(l => l.techId === adjustForm.techId && l.status === 'Approved')
         .sort((a, b) => (b.weekOf.split('-').reverse().join('')).localeCompare(a.weekOf.split('-').reverse().join('')))
-        .slice(0, 12)
-        .flatMap(l => (l.items || []).map(i => ({ key: `${l.id}|${i.workOrderId}`, log: l, workOrderId: i.workOrderId,
-            label: `Week of ${l.weekOf} · ${jobLabelFor(jobsById.get(i.workOrderId), i.workOrderId)}` }))),
+        .flatMap(l => (l.items || []).map(i => {
+            const job = jobsById.get(i.workOrderId);
+            return {
+                key: `${l.id}|${i.workOrderId}`, log: l, workOrderId: i.workOrderId,
+                label: `Week of ${l.weekOf} · ${jobLabelFor(job, i.workOrderId)}`,
+                // What the search box matches: assignment #, WO #, job name, client.
+                haystack: [i.workOrderId, job ? displayWorkOrderNumber(job) : '', job?.externalWorkOrderId, job?.title, job?.description, job?.clientName, l.weekOf]
+                    .filter(Boolean).join(' ').toLowerCase(),
+            };
+        })),
         [weeklyLogs, adjustForm.techId, jobsById]);
+    // "For job" search: assignment number, work order number or job name.
+    const [adjJobQuery, setAdjJobQuery] = useState('');
+    const adjJobMatches = useMemo(() => {
+        const q = adjJobQuery.trim().toLowerCase();
+        const words = q.split(/\s+/).filter(Boolean);
+        return (words.length ? adjustJobChoices.filter(j => words.every(w => j.haystack.includes(w))) : adjustJobChoices).slice(0, 8);
+    }, [adjustJobChoices, adjJobQuery]);
+    const pickedAdjJob = adjustJobChoices.find(j => j.key === adjustForm.jobKey);
+    // No job: a plain amount (+ or −). A job: the difference the calculator works out.
+    const adjPayAmount = pickedAdjJob ? (adjCalc?.diff ?? 0) : (parseFloat(adjustForm.amount) || 0);
     // Copy before sorting — sorting the state array in render mutated it.
     const sortedAdjustments = useMemo(() => [...adjustments]
         .filter(a => !adjQuery || [techNameOf(a.techId), a.techId, a.reason, a.addedBy, a.by, a.date, a.jobLabel, a.sourceWeekOf, a.appliedWeekOf, String(a.amount ?? '')]
@@ -858,6 +881,7 @@ export default function PayrollAuditPage() {
                         { value: 'history', label: 'Paystub history', short: 'Paystubs', count: approvedLogsByTech.length },
                         { value: 'staff', label: 'Staff pay', short: 'Staff', count: 0 },
                         { value: 'adjustments', label: 'Adjustments', count: adjustments.length + payrollDisputes.filter(d => d.status === 'open').length },
+                        { value: 'holds', label: 'Holds', count: heldCount },
                     ].map(t => (
                         <TabsTrigger key={t.value} value={t.value} className="tab-underline">
                             {'short' in t ? <><span className="sm:hidden">{t.short}</span><span className="hidden sm:inline">{t.label}</span></> : t.label}
@@ -1106,8 +1130,6 @@ export default function PayrollAuditPage() {
                         </div>
                     )}
 
-                    <HeldJobsPanel logs={weeklyLogs} technicians={technicians} jobsById={jobsById} by={currentUser?.name || 'Payroll'} canEdit={canEditAdjustments} />
-
                     <div className="flex items-center justify-between">
                         <p className="text-[13px] font-semibold text-text-primary">{adjQuery ? `${sortedAdjustments.length} of ${adjustments.length}` : adjustments.length} adjustment{adjustments.length !== 1 ? 's' : ''}</p>
                         <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setAdjustDialogOpen(true)}>
@@ -1172,6 +1194,15 @@ export default function PayrollAuditPage() {
                         onClose={() => setEditingAdj(null)} />
                 </TabsContent>
 
+                {/* ── Holds: jobs whose pay is held until the customer pays ── */}
+                <TabsContent value="holds" className="m-0 space-y-4">
+                    {heldCount > 0 ? (
+                        <HeldJobsPanel logs={weeklyLogs} technicians={technicians} jobsById={jobsById} by={currentUser?.name || 'Payroll'} canEdit={canEditAdjustments} />
+                    ) : (
+                        <EmptyState icon={Clock} title="No jobs on hold" description="Use Hold pay on a job in a weekly log to keep it out of that week's pay until the customer pays." />
+                    )}
+                </TabsContent>
+
                 {/* ── Staff pay: weekly bonuses and installments outside job logs ── */}
                 <TabsContent value="staff" className="m-0">
                     <StaffPayPanel by={currentUser?.name || 'Payroll'} canEdit={canEditAdjustments} />
@@ -1195,7 +1226,7 @@ export default function PayrollAuditPage() {
                     <div className="space-y-3 py-2">
                         <div className="space-y-1">
                             <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Technician</Label>
-                            <Select value={adjustForm.techId} onValueChange={v => setAdjustForm(p => ({ ...p, techId: v, jobKey: '' }))}>
+                            <Select value={adjustForm.techId} onValueChange={v => { setAdjustForm(p => ({ ...p, techId: v, jobKey: '' })); setAdjCalc(null); }}>
                                 <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue placeholder="Select tech..." /></SelectTrigger>
                                 <SelectContent className="bg-bg-elevated border-border-main">
                                     {staffTechs.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
@@ -1204,18 +1235,47 @@ export default function PayrollAuditPage() {
                         </div>
                         <div className="space-y-1">
                             <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">For job (optional)</Label>
-                            <Select value={adjustForm.jobKey || 'none'} onValueChange={v => setAdjustForm(p => ({ ...p, jobKey: v === 'none' ? '' : v }))} disabled={!adjustForm.techId}>
-                                <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue placeholder="Pick a job from an approved week…" /></SelectTrigger>
-                                <SelectContent className="bg-bg-elevated border-border-main max-h-[300px]">
-                                    <SelectItem value="none">Not for a specific job</SelectItem>
-                                    {adjustJobChoices.map(j => <SelectItem key={j.key} value={j.key} className="text-[12px]">{j.label}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                            {pickedAdjJob ? (
+                                <div className="flex items-center gap-2 rounded-md border border-border-main bg-bg-secondary px-3 py-2">
+                                    <span className="min-w-0 flex-1 text-[12px] text-text-primary break-words">{pickedAdjJob.label}</span>
+                                    <button type="button" className="shrink-0 text-[12px] font-medium text-brand-red hover:underline"
+                                        onClick={() => setAdjustForm(p => ({ ...p, jobKey: '' }))}>Change</button>
+                                </div>
+                            ) : (
+                                <div className="space-y-1.5">
+                                    <SearchField value={adjJobQuery} onChange={setAdjJobQuery}
+                                        placeholder={adjustForm.techId ? 'Assignment #, WO # or job name' : 'Pick a technician first'} />
+                                    {adjustForm.techId && (
+                                        <div className="max-h-[220px] overflow-y-auto rounded-md border border-border-sub divide-y divide-border-sub">
+                                            {adjJobMatches.length === 0 ? (
+                                                <p className="px-3 py-3 text-[12px] text-text-muted">{adjustJobChoices.length ? 'No jobs match.' : 'No jobs on an approved week yet.'}</p>
+                                            ) : adjJobMatches.map(j => (
+                                                <button key={j.key} type="button" className="w-full px-3 py-2 text-left text-[12px] text-text-primary hover:bg-bg-tertiary"
+                                                    onClick={() => { setAdjustForm(p => ({ ...p, jobKey: j.key })); setAdjCalc(null); setAdjJobQuery(''); }}>
+                                                    {j.label}
+                                                </button>
+                                            ))}
+                                            {!adjJobQuery.trim() && adjustJobChoices.length > adjJobMatches.length && (
+                                                <p className="px-3 py-2 text-[11px] text-text-muted">Showing the latest {adjJobMatches.length} of {adjustJobChoices.length}. Search to find older jobs.</p>
+                                            )}
+                                        </div>
+                                    )}
+                                    <p className="text-[11px] text-text-muted">Leave empty if it isn’t for a specific job.</p>
+                                </div>
+                            )}
                         </div>
-                        <div className="space-y-1">
-                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Amount (use negative for deductions)</Label>
-                            <Input type="number" step="0.01" className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="e.g. 50.00 or -25.00" value={adjustForm.amount} onChange={e => setAdjustForm(p => ({ ...p, amount: e.target.value }))} />
-                        </div>
+                        {pickedAdjJob ? (
+                            <PayCorrectionCalculator key={pickedAdjJob.key}
+                                job={jobsById.get(pickedAdjJob.workOrderId)}
+                                item={(pickedAdjJob.log.items || []).find(i => i.workOrderId === pickedAdjJob.workOrderId)}
+                                onChange={setAdjCalc} />
+                        ) : (
+                            <div className="space-y-1">
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Amount (use negative to take money back)</Label>
+                                <Input type="number" step="0.01" className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="e.g. 100.00 or -100.00" value={adjustForm.amount} onChange={e => setAdjustForm(p => ({ ...p, amount: e.target.value }))} />
+                                <p className="text-[11px] text-text-muted">Paid to the tech as entered. Link a job above to correct a job’s pay with the calculator.</p>
+                            </div>
+                        )}
                         <div className="space-y-1">
                             <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Reason</Label>
                             <Input className="h-9 text-[11px] bg-bg-secondary border-border-main" placeholder="Reason for adjustment" value={adjustForm.reason} onChange={e => setAdjustForm(p => ({ ...p, reason: e.target.value }))} />
@@ -1224,13 +1284,17 @@ export default function PayrollAuditPage() {
                     </div>
                     <DialogFooter className="gap-2">
                         <Button variant="outline" size="sm" onClick={() => setAdjustDialogOpen(false)} className="text-[10px] font-bold">Cancel</Button>
-                        <Button size="sm" disabled={!adjustForm.techId || !parseFloat(adjustForm.amount) || !adjustForm.reason.trim() || adjustSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold" onClick={async () => {
+                        <Button size="sm" disabled={!adjustForm.techId || !adjPayAmount || !adjustForm.reason.trim() || adjustSaving} className="bg-brand-red hover:bg-brand-red/90 text-white text-[10px] font-bold" onClick={async () => {
                             setAdjustSaving(true);
                             try {
                                 const job = adjustJobChoices.find(j => j.key === adjustForm.jobKey);
                                 const adj = await createPayAdjustment({
                                     techId: adjustForm.techId,
-                                    amount: parseFloat(adjustForm.amount),
+                                    amount: adjPayAmount,
+                                    ...(pickedAdjJob && adjCalc ? {
+                                        paidAmount: adjCalc.techBefore, correctAmount: adjCalc.techAfter,
+                                        laborBefore: adjCalc.laborBefore, laborAmount: adjCalc.laborAfter,
+                                    } : {}),
                                     reason: adjustForm.reason,
                                     by: currentUser?.name || 'Payroll',
                                     workOrderId: job?.workOrderId ?? null,
@@ -1239,7 +1303,7 @@ export default function PayrollAuditPage() {
                                     sourceWeekOf: job?.log.weekOf ?? null,
                                 });
                                 toast({ title: 'Adjustment added', description: adj.status === 'applied' ? `Paid on ${techNameOf(adj.techId)}'s week of ${adj.appliedWeekOf}.` : `${techNameOf(adj.techId)} has no open log — it goes on the next one.` });
-                                setAdjustForm({ techId: '', jobKey: '', amount: '', reason: '' });
+                                setAdjustForm({ techId: '', jobKey: '', amount: '', reason: '' }); setAdjCalc(null);
                                 setAdjustDialogOpen(false);
                             } catch (e: any) {
                                 toast({ variant: 'destructive', title: 'Could not add adjustment', description: e?.code === 'permission-denied' ? 'Only payroll admins can make pay adjustments.' : e.message });

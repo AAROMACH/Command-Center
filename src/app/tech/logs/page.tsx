@@ -5,11 +5,11 @@ import { useSessionState } from '@/hooks/use-session-state';
 
 import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_SMALL, PAGE_SIZES_LARGE } from '@/components/list-pager';
-import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog, PayrollDispute, DisputeKind, DisputeResolution } from '@/lib/types';
+import type { WeeklyLog, WeeklyLogItem, WorkOrder, MissingAssignmentReport, Technician, FinancialRecord, TripLog, PayrollDispute, DisputeKind, DisputeResolution, PayAdjustment } from '@/lib/types';
 import { externalWorkOrderId, displayWorkOrderNumber, fieldNationUrl, isImported } from '@/lib/work-order-identity';
 import { hasPermission } from '@/lib/permissions';
 import { computeWeeklyLogEstimate, computeWeeklyLogPay, effectiveJobPay, netOfFieldNationFee } from '@/lib/payroll';
-import { adjustmentForText } from '@/lib/pay-adjustments';
+import { adjustmentForText, correctionText } from '@/lib/pay-adjustments';
 import { mergeJobs, weekOfValue, parseLocalDate } from '@/lib/jobs';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/empty-state';
@@ -617,6 +617,17 @@ export default function TechWeeklyLogPage() {
 
     const canSubmit = counts.total > 0 && counts.pending === 0;
 
+    // Where each pay adjustment sits NOW (payroll can move it to another
+    // week), and whether that week was actually paid out. Saved copies (a
+    // dispute's adjustment, a hold's releasedWeekOf) go stale when it moves.
+    const adjPlacement = useMemo(() => {
+        const m = new Map<string, AdjPlacement>();
+        weeklyLogs.filter(l => l.techId === currentTechId).forEach(l => (l.payAdjustments || []).forEach(a => {
+            m.set(a.id, { weekOf: l.weekOf, paidOut: !!l.paid || !!a.paidOutAt, amount: a.amount, adj: a });
+        }));
+        return m;
+    }, [weeklyLogs, currentTechId]);
+
     // Jobs payroll held (waiting on the customer): in limbo until paid on a later week.
     const holdLines = useMemo(() => weeklyLogs
         .filter(l => l.techId === currentTechId)
@@ -624,12 +635,12 @@ export default function TechWeeklyLogPage() {
             const job = jobsById.get(i.workOrderId);
             return {
                 key: `${l.id}-${i.id}`, weekOf: l.weekOf, status: i.payHold!.status, reason: i.payHold!.reason, amount: i.payHold!.amount,
-                paidWeek: i.payHold!.releasedWeekOf || null, heldAt: i.payHold!.heldAt,
+                placed: i.payHold!.adjustmentId ? adjPlacement.get(i.payHold!.adjustmentId) || null : null, heldAt: i.payHold!.heldAt,
                 title: job?.title || job?.description || (i.workOrderId || '').toUpperCase(), wo: job ? displayWorkOrderNumber(job) : '',
             };
         }))
         .sort((a, b) => (a.status === b.status ? (b.heldAt || '').localeCompare(a.heldAt || '') : a.status === 'held' ? -1 : 1)),
-        [weeklyLogs, currentTechId, jobsById]);
+        [weeklyLogs, currentTechId, jobsById, adjPlacement]);
     const heldOpen = holdLines.filter(h => h.status === 'held');
 
     const ViewTabs = () => (
@@ -675,7 +686,7 @@ export default function TechWeeklyLogPage() {
                                     <p className="text-[14px] font-semibold text-text-primary">{h.title}</p>
                                     <p className="text-[12px] text-text-muted">Worked the week of {h.weekOf}{h.wo ? ` · WO# ${h.wo}` : ''}</p>
                                     <p className={cn('text-[12px] mt-1', h.status === 'held' ? 'text-accent-gold' : 'text-text-green')}>
-                                        {h.status === 'held' ? `On hold — ${h.reason}` : h.paidWeek ? `Paid on the week of ${h.paidWeek}` : 'Released — goes on your next log'}
+                                        {h.status === 'held' ? `On hold — ${h.reason}` : placementText(h.placed, 'the')}
                                     </p>
                                 </div>
                                 <span className="font-mono text-[15px] font-bold text-text-primary">${h.amount.toFixed(2)}</span>
@@ -1004,8 +1015,8 @@ export default function TechWeeklyLogPage() {
                         <div key={a.id} className="rounded-lg border border-border-sub bg-bg-secondary p-2.5 flex items-start justify-between gap-3">
                             <div className="min-w-0 space-y-0.5">
                                 <p className="text-[13px] font-semibold text-text-primary break-words">{adjustmentForText(a)}</p>
-                                {a.paidAmount != null && a.correctAmount != null && (
-                                    <p className="text-[12px] text-text-secondary font-mono">Paid ${a.paidAmount.toFixed(2)} → should be ${a.correctAmount.toFixed(2)}</p>
+                                {correctionText(a) && (
+                                    <p className="text-[12px] text-text-secondary font-mono break-words">{correctionText(a)} · difference {a.amount >= 0 ? '+' : '−'}${Math.abs(a.amount).toFixed(2)}</p>
                                 )}
                                 {a.techNote && <p className="text-[12px] text-text-muted break-words">Your note: “{a.techNote}”</p>}
                                 {a.reason && <p className="text-[12px] text-text-muted break-words">Payroll: {a.reason}</p>}
@@ -1096,7 +1107,7 @@ export default function TechWeeklyLogPage() {
                             <p className={cn('text-[12px] font-semibold px-1', item.payHold.status === 'held' ? 'text-accent-gold' : 'text-text-green')}>
                                 {item.payHold.status === 'held'
                                     ? `On hold — ${item.payHold.reason}. Not in this week's pay; it's paid on a later week.`
-                                    : `Held, then paid on the week of ${item.payHold.releasedWeekOf || 'a later week'}.`}
+                                    : `Held, then released. ${placementText(item.payHold.adjustmentId ? adjPlacement.get(item.payHold.adjustmentId) : null, 'the')}.`}
                             </p>
                         )}
                         <JobAuditCard
@@ -1116,6 +1127,7 @@ export default function TechWeeklyLogPage() {
                             onDisputeJob={isDisputeModeOn ? openJobDispute : undefined}
                             hasOpenPayrollDispute={disputedWorkOrderIds.has(item.workOrderId)}
                             payAdjustedBy={myPayrollDisputes.find(d => d.weeklyLogId === activeLog.id && d.workOrderId === item.workOrderId && d.status === 'resolved' && !!d.adjustment)}
+                            adjPlacement={adjPlacement}
                             onsiteMinutes={onsiteMinutesByJob.get(item.workOrderId) || 0}
                             onSetHours={handleSetHours}
                             canEstimate={!estimateFinal}
@@ -1419,7 +1431,15 @@ export default function TechWeeklyLogPage() {
     );
 }
 
-function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId, onDisputeJob, hasOpenPayrollDispute, payAdjustedBy, onsiteMinutes, onSetHours, canEstimate, onSetEstimate }: { canEstimate?: boolean, onSetEstimate?: (itemId: string, amount: number | null) => Promise<void>, onsiteMinutes?: number, onSetHours?: (itemId: string, hours: number | null) => Promise<void>, item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, kind: DisputeKind, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null, onDisputeJob?: (item: WeeklyLogItem) => void, hasOpenPayrollDispute?: boolean, payAdjustedBy?: PayrollDispute }) {
+type AdjPlacement = { weekOf: string; paidOut: boolean; amount: number; adj?: PayAdjustment };
+
+/** Plain status of a payment: paid out, scheduled on a week, or not on a week yet. */
+function placementText(p: AdjPlacement | null | undefined, whose: 'your' | 'the'): string {
+    if (!p) return 'Will be paid on your next log';
+    return p.paidOut ? `Paid on ${whose} week of ${p.weekOf}` : `Set to be paid on ${whose} week of ${p.weekOf} — not paid out yet`;
+}
+
+function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId, onDisputeJob, hasOpenPayrollDispute, payAdjustedBy, adjPlacement, onsiteMinutes, onSetHours, canEstimate, onSetEstimate }: { canEstimate?: boolean, onSetEstimate?: (itemId: string, amount: number | null) => Promise<void>, onsiteMinutes?: number, onSetHours?: (itemId: string, hours: number | null) => Promise<void>, item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, kind: DisputeKind, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null, onDisputeJob?: (item: WeeklyLogItem) => void, hasOpenPayrollDispute?: boolean, payAdjustedBy?: PayrollDispute, adjPlacement?: Map<string, AdjPlacement> }) {
     const job = workOrders.find(wo => wo.id === item.workOrderId);
     const itemReimbursements = reimbursements.filter(r => r.workOrderId === item.workOrderId);
     const settledReimbursement = itemReimbursements
@@ -1477,6 +1497,8 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
         scheduleDate: item.workDate || '', scheduleTime: '', location: '', clientName: '',
         pay: item.jobPay || 0, payType: 'fixed', status: 'completed', priority: 'medium', projectType: '',
     } as unknown as WorkOrder);
+    // Field Nation lead job: show the labor pay payroll entered next to the tech's share.
+    const showLabor = !isDisputed && !item.isHelper && (isImported(shown) || (!job && item.jobSource === 'Imported'));
 
     return (
         <Card className={cn(
@@ -1495,7 +1517,8 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                         )}>
                             {isDisputed ? <AlertTriangle size={20}/> : isConfirmed ? <CheckCircle2 size={20}/> : <Clock size={20}/>}
                         </div>
-                        <div className="min-w-0 text-left flex-1">
+                        {/* Phones: full row, so the pay boxes wrap below instead of squeezing the title. */}
+                        <div className="min-w-0 text-left flex-1 basis-full sm:basis-0">
                             <div className="flex flex-wrap items-center gap-2 text-left">
                                 <h3 className="text-[14px] font-semibold text-text-primary break-words text-left min-w-0">{shown.title || shown.description}</h3>
                                 {item.isHelper && <Badge variant="outline" className="text-[10px] uppercase tracking-wide">Helper</Badge>}
@@ -1546,8 +1569,19 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                         )}
 
                         <div className="text-right px-4 border-l border-border-sub/30 min-w-[100px]">
-                            <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-right">{isDisputed ? 'Excluded (disputed)' : 'Pay'}</p>
+                            {/* Field Nation jobs: the labor pay payroll entered, then the tech's
+                                share from the calculator, so it can be checked against the WO. */}
+                            {showLabor && (
+                                <div className="mb-1" title="The job's full labor pay as entered by payroll. Compare it with the work order on Field Nation.">
+                                    <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-right">Labor pay</p>
+                                    <p className="text-[12px] font-mono font-semibold text-text-primary text-right">${Number(shown.pay ?? item.jobPay ?? 0).toFixed(2)}</p>
+                                </div>
+                            )}
+                            <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider text-right">{isDisputed ? 'Excluded (disputed)' : showLabor ? 'Your pay' : 'Pay'}</p>
                             <p className="text-sm font-mono font-bold text-text-green text-right">${(isDisputed ? 0 : effectiveJobPay(item, shown)).toFixed(2)}</p>
+                            {showLabor && (
+                                <p className="text-[10px] text-text-muted text-right whitespace-nowrap">after 15.85% FN fee, ÷ 2</p>
+                            )}
                         </div>
 
                         {!isDisputed && (canEstimate || item.estimatedPay != null) && (
@@ -1641,13 +1675,17 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
 
                 {payAdjustedBy?.adjustment && (() => {
                     const a = payAdjustedBy.adjustment;
+                    const placed = adjPlacement?.get(a.id) || null;
+                    const amount = placed?.amount ?? a.amount;
                     return (
                         <div className="mx-4 mb-3 rounded-lg border border-accent-gold/40 bg-accent-gold/5 p-2.5 space-y-0.5 text-left">
                             <p className="text-[12px] font-semibold text-text-primary">
-                                Pay adjusted {a.amount >= 0 ? '+' : '−'}${Math.abs(a.amount).toFixed(2)}
-                                {a.paidAmount != null && a.correctAmount != null && <span className="font-mono font-normal text-text-secondary"> · paid ${a.paidAmount.toFixed(2)} → should be ${a.correctAmount.toFixed(2)}</span>}
+                                Pay adjusted {amount >= 0 ? '+' : '−'}${Math.abs(amount).toFixed(2)}
                             </p>
-                            <p className="text-[12px] text-text-muted">{a.status === 'queued' ? 'Will be paid on your next log.' : `Paid on your week of ${a.appliedWeekOf}.`}</p>
+                            {correctionText(placed?.adj || a) && (
+                                <p className="text-[12px] font-mono text-text-secondary break-words">{correctionText(placed?.adj || a)}</p>
+                            )}
+                            <p className="text-[12px] text-text-muted">{placementText(placed, 'your')}.</p>
                             {payAdjustedBy.notes && <p className="text-[12px] text-text-muted break-words">Your note: “{payAdjustedBy.notes}”</p>}
                             {payAdjustedBy.resolution?.note && <p className="text-[12px] text-text-muted break-words">Payroll: {payAdjustedBy.resolution.note}</p>}
                         </div>

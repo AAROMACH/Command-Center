@@ -30,6 +30,9 @@ export type StaffPayPlan = {
   /** First week ('MM-dd-yyyy', a Monday). */
   startWeek: string;
   active: boolean;
+  /** Paused stretches: weeks from `from` up to (not including) `to` owe
+   *  nothing. An open pause has no `to`. */
+  pauses?: { from: string; to?: string | null }[] | null;
   notes?: string | null;
   createdAt: string;
   createdBy: string;
@@ -81,6 +84,8 @@ export function summarizePlan(plan: StaffPayPlan, entries: StaffPayEntry[], curr
   let scheduledSoFar = 0;
   for (let d = toDate(plan.startWeek), i = 0; d <= end && i < 520; d = addWeeks(d, 1), i++) {
     const weekOf = format(d, 'MM-dd-yyyy');
+    // Paused weeks owe nothing (an installment just continues after the pause).
+    if (isPausedWeek(plan, weekOf) && !byWeek.has(weekOf)) continue;
     let scheduled = plan.weeklyAmount;
     if (plan.kind === 'installment' && plan.total != null) {
       scheduled = r2(Math.max(0, Math.min(plan.weeklyAmount, plan.total - scheduledSoFar)));
@@ -115,6 +120,27 @@ export async function createStaffPayPlan(p: Omit<StaffPayPlan, 'id' | 'createdAt
   };
   await setDoc(ref, JSON.parse(JSON.stringify(plan)));
   return ref.id;
+}
+
+/** Is this week inside one of the plan's pauses? An old paused plan with no
+ *  recorded pauses counts as paused from the current week on. */
+export function isPausedWeek(plan: StaffPayPlan, weekOf: string): boolean {
+  const k = weekKey(weekOf);
+  const pauses = plan.pauses?.length ? plan.pauses : (!plan.active ? [{ from: reportingWeekOf(), to: null }] : []);
+  return pauses.some(p => k >= weekKey(p.from) && (!p.to || k < weekKey(p.to)));
+}
+
+/** Pause from this week on, or resume from this week (paused weeks stay owed-nothing). */
+export async function setStaffPayPaused(plan: StaffPayPlan, paused: boolean): Promise<void> {
+  const week = reportingWeekOf();
+  const pauses = [...(plan.pauses || [])];
+  if (paused) pauses.push({ from: week, to: null });
+  else {
+    const open = pauses.findIndex(p => !p.to);
+    if (open >= 0) pauses[open] = { ...pauses[open], to: week };
+    else if (!plan.active) pauses.push({ from: week, to: week }); // old pause with no record: nothing to backfill
+  }
+  await updateDoc(doc(db, 'staffPayPlans', plan.id), { active: !paused, pauses: JSON.parse(JSON.stringify(pauses)) });
 }
 
 export const updateStaffPayPlan = (id: string, patch: Partial<Pick<StaffPayPlan, 'label' | 'weeklyAmount' | 'total' | 'active' | 'notes'>>) =>

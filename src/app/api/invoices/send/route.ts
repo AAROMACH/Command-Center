@@ -41,7 +41,7 @@ async function recipientOf(inv: Record<string, any>): Promise<string> {
 const money = (n: unknown) => `$${(Number(n) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 
 /** One recorded send: who, to whom, when, and Resend's delivery status. */
-type SendRecord = { at: string; to: string; by: string; emailId: string | null; status: string };
+type SendRecord = { at: string; to: string; by: string; emailId: string | null; status: string; logId?: string | null };
 /** A send within this many minutes of the last one is refused — no accidental double emails. */
 const RESEND_COOLDOWN_MIN = 10;
 
@@ -121,13 +121,15 @@ export async function POST(req: NextRequest) {
   ].join('\n');
   let emailed: 'sent' | 'skipped';
   let emailId: string | null = null;
+  let logId: string | null = null;
   const sendNo = (Array.isArray(inv.sendLog) ? inv.sendLog.length : 0) + 1;
   try {
     // Same key for a retry of this send, so Resend never delivers it twice.
-    emailed = await sendEmail(to, subject, text, { kind: 'billing', idempotencyKey: `invoice-send/${snap.id}/${sendNo}`, onSent: id => { emailId = id; } });
+    emailed = await sendEmail(to, subject, text, { kind: 'billing', idempotencyKey: `invoice-send/${snap.id}/${sendNo}`, onSent: id => { emailId = id; }, onLogged: id => { logId = id; },
+      related: { type: 'invoice', id: snap.id, label: inv.invoiceNumber || null }, sentBy: who.name });
   } catch (e: any) { await unlock(); return NextResponse.json({ error: `Email failed: ${String(e?.message || e).slice(0, 200)}`, link }, { status: 502 }); }
   if (emailed === 'skipped') { await unlock(); return NextResponse.json({ link, emailed: false, reason: 'Email isn’t set up on the server (RESEND_API_KEY missing).' }); }
-  const record: SendRecord = { at: new Date().toISOString(), to, by: who.name, emailId, status: 'sent' };
+  const record: SendRecord = { at: new Date().toISOString(), to, by: who.name, emailId, status: 'sent', logId };
 
   await ref.update({
     ...(inv.status === 'draft' ? { status: 'sent' } : {}),

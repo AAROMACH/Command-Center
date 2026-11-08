@@ -8,11 +8,12 @@ import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { isClient } from '@/lib/permissions';
 import { reportingWeekOf } from '@/lib/weekly-log-core';
 import {
-  createStaffPayPlan, recordStaffPayWeek, summarizePlan, updateStaffPayPlan,
+  createStaffPayPlan, recordStaffPayWeek, setStaffPayPaused, summarizePlan, updateStaffPayPlan,
   type PlanSummary, type PlanWeek, type StaffPayEntry, type StaffPayPlan,
 } from '@/lib/staff-pay';
 import type { Technician } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -59,6 +60,38 @@ export function PlanTotals({ plan, s }: { plan: StaffPayPlan; s: PlanSummary }) 
  * job logs. Each week payroll marks Paid (amount) or Skipped; skipped or
  * short weeks are banked as owed until caught up.
  */
+/**
+ * A recurring plan's week: tick "Paid" if it went out, then Pay out. Paying
+ * out with the box unticked banks the week as owed.
+ */
+function RecurringWeekRow({ plan, week, current, by }: { plan: StaffPayPlan; week: PlanWeek; current: string; by: string }) {
+  const { toast } = useToast();
+  const [checked, setChecked] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const payOut = async () => {
+    if (!checked && !confirm(`"Paid" isn't ticked, so ${money(week.scheduled)} for ${plan.personName} (week of ${week.weekOf}) goes in the bank as owed. Continue?`)) return;
+    setBusy(true);
+    try {
+      await recordStaffPayWeek(plan, week.weekOf, week.scheduled, checked ? 'paid' : 'skipped', checked ? week.scheduled : 0, by);
+      toast({ title: checked ? `Paid ${money(week.scheduled)}` : 'Not paid — banked as owed' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Could not record', description: e.message });
+    } finally { setBusy(false); }
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border-sub bg-bg-primary px-3 py-2">
+      <label className="flex flex-1 min-w-[180px] cursor-pointer items-center gap-2.5">
+        <Checkbox checked={checked} onCheckedChange={v => setChecked(!!v)} disabled={busy} aria-label={`Paid — week of ${week.weekOf}`} />
+        <span className="text-[13px] font-medium text-text-primary">Week of {week.weekOf}{week.weekOf === current ? ' (this week)' : ''} · {money(week.scheduled)}</span>
+      </label>
+      <span className="text-[11px] text-text-muted">{checked ? 'Paid' : 'Not paid — will be banked'}</span>
+      <Button size="sm" className={cn('h-8', checked ? 'bg-text-green hover:bg-text-green/90 text-white' : '')} variant={checked ? 'default' : 'outline'} disabled={busy} onClick={payOut}>
+        {busy ? <Loader2 size={13} className="mr-1 animate-spin" /> : <CheckCircle2 size={13} className="mr-1" />} Pay out
+      </Button>
+    </div>
+  );
+}
+
 export function StaffPayPanel({ by, canEdit }: { by: string; canEdit: boolean }) {
   const { toast } = useToast();
   const [plans, setPlans] = useState<StaffPayPlan[]>([]);
@@ -87,7 +120,7 @@ export function StaffPayPanel({ by, canEdit }: { by: string; canEdit: boolean })
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-[14px] font-semibold text-text-primary flex items-center gap-2"><PiggyBank size={15} className="text-brand-red" /> Staff pay</p>
-          <p className="text-[12px] text-text-muted">Weekly bonuses and installment payments outside job logs. Mark each week Paid or Skipped — skipped weeks are banked as owed.</p>
+          <p className="text-[12px] text-text-muted">Weekly bonuses and installment payments outside job logs. Tick Paid and Pay out each week; a week paid out unticked (or skipped) is banked as owed. Paused weeks owe nothing.</p>
         </div>
         {canEdit && <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setAdding(true)}><Plus size={14} className="mr-1.5" /> Add pay plan</Button>}
       </div>
@@ -113,13 +146,22 @@ export function StaffPayPanel({ by, canEdit }: { by: string; canEdit: boolean })
                 </div>
                 {canEdit && (
                   <Button size="sm" variant="ghost" className="h-8 text-text-muted" onClick={async () => {
-                    try { await updateStaffPayPlan(plan.id, { active: !plan.active }); } catch (e: any) { toast({ variant: 'destructive', title: 'Could not update', description: e.message }); }
+                    try {
+                      await setStaffPayPaused(plan, plan.active);
+                      toast({ title: plan.active ? 'Paused — nothing is owed while paused' : 'Resumed from this week' });
+                    } catch (e: any) { toast({ variant: 'destructive', title: 'Could not update', description: e.message }); }
                   }}>{plan.active ? 'Pause' : 'Resume'}</Button>
                 )}
               </div>
               <PlanTotals plan={plan} s={s} />
 
-              {plan.active && !s.done && canEdit && toMark.length > 0 && (
+              {plan.active && !s.done && canEdit && toMark.length > 0 && plan.kind === 'recurring' && (
+                <div className="space-y-1.5">
+                  {toMark.map(w => <RecurringWeekRow key={w.weekOf} plan={plan} week={w} current={current} by={by} />)}
+                </div>
+              )}
+
+              {plan.active && !s.done && canEdit && toMark.length > 0 && plan.kind !== 'recurring' && (
                 <div className="space-y-1.5">
                   {toMark.map(w => (
                     <div key={w.weekOf} className="flex flex-wrap items-center gap-2 rounded-lg border border-border-sub bg-bg-primary px-3 py-2">

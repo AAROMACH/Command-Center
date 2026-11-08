@@ -63,7 +63,7 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
   const lineAmt = (l: Invoice['lineItems'][number]) => (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0) * (l.category === 'labor' && (l as any).multiplier ? (l as any).multiplier : 1);
 
   // Every send of this invoice with Resend's delivery status — proof it went out.
-  const [sendLog, setSendLog] = useState<{ at: string; to: string; by: string; emailId: string | null; status: string }[]>([]);
+  const [sendLog, setSendLog] = useState<{ at: string; to: string; by: string; emailId: string | null; status: string; logId?: string | null }[]>([]);
   const sentRecently = !!invoice.sentAt && Date.now() - Date.parse(invoice.sentAt) < 10 * 60000;
   const start = async () => {
     setOpen(true); setLink(''); setLoading(true);
@@ -168,7 +168,9 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
               <p className="font-semibold text-text-primary">Sent before</p>
               {sendLog.slice(-5).reverse().map((e, i) => (
                 <div key={`${e.at}-${i}`} className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-text-secondary">{new Date(e.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} · {e.to} · {e.by}</span>
+                  <span className="text-text-secondary">{new Date(e.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} · {e.to} · {e.by}
+                    {e.logId && <> · <a href={`/admin/email-log?id=${e.logId}`} target="_blank" rel="noreferrer" className="text-brand-red hover:underline">View email</a></>}
+                  </span>
                   <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
                     e.status === 'delivered' || e.status === 'opened' || e.status === 'clicked' ? 'border-text-green/40 text-text-green'
                       : e.status === 'bounced' || e.status === 'complained' ? 'border-brand-red/40 text-brand-red'

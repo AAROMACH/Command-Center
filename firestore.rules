@@ -660,6 +660,13 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // A copy of every email the app sends — written server-side only
+    // (lib/server/email-log). Admins read it in Settings → Email log.
+    match /emailLog/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // Written server-side by /api/notify (Admin SDK); clients no longer
     // create these, so an open create only invited forged records.
     match /notifications/{id} {

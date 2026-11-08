@@ -35,7 +35,7 @@ import { TONE_DOT, statusTone } from '@/lib/status-styles';
 import { EmptyState } from '@/components/empty-state';
 import { StatCard, StatGrid } from '@/components/stat-card';
 import { TERMINOLOGY } from '@/lib/constants';
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
 import {
     Dialog,
@@ -333,6 +333,16 @@ export default function DashboardPage() {
     const daysAgo = (iso?: string | null) => { const t = iso ? Date.parse(iso) : NaN; return Number.isFinite(t) ? Math.floor((Date.now() - t) / 86_400_000) : null; };
     // Dispatch thresholds (Settings → General): adminConfig/operations.
     const [ops, setOps] = useState<{ openTooLongDays: number; dueSoonDays: number }>({ openTooLongDays: 3, dueSoonDays: 2 });
+    // Customer follow-up emails (requests still unreviewed after 2 business days).
+    // The server runs it at most once an hour, so opening the dashboard is enough.
+    useEffect(() => {
+        const off = auth.onAuthStateChanged(u => {
+            if (!u) return;
+            u.getIdToken().then(t => fetch('/api/requests/follow-ups', { method: 'POST', headers: { Authorization: `Bearer ${t}` } })).catch(() => {});
+            off();
+        });
+        return off;
+    }, []);
     useEffect(() => onSnapshot(doc(db, 'adminConfig', 'operations'), s => {
         const d = s.data() || {};
         setOps({ openTooLongDays: Number(d.openTooLongDays) > 0 ? Number(d.openTooLongDays) : 3, dueSoonDays: Number(d.dueSoonDays) > 0 ? Number(d.dueSoonDays) : 2 });

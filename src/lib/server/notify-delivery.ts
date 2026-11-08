@@ -5,6 +5,7 @@ import { entityHref } from '@/lib/notification-links';
 import { Resend } from 'resend';
 import { sendPush } from './push';
 import { recordHealth } from './integration-health';
+import { logEmail, type EmailLogEntry } from './email-log';
 
 /**
  * Server-side delivery shared by /api/notify, the CRM digest and the
@@ -113,7 +114,13 @@ export function emailSender(kind: EmailKind): { from: string; replyTo: string | 
  * retry-after); other errors throw. `idempotencyKey` (e.g. `invoice/<id>/<n>`)
  * keeps a retried request from sending twice.
  */
-export async function sendEmail(to: string, subject: string, body: string, opts: { idempotencyKey?: string; kind?: EmailKind; onSent?: (emailId: string | null) => void } = {}): Promise<'sent' | 'skipped'> {
+export async function sendEmail(to: string, subject: string, body: string, opts: {
+  idempotencyKey?: string; kind?: EmailKind; onSent?: (emailId: string | null) => void;
+  /** For the email log: what it's about and who sent it. */
+  related?: EmailLogEntry['related']; sentBy?: string | null;
+  /** Gets the email log entry's id. */
+  onLogged?: (logId: string | null) => void;
+} = {}): Promise<'sent' | 'skipped'> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn('[notify] RESEND_API_KEY not set — email skipped');
@@ -129,6 +136,10 @@ export async function sendEmail(to: string, subject: string, body: string, opts:
     text: body,
     html: `<p>${escapeHtml(body).replace(/\n/g, '<br/>')}</p>`,
   };
+  const logBase = {
+    to, from: sender.from, replyTo: sender.replyTo, subject, text: body, kind: opts.kind || 'notifications' as EmailKind,
+    related: opts.related || null, sentBy: opts.sentBy || null,
+  };
   let lastError = 'Resend request failed';
   let lastStatus: number | null = null;
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -138,6 +149,7 @@ export async function sendEmail(to: string, subject: string, body: string, opts:
       console.info(`[notify] email sent via Resend id=${data?.id || '?'}`);
       opts.onSent?.(data?.id || null);
       await recordHealth('resend', true);
+      opts.onLogged?.(await logEmail({ ...logBase, status: 'sent', error: null, emailId: data?.id || null }));
       return 'sent';
     }
     lastError = `Resend ${error.statusCode ?? ''} ${error.name}: ${error.message}`.replace(/\s+/g, ' ');
@@ -151,6 +163,7 @@ export async function sendEmail(to: string, subject: string, body: string, opts:
   // Only connection-level failures count against the integration (bad key,
   // unverified domain, Resend down) — not one bad recipient address.
   if (lastStatus == null || lastStatus === 401 || lastStatus === 403 || lastStatus >= 500) await recordHealth('resend', false, lastError);
+  opts.onLogged?.(await logEmail({ ...logBase, status: 'failed', error: lastError, emailId: null }));
   throw new Error(lastError);
 }
 
@@ -194,7 +207,7 @@ export async function deliverNotification(
       let status: 'sent' | 'failed' | 'pending' = 'pending';
       try {
         // Clients hear from Support (they can reply); staff alerts are no-reply.
-        if (type === 'email') status = (await sendEmail(data.email, subject, msg.body, { kind: (msg.portal || portalForRecipient(data, entity)) === 'client' ? 'support' : 'notifications' })) === 'sent' ? 'sent' : 'pending';
+        if (type === 'email') status = (await sendEmail(data.email, subject, msg.body, { kind: (msg.portal || portalForRecipient(data, entity)) === 'client' ? 'support' : 'notifications', related: entity ? { type: entity.type, id: entity.id } : null, sentBy: msg.sentBy })) === 'sent' ? 'sent' : 'pending';
         else if (type === 'sms') status = (await sendSms(data.phone, `${subject}\n\n${msg.body}`)) === 'sent' ? 'sent' : 'pending';
 
       } catch (err) {

@@ -131,6 +131,7 @@ export function IntegrationsPanel() {
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-[14px] font-semibold text-text-primary">{plain?.name || i.name}</p>
                     <span className={cn('text-[11px] font-semibold', b.cls)}>{b.label}</span>
+                    {i.id === 'resend' && <a href="/admin/email-log" className="text-[12px] font-medium text-brand-red hover:underline">View email log</a>}
                   </div>
                   <p className="text-[12px] text-text-muted">{plain?.what || i.purpose}</p>
                   {summary && <p className={cn('text-[12px] mt-1', i.state === 'failed' ? 'text-brand-red' : 'text-text-secondary')}>{summary}</p>}

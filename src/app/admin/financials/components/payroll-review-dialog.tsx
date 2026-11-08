@@ -980,26 +980,24 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             i.id === itemId ? { ...i, confirmationStatus: nextStatus, isAdminReviewed: !!nextStatus } : i
         );
 
+        // Flip it on screen right away; save behind it and undo if the save fails.
+        const before = localLog;
+        setLocalLog({ ...localLog, items: updatedItems });
         try {
             const logRef = doc(db, 'weeklyLogs', localLog.id);
             await updateDoc(logRef, { items: updatedItems });
 
-            const asmtRef = doc(db, 'assignments', workOrderId);
-            const woRef = doc(db, 'workOrders', workOrderId);
-
+            // The job's own audit flag — doesn't hold up the screen.
             const auditUpdates = {
                 isAudited: !!nextStatus,
                 auditedAt: nextStatus ? new Date().toISOString() : null,
-                auditedBy: nextStatus ? 'Admin' : null
+                auditedBy: nextStatus ? (authUser?.name || auth.currentUser?.displayName || 'Admin') : null,
             };
-
-            await updateDoc(asmtRef, auditUpdates).catch(async () => {
-                await updateDoc(woRef, auditUpdates);
-            });
-
-            setLocalLog({ ...localLog, items: updatedItems });
-            toast({ title: nextStatus ? "Job verified" : "Verification cleared", description: "Saved to the job's history." });
+            updateDoc(doc(db, 'assignments', workOrderId), auditUpdates)
+                .catch(() => updateDoc(doc(db, 'workOrders', workOrderId), auditUpdates))
+                .catch(() => {});
         } catch (e: any) {
+            setLocalLog(before);
             toast({ variant: 'destructive', title: 'Could not save', description: e.message });
         }
     };

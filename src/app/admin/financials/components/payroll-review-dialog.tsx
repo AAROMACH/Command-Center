@@ -149,6 +149,61 @@ function CounterpartPayBadge({
 }
 
 /**
+ * A helper's own line on their week: the pay they get, paid exactly as
+ * entered (no Field Nation fee or split). Saved onto this log's item only.
+ */
+function HelperPayBox({ item, logId, locked, onSaved }: {
+    item: WeeklyLogItem; logId: string; locked: boolean; onSaved: (items: WeeklyLogItem[]) => void;
+}) {
+    const { toast } = useToast();
+    const [draft, setDraft] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
+    const value = draft ?? String(item.jobPay ?? '');
+    const save = async () => {
+        const amount = Math.round((Number(draft) || 0) * 100) / 100;
+        if (amount < 0) return;
+        setSaving(true);
+        try {
+            const ref = doc(db, 'weeklyLogs', logId);
+            const fresh = (await getDoc(ref)).data() as WeeklyLog | undefined;
+            if (!fresh) throw new Error('This log no longer exists.');
+            if (isLockedLog(fresh as any)) throw new Error('This week is already approved or paid — reopen it to change the pay.');
+            const items = (fresh.items || []).map(i => i.id === item.id ? { ...i, jobPay: amount, payoutAmount: amount } : i);
+            await updateDoc(ref, { items: sanitize(items) });
+            onSaved(items);
+            setDraft(null);
+            toast({ title: 'Helper pay saved', description: `$${amount.toFixed(2)}, paid as entered.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not save helper pay', description: e.message });
+        } finally {
+            setSaving(false);
+        }
+    };
+    return (
+        <div className="flex flex-wrap items-center gap-3 px-3 py-2 rounded-md bg-bg-tertiary/30 border border-border-sub">
+            <div className="text-left">
+                <p className="text-[11px] text-text-muted">Helper pay</p>
+                {locked ? (
+                    <p className="text-[13px] font-mono font-semibold text-text-green leading-tight">${(item.jobPay || 0).toFixed(2)}</p>
+                ) : (
+                    <div className="flex items-center gap-1.5">
+                        <div className="relative">
+                            <DollarSign size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+                            <Input type="number" inputMode="decimal" min={0} step="0.01" value={value} placeholder="0"
+                                onChange={e => setDraft(e.target.value)} className="h-9 w-28 pl-6 font-mono text-[13px]" aria-label="Helper pay" />
+                        </div>
+                        <Button size="sm" className="h-9" disabled={saving || draft === null} onClick={save}>
+                            {saving ? <Loader2 size={13} className="animate-spin" /> : 'Save'}
+                        </Button>
+                    </div>
+                )}
+            </div>
+            <p className="text-[11px] text-text-muted max-w-[220px]">Paid to the helper as entered — no FN fee or split. The lead’s pay isn’t affected.</p>
+        </div>
+    );
+}
+
+/**
  * "Helper added" on a lead's job: every helper's entry for this job, with their
  * pay editable right here. Saving writes the pay onto the HELPER's own weekly
  * log, marks it verified and tags it "Approved from lead's log", so payroll
@@ -205,7 +260,10 @@ function HelperPayEditor({ workOrderId, leadLog, allWeeklyLogs, allTechnicians, 
                 </button>
             </PopoverTrigger>
             <PopoverContent className="w-72 max-w-[calc(100vw-2rem)] p-3 bg-bg-elevated border-border-main shadow-md text-left space-y-3" onClick={e => e.stopPropagation()}>
-                <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Helper pay</p>
+                <div>
+                    <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Helper pay</p>
+                    <p className="text-[11px] text-text-muted">Paid to the helper as entered — no FN fee or split.</p>
+                </div>
                 {helpers.map(({ log, item, name }) => {
                     const locked = isLockedLog(log as any);
                     const tagged = !!item.approvedFromLeadLog;
@@ -2017,7 +2075,12 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                         </div>
 
                                                         <div className={cn("w-full min-w-0", !isImported && "sm:w-auto")} onClick={e => e.stopPropagation()}>
-                                                            {isImported && wo ? (
+                                                            {item.isHelper ? (
+                                                                // A helper is paid exactly what payroll enters — never the
+                                                                // lead's job calculator (that edits the LEAD's labor pay).
+                                                                <HelperPayBox item={item} logId={localLog!.id} locked={isLogLockedForEdit}
+                                                                    onSaved={items => setLocalLog(prev => prev ? { ...prev, items } : prev)} />
+                                                            ) : isImported && wo ? (
                                                                 <div className="border-t border-border-sub/40 pt-2">
                                                                     <ImportedJobAudit wo={wo} onUpdateWorkOrder={handleUpdateWorkOrder} approvedReimbTotal={approvedReimbTotal} isLocked={isLogLockedForEdit} />
                                                                 </div>

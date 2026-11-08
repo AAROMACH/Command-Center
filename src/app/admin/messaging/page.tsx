@@ -14,7 +14,8 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { makeMessageId } from '@/lib/doc-ids';
 import { uploadFile } from '@/lib/upload';
 import type { Technician, AdminMessage, Project } from '@/lib/types';
-import { isAdmin, isTech, isClient } from '@/lib/permissions';
+import { isAdmin, isTech, isClient, isSuperAdmin } from '@/lib/permissions';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, Send, Lock, Activity, Radio, Users, Briefcase, Paperclip, X, ArrowLeft } from 'lucide-react';
+import { MessageSquare, Send, Lock, Activity, Radio, Users, Briefcase, Paperclip, X, ArrowLeft, Mail } from 'lucide-react';
 import { format, parseISO, addHours } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -349,11 +350,21 @@ export default function AdminMessagingPage() {
         icon={MessageSquare}
         title="Messaging"
         subtitle="Send announcements to everyone or message people directly."
-        actions={activeTab === 'Broadcast' ? (
-          <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setIsBroadcasting(true)}>
-            <Radio size={14} className="mr-1.5" />
-            New announcement
-          </Button>
+        actions={(activeTab === 'Broadcast' || isSuperAdmin(currentUser)) ? (
+          <div className="flex items-center gap-2">
+            {/* Super admins: every email the app sent. */}
+            {isSuperAdmin(currentUser) && (
+              <Link href="/admin/email-log">
+                <Button size="sm" variant="outline" className="h-9"><Mail size={14} className="mr-1.5" /> Email log</Button>
+              </Link>
+            )}
+            {activeTab === 'Broadcast' && (
+              <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setIsBroadcasting(true)}>
+                <Radio size={14} className="mr-1.5" />
+                New announcement
+              </Button>
+            )}
+          </div>
         ) : undefined}
       />
 

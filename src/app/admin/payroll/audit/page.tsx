@@ -563,7 +563,7 @@ export default function PayrollAuditPage() {
                                                 <span className="truncate">{tech?.name || log.techId}</span>
                                                 <Badge variant={statusVariant(logDisplayStatus(log))} className="sm:hidden text-[10px] h-5 shrink-0">{logDisplayStatus(log)}</Badge>
                                             </div>
-                                            <p className="hidden sm:block text-[11px] text-text-muted font-mono whitespace-nowrap">Week of {log.weekOf}</p>
+                                            <p className="hidden sm:block text-[11px] text-text-muted font-mono whitespace-nowrap">Week of {log.weekOf} · {log.id.toUpperCase()}</p>
                                         </div>
                                         <p className={cn('sm:hidden shrink-0 text-[13px] font-semibold font-mono', log.paid ? 'text-text-green' : log.status === 'Approved' ? 'text-brand-blue' : 'text-text-primary')}>
                                             ${settlementOf(log).toFixed(2)}

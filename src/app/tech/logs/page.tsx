@@ -892,6 +892,7 @@ export default function TechWeeklyLogPage() {
                     <div className="text-left">
                         <div className="flex items-center gap-3 text-left">
                             <h1 className="text-lg sm:text-xl font-semibold text-text-primary text-left">Week of {activeLog.weekOf}</h1>
+                            <p className="text-[11px] font-mono text-text-muted text-left" title="Give this number to payroll if something on this log needs fixing">{activeLog.id.toUpperCase()}</p>
                             <StatusBadge kind="log" value={logDisplayStatus(activeLog)} />
                         </div>
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-left">
@@ -1127,6 +1128,7 @@ export default function TechWeeklyLogPage() {
                             techId={currentTechId}
                             onDisputeJob={isDisputeModeOn ? openJobDispute : undefined}
                             hasOpenPayrollDispute={disputedWorkOrderIds.has(item.workOrderId)}
+                            openPayrollReason={openDisputesForActiveLog.find(d => d.workOrderId === item.workOrderId)?.reason}
                             payAdjustedBy={myPayrollDisputes.find(d => d.weeklyLogId === activeLog.id && d.workOrderId === item.workOrderId && d.status === 'resolved' && !!d.adjustment)}
                             adjPlacement={adjPlacement}
                             onsiteMinutes={onsiteMinutesByJob.get(item.workOrderId) || 0}
@@ -1440,7 +1442,7 @@ function placementText(p: AdjPlacement | null | undefined, whose: 'your' | 'the'
     return p.paidOut ? `Paid on ${whose} week of ${p.weekOf}` : `Set to be paid on ${whose} week of ${p.weekOf} — not paid out yet`;
 }
 
-function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId, onDisputeJob, hasOpenPayrollDispute, payAdjustedBy, adjPlacement, onsiteMinutes, onSetHours, canEstimate, onSetEstimate }: { canEstimate?: boolean, onSetEstimate?: (itemId: string, amount: number | null) => Promise<void>, onsiteMinutes?: number, onSetHours?: (itemId: string, hours: number | null) => Promise<void>, item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, kind: DisputeKind, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null, onDisputeJob?: (item: WeeklyLogItem) => void, hasOpenPayrollDispute?: boolean, payAdjustedBy?: PayrollDispute, adjPlacement?: Map<string, AdjPlacement> }) {
+function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbursement, onConfirm, onDispute, onAddReimbursement, onDeleteReimbursement, canMove, onRequestMove, techId, onDisputeJob, hasOpenPayrollDispute, openPayrollReason, payAdjustedBy, adjPlacement, onsiteMinutes, onSetHours, canEstimate, onSetEstimate }: { canEstimate?: boolean, onSetEstimate?: (itemId: string, amount: number | null) => Promise<void>, onsiteMinutes?: number, onSetHours?: (itemId: string, hours: number | null) => Promise<void>, item: WeeklyLogItem, isLocked: boolean, workOrders: WorkOrder[], reimbursements: FinancialRecord[], canAddReimbursement: boolean, onConfirm: (id: string) => void, onDispute: (id: string, kind: DisputeKind, notes?: string) => void, onAddReimbursement: (item: WeeklyLogItem, data: { amount: number; description: string; note?: string; receiptUrl?: string }) => void, onDeleteReimbursement: (reimbId: string) => void, canMove?: boolean, onRequestMove?: () => void, techId: string | null, onDisputeJob?: (item: WeeklyLogItem) => void, hasOpenPayrollDispute?: boolean, openPayrollReason?: PayrollDispute["reason"], payAdjustedBy?: PayrollDispute, adjPlacement?: Map<string, AdjPlacement> }) {
     const job = workOrders.find(wo => wo.id === item.workOrderId);
     const itemReimbursements = reimbursements.filter(r => r.workOrderId === item.workOrderId);
     const settledReimbursement = itemReimbursements
@@ -1524,10 +1526,10 @@ function JobAuditCard({ item, isLocked, workOrders, reimbursements, canAddReimbu
                                 <h3 className="text-[14px] font-semibold text-text-primary break-words text-left min-w-0">{shown.title || shown.description}</h3>
                                 {item.isHelper && <Badge variant="outline" className="text-[10px] uppercase tracking-wide">Helper</Badge>}
                                 {isConfirmed && <StatusBadge kind="log" value="approved" label="Confirmed" />}
-                                {isDisputed && <StatusBadge kind="log" value="rejected" label="Disputed" />}
+                                {isDisputed && <StatusBadge kind="log" value="rejected" label={item.resolution ? "Disputed" : disputeKindOf(item) === "pay_or_date" ? "Waiting on adjustment" : "Waiting on payroll decision"} />}
                                 {hasOpenPayrollDispute && (
                                     <Badge variant="destructive" className="text-[10px] uppercase tracking-wide flex items-center gap-1">
-                                        <AlertTriangle size={10} /> Under review
+                                        <AlertTriangle size={10} /> {openPayrollReason === "incorrect_pay" ? "Waiting on adjustment" : openPayrollReason === "missing_reimbursement" ? "Waiting on reimbursement" : openPayrollReason === "missing_job" ? "Waiting on payroll to add it" : "Under review"}
                                     </Badge>
                                 )}
                                 {payAdjustedBy?.adjustment && (

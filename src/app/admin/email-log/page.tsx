@@ -30,11 +30,18 @@ export default function EmailLogPage() {
   const [q, setQ] = useState('');
   const [kind, setKind] = useState<'all' | Entry['kind'] | 'failed'>('all');
   const [openId, setOpenId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     try { setOpenId(new URLSearchParams(window.location.search).get('id')); } catch { /* none */ }
     return onSnapshot(query(collection(db, 'emailLog'), orderBy('at', 'desc'), limit(1000)),
-      s => setEntries(s.docs.map(d => ({ ...d.data(), id: d.id } as Entry))), () => setEntries([]));
+      s => { setLoadError(null); setEntries(s.docs.map(d => ({ ...d.data(), id: d.id } as Entry))); },
+      e => {
+        setEntries([]);
+        setLoadError(e?.code === 'permission-denied'
+          ? 'The database rules don’t allow reading the email log yet. Publish the emailLog rule in Firebase → Firestore → Rules, then refresh.'
+          : `Couldn’t load the email log: ${e?.message || e}`);
+      });
   }, []);
 
   const shown = useMemo(() => {
@@ -53,7 +60,7 @@ export default function EmailLogPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader eyebrow="Settings" icon={Mail} title="Email log"
+      <PageHeader back={{ href: '/admin/settings', label: 'Settings' }} eyebrow="Settings" icon={Mail} title="Email log"
         subtitle="Every email the app sent — invoices, alerts and tests — with the full message exactly as it went out." />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -64,6 +71,10 @@ export default function EmailLogPage() {
           ))}
         </div>
       </div>
+
+      {loadError && (
+        <p className="rounded-lg border border-brand-red/40 bg-brand-red/5 px-3 py-2 text-[13px] text-text-primary">{loadError}</p>
+      )}
 
       {entries === null ? <LoadingState label="Loading emails…" rows={4} />
         : shown.length === 0 ? <EmptyState icon={Mail} title={entries.length ? 'No emails match' : 'No emails yet'} description="Emails the app sends from now on are saved here." />

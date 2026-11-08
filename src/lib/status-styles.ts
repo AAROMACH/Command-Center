@@ -32,14 +32,16 @@ const JOB: Record<string, Tone> = {
     'in-progress': 'progress', 'checked-out': 'progress', completed: 'done', cancelled: 'neutral', archived: 'neutral',
     missed: 'problem', disputed: 'problem',
 };
+// Approved (blue) and Paid (green) must never look alike: approved means
+// "will be paid", paid means the money went out.
 const LOG: Record<string, Tone> = {
-    draft: 'scheduled', submitted: 'progress', approved: 'done', paid: 'done', rejected: 'problem', returned: 'problem',
+    draft: 'scheduled', submitted: 'progress', approved: 'info', paid: 'done', rejected: 'problem', returned: 'problem',
 };
 const PAY: Record<string, Tone> = {
-    approved: 'done', paid: 'done', submitted: 'progress', draft: 'scheduled', returned: 'problem', 'not-filed': 'problem', upcoming: 'neutral',
+    approved: 'info', paid: 'done', submitted: 'progress', draft: 'scheduled', returned: 'problem', 'not-filed': 'problem', upcoming: 'neutral',
 };
 const REQUEST: Record<string, Tone> = {
-    new: 'progress', pending: 'progress', pending_review: 'progress', reviewed: 'info', approved: 'done', converted: 'done', paid: 'done',
+    new: 'progress', pending: 'progress', pending_review: 'progress', reviewed: 'info', approved: 'info', converted: 'done', paid: 'done',
     denied: 'problem', rejected: 'problem', closed: 'neutral', archived: 'neutral',
 };
 const INVOICE: Record<string, Tone> = {

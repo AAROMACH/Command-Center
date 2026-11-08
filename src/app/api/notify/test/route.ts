@@ -3,6 +3,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
 import { portalForRecipient, sendEmail, sendSms } from '@/lib/server/notify-delivery';
+import { lastEmailLogError } from '@/lib/server/email-log';
 import { sendPush } from '@/lib/server/push';
 
 /**
@@ -45,8 +46,9 @@ export async function POST(req: NextRequest) {
   };
 
   await run('Email', true, !data.email ? 'No email address on your profile.' : null, async () => {
-    if ((await sendEmail(data.email, `[AAROMACH] ${title.toUpperCase()}`, body)) === 'skipped') throw new Error('Email isn’t set up on the server (RESEND_API_KEY missing).');
-    return `Sent to ${data.email}.`;
+    let logId: string | null = null;
+    if ((await sendEmail(data.email, `[AAROMACH] ${title.toUpperCase()}`, body, { sentBy: data.name || data.email, onLogged: id => { logId = id; } })) === 'skipped') throw new Error('Email isn’t set up on the server (RESEND_API_KEY missing).');
+    return logId ? `Sent to ${data.email}. Saved in the Email log.` : `Sent to ${data.email}, but it couldn’t be saved to the Email log: ${(lastEmailLogError || 'unknown error').slice(0, 200)}`;
   });
   await run('Text message', true, !data.phone ? 'No phone number on your profile.' : null, async () => {
     if ((await sendSms(data.phone, `[AAROMACH] ${title}\n\n${body}`)) === 'skipped') throw new Error('Texting isn’t set up on the server (Twilio keys missing).');

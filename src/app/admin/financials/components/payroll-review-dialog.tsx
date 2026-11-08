@@ -728,6 +728,8 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
         }
     };
 
+    // Approve / Return in progress — the button shows it and can't be pressed twice.
+    const [statusBusy, setStatusBusy] = useState<WeeklyLog['status'] | null>(null);
     const handleStatusChange = async (status: WeeklyLog['status']) => {
         // Approving a log needs admin.logs.approve; sending it back
         // (Rejected/Draft) needs admin.logs.return.
@@ -740,8 +742,9 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             toast({ variant: 'destructive', title: 'Decide the flagged jobs first', description: `${undecidedCount} flagged job${undecidedCount === 1 ? '' : 's'} still need a yes or no.` });
             return;
         }
-        if (localLog) {
+        if (localLog && !statusBusy) {
             const finalTotal = calculatedTotalPayout;
+            setStatusBusy(status);
             try {
                 const logRef = doc(db, 'weeklyLogs', localLog.id);
                 // Record when (and by whom) a log was approved — Payroll Audit shows
@@ -751,7 +754,13 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                     ? { approvedAt: new Date().toISOString(), approvedBy: auth.currentUser?.uid || null, approvedByName: authUser?.name || auth.currentUser?.displayName || 'Admin', mergeReviewRequired: false }
                     : { approvedAt: null, approvedBy: null, approvedByName: null };
                 await updateDoc(logRef, { status, totalPayout: finalTotal, ...approval });
+                // Show the result right away (the review flips to Approved/Returned).
+                setLocalLog(prev => prev ? { ...prev, status, totalPayout: finalTotal, ...approval } as WeeklyLog : prev);
                 onStatusChange(localLog.id, status, finalTotal);
+                toast({
+                    title: status === 'Approved' ? 'Log approved' : status === 'Rejected' ? 'Returned to tech' : 'Log updated',
+                    description: status === 'Approved' ? `${technician?.name ?? 'Tech'} · week of ${localLog.weekOf} · $${finalTotal.toFixed(2)}` : undefined,
+                });
                 if (localLog.techId && status !== localLog.status) {
                     const msg = status === 'Approved'
                         ? { title: 'Weekly log approved', body: `Your log for ${localLog.weekOf} was approved — $${finalTotal.toFixed(2)}.` }
@@ -762,16 +771,19 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                 }
                 const adminId = auth.currentUser?.uid ?? '';
                 const adminName = auth.currentUser?.displayName ?? 'Admin';
-                await auditEvent(
+                // The audit record shouldn't hold up the screen.
+                auditEvent(
                     'weeklyLogs',
                     localLog.id,
                     adminId,
                     adminName,
                     `payroll_${status.toLowerCase()}`,
                     `Log for week of ${localLog.weekOf} (tech: ${technician?.name ?? localLog.techId}) ${status.toLowerCase()} by ${adminName}. Total payout: $${finalTotal.toFixed(2)}`
-                );
+                ).catch(() => {});
             } catch (e: any) {
                 toast({ variant: 'destructive', title: 'Could not save', description: e.message });
+            } finally {
+                setStatusBusy(null);
             }
         }
     };
@@ -2253,15 +2265,16 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                         ) : (canApproveLog || canReturnLog) ? (
                             <>
                                 {canReturnLog && localLog?.status === 'Submitted' && (
-                                    <Button variant="destructive-outline" className="w-full sm:w-auto order-3 sm:order-1 h-10 px-6" onClick={() => handleStatusChange('Rejected')}>
-                                        <X size={16} className="mr-2"/> Return to tech
+                                    <Button variant="destructive-outline" className="w-full sm:w-auto order-3 sm:order-1 h-10 px-6" disabled={!!statusBusy} onClick={() => handleStatusChange('Rejected')}>
+                                        {statusBusy === 'Rejected' ? <Loader2 size={16} className="mr-2 animate-spin"/> : <X size={16} className="mr-2"/>}
+                                        {statusBusy === 'Rejected' ? 'Returning…' : 'Return to tech'}
                                     </Button>
                                 )}
                                 <div className="hidden sm:block flex-1 order-2" />
                                 <Button variant="outline" className="w-full sm:w-auto order-2 sm:order-3 h-10 px-6" onClick={() => setIsOpen(false)}>Close</Button>
                                 {canApproveLog && (
                                     <Button
-                                        disabled={!canApproveNow}
+                                        disabled={!canApproveNow || !!statusBusy}
                                         title={canApproveNow ? undefined : undecidedCount ? 'Answer every flagged job under Needs a decision first' : 'Verify every job before approving'}
                                         className={cn(
                                             "w-full sm:w-auto order-1 sm:order-4 h-10 px-6 sm:px-8 shadow-sm transition-all",
@@ -2269,8 +2282,8 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                         )}
                                         onClick={() => handleStatusChange('Approved')}
                                     >
-                                        <Check size={16} className="mr-2"/>
-                                        {undecidedCount > 0
+                                        {statusBusy === 'Approved' ? <Loader2 size={16} className="mr-2 animate-spin"/> : <Check size={16} className="mr-2"/>}
+                                        {statusBusy === 'Approved' ? 'Approving…' : undecidedCount > 0
                                             ? `Decide the ${undecidedCount} flagged job${undecidedCount === 1 ? '' : 's'} first`
                                             : isManifestFullyAudited ? 'Approve log' : `Verify ${totalJobsCount - auditCompleteCount} more to approve`}
                                     </Button>

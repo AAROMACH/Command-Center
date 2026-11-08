@@ -224,6 +224,8 @@ export default function PublicClientIntakePage() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+      // Confirmation email to the customer (replies go to support). Best effort.
+      fetch('/api/public-request/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: docId }) }).catch(() => {});
 
       setSubmittedCode(requestCode);
       setSubmitted(true);

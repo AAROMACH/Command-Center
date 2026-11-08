@@ -338,7 +338,16 @@ function QuoteDetailDialog({
       // An approver sending their own (or an unapproved) quote approves it.
       ...(isApproved(quote.internalApproval) ? {} : { internalApproval: approvedNow(me, quote.internalApproval) }),
     });
-    toast({ title: 'Quote sent', description: 'Status updated to Sent.' });
+    // Email it to the customer (billing email with your banner).
+    try {
+      const t = await auth.currentUser?.getIdToken();
+      const r = await fetch('/api/quotes/send', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` }, body: JSON.stringify({ quoteId: quote.id }) });
+      const d = await r.json().catch(() => ({}));
+      if (d.emailed) toast({ title: 'Quote sent', description: `Emailed to ${d.to}.` });
+      else toast({ variant: r.ok ? undefined : 'destructive', title: 'Quote marked as sent', description: d.error || d.reason || 'It wasn’t emailed.' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Quote marked as sent', description: 'Couldn’t email it — copy the link and send it by hand.' });
+    }
   };
 
   const handleCopyLink = () => {
@@ -525,7 +534,7 @@ function QuoteDetailDialog({
                   {mayRelease && (
                     <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white col-span-2"
                       onClick={handleSend} disabled={acting}>
-                      <Send size={14} className="mr-1.5" />Mark as sent
+                      <Send size={14} className="mr-1.5" />Send quote
                     </Button>
                   )}
                   <Button size="sm" variant="outline" className="h-8 border-brand-red/30 text-brand-red hover:bg-brand-red/5"

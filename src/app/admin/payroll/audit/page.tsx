@@ -31,7 +31,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ArrowLeft, Receipt, Search, ChevronDown, ChevronRight, DollarSign, CheckCircle, Clock, X, Download, Plus, SlidersHorizontal, MergeIcon, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isWithinInterval } from 'date-fns';
-import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder, PayrollDispute, FinancialRecord } from '@/lib/types';
+import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder, FinancialRecord } from '@/lib/types';
 import { getSubroles, isClient, isSuperAdmin } from '@/lib/permissions';
 import { mergeJobs, parseLocalDate } from '@/lib/jobs';
 import { effectiveJobPay, computeWeeklyLogSettlement, computeWeeklyLogPay, type WeeklyLogPay } from '@/lib/payroll';
@@ -40,14 +40,12 @@ import { downloadPaystub } from '@/lib/paystub';
 import { auditEvent } from '@/lib/audit';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { PayrollTicketDecision } from '@/components/payroll-ticket-decision';
-import { PAYOUT_LABEL, adjustmentForText, createPayAdjustment, jobLabelFor, payoutStatus } from '@/lib/pay-adjustments';
+import { PAYOUT_LABEL, adjustmentForText, createPayAdjustment, jobLabelFor, payoutStatus, findStaleLogAdjustments, removeStaleLogAdjustments } from '@/lib/pay-adjustments';
 import { PAYOUT_BADGE, PayrollAdjustmentDialog } from '@/components/payroll-adjustment-dialog';
 import { HeldJobsPanel } from '@/components/held-jobs-panel';
 import { heldJobs } from '@/lib/pay-holds';
 import { StaffPayPanel } from '@/components/staff-pay-panel';
 import { WagesButton } from '@/components/wages-dialog';
-import { PAYROLL_TICKET_CARDS } from '@/lib/disputes';
 import { PayrollReviewDialog } from '@/app/admin/financials/components/payroll-review-dialog';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
 import { displayWorkOrderNumber } from '@/lib/work-order-identity';
@@ -126,7 +124,6 @@ export default function PayrollAuditPage() {
     const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
     const [editingAdj, setEditingAdj] = useState<any | null>(null);
     // Reviewed disputes leave the alert list after their first review.
-    const [showReviewed, setShowReviewed] = useState(false);
     const [adjustForm, setAdjustForm] = useState({ techId: '', jobKey: '', amount: '', reason: '' });
     // Linked to a job: the pay correction calculator decides the amount.
     const [adjCalc, setAdjCalc] = useState<PayCorrection | null>(null);
@@ -135,9 +132,7 @@ export default function PayrollAuditPage() {
     // Draft — surfaced under Adjustments so they're visible without opening
     // each log's own review dialog. See payroll-review-dialog.tsx's
     // "Post-Approval Disputes" tab for the per-log view of the same data.
-    const [payrollDisputes, setPayrollDisputes] = useState<PayrollDispute[]>([]);
     const { hasPermission } = useAuth();
-    const canDecideTickets = hasPermission('admin.logs.approve');
     const [adjSearch, setAdjSearch] = useState('');
     // Weekly-log audit review (moved here from the Accounting page).
     const [reviewLog, setReviewLog] = useState<WeeklyLog | null>(null);
@@ -146,6 +141,21 @@ export default function PayrollAuditPage() {
     const [assignments, setAssignments] = useState<WorkOrder[]>([]);
     const missions = useMemo(() => mergeJobs(workOrders, assignments), [workOrders, assignments]);
     const jobsById = useMemo(() => new Map(missions.map(m => [m.id, m])), [missions]);
+    const [cleaning, setCleaning] = useState(false);
+    const cleanDuplicateAdjustments = async () => {
+        setCleaning(true);
+        try {
+            const found = await findStaleLogAdjustments();
+            const total = found.reduce((s, c) => s + c.remove.length, 0);
+            if (!total) { toast({ title: "No duplicates", description: "Every adjustment on a log matches the adjustments list." }); return; }
+            const lines = found.map(c => `\u2022 ${technicians.find(t => t.id === c.techId)?.name || c.techId}, week of ${c.weekOf}${c.paid ? " (paid)" : ""}: remove ${c.remove.map(a => `${a.amount >= 0 ? "+" : "-"}\$${Math.abs(a.amount).toFixed(2)}`).join(", ")}`).join("\n");
+            if (!window.confirm(`Remove ${total} leftover adjustment copies from logs?\n\n${lines}\n\nOnly copies that aren't in the adjustments list (or belong to another week) are removed. Open logs are re-totaled; paid logs keep the total that was paid.`)) return;
+            const n = await removeStaleLogAdjustments(found, jobsById);
+            toast({ title: "Duplicates removed", description: `Removed ${n} leftover adjustment${n === 1 ? "" : "s"} from logs.` });
+        } catch (e) {
+            toast({ title: "Couldn't clean up", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+        } finally { setCleaning(false); }
+    };
     // Memoized per-log settlement so every display/export site (row totals,
     // CSV, summary chips, Paystub History) reads the exact same number as
     // the review dialog's "Net Tech Settlement" — computed once per log
@@ -189,10 +199,7 @@ export default function PayrollAuditPage() {
         const unsubAsmt = onSharedSnapshot('assignments', snap => {
             setAssignments(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
         });
-        const unsubDisputes = onSharedSnapshot('payrollDisputes', snap => {
-            setPayrollDisputes(snap.docs.map(d => ({ ...d.data(), id: d.id } as PayrollDispute)));
-        });
-        return () => { unsubT(); unsubL(); unsubAdj(); unsubWO(); unsubAsmt(); unsubDisputes(); };
+        return () => { unsubT(); unsubL(); unsubAdj(); unsubWO(); unsubAsmt(); };
     }, []);
 
     // The open log is kept in the address (?log=<id>) so a refresh reopens it.
@@ -488,15 +495,6 @@ export default function PayrollAuditPage() {
     // One search box for disputes and adjustments: tech, week, reason, notes, amount.
     const adjQuery = adjSearch.trim().toLowerCase();
     const techNameOf = (id: string) => technicians.find(t => t.id === id)?.name || '';
-    const sortedDisputes = useMemo(() => [...payrollDisputes]
-        .filter(d => !adjQuery || [d.techName, techNameOf(d.techId), d.weekOf, d.reason?.replace(/_/g, ' '), d.notes, d.workOrderId, d.status]
-            .some(v => (v || '').toLowerCase().includes(adjQuery)))
-        .sort((a, b) => (a.status === b.status ? (b.createdAt || '').localeCompare(a.createdAt || '') : a.status === 'open' ? -1 : 1)),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [payrollDisputes, adjQuery, technicians]);
-    const reviewedCount = payrollDisputes.filter(d => d.status !== 'open').length;
-    const shownDisputes = useMemo(() => sortedDisputes.filter(d => showReviewed || d.status === 'open'), [sortedDisputes, showReviewed]);
-    const disputePager = usePaged(shownDisputes, PAGE_SIZES_SMALL, 'payroll-disputes', [adjQuery, showReviewed]);
     const logsById = useMemo(() => new Map(weeklyLogs.map(l => [l.id, l])), [weeklyLogs]);
     const canEditAdjustments = isSuperAdmin(currentUser) || getSubroles(currentUser).includes('payroll_admin');
     // New adjustments carry `at`; older record-only ones a `date`.
@@ -896,7 +894,7 @@ export default function PayrollAuditPage() {
                         { value: 'projects', label: 'Project timesheets', short: 'Projects', count: 0 },
                         { value: 'history', label: 'Paystub history', short: 'Paystubs', count: approvedLogsByTech.length },
                         { value: 'staff', label: 'Staff pay', short: 'Staff', count: 0 },
-                        { value: 'adjustments', label: 'Adjustments', count: adjustments.length + payrollDisputes.filter(d => d.status === 'open').length },
+                        { value: 'adjustments', label: 'Adjustments', count: adjustments.length },
                         { value: 'holds', label: 'Holds', count: heldCount },
                     ].map(t => (
                         <TabsTrigger key={t.value} value={t.value} className="tab-underline">
@@ -1077,80 +1075,18 @@ export default function PayrollAuditPage() {
 
                 {/* ── Adjustments ── */}
                 <TabsContent value="adjustments" className="m-0 space-y-4">
-                    {/* Post-approval disputes — a tech disputing a job/log after
-                        payout is an adjustment candidate just like a manual one,
-                        so it lives here instead of only inside each log's own
-                        review dialog. Open ones first, resolved ones collapsed
-                        underneath for a paper trail. */}
-                    {(payrollDisputes.length > 0 || adjustments.length > 0) && (
+                    {adjustments.length > 0 && (
                         <SearchField className="max-w-md" placeholder="Search tech, week, reason, notes…" value={adjSearch} onChange={setAdjSearch} />
-                    )}
-                    {payrollDisputes.length > 0 && (
-                        <div className="space-y-2">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                <p className="text-[13px] font-semibold text-text-primary">
-                                    Payroll disputes ({payrollDisputes.filter(d => d.status === 'open').length} open)
-                                </p>
-                                {reviewedCount > 0 && (
-                                    <button type="button" className="text-[12px] text-text-muted hover:text-text-primary underline-offset-2 hover:underline" onClick={() => setShowReviewed(v => !v)}>
-                                        {showReviewed ? 'Hide reviewed' : `Show reviewed (${reviewedCount})`}
-                                    </button>
-                                )}
-                            </div>
-                            {shownDisputes.length === 0 && (
-                                <p className="text-[12px] text-text-muted py-2">{sortedDisputes.length ? 'No open disputes — reviewed ones are in the adjustments below.' : 'No disputes match this search.'}</p>
-                            )}
-                            <div className="space-y-2">
-                                {disputePager.items.map(dispute => {
-                                    const isOpenDispute = dispute.status === 'open';
-                                    const reasonLabel = PAYROLL_TICKET_CARDS[dispute.reason]?.title || 'Pay is wrong';
-                                    const relatedJob = dispute.workOrderId ? jobsById.get(dispute.workOrderId) : undefined;
-                                    const relatedLog = weeklyLogs.find(l => l.id === dispute.weeklyLogId);
-                                    return (
-                                        <div key={dispute.id} className={cn(
-                                            "p-3 rounded-lg border flex flex-col sm:flex-row sm:items-center gap-3",
-                                            isOpenDispute ? "bg-brand-red-dim/10 border-brand-red/30" : "bg-bg-secondary border-border-sub opacity-70"
-                                        )}>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                    <Badge variant="outline" className={cn("text-[10px] h-3.5 px-1.5", isOpenDispute ? "border-brand-red/40 text-brand-red bg-brand-red/5" : "border-text-green/40 text-text-green bg-text-green/5")}>
-                                                        {reasonLabel}
-                                                    </Badge>
-                                                    <span className="text-[10px] font-bold text-text-primary uppercase tracking-wide">{dispute.techName}</span>
-                                                    <span className="text-[11px] text-text-muted font-mono">Week of {dispute.weekOf}</span>
-                                                    {relatedJob && <span className="text-[11px] text-text-muted font-mono">{relatedJob.title || relatedJob.description || dispute.workOrderId?.toUpperCase()}</span>}
-                                                </div>
-                                                <p className="text-[12px] text-text-secondary leading-relaxed mt-1">{dispute.notes}</p>
-                                                <p className="text-[10px] text-text-muted font-mono mt-1">
-                                                    {new Date(dispute.createdAt).toLocaleString()}
-                                                </p>
-                                                <div className="mt-2">
-                                                    <PayrollTicketDecision dispute={dispute} canDecide={canDecideTickets} fallbackName={currentUser?.name} sourceLog={relatedLog} jobsById={jobsById} />
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2 shrink-0">
-                                                {relatedLog && (
-                                                    <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-wider" onClick={() => openReview(relatedLog)}>
-                                                        <Receipt size={12} className="mr-1.5" /> View Log
-                                                    </Button>
-                                                )}
-                                                {!isOpenDispute && (
-                                                    <Badge variant="active" className="h-6 px-3 text-[10px] uppercase tracking-wider">Resolved</Badge>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            <ListPager pager={disputePager} noun="disputes" />
-                        </div>
                     )}
 
                     <div className="flex items-center justify-between">
                         <p className="text-[13px] font-semibold text-text-primary">{adjQuery ? `${sortedAdjustments.length} of ${adjustments.length}` : adjustments.length} adjustment{adjustments.length !== 1 ? 's' : ''}</p>
+                        <div className="flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline" className="h-8" disabled={cleaning} onClick={cleanDuplicateAdjustments}>{cleaning ? "Checking…" : "Clean up duplicates"}</Button>
                         <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setAdjustDialogOpen(true)}>
                             <Plus size={14} className="mr-1.5" /> Add adjustment
                         </Button>
+                        </div>
                     </div>
                     <div className="rounded-xl border border-border-sub overflow-hidden">
                         <Table>

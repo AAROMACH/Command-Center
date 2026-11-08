@@ -483,10 +483,25 @@ export default function PayrollAuditPage() {
     const adjustJobChoices = useMemo(() => weeklyLogs
         .filter(l => l.techId === adjustForm.techId && l.status === 'Approved')
         .sort((a, b) => (b.weekOf.split('-').reverse().join('')).localeCompare(a.weekOf.split('-').reverse().join('')))
-        .slice(0, 12)
-        .flatMap(l => (l.items || []).map(i => ({ key: `${l.id}|${i.workOrderId}`, log: l, workOrderId: i.workOrderId,
-            label: `Week of ${l.weekOf} · ${jobLabelFor(jobsById.get(i.workOrderId), i.workOrderId)}` }))),
+        .flatMap(l => (l.items || []).map(i => {
+            const job = jobsById.get(i.workOrderId);
+            return {
+                key: `${l.id}|${i.workOrderId}`, log: l, workOrderId: i.workOrderId,
+                label: `Week of ${l.weekOf} · ${jobLabelFor(job, i.workOrderId)}`,
+                // What the search box matches: assignment #, WO #, job name, client.
+                haystack: [i.workOrderId, job ? displayWorkOrderNumber(job) : '', job?.externalWorkOrderId, job?.title, job?.description, job?.clientName, l.weekOf]
+                    .filter(Boolean).join(' ').toLowerCase(),
+            };
+        })),
         [weeklyLogs, adjustForm.techId, jobsById]);
+    // "For job" search: assignment number, work order number or job name.
+    const [adjJobQuery, setAdjJobQuery] = useState('');
+    const adjJobMatches = useMemo(() => {
+        const q = adjJobQuery.trim().toLowerCase();
+        const words = q.split(/\s+/).filter(Boolean);
+        return (words.length ? adjustJobChoices.filter(j => words.every(w => j.haystack.includes(w))) : adjustJobChoices).slice(0, 8);
+    }, [adjustJobChoices, adjJobQuery]);
+    const pickedAdjJob = adjustJobChoices.find(j => j.key === adjustForm.jobKey);
     // Copy before sorting — sorting the state array in render mutated it.
     const sortedAdjustments = useMemo(() => [...adjustments]
         .filter(a => !adjQuery || [techNameOf(a.techId), a.techId, a.reason, a.addedBy, a.by, a.date, a.jobLabel, a.sourceWeekOf, a.appliedWeekOf, String(a.amount ?? '')]
@@ -1204,13 +1219,34 @@ export default function PayrollAuditPage() {
                         </div>
                         <div className="space-y-1">
                             <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">For job (optional)</Label>
-                            <Select value={adjustForm.jobKey || 'none'} onValueChange={v => setAdjustForm(p => ({ ...p, jobKey: v === 'none' ? '' : v }))} disabled={!adjustForm.techId}>
-                                <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue placeholder="Pick a job from an approved week…" /></SelectTrigger>
-                                <SelectContent className="bg-bg-elevated border-border-main max-h-[300px]">
-                                    <SelectItem value="none">Not for a specific job</SelectItem>
-                                    {adjustJobChoices.map(j => <SelectItem key={j.key} value={j.key} className="text-[12px]">{j.label}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                            {pickedAdjJob ? (
+                                <div className="flex items-center gap-2 rounded-md border border-border-main bg-bg-secondary px-3 py-2">
+                                    <span className="min-w-0 flex-1 text-[12px] text-text-primary break-words">{pickedAdjJob.label}</span>
+                                    <button type="button" className="shrink-0 text-[12px] font-medium text-brand-red hover:underline"
+                                        onClick={() => setAdjustForm(p => ({ ...p, jobKey: '' }))}>Change</button>
+                                </div>
+                            ) : (
+                                <div className="space-y-1.5">
+                                    <SearchField value={adjJobQuery} onChange={setAdjJobQuery}
+                                        placeholder={adjustForm.techId ? 'Assignment #, WO # or job name' : 'Pick a technician first'} />
+                                    {adjustForm.techId && (
+                                        <div className="max-h-[220px] overflow-y-auto rounded-md border border-border-sub divide-y divide-border-sub">
+                                            {adjJobMatches.length === 0 ? (
+                                                <p className="px-3 py-3 text-[12px] text-text-muted">{adjustJobChoices.length ? 'No jobs match.' : 'No jobs on an approved week yet.'}</p>
+                                            ) : adjJobMatches.map(j => (
+                                                <button key={j.key} type="button" className="w-full px-3 py-2 text-left text-[12px] text-text-primary hover:bg-bg-tertiary"
+                                                    onClick={() => { setAdjustForm(p => ({ ...p, jobKey: j.key })); setAdjJobQuery(''); }}>
+                                                    {j.label}
+                                                </button>
+                                            ))}
+                                            {!adjJobQuery.trim() && adjustJobChoices.length > adjJobMatches.length && (
+                                                <p className="px-3 py-2 text-[11px] text-text-muted">Showing the latest {adjJobMatches.length} of {adjustJobChoices.length}. Search to find older jobs.</p>
+                                            )}
+                                        </div>
+                                    )}
+                                    <p className="text-[11px] text-text-muted">Leave empty if it isn’t for a specific job.</p>
+                                </div>
+                            )}
                         </div>
                         <div className="space-y-1">
                             <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Amount (use negative for deductions)</Label>

@@ -234,3 +234,53 @@ export async function setAdjustmentPaid(adj: PayAdjustment, paid: boolean, by: s
     tx.update(doc(db, 'payrollAdjustments', adj.id), patch);
   });
 }
+
+/**
+ * payrollAdjustments is the source of truth. A log's copy is kept only if
+ * that adjustment still exists and says it's applied on THIS log; leftovers
+ * from older flows (deleted, moved, or copied twice) are stripped.
+ * Paid logs keep their totalPayout (that's what was paid); open logs are re-totaled.
+ */
+export type AdjustmentCleanup = { logId: string; weekOf: string; techId: string; paid: boolean; remove: PayAdjustment[]; keep: PayAdjustment[] };
+
+export async function findStaleLogAdjustments(): Promise<AdjustmentCleanup[]> {
+  const [adjSnap, logSnap] = await Promise.all([getDocs(collection(db, 'payrollAdjustments')), getDocs(collection(db, 'weeklyLogs'))]);
+  const live = new Map(adjSnap.docs.map(d => [d.id, d.data() as PayAdjustment]));
+  return logSnap.docs.map(d => staleAdjustmentsOn({ ...d.data(), id: d.id } as WeeklyLog, live)).filter((c): c is AdjustmentCleanup => !!c);
+}
+
+/** Pure: which of this log's adjustment copies are leftovers. */
+export function staleAdjustmentsOn(log: WeeklyLog, live: Map<string, Pick<PayAdjustment, 'appliedLogId'>>): AdjustmentCleanup | null {
+  const seen = new Set<string>();
+  const keep: PayAdjustment[] = [], remove: PayAdjustment[] = [];
+  (log.payAdjustments || []).forEach(a => {
+    const src = live.get(a.id);
+    const ok = !!src && !seen.has(a.id) && src.appliedLogId === log.id;
+    seen.add(a.id);
+    (ok ? keep : remove).push(a);
+  });
+  return remove.length ? { logId: log.id, weekOf: log.weekOf, techId: log.techId, paid: !!log.paid, remove, keep } : null;
+}
+
+export async function removeStaleLogAdjustments(items: AdjustmentCleanup[], jobsById: Map<string, WorkOrder>): Promise<number> {
+  let n = 0;
+  for (const c of items) {
+    await runTransaction(db, async tx => {
+      const ref = doc(db, 'weeklyLogs', c.logId);
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const log = { ...snap.data(), id: snap.id } as WeeklyLog;
+      const drop = new Set(c.remove.map(a => a.id));
+      const seen = new Set<string>();
+      const keepIds = new Set(c.keep.map(a => a.id));
+      const list = (log.payAdjustments || []).filter(a => {
+        if (drop.has(a.id) && !keepIds.has(a.id)) return false;
+        if (seen.has(a.id)) return false;
+        seen.add(a.id); return true;
+      });
+      n += (log.payAdjustments || []).length - list.length;
+      tx.update(ref, log.paid ? { payAdjustments: list } : { payAdjustments: list, totalPayout: computeWeeklyLogSettlement({ ...log, payAdjustments: list }, jobsById) });
+    });
+  }
+  return n;
+}

@@ -1,7 +1,6 @@
 'use client';
 import { ClientField, SiteAddressField, clientByName, useClientDirectory } from '@/components/client-fields';
 import { JobInvoicePanel } from '@/components/job-invoice';
-import { logDisplayStatus } from '@/lib/weekly-log-core';
 import { flagRemovedHelperEntries } from '@/lib/helper-progress';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
 
@@ -12,13 +11,15 @@ import dynamic from 'next/dynamic';
 import { db, auth } from '@/lib/firebase';
 import { NotificationService } from '@/lib/notification-service';
 import {
-  doc, getDoc, collection, query, where, onSnapshot,
+  doc, getDoc, collection, onSnapshot,
   updateDoc, arrayUnion, arrayRemove, setDoc, deleteDoc, deleteField,
 } from 'firebase/firestore';
-import type { WorkOrder, Technician, WeeklyLog } from '@/lib/types';
-import { effectiveJobPay } from '@/lib/payroll';
+import type { WorkOrder, Technician } from '@/lib/types';
 import { StatusBadge } from '@/components/status-badge';
-import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/page-header';
+import { EmptyState, LoadingState, PageLoading } from '@/components/empty-state';
+import { statusLabel } from '@/lib/status-styles';
+import { PayHistorySection, useAssignmentPayHistory } from './pay-history';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,9 +29,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import {
-  ArrowLeft, ShieldCheck, Phone, Mail, Calendar, Clock, DollarSign,
+  ShieldCheck, Phone, Calendar, Clock, DollarSign,
   Briefcase, MapPin, Navigation, AlertTriangle, Users, UserPlus,
-  ArrowLeftRight, Check, Flag, Activity, MessageSquare, ExternalLink, Wrench,
+  ArrowLeftRight, Flag, Activity, MessageSquare, ExternalLink, Wrench,
   Pencil, Type, FileText,
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -43,19 +44,11 @@ import { syncWeeklyLogForAdminStatusEdit, moveJobLogOnSwap, describeSwapLogMove 
 
 const AssignmentMap = dynamic(() => import('./assignment-map'), { ssr: false });
 
-// Deterministic avatar color from full name
-function getTechBg(name: string): string {
-  const palette = ['#e11d48','#9333ea','#0ea5e9','#d97706','#059669','#6366f1','#0d9488','#dc2626'];
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = ((h << 5) - h + name.charCodeAt(i)) >>> 0;
-  return palette[h % palette.length];
-}
-
 function getStatusLabel(status: string) {
   return ({
     unassigned: 'Unassigned', assigned: 'Assigned', confirmed: 'Confirmed',
-    'on-my-way': 'En Route', 'in-progress': 'In Progress',
-    'checked-out': 'Checked Out', completed: 'Completed',
+    'on-my-way': 'En route', 'in-progress': 'In progress',
+    'checked-out': 'Checked out', completed: 'Completed',
   } as Record<string, string>)[status] || status;
 }
 
@@ -82,42 +75,22 @@ function parseScheduleDate(s: string): Date | null {
 }
 
 // ── Tech card ────────────────────────────────────────────────────────────────
-function TechCard({ tech, label }: { tech: Technician; label?: string }) {
-  const bg = getTechBg(tech.name);
-  const isPrimary = label === 'PRIMARY';
+function TechCard({ tech, role }: { tech: Technician; role: 'lead' | 'helper' }) {
   return (
-    <div className="flex items-center gap-3 p-3 bg-bg-primary/40 rounded-xl border border-border-sub h-full">
-      <div
-        className="h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"
-        style={{ background: bg }}
-      >
+    <div className="flex h-full items-center gap-3 rounded-xl border border-border-sub bg-bg-primary/40 p-3">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bg-tertiary text-sm font-semibold text-text-primary">
         {tech.name.charAt(0)}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 mb-1">
-          <p className="text-[11px] font-bold text-text-primary truncate">{tech.name}</p>
-          {label && (
-            <span
-              className="shrink-0 text-[10px] font-bold uppercase tracking-wider px-1.5 py-px rounded border"
-              style={{
-                background: isPrimary ? 'var(--green-dim)' : 'var(--accent-gold-dim)',
-                color: isPrimary ? 'var(--text-green)' : 'var(--accent-gold)',
-                borderColor: isPrimary ? 'var(--border-green)' : 'var(--border-gold)',
-              }}
-            >
-              {label}
-            </span>
-          )}
+        <div className="mb-0.5 flex items-center gap-1.5">
+          <p className="truncate text-[13px] font-semibold text-text-primary">{tech.name}</p>
+          <StatusBadge kind="log" value={role === 'lead' ? 'paid' : 'submitted'} label={role === 'lead' ? 'Lead' : 'Helper'} className="shrink-0" />
         </div>
-        <div className="flex items-center gap-1.5 text-text-muted">
-          <Phone size={8} />
-          <Mail size={8} />
-          <div className="w-px h-3 bg-border-sub" />
-          <Calendar size={8} />
-          <span className="text-[11px] font-mono text-text-secondary">{tech.currentWorkload ?? '—'}</span>
-          <Clock size={8} />
-          <span className="text-[11px] font-mono text-text-secondary">—</span>
-        </div>
+        <p className="flex items-center gap-1.5 text-[11px] text-text-muted">
+          <Calendar size={11} />
+          <span className="font-mono text-text-secondary">{tech.currentWorkload ?? '—'}</span>
+          <span>active jobs</span>
+        </p>
       </div>
     </div>
   );
@@ -133,7 +106,6 @@ export default function AssignmentDetailPage() {
   const [assignment, setAssignment] = useState<WorkOrder | null>(null);
   const [sourceCollection, setSourceCollection] = useState<'assignments' | 'workOrders'>('assignments');
   const [tech, setTech] = useState<Technician | null>(null);
-  const [relatedLogs, setRelatedLogs] = useState<WeeklyLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [allTechs, setAllTechs] = useState<Technician[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -141,7 +113,7 @@ export default function AssignmentDetailPage() {
   const [swapTechId, setSwapTechId] = useState('');
   const [helperOpen, setHelperOpen] = useState(false);
   const [helperTechId, setHelperTechId] = useState('');
-  const [detailView, setDetailView] = useState<'overview' | 'history'>('overview');
+  const [detailView, setDetailView] = useState<'overview' | 'pay' | 'history'>('overview');
   const [historyTypeFilter, setHistoryTypeFilter] = useState('all');
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editedOrder, setEditedOrder] = useState<WorkOrder | null>(null);
@@ -183,25 +155,14 @@ export default function AssignmentDetailPage() {
     });
   }, [assignment?.assignedTechnicianId, assignment?.techId]);
 
-  // Weekly logs
-  useEffect(() => {
-    if (!assignment) return;
-    // The assigned tech (same rule as everywhere else) owns the log.
-    const tid = jobTechId(assignment);
-    if (!tid) return;
-    return onSnapshot(
-      query(collection(db, 'weeklyLogs'), where('techId', '==', tid)),
-      s => setRelatedLogs(
-        s.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyLog))
-          .filter(l => l.items?.some(i => i.workOrderId === assignmentId))
-      )
-    );
-  }, [assignment, assignmentId]);
-
   // All techs (for dialogs)
   useEffect(() => onSharedSnapshot('users', s => {
     setAllTechs(s.docs.map(d => ({ ...d.data(), id: d.id } as Technician)));
   }), []);
+
+  // Pay history: every weekly-log line (lead + helpers), approvals, holds,
+  // disputes and pay adjustments for this job (lib/assignment-pay-history).
+  const payHistory = useAssignmentPayHistory(assignment, assignmentId, allTechs);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleSwapTech = async () => {
@@ -392,29 +353,12 @@ export default function AssignmentDetailPage() {
   };
 
   // ── Loading / not found ───────────────────────────────────────────────────
-  // This job's pay on a weekly log (FN fee/split applied) — not the whole
-  // week's total, which also went stale after pay corrections.
-  const jobPayIn = (log: WeeklyLog) => {
-    const item = log.items?.find(i => i.workOrderId === assignmentId);
-    return item ? effectiveJobPay(item, assignment ?? undefined) : 0;
-  };
-
-  if (loading) return (
-    <div className="flex items-center justify-center py-24">
-      <p className="text-xs font-bold text-text-muted animate-pulse">Loading assignment...</p>
-    </div>
-  );
+  if (loading) return <PageLoading label="Loading assignment…" />;
 
   if (!assignment) return (
-    <div className="space-y-4">
-      <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold text-text-muted" onClick={() => router.back()}>
-        <ArrowLeft size={13} className="mr-1.5" /> Back
-      </Button>
-      <div className="py-24 text-center border border-dashed border-border-sub rounded-xl">
-        <AlertTriangle size={32} className="mx-auto text-text-muted mb-2 opacity-40" />
-        <p className="text-xs font-bold text-text-muted">Assignment not found</p>
-        <p className="text-[10px] text-text-muted mt-1">{assignmentId}</p>
-      </div>
+    <div className="space-y-4 text-left">
+      <PageHeader back={{ href: '/admin/assignments', label: 'Assignments' }} eyebrow="Assignment" icon={Briefcase} title="Assignment not found" />
+      <EmptyState icon={AlertTriangle} title="Assignment not found" description={<span className="font-mono">{assignmentId}</span>} />
     </div>
   );
 
@@ -431,181 +375,138 @@ export default function AssignmentDetailPage() {
   const endTime = (assignment as any).scheduleEndTime;
 
   const riskLabel =
-    assignment.slaStatus === 'at-risk' ? 'At Risk'
+    assignment.slaStatus === 'at-risk' ? 'At risk'
     : assignment.slaStatus === 'breached' ? 'Breached'
-    : (assignment.revisitCount || 0) > 0 ? 'At Risk'
-    : assignment.slaStatus === 'on-track' ? 'On Track'
+    : (assignment.revisitCount || 0) > 0 ? 'At risk'
+    : assignment.slaStatus === 'on-track' ? 'On track'
     : assignment.slaStatus === 'met' ? 'Met'
     : '—';
 
   const dateObj = parseScheduleDate(assignment.scheduleDate);
-  const dayName  = dateObj ? format(dateObj, 'EEEE').toUpperCase() : '—';
-  const monthStr = dateObj ? format(dateObj, 'MMM').toUpperCase() : '—';
+  const dayName  = dateObj ? format(dateObj, 'EEEE') : '—';
+  const monthStr = dateObj ? format(dateObj, 'MMMM') : '—';
   const dayNum   = dateObj ? format(dateObj, 'd') : '—';
   const yearStr  = dateObj ? format(dateObj, 'yyyy') : '—';
 
-  const HISTORY_COLORS = ['var(--text-green)', 'var(--accent-gold)', 'var(--brand-blue)', 'var(--priority-critical)'];
+  const HISTORY_DOTS = ['bg-text-green', 'bg-accent-gold', 'bg-brand-blue', 'bg-brand-red'];
   const recentHistory = [...(assignment.history || [])].reverse().slice(0, 6);
 
-  const jobDetailRows: { label: string; value?: string; icon: React.ElementType }[] = [
+  const jobDetailRows: { label: string; value?: string; icon: React.ElementType; mono?: boolean }[] = [
     { label: 'Client',      value: assignment.clientName,                                          icon: Users },
     { label: 'Location',    value: assignment.location,                                             icon: MapPin },
-    { label: 'Job Type',    value: assignment.jobType || assignment.projectType,                   icon: Wrench },
+    { label: 'Job type',    value: assignment.jobType || assignment.projectType,                   icon: Wrench },
     { label: 'Pay',         value: payLabel,                                                        icon: DollarSign },
-    { label: 'Work Order',  value: assignment.externalWorkOrderId || assignmentId.toUpperCase(),   icon: ExternalLink },
+    { label: 'Work order',  value: assignment.externalWorkOrderId || assignmentId.toUpperCase(),   icon: ExternalLink, mono: true },
     { label: 'Source',      value: assignment.source || '—',                                       icon: Activity },
   ];
 
-  const statusStripItems = [
-    { icon: Flag,          label: 'Priority',   value: assignment.priority
-        ? assignment.priority.charAt(0).toUpperCase() + assignment.priority.slice(1) : '—',
-      color: assignment.priority === 'critical' ? 'var(--priority-critical)'
-        : assignment.priority === 'high' ? 'var(--priority-high)'
-        : assignment.priority === 'medium' ? 'var(--priority-medium)'
-        : undefined },
-    { icon: ShieldCheck,   label: 'Status',     value: getStatusLabel(assignment.status),
-      color: assignment.status === 'confirmed' || assignment.status === 'completed' ? 'var(--text-green)' : undefined },
-    { icon: AlertTriangle, label: 'Risk Level', value: riskLabel,
-      color: riskLabel === 'At Risk' || riskLabel === 'Breached' ? 'var(--accent-gold)' : undefined },
-    { icon: DollarSign,    label: 'Pay Type',   value: assignment.payType
-        ? assignment.payType.charAt(0).toUpperCase() + assignment.payType.slice(1) : '—',
-      color: undefined },
-    { icon: DollarSign,    label: 'Pay Amount', value: payLabel,
-      color: 'var(--text-green)' },
+  const cap = (s?: string) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '—';
+  const statusStripItems: { icon: React.ElementType; label: string; value: React.ReactNode; tone?: string }[] = [
+    { icon: Flag,          label: 'Priority',   value: cap(assignment.priority),
+      tone: assignment.priority === 'critical' || assignment.priority === 'high' ? 'text-text-red'
+        : assignment.priority === 'medium' ? 'text-accent-gold' : undefined },
+    { icon: ShieldCheck,   label: 'Status',     value: <StatusBadge kind="job" value={assignment.status} label={getStatusLabel(assignment.status)} /> },
+    { icon: AlertTriangle, label: 'Risk level', value: riskLabel,
+      tone: riskLabel === 'At risk' || riskLabel === 'Breached' ? 'text-accent-gold' : undefined },
+    { icon: DollarSign,    label: 'Pay type',   value: cap(assignment.payType) },
+    { icon: DollarSign,    label: 'Pay amount', value: payLabel, tone: 'text-text-green' },
   ];
 
+  const titleText = assignment.title || assignment.description?.split('\n')[0]?.slice(0, 80) || assignmentId.toUpperCase();
+  const cardCls = 'rounded-xl border border-border-sub bg-bg-secondary';
+  const sectionTitle = 'flex items-center gap-2 text-[13px] font-semibold text-text-primary';
+  const lineCount = payHistory?.lines.length ?? 0;
+
   return (
-    <div className="space-y-5 text-left pb-24">
+    <div className="space-y-5 text-left pb-24 min-w-0">
 
-      {/* Back ───────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm"
-          className="h-8 text-[10px] font-bold text-text-muted -ml-2"
-          onClick={() => router.back()}>
-          <ArrowLeft size={13} className="mr-1.5" /> Back to Assignments
-        </Button>
-        <Button size="sm" variant="outline"
-          className="h-8 text-[10px] uppercase font-bold tracking-wider gap-1.5 px-3"
-          onClick={handleOpenEdit}>
-          <Pencil size={10} /> Edit
-        </Button>
-      </div>
-
-      {/* Header ─────────────────────────────────────────────────────────── */}
-      <div className="space-y-2">
-        <div className="flex items-start gap-3 flex-wrap">
-          <h1 className="text-xl font-black tracking-tight text-text-primary leading-none">
-            {assignment.title || assignment.description?.split('\n')[0]?.slice(0, 80) || assignmentId.toUpperCase()}
-          </h1>
-          <ShieldCheck size={18} className="shrink-0 mt-0.5" style={{ color: 'var(--text-green)' }} />
-          {assignment.priority && (
-            <span
-              className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded border shrink-0 self-start"
-              style={{ background: 'color-mix(in srgb, var(--accent-gold) 10%, transparent)', color: 'var(--accent-gold)', borderColor: 'color-mix(in srgb, var(--accent-gold) 30%, transparent)' }}
-            >
-              {assignment.priority} Priority
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <span
-            className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded"
-            style={{ background: 'color-mix(in srgb, var(--text-green) 12%, transparent)', color: 'var(--text-green)', border: '1px solid color-mix(in srgb, var(--text-green) 25%, transparent)' }}
-          >
-            <Check size={9} /> {getStatusLabel(assignment.status)}
+      <PageHeader
+        back={{ href: '/admin/assignments', label: 'Assignments' }}
+        eyebrow="Assignment"
+        icon={Briefcase}
+        title={<span className="break-words">{titleText}</span>}
+        subtitle={
+          <span className="flex flex-wrap items-center gap-2">
+            <StatusBadge kind="job" value={assignment.status} label={getStatusLabel(assignment.status)} />
+            {assignment.priority && <StatusBadge kind="job" value={assignment.priority === 'critical' || assignment.priority === 'high' ? 'missed' : 'scheduled'} label={`${cap(assignment.priority)} priority`} />}
+            {assignment.isAudited && <StatusBadge kind="job" value="completed" label="Verified" />}
+            <span className="font-mono text-[12px] text-text-muted">{assignmentId.toUpperCase()}</span>
+            {assignment.shortId && assignment.shortId.toLowerCase() !== assignmentId.toLowerCase() && (
+              <span className="font-mono text-[12px] text-text-muted">· {assignment.shortId.toUpperCase()}</span>
+            )}
+            {assignment.source && <StatusBadge kind="job" value="confirmed" label={assignment.source} />}
           </span>
-          <span className="text-[10px] font-mono font-bold text-text-muted">{assignmentId.toUpperCase()}</span>
-          {assignment.shortId && (
-            <>
-              <span className="text-text-muted text-[10px]">•</span>
-              <span className="text-[10px] font-mono text-text-muted">{assignment.shortId.toUpperCase()}</span>
-            </>
-          )}
-          {assignment.source && (
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded bg-brand-blue/10 text-brand-blue border border-brand-blue/20">
-              <span className="h-1.5 w-1.5 rounded-full inline-block bg-brand-blue" />
-              {assignment.source}
-            </span>
-          )}
-        </div>
-      </div>
+        }
+        actions={
+          <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={handleOpenEdit}>
+            <Pencil size={13} /> Edit
+          </Button>
+        }
+      />
 
-      {/* Client invoice (manual jobs) ─────────────────────────────────── */}
+      {/* Client invoice (manual jobs) */}
       <JobInvoicePanel job={{ ...assignment, id: assignmentId } as WorkOrder} />
 
-      {/* Team ───────────────────────────────────────────────────────────── */}
-      <div className="bg-bg-secondary rounded-xl border border-border-sub p-4">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
-            <Users size={11} className="text-brand-red" /> Team
-          </p>
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline"
-              className="h-7 text-[10px] uppercase font-bold tracking-wider gap-1.5 px-3"
+      {/* Team */}
+      <section className={cn(cardCls, 'p-4')}>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h2 className={sectionTitle}><Users size={14} className="text-text-muted" /> Team</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="outline" className="h-8 gap-1.5"
               onClick={() => { setHelperTechId(''); setHelperOpen(true); }}>
-              <UserPlus size={10} /> Add Helper
+              <UserPlus size={13} /> Add helper
             </Button>
-            <Button size="sm" variant="outline"
-              className="h-7 text-[10px] uppercase font-bold tracking-wider gap-1.5 px-3"
+            <Button size="sm" variant="outline" className="h-8 gap-1.5"
               onClick={() => { setSwapTechId(''); setSwapOpen(true); }}>
-              <ArrowLeftRight size={10} /> Swap Tech
+              <ArrowLeftRight size={13} /> Swap tech
             </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {tech && <TechCard tech={tech} label="PRIMARY" />}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {tech && <TechCard tech={tech} role="lead" />}
           {helperIds.map(hid => {
             const ht = allTechs.find(t => t.id === hid);
             if (!ht) return null;
+            // The helper's own progress on this job (lib/helper-progress).
+            const hp = helperProgressOf(assignment, hid);
+            const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
             return (
-              <div key={hid} className="relative group">
-                <TechCard tech={ht} label="HELPER" />
-                {(() => {
-                  // The helper's own progress on this job (lib/helper-progress).
-                  const hp = helperProgressOf(assignment, hid);
-                  const done = hp.status === 'completed';
-                  return (
-                    <p className={`mt-1 text-[10px] font-black uppercase tracking-wider ${done ? 'text-text-green' : hp.status === 'assigned' ? 'text-text-muted' : 'text-accent-gold'}`}>
-                      {hp.status.replace(/-/g, ' ')}
-                      {hp.checkInAt ? ` · in ${new Date(hp.checkInAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}
-                      {hp.completedAt ? ` · done ${new Date(hp.completedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}
-                    </p>
-                  );
-                })()}
-                <button
-                  title="Remove helper"
-                  className="mt-1 text-[10px] font-bold uppercase tracking-wider text-text-muted hover:text-text-red"
-                  onClick={() => handleRemoveHelper(hid)}
-                >
-                  × Remove helper
-                </button>
+              <div key={hid} className="space-y-1">
+                <TechCard tech={ht} role="helper" />
+                <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                  <p className={cn('text-[11px] font-medium',
+                    hp.status === 'completed' ? 'text-text-green' : hp.status === 'assigned' ? 'text-text-muted' : 'text-accent-gold')}>
+                    {cap(hp.status.replace(/-/g, ' '))}
+                    {hp.checkInAt ? ` · in ${time(hp.checkInAt)}` : ''}
+                    {hp.completedAt ? ` · done ${time(hp.completedAt)}` : ''}
+                  </p>
+                  <button
+                    title="Remove helper"
+                    className="text-[11px] font-medium text-text-muted hover:text-text-red"
+                    onClick={() => handleRemoveHelper(hid)}
+                  >
+                    Remove helper
+                  </button>
+                </div>
               </div>
             );
           })}
           {!tech && helperIds.length === 0 && (
-            <div className="col-span-full py-6 text-center">
-              <p className="text-[11px] font-bold text-text-muted opacity-40">No team assigned</p>
-            </div>
+            <EmptyState compact icon={Users} title="No team assigned" className="col-span-full" />
           )}
         </div>
-      </div>
+      </section>
 
       {/* Page view tabs */}
-      <div className="flex gap-0 border-b border-border-sub">
-        {(['overview', 'history'] as const).map(v => (
-          <button
-            key={v}
-            onClick={() => setDetailView(v)}
-            className={cn(
-              'px-4 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors',
-              detailView === v
-                ? 'text-text-primary border-b-2 border-brand-red -mb-px'
-                : 'text-text-muted hover:text-text-primary'
-            )}
-          >
-            {v}
+      <div className="detail-tabs !justify-start">
+        {([
+          ['overview', 'Overview'],
+          ['pay', `Pay history${lineCount ? ` (${lineCount})` : ''}`],
+          ['history', 'Event history'],
+        ] as const).map(([v, label]) => (
+          <button key={v} onClick={() => setDetailView(v)} className={cn('detail-tab', detailView === v && 'active')}>
+            {label}
           </button>
         ))}
       </div>
@@ -613,216 +514,183 @@ export default function AssignmentDetailPage() {
       {detailView === 'overview' && (
       <>
 
-      {/* 3-column: Job Details | Schedule | Map ────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-5">
+      {/* Job details | Schedule | Map */}
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-6">
 
-        {/* Job Details */}
-        <div className="md:col-span-2 bg-bg-secondary rounded-xl border border-border-sub p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2 mb-3">
-            <Briefcase size={11} className="text-brand-red" /> Job Details
-          </p>
-          <div>
-            {jobDetailRows.map(({ label, value, icon: Icon }) => (
-              <div key={label} className="flex items-start gap-3 py-2 border-b border-border-sub last:border-0">
-                <Icon size={11} className="text-text-muted shrink-0 mt-0.5" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted w-20 shrink-0 leading-tight">{label}</span>
-                <span className="text-[11px] font-bold text-text-primary min-w-0 break-words">{value || '—'}</span>
+        <section className={cn(cardCls, 'p-4 md:col-span-2 min-w-0')}>
+          <h2 className={cn(sectionTitle, 'mb-2')}><Briefcase size={14} className="text-text-muted" /> Job details</h2>
+          <dl>
+            {jobDetailRows.map(({ label, value, icon: Icon, mono }) => (
+              <div key={label} className="flex items-start gap-3 border-b border-border-sub py-2 last:border-0">
+                <Icon size={13} className="mt-0.5 shrink-0 text-text-muted" />
+                <dt className="w-20 shrink-0 text-[12px] text-text-muted">{label}</dt>
+                <dd className={cn('min-w-0 break-words text-[13px] font-medium text-text-primary', mono && 'font-mono')}>{value || '—'}</dd>
               </div>
             ))}
-          </div>
-        </div>
+          </dl>
+        </section>
 
-        {/* Schedule */}
-        <div className="md:col-span-1 bg-bg-secondary rounded-xl border border-border-sub p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2 mb-3">
-            <Calendar size={11} className="text-brand-red" /> Schedule
-          </p>
+        <section className={cn(cardCls, 'p-4 md:col-span-1 min-w-0')}>
+          <h2 className={cn(sectionTitle, 'mb-3')}><Calendar size={14} className="text-text-muted" /> Schedule</h2>
           <div className="space-y-4">
-            {/* Date row */}
             <div className="flex items-baseline gap-3">
-              <p className="font-bold text-text-primary leading-none" style={{ fontSize: '3.25rem', fontVariantNumeric: 'tabular-nums' }}>{dayNum}</p>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted leading-none">{monthStr}</p>
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted leading-none mt-0.5">{dayName} · {yearStr}</p>
+              <p className="text-5xl font-bold leading-none tabular-nums text-text-primary">{dayNum}</p>
+              <div className="min-w-0">
+                <p className="text-[12px] font-medium text-text-primary">{monthStr}</p>
+                <p className="text-[12px] text-text-muted">{dayName} · {yearStr}</p>
               </div>
             </div>
-            {/* Time row */}
             <div className="space-y-2 border-t border-border-sub pt-3">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1 mb-1">
-                  <Clock size={8} /> Start Window
-                </p>
-                <p className="text-2xl font-black text-text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {formatTime(assignment.scheduleTime)}
-                </p>
+                <p className="mb-0.5 flex items-center gap-1 text-[12px] text-text-muted"><Clock size={12} /> Start window</p>
+                <p className="text-xl font-bold tabular-nums text-text-primary">{formatTime(assignment.scheduleTime)}</p>
               </div>
               {endTime && (
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1 mb-1">
-                    <Clock size={8} /> End Window
-                  </p>
-                  <p className="text-2xl font-black text-text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {formatTime(endTime)}
-                  </p>
+                  <p className="mb-0.5 flex items-center gap-1 text-[12px] text-text-muted"><Clock size={12} /> End window</p>
+                  <p className="text-xl font-bold tabular-nums text-text-primary">{formatTime(endTime)}</p>
                 </div>
               )}
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Map */}
-        <div className="md:col-span-3 bg-bg-secondary rounded-xl border border-border-sub overflow-hidden flex flex-col">
-          {/* Location header */}
-          <div className="flex items-center justify-between px-3 py-2.5 border-b border-border-sub shrink-0 gap-2">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <MapPin size={11} style={{ color: 'var(--text-green)' }} className="shrink-0" />
-              <span className="text-[10px] font-bold text-text-primary truncate">{assignment.location || '—'}</span>
+        <section className={cn(cardCls, 'flex min-w-0 flex-col overflow-hidden md:col-span-3')}>
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border-sub px-3 py-2.5">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <MapPin size={13} className="shrink-0 text-text-green" />
+              <span className="truncate text-[12px] font-medium text-text-primary">{assignment.location || '—'}</span>
             </div>
             <button
-              className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-0.5 shrink-0 transition-colors"
-              style={{ color: 'var(--text-green)' }}
+              className="flex shrink-0 items-center gap-1 text-[12px] font-medium text-text-green hover:underline"
               onClick={() => window.open(
                 `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(assignment.location || '')}`,
                 '_blank', 'noopener'
               )}
             >
-              View Full Map <ExternalLink size={8} />
+              View full map <ExternalLink size={12} />
             </button>
           </div>
 
-          {/* Map canvas */}
           <div className="flex-1" style={{ minHeight: 320 }}>
             <AssignmentMap location={assignment.location} lat={assignment.lat} lng={assignment.lng} />
           </div>
 
-          {/* ETA / Distance / Traffic */}
-          <div className="grid grid-cols-3 divide-x divide-border-sub border-t border-border-sub shrink-0">
+          <div className="grid shrink-0 grid-cols-3 divide-x divide-border-sub border-t border-border-sub">
             {[
               { icon: Clock,       label: 'ETA',      value: '—' },
               { icon: Navigation,  label: 'Distance', value: '—' },
               { icon: Activity,    label: 'Traffic',  value: '—' },
             ].map(({ icon: Icon, label, value }) => (
-              <div key={label} className="py-2 px-1 text-center">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center justify-center gap-0.5 mb-0.5">
-                  <Icon size={7} /> {label}
-                </p>
-                <p className="text-[11px] font-bold text-text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {value}
-                </p>
+              <div key={label} className="px-1 py-2 text-center">
+                <p className="mb-0.5 flex items-center justify-center gap-1 text-[11px] text-text-muted"><Icon size={11} /> {label}</p>
+                <p className="text-[12px] font-semibold tabular-nums text-text-primary">{value}</p>
               </div>
             ))}
           </div>
-
-        </div>
+        </section>
       </div>
 
-      {/* Scope + Action Buttons ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
+      {/* Scope + actions */}
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-5">
 
-        {/* Scope of Work */}
-        <div className="lg:col-span-2 bg-bg-secondary rounded-xl border border-border-sub flex flex-col min-h-[240px]">
-          <div className="p-4 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2 mb-3">
-              <Wrench size={11} className="text-brand-red" /> Scope of Work
-            </p>
-            <p className="text-[11px] text-text-secondary leading-relaxed whitespace-pre-wrap">
+        <section className={cn(cardCls, 'flex min-h-[240px] min-w-0 flex-col lg:col-span-3')}>
+          <div className="flex-1 p-4">
+            <h2 className={cn(sectionTitle, 'mb-3')}><Wrench size={14} className="text-text-muted" /> Scope of work</h2>
+            <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-text-secondary">
               {assignment.description || '—'}
             </p>
             {assignment.notes && (
-              <p className="mt-3 pt-3 border-t border-border-sub text-[10px] text-text-muted leading-relaxed ">
+              <p className="mt-3 border-t border-border-sub pt-3 text-[12px] leading-relaxed text-text-muted">
                 {assignment.notes}
               </p>
             )}
           </div>
 
-          {/* Status strip */}
-          <div className="grid grid-cols-5 divide-x divide-border-sub border-t border-border-sub">
-            {statusStripItems.map(({ icon: Icon, label, value, color }) => (
-              <div key={label} className="py-3 px-2 flex flex-col items-center text-center gap-1">
-                <Icon size={10} style={color ? { color } : {}} className={cn(!color && 'text-text-muted')} />
-                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted leading-none">{label}</p>
-                <p
-                  className={cn('text-[11px] font-bold leading-none', !color && 'text-text-primary')}
-                  style={color ? { color } : {}}
-                >
-                  {value}
-                </p>
+          <div className="grid grid-cols-2 gap-px border-t border-border-sub bg-border-sub sm:grid-cols-5">
+            {statusStripItems.map(({ icon: Icon, label, value, tone }, i) => (
+              <div key={label} className={cn('flex flex-col items-center gap-1 bg-bg-secondary px-2 py-3 text-center',
+                i === statusStripItems.length - 1 && 'col-span-2 sm:col-span-1')}>
+                <Icon size={13} className={tone || 'text-text-muted'} />
+                <p className="text-[11px] text-text-muted">{label}</p>
+                <div className={cn('text-[12px] font-semibold', tone || 'text-text-primary')}>{value}</div>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Right panel: action buttons */}
-        <div className="lg:col-span-3 min-h-[240px]">
-
-          {/* 2×2 action buttons */}
-          <div className="grid grid-cols-2 gap-2">
-            <Button size="sm" variant="outline"
-              className="h-9 text-[10px] font-bold uppercase tracking-wider gap-1.5 px-3 justify-start"
+        <section className={cn(cardCls, 'p-4 lg:col-span-2 min-w-0')}>
+          <h2 className={cn(sectionTitle, 'mb-3')}><Activity size={14} className="text-text-muted" /> Actions</h2>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Button size="sm" variant="outline" className="h-9 justify-start gap-1.5"
               onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(assignment.location || '')}`, '_blank', 'noopener')}>
-              <Navigation size={10} /> Directions
+              <Navigation size={13} /> Directions
             </Button>
             <Button size="sm" variant="outline"
-              className={cn('h-9 text-[10px] font-bold uppercase tracking-wider gap-1.5 px-3 justify-start',
-                assignment.isAudited && 'text-text-green border-text-green/30')}
+              className={cn('h-9 justify-start gap-1.5', assignment.isAudited && 'border-text-green/30 text-text-green')}
               onClick={handleVerify}>
-              <ShieldCheck size={10} /> {assignment.isAudited ? 'Verified' : 'Verify Assignment'}
+              <ShieldCheck size={13} /> {assignment.isAudited ? 'Verified' : 'Verify assignment'}
             </Button>
-            <Button size="sm" variant="outline"
-              className="h-9 text-[10px] font-bold uppercase tracking-wider gap-1.5 px-3 justify-start">
-              <Phone size={10} /> Call Client
+            <Button size="sm" variant="outline" className="h-9 justify-start gap-1.5">
+              <Phone size={13} /> Call client
             </Button>
-            <Button size="sm" variant="outline"
-              className="h-9 text-[10px] font-bold uppercase tracking-wider gap-1.5 px-3 justify-start"
+            <Button size="sm" variant="outline" className="h-9 justify-start gap-1.5"
               onClick={() => router.push('/admin/messaging')}>
-              <MessageSquare size={10} /> Message Client
+              <MessageSquare size={13} /> Message client
             </Button>
           </div>
-        </div>
+        </section>
       </div>
 
-      {/* Pay Ledger ─────────────────────────────────────────────────────── */}
-      <div className="bg-bg-secondary rounded-xl border border-border-sub p-4">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-3 flex items-center gap-2">
-          <DollarSign size={11} className="text-brand-red" /> Pay Ledger
-        </p>
-        {relatedLogs.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {relatedLogs.map(log => (
-              <div key={log.id} className="p-3 rounded-lg bg-bg-primary border border-border-sub">
-                <p className="text-[11px] font-bold text-text-primary">Week of {log.weekOf}</p>
-                <p className="text-sm font-mono font-bold mt-0.5" style={{ color: 'var(--text-green)' }}>
-                  ${jobPayIn(log).toFixed(2)}
+      {/* Pay ledger: this job's pay on each weekly log (FN fee/split applied) */}
+      <section className={cn(cardCls, 'p-4')}>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className={sectionTitle}><DollarSign size={14} className="text-text-muted" /> Pay ledger</h2>
+          {lineCount > 0 && (
+            <button className="text-[12px] font-medium text-brand-blue hover:underline" onClick={() => setDetailView('pay')}>
+              Full pay history
+            </button>
+          )}
+        </div>
+        {payHistory && payHistory.lines.length > 0 ? (
+          <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 md:grid-cols-4">
+            {payHistory.lines.map(l => (
+              <div key={`${l.logId}-${l.itemId}`} className="min-w-0 rounded-lg border border-border-sub bg-bg-primary p-3">
+                <p className="text-[12px] font-semibold text-text-primary">Week of {l.weekOf}</p>
+                <p className={cn('mt-0.5 font-mono text-sm font-semibold tabular-nums', l.held ? 'text-text-muted line-through' : 'text-text-green')}>
+                  ${l.pay.toFixed(2)}
                 </p>
-                <p className="text-[10px] text-text-muted">This job&apos;s pay</p>
-                <StatusBadge kind="log" value={logDisplayStatus(log)} className="mt-1" />
+                <p className="truncate text-[11px] text-text-muted">{l.techName} · {l.isHelper ? 'helper' : 'lead'}</p>
+                <StatusBadge kind="log" value={l.status} className="mt-1" />
               </div>
             ))}
           </div>
+        ) : payHistory ? (
+          <p className="text-[12px] text-text-muted">No pay logs linked</p>
         ) : (
-          <p className="text-[11px] text-text-muted opacity-40 font-bold">No pay logs linked</p>
+          <LoadingState rows={1} label="Loading pay…" />
         )}
-      </div>
+      </section>
 
       </> // end overview
       )}
 
+      {detailView === 'pay' && <PayHistorySection history={payHistory} />}
+
       {detailView === 'history' && (
-        <div className="bg-bg-secondary rounded-xl border border-border-sub p-4 flex flex-col">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
-              <Activity size={11} className="text-brand-red" /> Event History
-            </p>
+        <section className={cn(cardCls, 'flex flex-col p-4')}>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 className={sectionTitle}><Activity size={14} className="text-text-muted" /> Event history</h2>
             <Select value={historyTypeFilter} onValueChange={setHistoryTypeFilter}>
-              <SelectTrigger className="h-7 w-[150px] text-[11px] bg-bg-primary border-border-main font-bold">
-                <SelectValue placeholder="All Events" />
+              <SelectTrigger className="h-8 w-[160px] border-border-main bg-bg-primary text-[12px]">
+                <SelectValue placeholder="All events" />
               </SelectTrigger>
-              <SelectContent className="bg-bg-elevated border-border-main">
-                <SelectItem value="all" className="text-[11px] font-bold">All Events</SelectItem>
-                <SelectItem value="status" className="text-[11px] font-bold">Status Changes</SelectItem>
-                <SelectItem value="assignment" className="text-[11px] font-bold">Assignments</SelectItem>
-                <SelectItem value="note" className="text-[11px] font-bold">Notes</SelectItem>
-                <SelectItem value="dispatch" className="text-[11px] font-bold">Dispatch</SelectItem>
+              <SelectContent className="border-border-main bg-bg-elevated">
+                <SelectItem value="all" className="text-[12px]">All events</SelectItem>
+                <SelectItem value="status" className="text-[12px]">Status changes</SelectItem>
+                <SelectItem value="assignment" className="text-[12px]">Assignments</SelectItem>
+                <SelectItem value="note" className="text-[12px]">Notes</SelectItem>
+                <SelectItem value="dispatch" className="text-[12px]">Dispatch</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -832,46 +700,31 @@ export default function AssignmentDetailPage() {
               historyTypeFilter === 'all' || (ev.type || '').includes(historyTypeFilter)
             );
             return filtered.length > 0 ? (
-              <div className="space-y-0 max-h-[480px] overflow-y-auto">
+              <ol className="max-h-[480px] overflow-y-auto">
                 {filtered.map((ev, i) => {
-                  const dotColor = HISTORY_COLORS[i % HISTORY_COLORS.length];
-                  let evDate: Date | null = null;
-                  evDate = parseLocalDate(ev.date) ?? undefined as any;
+                  const evDate = parseLocalDate(ev.date);
                   const dateStr = evDate ? format(evDate, 'MM-dd-yyyy') : ev.date?.slice(0, 10) || '';
-                  const timeStr = evDate ? format(evDate, 'h:mm a').toUpperCase() : '';
-                  const typeLabel = (ev.type || 'event').replace(/_/g, ' ').toUpperCase();
+                  const timeStr = evDate ? format(evDate, 'h:mm a') : '';
                   return (
-                    <div key={i} className="flex gap-3 py-2.5 border-b border-border-sub last:border-0">
-                      <div className="flex flex-col items-center shrink-0 pt-1">
-                        <div className="h-2 w-2 rounded-full shrink-0" style={{ background: dotColor }} />
-                        {i < filtered.length - 1 && (
-                          <div className="w-px mt-1.5 flex-1 min-h-[16px]" style={{ background: `${dotColor}30` }} />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-0.5">
-                          <div>
-                            <span className="text-[10px] font-mono text-text-muted">{dateStr}</span>
-                            {timeStr && <span className="text-[10px] font-mono text-text-muted ml-2">{timeStr}</span>}
-                          </div>
-                          {ev.user && (
-                            <span className="text-[10px] font-bold uppercase text-text-muted shrink-0 tracking-wide">{ev.user}</span>
-                          )}
+                    <li key={i} className="flex gap-3 border-b border-border-sub py-2.5 last:border-0">
+                      <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', HISTORY_DOTS[i % HISTORY_DOTS.length])} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                          <p className="text-[13px] font-medium text-text-primary">{statusLabel(ev.type || 'event')}</p>
+                          {ev.user && <span className="shrink-0 text-[11px] text-text-muted">{ev.user}</span>}
                         </div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: dotColor }}>{typeLabel}</p>
-                        {ev.details && <p className="text-[10px] text-text-secondary leading-snug">{ev.details}</p>}
+                        <p className="font-mono text-[11px] text-text-muted">{dateStr}{timeStr && ` ${timeStr}`}</p>
+                        {ev.details && <p className="mt-0.5 break-words text-[12px] leading-snug text-text-secondary">{ev.details}</p>}
                       </div>
-                    </div>
+                    </li>
                   );
                 })}
-              </div>
+              </ol>
             ) : (
-              <div className="flex-1 flex items-center justify-center py-8">
-                <p className="text-[11px] font-bold text-text-muted opacity-40">No history recorded</p>
-              </div>
+              <EmptyState compact icon={Activity} title="No history recorded" />
             );
           })()}
-        </div>
+        </section>
       )}
 
       {/* Dialogs ────────────────────────────────────────────────────────── */}
@@ -893,13 +746,13 @@ export default function AssignmentDetailPage() {
               <div className="px-6 py-4 space-y-6">
                 <div className="space-y-4">
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
+                    <Label className="text-[12px] font-medium text-text-muted flex items-center gap-2">
                       <Type size={12} className="text-brand-red" /> Job Title
                     </Label>
                     <Input placeholder="e.g. Network Audit" value={editedOrder.title || ''} onChange={(e) => setEditedOrder({ ...editedOrder, title: e.target.value })} className="bg-bg-primary border-border-sub h-10 text-xs font-bold" />
                   </div>
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
+                    <Label className="text-[12px] font-medium text-text-muted flex items-center gap-2">
                       <FileText size={12} className="text-accent-gold" /> Scope of Work
                     </Label>
                     <Textarea placeholder="Detailed requirements..." value={editedOrder.description || ''} onChange={(e) => setEditedOrder({ ...editedOrder, description: e.target.value })} className="bg-bg-primary border-border-sub h-24 text-xs" />
@@ -908,13 +761,13 @@ export default function AssignmentDetailPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Client</Label>
+                    <Label className="text-[12px] font-medium text-text-muted">Client</Label>
                     <ClientField value={editedOrder.clientName || ''} clientId={(editedOrder as { clientId?: string | null }).clientId} clients={dir.clients}
                       className="bg-bg-primary h-10 text-xs font-bold"
                       onChange={(name, c) => setEditedOrder({ ...editedOrder, clientName: name, ...(c ? { clientId: c.id } : {}) } as typeof editedOrder)} />
                   </div>
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Location</Label>
+                    <Label className="text-[12px] font-medium text-text-muted">Location</Label>
                     <SiteAddressField value={editedOrder.location || ''} sites={dir.sites}
                       clientId={(editedOrder as { clientId?: string | null }).clientId || clientByName(dir.clients, editedOrder.clientName)?.id}
                       className="bg-bg-primary h-10 text-xs"
@@ -924,7 +777,7 @@ export default function AssignmentDetailPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Service category</Label>
+                    <Label className="text-[12px] font-medium text-text-muted">Service category</Label>
                     <Select value={editedOrder.projectType} onValueChange={(val) => setEditedOrder({ ...editedOrder, projectType: val })}>
                       <SelectTrigger className="h-10 bg-bg-primary text-xs font-bold"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -937,7 +790,7 @@ export default function AssignmentDetailPage() {
                     </Select>
                   </div>
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Priority Level</Label>
+                    <Label className="text-[12px] font-medium text-text-muted">Priority</Label>
                     <Select value={editedOrder.priority} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, priority: val })}>
                       <SelectTrigger className="h-10 bg-bg-primary text-xs font-bold"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -952,18 +805,18 @@ export default function AssignmentDetailPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Date</Label>
+                    <Label className="text-[12px] font-medium text-text-muted">Date</Label>
                     <Input type="date" value={editedOrder.scheduleDate || ''} onChange={(e) => setEditedOrder({ ...editedOrder, scheduleDate: e.target.value })} className="h-10 bg-bg-primary text-xs" />
                   </div>
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Start time</Label>
+                    <Label className="text-[12px] font-medium text-text-muted">Start time</Label>
                     <Input placeholder="e.g. 10:00 AM EST" value={editedOrder.scheduleTime || ''} onChange={(e) => setEditedOrder({ ...editedOrder, scheduleTime: e.target.value })} className="h-10 bg-bg-primary text-xs" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Pay type</Label>
+                    <Label className="text-[12px] font-medium text-text-muted">Pay type</Label>
                     <Select value={editedOrder.payType} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, payType: val })}>
                       <SelectTrigger className="h-10 bg-bg-primary text-xs font-bold"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -975,7 +828,7 @@ export default function AssignmentDetailPage() {
                   </div>
                   {editedOrder.payType !== 'blended' && (
                     <div className="space-y-2 text-left">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Labor rate ($)</Label>
+                      <Label className="text-[12px] font-medium text-text-muted">Labor rate ($)</Label>
                       <Input type="number" value={editedOrder.pay || 0} onChange={(e) => setEditedOrder({ ...editedOrder, pay: parseFloat(e.target.value) || 0 })} className="bg-bg-primary h-10 text-xs font-mono text-text-green" />
                     </div>
                   )}
@@ -984,7 +837,7 @@ export default function AssignmentDetailPage() {
                 {editedOrder.payType === 'blended' && (
                   <div className="grid grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 p-3 rounded-lg border border-border-sub bg-bg-secondary/50 text-left">
                     <div className="space-y-2 text-left">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Fixed base ($)</Label>
+                      <Label className="text-[12px] font-medium text-text-muted">Fixed base ($)</Label>
                       <div className="relative">
                         <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input
@@ -999,7 +852,7 @@ export default function AssignmentDetailPage() {
                       </div>
                     </div>
                     <div className="space-y-2 text-left">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Incl. hours</Label>
+                      <Label className="text-[12px] font-medium text-text-muted">Included hours</Label>
                       <Input
                         type="number"
                         value={editedOrder.blendedIncludedHours || ''}
@@ -1008,7 +861,7 @@ export default function AssignmentDetailPage() {
                       />
                     </div>
                     <div className="space-y-2 text-left">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Then ($/hr)</Label>
+                      <Label className="text-[12px] font-medium text-text-muted">Then ($/hr)</Label>
                       <div className="relative">
                         <DollarSign size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
                         <Input
@@ -1019,7 +872,7 @@ export default function AssignmentDetailPage() {
                         />
                       </div>
                     </div>
-                    <p className="col-span-3 text-[10px] text-text-muted uppercase font-bold text-left">Fixed amount for the included hours, then the hourly rate applies.</p>
+                    <p className="col-span-3 text-[11px] text-text-muted">Fixed amount for the included hours, then the hourly rate applies.</p>
                   </div>
                 )}
 
@@ -1027,30 +880,30 @@ export default function AssignmentDetailPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-bold text-text-muted ml-1 text-center block">Technician Allocation</Label>
+                    <Label className="text-[12px] font-medium text-text-muted">Technician</Label>
                     <Select value={editedOrder.assignedTechnicianId || (editedOrder as any).techId || 'unassigned'} onValueChange={(val) => setEditedOrder({ ...editedOrder, assignedTechnicianId: val === 'unassigned' ? null : val, status: val === 'unassigned' ? 'unassigned' : 'assigned' })}>
                       <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red text-xs">
-                        <SelectValue placeholder="Select Technician" />
+                        <SelectValue placeholder="Select technician" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="unassigned" className="text-brand-red font-bold">UNASSIGNED</SelectItem>
+                        <SelectItem value="unassigned" className="text-text-red font-medium">Unassigned</SelectItem>
                         {sortTechniciansForDeployment(allTechs.filter(isAssignableTechnician)).map(t => <SelectItem key={t.id} value={t.id} disabled={isInactiveTechnician(t)} className="text-xs font-bold">{t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-bold text-text-muted ml-1 text-center block">Status</Label>
+                    <Label className="text-[12px] font-medium text-text-muted">Status</Label>
                     <Select value={editedOrder.status} onValueChange={(val: any) => setEditedOrder({ ...editedOrder, status: val })}>
-                      <SelectTrigger className="bg-bg-primary h-11 font-bold tracking-wider focus:ring-brand-red text-xs">
+                      <SelectTrigger className="bg-bg-primary h-11 focus:ring-brand-red text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="unassigned" className="text-xs font-bold">UNASSIGNED</SelectItem>
-                        <SelectItem value="assigned" className="text-xs font-bold">ASSIGNED</SelectItem>
-                        <SelectItem value="confirmed" className="text-xs font-bold">CONFIRMED</SelectItem>
-                        <SelectItem value="on-my-way" className="text-xs font-bold">ON MY WAY</SelectItem>
-                        <SelectItem value="in-progress" className="text-xs font-bold">IN PROGRESS</SelectItem>
-                        <SelectItem value="completed" className="text-xs font-bold">COMPLETED</SelectItem>
+                        <SelectItem value="unassigned" className="text-xs font-bold">Unassigned</SelectItem>
+                        <SelectItem value="assigned" className="text-xs font-bold">Assigned</SelectItem>
+                        <SelectItem value="confirmed" className="text-xs font-bold">Confirmed</SelectItem>
+                        <SelectItem value="on-my-way" className="text-xs font-bold">On my way</SelectItem>
+                        <SelectItem value="in-progress" className="text-xs font-bold">In progress</SelectItem>
+                        <SelectItem value="completed" className="text-xs font-bold">Completed</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1059,8 +912,8 @@ export default function AssignmentDetailPage() {
             </div>
           )}
           <DialogFooter className="bg-bg-tertiary/30 p-6 border-t border-border-default mt-4 shrink-0 flex flex-row items-center justify-end gap-3">
-            <Button variant="outline" onClick={() => setIsEditOpen(false)} className="h-11 px-8 uppercase font-bold text-[10px] tracking-wider">Cancel</Button>
-            <Button onClick={handleSaveEdit} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover uppercase font-bold text-[10px] tracking-wider text-white shadow-lg">
+            <Button variant="outline" onClick={() => setIsEditOpen(false)} className="h-11 px-8 text-[12px]">Cancel</Button>
+            <Button onClick={handleSaveEdit} className="h-11 px-10 bg-brand-red hover:bg-brand-red-hover text-[12px] text-white shadow-lg">
               Save changes
             </Button>
           </DialogFooter>
@@ -1070,24 +923,24 @@ export default function AssignmentDetailPage() {
       <Dialog open={swapOpen} onOpenChange={setSwapOpen}>
         <DialogContent className="bg-bg-elevated border-border-main sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-[13px] font-bold">Swap Technician</DialogTitle>
+            <DialogTitle className="text-[13px] font-bold">Swap technician</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Select Replacement</Label>
+            <Label className="text-[12px] font-medium text-text-muted">Replacement</Label>
             <Select value={swapTechId} onValueChange={setSwapTechId}>
-              <SelectTrigger className="h-9 text-[10px] font-bold bg-bg-secondary border-border-main">
+              <SelectTrigger className="h-9 text-[11px] font-bold bg-bg-secondary border-border-main">
                 <SelectValue placeholder="Choose technician..." />
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
                 {sortTechniciansForDeployment(allTechs.filter(isAssignableTechnician)).map(t => (
-                  <SelectItem key={t.id} value={t.id} disabled={isInactiveTechnician(t)} className="text-[10px] font-bold">{t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}</SelectItem>
+                  <SelectItem key={t.id} value={t.id} disabled={isInactiveTechnician(t)} className="text-[11px] font-bold">{t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold" onClick={() => setSwapOpen(false)}>Cancel</Button>
-            <Button size="sm" className="h-8 text-[10px] font-bold bg-brand-red hover:bg-brand-red/90 text-white" disabled={!swapTechId} onClick={handleSwapTech}>Confirm Swap</Button>
+            <Button variant="outline" size="sm" className="h-8 text-[11px] font-bold" onClick={() => setSwapOpen(false)}>Cancel</Button>
+            <Button size="sm" className="h-8 text-[11px] font-bold bg-brand-red hover:bg-brand-red/90 text-white" disabled={!swapTechId} onClick={handleSwapTech}>Confirm swap</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1095,26 +948,26 @@ export default function AssignmentDetailPage() {
       <Dialog open={helperOpen} onOpenChange={setHelperOpen}>
         <DialogContent className="bg-bg-elevated border-border-main sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-[13px] font-bold">Add Helper</DialogTitle>
+            <DialogTitle className="text-[13px] font-bold">Add helper</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Select Helper</Label>
+            <Label className="text-[12px] font-medium text-text-muted">Helper</Label>
             <Select value={helperTechId} onValueChange={setHelperTechId}>
-              <SelectTrigger className="h-9 text-[10px] font-bold bg-bg-secondary border-border-main">
+              <SelectTrigger className="h-9 text-[11px] font-bold bg-bg-secondary border-border-main">
                 <SelectValue placeholder="Choose technician..." />
               </SelectTrigger>
               <SelectContent className="bg-bg-elevated border-border-main">
                 {sortTechniciansForDeployment(allTechs
                   .filter(t => isAssignableTechnician(t) && t.id !== primTechId))
                   .map(t => (
-                    <SelectItem key={t.id} value={t.id} disabled={isInactiveTechnician(t)} className="text-[10px] font-bold">{t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}</SelectItem>
+                    <SelectItem key={t.id} value={t.id} disabled={isInactiveTechnician(t)} className="text-[11px] font-bold">{t.name}{isInactiveTechnician(t) ? ' · Inactive' : ''}</SelectItem>
                   ))}
               </SelectContent>
             </Select>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold" onClick={() => setHelperOpen(false)}>Cancel</Button>
-            <Button size="sm" className="h-8 text-[10px] font-bold bg-brand-red hover:bg-brand-red/90 text-white" disabled={!helperTechId} onClick={handleAddHelper}>Add to Team</Button>
+            <Button variant="outline" size="sm" className="h-8 text-[11px] font-bold" onClick={() => setHelperOpen(false)}>Cancel</Button>
+            <Button size="sm" className="h-8 text-[11px] font-bold bg-brand-red hover:bg-brand-red/90 text-white" disabled={!helperTechId} onClick={handleAddHelper}>Add to team</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

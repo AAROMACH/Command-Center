@@ -27,12 +27,17 @@ export type EmailLogEntry = {
 };
 
 /** Save a copy. Never throws — logging must not block or fail a send. */
+/** Why the last save failed, for callers that report it (test send). */
+export let lastEmailLogError: string | null = null;
+
 export async function logEmail(entry: Omit<EmailLogEntry, 'id' | 'at'>): Promise<string | null> {
   try {
     const ref = getFirestore(adminApp).collection('emailLog').doc();
     await ref.set({ ...entry, id: ref.id, at: new Date().toISOString() });
+    lastEmailLogError = null;
     return ref.id;
   } catch (e) {
+    lastEmailLogError = e instanceof Error ? e.message : String(e);
     console.warn('[email-log] could not save', e);
     return null;
   }

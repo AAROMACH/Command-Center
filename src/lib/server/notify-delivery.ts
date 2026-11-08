@@ -6,6 +6,9 @@ import { Resend } from 'resend';
 import { sendPush } from './push';
 import { recordHealth } from './integration-health';
 import { logEmail, type EmailLogEntry } from './email-log';
+import { getFirestore } from 'firebase-admin/firestore';
+import { adminApp } from '@/lib/firebase-admin';
+import { billingContactLine, isEmail, type CommunicationsSettings } from '@/lib/communications-settings';
 
 /**
  * Server-side delivery shared by /api/notify, the CRM digest and the
@@ -100,12 +103,27 @@ export const EMAIL_SENDERS: Record<EmailKind, { fromEnv: string; from: string; r
   support: { fromEnv: 'EMAIL_FROM_SUPPORT', from: 'AAROMACH Support <support@mail.aaromach.com>', replyToEnv: 'EMAIL_REPLY_TO_SUPPORT', replyTo: 'support@aaromach.com' },
   notifications: { fromEnv: 'EMAIL_FROM_NOTIFICATIONS', from: 'AAROMACH <notifications@mail.aaromach.com>' },
 };
-export function emailSender(kind: EmailKind): { from: string; replyTo: string | null } {
+export function emailSender(kind: EmailKind, settings?: CommunicationsSettings | null): { from: string; replyTo: string | null } {
   const s = EMAIL_SENDERS[kind];
+  const fromSettings = kind === 'billing' ? settings?.billingReplyTo : kind === 'support' ? settings?.supportReplyTo : undefined;
   return {
     from: process.env[s.fromEnv] || s.from,
-    replyTo: (s.replyToEnv && process.env[s.replyToEnv]) || s.replyTo || null,
+    replyTo: (fromSettings && isEmail(fromSettings) ? fromSettings.trim() : null) || (s.replyToEnv && process.env[s.replyToEnv]) || s.replyTo || null,
   };
+}
+
+// Settings → Communications, cached briefly so a burst of sends reads it once.
+let commsCache: { at: number; value: CommunicationsSettings | null } | null = null;
+export async function communicationsSettings(): Promise<CommunicationsSettings | null> {
+  if (commsCache && Date.now() - commsCache.at < 30_000) return commsCache.value;
+  try {
+    const snap = await getFirestore(adminApp).doc('adminConfig/communications').get();
+    commsCache = { at: Date.now(), value: (snap.data() as CommunicationsSettings) || null };
+  } catch (e) {
+    console.warn('[notify] could not read communications settings', e);
+    commsCache = { at: Date.now(), value: null };
+  }
+  return commsCache.value;
 }
 
 /**
@@ -127,7 +145,10 @@ export async function sendEmail(to: string, subject: string, body: string, opts:
     return 'skipped';
   }
   const resend = new Resend(apiKey);
-  const sender = emailSender(opts.kind || 'notifications');
+  const settings = await communicationsSettings();
+  const sender = emailSender(opts.kind || 'notifications', settings);
+  const contact = opts.kind === 'billing' ? billingContactLine(settings) : null;
+  if (contact) body = `${body.trimEnd()}\n\n${contact}`;
   const email = {
     from: sender.from,
     ...(sender.replyTo ? { replyTo: sender.replyTo } : {}),

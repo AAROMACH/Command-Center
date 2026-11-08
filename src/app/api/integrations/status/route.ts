@@ -5,7 +5,7 @@ import { adminApp } from '@/lib/firebase-admin';
 import { getSubroles } from '@/lib/permissions';
 import { getConnection, qboConfigured, qboEnv, qboGet } from '@/lib/server/quickbooks';
 import { readHealth, recordHealth, type HealthEntry } from '@/lib/server/integration-health';
-import { EMAIL_SENDERS, emailSender, type EmailKind } from '@/lib/server/notify-delivery';
+import { EMAIL_SENDERS, emailSender, communicationsSettings, type EmailKind } from '@/lib/server/notify-delivery';
 
 /**
  * Settings → Integrations (Super Admins). A service shows Connected only when
@@ -32,7 +32,8 @@ type Check = { ok: boolean; detail: string };
 
 async function checkResend(): Promise<Check> {
   // Every sender (billing, support, notifications) must be on a verified domain.
-  const senders = (Object.keys(EMAIL_SENDERS) as EmailKind[]).map(k => ({ kind: k, ...emailSender(k) }));
+  const comms = await communicationsSettings();
+  const senders = (Object.keys(EMAIL_SENDERS) as EmailKind[]).map(k => ({ kind: k, ...emailSender(k, comms) }));
   const domains = [...new Set(senders.map(x => (x.from.match(/@([^>\s]+)/)?.[1] || '').toLowerCase()).filter(Boolean))];
   const summary = senders.map(x => `${x.kind}: ${x.from}${x.replyTo ? ` (replies → ${x.replyTo})` : ''}`).join(' · ');
   const r = await fetch('https://api.resend.com/domains', { headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` } });

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicOrigin } from '@/lib/server/public-origin';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
 import { isAdmin, isSales } from '@/lib/permissions';
 import { sendEmail } from '@/lib/server/notify-delivery';
 import { cleanRecipients } from '@/lib/recipients';
+import { canApproveQuotes } from '@/lib/approvals';
 import { randomBytes } from 'crypto';
 
 /**
@@ -19,20 +21,28 @@ const COOLDOWN_MIN = 10;
 export async function POST(req: NextRequest) {
   const fs = getFirestore(adminApp);
   let name = 'Aaromach';
+  let senderEmail = '';
+  let approver = false;
   try {
     const uid = (await getAuth(adminApp).verifyIdToken((req.headers.get('authorization') || '').replace(/^Bearer /, ''))).uid;
     const u = (await fs.doc(`users/${uid}`).get()).data();
     if (!u || !(isAdmin(u as never) || isSales(u as never))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     name = (u.name as string) || name;
+    senderEmail = String(u.email || '');
+    approver = canApproveQuotes(u as never);
   } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
 
-  const reqBody = await req.json().catch(() => ({} as { quoteId?: string; to?: unknown }));
+  const reqBody = await req.json().catch(() => ({} as { quoteId?: string; to?: unknown; replyToMe?: boolean }));
   const { quoteId } = reqBody;
   if (typeof quoteId !== 'string' || !quoteId || quoteId.includes('/')) return NextResponse.json({ error: 'Bad request' }, { status: 400 });
   const ref = fs.doc(`quotes/${quoteId}`);
   const snap = await ref.get();
   if (!snap.exists) return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
   const q = snap.data() || {};
+  // Quotes made by anyone other than an admin or payroll need approval before they go out.
+  if (!approver && q.internalApproval?.status !== 'approved') {
+    return NextResponse.json({ error: 'This quote needs approval from an admin or payroll before it can be sent.' }, { status: 403 });
+  }
   if (q.status !== 'sent') return NextResponse.json({ error: 'Mark the quote as sent first.' }, { status: 409 });
   const last = Date.parse(q.emailedAt || '') || 0;
   if (last && Date.now() - last < COOLDOWN_MIN * 60_000) {
@@ -55,7 +65,7 @@ export async function POST(req: NextRequest) {
   // Everyone gets the private approval link (no login needed), portal clients included.
   let token: string = q.publicToken || '';
   if (!token) { token = randomBytes(24).toString('hex'); await ref.update({ publicToken: token }); }
-  const link = `${req.nextUrl.origin}/public/quote/${token}`;
+  const link = `${await publicOrigin(req)}/public/quote/${token}`;
   const subject = `Quote ${q.quoteNumber || ''} from AAROMACH`.replace(/\s+/g, ' ');
   const text = [
     `Hello${q.customerName ? ` ${q.customerName}` : ''},`,
@@ -74,6 +84,7 @@ export async function POST(req: NextRequest) {
     const res = await sendEmail(recipients, subject, text, {
       kind: 'billing', idempotencyKey: `quote-send/${snap.id}/${q.revisionNumber || 0}/${q.sentAt || ''}`,
       related: { type: 'quote', id: snap.id, label: q.quoteNumber || null }, sentBy: name,
+      ...(reqBody.replyToMe && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(senderEmail) ? { replyTo: senderEmail } : {}),
     });
     if (res === 'skipped') return NextResponse.json({ emailed: false, reason: 'Email isn’t set up on the server.' });
   } catch (e) {

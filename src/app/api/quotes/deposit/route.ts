@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicOrigin } from '@/lib/server/public-origin';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
@@ -19,6 +20,6 @@ export async function POST(req: NextRequest) {
   if (typeof quoteId !== 'string' || !quoteId || quoteId.includes('/')) return NextResponse.json({ error: 'Bad request' }, { status: 400 });
   const q = (await fs.doc(`quotes/${quoteId}`).get()).data();
   if (!q || q.status !== 'approved') return NextResponse.json({ error: 'The quote isn’t approved.' }, { status: 409 });
-  try { return NextResponse.json(await createDepositInvoice(quoteId, req.nextUrl.origin, name) || { invoiceId: null }); }
+  try { return NextResponse.json(await createDepositInvoice(quoteId, await publicOrigin(req), name) || { invoiceId: null }); }
   catch (e) { return NextResponse.json({ error: String((e as Error).message).slice(0, 300) }, { status: 502 }); }
 }

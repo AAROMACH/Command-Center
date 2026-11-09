@@ -1,4 +1,5 @@
 import { createDepositInvoice } from '@/lib/server/quote-deposit';
+import { publicOrigin } from '@/lib/server/public-origin';
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
@@ -171,7 +172,7 @@ export async function POST(req: NextRequest) {
   // Approved with a deposit → deposit invoice + QuickBooks pay link (shown on the page right away).
   let depositPayLink: string | null = null;
   if (action === 'approve' && Number(data.depositAmount) > 0) {
-    try { depositPayLink = (await createDepositInvoice(doc.id, req.nextUrl.origin))?.payLink || null; }
+    try { depositPayLink = (await createDepositInvoice(doc.id, await publicOrigin(req)))?.payLink || null; }
     catch (e) { console.error('public-quote: deposit invoice failed', e); }
   }
 

@@ -23,7 +23,7 @@ type RoleUser = Pick<Technician, 'roles' | 'role'> | null | undefined;
 type Who = { id: string; name: string };
 
 export const canApproveQuotes = (u: RoleUser) =>
-  getSubroles(u as any).some(r => r === 'super_admin' || r === 'payroll_admin' || r === 'project_manager');
+  getSubroles(u as any).some(r => r === 'super_admin' || r === 'dispatch_admin' || r === 'payroll_admin');
 export const canApproveInvoices = (u: RoleUser) =>
   getSubroles(u as any).some(r => r === 'super_admin' || r === 'payroll_admin');
 

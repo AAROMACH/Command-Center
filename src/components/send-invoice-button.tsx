@@ -45,6 +45,7 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
   };
   const [open, setOpen] = useState(false);
   const [to, setTo] = useState<string[]>(['']);
+  const [replyToMe, setReplyToMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [link, setLink] = useState('');
   const token = () => auth.currentUser?.getIdToken();
@@ -81,7 +82,7 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
     try {
       const r = await fetch('/api/invoices/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await token()}` },
-        body: JSON.stringify({ invoiceId: invoice.id, to: to.filter(x => x.trim()) }),
+        body: JSON.stringify({ invoiceId: invoice.id, to: to.filter(x => x.trim()), replyToMe }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Send failed');
@@ -155,6 +156,10 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
           </div>
           {!salesMode && <Button variant="outline" size="sm" className="self-start" onClick={() => { setOpen(false); setEditing(true); }}><Pencil size={13} className="mr-1.5" /> Edit invoice</Button>}
           <RecipientsField value={to} onChange={setTo} disabled={loading} />
+          <label className="flex items-start gap-2 text-[12px] text-text-secondary cursor-pointer">
+            <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[var(--brand-red)]" checked={replyToMe} onChange={e => setReplyToMe(e.target.checked)} disabled={loading} />
+            <span>Use my email{auth.currentUser?.email ? ` (${auth.currentUser.email})` : ''} as the reply-to, so the customer’s replies come to me</span>
+          </label>
           {link && (
             <div className="flex items-center gap-2">
               <Input readOnly value={link} className="font-mono text-[11px]" />

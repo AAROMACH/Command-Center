@@ -33,7 +33,7 @@ service cloud.firestore {
     }
 
     // ── Internal approval of quotes and invoices (lib/approvals) ──
-    function canApproveQuotes() { return isSuperAdmin() || isPayrollAdmin() || isProjectManager(); }
+    function canApproveQuotes() { return isSuperAdmin() || isPayrollAdmin() || isDispatchAdmin(); }
     function canApproveInvoices() { return isSuperAdmin() || isPayrollAdmin(); }
     // The approval's status, or '' when there is none.
     function apprStatus(d, field) {

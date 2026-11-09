@@ -28,7 +28,7 @@ import { ApprovalPanel } from '@/components/approval-panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RecipientsField, recipientsValid } from '@/components/recipients-field';
-import { depositAmountFor, depositCreditLine, paymentTermsDays, paymentTermsText } from '@/lib/quote-deposit';
+import { depositAmountFor, depositCreditLine, paymentTermsDays, paymentTermsText, selectedAddOnLines } from '@/lib/quote-deposit';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -950,7 +950,7 @@ export default function AdminQuotesPage() {
           terms: invoiceFromQuote.terms,
           dueDate: new Date(Date.now() + paymentTermsDays(invoiceFromQuote.paymentTerms) * 86400000).toISOString().slice(0, 10),
           // A deposit billed on approval comes off the final invoice.
-          lines: [...fromQuoteLines(invoiceFromQuote.lineItems),
+          lines: [...fromQuoteLines(invoiceFromQuote.lineItems), ...selectedAddOnLines(invoiceFromQuote),
             ...(invoiceFromQuote.depositInvoiceId && Number(invoiceFromQuote.depositAmount) > 0 ? [depositCreditLine(Number(invoiceFromQuote.depositAmount), invoiceFromQuote.depositInvoiceNumber)] : [])],
         } : undefined}
         initialDiscount={invoiceFromQuote ? ((invoiceFromQuote as Quote & { planDiscount?: PlanDiscount | null }).planDiscount ?? null) : undefined}

@@ -16,7 +16,9 @@ import { useToast } from '@/hooks/use-toast';
 import { savePriceToBook } from '@/lib/price-book-actions';
 import { cn } from '@/lib/utils';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { docNumber } from '@/lib/doc-number';
 import { isClient, isSuperAdmin } from '@/lib/permissions';
 import { useAllSubscriptions, usePricingSettings, useServicePlans } from '@/hooks/use-billing';
 import { describeFactor, formatMoney, isLiveSubscription } from '@/lib/billing';
@@ -132,6 +134,21 @@ export function PriceDocEditor({
   }, [open]);
 
   const set = <K extends keyof PriceDocValues>(k: K, val: PriceDocValues[K]) => setV(p => ({ ...p, [k]: val }));
+
+  // New invoice: preview the number it will get (next counter + issue date),
+  // greyed out; double-click to type a different one. Left untouched, the
+  // real number is assigned on save (so two people can't take the same one).
+  const isNewInvoice = kind === 'invoice' && !initial?.invoiceNumber;
+  const [nextInvoiceSeq, setNextInvoiceSeq] = useState<number | null>(null);
+  const [numberUnlocked, setNumberUnlocked] = useState(false);
+  useEffect(() => {
+    if (!open || !isNewInvoice) return;
+    setNumberUnlocked(false);
+    getDoc(doc(db, 'systemConfig', 'idCounters'))
+      .then(snap => setNextInvoiceSeq(Number(snap.data()?.inv ?? 0)))
+      .catch(() => setNextInvoiceSeq(null));
+  }, [open, isNewInvoice]);
+  const previewNumber = nextInvoiceSeq == null ? '' : docNumber(`inv-${String(nextInvoiceSeq).padStart(3, '0')}`, v.issueDate || new Date());
 
   // ── Data: clients, plans, price book, jobs ──
   const { settings } = usePricingSettings();
@@ -410,7 +427,15 @@ export function PriceDocEditor({
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1.5"><Label className={labelCls}>Invoice #</Label>
-                    <Input className={`${inputCls} font-mono`} value={v.invoiceNumber} placeholder="Assigned on save (MM/DD/YY-###)" onChange={e => set('invoiceNumber', e.target.value)} /></div>
+                    {isNewInvoice && !numberUnlocked ? (
+                      <Input readOnly className={`${inputCls} font-mono text-text-muted bg-bg-tertiary cursor-pointer`} value={previewNumber}
+                        placeholder="Assigned on save" title="Double-click to use a different number"
+                        onDoubleClick={() => { setNumberUnlocked(true); set('invoiceNumber', previewNumber); }} />
+                    ) : (
+                      <Input className={`${inputCls} font-mono`} value={v.invoiceNumber} placeholder="Assigned on save" autoFocus={isNewInvoice}
+                        onChange={e => set('invoiceNumber', e.target.value)} />
+                    )}
+                    {isNewInvoice && <p className="text-[10px] text-text-muted">{numberUnlocked ? 'Leave blank to use the next number.' : 'Double-click to change.'}</p>}</div>
                   <div className="space-y-1.5"><Label className={labelCls}>Issue date</Label>
                     <Input type="date" className={inputCls} value={v.issueDate} onChange={e => set('issueDate', e.target.value)} /></div>
                   <div className="space-y-1.5"><Label className={labelCls}>Due date</Label>

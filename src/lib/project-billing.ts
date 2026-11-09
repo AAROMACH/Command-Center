@@ -4,7 +4,7 @@ import { db } from './firebase';
 import { createDocId } from './generateId';
 import { docNumber } from './doc-number';
 import { ID_PREFIXES } from './constants';
-import { depositCreditLine, paymentTermsDays } from './quote-deposit';
+import { depositCreditLine, paymentTermsDays, selectedAddOnLines } from './quote-deposit';
 import { fromQuoteLines, materialPrice, priceTotals, toInvoiceLines, toQuoteLines, unitLabel, type PlanDiscount, type PriceLine } from './price-lines';
 import { quoteEstimate } from './project-economics';
 import { roundCents, type PricingSettings } from './billing';
@@ -118,7 +118,7 @@ export async function createProjectInvoice(project: Project, pricing: PricingSet
   }
   const lines: PriceLine[] = quote
     // Every quote line, as the quote's total counts them (parts added on the project included).
-    ? [...fromQuoteLines(quote.lineItems),
+    ? [...fromQuoteLines(quote.lineItems), ...selectedAddOnLines(quote),
       // A deposit billed on approval comes off the final invoice.
       ...(quote.depositInvoiceId && Number(quote.depositAmount) > 0 ? [depositCreditLine(Number(quote.depositAmount), quote.depositInvoiceNumber)] : [])]
     : (await readProjectParts(project)).map(p => ({ id: p.id, name: p.name, quantity: p.quantity, unitPrice: p.unitPrice, section: 'material' as const, taxable: p.taxable, ...(p.unit ? { unit: p.unit } : {}) }));

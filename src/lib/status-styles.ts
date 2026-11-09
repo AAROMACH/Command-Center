@@ -38,7 +38,7 @@ const LOG: Record<string, Tone> = {
     draft: 'scheduled', submitted: 'progress', approved: 'info', paid: 'done', rejected: 'problem', returned: 'problem',
 };
 const PAY: Record<string, Tone> = {
-    approved: 'info', paid: 'done', submitted: 'progress', draft: 'scheduled', returned: 'problem', 'not-filed': 'problem', upcoming: 'neutral',
+    approved: 'info', paid: 'done', held: 'progress', submitted: 'progress', draft: 'scheduled', returned: 'problem', 'not-filed': 'problem', upcoming: 'neutral',
 };
 const REQUEST: Record<string, Tone> = {
     new: 'progress', pending: 'progress', pending_review: 'progress', reviewed: 'info', approved: 'info', converted: 'done', paid: 'done',

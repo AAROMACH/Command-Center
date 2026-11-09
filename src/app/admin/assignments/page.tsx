@@ -50,6 +50,7 @@ import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
 import type { WorkOrder, Technician, WeeklyLog } from "@/lib/types";
+import { logDisplayStatus } from '@/lib/weekly-log-core';
 import { externalWorkOrderId, isImported } from "@/lib/work-order-identity";
 import { format, startOfDay } from 'date-fns';
 import { JobDetailDialog } from '@/components/job-detail-dialog';
@@ -113,7 +114,7 @@ const ADMIN_SORT_OPTIONS: SortOptionDef[] = [
 
 /** Audit status in payroll-pipeline order, for the Audit Status sort. */
 const AUDIT_RANK: Record<string, number> = {
-  'Not Logged': 0, 'In Draft Log': 1, 'Submitted': 2, 'Rejected': 3, 'Approved': 4, 'Verified': 5, 'Paid Out': 6,
+  'Not Logged': 0, 'In Draft Log': 1, 'Submitted': 2, 'Rejected': 3, 'Approved': 4, 'On Hold': 4.5, 'Verified': 5, 'Paid Out': 6,
 };
 
 type SortOption = 'date' | 'client' | 'status' | 'audit' | 'pay' | 'tech';
@@ -239,7 +240,8 @@ export default function AssignmentsHubPage() {
   const auditStatusByWo = useMemo(() => {
     const byWo: Record<string, { label: string; cls: string }> = {};
     for (const log of weeklyLogs) {
-      const s = log.status as string;
+      // Approved + paid out → Paid Out (logs keep status 'Approved' and set paid).
+      const s = logDisplayStatus(log);
       const stage =
         s === 'Paid' ? { label: 'Paid Out', cls: 'bg-text-green/10 text-text-green border-text-green/30' }
         : s === 'Approved' ? { label: 'Approved', cls: 'bg-brand-blue/10 text-brand-blue border-brand-blue/30' }
@@ -247,7 +249,10 @@ export default function AssignmentsHubPage() {
         : s === 'Rejected' ? { label: 'Rejected', cls: 'bg-brand-red/10 text-brand-red border-brand-red/30' }
         : { label: 'In Draft Log', cls: 'bg-bg-tertiary text-text-muted border-border-sub' };
       for (const item of log.items || []) {
-        if (item?.workOrderId) byWo[item.workOrderId] = stage;
+        if (!item?.workOrderId) continue;
+        // Payroll held this job: not paid with this week.
+        byWo[item.workOrderId] = item.payHold?.status === 'held' && s !== 'Draft' && s !== 'Submitted'
+          ? { label: 'On Hold', cls: 'bg-accent-gold/10 text-accent-gold border-accent-gold/30' } : stage;
       }
     }
     return byWo;

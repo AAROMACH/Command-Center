@@ -2,6 +2,7 @@ import 'server-only';
 import { getFirestore, type DocumentReference } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
 import { getConnection, qboGet, qboPost, qboQuery } from './quickbooks';
+import { PAYMENT_TERMS, paymentTermsText } from '@/lib/quote-deposit';
 
 /**
  * App ↔ QuickBooks Online sync.
@@ -126,6 +127,30 @@ async function ensureVendor(u: Person): Promise<string> {
   return id;
 }
 
+// ── Payment terms ────────────────────────────────────────────────────────
+
+/** The invoice's terms: saved on it, else worked out from issue → due date (0/15/30/45/60 days). */
+function invoiceTerms(inv: Inv): string | null {
+  if (inv.isDeposit) return 'due_on_receipt';
+  if (inv.paymentTerms && PAYMENT_TERMS.some(t => t.value === inv.paymentTerms)) return inv.paymentTerms;
+  const a = Date.parse(inv.issueDate || ''), b = Date.parse(inv.dueDate || '');
+  if (!a || !b) return null;
+  const days = Math.round((b - a) / 86_400_000);
+  return PAYMENT_TERMS.find(t => t.days === days)?.value || null;
+}
+
+const termCache = new Map<string, string>();
+/** QuickBooks Term id for "Net 30" etc., created if the company doesn't have it. */
+async function termId(value: string): Promise<string> {
+  const t = PAYMENT_TERMS.find(x => x.value === value)!;
+  if (termCache.has(t.label)) return termCache.get(t.label)!;
+  const q = await qboQuery(`SELECT Id FROM Term WHERE Name = '${esc(t.label)}'`);
+  let id = q.QueryResponse?.Term?.[0]?.Id as string | undefined;
+  if (!id) id = (await qboPost('/term', { Name: t.label, Type: 'STANDARD', DueDays: t.days })).Term.Id as string;
+  termCache.set(t.label, id!);
+  return id!;
+}
+
 // ── Invoices ─────
 
 type LineIn = { description?: string; quantity?: number; unitPrice?: number; category?: string; multiplier?: number; isEmergencyProtocol?: boolean };
@@ -160,6 +185,12 @@ async function invoiceLines(inv: Inv) {
 export async function pushInvoice(inv: Inv): Promise<InvoiceQbo> {
   const customerId = await ensureCustomer(inv);
   const prev = inv.qbo as InvoiceQbo | undefined;
+  // Payment terms → QuickBooks "Terms" + a plain-words line in the customer message.
+  const term = invoiceTerms(inv);
+  const termsLine = inv.isDeposit
+    ? 'Deposit — due before work begins. It is taken off your final invoice.'
+    : term ? paymentTermsText(term, 0, 0, () => '') : '';
+  const memo = [String(inv.notes || '').trim(), termsLine ? `Payment terms: ${termsLine}` : ''].filter(Boolean).join('\n\n');
   const body: Record<string, any> = {
     CustomerRef: { value: customerId },
     DocNumber: String(inv.invoiceNumber || inv.id).slice(0, 21),
@@ -169,7 +200,8 @@ export async function pushInvoice(inv: Inv): Promise<InvoiceQbo> {
     ...(inv.issueDate ? { TxnDate: String(inv.issueDate).slice(0, 10) } : {}),
     ...(inv.dueDate ? { DueDate: String(inv.dueDate).slice(0, 10) } : {}),
     ...(inv.customerEmail ? { BillEmail: { Address: inv.customerEmail } } : {}),
-    ...(inv.notes ? { CustomerMemo: { value: String(inv.notes).slice(0, 1000) } } : {}),
+    ...(term ? { SalesTermRef: { value: await termId(term) } } : {}),
+    ...(memo ? { CustomerMemo: { value: memo.slice(0, 1000) } } : {}),
   };
   let saved: any;
   if (prev?.id) {

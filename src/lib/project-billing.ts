@@ -141,6 +141,7 @@ export async function createProjectInvoice(project: Project, pricing: PricingSet
     notes: quote?.terms || `Project: ${project.name}`,
     subtotal: t.subtotal, discountAmount: t.discountAmount, planDiscount: discount, tax: t.taxAmount, total: t.total,
     quoteId: quote?.id || null,
+    paymentTerms: quote?.paymentTerms || null,
   };
   await setDoc(doc(db, 'invoices', id), JSON.parse(JSON.stringify(invoice)));
   await updateDoc(doc(db, 'projects', project.id), { invoiceId: id, updatedAt: new Date().toISOString() });

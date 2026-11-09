@@ -143,6 +143,7 @@ const techNavGroups: NavGroup[] = [
       { href: "/tech/logs",        label: "Logs",        icon: FileText,      permission: "tech.logs.view" },
       { href: "/tech/site-walks",  label: "Site Walks",  icon: ClipboardCheck, permission: "tech.site_walks.view" },
       { href: "/tech/approvals",   label: "Approvals",   icon: CheckCircle2,   permission: "tech.approvals.view" },
+      { href: "/tech/sop",         label: "SOP",         icon: BookOpen,       permission: "tech.dashboard.view" },
     ],
   },
   {

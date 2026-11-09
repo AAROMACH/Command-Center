@@ -1,8 +1,5 @@
 import 'server-only';
-import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { marked } from 'marked';
 import { GoogleAuth } from 'google-auth-library';
 import { getFirestore } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
@@ -60,7 +57,7 @@ const AUD_LABEL: Record<ManualSection['audience'], string> = { tech: 'All techni
 /** The whole manual as one HTML document, for the Google Doc. */
 export function manualHtml(sections: StoredSection[]): string {
   const parts = sections.map((s, i) => {
-    const body = renderToStaticMarkup(createElement(ReactMarkdown, { remarkPlugins: [remarkGfm] }, s.body));
+    const body = marked.parse(s.body, { gfm: true, async: false }) as string;
     return `${i ? '<p style="page-break-before:always"></p>' : ''}<h1>${esc(s.title)}</h1><p><em>Audience: ${AUD_LABEL[s.audience]}</em></p>${body}`;
   });
   const toc = sections.map(s => `<li>${esc(s.title)}</li>`).join('');

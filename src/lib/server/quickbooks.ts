@@ -19,7 +19,8 @@ import { recordHealth } from './integration-health';
 const AUTHORIZE_URL = 'https://appcenter.intuit.com/connect/oauth2';
 const TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer';
 const REVOKE_URL = 'https://developer.api.intuit.com/v2/oauth2/tokens/revoke';
-export const QBO_SCOPES = 'com.intuit.quickbooks.accounting com.intuit.quickbooks.payment';
+// Accounting only — the app doesn't charge cards through Intuit (add com.intuit.quickbooks.payment only if Payments is approved).
+export const QBO_SCOPES = 'com.intuit.quickbooks.accounting';
 
 export const qboEnv = () => (process.env.QBO_ENV === 'production' ? 'production' : 'sandbox');
 export const qboApiBase = () => (qboEnv() === 'production' ? 'https://quickbooks.api.intuit.com' : 'https://sandbox-quickbooks.api.intuit.com');

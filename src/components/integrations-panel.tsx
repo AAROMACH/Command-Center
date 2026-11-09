@@ -178,7 +178,7 @@ export function IntegrationsPanel() {
   );
 }
 
-type SyncPlan = { push: number; newInvoices: number; voids: number; checkPaid: number; newCustomers: number; newVendors?: string[] };
+type SyncPlan = { push: number; newInvoices: number; voids: number; checkPaid: number; newCustomers: number; newVendors?: string[]; skippedEmpty?: string[] };
 type SyncResult = { pushed: number; voided: number; markedPaid: number; vendors?: number; failed: { invoice: string; error: string }[] };
 
 /**
@@ -228,6 +228,7 @@ function QboSyncBox() {
               {plan.checkPaid > 0 && <li>Check {plan.checkPaid} open invoice{plan.checkPaid === 1 ? '' : 's'} for payments made in QuickBooks</li>}
             </ul>
           )}
+          {!!plan.skippedEmpty?.length && <p className="text-[11px] text-accent-gold">Skipped — no priced lines: {plan.skippedEmpty.join(', ')}. Add a price to send them.</p>}
           <p className="text-[11px] text-text-muted">Drafts aren’t sent. Invoices already paid in QuickBooks aren’t changed.</p>
           <div className="flex flex-wrap gap-2">
             {!nothing && (

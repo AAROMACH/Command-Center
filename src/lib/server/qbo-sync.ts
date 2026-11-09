@@ -126,12 +126,19 @@ async function ensureVendor(u: Person): Promise<string> {
   return id;
 }
 
-// ── Invoices ─────────────────────────────────────────────────────────────
+// ── Invoices ─────
+
+type LineIn = { description?: string; quantity?: number; unitPrice?: number; category?: string; multiplier?: number; isEmergencyProtocol?: boolean };
+/** Labor multipliers (after-hours ×1.5 etc.) — same rule as the invoice and PDF. */
+const lineFactor = (l: LineIn) => (l.category === 'labor' ? (typeof l.multiplier === 'number' ? l.multiplier : l.isEmergencyProtocol ? 1.5 : 1) : 1);
+/** QuickBooks needs at least one priced line. */
+const hasPricedLine = (inv: Inv) => ((inv.lineItems || []) as LineIn[]).some(l => roundCents((Number(l.quantity) || 0) * (Number(l.unitPrice) || 0) * lineFactor(l)) !== 0);
+// ────────────────────────────────────────────────────────
 
 async function invoiceLines(inv: Inv) {
   const lines: any[] = [];
-  for (const l of (inv.lineItems || []) as { description?: string; quantity?: number; unitPrice?: number; category?: string }[]) {
-    const qty = Number(l.quantity) || 0, price = Number(l.unitPrice) || 0;
+  for (const l of (inv.lineItems || []) as LineIn[]) {
+    const qty = Number(l.quantity) || 0, price = roundCents((Number(l.unitPrice) || 0) * lineFactor(l));
     const amount = roundCents(qty * price);
     if (!amount) continue;
     lines.push({
@@ -189,6 +196,7 @@ export async function syncInvoiceById(id: string): Promise<{ ok: boolean; link?:
   const snap = await ref.get();
   if (!snap.exists) return { ok: false, error: 'Invoice not found' };
   const inv = { ...snap.data(), id: snap.id } as Inv;
+  if (!hasPricedLine(inv)) return { ok: false, error: 'This invoice has no priced lines, so it can’t go to QuickBooks. Add a price to at least one line.' };
   try {
     const qbo = await pushInvoice(inv);
     await ref.update({ qbo });
@@ -204,11 +212,11 @@ export async function syncInvoiceById(id: string): Promise<{ ok: boolean; link?:
 
 const syncedAtOf = (inv: Inv) => Date.parse(inv.qbo?.syncedAt || '') || 0;
 const changedAtOf = (inv: Inv) => Math.max(Date.parse(inv.updatedAt || '') || 0, Date.parse(inv.sentAt || '') || 0);
-const needsPush = (inv: Inv) => SYNCABLE.includes(inv.status) && (!inv.qbo?.id || !!inv.qbo?.error || changedAtOf(inv) > syncedAtOf(inv));
+const needsPush = (inv: Inv) => SYNCABLE.includes(inv.status) && hasPricedLine(inv) && (!inv.qbo?.id || !!inv.qbo?.error || changedAtOf(inv) > syncedAtOf(inv));
 const needsVoid = (inv: Inv) => inv.status === 'void' && !!inv.qbo?.id && !inv.qbo?.voided;
 const awaitingPayment = (inv: Inv) => !!inv.qbo?.id && (inv.status === 'sent' || inv.status === 'overdue');
 
-export type SyncPlan = { push: number; newInvoices: number; voids: number; checkPaid: number; newCustomers: number; newVendors: string[] };
+export type SyncPlan = { push: number; newInvoices: number; voids: number; checkPaid: number; newCustomers: number; newVendors: string[]; skippedEmpty: string[] };
 
 async function allInvoices(): Promise<Inv[]> {
   return (await fs().collection('invoices').get()).docs.map(d => ({ ...d.data(), id: d.id } as Inv));
@@ -224,7 +232,8 @@ export async function previewSync(): Promise<SyncPlan> {
     if (!linked) newCustomers++;
   }
   const newVendors = (await contractorsToLink()).map(u => String(u.accounting?.payeeLegalName || u.name || u.id));
-  return { push: push.length, newInvoices: push.filter(i => !i.qbo?.id).length, voids: invs.filter(needsVoid).length, checkPaid: invs.filter(awaitingPayment).length, newCustomers, newVendors };
+  const skippedEmpty = invs.filter(i => SYNCABLE.includes(i.status) && !i.qbo?.id && !hasPricedLine(i)).map(i => i.invoiceNumber || i.id);
+  return { skippedEmpty, push: push.length, newInvoices: push.filter(i => !i.qbo?.id).length, voids: invs.filter(needsVoid).length, checkPaid: invs.filter(awaitingPayment).length, newCustomers, newVendors };
 }
 
 export type SyncResult = { pushed: number; voided: number; markedPaid: number; vendors: number; failed: { invoice: string; error: string }[] };

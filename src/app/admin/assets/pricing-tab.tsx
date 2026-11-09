@@ -247,7 +247,7 @@ export function PricingTab({ settings, canEdit, materials }: { settings: Pricing
         <Card className="bg-bg-secondary border-border-main">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Sales tax</CardTitle>
-            <CardDescription className="text-xs">Charged on taxable materials only. Labor is never taxed.</CardDescription>
+            <CardDescription className="text-xs">Leave at 0 for no sales tax. If you set a rate, it's added to taxable materials on invoices (never labor).</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-1 w-32">

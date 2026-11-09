@@ -11,6 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { OperationsManualViewer } from '@/components/operations-manual-viewer';
+import { OPERATIONS_MANUAL } from '@/content/operations-manual';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/page-header';
 import { cn } from '@/lib/utils';
@@ -86,7 +88,7 @@ export default function CompanyPlanningPage() {
                 eyebrow="Company"
                 icon={Flag}
                 title="Company planning"
-                subtitle="Goals, roadmap milestones and recurring company tasks."
+                subtitle="Goals, roadmap milestones, recurring company tasks and the operations manual."
             />
 
             <Tabs defaultValue="goals" className="w-full">
@@ -95,6 +97,7 @@ export default function CompanyPlanningPage() {
                         { value: 'goals', label: 'Goals', count: goals.length },
                         { value: 'roadmap', label: 'Roadmap', count: milestones.length },
                         { value: 'recurring', label: 'Recurring tasks', count: recurringTasks.length },
+                        { value: 'manual', label: 'Operations manual', count: OPERATIONS_MANUAL.length },
                     ].map(t => (
                         <TabsTrigger key={t.value} value={t.value} className="tab flex items-center gap-2">
                             {t.label}
@@ -104,6 +107,11 @@ export default function CompanyPlanningPage() {
                         </TabsTrigger>
                     ))}
                 </TabsList>
+
+                {/* Operations manual (from the Handbook Google Doc) — every SOP. Techs see theirs under SOP. */}
+                <TabsContent value="manual" className="m-0 pt-4">
+                    <OperationsManualViewer sections={OPERATIONS_MANUAL} showSource />
+                </TabsContent>
 
                 {/* Goals */}
                 <TabsContent value="goals" className="m-0 pt-4">

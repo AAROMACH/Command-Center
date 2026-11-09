@@ -34,6 +34,7 @@ const ROUTE_PERMISSIONS: Array<{ prefix: string; permission: Permission }> = [
   // Tech portal
   { prefix: '/tech/dashboard',   permission: 'tech.dashboard.view' },
   { prefix: '/tech/activity',    permission: 'tech.dashboard.view' },
+  { prefix: '/tech/sop',         permission: 'tech.dashboard.view' },
   { prefix: '/tech/calendar',    permission: 'tech.schedule.view' },
   { prefix: '/tech/assignments', permission: 'tech.assignments.view' },
   { prefix: '/tech/projects',    permission: 'tech.projects.view' },

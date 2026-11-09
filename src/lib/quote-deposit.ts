@@ -38,3 +38,11 @@ export function paymentTermsText(terms: string | null | undefined, depositPct: n
   if (!(depositAmount > 0)) return base;
   return `${base} Deposit due before work begins: ${depositPct > 0 ? `${depositPct}% ` : ''}(${money(depositAmount)}), taken off the final invoice.`;
 }
+
+/** Add-ons the customer picked on the quote, as invoice lines ("Storage upgrade: 4 TB drive"). */
+export function selectedAddOnLines(q: { optionalChoices?: { title?: string; options?: { id: string; label: string; priceAdjustment: number; selected: boolean }[] }[] | null }) {
+  return (q.optionalChoices || []).flatMap(g => (g.options || []).filter(o => o.selected && Number(o.priceAdjustment)).map(o => ({
+    id: `addon-${o.id}`, name: g.title ? `${g.title}: ${o.label}` : o.label,
+    quantity: 1, unitPrice: Number(o.priceAdjustment) || 0, section: 'labor' as const, taxable: false, required: true,
+  })));
+}

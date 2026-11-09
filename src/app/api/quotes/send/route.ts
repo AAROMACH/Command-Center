@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cleanPdfAttachment } from '@/lib/server/pdf-attachment';
 import { publicOrigin } from '@/lib/server/public-origin';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
@@ -32,7 +33,8 @@ export async function POST(req: NextRequest) {
     approver = canApproveQuotes(u as never);
   } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
 
-  const reqBody = await req.json().catch(() => ({} as { quoteId?: string; to?: unknown; replyToMe?: boolean }));
+  const reqBody = await req.json().catch(() => ({} as { quoteId?: string; to?: unknown; replyToMe?: boolean; pdf?: unknown }));
+  const pdf = cleanPdfAttachment(reqBody.pdf);
   const { quoteId } = reqBody;
   if (typeof quoteId !== 'string' || !quoteId || quoteId.includes('/')) return NextResponse.json({ error: 'Bad request' }, { status: 400 });
   const ref = fs.doc(`quotes/${quoteId}`);
@@ -74,6 +76,7 @@ export async function POST(req: NextRequest) {
     '',
     ...(Number(q.depositAmount) > 0 ? [`A deposit of ${money(q.depositAmount)} is due when you approve. You'll get a link to pay it online right after.`, ''] : []),
     `Review and approve it here: ${link}`,
+    ...(pdf ? ['A PDF copy is attached.'] : []),
     '',
     'Reply to this email with any questions.',
     '',
@@ -84,6 +87,7 @@ export async function POST(req: NextRequest) {
     const res = await sendEmail(recipients, subject, text, {
       kind: 'billing', idempotencyKey: `quote-send/${snap.id}/${q.revisionNumber || 0}/${q.sentAt || ''}`,
       related: { type: 'quote', id: snap.id, label: q.quoteNumber || null }, sentBy: name,
+      ...(pdf ? { attachments: [pdf] } : {}),
       ...(reqBody.replyToMe && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(senderEmail) ? { replyTo: senderEmail } : {}),
     });
     if (res === 'skipped') return NextResponse.json({ emailed: false, reason: 'Email isn’t set up on the server.' });

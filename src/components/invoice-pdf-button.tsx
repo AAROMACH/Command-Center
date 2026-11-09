@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { downloadInvoicePdf, invoicePdfData, quotePdfData, type InvoicePdfData } from '@/lib/invoice-pdf';
+import { buildInvoicePdf, downloadInvoicePdf, invoicePdfData, quotePdfData, type InvoicePdfData } from '@/lib/invoice-pdf';
 import { unitLabel } from '@/lib/price-lines';
 import { DEFAULT_SERVICES } from '@/lib/estimating';
 import type { Invoice, Quote } from '@/lib/types';
@@ -65,4 +65,20 @@ export function InvoicePdfButton({ invoice, data, label = 'PDF', className, vari
 /** "Download PDF" for a quote — prices only, never cost or margin. */
 export function QuotePdfButton({ quote, className = 'h-8 w-full' }: { quote: Quote; className?: string }) {
   return <InvoicePdfButton data={quotePdfData(quote)} label="Download PDF" className={className} />;
+}
+
+/**
+ * The same PDF as the download button, as base64 — attached to the quote /
+ * invoice email by the send routes. Null if it can't be built (the email still goes).
+ */
+export async function pdfAttachmentFor(src: { invoice?: Invoice; quote?: Quote }): Promise<{ filename: string; content: string } | null> {
+  try {
+    const d = src.invoice ? invoicePdfData(src.invoice) : src.quote ? quotePdfData(src.quote) : null;
+    if (!d) return null;
+    const pdf = await buildInvoicePdf(await withPriceBookUnits(d));
+    const content = String(pdf.output('datauristring')).split(',')[1] || '';
+    if (!content) return null;
+    const filename = `Aaromach-${d.kind === 'quote' ? 'Quote' : 'Invoice'}-${(d.invoiceNumber || 'draft').replace(/[^\w-]+/g, '_')}.pdf`;
+    return { filename, content };
+  } catch { return null; }
 }

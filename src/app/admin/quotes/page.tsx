@@ -1,4 +1,5 @@
 'use client';
+import { pdfAttachmentFor } from '@/components/invoice-pdf-button';
 import { QuotePdfButton } from '@/components/invoice-pdf-button';
 import { useSessionState } from '@/hooks/use-session-state';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
@@ -356,7 +357,7 @@ function QuoteDetailDialog({
     // Email it to the customer (billing email with your banner).
     try {
       const t = await auth.currentUser?.getIdToken();
-      const r = await fetch('/api/quotes/send', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` }, body: JSON.stringify({ quoteId: quote.id, to: recipients, replyToMe }) });
+      const r = await fetch('/api/quotes/send', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` }, body: JSON.stringify({ quoteId: quote.id, to: recipients, replyToMe, pdf: await pdfAttachmentFor({ quote: { ...quote, deposit: depositSetting, depositAmount: depositDue || null } as Quote }) }) });
       const d = await r.json().catch(() => ({}));
       if (d.emailed) toast({ title: 'Quote sent', description: `Emailed to ${d.to}.` });
       else toast({ variant: r.ok ? undefined : 'destructive', title: 'Quote marked as sent', description: d.error || d.reason || 'It wasn’t emailed.' });

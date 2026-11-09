@@ -26,6 +26,7 @@ import { approveQuote, approvedNow, approvalLabel, canApproveInvoices, canApprov
 import { ApprovalPanel } from '@/components/approval-panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { RecipientsField, recipientsValid } from '@/components/recipients-field';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -300,6 +301,8 @@ function QuoteDetailDialog({
   const [approveHow, setApproveHow] = useState('Phone');
   const [approveName, setApproveName] = useState('');
   const [approveNote, setApproveNote] = useState('');
+  // Send step: pick who gets it (customer + anyone else), then send.
+  const [sendTo, setSendTo] = useState<string[] | null>(null);
   useEffect(() => { setApproving(false); setApproveNote(''); setApproveHow('Phone'); setApproveName(quote?.customerName || ''); }, [quote?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!quote) return null;
@@ -330,7 +333,8 @@ function QuoteDetailDialog({
     }
   };
 
-  const handleSend = async () => {
+  const openSend = () => setSendTo([quote.customerEmail || '']);
+  const handleSend = async (recipients: string[] = []) => {
     const token = quote.customerType === 'external_customer' && !quote.publicToken ? genToken() : quote.publicToken;
     if (quote.status === 'draft' && !mayRelease) { toast({ variant: 'destructive', title: 'Needs approval first' }); return; }
     await act({
@@ -341,7 +345,7 @@ function QuoteDetailDialog({
     // Email it to the customer (billing email with your banner).
     try {
       const t = await auth.currentUser?.getIdToken();
-      const r = await fetch('/api/quotes/send', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` }, body: JSON.stringify({ quoteId: quote.id }) });
+      const r = await fetch('/api/quotes/send', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` }, body: JSON.stringify({ quoteId: quote.id, to: recipients }) });
       const d = await r.json().catch(() => ({}));
       if (d.emailed) toast({ title: 'Quote sent', description: `Emailed to ${d.to}.` });
       else toast({ variant: r.ok ? undefined : 'destructive', title: 'Quote marked as sent', description: d.error || d.reason || 'It wasn’t emailed.' });
@@ -372,6 +376,7 @@ function QuoteDetailDialog({
   };
 
   return (
+    <>
     <Dialog open={!!quote} onOpenChange={v => !v && onClose()}>
       <DialogContent className={cn('bg-bg-elevated border-2 sm:max-w-2xl max-h-[92vh] overflow-y-auto pt-7', DOC_BRAND.quote.frame)}>
         <DialogHeader className="pb-4 border-b border-border-sub text-left space-y-2">
@@ -533,7 +538,7 @@ function QuoteDetailDialog({
                 <>
                   {mayRelease && (
                     <Button size="sm" className="h-8 bg-brand-red hover:bg-brand-red/90 text-white col-span-2"
-                      onClick={handleSend} disabled={acting}>
+                      onClick={openSend} disabled={acting}>
                       <Send size={14} className="mr-1.5" />Send quote
                     </Button>
                   )}
@@ -551,7 +556,7 @@ function QuoteDetailDialog({
                     </Button>
                   )}
                   <Button size="sm" variant="outline" className="h-8 col-span-2"
-                    onClick={handleSend} disabled={acting}>
+                    onClick={openSend} disabled={acting}>
                     <RotateCcw size={14} className="mr-1.5" />Resend
                   </Button>
                   {publicUrl && (
@@ -616,6 +621,20 @@ function QuoteDetailDialog({
         </div>
       </DialogContent>
     </Dialog>
+      <Dialog open={!!sendTo} onOpenChange={v => !v && setSendTo(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="text-left"><DialogTitle>Send quote {quote.quoteNumber}</DialogTitle></DialogHeader>
+          <p className="text-[12px] text-text-muted">Everyone below gets the quote email with the link to review and approve it.</p>
+          <RecipientsField value={sendTo || ['']} onChange={setSendTo} disabled={acting} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendTo(null)} disabled={acting}>Cancel</Button>
+            <Button onClick={async () => { const list = (sendTo || []).filter(x => x.trim()); setSendTo(null); await handleSend(list); }} disabled={acting || !recipientsValid(sendTo || [])}>
+              <Send size={14} className="mr-1.5" /> Send
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

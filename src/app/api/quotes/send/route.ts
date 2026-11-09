@@ -4,6 +4,8 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
 import { isAdmin, isSales } from '@/lib/permissions';
 import { sendEmail } from '@/lib/server/notify-delivery';
+import { cleanRecipients } from '@/lib/recipients';
+import { randomBytes } from 'crypto';
 
 /**
  * Email a quote to the customer (billing email → your personal banner,
@@ -24,7 +26,8 @@ export async function POST(req: NextRequest) {
     name = (u.name as string) || name;
   } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
 
-  const { quoteId } = await req.json().catch(() => ({} as { quoteId?: string }));
+  const reqBody = await req.json().catch(() => ({} as { quoteId?: string; to?: unknown }));
+  const { quoteId } = reqBody;
   if (typeof quoteId !== 'string' || !quoteId || quoteId.includes('/')) return NextResponse.json({ error: 'Bad request' }, { status: 400 });
   const ref = fs.doc(`quotes/${quoteId}`);
   const snap = await ref.get();
@@ -36,15 +39,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ emailed: false, reason: `Already emailed to ${q.emailedTo || 'the customer'} a few minutes ago.` });
   }
 
-  let to: string = String(q.customerEmail || '').trim();
-  if (!to && q.clientId) {
-    const c = (await fs.doc(`users/${q.clientId}`).get()).data();
-    to = String(c?.billingEmail || c?.email || '').trim();
+  // Recipients picked in the Send dialog; none → the customer's email.
+  let recipients = cleanRecipients(reqBody.to);
+  if (!recipients.length) {
+    let fallback: string = String(q.customerEmail || '').trim();
+    if (!fallback && q.clientId) {
+      const c = (await fs.doc(`users/${q.clientId}`).get()).data();
+      fallback = String(c?.billingEmail || c?.email || '').trim();
+    }
+    recipients = cleanRecipients(fallback);
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return NextResponse.json({ emailed: false, reason: 'No email address for this customer.' });
+  if (!recipients.length) return NextResponse.json({ emailed: false, reason: 'No email address for this customer.' });
+  const to = recipients.join(', ');
 
-  const link = q.publicToken ? `${req.nextUrl.origin}/public/quote/${q.publicToken}` : `${req.nextUrl.origin}/client/quotes`;
-  const subject = `Quote ${q.quoteNumber || ''} from Aaromach — ${money(q.total)}`.replace(/\s+/g, ' ');
+  // Everyone gets the private approval link (no login needed), portal clients included.
+  let token: string = q.publicToken || '';
+  if (!token) { token = randomBytes(24).toString('hex'); await ref.update({ publicToken: token }); }
+  const link = `${req.nextUrl.origin}/public/quote/${token}`;
+  const subject = `Quote ${q.quoteNumber || ''} from AAROMACH`.replace(/\s+/g, ' ');
   const text = [
     `Hello${q.customerName ? ` ${q.customerName}` : ''},`,
     '',
@@ -58,7 +70,7 @@ export async function POST(req: NextRequest) {
     'Aaromach',
   ].join('\n');
   try {
-    const res = await sendEmail(to, subject, text, {
+    const res = await sendEmail(recipients, subject, text, {
       kind: 'billing', idempotencyKey: `quote-send/${snap.id}/${q.revisionNumber || 0}/${q.sentAt || ''}`,
       related: { type: 'quote', id: snap.id, label: q.quoteNumber || null }, sentBy: name,
     });

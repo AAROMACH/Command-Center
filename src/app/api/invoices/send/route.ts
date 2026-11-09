@@ -7,6 +7,7 @@ import { adminApp } from '@/lib/firebase-admin';
 import { getSubroles, hasPermission, isAdmin } from '@/lib/permissions';
 import { emailConfigured, emailDeliveryStatus, sendEmail } from '@/lib/server/notify-delivery';
 import { syncInvoiceById } from '@/lib/server/qbo-sync';
+import { cleanRecipients } from '@/lib/recipients';
 import { FieldValue } from 'firebase-admin/firestore';
 
 /**
@@ -96,7 +97,10 @@ export async function POST(req: NextRequest) {
   if (!locked) return NextResponse.json({ error: 'This invoice is already being sent — check back in a moment.' }, { status: 409 });
   const unlock = () => ref.update({ sendingAt: FieldValue.delete() }).catch(() => {});
 
-  const to = (typeof body.to === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.to.trim())) ? body.to.trim() : await recipientOf(inv);
+  // One or more addresses (string or list); none given → the client's billing email.
+  const picked = cleanRecipients(body.to);
+  const recipients = picked.length ? picked : cleanRecipients(await recipientOf(inv));
+  const to = recipients.join(', ');
   const token: string = inv.publicToken || randomBytes(24).toString('hex');
   const link = `${req.nextUrl.origin}/public/invoice/${token}`;
   if (!inv.publicToken) await ref.update({ publicToken: token });
@@ -106,7 +110,7 @@ export async function POST(req: NextRequest) {
   // A sync problem never blocks the email; it shows in Settings → Integrations.
   const qb = await syncInvoiceById(snap.id).catch(() => ({ ok: false as const, link: null }));
   const payLink = qb.ok ? qb.link : null;
-  const subject = `Invoice ${inv.invoiceNumber} from Aaromach — ${money(inv.total)}`;
+  const subject = `Invoice ${inv.invoiceNumber} from AAROMACH`;
   const text = [
     `Hello${inv.clientName ? ` ${inv.clientName}` : ''},`,
     '',
@@ -131,7 +135,7 @@ export async function POST(req: NextRequest) {
   const sendNo = (Array.isArray(inv.sendLog) ? inv.sendLog.length : 0) + 1;
   try {
     // Same key for a retry of this send, so Resend never delivers it twice.
-    emailed = await sendEmail(to, subject, text, { kind: 'billing', idempotencyKey: `invoice-send/${snap.id}/${sendNo}`, onSent: id => { emailId = id; }, onLogged: id => { logId = id; },
+    emailed = await sendEmail(recipients, subject, text, { kind: 'billing', idempotencyKey: `invoice-send/${snap.id}/${sendNo}`, onSent: id => { emailId = id; }, onLogged: id => { logId = id; },
       related: { type: 'invoice', id: snap.id, label: inv.invoiceNumber || null }, sentBy: who.name });
   } catch (e: any) { await unlock(); return NextResponse.json({ error: `Email failed: ${String(e?.message || e).slice(0, 200)}`, link }, { status: 502 }); }
   if (emailed === 'skipped') { await unlock(); return NextResponse.json({ link, emailed: false, reason: 'Email isn’t set up on the server (RESEND_API_KEY missing).' }); }

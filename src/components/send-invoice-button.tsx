@@ -8,6 +8,7 @@ import { PriceDocEditor, type PriceDocResult } from '@/components/price-doc-edit
 import { invoiceToEditor, saveInvoiceFromEditor } from '@/lib/invoice-actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { RecipientsField, recipientsValid } from '@/components/recipients-field';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -43,7 +44,7 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
     catch (e: any) { toast({ variant: 'destructive', title: 'Could not update approval', description: e?.code === 'permission-denied' ? 'You don’t have permission for that.' : e.message }); throw e; }
   };
   const [open, setOpen] = useState(false);
-  const [to, setTo] = useState('');
+  const [to, setTo] = useState<string[]>(['']);
   const [loading, setLoading] = useState(false);
   const [link, setLink] = useState('');
   const token = () => auth.currentUser?.getIdToken();
@@ -70,7 +71,7 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
     try {
       const r = await fetch(`/api/invoices/send?invoiceId=${encodeURIComponent(invoice.id)}`, { headers: { Authorization: `Bearer ${await token()}` } });
       const d = await r.json();
-      setTo(d.to || '');
+      setTo([d.to || '']);
       setSendLog(Array.isArray(d.sendLog) ? d.sendLog : []);
     } catch { /* leave blank to type */ }
     setLoading(false);
@@ -80,7 +81,7 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
     try {
       const r = await fetch('/api/invoices/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await token()}` },
-        body: JSON.stringify({ invoiceId: invoice.id, to }),
+        body: JSON.stringify({ invoiceId: invoice.id, to: to.filter(x => x.trim()) }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Send failed');
@@ -153,10 +154,7 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
             </div>
           </div>
           {!salesMode && <Button variant="outline" size="sm" className="self-start" onClick={() => { setOpen(false); setEditing(true); }}><Pencil size={13} className="mr-1.5" /> Edit invoice</Button>}
-          <label className="space-y-1.5 text-[12px] text-text-muted">
-            Send to
-            <Input type="email" value={to} onChange={e => setTo(e.target.value)} placeholder="client@example.com" disabled={loading} />
-          </label>
+          <RecipientsField value={to} onChange={setTo} disabled={loading} />
           {link && (
             <div className="flex items-center gap-2">
               <Input readOnly value={link} className="font-mono text-[11px]" />
@@ -185,7 +183,7 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
           {sentRecently && <p className="text-[12px] text-accent-gold">Sent less than 10 minutes ago — wait before sending again so the client doesn’t get duplicates.</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={send} disabled={loading || !to.trim() || sentRecently}>{loading && <Loader2 size={13} className="mr-1.5 animate-spin" />} Send</Button>
+            <Button onClick={send} disabled={loading || !recipientsValid(to) || sentRecently}>{loading && <Loader2 size={13} className="mr-1.5 animate-spin" />} Send</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

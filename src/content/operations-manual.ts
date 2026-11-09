@@ -6,12 +6,14 @@
  * audience: 'tech' → shown to every tech (SOP in the tech sidebar);
  * 'pm' → also to Project Managers; 'office' → admins only (Company planning).
  */
+import { glossaryMarkdown } from './glossary';
+
 export type ManualSection = { id: string; title: string; audience: 'tech' | 'pm' | 'office'; body: string };
 
 export const MANUAL_DOC_ID = '1EgpQXAymycc8SeQ0XgNUfWV-5b48O0I-68KUUBDzQjs';
 export const MANUAL_SOURCE_URL = `https://docs.google.com/document/d/${MANUAL_DOC_ID}/edit`;
 
-export const OPERATIONS_MANUAL: ManualSection[] = [
+const IMPORTED: ManualSection[] = [
  {
   "id": "technician-app-guide-command-center",
   "title": "Technician App Guide (Command Center)",
@@ -132,4 +134,10 @@ export const OPERATIONS_MANUAL: ManualSection[] = [
   "audience": "office",
   "body": "| | |\n| :-- | :-- |\n| **Document ID** | DOC-MKT-001 |\n| **Version** | 1.1 |\n| **Effective date** | November 2026 |\n| **Owner** | CEO |\n\n**Aaromach — Precision · Quality · Connectivity**\n\n## Company overview\n\nAaromach is a **Metro Detroit technology services provider** specializing in **structured cabling, IT networking and low-voltage services** for commercial, retail and restaurant environments. We deliver cabling, device deployments and troubleshooting focused on **minimizing downtime**, improving network reliability, and safe, standards-based installations.\n\nWe serve **leading retailers, restaurant chains and regional commercial partners** across Metro Detroit with reliable, documented, compliance-driven work.\n\n## Core competencies\n\n- **Structured cabling & networking**\n  - Cat6 and Cat6A copper installation and certification\n  - Fiber optic termination and testing\n  - Rack and patch panel installs, labeling and cable management\n- **Retail IT support**\n  - POS device installs and troubleshooting\n  - Zebra printers, handhelds and tablets\n  - Network switch, router and access point installs and upgrades\n- **Low-voltage systems**\n  - Voice/data cabling\n  - Security cabling support (cameras, access control)\n  - A/V patching and deployment\n- **Managed services & break/fix**\n  - On-demand IT support and repair\n  - Preventive maintenance\n  - Emergency outage response\n  - Remote network monitoring\n\n## Differentiators\n\n- **Metro Detroit specialist:** local expertise and fast response for retail sites.\n- **ISO 9001 self-compliant:** documented QMS with SOPs, audits and continuous improvement.\n- **Safety first:** OSHA 10, CPR and Hazard Awareness certified staff; a Pre-Job Safety & Risk Assessment before every job.\n- **Retail and restaurant experience:** TJX Companies, AMC Theatres, Aldi, Walmart, McDonald's, Del Taco.\n- **Documented work:** every job tracked in our operations platform with labeling, test results, close-out photos and customer sign-off.\n\n## Quality & compliance\n\n- ISO 9001:2015 self-compliance (DOC-ISO-001 Quality Guidelines)\n- OSHA 10, CPR and Hazard Awareness certified staff\n- Safety & Health Manual (DOC-SAF-001) and PJRA (DOC-SAF-003)\n- CAPA, risk register and customer feedback records for continuous improvement\n\n## Past performance\n\n- **TJX Companies (TJ Maxx, Marshalls, HomeGoods):** cabling, retail IT support, POS troubleshooting\n- **AMC Theatres:** audio-visual and network troubleshooting\n- **Grocery (Walmart, Aldi):** POS, cabling, and rack troubleshooting/support\n- **Restaurants (McDonald's, Del Taco, Outback):** camera installs, POS replacements, kitchen controller support\n- **Wade Trim (engineering firm):** 2025 remodel — equipment relocation\n\n## Business information\n\n- **Legal name:** Aaromach LLC\n- **Business type:** Limited Liability Company\n- **Service area:** Metro Detroit\n- **EIN:** [insert]\n- **D-U-N-S #:** [insert if available]\n- **NAICS codes:**\n  - 238210 — Electrical Contractors / Low-Voltage Wiring\n  - 541512 — Computer Systems Design Services\n  - 541513 — Computer Facilities Management Services\n  - 541519 — Other Computer Related Services\n- **Primary contact:** Daniel Aaron, CEO — (248) 794-4546 · admin@aaromach.com\n- **Main line / support:** (313) 241-0588 · support@aaromach.com\n- **Address:** [insert business address]\n\n## Insurance\n\n- General liability: $1M per occurrence / $2M aggregate\n- Workers' compensation: per Michigan law\n- Auto liability: $1M combined single limit\n- Professional liability (E&O): available as required\n- Certificates of insurance available on request\n\n## Summary\n\nAaromach delivers **retail-focused IT and low-voltage solutions across Metro Detroit**, backed by ISO 9001-aligned processes and OSHA-trained safety practices — helping companies of every size keep reliable IT, network and cabling systems with **Precision, Quality and Connectivity**.\n\n## Revision History\n\n| Version | Date | Changes | Author | Approved by |\n| :-: | :-: | :-- | :-- | :-- |\n| 1.0 | 2025 | Initial release | CEO | CEO |\n| 1.1 | 11/2026 | IDs aligned; main line and support email added; formatting cleaned up | Corey Williams (COO) | Daniel Aaron (CEO) |"
  }
+];
+
+/** The manual, with the glossary (built from content/glossary.ts) as the last section. */
+export const OPERATIONS_MANUAL: ManualSection[] = [
+  ...IMPORTED,
+  { id: 'glossary', title: 'Glossary', audience: 'tech', body: glossaryMarkdown() },
 ];

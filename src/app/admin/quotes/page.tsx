@@ -705,7 +705,7 @@ export default function AdminQuotesPage() {
     setSavingInvoice(true);
     try {
       const q = invoiceFromQuote;
-      const id = await saveInvoiceFromEditor(r, null, q ? { quoteId: q.id } : {});
+      const id = await saveInvoiceFromEditor(r, null, q ? { quoteId: q.id, paymentTerms: q.paymentTerms || null } : {});
       if (q) await updateDoc(doc(db, 'quotes', q.id), { status: 'converted_to_invoice', convertedToInvoiceId: id, updatedAt: new Date().toISOString() });
       toast({ title: 'Invoice created', description: `Invoice ${newInvoiceNumber(r.invoiceNumber, id, r.issueDate)} saved${q ? ` from ${q.quoteNumber}` : ''}.` });
       setInvoiceOpen(false);

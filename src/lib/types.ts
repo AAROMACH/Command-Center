@@ -993,6 +993,10 @@ export type Invoice = {
   paidAt?: string | null;
   /** Outside customer (no client account). */
   customerEmail?: string | null;
+  /** Payment terms carried from the quote (PAYMENT_TERMS value). */
+  paymentTerms?: string | null;
+  /** A deposit invoice made when a quote was approved. */
+  isDeposit?: boolean;
   /** Super / Payroll Admin sign-off before it's sent (lib/approvals). */
   approval?: DocApproval | null;
   /** Who made it — set for Sales-made drafts, which only they may edit. */

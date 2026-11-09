@@ -52,15 +52,32 @@ export async function startConnect(uid: string, name: string): Promise<string> {
   return `${AUTHORIZE_URL}?${q}`;
 }
 
+/**
+ * Token call with retries: network errors, 429 and 5xx are retried up to 3
+ * times with backoff. invalid_grant (refresh token expired/revoked) is not
+ * retryable — the admin has to reconnect, and the message says so.
+ */
 async function tokenRequest(body: Record<string, string>) {
-  const r = await fetch(TOKEN_URL, {
-    method: 'POST',
-    headers: { Authorization: basicAuth(), Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(body),
-  });
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(`QuickBooks token error: ${(d as any).error_description || (d as any).error || r.status}`);
-  return d as { access_token: string; refresh_token: string; expires_in: number; x_refresh_token_expires_in: number };
+  let last = 'QuickBooks token request failed';
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await new Promise(r => setTimeout(r, 500 * 2 ** attempt));
+    let r: Response;
+    try {
+      r = await fetch(TOKEN_URL, {
+        method: 'POST',
+        headers: { Authorization: basicAuth(), Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(body),
+      });
+    } catch (e) { last = `QuickBooks token request failed: ${(e as Error).message}`; continue; }
+    const d = await r.json().catch(() => ({})) as { error?: string; error_description?: string };
+    if (r.ok) return d as unknown as { access_token: string; refresh_token: string; expires_in: number; x_refresh_token_expires_in: number };
+    if (d.error === 'invalid_grant') {
+      throw new Error('QuickBooks access expired or was revoked — reconnect QuickBooks in Settings → Integrations.');
+    }
+    last = `QuickBooks token error: ${d.error_description || d.error || r.status}`;
+    if (r.status !== 429 && r.status < 500) break;
+  }
+  throw new Error(last);
 }
 
 /** Callback: check the state, swap the code for tokens, save the connection. */
@@ -91,11 +108,11 @@ export async function getConnection(): Promise<QboConnection | null> {
 }
 
 /** A valid access token, refreshing it (and the rotating refresh token) when due. */
-async function accessToken(): Promise<{ token: string; realmId: string }> {
+async function accessToken(force = false): Promise<{ token: string; realmId: string }> {
   const ref = connRef();
   const c = await getConnection();
   if (!c) throw new Error('QuickBooks isn’t connected.');
-  if (Date.now() < c.accessExpiresAt) return { token: c.accessToken, realmId: c.realmId };
+  if (!force && Date.now() < c.accessExpiresAt) return { token: c.accessToken, realmId: c.realmId };
   let t: Awaited<ReturnType<typeof tokenRequest>>;
   try { t = await tokenRequest({ grant_type: 'refresh_token', refresh_token: c.refreshToken }); }
   catch (e) { await recordHealth('quickbooks', false, e); throw e; }
@@ -110,11 +127,16 @@ async function accessToken(): Promise<{ token: string; realmId: string }> {
 
 /** GET /v3/company/{realm}{path} — JSON. */
 export async function qboGet(path: string): Promise<any> {
-  const { token, realmId } = await accessToken();
   const sep = path.includes('?') ? '&' : '?';
-  const r = await fetch(`${qboApiBase()}/v3/company/${realmId}${path}${sep}minorversion=75`, {
-    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-  });
+  const call = async (force: boolean) => {
+    const { token, realmId } = await accessToken(force);
+    return fetch(`${qboApiBase()}/v3/company/${realmId}${path}${sep}minorversion=75`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    });
+  };
+  // A 401 means the access token was rejected early: refresh once and retry.
+  let r = await call(false);
+  if (r.status === 401) r = await call(true);
   const d = await r.json().catch(() => ({}));
   if (!r.ok) {
     const msg = `QuickBooks ${r.status}: ${JSON.stringify((d as any).Fault?.Error?.[0]?.Detail || (d as any).Fault || d).slice(0, 300)}`;

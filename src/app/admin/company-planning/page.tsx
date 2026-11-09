@@ -12,7 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OperationsManualViewer } from '@/components/operations-manual-viewer';
-import { OPERATIONS_MANUAL } from '@/content/operations-manual';
+import { useHandbook } from '@/lib/use-handbook';
+import { useAuth } from '@/contexts/auth-context';
+import { isSuperAdmin } from '@/lib/permissions';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/page-header';
 import { cn } from '@/lib/utils';
@@ -23,6 +25,8 @@ type Milestone = { id: string; title: string; owner?: string; targetDate?: strin
 type RecurringTask = { id: string; title: string; frequency: string; assignedTo?: string; lastCompleted?: string; nextDue?: string };
 
 export default function CompanyPlanningPage() {
+    const { user: authUser } = useAuth();
+    const manual = useHandbook();
     const [goals, setGoals] = useState<Goal[]>([]);
     const [milestones, setMilestones] = useState<Milestone[]>([]);
     const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
@@ -97,7 +101,7 @@ export default function CompanyPlanningPage() {
                         { value: 'goals', label: 'Goals', count: goals.length },
                         { value: 'roadmap', label: 'Roadmap', count: milestones.length },
                         { value: 'recurring', label: 'Recurring tasks', count: recurringTasks.length },
-                        { value: 'manual', label: 'Operations manual', count: OPERATIONS_MANUAL.length },
+                        { value: 'manual', label: 'Operations manual', count: manual.length },
                     ].map(t => (
                         <TabsTrigger key={t.value} value={t.value} className="tab flex items-center gap-2">
                             {t.label}
@@ -110,7 +114,7 @@ export default function CompanyPlanningPage() {
 
                 {/* Operations manual (from the Handbook Google Doc) — every SOP. Techs see theirs under SOP. */}
                 <TabsContent value="manual" className="m-0 pt-4">
-                    <OperationsManualViewer sections={OPERATIONS_MANUAL} showSource />
+                    <OperationsManualViewer sections={manual} showSource editable={isSuperAdmin(authUser as never)} />
                 </TabsContent>
 
                 {/* Goals */}

@@ -42,6 +42,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "firebase": "^11.10.0",
+    "google-auth-library": "^9.15.1",
     "jspdf": "^4.2.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.475.0",

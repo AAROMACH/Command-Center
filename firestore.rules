@@ -662,6 +662,18 @@ service cloud.firestore {
 
     // A copy of every email the app sends — written server-side only
     // (lib/server/email-log). Admins read it in Settings → Email log.
+    // Operations Manual (Company planning → Operations manual; tech SOP page).
+    // Edited only through /api/handbook (Super Admins), which also publishes
+    // to the Google Doc. Techs read the field sections; admins read everything.
+    match /handbook/{id} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.audience in ['tech', 'pm']);
+      allow write: if false;
+    }
+    match /handbookMeta/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     match /emailLog/{id} {
       allow read: if isAdmin();
       allow write: if false;

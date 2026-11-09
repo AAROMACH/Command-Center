@@ -119,3 +119,39 @@ export async function releaseHeldJob(heldLogId: string, itemId: string, toLogId:
   });
   return adj;
 }
+
+/**
+ * Put a released hold back on hold: take its line off the week it was paid
+ * on, mark the job held again on its original week, and delete the
+ * adjustment. Only while that week isn't paid and the line wasn't paid out.
+ */
+export async function reholdReleasedJob(adjId: string, by: string, jobsById: Map<string, WorkOrder>): Promise<void> {
+  await runTransaction(db, async tx => {
+    const adjRef = doc(db, 'payrollAdjustments', adjId);
+    const adjSnap = await tx.get(adjRef);
+    if (!adjSnap.exists()) throw new Error('That payment was already removed.');
+    const adj = adjSnap.data() as PayAdjustment;
+    if (adj.kind !== 'held_job' || !adj.heldLogId || !adj.heldItemId) throw new Error('This isn’t a held job.');
+    if (adj.paidOutAt) throw new Error('This was already paid out — it can’t go back on hold.');
+    const heldRef = doc(db, 'weeklyLogs', adj.heldLogId);
+    const toRef = adj.appliedLogId && adj.appliedLogId !== adj.heldLogId ? doc(db, 'weeklyLogs', adj.appliedLogId) : null;
+    const heldSnap = await tx.get(heldRef);
+    const toSnap = toRef ? await tx.get(toRef) : null;
+    if (!heldSnap.exists()) throw new Error('The job’s original week no longer exists.');
+    const held = { ...heldSnap.data(), id: heldSnap.id } as WeeklyLog;
+    const to = toSnap?.exists() ? ({ ...toSnap.data(), id: toSnap.id } as WeeklyLog) : adj.appliedLogId === held.id ? held : null;
+    if (to?.paid) throw new Error(`The week of ${to.weekOf} is already paid — it can’t be taken back.`);
+    const item = (held.items || []).find(i => i.id === adj.heldItemId);
+    if (!item?.payHold) throw new Error('The job is no longer on its original week.');
+    const heldItems = (held.items || []).map(i => (i.id === item.id ? {
+      ...i, payHold: { status: 'held' as const, reason: item.payHold!.reason, amount: item.payHold!.amount, heldAt: new Date().toISOString(), heldBy: by },
+    } : i));
+    if (to && to.id === held.id) {
+      tx.update(heldRef, withTotal(held, { items: clean(heldItems), payAdjustments: (held.payAdjustments || []).filter(a => a.id !== adjId) }, jobsById));
+    } else {
+      tx.update(heldRef, { items: clean(heldItems) });
+      if (to && toRef) tx.update(toRef, withTotal(to, { payAdjustments: (to.payAdjustments || []).filter(a => a.id !== adjId) }, jobsById));
+    }
+    tx.delete(adjRef);
+  });
+}

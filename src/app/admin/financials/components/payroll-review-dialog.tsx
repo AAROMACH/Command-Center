@@ -47,7 +47,7 @@ import {
 } from 'lucide-react';
 import { cn, formatCityState, sanitize } from '@/lib/utils';
 import { FIELD_NATION_FEE_RATE, netOfFieldNationFee, computeWeeklyLogPay, effectiveJobPay } from '@/lib/payroll';
-import { DEFAULT_HOLD_REASON, heldJobs, holdJobPay, releaseHeldJob, undoJobHold } from '@/lib/pay-holds';
+import { DEFAULT_HOLD_REASON, heldJobs, holdJobPay, reholdReleasedJob, releaseHeldJob, undoJobHold } from '@/lib/pay-holds';
 import { DISPUTE_CARDS, PAYROLL_TICKET_CARDS, disputeKindOf, firstName, isLegacyOtherReason, shortWeek, type CardContext } from '@/lib/disputes';
 import { createDocId } from '@/lib/generateId';
 import { ID_PREFIXES } from '@/lib/constants';
@@ -483,8 +483,8 @@ function ImportedJobAudit({
  * A held job from an earlier week, paid on this log. Field Nation jobs get
  * the same pay calculator as this week's jobs; others a plain amount.
  */
-function HeldPaidCard({ adj, wo, open, locked, onSave }: {
-    adj: PayAdjustment; wo?: WorkOrder; open: boolean; locked: boolean; onSave: (amount: number) => Promise<void>;
+function HeldPaidCard({ adj, wo, open, locked, onSave, onRehold }: {
+    adj: PayAdjustment; wo?: WorkOrder; open: boolean; locked: boolean; onSave: (amount: number) => Promise<void>; onRehold?: () => Promise<void>;
 }) {
     const [editing, setEditing] = useState(open);
     useEffect(() => { if (open) setEditing(true); }, [open]);
@@ -515,6 +515,12 @@ function HeldPaidCard({ adj, wo, open, locked, onSave }: {
             ) : (
                 <button type="button" className="text-[12px] font-medium text-brand-red hover:underline" onClick={() => setEditing(true)}>Edit pay</button>
             ))}
+            {!locked && !adj.paidOutAt && onRehold && (
+                <Button size="sm" variant="outline" className="w-full sm:w-auto h-8 sm:h-7 px-2 text-[11px]" onClick={() => onRehold()}
+                    title="Leave this job out of this week's pay until you release it (e.g. waiting on the customer to pay)">
+                    Hold pay
+                </Button>
+            )}
         </div>
     );
 }
@@ -632,6 +638,17 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
             toast({ title: 'Pay updated', description: `$${saved.amount.toFixed(2)} paid on the week of ${localLog.weekOf}.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Could not save', description: e.message });
+        }
+    };
+    // Undo "Pay on this week": the job goes back on hold on its original week.
+    const reholdHere = async (adj: PayAdjustment) => {
+        if (!localLog) return;
+        try {
+            await reholdReleasedJob(adj.id, auth.currentUser?.displayName || 'Payroll', jobsById);
+            setLocalLog(prev => prev ? { ...prev, payAdjustments: (prev.payAdjustments || []).filter(a => a.id !== adj.id) } : prev);
+            toast({ title: 'Job pay on hold', description: `Removed from this week; it waits on the week of ${adj.sourceWeekOf || 'its original week'} again.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Could not put it back on hold', description: e.message });
         }
     };
     const payHoldHere = async (logId: string, itemId: string) => {
@@ -2161,7 +2178,7 @@ export function PayrollReviewDialog({ isOpen, setIsOpen, log: initialLog, techni
                                                 <p className="text-[12px] text-text-muted">Not done this week. Each was held from an earlier week and is paid out on this week’s log.</p>
                                                 {paidHeldHere.map(a => (
                                                     <HeldPaidCard key={a.id} adj={a} wo={a.workOrderId ? findWorkOrder(a.workOrderId) : undefined}
-                                                        open={justPaidId === a.id} locked={isLogLockedForEdit} onSave={amount => saveHeldPay(a, amount)} />
+                                                        open={justPaidId === a.id} locked={isLogLockedForEdit} onSave={amount => saveHeldPay(a, amount)} onRehold={() => reholdHere(a)} />
                                                 ))}
                                             </div>
                                         )}

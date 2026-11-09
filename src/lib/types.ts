@@ -1292,7 +1292,9 @@ export type Quote = {
   terms: string;
   expirationDate: string | null;
   publicToken: string | null;
-  /** Deposit due when the customer approves — set in the Send step. */
+  /** Payment terms (PAYMENT_TERMS value, e.g. 'net_30') — set in the quote's terms. */
+  paymentTerms?: string | null;
+  /** Deposit due when the customer approves — set in the quote's terms. */
   deposit?: QuoteDeposit | null;
   /** The deposit in dollars, worked out from `deposit` and the total when sent. */
   depositAmount?: number | null;

@@ -1,5 +1,6 @@
 'use client';
 
+import { paymentTermsText } from '@/lib/quote-deposit';
 import { discountLineLabel } from '@/lib/price-lines';
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -16,6 +17,31 @@ type PageState = 'loading' | 'error' | 'not_found' | 'already_done' | 'active' |
 
 // Next 15 passes page `params` as a Promise; a client page reads them with
 // useParams() instead (typing them as a plain object fails the build check).
+// ── Layout wrapper (outside the page so typing doesn't remount the form) ──────────────────────────────────────────────────────────
+const Wrap = ({ children }: { children: React.ReactNode }) => (
+  <div className="min-h-screen bg-bg-primary text-text-primary flex flex-col">
+    <header className="border-b border-border-main bg-bg-secondary px-6 py-4">
+      <div className="max-w-2xl mx-auto flex items-center gap-3">
+        <div className="h-8 w-8 rounded-md bg-brand-red flex items-center justify-center shrink-0">
+          <span className="text-white font-semibold text-[12px]">A</span>
+        </div>
+        <div>
+          <p className="text-[14px] font-semibold text-text-primary">Aaromach</p>
+          <p className="text-[12px] text-text-muted">Quote review</p>
+        </div>
+      </div>
+    </header>
+    <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-8 sm:px-6">
+      {children}
+    </main>
+    <footer className="border-t border-border-main px-6 py-4 text-center">
+      <p className="text-[12px] text-text-muted">
+        Aaromach · This link is private. Please don&apos;t share it.
+      </p>
+    </footer>
+  </div>
+);
+
 export default function PublicQuotePage() {
   const { token } = useParams<{ token: string }>();
   const [state, setState] = useState<PageState>('loading');
@@ -117,30 +143,6 @@ export default function PublicQuotePage() {
     }
   };
 
-  // ── Layout wrapper ──────────────────────────────────────────────────────────
-  const Wrap = ({ children }: { children: React.ReactNode }) => (
-    <div className="min-h-screen bg-bg-primary text-text-primary flex flex-col">
-      <header className="border-b border-border-main bg-bg-secondary px-6 py-4">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <div className="h-8 w-8 rounded-md bg-brand-red flex items-center justify-center shrink-0">
-            <span className="text-white font-semibold text-[12px]">A</span>
-          </div>
-          <div>
-            <p className="text-[14px] font-semibold text-text-primary">Aaromach</p>
-            <p className="text-[12px] text-text-muted">Quote review</p>
-          </div>
-        </div>
-      </header>
-      <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-8 sm:px-6">
-        {children}
-      </main>
-      <footer className="border-t border-border-main px-6 py-4 text-center">
-        <p className="text-[12px] text-text-muted">
-          Aaromach · This link is private. Please don&apos;t share it.
-        </p>
-      </footer>
-    </div>
-  );
 
   const card = 'rounded-xl border border-border-main bg-bg-secondary shadow-sm';
   const sectionLabel = 'text-[10px] font-semibold uppercase tracking-wider text-text-muted';
@@ -283,6 +285,12 @@ export default function PublicQuotePage() {
                 )}
                 <div className="flex justify-between text-[15px] font-semibold text-text-primary border-t border-border-sub pt-2 mt-1">
                   <span>Total</span><span className="tabular-nums">{fmtMoney(grandTotal)}</span>
+                </div>
+                <div className="mt-3 rounded-lg border border-border-sub bg-bg-primary p-3 text-left">
+                  <p className="text-[11px] font-semibold text-text-muted">Payment terms</p>
+                  <p className="mt-0.5 text-[13px] text-text-primary">
+                    {paymentTermsText(quote.paymentTerms, quote.deposit?.kind === 'percent' ? Number(quote.deposit.value) : 0, Number(quote.depositAmount) || 0, fmtMoney)}
+                  </p>
                 </div>
               </div>
             </div>

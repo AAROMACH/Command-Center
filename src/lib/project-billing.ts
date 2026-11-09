@@ -4,7 +4,7 @@ import { db } from './firebase';
 import { createDocId } from './generateId';
 import { docNumber } from './doc-number';
 import { ID_PREFIXES } from './constants';
-import { depositCreditLine } from './quote-deposit';
+import { depositCreditLine, paymentTermsDays } from './quote-deposit';
 import { fromQuoteLines, materialPrice, priceTotals, toInvoiceLines, toQuoteLines, unitLabel, type PlanDiscount, type PriceLine } from './price-lines';
 import { quoteEstimate } from './project-economics';
 import { roundCents, type PricingSettings } from './billing';
@@ -135,7 +135,7 @@ export async function createProjectInvoice(project: Project, pricing: PricingSet
     customerEmail: quote?.customerType === 'external_customer' ? (quote.customerEmail || null) : null,
     projectId: project.id,
     issueDate: today.toISOString().slice(0, 10),
-    dueDate: new Date(today.getTime() + 30 * 86400000).toISOString().slice(0, 10),
+    dueDate: new Date(today.getTime() + paymentTermsDays(quote?.paymentTerms) * 86400000).toISOString().slice(0, 10),
     status: 'draft',
     lineItems: toInvoiceLines(lines),
     notes: quote?.terms || `Project: ${project.name}`,

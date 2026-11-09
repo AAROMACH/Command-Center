@@ -1,4 +1,5 @@
 import { effectiveJobPay } from './payroll';
+import { logDisplayStatus } from './weekly-log-core';
 import { isArchivedJob, jobTechId } from './jobs';
 import { isoDay } from './customer-intel';
 import type { WeeklyLog, WorkOrder } from './types';
@@ -10,9 +11,11 @@ import type { WeeklyLog, WorkOrder } from './types';
  * otherwise an estimate from the job's pay. No time-on-site: Field Nation
  * hours aren't available to the app.
  */
-export type PayStatus = 'approved' | 'submitted' | 'draft' | 'returned' | 'not-filed' | 'upcoming';
+export type PayStatus = 'paid' | 'held' | 'approved' | 'submitted' | 'draft' | 'returned' | 'not-filed' | 'upcoming';
 
 export const PAY_STATUS_LABELS: Record<PayStatus, string> = {
+    paid: 'Paid',
+    held: 'On hold',
     approved: 'Approved',
     submitted: 'Submitted',
     draft: 'Draft',
@@ -36,8 +39,8 @@ export type TechJobRow = {
     disputed: boolean;
 };
 
-const STATUS_RANK: Record<string, number> = { Approved: 4, Submitted: 3, Draft: 2, Rejected: 1 };
-const LOG_TO_PAY: Record<string, PayStatus> = { Approved: 'approved', Submitted: 'submitted', Draft: 'draft', Rejected: 'returned' };
+const STATUS_RANK: Record<string, number> = { Paid: 5, Held: 4.5, Approved: 4, Submitted: 3, Draft: 2, Rejected: 1 };
+const LOG_TO_PAY: Record<string, PayStatus> = { Paid: 'paid', Held: 'held', Approved: 'approved', Submitted: 'submitted', Draft: 'draft', Rejected: 'returned' };
 const cents = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 export function buildTechJobRows(jobs: WorkOrder[], logs: WeeklyLog[], techId: string): TechJobRow[] {
@@ -53,11 +56,14 @@ export function buildTechJobRows(jobs: WorkOrder[], logs: WeeklyLog[], techId: s
             const disputed = item.confirmationStatus === 'disputed';
             const amount = disputed ? 0 : (item.payoutAmount !== undefined ? Number(item.payoutAmount) || 0 : effectiveJobPay(item, job));
             const prev = onLogs.get(item.workOrderId);
-            const rank = STATUS_RANK[log.status] || 0;
+            // Paid = the log was paid out (Approved + paid), unless payroll held this job.
+            const held = item.payHold?.status === 'held';
+            const st = held ? (log.status === 'Approved' ? 'Held' : log.status) : logDisplayStatus(log);
+            const rank = STATUS_RANK[st] || 0;
             onLogs.set(item.workOrderId, {
                 pay: (prev?.pay || 0) + amount,
                 rank: Math.max(prev?.rank || 0, rank),
-                status: !prev || rank > prev.rank ? log.status : prev.status,
+                status: !prev || rank > prev.rank ? st : prev.status,
                 disputed: (prev?.disputed || false) || disputed,
                 unpriced: (prev?.unpriced || false) || (!!item.isHelper && !amount && item.payoutAmount === undefined),
             });

@@ -96,7 +96,8 @@ export default function TechActivityPage() {
 
   // KPIs
   const sum = (rows: TechJobRow[]) => rows.reduce((s, r) => s + r.pay, 0);
-  const approved = sel.filter(r => r.payStatus === 'approved');
+  const approved = sel.filter(r => r.payStatus === 'approved' || r.payStatus === 'paid' || r.payStatus === 'held');
+  const paidRows = sel.filter(r => r.payStatus === 'paid');
   const awaiting = sel.filter(r => r.payStatus === 'submitted' || r.payStatus === 'draft');
   const notFiled = sel.filter(r => r.payStatus === 'not-filed');
   const completed = sel.filter(r => r.status === 'completed');
@@ -104,7 +105,7 @@ export default function TechActivityPage() {
   const med = median(paidCompleted.map(r => r.pay));
   const helperCount = sel.filter(r => r.role === 'helper').length;
   const kpis = [
-    { label: 'Approved pay', value: money(sum(approved)), sub: `${count(approved.length)} job${approved.length === 1 ? '' : 's'}`, tone: 'text-text-green' },
+    { label: 'Approved pay', value: money(sum(approved)), sub: `${count(approved.length)} job${approved.length === 1 ? '' : 's'} · ${money(sum(paidRows))} paid out`, tone: 'text-text-green' },
     { label: 'Awaiting approval', value: `≈ ${money(sum(awaiting))}`, sub: `${count(awaiting.length)} on submitted / draft logs`, tone: 'text-accent-gold' },
     { label: 'Not filed yet', value: count(notFiled.length), sub: notFiled.length ? `≈ ${money(sum(notFiled))} once logged` : 'all completed jobs are on a log', tone: notFiled.length ? 'text-brand-red' : 'text-text-primary' },
     { label: 'Completed jobs', value: count(completed.length), sub: helperCount ? `${count(helperCount)} as helper` : `${count(sel.length - completed.length)} open`, tone: 'text-text-primary' },
@@ -119,7 +120,7 @@ export default function TechActivityPage() {
       if (!r.date || r.payStatus === 'upcoming') continue;
       const k = r.date.slice(0, 7);
       const e = m.get(k) || { approved: 0, pending: 0 };
-      if (r.payStatus === 'approved') e.approved += r.pay; else e.pending += r.pay;
+      if (r.payStatus === 'approved' || r.payStatus === 'paid' || r.payStatus === 'held') e.approved += r.pay; else e.pending += r.pay;
       m.set(k, e);
     }
     return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-12)

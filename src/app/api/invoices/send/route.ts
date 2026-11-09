@@ -6,6 +6,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
 import { getSubroles, hasPermission, isAdmin } from '@/lib/permissions';
 import { emailConfigured, emailDeliveryStatus, sendEmail } from '@/lib/server/notify-delivery';
+import { syncInvoiceById } from '@/lib/server/qbo-sync';
 import { FieldValue } from 'firebase-admin/firestore';
 
 /**
@@ -101,6 +102,10 @@ export async function POST(req: NextRequest) {
   if (!inv.publicToken) await ref.update({ publicToken: token });
   if (!to) { await unlock(); return NextResponse.json({ link, emailed: false, reason: 'No email address for this client.' }); }
 
+  // QuickBooks connected → put the invoice there first and include its "Pay now" link.
+  // A sync problem never blocks the email; it shows in Settings → Integrations.
+  const qb = await syncInvoiceById(snap.id).catch(() => ({ ok: false as const, link: null }));
+  const payLink = qb.ok ? qb.link : null;
   const subject = `Invoice ${inv.invoiceNumber} from Aaromach — ${money(inv.total)}`;
   const text = [
     `Hello${inv.clientName ? ` ${inv.clientName}` : ''},`,
@@ -114,6 +119,7 @@ export async function POST(req: NextRequest) {
       `Total: ${money(inv.total)}`,
     ] : []),
     '',
+    ...(payLink ? [`Pay online (card or bank transfer): ${payLink}`, ''] : []),
     `View the full invoice: ${link}`,
     '',
     'Thank you for your business.',

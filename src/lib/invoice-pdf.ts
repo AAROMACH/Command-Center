@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { depositAmountFor, paymentTermsText } from './quote-deposit';
 import { DEFAULT_ASSUMPTIONS } from './estimating';
 import { discountLineLabel, formatQty, lineUnit } from './price-lines';
 import type { Invoice, Quote } from './types';
@@ -43,6 +44,8 @@ export type InvoicePdfData = {
   tax: number;
   total: number;
   notes?: string;
+  /** Quotes: payment terms in plain words (net terms + deposit). */
+  paymentTerms?: string;
 };
 
 export function invoicePdfData(inv: Invoice): InvoicePdfData {
@@ -82,6 +85,7 @@ export function quotePdfData(q: Quote): InvoicePdfData {
     issueDate: (q.sentAt || q.createdAt || '').slice(0, 10), dueDate: q.expirationDate || undefined, status: q.status,
     lineItems: lines, subtotal: Number(q.subtotal) || 0, discountAmount: Number(q.discountAmount) || 0,
     discountLabel: pd ? discountLineLabel(pd) : null, tax: Number(q.taxAmount) || 0, total: Number(q.total) || 0, notes: q.terms,
+    paymentTerms: paymentTermsText(q.paymentTerms, q.deposit?.kind === 'percent' ? Number(q.deposit.value) : 0, Number(q.depositAmount) || depositAmountFor(Number(q.total) || 0, q.deposit), money),
     addOns: (q.optionalChoices || []).filter(g => (g.options || []).length).map(g => ({
       group: g.title || 'Options', description: g.description || undefined,
       options: g.options.map(o => ({ label: o.label, price: Number(o.priceAdjustment) || 0, selected: !!o.selected })),
@@ -263,6 +267,7 @@ export async function buildInvoicePdf(data: InvoicePdfData, opts: { paymentTerms
 
   // ── Notes + how to pay ──
   const blocks: [string, string][] = [];
+  if (isQuote && data.paymentTerms) blocks.push(['PAYMENT TERMS', data.paymentTerms]);
   if (data.notes?.trim()) blocks.push([isQuote ? 'TERMS' : 'NOTES', data.notes.trim()]);
   if (!isQuote) blocks.push(['PAYMENT', opts.paymentTerms || DEFAULT_ASSUMPTIONS.paymentTerms]);
   y += 14;

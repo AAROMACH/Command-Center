@@ -28,7 +28,7 @@ import { ApprovalPanel } from '@/components/approval-panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RecipientsField, recipientsValid } from '@/components/recipients-field';
-import { depositAmountFor, depositCreditLine } from '@/lib/quote-deposit';
+import { depositAmountFor, depositCreditLine, paymentTermsDays, paymentTermsText } from '@/lib/quote-deposit';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -306,8 +306,6 @@ function QuoteDetailDialog({
   // Send step: pick who gets it (customer + anyone else), then send.
   const [sendTo, setSendTo] = useState<string[] | null>(null);
   const [replyToMe, setReplyToMe] = useState(false);
-  const [depKind, setDepKind] = useState<'none' | 'percent' | 'amount'>('none');
-  const [depValue, setDepValue] = useState('');
   useEffect(() => { setApproving(false); setApproveNote(''); setApproveHow('Phone'); setApproveName(quote?.customerName || ''); }, [quote?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!quote) return null;
@@ -340,10 +338,9 @@ function QuoteDetailDialog({
 
   const openSend = () => {
     setSendTo([quote.customerEmail || '']);
-    setDepKind(quote.deposit?.kind || 'none');
-    setDepValue(quote.deposit ? String(quote.deposit.value) : '');
   };
-  const depositSetting: QuoteDeposit | null = depKind === 'none' || !(Number(depValue) > 0) ? null : { kind: depKind, value: Number(depValue) };
+  // Deposit and payment terms come from the quote's terms section (edit the quote to change them).
+  const depositSetting: QuoteDeposit | null = quote.deposit || null;
   const depositDue = depositAmountFor(Number(quote.total) || 0, depositSetting);
   const handleSend = async (recipients: string[] = []) => {
     const token = quote.customerType === 'external_customer' && !quote.publicToken ? genToken() : quote.publicToken;
@@ -651,21 +648,10 @@ function QuoteDetailDialog({
             <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[var(--brand-red)]" checked={replyToMe} onChange={e => setReplyToMe(e.target.checked)} disabled={acting} />
             <span>Use my email{auth.currentUser?.email ? ` (${auth.currentUser.email})` : ''} as the reply-to, so the customer’s replies come to me</span>
           </label>
-          <div className="space-y-1.5">
-            <span className="block text-[12px] font-medium text-text-primary">Deposit due on approval</span>
-            <div className="flex flex-wrap items-center gap-2">
-              {(['none', 'percent', 'amount'] as const).map(k => (
-                <button key={k} type="button" onClick={() => setDepKind(k)}
-                  className={cn('h-8 px-3 rounded-full border text-[12px]', depKind === k ? 'border-brand-red bg-brand-red/10 text-brand-red' : 'border-border-sub text-text-muted')}>
-                  {k === 'none' ? 'No deposit' : k === 'percent' ? 'Percent' : 'Amount'}
-                </button>
-              ))}
-              {depKind !== 'none' && (
-                <Input type="number" inputMode="decimal" min="0" step={depKind === 'percent' ? '1' : '0.01'} value={depValue} onChange={e => setDepValue(e.target.value)}
-                  placeholder={depKind === 'percent' ? '50' : '500.00'} className="h-9 w-28 font-mono" aria-label={depKind === 'percent' ? 'Deposit percent' : 'Deposit amount'} />
-              )}
-            </div>
-            {depositDue > 0 && <p className="text-[12px] text-text-secondary">{fmtMoney(depositDue)} of {fmtMoney(Number(quote.total) || 0)}. When the customer approves, they get a deposit invoice with a QuickBooks pay link, and it’s taken off the final invoice.</p>}
+          <div className="rounded-lg border border-border-sub bg-bg-secondary p-3 text-[12px] text-text-secondary">
+            <span className="font-semibold text-text-primary">Payment terms: </span>
+            {paymentTermsText(quote.paymentTerms, depositSetting?.kind === 'percent' ? depositSetting.value : 0, depositDue, fmtMoney)}
+            <span className="block mt-1 text-[11px] text-text-muted">Change these in the quote’s terms (Edit).</span>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSendTo(null)} disabled={acting}>Cancel</Button>
@@ -962,6 +948,7 @@ export default function AdminQuotesPage() {
           customerEmail: invoiceFromQuote.customerEmail,
           customerPhone: invoiceFromQuote.customerPhone || '',
           terms: invoiceFromQuote.terms,
+          dueDate: new Date(Date.now() + paymentTermsDays(invoiceFromQuote.paymentTerms) * 86400000).toISOString().slice(0, 10),
           // A deposit billed on approval comes off the final invoice.
           lines: [...fromQuoteLines(invoiceFromQuote.lineItems),
             ...(invoiceFromQuote.depositInvoiceId && Number(invoiceFromQuote.depositAmount) > 0 ? [depositCreditLine(Number(invoiceFromQuote.depositAmount), invoiceFromQuote.depositInvoiceNumber)] : [])],

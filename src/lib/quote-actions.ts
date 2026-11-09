@@ -1,4 +1,5 @@
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { DEFAULT_PAYMENT_TERMS, depositAmountFor } from './quote-deposit';
 import { readProjectParts, writeProjectParts } from './project-parts';
 import { createDocId } from './generateId';
 import { docNumber } from './doc-number';
@@ -27,9 +28,19 @@ export function quoteToEditor(q: Quote): Partial<PriceDocValues> {
     terms: q.terms || '',
     expirationDate: q.expirationDate || '',
     optionalGroups: q.optionalChoices || [],
+    paymentTerms: q.paymentTerms || DEFAULT_PAYMENT_TERMS,
+    // Older quotes stored a fixed deposit amount; show it as the nearest percent.
+    depositPct: q.deposit?.kind === 'percent' ? Number(q.deposit.value) || 0
+      : q.deposit?.kind === 'amount' && Number(q.total) > 0 ? Math.round(Number(q.deposit.value) / Number(q.total) * 100) : 0,
     lines: fromQuoteLines(q.lineItems),
   };
 }
+
+/** Payment terms + deposit from the editor, with the deposit worked out on the total. */
+const paymentFields = (r: PriceDocResult) => {
+  const deposit = r.depositPct > 0 ? { kind: 'percent' as const, value: r.depositPct } : null;
+  return { paymentTerms: r.paymentTerms || DEFAULT_PAYMENT_TERMS, deposit, depositAmount: depositAmountFor(r.totals.total, deposit) || null };
+};
 
 /** A quote can be edited until it's invoiced or retired. */
 export const canEditQuote = (q: Quote) => !['converted_to_invoice', 'archived', 'superseded'].includes(q.status);
@@ -66,6 +77,7 @@ export async function saveQuoteEdits(quote: Quote, r: PriceDocResult, linkedProj
     total: r.totals.total,
     terms: r.terms,
     expirationDate: r.expirationDate || null,
+    ...paymentFields(r),
     updatedAt: now,
     // A change by someone who can't approve undoes an approval that hasn't gone out yet.
     ...(quote.status === 'draft' && quote.internalApproval?.status === 'approved' && !opts.editorCanApprove ? { internalApproval: null } : {}),
@@ -112,6 +124,7 @@ export async function createQuoteFromEditor(r: PriceDocResult, by: string, extra
     subtotal: r.totals.subtotal, taxAmount: r.totals.taxAmount, discountAmount: r.totals.discountAmount,
     planDiscount: r.discount, total: r.totals.total,
     terms: r.terms, expirationDate: r.expirationDate || null,
+    ...paymentFields(r),
     publicToken: null, status: 'draft', sentAt: null, viewedAt: null, approvedAt: null, rejectedAt: null,
     approvedByName: null, approvedByEmail: null, approvalNote: null, rejectionReason: null,
     createdBy: by, createdAt: now, updatedAt: now,

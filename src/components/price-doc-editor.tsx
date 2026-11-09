@@ -1,5 +1,6 @@
 'use client';
 
+import { DEFAULT_PAYMENT_TERMS, DEPOSIT_PERCENTS, PAYMENT_TERMS, depositAmountFor, paymentTermsLabel } from '@/lib/quote-deposit';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,9 @@ export type PriceDocValues = {
   // quote
   expirationDate: string;
   optionalGroups: QuoteOptionalGroup[];
+  /** Quote payment terms (PAYMENT_TERMS value) and deposit % (0 = none). */
+  paymentTerms: string;
+  depositPct: number;
   // invoice
   invoiceNumber: string;
   issueDate: string;
@@ -76,8 +80,8 @@ export function emptyPriceDoc(kind: PriceDocKind): PriceDocValues {
   return {
     customerType: 'in_app_client', clientId: '', customerName: '', customerCompany: '', customerEmail: '', customerPhone: '',
     title: '', description: '', scopeSummary: '',
-    terms: kind === 'quote' ? 'Payment due within 30 days of invoice.' : '',
-    expirationDate: '', optionalGroups: [],
+    terms: '',
+    expirationDate: '', optionalGroups: [], paymentTerms: DEFAULT_PAYMENT_TERMS, depositPct: 0,
     invoiceNumber: '',
     issueDate: today(), dueDate: plusDays(30), relatedId: '', status: 'draft',
     lines: [],
@@ -478,6 +482,24 @@ export function PriceDocEditor({
           {/* Notes + totals */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-border-sub pt-4">
             <div className="space-y-1.5">
+              {kind === 'quote' && (
+                <div className="space-y-2 pb-2">
+                  <Label className={labelCls}>Payment terms</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select className={cn(inputCls, 'rounded-md border px-2 text-text-primary')} value={v.paymentTerms} onChange={e => set('paymentTerms', e.target.value)} aria-label="Payment terms">
+                      {PAYMENT_TERMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                    <select className={cn(inputCls, 'rounded-md border px-2 text-text-primary')} value={String(v.depositPct || 0)} onChange={e => set('depositPct', Number(e.target.value))} aria-label="Deposit">
+                      {DEPOSIT_PERCENTS.map(p => <option key={p} value={p}>{p ? `${p}% deposit` : 'No deposit'}</option>)}
+                    </select>
+                  </div>
+                  <p className="text-[11px] text-text-secondary">
+                    {v.depositPct > 0
+                      ? <>Deposit due on approval: <span className="font-mono font-semibold text-text-primary">{formatMoney(depositAmountFor(totals.total, { kind: 'percent', value: v.depositPct }))}</span> ({v.depositPct}% of {formatMoney(totals.total)}). The customer gets a deposit invoice with a pay link; it’s taken off the final invoice.</>
+                      : <>No deposit — the full amount is invoiced, {paymentTermsLabel(v.paymentTerms).toLowerCase()}.</>}
+                  </p>
+                </div>
+              )}
               <Label className={labelCls}>{kind === 'quote' ? 'Terms' : 'Notes'}</Label>
               <textarea rows={5} className={areaCls} value={v.terms} onChange={e => set('terms', e.target.value)}
                 placeholder={kind === 'quote' ? 'Terms…' : 'Terms, scope notes or payment instructions…'} />

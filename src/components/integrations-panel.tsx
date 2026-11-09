@@ -148,6 +148,7 @@ export function IntegrationsPanel() {
                   )
                 )}
               </div>
+              {i.id === 'quickbooks' && qbo?.connected && <QboSyncBox />}
               {/* The technical part (exact error, key names) — for whoever sets up hosting. */}
               <details className="pl-8 group">
                 <summary className="cursor-pointer select-none text-[11px] text-text-muted hover:text-text-primary">Technical details</summary>
@@ -173,6 +174,76 @@ export function IntegrationsPanel() {
         );
       })}
       <p className="text-[11px] text-text-muted">Super Admins get an alert if a connection stops working. Keys are kept in Firebase hosting — this page never shows them.</p>
+    </div>
+  );
+}
+
+type SyncPlan = { push: number; newInvoices: number; voids: number; checkPaid: number; newCustomers: number };
+type SyncResult = { pushed: number; voided: number; markedPaid: number; failed: { invoice: string; error: string }[] };
+
+/**
+ * Sync to QuickBooks: preview what it will do, then run it. Sends sent
+ * invoices (and their customers), voids voided ones, and marks invoices Paid
+ * that were paid in QuickBooks.
+ */
+function QboSyncBox() {
+  const { toast } = useToast();
+  const [plan, setPlan] = useState<SyncPlan | null>(null);
+  const [result, setResult] = useState<SyncResult | null>(null);
+  const [busy, setBusy] = useState<'preview' | 'run' | null>(null);
+
+  const preview = async () => {
+    setBusy('preview'); setResult(null);
+    try { setPlan(await authed('/api/quickbooks/sync')); }
+    catch (e: any) { toast({ variant: 'destructive', title: 'Couldn’t check', description: e.message }); }
+    finally { setBusy(null); }
+  };
+  const run = async () => {
+    setBusy('run');
+    try {
+      const r: SyncResult = await authed('/api/quickbooks/sync', { method: 'POST' });
+      setResult(r); setPlan(null);
+      toast({ variant: r.failed.length ? 'destructive' : undefined, title: r.failed.length ? 'Synced with problems' : 'QuickBooks synced',
+        description: `${r.pushed} invoice${r.pushed === 1 ? '' : 's'} sent, ${r.markedPaid} marked paid${r.voided ? `, ${r.voided} voided` : ''}${r.failed.length ? `, ${r.failed.length} failed` : ''}.` });
+    } catch (e: any) { toast({ variant: 'destructive', title: 'Sync failed', description: e.message }); }
+    finally { setBusy(null); }
+  };
+
+  const nothing = plan && !plan.push && !plan.voids && !plan.checkPaid;
+  return (
+    <div className="pl-8 space-y-2">
+      {!plan && (
+        <Button size="sm" variant="outline" className="h-9" disabled={!!busy} onClick={preview}>
+          {busy === 'preview' ? <Loader2 size={13} className="mr-1.5 animate-spin" /> : <RefreshCw size={13} className="mr-1.5" />} Sync to QuickBooks
+        </Button>
+      )}
+      {plan && (
+        <div className="rounded-lg border border-border-sub bg-bg-primary p-3 space-y-2">
+          {nothing ? <p className="text-[13px] text-text-secondary">Everything is already in sync.</p> : (
+            <ul className="text-[13px] text-text-primary space-y-0.5">
+              {plan.push > 0 && <li>Send {plan.push} invoice{plan.push === 1 ? '' : 's'} ({plan.newInvoices} new, {plan.push - plan.newInvoices} updated)</li>}
+              {plan.newCustomers > 0 && <li>Add about {plan.newCustomers} customer{plan.newCustomers === 1 ? '' : 's'} (existing QuickBooks customers with the same name are reused)</li>}
+              {plan.voids > 0 && <li>Void {plan.voids} invoice{plan.voids === 1 ? '' : 's'} voided in the app</li>}
+              {plan.checkPaid > 0 && <li>Check {plan.checkPaid} open invoice{plan.checkPaid === 1 ? '' : 's'} for payments made in QuickBooks</li>}
+            </ul>
+          )}
+          <p className="text-[11px] text-text-muted">Drafts aren’t sent. Invoices already paid in QuickBooks aren’t changed.</p>
+          <div className="flex flex-wrap gap-2">
+            {!nothing && (
+              <Button size="sm" className="h-9 bg-text-green hover:bg-text-green/90 text-white" disabled={!!busy} onClick={run}>
+                {busy === 'run' ? <Loader2 size={13} className="mr-1.5 animate-spin" /> : null} {busy === 'run' ? 'Syncing…' : 'Sync now'}
+              </Button>
+            )}
+            <Button size="sm" variant="outline" className="h-9" disabled={busy === 'run'} onClick={() => setPlan(null)}>{nothing ? 'Close' : 'Cancel'}</Button>
+          </div>
+        </div>
+      )}
+      {result && result.failed.length > 0 && (
+        <div className="rounded-lg border border-brand-red/30 bg-brand-red/5 p-3 space-y-1">
+          <p className="text-[12px] font-semibold text-brand-red">Didn’t sync</p>
+          {result.failed.map((f, n) => <p key={n} className="text-[12px] text-text-primary break-words">{f.invoice}: {f.error}</p>)}
+        </div>
+      )}
     </div>
   );
 }

@@ -141,11 +141,27 @@ async function accessToken(force = false): Promise<{ token: string; realmId: str
 
 /** GET /v3/company/{realm}{path} — JSON. */
 export async function qboGet(path: string): Promise<any> {
+  return qboRequest('GET', path);
+}
+
+/** POST /v3/company/{realm}{path} with a JSON body (create, sparse update, void). */
+export async function qboPost(path: string, body: unknown): Promise<any> {
+  return qboRequest('POST', path, body);
+}
+
+/** SELECT … FROM … — the query endpoint. */
+export async function qboQuery(sql: string): Promise<any> {
+  return qboRequest('GET', `/query?query=${encodeURIComponent(sql)}`);
+}
+
+async function qboRequest(method: 'GET' | 'POST', path: string, body?: unknown): Promise<any> {
   const sep = path.includes('?') ? '&' : '?';
   const call = async (force: boolean) => {
     const { token, realmId } = await accessToken(force);
     return fetch(`${qboApiBase()}/v3/company/${realmId}${path}${sep}minorversion=75`, {
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      method,
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
   };
   // A 401 means the access token was rejected early: refresh once and retry.

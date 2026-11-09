@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicOrigin } from '@/lib/server/public-origin';
 import { discountLineLabel } from '@/lib/price-lines';
 import { randomBytes } from 'crypto';
 import { getAuth } from 'firebase-admin/auth';
@@ -26,7 +27,7 @@ async function caller(req: NextRequest) {
     if (!u || !(isAdmin(u as any) || hasPermission(u as any, 'admin.crm.send_invoice'))) return null;
     // Only Super / Payroll Admins approve invoices (lib/approvals).
     const approver = getSubroles(u as any).some(r => r === 'super_admin' || r === 'payroll_admin');
-    return { uid, name: (u.name as string) || 'Aaromach', approver };
+    return { uid, name: (u.name as string) || 'Aaromach', approver, email: String(u.email || '') };
   } catch { return null; }
 }
 
@@ -102,7 +103,7 @@ export async function POST(req: NextRequest) {
   const recipients = picked.length ? picked : cleanRecipients(await recipientOf(inv));
   const to = recipients.join(', ');
   const token: string = inv.publicToken || randomBytes(24).toString('hex');
-  const link = `${req.nextUrl.origin}/public/invoice/${token}`;
+  const link = `${await publicOrigin(req)}/public/invoice/${token}`;
   if (!inv.publicToken) await ref.update({ publicToken: token });
   if (!to) { await unlock(); return NextResponse.json({ link, emailed: false, reason: 'No email address for this client.' }); }
 
@@ -136,7 +137,8 @@ export async function POST(req: NextRequest) {
   try {
     // Same key for a retry of this send, so Resend never delivers it twice.
     emailed = await sendEmail(recipients, subject, text, { kind: 'billing', idempotencyKey: `invoice-send/${snap.id}/${sendNo}`, onSent: id => { emailId = id; }, onLogged: id => { logId = id; },
-      related: { type: 'invoice', id: snap.id, label: inv.invoiceNumber || null }, sentBy: who.name });
+      related: { type: 'invoice', id: snap.id, label: inv.invoiceNumber || null }, sentBy: who.name,
+      ...(body.replyToMe && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(who.email) ? { replyTo: who.email } : {}) });
   } catch (e: any) { await unlock(); return NextResponse.json({ error: `Email failed: ${String(e?.message || e).slice(0, 200)}`, link }, { status: 502 }); }
   if (emailed === 'skipped') { await unlock(); return NextResponse.json({ link, emailed: false, reason: 'Email isn’t set up on the server (RESEND_API_KEY missing).' }); }
   const record: SendRecord = { at: new Date().toISOString(), to, by: who.name, emailId, status: 'sent', logId };

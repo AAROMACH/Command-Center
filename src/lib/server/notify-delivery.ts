@@ -134,6 +134,8 @@ export async function sendEmail(to: string | string[], subject: string, body: st
   idempotencyKey?: string; kind?: EmailKind; onSent?: (emailId: string | null) => void;
   /** For the email log: what it's about and who sent it. */
   related?: EmailLogEntry['related']; sentBy?: string | null;
+  /** Send replies to this address instead of the configured one (e.g. the person sending). */
+  replyTo?: string | null;
   /** Gets the email log entry's id. */
   onLogged?: (logId: string | null) => void;
 } = {}): Promise<'sent' | 'skipped'> {
@@ -144,7 +146,8 @@ export async function sendEmail(to: string | string[], subject: string, body: st
   }
   const resend = new Resend(apiKey);
   const settings = await communicationsSettings();
-  const sender = emailSender(opts.kind || 'notifications', settings);
+  const configured = emailSender(opts.kind || 'notifications', settings);
+  const sender = opts.replyTo ? { ...configured, replyTo: opts.replyTo } : configured;
   const contact = opts.kind === 'billing' ? billingContactLine(settings) : null;
   if (contact) body = `${body.trimEnd()}\n\n${contact}`;
   const email = {

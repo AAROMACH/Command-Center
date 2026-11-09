@@ -304,6 +304,7 @@ function QuoteDetailDialog({
   const [approveNote, setApproveNote] = useState('');
   // Send step: pick who gets it (customer + anyone else), then send.
   const [sendTo, setSendTo] = useState<string[] | null>(null);
+  const [replyToMe, setReplyToMe] = useState(false);
   const [depKind, setDepKind] = useState<'none' | 'percent' | 'amount'>('none');
   const [depValue, setDepValue] = useState('');
   useEffect(() => { setApproving(false); setApproveNote(''); setApproveHow('Phone'); setApproveName(quote?.customerName || ''); }, [quote?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -355,7 +356,7 @@ function QuoteDetailDialog({
     // Email it to the customer (billing email with your banner).
     try {
       const t = await auth.currentUser?.getIdToken();
-      const r = await fetch('/api/quotes/send', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` }, body: JSON.stringify({ quoteId: quote.id, to: recipients }) });
+      const r = await fetch('/api/quotes/send', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` }, body: JSON.stringify({ quoteId: quote.id, to: recipients, replyToMe }) });
       const d = await r.json().catch(() => ({}));
       if (d.emailed) toast({ title: 'Quote sent', description: `Emailed to ${d.to}.` });
       else toast({ variant: r.ok ? undefined : 'destructive', title: 'Quote marked as sent', description: d.error || d.reason || 'It wasn’t emailed.' });
@@ -645,6 +646,10 @@ function QuoteDetailDialog({
           <DialogHeader className="text-left"><DialogTitle>Send quote {quote.quoteNumber}</DialogTitle></DialogHeader>
           <p className="text-[12px] text-text-muted">Everyone below gets the quote email with the link to review and approve it.</p>
           <RecipientsField value={sendTo || ['']} onChange={setSendTo} disabled={acting} />
+          <label className="flex items-start gap-2 text-[12px] text-text-secondary cursor-pointer">
+            <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[var(--brand-red)]" checked={replyToMe} onChange={e => setReplyToMe(e.target.checked)} disabled={acting} />
+            <span>Use my email{auth.currentUser?.email ? ` (${auth.currentUser.email})` : ''} as the reply-to, so the customer’s replies come to me</span>
+          </label>
           <div className="space-y-1.5">
             <span className="block text-[12px] font-medium text-text-primary">Deposit due on approval</span>
             <div className="flex flex-wrap items-center gap-2">

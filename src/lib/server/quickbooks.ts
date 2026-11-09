@@ -23,8 +23,11 @@ export const QBO_SCOPES = 'com.intuit.quickbooks.accounting com.intuit.quickbook
 
 export const qboEnv = () => (process.env.QBO_ENV === 'production' ? 'production' : 'sandbox');
 export const qboApiBase = () => (qboEnv() === 'production' ? 'https://quickbooks.api.intuit.com' : 'https://sandbox-quickbooks.api.intuit.com');
-const redirectUri = () => process.env.QBO_REDIRECT_URI || 'https://app.aaromach.com/api/quickbooks/callback';
-export const qboConfigured = () => !!(process.env.QBO_CLIENT_ID && process.env.QBO_CLIENT_SECRET);
+// Trimmed: a pasted secret with a trailing newline makes Intuit reject the app ("undefined didn't connect").
+const clientId = () => (process.env.QBO_CLIENT_ID || '').trim();
+const clientSecret = () => (process.env.QBO_CLIENT_SECRET || '').trim();
+const redirectUri = () => (process.env.QBO_REDIRECT_URI || '').trim() || 'https://app.aaromach.com/api/quickbooks/callback';
+export const qboConfigured = () => !!(clientId() && clientSecret());
 
 const fs = () => getFirestore(adminApp);
 const connRef = () => fs().doc('integrations/quickbooks');
@@ -38,14 +41,14 @@ export type QboConnection = {
   companyName?: string;
 };
 
-const basicAuth = () => `Basic ${Buffer.from(`${process.env.QBO_CLIENT_ID}:${process.env.QBO_CLIENT_SECRET}`).toString('base64')}`;
+const basicAuth = () => `Basic ${Buffer.from(`${clientId()}:${clientSecret()}`).toString('base64')}`;
 
 /** Start: a one-time state (10 minutes) tied to the admin, and Intuit's consent URL. */
 export async function startConnect(uid: string, name: string): Promise<string> {
   if (!qboConfigured()) throw new Error('QuickBooks keys aren’t set (QBO_CLIENT_ID / QBO_CLIENT_SECRET).');
   const state = randomBytes(24).toString('hex');
   await stateRef(state).set({ uid, name, createdAt: Date.now() });
-  const q = new URLSearchParams({ client_id: process.env.QBO_CLIENT_ID!, response_type: 'code', scope: QBO_SCOPES, redirect_uri: redirectUri(), state });
+  const q = new URLSearchParams({ client_id: clientId(), response_type: 'code', scope: QBO_SCOPES, redirect_uri: redirectUri(), state });
   return `${AUTHORIZE_URL}?${q}`;
 }
 

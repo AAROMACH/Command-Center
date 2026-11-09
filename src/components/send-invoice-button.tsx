@@ -1,5 +1,6 @@
 'use client';
 
+import { pdfAttachmentFor } from '@/components/invoice-pdf-button';
 import { useState } from 'react';
 import { Copy, Loader2, Pencil, Send } from 'lucide-react';
 import { auth } from '@/lib/firebase';
@@ -82,7 +83,7 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
     try {
       const r = await fetch('/api/invoices/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await token()}` },
-        body: JSON.stringify({ invoiceId: invoice.id, to: to.filter(x => x.trim()), replyToMe }),
+        body: JSON.stringify({ invoiceId: invoice.id, to: to.filter(x => x.trim()), replyToMe, pdf: await pdfAttachmentFor({ invoice }) }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Send failed');

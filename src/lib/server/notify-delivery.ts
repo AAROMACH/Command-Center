@@ -136,6 +136,8 @@ export async function sendEmail(to: string | string[], subject: string, body: st
   related?: EmailLogEntry['related']; sentBy?: string | null;
   /** Send replies to this address instead of the configured one (e.g. the person sending). */
   replyTo?: string | null;
+  /** Files to attach (base64 content), e.g. the quote/invoice PDF. */
+  attachments?: { filename: string; content: string }[];
   /** Gets the email log entry's id. */
   onLogged?: (logId: string | null) => void;
 } = {}): Promise<'sent' | 'skipped'> {
@@ -156,6 +158,7 @@ export async function sendEmail(to: string | string[], subject: string, body: st
     to: Array.isArray(to) ? to : [to],
     subject,
     text: body,
+    ...(opts.attachments?.length ? { attachments: opts.attachments.map(a => ({ filename: a.filename, content: Buffer.from(a.content, 'base64') })) } : {}),
     html: emailHtml(body, bannerHtml(opts.kind || 'notifications', settings, sender.replyTo)),
   };
   const logBase = {

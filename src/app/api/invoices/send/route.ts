@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cleanPdfAttachment } from '@/lib/server/pdf-attachment';
 import { publicOrigin } from '@/lib/server/public-origin';
 import { discountLineLabel } from '@/lib/price-lines';
 import { randomBytes } from 'crypto';
@@ -126,6 +127,7 @@ export async function POST(req: NextRequest) {
     '',
     ...(payLink ? [`Pay online (card or bank transfer): ${payLink}`, ''] : []),
     `View the full invoice: ${link}`,
+    ...(cleanPdfAttachment(body.pdf) ? ['A PDF copy is attached.'] : []),
     '',
     'Thank you for your business.',
     'Aaromach',
@@ -138,6 +140,7 @@ export async function POST(req: NextRequest) {
     // Same key for a retry of this send, so Resend never delivers it twice.
     emailed = await sendEmail(recipients, subject, text, { kind: 'billing', idempotencyKey: `invoice-send/${snap.id}/${sendNo}`, onSent: id => { emailId = id; }, onLogged: id => { logId = id; },
       related: { type: 'invoice', id: snap.id, label: inv.invoiceNumber || null }, sentBy: who.name,
+      ...(cleanPdfAttachment(body.pdf) ? { attachments: [cleanPdfAttachment(body.pdf)!] } : {}),
       ...(body.replyToMe && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(who.email) ? { replyTo: who.email } : {}) });
   } catch (e: any) { await unlock(); return NextResponse.json({ error: `Email failed: ${String(e?.message || e).slice(0, 200)}`, link }, { status: 502 }); }
   if (emailed === 'skipped') { await unlock(); return NextResponse.json({ link, emailed: false, reason: 'Email isn’t set up on the server (RESEND_API_KEY missing).' }); }

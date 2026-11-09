@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { MANUAL_SOURCE_URL, type ManualSection } from '@/content/operations-manual';
 import { useHandbookSync, type HandbookSection } from '@/lib/use-handbook';
+import { GlossaryTip, rehypeGlossary } from '@/components/glossary-terms';
 
 const MD = cn(
   'text-[14px] leading-relaxed text-text-secondary break-words',
@@ -151,7 +152,14 @@ export function OperationsManualViewer({ sections, showSource, editable }: { sec
             )}
           </div>
           <div className={cn(MD, 'overflow-x-auto')}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{current.body}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}
+              rehypePlugins={current.id === 'glossary' ? [] : [rehypeGlossary]}
+              components={{
+                abbr: ({ children, ...p }) => {
+                  const word = String((p as Record<string, unknown>)['data-term'] ?? (p as Record<string, unknown>).dataTerm ?? '');
+                  return word ? <GlossaryTip word={word} onOpenSection={id => sections.some(x => x.id === id) && pick(id)}>{children}</GlossaryTip> : <abbr>{children}</abbr>;
+                },
+              }}>{current.body}</ReactMarkdown>
           </div>
           {current.updatedAt && current.updatedBy !== 'import' && (
             <p className="mt-6 text-[11px] text-text-muted">Last edited {new Date(current.updatedAt).toLocaleDateString()} by {current.updatedBy}</p>

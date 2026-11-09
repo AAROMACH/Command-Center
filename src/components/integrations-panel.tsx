@@ -178,8 +178,8 @@ export function IntegrationsPanel() {
   );
 }
 
-type SyncPlan = { push: number; newInvoices: number; voids: number; checkPaid: number; newCustomers: number };
-type SyncResult = { pushed: number; voided: number; markedPaid: number; failed: { invoice: string; error: string }[] };
+type SyncPlan = { push: number; newInvoices: number; voids: number; checkPaid: number; newCustomers: number; newVendors?: string[] };
+type SyncResult = { pushed: number; voided: number; markedPaid: number; vendors?: number; failed: { invoice: string; error: string }[] };
 
 /**
  * Sync to QuickBooks: preview what it will do, then run it. Sends sent
@@ -204,12 +204,12 @@ function QboSyncBox() {
       const r: SyncResult = await authed('/api/quickbooks/sync', { method: 'POST' });
       setResult(r); setPlan(null);
       toast({ variant: r.failed.length ? 'destructive' : undefined, title: r.failed.length ? 'Synced with problems' : 'QuickBooks synced',
-        description: `${r.pushed} invoice${r.pushed === 1 ? '' : 's'} sent, ${r.markedPaid} marked paid${r.voided ? `, ${r.voided} voided` : ''}${r.failed.length ? `, ${r.failed.length} failed` : ''}.` });
+        description: `${r.vendors ? `${r.vendors} vendor${r.vendors === 1 ? '' : 's'} added, ` : ''}${r.pushed} invoice${r.pushed === 1 ? '' : 's'} sent, ${r.markedPaid} marked paid${r.voided ? `, ${r.voided} voided` : ''}${r.failed.length ? `, ${r.failed.length} failed` : ''}.` });
     } catch (e: any) { toast({ variant: 'destructive', title: 'Sync failed', description: e.message }); }
     finally { setBusy(null); }
   };
 
-  const nothing = plan && !plan.push && !plan.voids && !plan.checkPaid;
+  const nothing = plan && !plan.push && !plan.voids && !plan.checkPaid && !plan.newVendors?.length;
   return (
     <div className="pl-8 space-y-2">
       {!plan && (
@@ -221,6 +221,7 @@ function QboSyncBox() {
         <div className="rounded-lg border border-border-sub bg-bg-primary p-3 space-y-2">
           {nothing ? <p className="text-[13px] text-text-secondary">Everything is already in sync.</p> : (
             <ul className="text-[13px] text-text-primary space-y-0.5">
+              {!!plan.newVendors?.length && <li>Add {plan.newVendors.length} 1099 vendor{plan.newVendors.length === 1 ? '' : 's'}: {plan.newVendors.join(', ')} (existing QuickBooks vendors with the same name are linked)</li>}
               {plan.push > 0 && <li>Send {plan.push} invoice{plan.push === 1 ? '' : 's'} ({plan.newInvoices} new, {plan.push - plan.newInvoices} updated)</li>}
               {plan.newCustomers > 0 && <li>Add about {plan.newCustomers} customer{plan.newCustomers === 1 ? '' : 's'} (existing QuickBooks customers with the same name are reused)</li>}
               {plan.voids > 0 && <li>Void {plan.voids} invoice{plan.voids === 1 ? '' : 's'} voided in the app</li>}

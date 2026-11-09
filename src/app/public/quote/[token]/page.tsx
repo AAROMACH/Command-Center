@@ -59,6 +59,19 @@ export default function PublicQuotePage() {
   const selectedAddon = choices.reduce((s, g) => s + g.options.filter(o => o.selected).reduce((ss, o) => ss + o.priceAdjustment, 0), 0);
   const grandTotal = (quote?.total || 0) + selectedAddon;
 
+  const [payLink, setPayLink] = useState<string | null>(null);
+  const deposit = Number(quote?.depositAmount) || 0;
+  // Pay deposit: QuickBooks' page when connected.
+  const DepositBox = ({ link }: { link: string | null }) => deposit > 0 ? (
+    <div className={cn(card, 'p-4 text-left space-y-2')}>
+      <p className={sectionLabel}>Deposit</p>
+      <p className="text-[14px] text-text-primary">A deposit of <strong>{fmtMoney(deposit)}</strong> is due to get started. It&apos;s taken off your final invoice.</p>
+      {link
+        ? <a href={link} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center rounded-lg bg-text-green px-5 text-[14px] font-semibold text-white hover:bg-text-green/90">Pay deposit</a>
+        : <p className="text-[12px] text-text-muted">We&apos;ve emailed you the deposit invoice with a link to pay.</p>}
+    </div>
+  ) : null;
+
   const handleApprove = async () => {
     if (!approverName || !approverEmail) return;
     setSubmitting(true);
@@ -76,6 +89,8 @@ export default function PublicQuotePage() {
         }),
       });
       if (!res.ok) { setState('error'); return; }
+      const d = await res.json().catch(() => ({})) as { depositPayLink?: string | null };
+      setPayLink(d.depositPayLink || null);
       setState('success_approve');
     } catch {
       setState('error');
@@ -170,6 +185,7 @@ export default function PublicQuotePage() {
             ? `Approved by ${quote.approvedByName} on ${quote.approvedAt ? format(parseISO(quote.approvedAt), 'MMM d, yyyy') : ''}`
             : 'Contact Aaromach if you have questions.'}
         </p>
+        {quote.status === 'approved' && <div className="mt-6 max-w-md mx-auto"><DepositBox link={quote.depositPayLink || null} /></div>}
       </div>
     </Wrap>
   );
@@ -188,6 +204,7 @@ export default function PublicQuotePage() {
           <p className="text-[13px] text-text-secondary">Approved total: <span className="text-text-primary font-semibold">{fmtMoney(grandTotal)}</span></p>
           <p className="text-[12px] text-text-muted">Quote #{quote?.quoteNumber}</p>
         </div>
+        <DepositBox link={payLink} />
       </div>
     </Wrap>
   );
@@ -353,7 +370,7 @@ export default function PublicQuotePage() {
                 </div>
               </div>
               <p className="text-[12px] text-text-muted">
-                You are approving this quote for <strong className="text-text-primary">{fmtMoney(grandTotal)}</strong>, including selected add-ons.
+                You are approving this quote for <strong className="text-text-primary">{fmtMoney(grandTotal)}</strong>, including selected add-ons.{deposit > 0 && <> A deposit of <strong className="text-text-primary">{fmtMoney(deposit)}</strong> is due on approval.</>}
               </p>
               <div className="flex gap-2">
                 <button type="button" onClick={() => setState('active')}

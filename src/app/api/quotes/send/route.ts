@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
     '',
     `Here is quote ${q.quoteNumber || ''}${q.title ? ` for ${q.title}` : ''}: ${money(q.total)}.`,
     '',
+    ...(Number(q.depositAmount) > 0 ? [`A deposit of ${money(q.depositAmount)} is due when you approve. You'll get a link to pay it online right after.`, ''] : []),
     `Review and approve it here: ${link}`,
     '',
     'Reply to this email with any questions.',

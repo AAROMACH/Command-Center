@@ -16,7 +16,7 @@ import { docNumber, newInvoiceNumber } from '@/lib/doc-number';
 import { renumberQuotes } from '@/lib/doc-number-actions';
 import { ID_PREFIXES } from '@/lib/constants';
 import { syncLeadOnQuoteCreated } from '@/lib/crm-actions';
-import type { Lead, SiteSurvey, Quote, QuoteStatus } from '@/lib/types';
+import type { Lead, SiteSurvey, Quote, QuoteStatus, QuoteDeposit } from '@/lib/types';
 import { PriceDocEditor, type PriceDocResult, type PriceDocValues } from '@/components/price-doc-editor';
 import { discountLineLabel, fromQuoteLines, toQuoteLines, type PlanDiscount } from '@/lib/price-lines';
 import { saveInvoiceFromEditor } from '@/lib/invoice-actions';
@@ -27,6 +27,7 @@ import { ApprovalPanel } from '@/components/approval-panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RecipientsField, recipientsValid } from '@/components/recipients-field';
+import { depositAmountFor, depositCreditLine } from '@/lib/quote-deposit';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -303,6 +304,8 @@ function QuoteDetailDialog({
   const [approveNote, setApproveNote] = useState('');
   // Send step: pick who gets it (customer + anyone else), then send.
   const [sendTo, setSendTo] = useState<string[] | null>(null);
+  const [depKind, setDepKind] = useState<'none' | 'percent' | 'amount'>('none');
+  const [depValue, setDepValue] = useState('');
   useEffect(() => { setApproving(false); setApproveNote(''); setApproveHow('Phone'); setApproveName(quote?.customerName || ''); }, [quote?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!quote) return null;
@@ -333,12 +336,19 @@ function QuoteDetailDialog({
     }
   };
 
-  const openSend = () => setSendTo([quote.customerEmail || '']);
+  const openSend = () => {
+    setSendTo([quote.customerEmail || '']);
+    setDepKind(quote.deposit?.kind || 'none');
+    setDepValue(quote.deposit ? String(quote.deposit.value) : '');
+  };
+  const depositSetting: QuoteDeposit | null = depKind === 'none' || !(Number(depValue) > 0) ? null : { kind: depKind, value: Number(depValue) };
+  const depositDue = depositAmountFor(Number(quote.total) || 0, depositSetting);
   const handleSend = async (recipients: string[] = []) => {
     const token = quote.customerType === 'external_customer' && !quote.publicToken ? genToken() : quote.publicToken;
     if (quote.status === 'draft' && !mayRelease) { toast({ variant: 'destructive', title: 'Needs approval first' }); return; }
     await act({
       status: 'sent', sentAt: new Date().toISOString(), publicToken: token,
+      deposit: depositSetting, depositAmount: depositDue || null,
       // An approver sending their own (or an unapproved) quote approves it.
       ...(isApproved(quote.internalApproval) ? {} : { internalApproval: approvedNow(me, quote.internalApproval) }),
     });
@@ -588,6 +598,15 @@ function QuoteDetailDialog({
                       const by = auth.currentUser?.displayName || 'Office';
                       await act({ status: 'approved', approvedAt: new Date().toISOString(), approvedByName: approveName.trim(), approvedByEmail: null,
                         approvalNote: `Approved by ${approveHow.toLowerCase()}${approveNote.trim() ? ` — ${approveNote.trim()}` : ''} (recorded by ${by})` });
+                      if (Number(quote.depositAmount) > 0 && !quote.depositInvoiceId) {
+                        try {
+                          const t = await auth.currentUser?.getIdToken();
+                          const r = await fetch('/api/quotes/deposit', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` }, body: JSON.stringify({ quoteId: quote.id }) });
+                          const d = await r.json().catch(() => ({}));
+                          toast(r.ok ? { title: 'Deposit invoice sent', description: d.payLink ? 'Emailed with the QuickBooks pay link.' : 'Emailed (no QuickBooks pay link — check Integrations).' }
+                            : { variant: 'destructive', title: 'Deposit invoice not made', description: d.error || 'Try again from the quote.' });
+                        } catch { toast({ variant: 'destructive', title: 'Deposit invoice not made' }); }
+                      }
                     }}>Save approval</Button>
                   </div>
                 </div>
@@ -626,6 +645,22 @@ function QuoteDetailDialog({
           <DialogHeader className="text-left"><DialogTitle>Send quote {quote.quoteNumber}</DialogTitle></DialogHeader>
           <p className="text-[12px] text-text-muted">Everyone below gets the quote email with the link to review and approve it.</p>
           <RecipientsField value={sendTo || ['']} onChange={setSendTo} disabled={acting} />
+          <div className="space-y-1.5">
+            <span className="block text-[12px] font-medium text-text-primary">Deposit due on approval</span>
+            <div className="flex flex-wrap items-center gap-2">
+              {(['none', 'percent', 'amount'] as const).map(k => (
+                <button key={k} type="button" onClick={() => setDepKind(k)}
+                  className={cn('h-8 px-3 rounded-full border text-[12px]', depKind === k ? 'border-brand-red bg-brand-red/10 text-brand-red' : 'border-border-sub text-text-muted')}>
+                  {k === 'none' ? 'No deposit' : k === 'percent' ? 'Percent' : 'Amount'}
+                </button>
+              ))}
+              {depKind !== 'none' && (
+                <Input type="number" inputMode="decimal" min="0" step={depKind === 'percent' ? '1' : '0.01'} value={depValue} onChange={e => setDepValue(e.target.value)}
+                  placeholder={depKind === 'percent' ? '50' : '500.00'} className="h-9 w-28 font-mono" aria-label={depKind === 'percent' ? 'Deposit percent' : 'Deposit amount'} />
+              )}
+            </div>
+            {depositDue > 0 && <p className="text-[12px] text-text-secondary">{fmtMoney(depositDue)} of {fmtMoney(Number(quote.total) || 0)}. When the customer approves, they get a deposit invoice with a QuickBooks pay link, and it’s taken off the final invoice.</p>}
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSendTo(null)} disabled={acting}>Cancel</Button>
             <Button onClick={async () => { const list = (sendTo || []).filter(x => x.trim()); setSendTo(null); await handleSend(list); }} disabled={acting || !recipientsValid(sendTo || [])}>
@@ -921,7 +956,9 @@ export default function AdminQuotesPage() {
           customerEmail: invoiceFromQuote.customerEmail,
           customerPhone: invoiceFromQuote.customerPhone || '',
           terms: invoiceFromQuote.terms,
-          lines: fromQuoteLines(invoiceFromQuote.lineItems),
+          // A deposit billed on approval comes off the final invoice.
+          lines: [...fromQuoteLines(invoiceFromQuote.lineItems),
+            ...(invoiceFromQuote.depositInvoiceId && Number(invoiceFromQuote.depositAmount) > 0 ? [depositCreditLine(Number(invoiceFromQuote.depositAmount), invoiceFromQuote.depositInvoiceNumber)] : [])],
         } : undefined}
         initialDiscount={invoiceFromQuote ? ((invoiceFromQuote as Quote & { planDiscount?: PlanDiscount | null }).planDiscount ?? null) : undefined}
         title={invoiceFromQuote ? `Invoice from ${invoiceFromQuote.quoteNumber}` : 'New invoice'}

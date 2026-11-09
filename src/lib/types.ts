@@ -1292,6 +1292,14 @@ export type Quote = {
   terms: string;
   expirationDate: string | null;
   publicToken: string | null;
+  /** Deposit due when the customer approves — set in the Send step. */
+  deposit?: QuoteDeposit | null;
+  /** The deposit in dollars, worked out from `deposit` and the total when sent. */
+  depositAmount?: number | null;
+  /** The deposit invoice made on approval, and its QuickBooks pay link. */
+  depositInvoiceId?: string | null;
+  depositInvoiceNumber?: string | null;
+  depositPayLink?: string | null;
   status: QuoteStatus;
   sentAt: string | null;
   viewedAt: string | null;
@@ -1482,3 +1490,6 @@ export type MileageEntry = {
   status: 'auto' | 'pending' | 'approved';
   createdAt: string;
 };
+
+/** A deposit on a quote: a percent of the total, or a fixed amount. */
+export type QuoteDeposit = { kind: 'percent' | 'amount'; value: number };

@@ -143,8 +143,14 @@ export async function setStaffPayPaused(plan: StaffPayPlan, paused: boolean): Pr
   await updateDoc(doc(db, 'staffPayPlans', plan.id), { active: !paused, pauses: JSON.parse(JSON.stringify(pauses)) });
 }
 
-export const updateStaffPayPlan = (id: string, patch: Partial<Pick<StaffPayPlan, 'label' | 'weeklyAmount' | 'total' | 'active' | 'notes'>>) =>
-  updateDoc(doc(db, 'staffPayPlans', id), JSON.parse(JSON.stringify(patch)));
+/** Edit a plan. Weeks already recorded keep what was scheduled/paid then; new amounts apply to weeks not yet recorded. */
+export const updateStaffPayPlan = (id: string, patch: Partial<Pick<StaffPayPlan, 'label' | 'weeklyAmount' | 'total' | 'active' | 'notes' | 'startWeek'>>) =>
+  updateDoc(doc(db, 'staffPayPlans', id), JSON.parse(JSON.stringify({
+    ...patch,
+    ...(patch.startWeek ? { startWeek: mondayOf(toDate(patch.startWeek)) } : {}),
+    ...(patch.weeklyAmount != null ? { weeklyAmount: r2(patch.weeklyAmount) } : {}),
+    ...(patch.total != null ? { total: r2(patch.total) } : {}),
+  })));
 
 /** Record a week: Paid (with the amount actually paid — more than scheduled catches up the bank) or Skipped. */
 export async function recordStaffPayWeek(plan: StaffPayPlan, weekOf: string, scheduled: number, status: 'paid' | 'skipped', paid: number, by: string, note?: string): Promise<void> {

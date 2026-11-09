@@ -17,20 +17,23 @@ export function shortDate(when: string | Date = new Date()): string {
 }
 
 /**
- * '11/05/26-007' for quote 'qt-007' made 11/05/26. Invoices use the common
- * invoice style with no slashes: 'INV-110526-012' for 'inv-012'. The id
+ * 'QT-110526-007' for quote 'qt-007' made 11/05/26, 'INV-110526-012' for
+ * invoice 'inv-012' — no slashes, so they're safe in file names and QuickBooks. The id
  * itself if it has no counter.
  */
 export function docNumber(id: string, when: string | Date = new Date()): string {
   const seq = docSeq(id);
   if (!seq) return id;
-  if (/^inv-/i.test(id)) return `INV-${shortDate(when).replace(/\//g, '')}-${seq}`;
-  return `${shortDate(when)}-${seq}`;
+  const ymd = shortDate(when).replace(/\//g, '');
+  if (/^inv-/i.test(id)) return `INV-${ymd}-${seq}`;
+  if (/^qt-/i.test(id)) return `QT-${ymd}-${seq}`;
+  return `${ymd}-${seq}`;
 }
 
 /** A number the app made up (the doc id, or the old random INV-2026-1234), not one typed by hand. */
 export const isAutoNumber = (num: string | undefined | null, id: string) =>
-  !num || num === id || /^INV-\d{4}-\d{4}$/.test(num);
+  // The old slash style (11/05/26-007) counts as app-made, so it's renumbered too.
+  !num || num === id || /^INV-\d{4}-\d{4}$/.test(num) || /^\d{2}\/\d{2}\/\d{2}-\d+$/.test(num);
 
 /** The number a new invoice is saved with (see saveInvoiceFromEditor). */
 export const newInvoiceNumber = (typed: string, id: string, issueDate?: string) =>

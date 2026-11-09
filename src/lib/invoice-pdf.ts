@@ -34,7 +34,9 @@ export type InvoicePdfData = {
   status?: string;
   /** e.g. "Project PRJ-0012" or "Job ASMT-0041". */
   reference?: string | null;
-  lineItems: { description: string; quantity: number; unitPrice: number; category?: string; multiplier?: number; isEmergencyProtocol?: boolean; unit?: string; itemRef?: string }[];
+  lineItems: { description: string; quantity: number; unitPrice: number; category?: string; multiplier?: number; isEmergencyProtocol?: boolean; unit?: string; itemRef?: string; optional?: boolean }[];
+  /** Quotes: add-on choices the customer can pick on approval — not in the total. */
+  addOns?: { group: string; description?: string; options: { label: string; price: number; selected: boolean }[] }[];
   subtotal: number;
   discountAmount?: number;
   discountLabel?: string | null;
@@ -71,6 +73,7 @@ export function quotePdfData(q: Quote): InvoicePdfData {
     category: ['labor', 'service', 'travel'].includes(l.category) ? 'labor' : 'material',
     unit: (l as { unit?: string }).unit, itemRef: (l as { itemRef?: string }).itemRef,
     multiplier: (l as { multiplier?: number }).multiplier,
+    optional: l.required === false,
   }));
   const pd = (q as Quote & { planDiscount?: Parameters<typeof discountLineLabel>[0] }).planDiscount;
   return {
@@ -79,6 +82,10 @@ export function quotePdfData(q: Quote): InvoicePdfData {
     issueDate: (q.sentAt || q.createdAt || '').slice(0, 10), dueDate: q.expirationDate || undefined, status: q.status,
     lineItems: lines, subtotal: Number(q.subtotal) || 0, discountAmount: Number(q.discountAmount) || 0,
     discountLabel: pd ? discountLineLabel(pd) : null, tax: Number(q.taxAmount) || 0, total: Number(q.total) || 0, notes: q.terms,
+    addOns: (q.optionalChoices || []).filter(g => (g.options || []).length).map(g => ({
+      group: g.title || 'Options', description: g.description || undefined,
+      options: g.options.map(o => ({ label: o.label, price: Number(o.priceAdjustment) || 0, selected: !!o.selected })),
+    })),
   };
 }
 
@@ -184,7 +191,7 @@ export async function buildInvoicePdf(data: InvoicePdfData, opts: { paymentTerms
   doc.setFontSize(9.5);
   for (const l of data.lineItems) {
     const f = lineFactor(l);
-    const desc = `${l.description || 'Item'}${f !== 1 ? `  (×${f})` : ''}`;
+    const desc = `${l.description || 'Item'}${f !== 1 ? `  (×${f})` : ''}${l.optional ? '  (optional)' : ''}`;
     const wrapped = doc.splitTextToSize(desc, col.qty - col.desc - 30) as string[];
     const rowH = Math.max(18, wrapped.length * 12 + 6);
     if (newPageIfNeeded(rowH)) header();
@@ -220,6 +227,39 @@ export async function buildInvoicePdf(data: InvoicePdfData, opts: { paymentTerms
   doc.setDrawColor(20); doc.setLineWidth(1); doc.line(tx, y - 4, W - M, y - 4); y += 10;
   const paid = data.status === 'paid';
   row(isQuote ? 'Quote total' : paid ? 'Total (paid)' : 'Total due', money(data.total), { bold: true, size: 13, color: paid && !isQuote ? [31, 138, 85] : [20, 20, 20] });
+
+  // ── Optional add-ons (quotes): picked on approval, not in the total ──
+  if (isQuote && data.addOns?.length) {
+    y += 12;
+    newPageIfNeeded(40);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(120);
+    doc.text('OPTIONAL ADD-ONS', M, y);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
+    doc.text('Not included in the quote total above — choose any when you approve.', M + 110, y);
+    y += 16;
+    for (const g of data.addOns) {
+      newPageIfNeeded(30);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(30);
+      doc.text(g.group, M + 8, y); y += 13;
+      if (g.description) {
+        const dl = doc.splitTextToSize(g.description, W - 2 * M - 16) as string[];
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(100);
+        doc.text(dl, M + 8, y); y += dl.length * 11 + 2;
+      }
+      for (const o of g.options) {
+        const ol = doc.splitTextToSize(o.label, W - 2 * M - 160) as string[];
+        newPageIfNeeded(ol.length * 12 + 6);
+        // Checkbox (filled when the customer already picked it).
+        doc.setDrawColor(120); doc.setLineWidth(0.75); doc.rect(M + 16, y - 8, 9, 9);
+        if (o.selected) { doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(31, 138, 85); doc.text('X', M + 18.2, y - 0.3); }
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(40);
+        doc.text(ol, M + 32, y);
+        doc.text(`${o.price >= 0 ? '+' : '-'}${money(Math.abs(o.price))}`, W - M - 8, y, { align: 'right' });
+        y += ol.length * 12 + 4;
+      }
+      y += 6;
+    }
+  }
 
   // ── Notes + how to pay ──
   const blocks: [string, string][] = [];

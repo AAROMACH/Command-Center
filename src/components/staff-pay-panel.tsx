@@ -99,6 +99,7 @@ export function StaffPayPanel({ by, canEdit }: { by: string; canEdit: boolean })
   const [people, setPeople] = useState<Technician[]>([]);
   const [open, setOpen] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<StaffPayPlan | null>(null);
   const [recording, setRecording] = useState<{ plan: StaffPayPlan; week: PlanWeek; banked: number } | null>(null);
 
   useEffect(() => {
@@ -145,12 +146,15 @@ export function StaffPayPanel({ by, canEdit }: { by: string; canEdit: boolean })
                   <p className="text-[12px] text-text-muted">{plan.kind === 'installment' ? `Installment of ${money(plan.total || 0)}` : 'Every week'} · since week of {plan.startWeek}{!plan.active ? ' · paused' : s.done ? ' · paid in full' : ''}</p>
                 </div>
                 {canEdit && (
+                  <div className="flex gap-1">
+                  <Button size="sm" variant="ghost" className="h-8 text-text-muted" onClick={() => setEditing(plan)}>Edit</Button>
                   <Button size="sm" variant="ghost" className="h-8 text-text-muted" onClick={async () => {
                     try {
                       await setStaffPayPaused(plan, plan.active);
                       toast({ title: plan.active ? 'Paused — nothing is owed while paused' : 'Resumed from this week' });
                     } catch (e: any) { toast({ variant: 'destructive', title: 'Could not update', description: e.message }); }
                   }}>{plan.active ? 'Pause' : 'Resume'}</Button>
+                  </div>
                 )}
               </div>
               <PlanTotals plan={plan} s={s} />
@@ -203,13 +207,14 @@ export function StaffPayPanel({ by, canEdit }: { by: string; canEdit: boolean })
         })}
       </div>
 
-      <AddPlanDialog open={adding} onClose={() => setAdding(false)} people={people} by={by} />
+      <AddPlanDialog open={adding || !!editing} editing={editing} onClose={() => { setAdding(false); setEditing(null); }} people={people} by={by} />
       <RecordPaidDialog rec={recording} onClose={() => setRecording(null)} by={by} />
     </div>
   );
 }
 
-function AddPlanDialog({ open, onClose, people, by }: { open: boolean; onClose: () => void; people: Technician[]; by: string }) {
+/** Add a pay plan, or edit one (`editing`): the person and type stay; name, amounts, start week and notes can change. */
+function AddPlanDialog({ open, onClose, people, by, editing }: { open: boolean; onClose: () => void; people: Technician[]; by: string; editing?: StaffPayPlan | null }) {
   const { toast } = useToast();
   const [personId, setPersonId] = useState('');
   const [kind, setKind] = useState<'recurring' | 'installment'>('recurring');
@@ -217,15 +222,29 @@ function AddPlanDialog({ open, onClose, people, by }: { open: boolean; onClose: 
   const [weekly, setWeekly] = useState('');
   const [total, setTotal] = useState('');
   const [start, setStart] = useState(reportingWeekOf());
+  const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
-  const person = people.find(p => p.id === personId);
+  useEffect(() => {
+    if (!open) return;
+    if (editing) {
+      setPersonId(editing.personId); setKind(editing.kind); setLabel(editing.label);
+      setWeekly(String(editing.weeklyAmount)); setTotal(editing.total != null ? String(editing.total) : '');
+      setStart(editing.startWeek); setNotes(editing.notes || '');
+    } else { setPersonId(''); setKind('recurring'); setLabel(''); setWeekly(''); setTotal(''); setStart(reportingWeekOf()); setNotes(''); }
+  }, [open, editing]);
+  const person = people.find(p => p.id === personId) || (editing ? ({ id: editing.personId, name: editing.personName } as Technician) : undefined);
   const startIso = (() => { const [m, d, y] = start.split('-'); return y ? `${y}-${m}-${d}` : ''; })();
   const ok = !!person && !!label.trim() && Number(weekly) > 0 && (kind === 'recurring' || Number(total) > 0);
   const save = async () => {
     setBusy(true);
     try {
-      await createStaffPayPlan({ personId, personName: person!.name || 'Staff', kind, label: label.trim(), weeklyAmount: Number(weekly), total: kind === 'installment' ? Number(total) : null, startWeek: start, active: true, notes: null, createdBy: by });
-      toast({ title: 'Pay plan added' });
+      if (editing) {
+        await updateStaffPayPlan(editing.id, { label: label.trim(), weeklyAmount: Number(weekly), total: kind === 'installment' ? Number(total) : null, startWeek: start, notes: notes.trim() || null });
+        toast({ title: 'Pay plan updated', description: 'Weeks already recorded keep their amounts.' });
+      } else {
+        await createStaffPayPlan({ personId, personName: person!.name || 'Staff', kind, label: label.trim(), weeklyAmount: Number(weekly), total: kind === 'installment' ? Number(total) : null, startWeek: start, active: true, notes: notes.trim() || null, createdBy: by });
+        toast({ title: 'Pay plan added' });
+      }
       setPersonId(''); setLabel(''); setWeekly(''); setTotal('');
       onClose();
     } catch (e: any) { toast({ variant: 'destructive', title: 'Could not add', description: e?.code === 'permission-denied' ? 'Only payroll admins can add pay plans.' : e.message }); }
@@ -235,18 +254,18 @@ function AddPlanDialog({ open, onClose, people, by }: { open: boolean; onClose: 
     <Dialog open={open} onOpenChange={o => !o && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="text-left">
-          <DialogTitle>Add pay plan</DialogTitle>
-          <DialogDescription>A weekly amount for someone, tracked week by week.</DialogDescription>
+          <DialogTitle>{editing ? `Edit pay plan — ${editing.personName}` : 'Add pay plan'}</DialogTitle>
+          <DialogDescription>{editing ? 'Changes apply to weeks not recorded yet; recorded weeks keep what was paid.' : 'A weekly amount for someone, tracked week by week.'}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="space-y-1.5"><Label className="text-[12px]">Person</Label>
+          {!editing && <div className="space-y-1.5"><Label className="text-[12px]">Person</Label>
             <Select value={personId} onValueChange={setPersonId}><SelectTrigger className="h-10"><SelectValue placeholder="Choose…" /></SelectTrigger>
               <SelectContent className="max-h-[300px]">{people.map(p => <SelectItem key={p.id} value={p.id}>{p.name || p.email}</SelectItem>)}</SelectContent></Select>
-          </div>
-          <div className="space-y-1.5"><Label className="text-[12px]">Type</Label>
+          </div>}
+          {!editing && <div className="space-y-1.5"><Label className="text-[12px]">Type</Label>
             <Select value={kind} onValueChange={v => setKind(v as 'recurring' | 'installment')}><SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="recurring">Every week (e.g. a weekly bonus)</SelectItem><SelectItem value="installment">A total paid over several weeks</SelectItem></SelectContent></Select>
-          </div>
+          </div>}
           <div className="space-y-1.5"><Label className="text-[12px]">Name</Label>
             <Input className="h-10" placeholder={kind === 'installment' ? 'App build' : 'Weekly bonus'} value={label} onChange={e => setLabel(e.target.value)} /></div>
           <div className="grid grid-cols-2 gap-3">
@@ -256,13 +275,15 @@ function AddPlanDialog({ open, onClose, people, by }: { open: boolean; onClose: 
           <div className="space-y-1.5"><Label className="text-[12px]">Starts the week of</Label>
             <Input type="date" className="h-10" value={startIso} onChange={e => { const [y, m, d] = e.target.value.split('-'); if (y) setStart(`${m}-${d}-${y}`); }} />
             <p className="text-[11px] text-text-muted">Any day that week — it's set to that Monday.</p></div>
+          <div className="space-y-1.5"><Label className="text-[12px]">Notes (optional)</Label>
+            <Input className="h-10" value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Raise approved 11/2026" /></div>
           {kind === 'installment' && Number(weekly) > 0 && Number(total) > 0 && (
             <p className="text-[12px] text-text-muted">{Math.ceil(Number(total) / Number(weekly))} weeks at {money(Number(weekly))}.</p>
           )}
         </div>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={save} disabled={!ok || busy}>{busy && <Loader2 size={13} className="mr-1.5 animate-spin" />} Add plan</Button>
+          <Button onClick={save} disabled={!ok || busy}>{busy && <Loader2 size={13} className="mr-1.5 animate-spin" />} {editing ? 'Save changes' : 'Add plan'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

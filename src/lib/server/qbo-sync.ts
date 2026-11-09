@@ -90,6 +90,42 @@ async function ensureCustomer(inv: Inv): Promise<string> {
   return id;
 }
 
+// ── Vendors (1099 contractors) ───────────────────────────────────────────
+
+type Person = Record<string, any> & { id: string };
+
+/** Techs marked "1099 contractor" in their profile that aren't linked to a QuickBooks vendor yet. */
+async function contractorsToLink(): Promise<Person[]> {
+  const snap = await fs().collection('users').where('accounting.workerType', '==', '1099_contractor').get();
+  return snap.docs.map(d => ({ ...d.data(), id: d.id } as Person)).filter(u => !u.accounting?.qboVendor?.id && !u.archived);
+}
+
+/**
+ * Create (or link an existing) QuickBooks vendor for a contractor, marked for
+ * 1099 tracking. Bank details for Bill Pay are added in QuickBooks — the API
+ * can't store them.
+ */
+async function ensureVendor(u: Person): Promise<string> {
+  const name = String(u.accounting?.payeeLegalName || u.name || u.id).trim().slice(0, 100);
+  const q = await qboQuery(`SELECT Id FROM Vendor WHERE DisplayName = '${esc(name)}'`);
+  let id = q.QueryResponse?.Vendor?.[0]?.Id as string | undefined;
+  if (!id) {
+    const parts = String(u.name || '').trim().split(/\s+/);
+    const created = await qboPost('/vendor', {
+      DisplayName: name,
+      ...(parts.length > 1 ? { GivenName: parts[0].slice(0, 100), FamilyName: parts.slice(1).join(' ').slice(0, 100) } : {}),
+      ...(u.accounting?.payeeBusinessName ? { CompanyName: String(u.accounting.payeeBusinessName).slice(0, 100) } : {}),
+      ...(u.email ? { PrimaryEmailAddr: { Address: u.email } } : {}),
+      ...(u.phone ? { PrimaryPhone: { FreeFormNumber: String(u.phone).slice(0, 30) } } : {}),
+      ...(u.address ? { BillAddr: { Line1: String(u.address).slice(0, 500) } } : {}),
+      Vendor1099: true,
+    });
+    id = created.Vendor.Id as string;
+  }
+  await fs().doc(`users/${u.id}`).set({ accounting: { qboVendor: { id, syncedAt: now(), error: null } } }, { merge: true });
+  return id;
+}
+
 // ── Invoices ─────────────────────────────────────────────────────────────
 
 async function invoiceLines(inv: Inv) {
@@ -172,7 +208,7 @@ const needsPush = (inv: Inv) => SYNCABLE.includes(inv.status) && (!inv.qbo?.id |
 const needsVoid = (inv: Inv) => inv.status === 'void' && !!inv.qbo?.id && !inv.qbo?.voided;
 const awaitingPayment = (inv: Inv) => !!inv.qbo?.id && (inv.status === 'sent' || inv.status === 'overdue');
 
-export type SyncPlan = { push: number; newInvoices: number; voids: number; checkPaid: number; newCustomers: number };
+export type SyncPlan = { push: number; newInvoices: number; voids: number; checkPaid: number; newCustomers: number; newVendors: string[] };
 
 async function allInvoices(): Promise<Inv[]> {
   return (await fs().collection('invoices').get()).docs.map(d => ({ ...d.data(), id: d.id } as Inv));
@@ -187,14 +223,24 @@ export async function previewSync(): Promise<SyncPlan> {
     const linked = invs.some(i => (i.clientId || String(i.customerEmail || i.clientName || '').toLowerCase()) === k && i.qbo?.id);
     if (!linked) newCustomers++;
   }
-  return { push: push.length, newInvoices: push.filter(i => !i.qbo?.id).length, voids: invs.filter(needsVoid).length, checkPaid: invs.filter(awaitingPayment).length, newCustomers };
+  const newVendors = (await contractorsToLink()).map(u => String(u.accounting?.payeeLegalName || u.name || u.id));
+  return { push: push.length, newInvoices: push.filter(i => !i.qbo?.id).length, voids: invs.filter(needsVoid).length, checkPaid: invs.filter(awaitingPayment).length, newCustomers, newVendors };
 }
 
-export type SyncResult = { pushed: number; voided: number; markedPaid: number; failed: { invoice: string; error: string }[] };
+export type SyncResult = { pushed: number; voided: number; markedPaid: number; vendors: number; failed: { invoice: string; error: string }[] };
 
 export async function runSync(by: string): Promise<SyncResult> {
   const invs = await allInvoices();
-  const res: SyncResult = { pushed: 0, voided: 0, markedPaid: 0, failed: [] };
+  const res: SyncResult = { pushed: 0, voided: 0, markedPaid: 0, vendors: 0, failed: [] };
+
+  for (const u of await contractorsToLink()) {
+    try { await ensureVendor(u); res.vendors++; }
+    catch (e) {
+      const error = String((e as Error).message).slice(0, 300);
+      await fs().doc(`users/${u.id}`).set({ accounting: { qboVendor: { id: '', error, syncedAt: now() } } }, { merge: true }).catch(() => {});
+      res.failed.push({ invoice: `Vendor: ${u.name || u.id}`, error });
+    }
+  }
   const label = (i: Inv) => i.invoiceNumber || i.id;
 
   for (const inv of invs.filter(needsPush)) {

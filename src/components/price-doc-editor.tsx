@@ -248,7 +248,7 @@ export function PriceDocEditor({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-[13px] font-semibold text-text-primary flex items-center gap-2">
             {isLabor ? <Hammer size={14} className="text-brand-red" /> : <Package size={14} className="text-accent-gold" />}
-            {isLabor ? (kind === 'quote' ? 'Labor' : 'Labor (not taxed)') : kind === 'quote' ? 'Materials' : `Materials (${settings.salesTaxPct}% tax on taxable items)`}
+            {isLabor ? (kind === 'quote' || !settings.salesTaxPct ? 'Labor' : 'Labor (not taxed)') : kind === 'quote' || !settings.salesTaxPct ? 'Materials' : `Materials (${settings.salesTaxPct}% tax on taxable items)`}
           </h3>
           <div className="flex items-center gap-2">
             <PriceBookPicker items={items} section={s} onPick={it => addLine(s, it)} />
@@ -500,7 +500,7 @@ export function PriceDocEditor({
                   <Undo2 size={11} /> Apply {planDiscount.planName} plan discount
                 </button>
               ) : null}
-              {kind === 'invoice' && <div className="flex justify-between text-accent-gold"><span>Sales tax ({settings.salesTaxPct}%, materials)</span><span className="font-mono">{formatMoney(totals.taxAmount)}</span></div>}
+              {kind === 'invoice' && settings.salesTaxPct > 0 && <div className="flex justify-between text-accent-gold"><span>Sales tax ({settings.salesTaxPct}%, materials)</span><span className="font-mono">{formatMoney(totals.taxAmount)}</span></div>}
               <div className="flex justify-between items-center border-t border-dashed border-border-sub pt-2">
                 <span className="font-bold text-text-primary">Total</span>
                 <span className="text-xl font-mono font-bold text-text-green">{formatMoney(totals.total)}</span>

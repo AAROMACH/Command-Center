@@ -196,7 +196,8 @@ export const DEFAULT_PRICING: PricingSettings = {
   multipliers: DEFAULT_MULTIPLIERS,
   materialMarkupPct: {},
   defaultMarkupPct: 20,
-  salesTaxPct: 6,
+  // No sales tax by default — the office adds it when a job needs it (Assets → Pricing).
+  salesTaxPct: 0,
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────

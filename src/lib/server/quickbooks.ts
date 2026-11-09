@@ -58,6 +58,18 @@ export async function startConnect(uid: string, name: string): Promise<string> {
  * times with backoff. invalid_grant (refresh token expired/revoked) is not
  * retryable — the admin has to reconnect, and the message says so.
  */
+/**
+ * Every QuickBooks error, kept for troubleshooting with Intuit support:
+ * integrations/quickbooks/errorLog/{id} with Intuit's intuit_tid, the HTTP
+ * status, the call and the full fault. Also written to the server log.
+ * Never throws.
+ */
+async function logQboError(e: { kind: 'api' | 'token'; path: string; status: number; tid: string | null; fault: unknown }) {
+  const entry = { ...e, env: qboEnv(), at: new Date().toISOString(), fault: JSON.stringify(e.fault ?? null).slice(0, 4000) };
+  console.error('[quickbooks] error', entry);
+  try { await connRef().collection('errorLog').add(entry); } catch { /* logging must not break the call */ }
+}
+
 async function tokenRequest(body: Record<string, string>) {
   let last = 'QuickBooks token request failed';
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -72,6 +84,7 @@ async function tokenRequest(body: Record<string, string>) {
     } catch (e) { last = `QuickBooks token request failed: ${(e as Error).message}`; continue; }
     const d = await r.json().catch(() => ({})) as { error?: string; error_description?: string };
     if (r.ok) return d as unknown as { access_token: string; refresh_token: string; expires_in: number; x_refresh_token_expires_in: number };
+    await logQboError({ kind: 'token', path: body.grant_type, status: r.status, tid: r.headers.get('intuit_tid'), fault: d });
     if (d.error === 'invalid_grant') {
       throw new Error('QuickBooks access expired or was revoked — reconnect QuickBooks in Settings → Integrations.');
     }
@@ -140,7 +153,9 @@ export async function qboGet(path: string): Promise<any> {
   if (r.status === 401) r = await call(true);
   const d = await r.json().catch(() => ({}));
   if (!r.ok) {
-    const msg = `QuickBooks ${r.status}: ${JSON.stringify((d as any).Fault?.Error?.[0]?.Detail || (d as any).Fault || d).slice(0, 300)}`;
+    const tid = r.headers.get('intuit_tid');
+    await logQboError({ kind: 'api', path, status: r.status, tid, fault: (d as any).Fault || d });
+    const msg = `QuickBooks ${r.status}: ${JSON.stringify((d as any).Fault?.Error?.[0]?.Detail || (d as any).Fault || d).slice(0, 300)}${tid ? ` (intuit_tid ${tid})` : ''}`;
     // 401/403 = the connection itself is broken; 5xx = QuickBooks is down.
     if (r.status === 401 || r.status === 403 || r.status >= 500) await recordHealth('quickbooks', false, msg);
     throw new Error(msg);

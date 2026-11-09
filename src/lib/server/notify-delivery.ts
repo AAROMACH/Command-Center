@@ -130,7 +130,7 @@ export async function communicationsSettings(): Promise<CommunicationsSettings |
  * retry-after); other errors throw. `idempotencyKey` (e.g. `invoice/<id>/<n>`)
  * keeps a retried request from sending twice.
  */
-export async function sendEmail(to: string, subject: string, body: string, opts: {
+export async function sendEmail(to: string | string[], subject: string, body: string, opts: {
   idempotencyKey?: string; kind?: EmailKind; onSent?: (emailId: string | null) => void;
   /** For the email log: what it's about and who sent it. */
   related?: EmailLogEntry['related']; sentBy?: string | null;
@@ -150,13 +150,13 @@ export async function sendEmail(to: string, subject: string, body: string, opts:
   const email = {
     from: sender.from,
     ...(sender.replyTo ? { replyTo: sender.replyTo } : {}),
-    to: [to],
+    to: Array.isArray(to) ? to : [to],
     subject,
     text: body,
     html: emailHtml(body, bannerHtml(opts.kind || 'notifications', settings, sender.replyTo)),
   };
   const logBase = {
-    to, from: sender.from, replyTo: sender.replyTo, subject, text: body, kind: opts.kind || 'notifications' as EmailKind,
+    to: Array.isArray(to) ? to.join(", ") : to, from: sender.from, replyTo: sender.replyTo, subject, text: body, kind: opts.kind || 'notifications' as EmailKind,
     related: opts.related || null, sentBy: opts.sentBy || null,
   };
   let lastError = 'Resend request failed';

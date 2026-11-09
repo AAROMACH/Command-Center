@@ -184,6 +184,7 @@ async function invoiceLines(inv: Inv) {
 /** Create or update one invoice in QuickBooks; returns its link info. Throws on failure. */
 export async function pushInvoice(inv: Inv): Promise<InvoiceQbo> {
   const customerId = await ensureCustomer(inv);
+  const billEmail = String(inv.customerEmail || (await customerInfo(inv)).email || '').trim() || null;
   const prev = inv.qbo as InvoiceQbo | undefined;
   // Payment terms → QuickBooks "Terms" + a plain-words line in the customer message.
   const term = invoiceTerms(inv);
@@ -199,7 +200,8 @@ export async function pushInvoice(inv: Inv): Promise<InvoiceQbo> {
     AllowOnlineACHPayment: true,
     ...(inv.issueDate ? { TxnDate: String(inv.issueDate).slice(0, 10) } : {}),
     ...(inv.dueDate ? { DueDate: String(inv.dueDate).slice(0, 10) } : {}),
-    ...(inv.customerEmail ? { BillEmail: { Address: inv.customerEmail } } : {}),
+    // QuickBooks only makes a "Pay now" link when the invoice has a customer email.
+    ...(billEmail ? { BillEmail: { Address: billEmail } } : {}),
     ...(term ? { SalesTermRef: { value: await termId(term) } } : {}),
     ...(memo ? { CustomerMemo: { value: memo.slice(0, 1000) } } : {}),
   };

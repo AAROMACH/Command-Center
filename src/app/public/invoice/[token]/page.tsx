@@ -9,7 +9,7 @@ import { Loader2 } from 'lucide-react';
 type PublicInvoice = {
   invoiceNumber: string; clientName: string; issueDate: string; dueDate: string; status: string;
   lineItems: { description: string; quantity: number; unitPrice: number; category: string; multiplier?: number }[];
-  subtotal: number; discountAmount: number; planName: string | null; laborPct?: number; materialsPct?: number; tax: number; total: number; notes: string;
+  subtotal: number; discountAmount: number; planName: string | null; laborPct?: number; materialsPct?: number; tax: number; total: number; notes: string; payLink?: string | null;
 };
 
 const money = (n: number) => `$${(Number(n) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
@@ -73,6 +73,12 @@ export default function PublicInvoicePage() {
           {inv.discountAmount > 0 && <div className="flex justify-between"><span className="text-text-green">{discountLineLabel(inv.planName ? { planName: inv.planName, laborPct: inv.laborPct, materialsPct: inv.materialsPct } : null)}</span><span>−{money(inv.discountAmount)}</span></div>}
           {inv.tax > 0 && <div className="flex justify-between"><span className="text-text-muted">Tax</span><span>{money(inv.tax)}</span></div>}
           <div className="flex justify-between border-t border-border-sub pt-1 text-[15px] font-bold"><span>Total</span><span>{money(inv.total)}</span></div>
+          {inv.payLink && (
+            <a href={inv.payLink} target="_blank" rel="noreferrer"
+              className="mt-3 flex h-11 w-full items-center justify-center rounded-lg bg-text-green text-[15px] font-semibold text-white hover:bg-text-green/90">
+              Pay now
+            </a>
+          )}
         </div>
         {inv.notes && <p className="whitespace-pre-wrap text-[12px] text-text-muted">{inv.notes}</p>}
       </div>

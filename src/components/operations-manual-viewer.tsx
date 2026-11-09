@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ExternalLink, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import remarkBreaks from 'remark-breaks';
+import { Download, ExternalLink, Pencil, Plus, Printer, RefreshCw, Trash2 } from 'lucide-react';
+import { downloadSectionAsWord, printSection } from '@/lib/manual-export';
 import { auth } from '@/lib/firebase';
 import { SearchField } from '@/components/search-field';
 import { Button } from '@/components/ui/button';
@@ -145,14 +147,23 @@ export function OperationsManualViewer({ sections, showSource, editable }: { sec
         <article className="min-w-0 rounded-xl border border-border-sub bg-bg-secondary p-4 sm:p-6">
           <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
             <h2 className="text-[20px] font-bold text-text-primary">{current.title}</h2>
-            {editable && (
-              <Button size="sm" variant="outline" className="h-8" onClick={() => { setPreview(false); setDraft({ ...current }); }}>
-                <Pencil size={13} className="mr-1" /> Edit
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" className="h-8" onClick={() => downloadSectionAsWord(current.title, current.body)}
+                title="Download as a Word document — opens in Word or Google Docs to fill in or edit">
+                <Download size={13} className="mr-1" /> Download (Word)
               </Button>
-            )}
+              <Button size="sm" variant="outline" className="h-8" onClick={() => printSection(current.title, current.body)} title="Print or save as PDF">
+                <Printer size={13} className="mr-1" /> Print
+              </Button>
+              {editable && (
+                <Button size="sm" variant="outline" className="h-8" onClick={() => { setPreview(false); setDraft({ ...current }); }}>
+                  <Pencil size={13} className="mr-1" /> Edit
+                </Button>
+              )}
+            </div>
           </div>
           <div className={cn(MD, 'overflow-x-auto')}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}
+            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}
               rehypePlugins={current.id === 'glossary' ? [] : [rehypeGlossary]}
               components={{
                 abbr: ({ children, ...p }) => {
@@ -194,7 +205,7 @@ export function OperationsManualViewer({ sections, showSource, editable }: { sec
               </div>
               {preview ? (
                 <div className={cn(MD, 'rounded-lg border border-border-sub p-4 overflow-x-auto max-h-[55svh] overflow-y-auto')}>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{draft.body || ''}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{draft.body || ''}</ReactMarkdown>
                 </div>
               ) : (
                 <>

@@ -914,6 +914,9 @@ export type Expense = {
   amount: number;
   status: 'Pending' | 'Approved' | 'Rejected';
   projectId?: string;
+  /** Set when a non-job purchase was added to Assets & Materials. */
+  assetId?: string;
+  assetName?: string;
 };
 
 export type Reimbursement = {
@@ -939,6 +942,9 @@ export type Reimbursement = {
   purchaseDate?: string;
   description?: string;
   receiptPhotoUrls?: string[];
+  /** Set when a non-job purchase was added to Assets & Materials. */
+  assetId?: string;
+  assetName?: string;
   // Mileage fields
   fromLocation?: string;
   toLocation?: string;
@@ -1360,6 +1366,9 @@ export type Asset = {
   notes?: string;
   photoUrls?: string[];
   documents?: string[];
+  /** The company-purchase receipt this asset was added from (Financials →
+   *  Reimbursements → Add to A&M). */
+  sourceReceipt?: { collection: 'reimbursements' | 'expenses'; id: string };
   createdAt: string;
   updatedAt?: string;
 };

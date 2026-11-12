@@ -7,7 +7,7 @@ import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/compo
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning, Plus, Calendar as CalendarIcon, Check, X, ShieldAlert, Search, Info, Undo2, TrendingUp, Activity, Navigation, Car } from "lucide-react";
+import { Banknote, ArrowUpRight, ArrowDownRight, Minus, Download, FileText, BarChart, FileWarning, Plus, Calendar as CalendarIcon, Check, X, ShieldAlert, Search, Info, Undo2, TrendingUp, Activity, Navigation, Car, Package } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -270,6 +270,9 @@ export default function FinancialsPage() {
                                                     receiptPhotoUrls: undefined as string[] | undefined,
                                                     notes: undefined as string | undefined,
                                                     techId: undefined as string | undefined,
+                                                    jobLinked: !!e.projectId,
+                                                    assetId: e.assetId,
+                                                    assetName: e.assetName,
                                                 }));
 
                                             // New reimbursements
@@ -304,6 +307,9 @@ export default function FinancialsPage() {
                                                     receiptPhotoUrls: r.receiptPhotoUrls,
                                                     notes: r.notes,
                                                     techId: r.techId as string | undefined,
+                                                    jobLinked: !!(r.relatedJobId || r.relatedProjectId),
+                                                    assetId: r.assetId,
+                                                    assetName: r.assetName,
                                                 }));
 
                                             return [...legacyRows, ...newRows]
@@ -441,7 +447,7 @@ export default function FinancialsPage() {
                         <Card>
                             <CardHeader className="text-left">
                                 <CardTitle>Reimbursements</CardTitle>
-                                <CardDescription>Receipts and mileage submitted by techs. Approve, reject or mark paid.</CardDescription>
+                                <CardDescription>Receipts and mileage submitted by techs. Approve, reject or mark paid. Receipts not tied to a job can be added to Assets &amp; Materials.</CardDescription>
                             </CardHeader>
                             <CardContent className="table-wrap p-0">
                                 <Table>
@@ -479,12 +485,29 @@ export default function FinancialsPage() {
                                                         <div className="font-bold text-text-primary text-xs truncate max-w-[200px]">{row.details}</div>
                                                         {row.sub && <div className="text-[11px] text-text-muted">{row.sub}</div>}
                                                         {row.notes && <div className="text-[11px] text-text-muted mt-0.5 truncate max-w-[200px]">{row.notes}</div>}
+                                                        {row.assetId && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => router.push(`/admin/assets?asset=${row.assetId}`)}
+                                                                className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-text-green hover:underline"
+                                                                title="Open in Assets & Materials"
+                                                            ><Package size={10} /> In A&amp;M{row.assetName ? `: ${row.assetName}` : ''}</button>
+                                                        )}
                                                     </TableCell>
                                                     <TableCell className="font-mono text-sm font-bold text-text-primary tabular-nums">${row.amount.toFixed(2)}</TableCell>
                                                     <TableCell>
                                                         <StatusBadge kind={row.status === 'paid' ? 'log' : 'request'} value={row.status} />
                                                     </TableCell>
                                                     <TableCell className="text-right pr-6">
+                                                        <div className="flex gap-2 justify-end items-center">
+                                                        {/* Company purchases (no job) can be logged into
+                                                            Assets & Materials so the inventory is tracked. */}
+                                                        {row.type === 'receipt' && !row.jobLinked && !row.assetId && row.status !== 'rejected' && (
+                                                            <Button size="sm" variant="outline" className="h-7 text-[11px]"
+                                                                title="Not tied to a job — add this purchase to Assets & Materials"
+                                                                onClick={() => router.push(`/admin/assets?fromReceipt=${row.source === 'expense' ? 'expenses' : 'reimbursements'}:${row.id}`)}
+                                                            ><Package size={12} className="mr-1" />Add to A&amp;M</Button>
+                                                        )}
                                                         {row.status === 'pending' && (
                                                             <div className="flex gap-2 justify-end">
                                                                 <Button size="sm" variant="destructive-outline" className="h-7 text-[11px]"
@@ -527,6 +550,7 @@ export default function FinancialsPage() {
                                                                 }}
                                                             >Mark paid</Button>
                                                         )}
+                                                        </div>
                                                     </TableCell>
                                                 </TableRow>
                                         ))}

@@ -5,10 +5,11 @@ import { onSharedSnapshot } from '@/lib/shared-snapshot';
 import { useState, useEffect, useMemo } from 'react';
 import { usePaged, ListPager, PAGE_SIZES_LARGE, PAGE_SIZES_SMALL } from '@/components/list-pager';
 import { db, storage } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, updateDoc, setDoc, deleteField, doc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, setDoc, deleteField, doc, getDoc } from 'firebase/firestore';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ref as storageRef, deleteObject } from 'firebase/storage';
 import { uploadFile } from '@/lib/upload';
-import type { Asset, AssetCategory, Material, AssetAssignment, Technician } from '@/lib/types';
+import type { Asset, AssetCategory, Material, AssetAssignment, Technician, Reimbursement, Expense } from '@/lib/types';
 import { isClient } from '@/lib/permissions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -194,6 +195,11 @@ export default function AssetsAndMaterialsPage() {
     const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
     const [assetForm, setAssetForm] = useState({ ...EMPTY_ASSET_FORM });
     const [assetSaving, setAssetSaving] = useState(false);
+    // The company-purchase receipt the open Add-asset form came from
+    // (Financials → Reimbursements → Add to A&M), linked both ways on save.
+    const [receiptLink, setReceiptLink] = useState<{ collection: 'reimbursements' | 'expenses'; id: string; label: string } | null>(null);
+    const searchParams = useSearchParams();
+    const router = useRouter();
 
     const [matFormOpen, setMatFormOpen] = useState(false);
     const [editingMat, setEditingMat] = useState(false);
@@ -234,6 +240,67 @@ export default function AssetsAndMaterialsPage() {
         });
         return () => { unsubA(); unsubM(); unsubAsgn(); unsubT(); };
     }, []);
+
+    // ?fromReceipt=<reimbursements|expenses>:<id> opens Add asset prefilled
+    // from a receipt that isn't tied to a job, so company purchases land in
+    // inventory. ?asset=<id> opens that asset (the "In A&M" link back).
+    const fromReceipt = searchParams.get('fromReceipt');
+    useEffect(() => {
+        if (!fromReceipt) return;
+        const [col, id] = fromReceipt.split(':');
+        if ((col !== 'reimbursements' && col !== 'expenses') || !id) return;
+        router.replace('/admin/assets');
+        getDoc(doc(db, col, id)).then(snap => {
+            if (!snap.exists()) { toast({ variant: 'destructive', title: 'Receipt not found' }); return; }
+            const d = snap.data();
+            if (d.assetId) { toast({ title: 'Already in Assets & Materials', description: d.assetName || undefined }); return; }
+            let form = { ...EMPTY_ASSET_FORM };
+            let label = '';
+            if (col === 'reimbursements') {
+                const r = d as Reimbursement;
+                const what = (r.description || '').trim();
+                form = {
+                    ...form,
+                    name: what || (r.vendorName ? `${r.vendorName} purchase` : ''),
+                    vendor: r.vendorName || '',
+                    purchaseDate: r.purchaseDate || r.submittedAt?.slice(0, 10) || '',
+                    purchasePrice: r.amount ? String(r.amount) : '',
+                    category: 'inventory', condition: 'excellent',
+                    notes: [`Bought by ${r.techName || 'a tech'}${r.vendorName ? ` at ${r.vendorName}` : ''} (receipt reimbursement).`, r.notes || ''].filter(Boolean).join(' '),
+                };
+                label = `${r.techName || 'Receipt'} · $${(r.amount || 0).toFixed(2)}${r.vendorName ? ` · ${r.vendorName}` : ''}`;
+            } else {
+                const e = d as Expense;
+                form = {
+                    ...form,
+                    name: (e.description || '').trim(),
+                    purchaseDate: e.date || '',
+                    purchasePrice: e.amount ? String(e.amount) : '',
+                    category: e.category === 'Tools' ? 'tool' : 'inventory', condition: 'excellent',
+                    notes: `Bought by ${e.submittedBy || 'a tech'} (${e.category || 'expense'}).`,
+                };
+                label = `${e.submittedBy || 'Expense'} · $${(e.amount || 0).toFixed(2)}`;
+            }
+            setMainTab('assets');
+            setEditingAsset(false);
+            setEditingAssetId(null);
+            setAssetForm(form);
+            setReceiptLink({ collection: col, id, label });
+            setAssetFormOpen(true);
+        }).catch(e => toast({ variant: 'destructive', title: 'Could not load receipt', description: e.message }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fromReceipt]);
+
+    const openAssetId = searchParams.get('asset');
+    useEffect(() => {
+        if (!openAssetId) return;
+        const a = assets.find(x => x.id === openAssetId);
+        if (!a) return;
+        setMainTab('assets');
+        setSelectedAsset(a);
+        router.replace('/admin/assets');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [openAssetId, assets]);
 
     // ── Filtered views ─────────────────────────────────────────────────────
 
@@ -306,6 +373,7 @@ export default function AssetsAndMaterialsPage() {
     // ── Asset CRUD ─────────────────────────────────────────────────────────
 
     const openAddAsset = () => {
+        setReceiptLink(null);
         setEditingAsset(false);
         setEditingAssetId(null);
         setAssetForm({ ...EMPTY_ASSET_FORM });
@@ -313,6 +381,7 @@ export default function AssetsAndMaterialsPage() {
     };
 
     const openEditAsset = (asset: Asset) => {
+        setReceiptLink(null);
         setEditingAsset(true);
         setEditingAssetId(asset.id);
         setAssetForm({
@@ -424,8 +493,15 @@ export default function AssetsAndMaterialsPage() {
                 await updateDoc(assetRef, { ...base, ...holder });
                 toast({ title: 'Asset updated' });
             } else {
-                await setDoc(assetRef, { ...base, ...holder, createdAt: now });
+                const source = receiptLink ? { sourceReceipt: { collection: receiptLink.collection, id: receiptLink.id } } : {};
+                await setDoc(assetRef, { ...base, ...holder, ...source, createdAt: now });
                 toast({ title: 'Asset added', description: `${assetForm.name} has been recorded.` });
+                if (receiptLink) {
+                    // Mark the receipt so Financials shows it's in inventory and
+                    // stops offering Add to A&M. Receipts are payroll-admin only.
+                    await updateDoc(doc(db, receiptLink.collection, receiptLink.id), { assetId: assetRef.id, assetName: base.name })
+                        .catch(() => toast({ variant: 'destructive', title: 'Asset saved, receipt not linked', description: 'Only payroll admins can update receipts.' }));
+                }
             }
             if (holderChanged) {
                 if (oldUser) await recordReturn(assetRef.id, now, assetForm.condition);
@@ -435,6 +511,7 @@ export default function AssetsAndMaterialsPage() {
             setEditingAsset(false);
             setEditingAssetId(null);
             setAssetForm({ ...EMPTY_ASSET_FORM });
+            setReceiptLink(null);
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Failed to save asset', description: e.message });
         } finally {
@@ -1369,10 +1446,15 @@ export default function AssetsAndMaterialsPage() {
             </Dialog>
 
             {/* ── Add / Edit Asset Dialog ───────────────────────────────────── */}
-            <Dialog open={assetFormOpen} onOpenChange={open => { if (!open) { setAssetFormOpen(false); setEditingAsset(false); setEditingAssetId(null); setAssetForm({ ...EMPTY_ASSET_FORM }); } }}>
+            <Dialog open={assetFormOpen} onOpenChange={open => { if (!open) { setAssetFormOpen(false); setEditingAsset(false); setEditingAssetId(null); setAssetForm({ ...EMPTY_ASSET_FORM }); setReceiptLink(null); } }}>
                 <DialogContent className="bg-bg-elevated border-border-main max-w-lg max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle className="text-base font-semibold">{editingAsset ? 'Edit asset' : 'Add asset'}</DialogTitle>
+                        <DialogTitle className="text-base font-semibold">{editingAsset ? 'Edit asset' : receiptLink ? 'Add purchase to inventory' : 'Add asset'}</DialogTitle>
+                        {receiptLink && (
+                            <DialogDescription className="text-[11px]">
+                                From receipt: {receiptLink.label}. Check the name and category — the receipt gets linked to this asset.
+                            </DialogDescription>
+                        )}
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1.5">

@@ -917,6 +917,9 @@ export type Expense = {
   /** Set when a non-job purchase was added to Assets & Materials. */
   assetId?: string;
   assetName?: string;
+  /** Set when a non-job purchase was added to A&M → Materials stock. */
+  inventoryItemId?: string;
+  inventoryItemName?: string;
 };
 
 export type Reimbursement = {
@@ -945,6 +948,9 @@ export type Reimbursement = {
   /** Set when a non-job purchase was added to Assets & Materials. */
   assetId?: string;
   assetName?: string;
+  /** Set when a non-job purchase was added to A&M → Materials stock. */
+  inventoryItemId?: string;
+  inventoryItemName?: string;
   // Mileage fields
   fromLocation?: string;
   toLocation?: string;
@@ -1399,6 +1405,43 @@ export type Material = {
   notes?: string;
   createdAt: string;
   updatedAt?: string;
+};
+
+/** Materials on hand (A&M → Materials). Separate from the price book
+ *  (`materials`), which only says what we charge for an item. */
+export type InventoryItem = {
+  id: string;
+  name: string;
+  category?: string;
+  unitType: Material['unitType'];
+  quantityOnHand: number;
+  /** Latest cost per unit, from the most recent receipt or edit. */
+  unitCost?: number;
+  vendor?: string;
+  sku?: string;
+  location?: string;
+  /** Flag the item as low when on-hand drops to this or below. */
+  reorderPoint?: number;
+  notes?: string;
+  status: 'active' | 'inactive';
+  createdAt: string;
+  updatedAt?: string;
+};
+
+/** One change to an inventory item's quantity on hand. */
+export type InventoryMovement = {
+  id: string;
+  itemId: string;
+  itemName: string;
+  /** + received, − used/removed. */
+  change: number;
+  reason: 'receipt' | 'purchase' | 'used' | 'adjustment';
+  note?: string;
+  /** Total cost of what was received, when known. */
+  cost?: number;
+  receipt?: { collection: 'reimbursements' | 'expenses'; id: string };
+  byName: string;
+  createdAt: string;
 };
 
 export type AssetAssignment = {

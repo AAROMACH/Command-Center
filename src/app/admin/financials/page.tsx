@@ -273,6 +273,8 @@ export default function FinancialsPage() {
                                                     jobLinked: !!e.projectId,
                                                     assetId: e.assetId,
                                                     assetName: e.assetName,
+                                                    stockId: e.inventoryItemId,
+                                                    stockName: e.inventoryItemName,
                                                 }));
 
                                             // New reimbursements
@@ -310,6 +312,8 @@ export default function FinancialsPage() {
                                                     jobLinked: !!(r.relatedJobId || r.relatedProjectId),
                                                     assetId: r.assetId,
                                                     assetName: r.assetName,
+                                                    stockId: r.inventoryItemId,
+                                                    stockName: r.inventoryItemName,
                                                 }));
 
                                             return [...legacyRows, ...newRows]
@@ -493,6 +497,14 @@ export default function FinancialsPage() {
                                                                 title="Open in Assets & Materials"
                                                             ><Package size={10} /> In A&amp;M{row.assetName ? `: ${row.assetName}` : ''}</button>
                                                         )}
+                                                        {row.stockId && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => router.push('/admin/assets?tab=stock')}
+                                                                className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-text-green hover:underline"
+                                                                title="Open Materials in Assets & Materials"
+                                                            ><Package size={10} /> In Materials{row.stockName ? `: ${row.stockName}` : ''}</button>
+                                                        )}
                                                     </TableCell>
                                                     <TableCell className="font-mono text-sm font-bold text-text-primary tabular-nums">${row.amount.toFixed(2)}</TableCell>
                                                     <TableCell>
@@ -502,7 +514,7 @@ export default function FinancialsPage() {
                                                         <div className="flex gap-2 justify-end items-center">
                                                         {/* Company purchases (no job) can be logged into
                                                             Assets & Materials so the inventory is tracked. */}
-                                                        {row.type === 'receipt' && !row.jobLinked && !row.assetId && row.status !== 'rejected' && (
+                                                        {row.type === 'receipt' && !row.jobLinked && !row.assetId && !row.stockId && row.status !== 'rejected' && (
                                                             <Button size="sm" variant="outline" className="h-7 text-[11px]"
                                                                 title="Not tied to a job — add this purchase to Assets & Materials"
                                                                 onClick={() => router.push(`/admin/assets?fromReceipt=${row.source === 'expense' ? 'expenses' : 'reimbursements'}:${row.id}`)}

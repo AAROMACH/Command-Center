@@ -917,6 +917,14 @@ service cloud.firestore {
     match /assetAssignments/{id} {
       allow read, write: if isAdmin();
     }
+    // Materials on hand (A&M → Materials) and their quantity history.
+    // Separate from the price book (/materials). History is append-only.
+    match /inventory/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /inventoryMovements/{id} {
+      allow read, create: if isAdmin();
+    }
 
     // Company planning (admin portal only)
     match /companyGoals/{id} {

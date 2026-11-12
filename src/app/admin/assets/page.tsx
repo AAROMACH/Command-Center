@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/page-header';
 import { PricingTab } from './pricing-tab';
 import { ServiceCatalogTab } from './service-catalog-tab';
+import { InventoryTab, ReceiptToStockDialog, useInventory, type ReceiptDraft } from './inventory-tab';
 import { usePricingSettings } from '@/hooks/use-billing';
 import { canonicalCategory, localDay, markupFor } from '@/lib/billing';
 import { materialPrice } from '@/lib/price-lines';
@@ -170,7 +171,7 @@ export default function AssetsAndMaterialsPage() {
     // Filter pills: the price-book categories plus any older category still on a material.
     const matCats = useMemo(() => [...new Set([...pricing.categories.map(c => c.name), ...materials.map(m => m.category).filter(Boolean)])], [pricing.categories, materials]);
     const { user: authUser } = useAuth();
-    const [mainTab, setMainTab] = useState<'assets' | 'log' | 'materials' | 'pricing' | 'catalog'>('assets');
+    const [mainTab, setMainTab] = useState<'assets' | 'log' | 'stock' | 'materials' | 'pricing' | 'catalog'>('assets');
     const [logFilter, setLogFilter] = useState<'all' | 'out' | 'overdue' | 'returned'>('all');
     const [viewMode, setViewMode] = useViewMode('assets');
     const [assetCatFilter, setAssetCatFilter] = useState<AssetCategory | 'all'>('all');
@@ -200,6 +201,10 @@ export default function AssetsAndMaterialsPage() {
     const [receiptLink, setReceiptLink] = useState<{ collection: 'reimbursements' | 'expenses'; id: string; label: string } | null>(null);
     const searchParams = useSearchParams();
     const router = useRouter();
+    const [receiptDraft, setReceiptDraft] = useState<ReceiptDraft | null>(null);
+    const [receiptAssetForm, setReceiptAssetForm] = useState<typeof EMPTY_ASSET_FORM | null>(null);
+    const { items: stockItems, movements: stockMoves } = useInventory();
+    const [stockAddOpen, setStockAddOpen] = useState(false);
 
     const [matFormOpen, setMatFormOpen] = useState(false);
     const [editingMat, setEditingMat] = useState(false);
@@ -241,9 +246,10 @@ export default function AssetsAndMaterialsPage() {
         return () => { unsubA(); unsubM(); unsubAsgn(); unsubT(); };
     }, []);
 
-    // ?fromReceipt=<reimbursements|expenses>:<id> opens Add asset prefilled
-    // from a receipt that isn't tied to a job, so company purchases land in
-    // inventory. ?asset=<id> opens that asset (the "In A&M" link back).
+    // ?fromReceipt=<reimbursements|expenses>:<id> — a tech receipt not tied
+    // to a job. Opens "Add purchase to Materials" (stock); a tool or piece of
+    // equipment can go to Assets instead, with the asset form prefilled.
+    // ?asset=<id> / ?tab=stock are the "In A&M" links back from Financials.
     const fromReceipt = searchParams.get('fromReceipt');
     useEffect(() => {
         if (!fromReceipt) return;
@@ -253,7 +259,7 @@ export default function AssetsAndMaterialsPage() {
         getDoc(doc(db, col, id)).then(snap => {
             if (!snap.exists()) { toast({ variant: 'destructive', title: 'Receipt not found' }); return; }
             const d = snap.data();
-            if (d.assetId) { toast({ title: 'Already in Assets & Materials', description: d.assetName || undefined }); return; }
+            if (d.assetId || d.inventoryItemId) { toast({ title: 'Already in Assets & Materials', description: d.assetName || d.inventoryItemName || undefined }); return; }
             let form = { ...EMPTY_ASSET_FORM };
             let label = '';
             if (col === 'reimbursements') {
@@ -281,12 +287,9 @@ export default function AssetsAndMaterialsPage() {
                 };
                 label = `${e.submittedBy || 'Expense'} · $${(e.amount || 0).toFixed(2)}`;
             }
-            setMainTab('assets');
-            setEditingAsset(false);
-            setEditingAssetId(null);
-            setAssetForm(form);
-            setReceiptLink({ collection: col, id, label });
-            setAssetFormOpen(true);
+            setMainTab('stock');
+            setReceiptAssetForm(form);
+            setReceiptDraft({ collection: col, id, label, name: form.name, vendor: form.vendor, amount: Number(form.purchasePrice) || 0 });
         }).catch(e => toast({ variant: 'destructive', title: 'Could not load receipt', description: e.message }));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fromReceipt]);
@@ -301,6 +304,26 @@ export default function AssetsAndMaterialsPage() {
         router.replace('/admin/assets');
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [openAssetId, assets]);
+
+    const tabParam = searchParams.get('tab');
+    useEffect(() => {
+        if (tabParam !== 'stock') return;
+        setMainTab('stock');
+        router.replace('/admin/assets');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tabParam]);
+
+    // The receipt chose "add as asset": open the asset form prefilled from it.
+    const receiptAsAsset = () => {
+        if (!receiptDraft || !receiptAssetForm) return;
+        setMainTab('assets');
+        setEditingAsset(false);
+        setEditingAssetId(null);
+        setAssetForm(receiptAssetForm);
+        setReceiptLink({ collection: receiptDraft.collection, id: receiptDraft.id, label: receiptDraft.label });
+        setReceiptDraft(null);
+        setAssetFormOpen(true);
+    };
 
     // ── Filtered views ─────────────────────────────────────────────────────
 
@@ -770,10 +793,14 @@ export default function AssetsAndMaterialsPage() {
                         <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white" onClick={openAddAsset}>
                             <Plus size={14} className="mr-1.5" /> Add asset
                         </Button>
+                    ) : mainTab === 'stock' ? (
+                        <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white" onClick={() => setStockAddOpen(true)}>
+                            <Plus size={14} className="mr-1.5" /> Add material
+                        </Button>
                     ) : mainTab === 'materials' && (
                         <>
                             <Button size="sm" className="h-9 bg-brand-red hover:bg-brand-red/90 text-white" onClick={openAddMaterial}>
-                                <Plus size={14} className="mr-1.5" /> Add material
+                                <Plus size={14} className="mr-1.5" /> Add price book item
                             </Button>
                         </>
                     )}
@@ -786,11 +813,11 @@ export default function AssetsAndMaterialsPage() {
                 <StatCard label="Checked out" value={stats.checkedOut} icon={ArrowRightLeft} tone={stats.checkedOut ? 'info' : undefined} />
                 <StatCard label="Needs repair" value={stats.needsRepair} icon={Hammer} tone={stats.needsRepair ? 'progress' : undefined} />
                 <StatCard label="Lost / missing" value={stats.lost} icon={AlertTriangle} tone={stats.lost ? 'problem' : undefined} />
-                <StatCard label="Active materials" value={stats.activeMaterials} icon={ShoppingCart} />
+                <StatCard label="Materials low on stock" value={stockItems.filter(i => i.status === 'active' && i.reorderPoint != null && i.quantityOnHand <= i.reorderPoint).length} icon={Boxes} onClick={() => setMainTab('stock')} />
             </StatGrid>
 
             {/* Main tabs */}
-            <Tabs value={mainTab} onValueChange={v => { setMainTab(v as 'assets' | 'log' | 'materials' | 'pricing' | 'catalog'); setSearch(''); }} className="w-full">
+            <Tabs value={mainTab} onValueChange={v => { setMainTab(v as 'assets' | 'log' | 'stock' | 'materials' | 'pricing' | 'catalog'); setSearch(''); }} className="w-full">
                 <TabsList className="border-b-2 border-border-sub bg-transparent rounded-none h-auto p-0 gap-8 mb-5">
                     <TabsTrigger value="assets" className={tabTriggerCls}>
                         <span className="flex items-center gap-2"><Boxes size={12} /> Assets ({assets.length})</span>
@@ -798,8 +825,11 @@ export default function AssetsAndMaterialsPage() {
                     <TabsTrigger value="log" className={tabTriggerCls}>
                         <span className="flex items-center gap-2"><History size={12} /> Check-out log{logCounts.out > 0 && ` (${logCounts.out} out)`}</span>
                     </TabsTrigger>
+                    <TabsTrigger value="stock" className={tabTriggerCls}>
+                        <span className="flex items-center gap-2"><Archive size={12} /> Materials ({stockItems.filter(i => i.status === 'active').length})</span>
+                    </TabsTrigger>
                     <TabsTrigger value="materials" className={tabTriggerCls}>
-                        <span className="flex items-center gap-2"><ShoppingCart size={12} /> Materials ({materials.filter(m => m.status === 'active').length})</span>
+                        <span className="flex items-center gap-2"><ShoppingCart size={12} /> Price book ({materials.filter(m => m.status === 'active').length})</span>
                     </TabsTrigger>
                     <TabsTrigger value="pricing" className={tabTriggerCls}>
                         <span className="flex items-center gap-2"><Percent size={12} /> Labor rates &amp; markups</span>
@@ -1198,6 +1228,11 @@ export default function AssetsAndMaterialsPage() {
                     <ListPager pager={materialPager} noun="materials" />
                 </TabsContent>
 
+                {/* ── Materials on hand (inventory), separate from the price book ── */}
+                <TabsContent value="stock" className="m-0">
+                    <InventoryTab items={stockItems} movements={stockMoves} categories={pricing.categories.map(c => c.name)} actorName={actorName} addOpen={stockAddOpen} setAddOpen={setStockAddOpen} />
+                </TabsContent>
+
                 {/* ── Labor & pricing: labor rates, markup, sales tax (adminConfig/pricing) ── */}
                 <TabsContent value="catalog" className="m-0">
                     <ServiceCatalogTab canEditPricing={canEditUserPay(authUser)} />
@@ -1207,6 +1242,15 @@ export default function AssetsAndMaterialsPage() {
                     <PricingTab settings={pricing} canEdit={canEditUserPay(authUser)} materials={materials} />
                 </TabsContent>
             </Tabs>
+
+            <ReceiptToStockDialog
+                draft={receiptDraft}
+                items={stockItems}
+                categories={pricing.categories.map(c => c.name)}
+                actorName={actorName}
+                onClose={() => setReceiptDraft(null)}
+                onAsAsset={receiptAsAsset}
+            />
 
             {/* ── Asset Detail Dialog ──────────────────────────────────────── */}
             <Dialog open={!!selectedAsset && !assetFormOpen && !assignOpen && !returnOpen} onOpenChange={open => !open && setSelectedAsset(null)}>

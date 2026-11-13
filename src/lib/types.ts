@@ -23,6 +23,9 @@ export type AdminMessage = {
   isLocked?: boolean;
   type: 'critical' | 'warning' | 'info' | 'success';
   targetPortal: 'admin' | 'tech' | 'client' | 'all';
+  /** How often the pop-up comes back after "Got it", until it expires
+   *  (components/announcement-banner). Missing = 'once'. */
+  repeat?: 'once' | 'open' | 'hourly' | 'daily';
 };
 
 export type ReliabilityTier = 'Elite' | 'Reliable' | 'Monitored' | 'Restricted' | 'Suspended Review';

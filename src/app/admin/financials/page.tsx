@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Expense, Invoice, WeeklyLog, Technician, WorkOrder, Reimbursement } from '@/lib/types';
 import { InvoicesPanel } from './components/invoices-panel';
+import { QuickBooksExportButton } from '@/components/quickbooks-export-dialog';
 import { RevenueChart } from './components/revenue-chart';
 import { MetricBreakdownSheet, type MetricKey } from './components/metric-breakdown-sheet';
 import { computeFinancialSummary, monthBreakdown } from '@/lib/financial-summary';
@@ -336,6 +337,7 @@ export default function FinancialsPage() {
                 actions={<>
                     <SearchField className="w-full md:w-[260px]" placeholder="Search invoices and reimbursements…" value={searchQuery} onChange={setSearchQuery} />
                     <Button variant="outline" onClick={() => setIsExportDialogOpen(true)} className="h-9"><Download size={14} className="mr-1.5" />Export ledger</Button>
+                    <QuickBooksExportButton size="default" />
                     <Button variant="secondary" onClick={() => setIsClosePeriodOpen(true)} className="h-9">
                         {userIsSuperAdmin ? "Close period" : "Request period close"}
                     </Button>

@@ -6,15 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Loader2, Save, Download } from 'lucide-react';
+import { Plus, Trash2, Loader2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   describeFactor, formatMoney, roundCents,
   type LaborRate, type PriceCategory, type PricingSettings, type RateMultiplier,
 } from '@/lib/billing';
-import { materialPrice } from '@/lib/price-lines';
 import { savePricing } from '@/lib/billing-actions';
-import { downloadCsv } from '@/app/admin/reports/components/history-tabs';
 import type { Material } from '@/lib/types';
 import { doc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -30,8 +28,9 @@ const newId = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toS
  * from its category's markup unless it sets its own price.
  *
  * QuickBooks: labor rates map to Service items, materials to NonInventory
- * items, a category's income account to IncomeAccountRef. "Export for
- * QuickBooks" writes the QBO products & services import file.
+ * items, a category's income account to IncomeAccountRef. Export for
+ * QuickBooks (Price book tab, components/quickbooks-export-dialog) writes
+ * the import files.
  */
 export function PricingTab({ settings, canEdit, materials }: { settings: PricingSettings; canEdit: boolean; materials: Material[] }) {
   const { toast } = useToast();
@@ -87,30 +86,12 @@ export function PricingTab({ settings, canEdit, materials }: { settings: Pricing
     }
   };
 
-  // QuickBooks Online "Import products and services" columns.
-  const exportForQuickBooks = () => {
-    const incomeFor = (category: string) =>
-      draft.categories.find(c => c.name.toLowerCase() === category.toLowerCase())?.qbIncomeAccount || 'Sales of Product Income';
-    downloadCsv('quickbooks_price_book',
-      ['Product/Service Name', 'Sales Description', 'SKU', 'Type', 'Sales Price / Rate', 'Income Account', 'Purchase Cost', 'Expense Account', 'Taxable', 'Category'],
-      [
-        ...draft.laborRates.map(r => [r.label, r.unit === 'hour' ? `${r.label} (per hour)` : r.label, r.sku || '', 'Service', r.rate.toFixed(2), 'Services', '', '', 'No', 'Labor']),
-        ...materials.filter(m => m.status !== 'inactive').map(m => [
-          m.name, m.description || m.name, m.sku || '', 'Non-inventory', materialPrice(m, draft).toFixed(2), incomeFor(m.category),
-          (m.standardCost || 0).toFixed(2), 'Cost of Goods Sold', m.taxable ? 'Yes' : 'No', m.category,
-        ]),
-      ]);
-  };
-
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex flex-wrap items-center justify-between gap-2">
         {!canEdit
           ? <p className="text-[11px] text-accent-gold">View only — payroll and super admins can change the price book.</p>
           : <p className="text-[11px] text-text-muted">Add materials on the Materials tab — each is priced from its category&apos;s markup below.</p>}
-        <Button variant="outline" size="sm" className="h-9" onClick={exportForQuickBooks} title="QuickBooks Online → Settings → Import data → Products and services">
-          <Download size={13} className="mr-1.5" /> Export for QuickBooks
-        </Button>
       </div>
       <fieldset disabled={!canEdit} className="space-y-6">
         {/* Labor rates */}

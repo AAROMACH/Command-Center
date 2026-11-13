@@ -32,6 +32,7 @@ import { PageHeader } from '@/components/page-header';
 import { PricingTab } from './pricing-tab';
 import { ServiceCatalogTab } from './service-catalog-tab';
 import { InventoryTab, ReceiptToStockDialog, useInventory, type ReceiptDraft } from './inventory-tab';
+import { QuickBooksExportButton } from '@/components/quickbooks-export-dialog';
 import { usePricingSettings } from '@/hooks/use-billing';
 import { canonicalCategory, localDay, markupFor } from '@/lib/billing';
 import { materialPrice } from '@/lib/price-lines';
@@ -1088,11 +1089,14 @@ export default function AssetsAndMaterialsPage() {
                 {/* ── Price book: materials, labor rates & markups, service catalog ── */}
                 <TabsContent value="pricebook" className="m-0">
                 <Tabs value={pbTab} onValueChange={v => { setPbTab(v as 'materials' | 'pricing' | 'catalog'); setSearch(''); }} className="w-full">
-                    <TabsList className="tabs !p-0 !bg-bg-tertiary mb-5">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-5">
+                    <TabsList className="tabs !p-0 !bg-bg-tertiary">
                         <TabsTrigger value="materials" className="tab"><span className="flex items-center gap-1.5"><ShoppingCart size={12} /> Materials ({materials.filter(m => m.status === 'active').length})</span></TabsTrigger>
                         <TabsTrigger value="pricing" className="tab"><span className="flex items-center gap-1.5"><Percent size={12} /> Labor rates &amp; markups</span></TabsTrigger>
                         <TabsTrigger value="catalog" className="tab"><span className="flex items-center gap-1.5"><ClipboardCheck size={12} /> Service catalog</span></TabsTrigger>
                     </TabsList>
+                    <QuickBooksExportButton preselect={['products']} />
+                    </div>
                 <TabsContent value="materials" className="m-0">
                     {/* Category: a picker on phones (ten long names would stack
                         five rows deep), pills from sm up. */}

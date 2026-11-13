@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { QuickBooksExportButton } from '@/components/quickbooks-export-dialog';
 import { CheckCircle2, CircleDashed, Link2, Loader2, RefreshCw, TriangleAlert, Unplug } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { Badge } from '@/components/ui/badge';
@@ -149,6 +150,12 @@ export function IntegrationsPanel() {
                 )}
               </div>
               {i.id === 'quickbooks' && qbo?.connected && <QboSyncBox />}
+              {i.id === 'quickbooks' && (
+                <div className="pl-8 flex flex-wrap items-center gap-2">
+                  <QuickBooksExportButton />
+                  <span className="text-[11px] text-text-muted">Import files for customers, vendors, products &amp; services and invoices. Works with or without a connection.</span>
+                </div>
+              )}
               {/* The technical part (exact error, key names) — for whoever sets up hosting. */}
               <details className="pl-8 group">
                 <summary className="cursor-pointer select-none text-[11px] text-text-muted hover:text-text-primary">Technical details</summary>

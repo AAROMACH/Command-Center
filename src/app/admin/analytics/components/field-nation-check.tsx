@@ -1,10 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, Download, FileSpreadsheet, Upload } from 'lucide-react';
+import { Download, FileSpreadsheet, Loader2, Upload } from 'lucide-react';
 import { onSharedSnapshot } from '@/lib/shared-snapshot';
-import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/empty-state';
 import { StatCard } from '@/components/stat-card';
 import { Button } from '@/components/ui/button';
@@ -13,18 +11,26 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils';
 import { ISSUE_LABEL, parseFnReport, reconcile, type FnIssue, type FnRow } from '@/lib/fn-reconcile';
 import type { Technician, WeeklyLog, WorkOrder } from '@/lib/types';
+import { saveFnRows } from '@/lib/fn-reports';
+import { useAuth } from '@/contexts/auth-context';
+import { useToast } from '@/hooks/use-toast';
 
 const money = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0);
 const signed = (n: number, f: (x: number) => string) => (n > 0 ? '+' : n < 0 ? '−' : '') + f(Math.abs(n));
 type Filter = 'issues' | FnIssue | 'app_only' | 'all';
 
 /**
- * Payroll → Field Nation check. Upload Field Nation's Work Order Report CSV
+ * Insights → Performance → Field Nation check. Upload Field Nation's Work Order Report CSV
  * and compare it to the app: pay per job, hours vs the tech's weekly log, and
  * jobs missing on either side. Read-only — fix anything it finds in the job or
- * the log as usual. The file is read in the browser and never stored.
+ * the log as usual. Uploading also saves the rows (one per work order) for
+ * the pay and hours stats above it.
  */
-export default function FieldNationCheckPage() {
+export function FieldNationCheck() {
+  const { user, hasPermission } = useAuth();
+  const { toast } = useToast();
+  const canSave = hasPermission('admin.financials.view');
+  const [saving, setSaving] = useState(false);
   const [people, setPeople] = useState<Technician[]>([]);
   const [logs, setLogs] = useState<WeeklyLog[]>([]);
   const [pool, setPool] = useState<WorkOrder[]>([]);
@@ -56,6 +62,15 @@ export default function FieldNationCheckPage() {
       const parsed = parseFnReport(await f.text());
       if (!parsed.length) throw new Error('No work orders in this file.');
       setRows(parsed); setFileName(f.name); setFilter('issues'); setProvider('');
+      if (canSave) {
+        setSaving(true);
+        try {
+          const n = await saveFnRows(parsed, user?.name || 'Admin', f.name);
+          toast({ title: 'Report saved', description: `${n} work orders added to the pay and hours stats.` });
+        } catch (e) {
+          toast({ variant: 'destructive', title: 'Compared, but not saved', description: e instanceof Error ? e.message : 'Only payroll can save reports.' });
+        } finally { setSaving(false); }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not read that file.');
     } finally {
@@ -108,23 +123,20 @@ export default function FieldNationCheckPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow="Finance"
-        icon={FileSpreadsheet}
-        title="Field Nation check"
-        subtitle="Upload Field Nation's Work Order Report to compare pay, hours and jobs with the app."
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" className="h-9" asChild>
-              <Link href="/admin/payroll/audit"><ArrowLeft size={14} className="mr-1.5" />Payroll audit</Link>
-            </Button>
-            {result && <Button variant="outline" size="sm" className="h-9" onClick={exportCsv}><Download size={14} className="mr-1.5" />Export CSV</Button>}
-            <Button size="sm" className="h-9" onClick={() => fileRef.current?.click()}><Upload size={14} className="mr-1.5" />{rows ? 'Upload another' : 'Upload report'}</Button>
-            <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={e => onFile(e.target.files?.[0])} />
-          </div>
-        }
-      />
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold text-text-primary">Field Nation check</h3>
+          <p className="text-[12px] text-text-muted">Upload Field Nation&rsquo;s Work Order Report (CSV) to compare pay, hours and jobs with the app{canSave ? ' — it\'s also saved for the stats above' : ''}.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {result && <Button variant="outline" size="sm" className="h-9" onClick={exportCsv}><Download size={14} className="mr-1.5" />Export CSV</Button>}
+          <Button size="sm" className="h-9" disabled={saving} onClick={() => fileRef.current?.click()}>
+            {saving ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : <Upload size={14} className="mr-1.5" />}{rows ? 'Upload another' : 'Upload report'}
+          </Button>
+          <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={e => onFile(e.target.files?.[0])} />
+        </div>
+      </div>
 
       {error && <p className="text-sm text-text-red">{error}</p>}
 
@@ -132,7 +144,7 @@ export default function FieldNationCheckPage() {
         <EmptyState
           icon={Upload}
           title="Upload a Field Nation report"
-          description="In Field Nation, export the Work Order Report as CSV, then upload it here. The file stays in your browser — nothing is saved or changed."
+          description="In Field Nation, export the Work Order Report as CSV, then upload it here. Jobs and logs are never changed."
         />
       ) : (
         <>

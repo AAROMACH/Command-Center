@@ -11,6 +11,8 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { isTech } from '@/lib/permissions';
 import { BarChart2, ShieldAlert, Users, AlertTriangle, Clock, ChevronRight, Mail, Phone, ArrowLeft, RefreshCw, Filter, X, Activity as ActivityIcon } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { PerformanceStats } from './components/performance-stats';
+import { FieldNationCheck } from './components/field-nation-check';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
@@ -301,7 +303,7 @@ export default function FieldIntelligencePage() {
                 eyebrow="Reports"
                 icon={BarChart2}
                 title="Insights"
-                subtitle="Work and revenue (with the job map), technicians, quality, app activity and flags."
+                subtitle="Work and revenue (with the job map), technicians, performance, app activity and flags."
             />
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -312,7 +314,7 @@ export default function FieldIntelligencePage() {
                             Techs
                         </TabsTrigger>
                         <TabsTrigger value="app_activity" className="tab">App activity</TabsTrigger>
-                        <TabsTrigger value="insights" className="tab">Quality</TabsTrigger>
+                        <TabsTrigger value="insights" className="tab">Performance</TabsTrigger>
                         <TabsTrigger value="flags" className="tab flex items-center gap-2">
                             Flags
                             {flagsTotal > 0 && (
@@ -536,8 +538,12 @@ export default function FieldIntelligencePage() {
                     )}
                 </TabsContent>
 
-                <TabsContent value="insights" className="m-0">
-                    <p className="text-[12px] text-text-muted mb-4">How well the work gets done — completions, cancellations and revisits. Money and locations are on Work &amp; revenue.</p>
+                <TabsContent value="insights" className="m-0 space-y-8">
+                    <PerformanceStats />
+                    <FieldNationCheck />
+                    <div>
+                    <h3 className="text-sm font-semibold text-text-primary">Work quality</h3>
+                    <p className="text-[12px] text-text-muted mb-4">Completions, cancellations and revisits. Money and locations are on Work &amp; revenue.</p>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
                         {/* Last 6 months */}
@@ -639,6 +645,7 @@ export default function FieldIntelligencePage() {
                             )}
                         </div>
 
+                    </div>
                     </div>
                 </TabsContent>
 

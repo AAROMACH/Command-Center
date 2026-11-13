@@ -28,8 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ProjectTimesheets } from './components/project-timesheets';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Receipt, Search, ChevronDown, ChevronRight, DollarSign, CheckCircle, Clock, X, Download, Plus, SlidersHorizontal, MergeIcon, AlertTriangle, FileSpreadsheet } from 'lucide-react';
-import Link from 'next/link';
+import { ArrowLeft, Receipt, Search, ChevronDown, ChevronRight, DollarSign, CheckCircle, Clock, X, Download, Plus, SlidersHorizontal, MergeIcon, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isWithinInterval } from 'date-fns';
 import type { Technician, WeeklyLog, WeeklyLogItem, WorkOrder, FinancialRecord } from '@/lib/types';
@@ -686,9 +685,6 @@ export default function PayrollAuditPage() {
                         {(isSuperAdmin(currentUser) || getSubroles(currentUser).includes('payroll_admin')) && (
                             <WagesButton people={technicians} by={currentUser?.name || 'Payroll'} />
                         )}
-                        <Button variant="outline" size="sm" className="h-9 border-border-main" asChild>
-                            <Link href="/admin/payroll/field-nation"><FileSpreadsheet size={14} className="mr-1.5" /> Field Nation check</Link>
-                        </Button>
                         <Button variant="outline" size="sm" className="h-9 border-border-main" onClick={handleExportCsv}>
                             <Download size={14} className="mr-1.5" /> Export CSV
                         </Button>

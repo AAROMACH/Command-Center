@@ -694,6 +694,7 @@ export function DispatchPageClient() {
               routes={routes}
               onRoutesChange={handleRoutesChange}
               allJobPool={allWorkOrders.filter(wo => !wo.assignedTechnicianId && !isArchivedJob(wo))}
+              assignments={allAssignments}
               dateAsc={dateAsc}
               isDateSortActive={sortBy === 'date'}
               onToggleDateSort={toggleDateSort}

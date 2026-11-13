@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenAI, type Content, type FunctionDeclaration, type Part } from '@google/genai';
+import type { Content, FunctionDeclaration, Part } from '@google/genai';
+import { GEMINI_MODEL as MODEL, gemini, geminiKey as API_KEY } from '@/lib/server/gemini';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
@@ -20,8 +21,6 @@ import type { Technician, WorkOrder } from '@/lib/types';
  * nothing for a clever prompt to extract.
  */
 
-const MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-const API_KEY = () => process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
 const MAX_TURNS = 20;
 const MAX_CHARS = 2000;
 const MAX_TOOL_ROUNDS = 5;
@@ -213,7 +212,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const ai = new GoogleGenAI({ apiKey: API_KEY() });
+  const ai = gemini();
   // Gemini roles are user/model. Per-request context goes in the system
   // instruction (operator channel), never mixed into user text.
   const contents: Content[] = history.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));

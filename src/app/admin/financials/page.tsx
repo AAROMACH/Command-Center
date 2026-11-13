@@ -61,6 +61,8 @@ export default function FinancialsPage() {
     const [mileageRate, setMileageRate] = useState(0.67);
 
     const [reimTypeFilter, setReimTypeFilter] = useState<'all' | 'receipt' | 'mileage'>('all');
+    // Tied to a job/project vs logged on their own (receipts, company purchases).
+    const [reimScope, setReimScope] = useSessionState<'job' | 'manual'>('admin/financials:reimScope', 'job');
     const [reimStatusFilter, setReimStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'paid'>('all');
     const [searchQuery, setSearchQuery] = useSessionState('admin/financials:searchQuery', "");
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'summary');
@@ -251,7 +253,7 @@ export default function FinancialsPage() {
     }, [expenses, searchQuery]);
 
     // Reimbursements table rows (legacy expenses + new reimbursements), newest first.
-    const reimbRows = useMemo(() => {
+    const reimbAllRows = useMemo(() => {
                                             // Normalize legacy expenses as receipt reimbursements
                                             const legacyRows = filteredExpenses
                                                 .filter(e => reimTypeFilter !== 'mileage')
@@ -325,7 +327,9 @@ export default function FinancialsPage() {
                                                 .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
     }, [filteredExpenses, reimbursements, reimTypeFilter, reimStatusFilter, mileageRate, searchQuery]);
-    const reimbPager = usePaged(reimbRows, PAGE_SIZES_LARGE, 'financials-reimbursements', [reimTypeFilter, reimStatusFilter, searchQuery]);
+    const reimbJobCount = reimbAllRows.filter(r => r.jobLinked).length;
+    const reimbRows = useMemo(() => reimbAllRows.filter(r => reimScope === 'job' ? r.jobLinked : !r.jobLinked), [reimbAllRows, reimScope]);
+    const reimbPager = usePaged(reimbRows, PAGE_SIZES_LARGE, 'financials-reimbursements', [reimTypeFilter, reimStatusFilter, searchQuery, reimScope]);
 
     return (
         <div className="text-left animate-in fade-in duration-700">
@@ -423,6 +427,14 @@ export default function FinancialsPage() {
                     </TabsContent>
 
                     <TabsContent value="reimbursements" className="m-0 space-y-4">
+                        {/* Job-linked vs logged on their own */}
+                        <Tabs value={reimScope} onValueChange={v => setReimScope(v as 'job' | 'manual')}>
+                            <TabsList className="tabs !p-0 !bg-bg-tertiary">
+                                <TabsTrigger value="job" className="tab">Tied to a job ({reimbJobCount})</TabsTrigger>
+                                <TabsTrigger value="manual" className="tab">Receipts &amp; company purchases ({reimbAllRows.length - reimbJobCount})</TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+
                         {/* Filter bar */}
                         <div className="flex items-center gap-3 flex-wrap">
                             <div className="flex items-center rounded-md border border-border-main overflow-hidden h-8 bg-bg-secondary shrink-0">
@@ -457,7 +469,9 @@ export default function FinancialsPage() {
                         <Card>
                             <CardHeader className="text-left">
                                 <CardTitle>Reimbursements</CardTitle>
-                                <CardDescription>Receipts and mileage submitted by techs. Approve, reject or mark paid. Receipts not tied to a job can be added to Assets &amp; Materials.</CardDescription>
+                                <CardDescription>{reimScope === 'job'
+                                    ? 'Receipts and mileage techs logged against a job or project. Approve, reject or mark paid.'
+                                    : 'Receipts and mileage logged without a job: personal reimbursements and company purchases. Company purchases can be added to Assets & Materials.'}</CardDescription>
                             </CardHeader>
                             <CardContent className="table-wrap p-0">
                                 <Table>
@@ -476,7 +490,7 @@ export default function FinancialsPage() {
                                         {reimbPager.total === 0 ? (
                                                 <TableRow>
                                                     <TableCell colSpan={7} className="text-center py-12 text-xs text-text-muted">
-                                                        No reimbursements match the current filters.
+                                                        {reimScope === 'job' ? 'No job reimbursements match the current filters.' : 'No receipts or company purchases match the current filters.'}
                                                     </TableCell>
                                                 </TableRow>
                                         ) : reimbPager.items.map(row => (

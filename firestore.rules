@@ -690,6 +690,13 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
     }
 
+    // Field Nation Work Order Report rows saved from Insights → Performance
+    // (lib/fn-reports). Pay data: admins read, payroll writes.
+    match /fnReportRows/{id} {
+      allow read: if isAdmin();
+      allow write: if isPayrollAdmin();
+    }
+
     match /broadcasts/{id} {
       allow read: if isSignedIn();
       allow write: if isAdmin();

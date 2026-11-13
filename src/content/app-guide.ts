@@ -152,6 +152,23 @@ export const APP_GUIDES: Guide[] = [
     ],
   },
   {
+    id: 'fn-check', portal: 'admin', title: 'Check a Field Nation report against the app (pay, hours, missing jobs)',
+    keywords: 'field nation report csv compare reconcile hours pay missing work orders check',
+    steps: [
+      { say: 'Open Insights.', path: '/admin/analytics' },
+      { say: 'Open the Performance tab.', click: 'Performance' },
+      { say: "Upload Field Nation's Work Order Report CSV, then review Needs a look.", click: 'Upload report' },
+    ],
+  },
+  {
+    id: 'tech-pay-stats', portal: 'admin', title: 'See tech pay per hour / day / week and hours worked',
+    keywords: 'hourly wage pay per hour average hours worked per week month year tech performance earnings',
+    steps: [
+      { say: 'Open Insights.', path: '/admin/analytics' },
+      { say: 'Open the Performance tab — Tech pay & hours is at the top (from saved Field Nation reports).', click: 'Performance' },
+    ],
+  },
+  {
     id: 'announcement', portal: 'admin', title: 'Send an announcement to techs or clients',
     keywords: 'announcement broadcast message everyone notify all',
     steps: [

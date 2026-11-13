@@ -14,6 +14,7 @@ import { startNativePush } from "@/lib/native-push";
 import { refreshWebPush } from "@/lib/web-push";
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { HelpAssistant } from "@/components/help-assistant";
+import { AnnouncementBanner } from "@/components/announcement-banner";
 import { getAvailablePortals } from "@/lib/permissions";
 import { canAccessPath } from "@/lib/route-permissions";
 import { Home, CalendarDays, FileText, Coins, Wrench, ClipboardList, Inbox, Receipt, Target, Users, FileSearch, Settings } from "lucide-react";
@@ -112,6 +113,8 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
               <NotificationBell compact />
             </div>
           </div>
+          {/* Office announcements pop up on every page until dismissed */}
+          {user && !denied && <AnnouncementBanner userId={user.id} />}
           {/* Page content */}
           <div className="relative flex-1 min-h-0 flex flex-col">
             <PullToRefresh scrollRef={mainRef} />

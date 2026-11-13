@@ -119,6 +119,9 @@ const AUDIT_RANK: Record<string, number> = {
 
 type SortOption = 'date' | 'client' | 'status' | 'audit' | 'pay' | 'tech';
 
+/** Bulk archives larger than this need a super admin. */
+const BULK_ARCHIVE_LIMIT = 10;
+
 export default function AssignmentsHubPage() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -154,6 +157,8 @@ export default function AssignmentsHubPage() {
   const [tab, setTab] = useSessionState<'schedule' | 'archive'>('assignments:tab', 'schedule');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false);
+  // Bulk archive is typed-to-confirm: the person types how many jobs.
+  const [bulkArchiveConfirm, setBulkArchiveConfirm] = useState('');
   const [bulkArchiving, setBulkArchiving] = useState(false);
 
   const { toast } = useToast();
@@ -503,11 +508,18 @@ export default function AssignmentsHubPage() {
     techName: technicians.find(t => t.id === jobTechId(order))?.name,
   });
 
+  const superAdmin = isSuperAdmin(currentUser as any);
+  // Over this many jobs at once, only a super admin can bulk archive (each
+  // has to be restored one at a time from Reports → Archive).
+  const bulkArchiveBlocked = archivableSelected.length > BULK_ARCHIVE_LIMIT && !superAdmin;
+
   // Bulk archive: the same single-job archive, one selected job at a time.
   // Already-archived jobs are skipped, exactly as the single confirm does.
   const confirmBulkArchive = async () => {
     const targets = archivableSelected;
     if (targets.length === 0) { setBulkArchiveOpen(false); return; }
+    if (targets.length > BULK_ARCHIVE_LIMIT && !superAdmin) return;
+    if (bulkArchiveConfirm.trim() !== String(targets.length)) return;
     setBulkArchiving(true);
     let done = 0;
     const failed: string[] = [];
@@ -522,6 +534,7 @@ export default function AssignmentsHubPage() {
     }
     setBulkArchiving(false);
     setBulkArchiveOpen(false);
+    setBulkArchiveConfirm('');
     clearSelection();
     if (failed.length) {
       toast({ variant: "destructive", title: `Archived ${done} of ${targets.length}`, description: `Could not archive: ${failed.join(', ')}` });
@@ -529,8 +542,6 @@ export default function AssignmentsHubPage() {
       toast({ title: "Archived", description: `${done} job${done === 1 ? '' : 's'} moved to History.` });
     }
   };
-
-  const superAdmin = isSuperAdmin(currentUser as any);
 
   // Removes the job for good: its archived copy and any live record. There is
   // no restore — that's why only super admins see it, and only on History.
@@ -736,9 +747,9 @@ export default function AssignmentsHubPage() {
                     <Download size={14} className="mr-1.5" /> Export selected (CSV)
                   </Button>
                   <Button variant="outline" size="sm" className="flex-1 border-brand-red/40 text-text-red hover:bg-brand-red/10 sm:flex-none"
-                    disabled={archivableSelected.length === 0}
-                    title={archivableSelected.length === 0 ? 'The selected jobs are already archived' : undefined}
-                    onClick={() => setBulkArchiveOpen(true)}>
+                    disabled={archivableSelected.length === 0 || bulkArchiveBlocked}
+                    title={archivableSelected.length === 0 ? 'The selected jobs are already archived' : bulkArchiveBlocked ? `Only a super admin can archive more than ${BULK_ARCHIVE_LIMIT} jobs at once` : undefined}
+                    onClick={() => { setBulkArchiveConfirm(''); setBulkArchiveOpen(true); }}>
                     <Archive size={14} className="mr-1.5" /> Archive selected
                   </Button>
                   <Button variant="ghost" size="sm" onClick={clearSelection} aria-label="Clear selection">
@@ -1323,20 +1334,28 @@ export default function AssignmentsHubPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={bulkArchiveOpen} onOpenChange={(open) => { if (!open && !bulkArchiving) setBulkArchiveOpen(false); }}>
+      <AlertDialog open={bulkArchiveOpen} onOpenChange={(open) => { if (!open && !bulkArchiving) { setBulkArchiveOpen(false); setBulkArchiveConfirm(''); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Archive {archivableSelected.length} job{archivableSelected.length === 1 ? '' : 's'}?</AlertDialogTitle>
             <AlertDialogDescription>
               The selected jobs will be moved to History. Work order numbers, tech assignments, logs, notes and history are kept and can be restored later.
               {selectedRows.length > archivableSelected.length && ` ${selectedRows.length - archivableSelected.length} selected job${selectedRows.length - archivableSelected.length === 1 ? ' is' : 's are'} already archived and will be skipped.`}
+              {' '}Restoring is one job at a time, from Reports → Archive.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-1.5">
+            <label htmlFor="bulk-archive-confirm" className="text-[12px] font-semibold text-text-primary">
+              Type <span className="font-mono text-text-red">{archivableSelected.length}</span> to confirm
+            </label>
+            <Input id="bulk-archive-confirm" inputMode="numeric" autoComplete="off" value={bulkArchiveConfirm}
+              onChange={e => setBulkArchiveConfirm(e.target.value)} disabled={bulkArchiving} className="h-10" />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={bulkArchiving}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => { e.preventDefault(); confirmBulkArchive(); }}
-              disabled={bulkArchiving}
+              disabled={bulkArchiving || bulkArchiveBlocked || bulkArchiveConfirm.trim() !== String(archivableSelected.length)}
               className="bg-brand-red hover:bg-brand-red-hover text-white"
             >
               {bulkArchiving ? 'Archiving…' : `Archive ${archivableSelected.length}`}

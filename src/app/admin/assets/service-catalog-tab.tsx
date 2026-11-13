@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Link2, Loader2, Plus, RotateCcw, Save, Search, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Link2, Loader2, Plus, Save, Search, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -160,22 +160,6 @@ export function ServiceCatalogTab({ canEditPricing = false }: { canEditPricing?:
 
   return (
     <div className="space-y-5">
-      {/* What this is vs labor rates */}
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="rounded-xl border border-brand-red/40 bg-brand-red/5 p-3.5">
-          <p className="text-[13px] font-semibold text-text-primary">Service catalog — this tab</p>
-          <p className="text-[12px] text-text-secondary mt-1">
-            Packaged prices <b>per unit of work</b> — per drop, per device, per site — each with a modeled cost (material + tech hours + other), so a site walk can be quoted with its margin. Used by site walks.
-          </p>
-        </div>
-        <div className="rounded-xl border border-border-sub bg-bg-secondary p-3.5">
-          <p className="text-[13px] font-semibold text-text-primary">Labor rates — on the Labor rates &amp; markups tab</p>
-          <p className="text-[12px] text-text-secondary mt-1">
-            What <b>an hour of tech time</b> bills at. Used on quote and invoice labor lines and job invoices from time on site. Hourly items here can follow a labor rate (<Link2 size={11} className="inline -mt-0.5" />) so there&apos;s one price to keep up.
-          </p>
-        </div>
-      </div>
-
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
@@ -183,9 +167,6 @@ export function ServiceCatalogTab({ canEditPricing = false }: { canEditPricing?:
         </div>
         <Button variant="outline" className="h-9" onClick={addService}><Plus size={14} className="mr-1.5" /> Add service</Button>
         <div className="ml-auto flex gap-2">
-          <Button variant="outline" className="h-9" onClick={() => { if (confirm('Reset the catalog and assumptions to the v3 workbook values? Unsaved until you press Save.')) { setA(DEFAULT_ASSUMPTIONS); setServices(DEFAULT_SERVICES); setDirty(true); } }}>
-            <RotateCcw size={14} className="mr-1.5" /> Workbook defaults
-          </Button>
           <Button onClick={save} disabled={!dirty || saving} className="h-9 bg-brand-red hover:bg-brand-red/90 text-white">
             {saving ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : <Save size={14} className="mr-1.5" />} Save{dirty ? ' changes' : 'd'}
           </Button>

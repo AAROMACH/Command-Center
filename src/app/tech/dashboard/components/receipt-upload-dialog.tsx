@@ -35,6 +35,7 @@ import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { uploadFile } from '@/lib/upload';
+import { NotificationService } from '@/lib/notification-service';
 
 type ReceiptUploadDialogProps = {
     isOpen: boolean;
@@ -62,6 +63,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
         relatedType: '' as 'Assignment' | 'Project' | ''
     });
     const [purchaseType, setPurchaseType] = useState<'personal' | 'company'>('personal');
+    const [description, setDescription] = useState('');
     const isCompany = purchaseType === 'company';
     const { toast } = useToast();
 
@@ -97,11 +99,11 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
     };
 
     const handleSave = async () => {
-        if (!extractedData.merchant || !extractedData.amount || (!isCompany && !extractedData.relatedId)) {
+        if (!extractedData.merchant || !extractedData.amount || (isCompany ? !description.trim() : !extractedData.relatedId)) {
             toast({
                 variant: 'destructive',
                 title: 'Missing details',
-                description: isCompany ? 'Enter the vendor and amount.' : 'Enter the vendor and amount, and pick a job or project.',
+                description: isCompany ? 'Enter the vendor, amount and what was purchased.' : 'Enter the vendor and amount, and pick a job or project.',
             });
             return;
         }
@@ -131,6 +133,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
                 vendorName: extractedData.merchant,
                 purchaseDate: extractedData.date,
                 purchaseType,
+                ...(description.trim() && { description: description.trim() }),
                 submittedAt: now,
                 createdAt: now,
             };
@@ -149,6 +152,8 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
             }
 
             await addDoc(collection(db, 'reimbursements'), reimbursementDoc);
+            NotificationService.notifyPayrollAdmins(isCompany ? 'Company purchase submitted' : 'Reimbursement requested',
+                `${techName || 'A technician'} submitted a $${amount.toFixed(2)} ${isCompany ? 'company purchase' : 'receipt'} from ${extractedData.merchant}${description.trim() ? `: ${description.trim().slice(0, 120)}` : ''}.`).catch(() => {});
 
             toast({
                 title: 'Receipt submitted',
@@ -171,6 +176,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
         uploadedFileRef.current = null;
         setExtractedData({ merchant: '', date: '', amount: '', relatedId: '', relatedName: '', relatedType: '' });
         setPurchaseType('personal');
+        setDescription('');
         setIsOpen(false);
     };
 
@@ -207,7 +213,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
                         <Receipt className="text-brand-red h-5 w-5" />
                         <DialogTitle className="text-lg font-semibold">Add a receipt</DialogTitle>
                     </div>
-                    <DialogDescription className="text-[12px] text-text-muted">Every expense needs a photo of the receipt.</DialogDescription>
+                    <DialogDescription className="text-[12px] text-text-muted">Every expense needs a photo of the receipt. Personal reimbursements go with a job; company purchases are stock or tools the company keeps.</DialogDescription>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -278,6 +284,28 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
                                 </div>
                             )}
 
+                            <div className="space-y-1.5 text-left">
+                                <Label className="text-[12px] font-semibold text-text-muted">Type *</Label>
+                                <Select value={purchaseType} onValueChange={v => setPurchaseType(v as 'personal' | 'company')}>
+                                    <SelectTrigger className="h-10 text-xs bg-bg-primary border-border-sub"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="bg-bg-elevated border-border-main">
+                                        <SelectItem value="personal" className="text-xs">Personal reimbursement</SelectItem>
+                                        <SelectItem value="company" className="text-xs">Company purchase (shop stock / tools)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {isCompany && <p className="text-[12px] text-text-muted">Stock or tools the company keeps, not for a specific job. You still get reimbursed.</p>}
+                            </div>
+
+                            <div className="space-y-1.5 text-left">
+                                <Label className="text-[12px] font-semibold text-text-muted">What was purchased{isCompany ? ' *' : ''}</Label>
+                                <Input
+                                    placeholder={isCompany ? 'e.g. 2 boxes Cat6 RJ45 pass-through' : 'e.g. Anchors and zip ties'}
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    className="h-10 text-xs bg-bg-primary border-border-sub focus:border-brand-red"
+                                />
+                            </div>
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5 text-left">
                                     <Label className="text-[12px] font-semibold text-text-muted">Vendor</Label>
@@ -307,18 +335,6 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
                                     onChange={(e) => setExtractedData({...extractedData, date: e.target.value})}
                                     className="h-10 text-xs bg-bg-primary border-border-sub focus:border-brand-red"
                                 />
-                            </div>
-
-                            <div className="space-y-1.5 text-left">
-                                <Label className="text-[12px] font-semibold text-text-muted">Type</Label>
-                                <Select value={purchaseType} onValueChange={v => setPurchaseType(v as 'personal' | 'company')}>
-                                    <SelectTrigger className="h-10 text-xs bg-bg-primary border-border-sub"><SelectValue /></SelectTrigger>
-                                    <SelectContent className="bg-bg-elevated border-border-main">
-                                        <SelectItem value="personal" className="text-xs">Personal reimbursement</SelectItem>
-                                        <SelectItem value="company" className="text-xs">Company purchase (shop stock / tools)</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                {isCompany && <p className="text-[12px] text-text-muted">Stock or tools the company keeps, not for a specific job. You still get reimbursed.</p>}
                             </div>
 
                             {!isCompany && <div className="space-y-2 text-left">
@@ -376,7 +392,7 @@ export function ReceiptUploadDialog({ isOpen, setIsOpen, workOrders, projects, t
                         <Button
                             onClick={handleSave}
                             className="h-10 bg-brand-red hover:bg-brand-red-hover flex-1"
-                            disabled={(!isCompany && !extractedData.relatedId) || isSaving}
+                            disabled={(isCompany ? !description.trim() : !extractedData.relatedId) || isSaving}
                         >
                             {isSaving ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Upload size={16} className="mr-2" />}
                             {isSaving ? 'Uploading...' : 'Submit receipt'}

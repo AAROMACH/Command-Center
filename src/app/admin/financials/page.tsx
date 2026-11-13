@@ -271,6 +271,8 @@ export default function FinancialsPage() {
                                                     notes: undefined as string | undefined,
                                                     techId: undefined as string | undefined,
                                                     jobLinked: !!e.projectId,
+                                                    company: false,
+                                                    personal: false,
                                                     assetId: e.assetId,
                                                     assetName: e.assetName,
                                                     stockId: e.inventoryItemId,
@@ -310,6 +312,8 @@ export default function FinancialsPage() {
                                                     notes: r.notes,
                                                     techId: r.techId as string | undefined,
                                                     jobLinked: !!(r.relatedJobId || r.relatedProjectId),
+                                                    company: r.purchaseType === 'company',
+                                                    personal: r.purchaseType === 'personal',
                                                     assetId: r.assetId,
                                                     assetName: r.assetName,
                                                     stockId: r.inventoryItemId,
@@ -482,7 +486,7 @@ export default function FinancialsPage() {
                                                             variant="scheduled"
                                                             className="text-[10px] h-5 font-semibold uppercase tracking-wide flex items-center gap-1 w-fit"
                                                         >
-                                                            {row.type === 'mileage' ? <><Car size={8} />&nbsp;Mileage</> : 'Receipt'}
+                                                            {row.type === 'mileage' ? <><Car size={8} />&nbsp;Mileage</> : row.company ? 'Company purchase' : 'Receipt'}
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell>
@@ -514,9 +518,9 @@ export default function FinancialsPage() {
                                                         <div className="flex gap-2 justify-end items-center">
                                                         {/* Company purchases (no job) can be logged into
                                                             Assets & Materials so the inventory is tracked. */}
-                                                        {row.type === 'receipt' && !row.jobLinked && !row.assetId && !row.stockId && row.status !== 'rejected' && (
+                                                        {row.type === 'receipt' && (row.company || (!row.personal && !row.jobLinked)) && !row.assetId && !row.stockId && row.status !== 'rejected' && (
                                                             <Button size="sm" variant="outline" className="h-7 text-[11px]"
-                                                                title="Not tied to a job — add this purchase to Assets & Materials"
+                                                                title="Company purchase — add it to Assets & Materials"
                                                                 onClick={() => router.push(`/admin/assets?fromReceipt=${row.source === 'expense' ? 'expenses' : 'reimbursements'}:${row.id}`)}
                                                             ><Package size={12} className="mr-1" />Add to A&amp;M</Button>
                                                         )}

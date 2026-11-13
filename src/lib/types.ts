@@ -941,6 +941,11 @@ export type Reimbursement = {
   createdAt: string;
   updatedAt?: string;
   // Receipt fields
+  /** personal = the tech's own work expense (usually for a job);
+   *  company = bought for the company (shop stock, tools), no job.
+   *  Admins can add company purchases to Assets & Materials.
+   *  Unset on older receipts. Both are reimbursed to the tech. */
+  purchaseType?: 'personal' | 'company';
   vendorName?: string;
   purchaseDate?: string;
   description?: string;

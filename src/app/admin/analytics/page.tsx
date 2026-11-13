@@ -313,8 +313,8 @@ export default function FieldIntelligencePage() {
                         <TabsTrigger value="techs" className="tab" onClick={() => setSelectedTechId(null)}>
                             Techs
                         </TabsTrigger>
-                        <TabsTrigger value="app_activity" className="tab">App activity</TabsTrigger>
                         <TabsTrigger value="insights" className="tab">Performance</TabsTrigger>
+                        <TabsTrigger value="app_activity" className="tab">App activity</TabsTrigger>
                         <TabsTrigger value="flags" className="tab flex items-center gap-2">
                             Flags
                             {flagsTotal > 0 && (

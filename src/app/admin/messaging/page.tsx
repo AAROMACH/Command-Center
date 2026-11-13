@@ -79,6 +79,7 @@ export default function AdminMessagingPage() {
     subject: '',
     body: '',
     isLocked: false,
+    repeat: 'once',
   });
   const [contactFilter, setContactFilter] = useState<'all' | 'admins' | 'techs' | 'clients'>('all');
   const [contactSearch, setContactSearch] = useState('');
@@ -215,6 +216,7 @@ export default function AdminMessagingPage() {
         type: newMessage.type as any,
         targetPortal: newMessage.targetPortal as any,
         isLocked: !!newMessage.isLocked,
+        repeat: newMessage.repeat || 'once',
         expiresAt: addHours(new Date(), parseInt(durationHours)).toISOString(),
       };
 
@@ -228,7 +230,7 @@ export default function AdminMessagingPage() {
 
       toast({ title: 'Announcement sent', description: 'Everyone in the chosen group will see it.' });
       setIsBroadcasting(false);
-      setNewMessage({ type: 'info', targetPortal: 'all', subject: '', body: '', isLocked: false });
+      setNewMessage({ type: 'info', targetPortal: 'all', subject: '', body: '', isLocked: false, repeat: 'once' });
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Failed to broadcast', description: e.message });
     } finally {
@@ -411,7 +413,7 @@ export default function AdminMessagingPage() {
                         {msg.isLocked && <Lock size={11} className="text-brand-red" />}
                       </div>
                       <p className="text-[11px] text-text-muted">
-                        {format(parseISO(msg.timestamp), 'MMM d, yyyy h:mm a')} · To: {msg.targetPortal}
+                        {format(parseISO(msg.timestamp), 'MMM d, yyyy h:mm a')} · To: {msg.targetPortal}{msg.repeat && msg.repeat !== 'once' ? ` · Shows ${({ open: 'every app open', hourly: 'hourly', daily: 'daily' } as Record<string, string>)[msg.repeat]}` : ''}
                         {msg.expiresAt && ` · Expires: ${format(parseISO(msg.expiresAt), 'MMM d, h:mm a')}`}
                       </p>
                     </div>
@@ -812,6 +814,19 @@ export default function AdminMessagingPage() {
                 </Select>
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Show again</Label>
+              <Select value={newMessage.repeat || 'once'} onValueChange={(v: any) => setNewMessage(m => ({ ...m, repeat: v }))}>
+                <SelectTrigger className="h-9 text-[11px] bg-bg-secondary border-border-main"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-bg-elevated border-border-main">
+                  <SelectItem value="once">Once (until Got it)</SelectItem>
+                  <SelectItem value="open">Every time the app opens</SelectItem>
+                  <SelectItem value="hourly">Every hour</SelectItem>
+                  <SelectItem value="daily">Every day</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Expires after</Label>
               <Select value={durationHours} onValueChange={setDurationHours}>
@@ -824,6 +839,7 @@ export default function AdminMessagingPage() {
                   <SelectItem value="168">1 week</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Subject *</Label>

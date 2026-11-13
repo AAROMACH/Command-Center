@@ -11,6 +11,7 @@
     "lint:ui": "node scripts/check-ui.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "@capacitor-firebase/authentication": "^7.5.0",
     "@capacitor/android": "^7.6.9",
     "@capacitor/core": "^7.6.9",

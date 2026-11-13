@@ -13,6 +13,7 @@ import { ToastAction } from "@/components/ui/toast";
 import { startNativePush } from "@/lib/native-push";
 import { refreshWebPush } from "@/lib/web-push";
 import { PullToRefresh } from "@/components/pull-to-refresh";
+import { HelpAssistant } from "@/components/help-assistant";
 import { getAvailablePortals } from "@/lib/permissions";
 import { canAccessPath } from "@/lib/route-permissions";
 import { Home, CalendarDays, FileText, Coins, Wrench, ClipboardList, Inbox, Receipt, Target, Users, FileSearch, Settings } from "lucide-react";
@@ -118,6 +119,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
               <div className="page-content">
                 {denied ? null : children}
               </div>
+              {!denied && user && <HelpAssistant />}
             </main>
           </div>
           {/* Tech mobile bottom nav */}

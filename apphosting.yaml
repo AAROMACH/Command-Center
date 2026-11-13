@@ -28,3 +28,9 @@ env:
     value: production
     availability:
       - RUNTIME
+
+  # In-app help assistant (src/app/api/assistant). Key lives in Secret Manager.
+  - variable: ANTHROPIC_API_KEY
+    secret: ANTHROPIC_API_KEY
+    availability:
+      - RUNTIME

@@ -29,3 +29,9 @@ env:
     availability:
       - RUNTIME
 
+
+  # In-app help assistant (src/app/api/assistant). Google AI Studio key in Secret Manager.
+  - variable: GEMINI_API_KEY
+    secret: GEMINI_API_KEY
+    availability:
+      - RUNTIME

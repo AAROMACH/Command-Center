@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ClientPicker } from '@/components/client-picker';
+import { SiteWalkGapCheck } from '@/components/site-walk/site-walk-gap-check';
 import { useAllSubscriptions, useServicePlans } from '@/hooks/use-billing';
 import { describeDiscount, planDiscountFor } from '@/lib/price-lines';
 import { useToast } from '@/hooks/use-toast';
@@ -224,6 +225,8 @@ export function SiteWalkReview({ walk, onClose, onQuoteCreated }: {
                 ))}
               </div>
             )}
+            <SiteWalkGapCheck walkId={walk.id} lines={lines}
+              onAdd={(code, qty, reason) => setLines(ls => [...ls, { id: genLineId(), code, qty, source: 'manual', notes: reason }])} />
           </div>
         )}
 

@@ -117,7 +117,7 @@ export async function GET(req: NextRequest) {
     { id: 'digest', name: 'CRM daily digest', purpose: 'Scheduled sales digest email', state: set('CRM_DIGEST_SECRET') ? 'untested' : 'missing',
       detail: set('CRM_DIGEST_SECRET') ? 'Secret set — not tested here; it runs when the scheduler calls it' : 'Not set — the scheduled digest can’t run', lastUse: null, checkedAt: now,
       vars: [v('CRM_DIGEST_SECRET'), v('CRM_DIGEST_TZ', false, true)] },
-    ...(['GEMINI_API_KEY', 'GOOGLE_GENAI_API_KEY', 'RECAPTCHA_SECRET_KEY'].filter(set).map(n => ({
+    ...(['RECAPTCHA_SECRET_KEY'].filter(set).map(n => ({
       id: n.toLowerCase(), name: n, purpose: 'Set in hosting, but nothing in the app uses it', state: 'unused' as const,
       detail: 'Safe to remove, or keep for a planned feature — store it as a secret either way', lastUse: null, checkedAt: now, vars: [v(n)],
     }))),

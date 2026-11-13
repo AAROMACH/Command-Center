@@ -20,6 +20,8 @@ type DispatchTabsProps = {
   routes: Route[];
   onRoutesChange: (routes: Route[]) => void;
   allJobPool: WorkOrder[];
+  /** Techs' current jobs — for route tech suggestions. */
+  assignments?: WorkOrder[];
   dateAsc?: boolean;
   isDateSortActive?: boolean;
   onToggleDateSort?: () => void;
@@ -40,6 +42,7 @@ export function DispatchTabs({
   routes,
   onRoutesChange,
   allJobPool,
+  assignments,
   dateAsc,
   isDateSortActive,
   onToggleDateSort,
@@ -96,6 +99,7 @@ export function DispatchTabs({
           <RoutesView
               routes={routes}
               allJobPool={allJobPool}
+              assignments={assignments}
               technicians={technicians}
               onWorkOrdersChange={onWorkOrdersChange}
               onRoutesChange={onRoutesChange}

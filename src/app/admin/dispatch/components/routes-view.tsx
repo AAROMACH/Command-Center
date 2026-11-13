@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import type { Route, WorkOrder, Technician } from '@/lib/types';
+import { RouteFitPanel } from './route-fit-panel';
 
 const RoutesMapView = dynamic(() => import('./routes-map-view'), { ssr: false });
 
@@ -40,6 +41,7 @@ export const ROUTE_COLORS = ['#e53e3e', '#3b82f6', '#22c55e', '#f59e0b', '#a855f
 type RoutesViewProps = {
   routes: Route[];
   allJobPool: WorkOrder[];
+  assignments?: WorkOrder[];
   technicians: Technician[];
   onWorkOrdersChange: (orders: WorkOrder[]) => void;
   onRoutesChange: (routes: Route[]) => void;
@@ -83,7 +85,7 @@ function DroppableRoute({ route, children }: { route: Route; children: React.Rea
   );
 }
 
-export function RoutesView({ routes, allJobPool, technicians, onWorkOrdersChange, onRoutesChange }: RoutesViewProps) {
+export function RoutesView({ routes, allJobPool, assignments, technicians, onWorkOrdersChange, onRoutesChange }: RoutesViewProps) {
   const safeRoutes = routes || [];
   const safeJobPool = allJobPool || [];
   const safeTechnicians = technicians || [];
@@ -330,6 +332,14 @@ export function RoutesView({ routes, allJobPool, technicians, onWorkOrdersChange
                           ))}
                         </SelectContent>
                       </Select>
+
+                      <RouteFitPanel
+                        jobs={jobs}
+                        techs={assignableTechs.filter(t => !isInactiveTechnician(t))}
+                        assignments={assignments || []}
+                        currentTechId={route.technicianId}
+                        onPick={techId => handleAssignTech(route.id, techId)}
+                      />
 
                       <div className="space-y-1.5 min-h-[40px]">
                         {jobs.length === 0 ? (

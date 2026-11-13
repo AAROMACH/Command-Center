@@ -506,8 +506,8 @@ export default function FinancialsPage() {
                                                                 type="button"
                                                                 onClick={() => router.push('/admin/assets?tab=stock')}
                                                                 className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-text-green hover:underline"
-                                                                title="Open Materials in Assets & Materials"
-                                                            ><Package size={10} /> In Materials{row.stockName ? `: ${row.stockName}` : ''}</button>
+                                                                title="Open Inventory in Assets & Materials"
+                                                            ><Package size={10} /> In inventory{row.stockName ? `: ${row.stockName}` : ''}</button>
                                                         )}
                                                     </TableCell>
                                                     <TableCell className="font-mono text-sm font-bold text-text-primary tabular-nums">${row.amount.toFixed(2)}</TableCell>

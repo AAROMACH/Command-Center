@@ -87,8 +87,8 @@ export function SendInvoiceButton({ invoice, size = 'sm', className, salesMode =
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Send failed');
-      // Materials on it are pulled from stock by hand in A&M → Materials.
-      const stockNote = !invoice.stockPull && (invoice.lineItems || []).some(l => l.category !== 'labor') ? ' Then pull its materials from stock in Assets & Materials → Materials.' : '';
+      // Materials on it are pulled from stock by hand in A&M → Inventory.
+      const stockNote = !invoice.stockPull && (invoice.lineItems || []).some(l => l.category !== 'labor') ? ' Then pull its materials from stock in Assets & Materials → Inventory.' : '';
       if (d.emailed) { toast({ title: 'Invoice sent', description: `Emailed to ${d.to}. Reopen Send to check it was delivered.${stockNote}` }); setOpen(false); }
       else { setLink(d.link); toast({ variant: 'destructive', title: 'Not emailed', description: `${d.reason} Copy the link below to send it yourself.` }); }
     } catch (e: any) {

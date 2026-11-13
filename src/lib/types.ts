@@ -917,7 +917,7 @@ export type Expense = {
   /** Set when a non-job purchase was added to Assets & Materials. */
   assetId?: string;
   assetName?: string;
-  /** Set when a non-job purchase was added to A&M → Materials stock. */
+  /** Set when a non-job purchase was added to A&M → Inventory. */
   inventoryItemId?: string;
   inventoryItemName?: string;
 };
@@ -953,7 +953,7 @@ export type Reimbursement = {
   /** Set when a non-job purchase was added to Assets & Materials. */
   assetId?: string;
   assetName?: string;
-  /** Set when a non-job purchase was added to A&M → Materials stock. */
+  /** Set when a non-job purchase was added to A&M → Inventory. */
   inventoryItemId?: string;
   inventoryItemName?: string;
   // Mileage fields
@@ -997,7 +997,7 @@ export type Invoice = {
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'void';
   lineItems: InvoiceLineItem[];
   /** Set once the invoice's materials were taken out of stock (A&M →
-   *  Materials). Empty lines = nothing on it came from stock. */
+   *  Inventory). Empty lines = nothing on it came from stock. */
   stockPull?: { at: string; by: string; lines: { itemId: string; itemName: string; qty: number }[] };
   notes?: string;
   /** Before any plan discount. */
@@ -1417,7 +1417,7 @@ export type Material = {
   updatedAt?: string;
 };
 
-/** Materials on hand (A&M → Materials). Separate from the price book
+/** Inventory on hand (A&M → Inventory). Separate from the price book
  *  (`materials`), which only says what we charge for an item. */
 export type InventoryItem = {
   id: string;
